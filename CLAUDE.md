@@ -12,26 +12,30 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1 Frontend: Complete** | **Phase 2 UX: In Progress** | **Backend: Not Started**
+**Phase 1 Frontend: Complete** | **Phase 2 UX: Nearly Complete** | **Backend: Not Started**
 
 The frontend is a fully functional local-only prototype. All UI components work, but data is not persisted to a backend - it resets on page refresh.
 
-### What Works (Phase 1)
+### What Works (Phase 1 + Phase 2)
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
 - Gear tracking with BiS source (Raid/Tome) and Have/Augmented states
+- Gear slot icons with completion-based styling (white when complete)
 - Priority score calculations based on role + need
 - Loot priority lists for each floor
 - Team summary with materials needed, books, completion %
 - Responsive UI with dark FFXIV theme
+- **Tab-based navigation** (Party/Loot/Stats) with FFXIV icons
+- **Responsive 3-column grid layout** (1/2/3 columns by breakpoint)
+- **Global view mode toggle** (▤/☰) + individual card expansion
+- **Player card needs footer** (Raid/Tome/Upgrades/Weeks)
+- **Raid position system** (T1/T2/H1/H2/M1/M2/R1/R2) with role-based coloring
+- **Tank role designation** (MT/OT badges)
+- **Double-click name edit** on player cards
+- **Right-click context menu** (Copy/Paste/Duplicate/Remove) with FFXIV icons
 
 ### In Progress (Phase 2)
-- Tab-based navigation (Players/Loot/Stats)
-- Responsive 4-column grid layout
-- Global view mode toggle + individual card expansion
-- Player card needs footer (Raid/Tome/Upgrades/Weeks)
 - Tome weapon tracking (interim upgrade during prog)
-- Right-click context menu (Copy/Paste/Duplicate)
 
 ### What's Missing
 - Backend API (FastAPI + PostgreSQL)
@@ -69,6 +73,15 @@ pnpm dev
 ```
 ffxiv-raid-planner/
 ├── frontend/
+│   ├── public/
+│   │   └── icons/               # FFXIV-style UI icons (transparent bg)
+│   │       ├── party-transparent-bg.png
+│   │       ├── loot-transparent-bg.png
+│   │       ├── stats-transparent-bg.png
+│   │       ├── copy-transparent-bg.png
+│   │       ├── paste-transparent-bg.png
+│   │       ├── duplicate-transparent-bg.png
+│   │       └── remove-transparent-bg.png
 │   └── src/
 │       ├── components/
 │       │   ├── player/          # Player cards, inline edit, gear table
@@ -95,19 +108,21 @@ ffxiv-raid-planner/
 
 ### 1. Tab-Based Navigation
 
-Page-level tabs replace scrolling to bottom for loot/stats:
+Page-level tabs with FFXIV-style icons (transparent backgrounds):
 
 ```
-[👥 Players] [🎯 Loot] [📊 Stats]    [M5S][M6S][M7S][M8S]    [▤][☰]
+[🎖️ Party] [📦 Loot] [📋 Stats]    [M5S][M6S][M7S][M8S]    [▤][☰]
 ```
 
-| Tab | Content |
-|-----|---------|
-| **Players** | Player cards grid (main view) |
-| **Loot** | Full-screen loot distribution with priority lists |
-| **Stats** | Team summary (completion %, materials, books) |
+| Tab | Icon | Content |
+|-----|------|---------|
+| **Party** | Party Members | Player cards grid (main view) |
+| **Loot** | Armoury Chest | Full-screen loot distribution with priority lists |
+| **Stats** | Strategy Board | Team summary (completion %, materials, books) |
 
-Floor selector visible in all tabs.
+Floor selector visible in all tabs. View mode toggle (▤/☰) only visible on Party tab.
+
+**Icons stored locally:** `public/icons/*-transparent-bg.png`
 
 ### 2. View Mode Toggle (Hybrid)
 
@@ -173,10 +188,16 @@ BiS weapon is ALWAYS raid. But during prog, players may get tome weapon as inter
 
 ### 7. Right-Click Context Menu
 
-Right-click on PlayerCard shows:
-- **Copy Player**: Stores player data in clipboard state
-- **Paste Player**: Appears only if clipboard has data; overwrites target
-- **Duplicate Player**: Creates new card, auto-focuses name for editing
+Right-click on PlayerCard shows menu with FFXIV-style icons:
+
+| Action | Icon | Description |
+|--------|------|-------------|
+| **Copy Player** | Copy icon | Stores player data in clipboard state |
+| **Paste Player** | Paste icon | Disabled if no clipboard data; overwrites target |
+| **Duplicate Player** | Duplicate icon | Creates new card with same config |
+| **Remove Player** | Remove icon | Shows confirmation modal before removing |
+
+Icons are stored locally with transparent backgrounds for better theme integration.
 
 ---
 
@@ -429,36 +450,48 @@ function calculateTomeWeeks(player: Player): number {
 | Phase | Status | Features |
 |-------|--------|----------|
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
-| 2 | **In Progress** | Tab navigation, view modes, needs footer, tome weapon, context menu |
+| 2 | **Nearly Complete** | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions |
 | 3 | Planned | Backend API, data persistence |
 | 4 | Planned | BiS import (Etro, XIVGear), Balance presets |
 | 5 | Planned | Lodestone auto-sync |
 | 6 | Planned | FFLogs integration |
 | 7 | Planned | Discord bot, PWA offline mode |
 
+### Phase 2 Remaining Tasks
+- Tome weapon tracking (interim upgrade during prog)
+
 ---
 
 ## XIVAPI Integration
+
+### UI Icons (Tab Navigation & Context Menu)
+
+FFXIV MainCommand icons are used for the UI, stored locally with transparent backgrounds:
+
+**Tab Navigation Icons** (from XIVAPI, edited for transparent bg):
+| Tab | XIVAPI Icon ID | Local Path |
+|-----|----------------|------------|
+| Party | 000017 (Party Members) | `/icons/party-transparent-bg.png` |
+| Loot | 000032 (Armoury Chest) | `/icons/loot-transparent-bg.png` |
+| Stats | 000095 (Strategy Board) | `/icons/stats-transparent-bg.png` |
+
+**Context Menu Icons**:
+| Action | XIVAPI Icon ID | Local Path |
+|--------|----------------|------------|
+| Copy | 000047 | `/icons/copy-transparent-bg.png` |
+| Paste | 000080 | `/icons/paste-transparent-bg.png` |
+| Duplicate | 019692 | `/icons/duplicate-transparent-bg.png` |
+| Remove | 000026 | `/icons/remove-transparent-bg.png` |
+
+Icon constants defined in `src/types/index.ts`:
+- `TAB_ICONS` - Tab navigation icons
+- `CONTEXT_MENU_ICONS` - Right-click menu icons
 
 ### Gear Slot Icons
 
 Two icon sets are available from XIVAPI for gear slots:
 
-**1. ItemUICategory Icons** (colorful/filled) - Currently used in GearTable:
-```
-https://xivapi.com/i/060000/060124.png  // Head
-https://xivapi.com/i/060000/060126.png  // Body
-https://xivapi.com/i/060000/060129.png  // Hands
-https://xivapi.com/i/060000/060128.png  // Legs
-https://xivapi.com/i/060000/060130.png  // Feet
-https://xivapi.com/i/060000/060133.png  // Earring
-https://xivapi.com/i/060000/060132.png  // Necklace
-https://xivapi.com/i/060000/060134.png  // Bracelet
-https://xivapi.com/i/060000/060135.png  // Ring
-https://xivapi.com/i/060000/060102.png  // Weapon (Gladiator's Arm)
-```
-
-**2. Gear Slot Placeholder Icons** (outline/silhouette style) - For empty slots:
+**1. Gear Slot Placeholder Icons** (outline/silhouette style) - Currently used:
 ```
 https://xivapi.com/img-misc/gear/head.png
 https://xivapi.com/img-misc/gear/body.png
@@ -470,6 +503,26 @@ https://xivapi.com/img-misc/gear/neck.png
 https://xivapi.com/img-misc/gear/wrist.png
 https://xivapi.com/img-misc/gear/ring.png
 https://xivapi.com/img-misc/gear/mainhand.png
+```
+
+**Completion-based styling:**
+- Default (empty): 50% opacity grey
+- Raid gear + Have: White (`brightness-0 invert opacity-90`)
+- Tome gear + Have: 50% white (`brightness-0 invert opacity-50`)
+- Tome gear + Have + Aug: Full white (`brightness-0 invert opacity-90`)
+
+**2. ItemUICategory Icons** (colorful/filled) - For future use:
+```
+https://xivapi.com/i/060000/060124.png  // Head
+https://xivapi.com/i/060000/060126.png  // Body
+https://xivapi.com/i/060000/060129.png  // Hands
+https://xivapi.com/i/060000/060128.png  // Legs
+https://xivapi.com/i/060000/060130.png  // Feet
+https://xivapi.com/i/060000/060133.png  // Earring
+https://xivapi.com/i/060000/060132.png  // Necklace
+https://xivapi.com/i/060000/060134.png  // Bracelet
+https://xivapi.com/i/060000/060135.png  // Ring
+https://xivapi.com/i/060000/060102.png  // Weapon (Gladiator's Arm)
 ```
 
 ### Future Feature: Dynamic BiS Item Icons (Phase 4+)
@@ -484,9 +537,9 @@ This would require:
 3. Storing item icon URLs in GearSlotStatus
 4. Conditionally rendering placeholder vs actual item icon
 
-Both icon sets are defined in `src/types/index.ts`:
-- `GEAR_SLOT_ICONS` - Current filled icons
-- `GEAR_SLOT_PLACEHOLDER_ICONS` - For future empty state
+Icon constants defined in `src/types/index.ts`:
+- `GEAR_SLOT_ICONS` - Current placeholder/outline icons
+- `GEAR_SLOT_FILLED_ICONS` - For future BiS item display
 
 ---
 

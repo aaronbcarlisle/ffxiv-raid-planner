@@ -4,21 +4,30 @@
 
 This document details the implementation plan for Phase 2 UX enhancements to the FFXIV Raid Planner. These changes focus on improved navigation, better information density, and streamlined workflows.
 
+**Status: Nearly Complete** - Most features implemented, tome weapon tracking remaining.
+
 ---
 
 ## Feature Summary
 
-| Feature | Priority | Complexity | Effort |
+| Feature | Priority | Complexity | Status |
 |---------|----------|------------|--------|
-| 1. Tab-Based Navigation (Players/Loot/Stats) | High | Medium | 3-4 hrs |
-| 2. Responsive 4-Column Grid | High | Low | 1 hr |
-| 3. Global View Mode Toggle | High | Medium | 2 hrs |
-| 4. Player Card Needs Footer | Medium | Low | 1 hr |
-| 5. Double-Click Name Edit | Medium | Low | 30 min |
-| 6. Tome Weapon Sub-Row | Medium | Medium | 2-3 hrs |
-| 7. Right-Click Context Menu | Medium | Medium | 2-3 hrs |
+| 1. Tab-Based Navigation (Party/Loot/Stats) | High | Medium | ✅ Complete |
+| 2. Responsive 3-Column Grid | High | Low | ✅ Complete |
+| 3. Global View Mode Toggle | High | Medium | ✅ Complete |
+| 4. Player Card Needs Footer | Medium | Low | ✅ Complete |
+| 5. Double-Click Name Edit | Medium | Low | ✅ Complete |
+| 6. Tome Weapon Sub-Row | Medium | Medium | ⏳ Pending |
+| 7. Right-Click Context Menu | Medium | Medium | ✅ Complete |
 
-**Total Estimated Effort:** 12-15 hours
+### Additional Features Implemented
+| Feature | Description |
+|---------|-------------|
+| FFXIV Icons | Tab and context menu icons from XIVAPI with transparent backgrounds |
+| Raid Positions | T1/T2/H1/H2/M1/M2/R1/R2 position system with role-based coloring |
+| Tank Roles | MT/OT designation badges for tanks |
+| Gear Slot Icons | Completion-based icon styling (white when complete) |
+| Layout Stability | Fixed tab switching layout shifts |
 
 ---
 
@@ -980,24 +989,41 @@ const handleDuplicate = () => {
 
 ## Testing Checklist
 
-- [ ] 4-column grid at xl breakpoint (≥1280px)
-- [ ] 3-column grid at lg breakpoint (≥1024px)
-- [ ] 2-column grid at md breakpoint (≥768px)
-- [ ] 1-column grid on mobile (<768px)
-- [ ] Global ▤ toggle switches all cards to compact
-- [ ] Global ☰ toggle switches all cards to expanded
-- [ ] Individual card click still expands/collapses
-- [ ] Double-click name enters edit mode
-- [ ] Enter saves name, Escape cancels
-- [ ] Needs footer shows on all cards
-- [ ] Tome Wks calculation is accurate
+### Grid Layout
+- [x] 3-column grid at lg breakpoint (≥1024px)
+- [x] 2-column grid at md breakpoint (≥768px)
+- [x] 1-column grid on mobile (<768px)
+
+### View Mode Toggle
+- [x] Global ▤ toggle switches all cards to compact
+- [x] Global ☰ toggle switches all cards to expanded
+- [x] Individual card click still expands/collapses
+- [x] Duplicated cards inherit expansion state from source
+
+### Player Card Features
+- [x] Double-click name enters edit mode
+- [x] Enter saves name, Escape cancels
+- [x] Needs footer shows on all cards (Raid/Tome/Upgrades/Weeks)
+- [x] Tome Wks calculation is accurate
+- [x] Raid position selector with role-based coloring
+- [x] Tank role badges (MT/OT) for tanks
+
+### Tome Weapon (Pending)
 - [ ] "Raid + Tome" shows weapon sub-row
 - [ ] Switching back to "Raid" hides sub-row
-- [ ] Right-click shows context menu
-- [ ] Copy stores player data
-- [ ] Paste overwrites target card
-- [ ] Duplicate creates new card in edit mode
-- [ ] Players tab shows player grid
-- [ ] Loot tab shows priority cards
-- [ ] Stats tab shows team summary
-- [ ] Floor selector visible in all tabs
+
+### Context Menu
+- [x] Right-click shows context menu with FFXIV icons
+- [x] Copy stores player data
+- [x] Paste overwrites target card (disabled when no clipboard)
+- [x] Duplicate creates new card
+- [x] Remove shows confirmation modal
+
+### Tab Navigation
+- [x] Party tab shows player grid
+- [x] Loot tab shows priority cards
+- [x] Stats tab shows team summary
+- [x] Floor selector visible in all tabs
+- [x] View mode toggle only visible on Party tab
+- [x] FFXIV-style icons with transparent backgrounds
+- [x] No layout shift when switching tabs
