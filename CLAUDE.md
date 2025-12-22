@@ -12,7 +12,7 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1 Frontend: Complete** | **Phase 2 UX: Nearly Complete** | **Backend: Not Started**
+**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Backend: Not Started**
 
 The frontend is a fully functional local-only prototype. All UI components work, but data is not persisted to a backend - it resets on page refresh.
 
@@ -33,9 +33,7 @@ The frontend is a fully functional local-only prototype. All UI components work,
 - **Tank role designation** (MT/OT badges)
 - **Double-click name edit** on player cards
 - **Right-click context menu** (Copy/Paste/Duplicate/Remove) with FFXIV icons
-
-### In Progress (Phase 2)
-- Tome weapon tracking (interim upgrade during prog)
+- **Tome weapon tracking** (interim upgrade during prog with calculation support)
 
 ### What's Missing
 - Backend API (FastAPI + PostgreSQL)
@@ -450,15 +448,12 @@ function calculateTomeWeeks(player: Player): number {
 | Phase | Status | Features |
 |-------|--------|----------|
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
-| 2 | **Nearly Complete** | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions |
+| 2 | **Complete** | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Planned | Backend API, data persistence |
 | 4 | Planned | BiS import (Etro, XIVGear), Balance presets |
 | 5 | Planned | Lodestone auto-sync |
 | 6 | Planned | FFLogs integration |
 | 7 | Planned | Discord bot, PWA offline mode |
-
-### Phase 2 Remaining Tasks
-- Tome weapon tracking (interim upgrade during prog)
 
 ---
 

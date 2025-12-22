@@ -4,7 +4,7 @@
 
 This document details the implementation plan for Phase 2 UX enhancements to the FFXIV Raid Planner. These changes focus on improved navigation, better information density, and streamlined workflows.
 
-**Status: Nearly Complete** - Most features implemented, tome weapon tracking remaining.
+**Status: Complete** - All Phase 2 features implemented.
 
 ---
 
@@ -17,7 +17,7 @@ This document details the implementation plan for Phase 2 UX enhancements to the
 | 3. Global View Mode Toggle | High | Medium | ✅ Complete |
 | 4. Player Card Needs Footer | Medium | Low | ✅ Complete |
 | 5. Double-Click Name Edit | Medium | Low | ✅ Complete |
-| 6. Tome Weapon Sub-Row | Medium | Medium | ⏳ Pending |
+| 6. Tome Weapon Sub-Row | Medium | Medium | ✅ Complete |
 | 7. Right-Click Context Menu | Medium | Medium | ✅ Complete |
 
 ### Additional Features Implemented
@@ -1008,9 +1008,12 @@ const handleDuplicate = () => {
 - [x] Raid position selector with role-based coloring
 - [x] Tank role badges (MT/OT) for tanks
 
-### Tome Weapon (Pending)
-- [ ] "Raid + Tome" shows weapon sub-row
-- [ ] Switching back to "Raid" hides sub-row
+### Tome Weapon
+- [x] "+Tome" toggle shows weapon sub-row
+- [x] Toggling off hides sub-row
+- [x] Tome weapon included in tomeNeed calculation (500 tomestones)
+- [x] Tome weapon augmentation included in upgrades calculation
+- [x] Solvent priority includes tome weapon augmentation needs
 
 ### Context Menu
 - [x] Right-click shows context menu with FFXIV icons
