@@ -28,21 +28,25 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| 1 | Core MVP | Frontend Complete, Backend Pending |
-| 2 | BiS Integration | Not Started |
-| 3 | Lodestone Auto-Sync | Not Started |
-| 4 | Loot Distribution + Real-Time | Not Started |
-| 5 | Scheduling + Strategies | Not Started |
-| 6 | Progress Tracking + Alts | Not Started |
-| 7 | FFLogs Integration | Not Started |
-| 8 | Discord Bot + PWA | Not Started |
-| 9 | Auth + User Accounts | Not Started |
+| 1 | Core MVP (Frontend) | Complete |
+| 2 | UX Enhancements | **In Progress** |
+| 3 | Backend + Persistence | Not Started |
+| 4 | BiS Integration | Not Started |
+| 5 | Lodestone Auto-Sync | Not Started |
+| 6 | Loot Distribution + Real-Time | Not Started |
+| 7 | Scheduling + Strategies | Not Started |
+| 8 | Progress Tracking + Alts | Not Started |
+| 9 | FFLogs Integration | Not Started |
+| 10 | Discord Bot + PWA | Not Started |
+| 11 | Auth + User Accounts | Not Started |
+
+> **Note:** See `docs/IMPLEMENTATION_PLAN_PHASE2.md` for detailed Phase 2 implementation specs.
 
 ---
 
-## Phase 1: Core MVP
+## Phase 1: Core MVP (Complete)
 
-### Frontend (Complete)
+### Frontend
 
 #### Components
 - [x] PlayerCard - Expandable card with compact/full views
@@ -84,37 +88,63 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 - [x] Responsive design
 - [x] Cinzel font for headers
 
-### Backend (Not Started)
+---
 
-#### Setup
+## Phase 2: UX Enhancements (In Progress)
+
+See `docs/IMPLEMENTATION_PLAN_PHASE2.md` for detailed implementation specs.
+
+### Features
+- [ ] Tab-based navigation (Players / Loot / Stats)
+- [ ] Responsive 4-column grid (xl:4, lg:3, md:2, sm:1)
+- [ ] Global view mode toggle (▤ compact / ☰ expanded)
+- [ ] Individual card expand/collapse (hybrid with global)
+- [ ] Player card needs footer (Raid Need / Tome Need / Upgrades / Tome Wks)
+- [ ] Double-click name to edit
+- [ ] Tome weapon sub-row tracking (interim upgrade during prog)
+- [ ] Right-click context menu (Copy / Paste / Duplicate player)
+
+### Components to Create
+- [ ] `TabNavigation.tsx` - Page-level tabs
+- [ ] `ViewModeToggle.tsx` - ▤/☰ toggle
+- [ ] `LootModeView.tsx` - Full-screen loot distribution
+- [ ] `LootItemCard.tsx` - Item with priority list
+- [ ] `StatsView.tsx` - Full-page team stats
+- [ ] `NeedsFooter.tsx` - 4-stat footer
+- [ ] `WeaponSlotRow.tsx` - Weapon with tome sub-row
+- [ ] `ContextMenu.tsx` - Right-click menu
+
+### Components to Modify
+- [ ] `StaticView.tsx` - Tab navigation, 4-column grid
+- [ ] `PlayerCard.tsx` - Global view mode, context menu, name edit
+- [ ] `GearTable.tsx` - Weapon sub-row integration
+- [ ] `staticStore.ts` - pageMode, clipboardPlayer, tomeWeapon state
+- [ ] `types/index.ts` - TomeWeaponStatus interface
+
+---
+
+## Phase 3: Backend + Persistence
+
+Moved from Phase 1 to allow UX iteration first.
+
+### Setup
 - [ ] FastAPI project structure
 - [ ] PostgreSQL with Supabase
 - [ ] Environment configuration
 - [ ] CORS setup
 
-#### Database Tables
-- [ ] statics - Raid groups
-- [ ] players - Player roster
-- [ ] gear_slots - Per-player gear status
+### Database
+- [ ] statics table
+- [ ] players table
+- [ ] gear_slots table
 
-#### API Endpoints
-- [ ] `GET /api/statics/:shareCode` - Load static
-- [ ] `POST /api/statics` - Create static
-- [ ] `PUT /api/statics/:id` - Update settings
-- [ ] `DELETE /api/statics/:id` - Delete static
-- [ ] `POST /api/statics/:id/players` - Add player
-- [ ] `PUT /api/players/:id` - Update player
-- [ ] `DELETE /api/players/:id` - Remove player
-- [ ] `PUT /api/players/:id/gear` - Update gear
-
-#### Deployment
+### Deployment
 - [ ] Deploy frontend to Vercel
 - [ ] Deploy backend to Railway
-- [ ] Configure environment variables
 
 ---
 
-## Phase 2: BiS Integration
+## Phase 4: BiS Integration
 
 ### Features
 - [ ] Etro.gg link import - Parse gearset ID, fetch gear
@@ -132,7 +162,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 3: Lodestone Auto-Sync
+## Phase 5: Lodestone Auto-Sync
 
 ### Features
 - [ ] Character search by name + server
@@ -149,7 +179,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 4: Loot Distribution + Real-Time
+## Phase 6: Loot Distribution + Real-Time
 
 ### Features
 - [ ] Per-item priority display with score breakdown
@@ -170,7 +200,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 5: Scheduling + Strategies
+## Phase 7: Scheduling + Strategies
 
 ### Raid Schedule
 - [ ] Recurring schedule setup (day/time picker)
@@ -193,7 +223,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 6: Progress Tracking + Alts
+## Phase 8: Progress Tracking + Alts
 
 ### Features
 - [ ] Weekly snapshots (auto-save at reset)
@@ -209,7 +239,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 7: FFLogs Integration
+## Phase 9: FFLogs Integration
 
 ### Features
 - [ ] FFLogs character linking
@@ -225,7 +255,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 8: Discord Bot + PWA
+## Phase 10: Discord Bot + PWA
 
 ### Discord Bot
 - [ ] Add to server flow
@@ -248,7 +278,7 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 9: Auth + User Accounts
+## Phase 11: Auth + User Accounts
 
 ### Features
 - [ ] Discord OAuth login

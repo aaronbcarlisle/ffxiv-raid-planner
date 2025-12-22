@@ -7,8 +7,8 @@
  * - Items needed (more items needed = higher priority)
  */
 
-import type { Player, StaticSettings, GearSlot, GearSlotStatus } from '../types';
-import { SLOT_VALUE_WEIGHTS } from '../gamedata/costs';
+import type { Player, StaticSettings, GearSlot, GearSlotStatus, PlayerNeeds, RaidPosition, TankRole } from '../types';
+import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete } from './calculations';
 
@@ -127,33 +127,87 @@ export function getPriorityForUpgradeMaterial(
 }
 
 /**
- * Summary of what a player needs
- */
-export interface PlayerNeeds {
-  raidItems: number; // Raid BiS slots not yet obtained
-  tomeItems: number; // Tome BiS slots not yet obtained
-  upgrades: number; // Tome items that need augmenting
-}
-
-/**
  * Calculate what a player still needs
+ * Returns raidNeed, tomeNeed, upgrades, and tomeWeeks
  */
 export function calculatePlayerNeeds(gear: GearSlotStatus[]): PlayerNeeds {
-  let raidItems = 0;
-  let tomeItems = 0;
+  let raidNeed = 0;
+  let tomeNeed = 0;
   let upgrades = 0;
+  let tomestoneCost = 0;
 
   gear.forEach((g) => {
     if (g.bisSource === 'raid' && !g.hasItem) {
-      raidItems++;
+      raidNeed++;
     } else if (g.bisSource === 'tome') {
       if (!g.hasItem) {
-        tomeItems++;
+        tomeNeed++;
+        tomestoneCost += TOMESTONE_COSTS[g.slot] || 0;
       } else if (!g.isAugmented) {
         upgrades++;
       }
     }
   });
 
-  return { raidItems, tomeItems, upgrades };
+  const tomeWeeks = Math.ceil(tomestoneCost / WEEKLY_TOMESTONE_CAP);
+
+  return { raidNeed, tomeNeed, upgrades, tomeWeeks };
+}
+
+/**
+ * Get the default position and tank role for a new player based on their role
+ * and what positions are already assigned in the static.
+ *
+ * Assignment logic:
+ * - Tanks: T1 (MT) first, then T2 (OT)
+ * - Healers: H1 first, then H2
+ * - Melee: M1, M2, then overflow to R1, R2
+ * - Ranged/Caster: R1, R2, then overflow to M1, M2
+ */
+export function getDefaultPositionForRole(
+  players: Player[],
+  role: string,
+  excludePlayerId?: string
+): { position?: RaidPosition; tankRole?: TankRole } {
+  // Get all currently assigned positions from configured players
+  // Exclude the player being updated (if editing an existing player)
+  const assignedPositions = new Set(
+    players
+      .filter((p) => p.configured && p.position && p.id !== excludePlayerId)
+      .map((p) => p.position)
+  );
+
+  let positionsToTry: RaidPosition[] = [];
+
+  switch (role) {
+    case 'tank':
+      positionsToTry = ['T1', 'T2'];
+      break;
+    case 'healer':
+      positionsToTry = ['H1', 'H2'];
+      break;
+    case 'melee':
+      // Primary: M1, M2, then overflow to R1, R2
+      positionsToTry = ['M1', 'M2', 'R1', 'R2'];
+      break;
+    case 'ranged':
+    case 'caster':
+      // Primary: R1, R2, then overflow to M1, M2
+      positionsToTry = ['R1', 'R2', 'M1', 'M2'];
+      break;
+    default:
+      return {};
+  }
+
+  for (const pos of positionsToTry) {
+    if (!assignedPositions.has(pos)) {
+      const result: { position: RaidPosition; tankRole?: TankRole } = { position: pos };
+      if (role === 'tank') {
+        result.tankRole = pos === 'T1' ? 'MT' : 'OT';
+      }
+      return result;
+    }
+  }
+
+  return {};
 }

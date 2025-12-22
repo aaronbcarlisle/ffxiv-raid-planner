@@ -12,6 +12,7 @@ interface SummaryPanelProps {
   selectedFloor: FloorNumber;
   floorName: string;
   teamSummary: TeamSummaryType;
+  initialTab?: Tab;
 }
 
 export function SummaryPanel({
@@ -20,8 +21,9 @@ export function SummaryPanel({
   selectedFloor,
   floorName,
   teamSummary,
+  initialTab = 'loot',
 }: SummaryPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('loot');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   return (
     <div>

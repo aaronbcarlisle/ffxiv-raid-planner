@@ -5,7 +5,9 @@ import { getCurrentTier, getTierById } from '../gamedata';
 import { PlayerCard } from '../components/player/PlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
-import { FloorSelector, SummaryPanel } from '../components/loot';
+import { FloorSelector, LootPriorityPanel } from '../components/loot';
+import { TeamSummary } from '../components/team/TeamSummary';
+import { TabNavigation, ViewModeToggle } from '../components/ui';
 import { calculateTeamSummary, sortPlayersByRole } from '../utils/calculations';
 import type { Player } from '../types';
 
@@ -16,15 +18,22 @@ export function StaticView() {
     isLoading,
     error,
     selectedFloor,
+    pageMode,
+    viewMode,
     editingPlayerId,
+    clipboardPlayer,
     setStatic,
     setLoading,
     updatePlayer,
     removePlayer,
     configurePlayer,
     addPlayerSlot,
+    duplicatePlayer,
     setSelectedFloor,
+    setPageMode,
+    setViewMode,
     setEditingPlayerId,
+    setClipboardPlayer,
   } = useStaticStore();
 
   useEffect(() => {
@@ -145,65 +154,97 @@ export function StaticView() {
         </div>
       </div>
 
-      {/* Floor Selector */}
-      {tierInfo && (
-        <div className="mb-6">
-          <FloorSelector
-            floors={tierInfo.floors}
-            selectedFloor={selectedFloor}
-            onFloorChange={setSelectedFloor}
-          />
-        </div>
-      )}
-
-      {/* Players Grid - Always show template slots */}
-      <div className="grid gap-4 md:grid-cols-2 mb-8">
-        {sortedPlayers.map((player) => {
-          // If editing this player, show inline edit form
-          if (editingPlayerId === player.id) {
-            return (
-              <InlinePlayerEdit
-                key={player.id}
-                player={player}
-                onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
-                onCancel={() => setEditingPlayerId(null)}
-              />
-            );
-          }
-
-          // If player is configured, show player card
-          if (player.configured) {
-            return (
-              <PlayerCard
-                key={player.id}
-                player={player}
-                settings={currentStatic.settings}
-                onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
-                onRemove={() => handleRemovePlayer(player.id)}
-              />
-            );
-          }
-
-          // Otherwise show empty slot - all unconfigured slots can be removed
-          return (
-            <EmptySlotCard
-              key={player.id}
-              onStartEdit={() => setEditingPlayerId(player.id)}
-              onRemove={() => handleRemovePlayer(player.id)}
+      {/* Toolbar: Tabs + Floor Selector + View Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+        <div className="flex items-center gap-4">
+          {tierInfo && (
+            <FloorSelector
+              floors={tierInfo.floors}
+              selectedFloor={selectedFloor}
+              onFloorChange={setSelectedFloor}
             />
-          );
-        })}
+          )}
+          {pageMode === 'players' && (
+            <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+          )}
+        </div>
       </div>
 
-      {/* Summary Panel (Loot Priority + Team Stats) - only show when we have configured players */}
-      {teamSummary && tierInfo && (
-        <SummaryPanel
+      {/* Players Tab */}
+      {pageMode === 'players' && (
+        <>
+          {/* Players Grid - Responsive 1-3 columns */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            {sortedPlayers.map((player) => {
+              // If editing this player, show inline edit form
+              if (editingPlayerId === player.id) {
+                return (
+                  <InlinePlayerEdit
+                    key={player.id}
+                    player={player}
+                    onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
+                    onCancel={() => setEditingPlayerId(null)}
+                  />
+                );
+              }
+
+              // If player is configured, show player card
+              if (player.configured) {
+                return (
+                  <PlayerCard
+                    key={player.id}
+                    player={player}
+                    settings={currentStatic.settings}
+                    viewMode={viewMode}
+                    clipboardPlayer={clipboardPlayer}
+                    onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
+                    onRemove={() => handleRemovePlayer(player.id)}
+                    onCopy={() => setClipboardPlayer(player)}
+                    onPaste={() => {
+                      if (clipboardPlayer) {
+                        handleUpdatePlayer(player.id, {
+                          job: clipboardPlayer.job,
+                          role: clipboardPlayer.role,
+                          gear: clipboardPlayer.gear,
+                          tomeWeapon: clipboardPlayer.tomeWeapon,
+                          isSubstitute: clipboardPlayer.isSubstitute,
+                          notes: clipboardPlayer.notes,
+                          bisLink: clipboardPlayer.bisLink,
+                        });
+                      }
+                    }}
+                    onDuplicate={() => duplicatePlayer(player.id)}
+                  />
+                );
+              }
+
+              // Otherwise show empty slot - all unconfigured slots can be removed
+              return (
+                <EmptySlotCard
+                  key={player.id}
+                  onStartEdit={() => setEditingPlayerId(player.id)}
+                  onRemove={() => handleRemovePlayer(player.id)}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Loot Tab */}
+      {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
+        <LootPriorityPanel
           players={configuredPlayers}
           settings={currentStatic.settings}
           selectedFloor={selectedFloor}
           floorName={tierInfo.floors[selectedFloor - 1]}
-          teamSummary={teamSummary}
         />
+      )}
+
+      {/* Stats Tab */}
+      {pageMode === 'stats' && teamSummary && (
+        <TeamSummary summary={teamSummary} />
       )}
     </div>
   );

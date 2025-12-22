@@ -1,8 +1,17 @@
 import { create } from 'zustand';
-import type { Static, Player, StaticSettings, GearSlotStatus } from '../types';
+import type {
+  Static,
+  Player,
+  StaticSettings,
+  GearSlotStatus,
+  PageMode,
+  ViewMode,
+  TomeWeaponStatus,
+} from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 import { DEFAULT_DISPLAY_ORDER, DEFAULT_LOOT_PRIORITY } from '../utils/constants';
+import { getDefaultPositionForRole } from '../utils/priority';
 
 // Number of default empty slots for new statics
 const DEFAULT_SLOT_COUNT = 8;
@@ -15,6 +24,15 @@ function createDefaultGear(): GearSlotStatus[] {
     hasItem: false,
     isAugmented: false,
   }));
+}
+
+// Create default tome weapon status
+function createDefaultTomeWeapon(): TomeWeaponStatus {
+  return {
+    pursuing: false,
+    hasItem: false,
+    isAugmented: false,
+  };
 }
 
 // Create template players for a new static
@@ -30,20 +48,21 @@ export function createTemplatePlayers(staticId: string): Player[] {
     sortOrder: index,
     isSubstitute: false,
     gear: createDefaultGear(),
+    tomeWeapon: createDefaultTomeWeapon(),
     createdAt: now,
     updatedAt: now,
   }));
 }
-
-export type ViewMode = 'compact' | 'expanded';
 
 interface StaticState {
   currentStatic: Static | null;
   isLoading: boolean;
   error: string | null;
   selectedFloor: FloorNumber;
+  pageMode: PageMode;
   viewMode: ViewMode;
   editingPlayerId: string | null;
+  clipboardPlayer: Player | null;
 
   // Actions
   setStatic: (staticData: Static) => void;
@@ -54,11 +73,14 @@ interface StaticState {
   updatePlayer: (playerId: string, updates: Partial<Player>) => void;
   removePlayer: (playerId: string) => void;
   configurePlayer: (playerId: string, name: string, job: string, role: string) => void;
+  duplicatePlayer: (playerId: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setSelectedFloor: (floor: FloorNumber) => void;
+  setPageMode: (mode: PageMode) => void;
   setViewMode: (mode: ViewMode) => void;
   setEditingPlayerId: (playerId: string | null) => void;
+  setClipboardPlayer: (player: Player | null) => void;
 }
 
 export const useStaticStore = create<StaticState>((set) => ({
@@ -66,8 +88,10 @@ export const useStaticStore = create<StaticState>((set) => ({
   isLoading: false,
   error: null,
   selectedFloor: 1,
+  pageMode: 'players',
   viewMode: 'compact',
   editingPlayerId: null,
+  clipboardPlayer: null,
 
   setStatic: (staticData) => set({ currentStatic: staticData, error: null }),
 
@@ -109,6 +133,7 @@ export const useStaticStore = create<StaticState>((set) => ({
         sortOrder: state.currentStatic.players.length,
         isSubstitute: false,
         gear: createDefaultGear(),
+        tomeWeapon: createDefaultTomeWeapon(),
         createdAt: now,
         updatedAt: now,
       };
@@ -123,11 +148,29 @@ export const useStaticStore = create<StaticState>((set) => ({
   updatePlayer: (playerId, updates) =>
     set((state) => {
       if (!state.currentStatic) return state;
+
+      // Check if role is changing - if so, recalculate default position
+      const currentPlayer = state.currentStatic.players.find((p) => p.id === playerId);
+      let finalUpdates = { ...updates };
+
+      if (updates.role && currentPlayer && updates.role !== currentPlayer.role) {
+        // Role is changing - get new default position
+        // Only auto-assign if they don't already have a position explicitly set in this update
+        if (!('position' in updates)) {
+          const { position, tankRole } = getDefaultPositionForRole(
+            state.currentStatic.players,
+            updates.role,
+            playerId
+          );
+          finalUpdates = { ...finalUpdates, position, tankRole };
+        }
+      }
+
       return {
         currentStatic: {
           ...state.currentStatic,
           players: state.currentStatic.players.map((p) =>
-            p.id === playerId ? { ...p, ...updates } : p
+            p.id === playerId ? { ...p, ...finalUpdates } : p
           ),
         },
       };
@@ -147,6 +190,14 @@ export const useStaticStore = create<StaticState>((set) => ({
   configurePlayer: (playerId, name, job, role) =>
     set((state) => {
       if (!state.currentStatic) return state;
+
+      // Get default position for this role
+      const { position, tankRole } = getDefaultPositionForRole(
+        state.currentStatic.players,
+        role,
+        playerId
+      );
+
       return {
         currentStatic: {
           ...state.currentStatic,
@@ -157,6 +208,8 @@ export const useStaticStore = create<StaticState>((set) => ({
                   name,
                   job,
                   role,
+                  position,
+                  tankRole,
                   configured: true,
                   updatedAt: new Date().toISOString(),
                 }
@@ -167,15 +220,55 @@ export const useStaticStore = create<StaticState>((set) => ({
       };
     }),
 
+  duplicatePlayer: (playerId) =>
+    set((state) => {
+      if (!state.currentStatic) return state;
+      const sourcePlayer = state.currentStatic.players.find((p) => p.id === playerId);
+      if (!sourcePlayer) return state;
+
+      const now = new Date().toISOString();
+      const newPlayerId = crypto.randomUUID();
+
+      // Get default position for the duplicated player (don't copy source position)
+      const { position, tankRole } = getDefaultPositionForRole(
+        state.currentStatic.players,
+        sourcePlayer.role,
+        newPlayerId
+      );
+
+      const newPlayer: Player = {
+        ...sourcePlayer,
+        id: newPlayerId,
+        name: sourcePlayer.name, // Keep name, user will edit inline
+        position, // Assign new position
+        tankRole, // Assign new tank role
+        sortOrder: state.currentStatic.players.length,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      return {
+        currentStatic: {
+          ...state.currentStatic,
+          players: [...state.currentStatic.players, newPlayer],
+        },
+        editingPlayerId: newPlayer.id, // Open inline edit for new player
+      };
+    }),
+
   setLoading: (isLoading) => set({ isLoading }),
 
   setError: (error) => set({ error }),
 
   setSelectedFloor: (floor) => set({ selectedFloor: floor }),
 
+  setPageMode: (pageMode) => set({ pageMode }),
+
   setViewMode: (viewMode) => set({ viewMode }),
 
   setEditingPlayerId: (editingPlayerId) => set({ editingPlayerId }),
+
+  setClipboardPlayer: (clipboardPlayer) => set({ clipboardPlayer }),
 }));
 
 // Default settings for new statics

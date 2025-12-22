@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { GearTable } from './GearTable';
+import { NeedsFooter } from './NeedsFooter';
+import { PositionSelector } from './PositionSelector';
+import { TankRoleSelector } from './TankRoleSelector';
 import { JobIcon } from '../ui/JobIcon';
+import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import {
   getJobDisplayName,
   getRoleColor,
@@ -9,25 +13,72 @@ import {
   getRoleDisplayName,
   type Role,
 } from '../../gamedata';
-import type { Player, GearSlotStatus, StaticSettings } from '../../types';
+import type { Player, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
 import { calculatePriorityScore, calculatePlayerNeeds } from '../../utils/priority';
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
+// Get position badge color classes based on position type
+function getPositionBadgeClasses(position: RaidPosition | undefined): string {
+  if (!position) {
+    return 'bg-bg-hover text-text-muted hover:text-text-secondary hover:bg-bg-hover/80';
+  }
+  if (position.startsWith('T')) {
+    return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';
+  }
+  if (position.startsWith('H')) {
+    return 'bg-role-healer/20 text-role-healer hover:bg-role-healer/30';
+  }
+  // M* and R* are DPS (red)
+  return 'bg-role-melee/20 text-role-melee hover:bg-role-melee/30';
+}
+
 interface PlayerCardProps {
   player: Player;
   settings: StaticSettings;
+  viewMode: ViewMode;
+  clipboardPlayer: Player | null;
   onUpdate: (updates: Partial<Player>) => void;
   onRemove: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  onDuplicate: () => void;
 }
 
-export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+export function PlayerCard({
+  player,
+  settings,
+  viewMode,
+  clipboardPlayer,
+  onUpdate,
+  onRemove,
+  onCopy,
+  onPaste,
+  onDuplicate,
+}: PlayerCardProps) {
+  // Local expansion state: null = follow global, boolean = override
+  const [localExpanded, setLocalExpanded] = useState<boolean | null>(null);
+
+  // Reset local override when global viewMode changes
+  useEffect(() => {
+    setLocalExpanded(null);
+  }, [viewMode]);
+
+  // Compute effective expansion state
+  const isExpanded = localExpanded !== null ? localExpanded : viewMode === 'expanded';
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const [showPositionPicker, setShowPositionPicker] = useState(false);
+  const [showTankRolePicker, setShowTankRolePicker] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(player.name);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const jobPickerRef = useRef<HTMLDivElement>(null);
+  const positionPickerRef = useRef<HTMLDivElement>(null);
+  const tankRolePickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Get the actual role color (valid roles: tank, healer, melee, ranged, caster)
   const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
@@ -53,6 +104,10 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
     onUpdate({ gear: newGear });
   };
 
+  const handleTomeWeaponChange = (updates: Partial<typeof player.tomeWeapon>) => {
+    onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
+  };
+
   // Close job picker on click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -73,6 +128,48 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
       searchInputRef.current.focus();
     }
   }, [showJobPicker]);
+
+  // Focus name input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  // Sync editedName with player.name when it changes externally
+  useEffect(() => {
+    setEditedName(player.name);
+  }, [player.name]);
+
+  const handleNameDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+    setEditedName(player.name);
+  };
+
+  const handleNameSave = () => {
+    const trimmedName = editedName.trim();
+    if (trimmedName && trimmedName !== player.name) {
+      onUpdate({ name: trimmedName });
+    } else {
+      setEditedName(player.name);
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameCancel = () => {
+    setEditedName(player.name);
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSave();
+    } else if (e.key === 'Escape') {
+      handleNameCancel();
+    }
+  };
 
   // Filter jobs based on search
   const allJobs = Object.values(jobsByRole).flat();
@@ -98,22 +195,102 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
     setShowJobPicker(!showJobPicker);
   };
 
-  const handleRemoveClick = () => {
-    if (showConfirmDelete) {
-      onRemove();
-    } else {
-      setShowConfirmDelete(true);
-      // Auto-hide confirmation after 3 seconds
-      setTimeout(() => setShowConfirmDelete(false), 3000);
-    }
+  const handlePositionChange = (position: RaidPosition | undefined) => {
+    onUpdate({ position });
   };
 
+  const handleTankRoleChange = (tankRole: TankRole | undefined) => {
+    onUpdate({ tankRole });
+  };
+
+  const handlePositionBadgeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowPositionPicker(!showPositionPicker);
+  };
+
+  const handleTankRoleBadgeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowTankRolePicker(!showTankRolePicker);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: 'Copy Player',
+      icon: '📋',
+      onClick: onCopy,
+    },
+    {
+      label: 'Paste Player',
+      icon: '📥',
+      onClick: onPaste,
+      disabled: !clipboardPlayer,
+    },
+    {
+      label: 'Duplicate Player',
+      icon: '👥',
+      onClick: onDuplicate,
+    },
+    {
+      label: 'Remove Player',
+      icon: '🗑️',
+      onClick: () => setShowRemoveConfirm(true),
+      danger: true,
+    },
+  ];
+
   return (
-    <div className="bg-bg-card border border-border-default rounded-lg overflow-visible">
+    <div
+      className="bg-bg-card border border-border-default rounded-lg overflow-visible flex flex-col h-full"
+      onContextMenu={handleContextMenu}
+    >
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Remove Confirmation Modal */}
+      <Modal
+        isOpen={showRemoveConfirm}
+        onClose={() => setShowRemoveConfirm(false)}
+        title="Remove Player"
+      >
+        <p className="text-text-secondary mb-6">
+          Are you sure you want to remove <span className="text-text-primary font-medium">{player.name}</span> from the static?
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowRemoveConfirm(false)}
+            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onRemove();
+              setShowRemoveConfirm(false);
+            }}
+            className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      </Modal>
+
       {/* Header */}
       <div
-        className="p-3 cursor-pointer hover:bg-bg-hover transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-3 cursor-pointer hover:bg-bg-hover transition-colors relative z-20"
+        onClick={() => setLocalExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -222,7 +399,45 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-medium text-text-primary">{player.name}</span>
+                {isEditingName ? (
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onBlur={handleNameSave}
+                    onKeyDown={handleNameKeyDown}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-text-primary bg-bg-primary border border-accent rounded px-2 py-0.5 w-32 focus:outline-none"
+                  />
+                ) : (
+                  <span
+                    className="font-medium text-text-primary cursor-pointer hover:text-accent"
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={handleNameDoubleClick}
+                    title="Double-click to edit name"
+                  >
+                    {player.name}
+                  </span>
+                )}
+                {/* Position badge */}
+                <div ref={positionPickerRef} className="relative">
+                  <button
+                    onClick={handlePositionBadgeClick}
+                    className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getPositionBadgeClasses(player.position)}`}
+                    title={player.position ? `Position: ${player.position}` : 'Click to set position'}
+                  >
+                    {player.position || '--'}
+                  </button>
+                  {showPositionPicker && (
+                    <PositionSelector
+                      position={player.position}
+                      role={player.role}
+                      onSelect={handlePositionChange}
+                      onClose={() => setShowPositionPicker(false)}
+                    />
+                  )}
+                </div>
                 {player.isSubstitute && (
                   <span className="text-xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded">
                     SUB
@@ -233,6 +448,29 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
                 <span style={{ color: roleColor }}>{player.job}</span>
                 <span className="text-text-muted">-</span>
                 <span className="text-text-secondary">{getJobDisplayName(player.job)}</span>
+                {/* Tank role badge (MT/OT) - only for tanks */}
+                {player.role === 'tank' && (
+                  <div ref={tankRolePickerRef} className="relative">
+                    <button
+                      onClick={handleTankRoleBadgeClick}
+                      className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
+                        player.tankRole
+                          ? 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
+                          : 'bg-bg-hover text-text-muted hover:text-text-secondary hover:bg-bg-hover/80'
+                      }`}
+                      title={player.tankRole ? `Tank role: ${player.tankRole}` : 'Click to set MT/OT'}
+                    >
+                      {player.tankRole || '--'}
+                    </button>
+                    {showTankRolePicker && (
+                      <TankRoleSelector
+                        tankRole={player.tankRole}
+                        onSelect={handleTankRoleChange}
+                        onClose={() => setShowTankRolePicker(false)}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -271,68 +509,26 @@ export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardP
           </div>
         </div>
 
-        {/* Compact needs summary when collapsed */}
-        {!isExpanded && (
-          <div className="mt-2 ml-12 flex gap-4 text-sm">
-            <span>
-              <span className="text-source-raid">&#9632;</span>{' '}
-              <span className="text-text-secondary">{needs.raidItems} raid</span>
-            </span>
-            <span>
-              <span className="text-source-tome">&#9632;</span>{' '}
-              <span className="text-text-secondary">{needs.tomeItems} tome</span>
-            </span>
-            <span>
-              <span className="text-status-warning">&#9632;</span>{' '}
-              <span className="text-text-secondary">{needs.upgrades} aug</span>
-            </span>
-          </div>
-        )}
 
-        {/* Notes if present */}
-        {player.notes && !isExpanded && (
-          <div className="mt-2 ml-4 text-xs text-text-muted italic">
-            {player.notes}
-          </div>
-        )}
       </div>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="border-t border-border-default p-3">
-          <GearTable gear={player.gear} onGearChange={handleGearChange} />
-
-          {/* Notes */}
-          <div className="mt-4">
-            <label className="block text-text-muted text-xs mb-1">Notes</label>
-            <input
-              type="text"
-              value={player.notes ?? ''}
-              onChange={(e) => onUpdate({ notes: e.target.value || undefined })}
-              placeholder="Add notes..."
-              className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemoveClick();
-              }}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                showConfirmDelete
-                  ? 'bg-status-error text-white'
-                  : 'text-text-muted hover:text-status-error hover:bg-status-error/10'
-              }`}
-            >
-              {showConfirmDelete ? 'Confirm Remove' : 'Remove'}
-            </button>
-          </div>
+        <div className="border-t border-border-default p-3 relative z-10">
+          <GearTable
+            gear={player.gear}
+            tomeWeapon={player.tomeWeapon}
+            onGearChange={handleGearChange}
+            onTomeWeaponChange={handleTomeWeaponChange}
+          />
         </div>
       )}
+
+      {/* Spacer to push footer to bottom */}
+      <div className="flex-1" />
+
+      {/* Needs Footer - always visible at bottom */}
+      <NeedsFooter needs={needs} />
     </div>
   );
 }

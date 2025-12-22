@@ -25,6 +25,36 @@ export type GearSlot =
 // Where the BiS gear comes from
 export type GearSource = 'raid' | 'tome';
 
+// Page navigation modes
+export type PageMode = 'players' | 'loot' | 'stats';
+
+// View mode for player cards
+export type ViewMode = 'compact' | 'expanded';
+
+// Raid position for mechanics (light parties, partners, spread positions)
+export type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
+
+// Tank role designation (separate from T1/T2 position)
+export type TankRole = 'MT' | 'OT';
+
+// All raid positions for iteration
+export const RAID_POSITIONS: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
+
+// Tome weapon tracking (interim upgrade during prog)
+export interface TomeWeaponStatus {
+  pursuing: boolean; // "Raid + Tome" selected
+  hasItem: boolean; // Got the tome weapon
+  isAugmented: boolean; // Augmented it
+}
+
+// Player needs calculation result
+export interface PlayerNeeds {
+  raidNeed: number; // Raid gear pieces still missing
+  tomeNeed: number; // Tome gear pieces still missing
+  upgrades: number; // Augments needed (has item but not augmented)
+  tomeWeeks: number; // Weeks to acquire all tome gear at 450/week cap
+}
+
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
@@ -42,6 +72,8 @@ export interface Player {
   name: string;
   job: string; // Job abbreviation (PLD, WAR, etc.)
   role: string; // Role (tank, healer, melee, ranged, caster)
+  position?: RaidPosition; // Raid position for mechanics (T1, H2, M1, etc.)
+  tankRole?: TankRole; // MT/OT designation (tanks only)
   configured: boolean; // false for template slots, true once name/job are set
   lodestoneId?: string;
   bisLink?: string;
@@ -51,6 +83,7 @@ export interface Player {
   isSubstitute: boolean;
   notes?: string;
   gear: GearSlotStatus[];
+  tomeWeapon: TomeWeaponStatus; // Interim tome weapon tracking
   createdAt: string;
   updatedAt: string;
 }
