@@ -1,0 +1,380 @@
+[
+  {
+    "id": 1,
+    "abbreviation": "GLA",
+    "name": "gladiator",
+    "role": "tank",
+    "icon": "/cj/1/gladiator.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 2,
+    "abbreviation": "PGL",
+    "name": "pugilist",
+    "role": "melee",
+    "icon": "/cj/1/pugilist.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 3,
+    "abbreviation": "MRD",
+    "name": "marauder",
+    "role": "tank",
+    "icon": "/cj/1/marauder.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 4,
+    "abbreviation": "LNC",
+    "name": "lancer",
+    "role": "melee",
+    "icon": "/cj/1/lancer.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 5,
+    "abbreviation": "ARC",
+    "name": "archer",
+    "role": "caster",
+    "icon": "/cj/1/archer.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 6,
+    "abbreviation": "CNJ",
+    "name": "conjurer",
+    "role": "healer",
+    "icon": "/cj/1/conjurer.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 7,
+    "abbreviation": "THM",
+    "name": "thaumaturge",
+    "role": "caster",
+    "icon": "/cj/1/thaumaturge.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 8,
+    "abbreviation": "CRP",
+    "name": "carpenter",
+    "role": "crafter",
+    "icon": "/cj/1/carpenter.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 9,
+    "abbreviation": "BSM",
+    "name": "blacksmith",
+    "role": "crafter",
+    "icon": "/cj/1/blacksmith.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 10,
+    "abbreviation": "ARM",
+    "name": "armorer",
+    "role": "crafter",
+    "icon": "/cj/1/armorer.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 11,
+    "abbreviation": "GSM",
+    "name": "goldsmith",
+    "role": "crafter",
+    "icon": "/cj/1/goldsmith.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 12,
+    "abbreviation": "LTW",
+    "name": "leatherworker",
+    "role": "crafter",
+    "icon": "/cj/1/leatherworker.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 13,
+    "abbreviation": "WVR",
+    "name": "weaver",
+    "role": "crafter",
+    "icon": "/cj/1/weaver.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 14,
+    "abbreviation": "ALC",
+    "name": "alchemist",
+    "role": "crafter",
+    "icon": "/cj/1/alchemist.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 15,
+    "abbreviation": "CUL",
+    "name": "culinarian",
+    "role": "crafter",
+    "icon": "/cj/1/culinarian.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 16,
+    "abbreviation": "MIN",
+    "name": "miner",
+    "role": "gatherer",
+    "icon": "/cj/1/miner.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 17,
+    "abbreviation": "BTN",
+    "name": "botanist",
+    "role": "gatherer",
+    "icon": "/cj/1/botanist.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 18,
+    "abbreviation": "FSH",
+    "name": "fisher",
+    "role": "gatherer",
+    "icon": "/cj/1/fisher.png",
+    "isCombat": false,
+    "isLimited": false
+  },
+  {
+    "id": 19,
+    "abbreviation": "PLD",
+    "name": "paladin",
+    "role": "tank",
+    "icon": "/cj/1/paladin.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 20,
+    "abbreviation": "MNK",
+    "name": "monk",
+    "role": "melee",
+    "icon": "/cj/1/monk.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 21,
+    "abbreviation": "WAR",
+    "name": "warrior",
+    "role": "tank",
+    "icon": "/cj/1/warrior.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 22,
+    "abbreviation": "DRG",
+    "name": "dragoon",
+    "role": "melee",
+    "icon": "/cj/1/dragoon.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 23,
+    "abbreviation": "BRD",
+    "name": "bard",
+    "role": "ranged",
+    "icon": "/cj/1/bard.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 24,
+    "abbreviation": "WHM",
+    "name": "white mage",
+    "role": "healer",
+    "icon": "/cj/1/whitemage.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 25,
+    "abbreviation": "BLM",
+    "name": "black mage",
+    "role": "caster",
+    "icon": "/cj/1/blackmage.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 26,
+    "abbreviation": "ACN",
+    "name": "arcanist",
+    "role": "caster",
+    "icon": "/cj/1/arcanist.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 27,
+    "abbreviation": "SMN",
+    "name": "summoner",
+    "role": "caster",
+    "icon": "/cj/1/summoner.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 28,
+    "abbreviation": "SCH",
+    "name": "scholar",
+    "role": "healer",
+    "icon": "/cj/1/scholar.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 29,
+    "abbreviation": "ROG",
+    "name": "rogue",
+    "role": "melee",
+    "icon": "/cj/1/rogue.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 30,
+    "abbreviation": "NIN",
+    "name": "ninja",
+    "role": "melee",
+    "icon": "/cj/1/ninja.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 31,
+    "abbreviation": "MCH",
+    "name": "machinist",
+    "role": "ranged",
+    "icon": "/cj/1/machinist.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 32,
+    "abbreviation": "DRK",
+    "name": "dark knight",
+    "role": "tank",
+    "icon": "/cj/1/darkknight.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 33,
+    "abbreviation": "AST",
+    "name": "astrologian",
+    "role": "healer",
+    "icon": "/cj/1/astrologian.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 34,
+    "abbreviation": "SAM",
+    "name": "samurai",
+    "role": "melee",
+    "icon": "/cj/1/samurai.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 35,
+    "abbreviation": "RDM",
+    "name": "red mage",
+    "role": "caster",
+    "icon": "/cj/1/redmage.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 36,
+    "abbreviation": "BLU",
+    "name": "blue mage",
+    "role": "caster",
+    "icon": "/cj/1/bluemage.png",
+    "isCombat": true,
+    "isLimited": true
+  },
+  {
+    "id": 37,
+    "abbreviation": "GNB",
+    "name": "gunbreaker",
+    "role": "tank",
+    "icon": "/cj/1/gunbreaker.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 38,
+    "abbreviation": "DNC",
+    "name": "dancer",
+    "role": "ranged",
+    "icon": "/cj/1/dancer.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 39,
+    "abbreviation": "RPR",
+    "name": "reaper",
+    "role": "melee",
+    "icon": "/cj/1/reaper.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 40,
+    "abbreviation": "SGE",
+    "name": "sage",
+    "role": "healer",
+    "icon": "/cj/1/sage.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 41,
+    "abbreviation": "VPR",
+    "name": "viper",
+    "role": "melee",
+    "icon": "/cj/1/viper.png",
+    "isCombat": true,
+    "isLimited": false
+  },
+  {
+    "id": 42,
+    "abbreviation": "PCT",
+    "name": "pictomancer",
+    "role": "caster",
+    "icon": "/cj/1/pictomancer.png",
+    "isCombat": true,
+    "isLimited": false
+  }
+]

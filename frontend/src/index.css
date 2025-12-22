@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* FFXIV Theme Custom Properties */
+@theme {
+  /* Backgrounds */
+  --color-bg-primary: #0a0a12;
+  --color-bg-secondary: #12121a;
+  --color-bg-card: rgba(20, 20, 30, 0.9);
+  --color-bg-hover: rgba(40, 40, 50, 0.8);
+
+  /* Accent - Gold */
+  --color-accent: #c9a227;
+  --color-accent-dim: rgba(201, 162, 39, 0.3);
+  --color-accent-bright: #e0b830;
+
+  /* Roles */
+  --color-role-tank: #4a90c2;
+  --color-role-healer: #4ab87a;
+  --color-role-melee: #c24a4a;
+  --color-role-ranged: #c29a4a;
+  --color-role-caster: #a24ac2;
+
+  /* Gear Sources */
+  --color-source-raid: #c44444;
+  --color-source-tome: #44aa44;
+  --color-source-crafted: #aa8844;
+
+  /* Status */
+  --color-status-success: #44aa44;
+  --color-status-warning: #aaaa44;
+  --color-status-error: #aa4444;
+  --color-status-info: #4488aa;
+
+  /* Text */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #aaaaaa;
+  --color-text-muted: #666666;
+
+  /* Borders */
+  --color-border-default: #444444;
+  --color-border-highlight: #c9a227;
+
+  /* Font families */
+  --font-display: "Cinzel", serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Base styles */
+html {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}

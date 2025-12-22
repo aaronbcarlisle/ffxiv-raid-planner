@@ -1,0 +1,182 @@
+/**
+ * Job Data and Utilities
+ *
+ * This file provides typed access to job data fetched from XIVAPI.
+ * Run `npx tsx scripts/fetch-xivapi-data.ts` to update jobs.json
+ */
+
+import jobsData from './jobs.json';
+
+export type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+
+export interface JobInfo {
+  id: number;
+  abbreviation: string;
+  name: string;
+  role: Role;
+  icon: string;
+  isCombat: boolean;
+  isLimited: boolean;
+}
+
+// XIVAPI base URL for icons
+const XIVAPI_BASE = 'https://xivapi.com';
+
+// Jobs that don't have transparent icons on XIVAPI (Endwalker + Dawntrail jobs)
+// These will use text abbreviation fallback
+const JOBS_WITHOUT_ICONS = ['RPR', 'SGE', 'VPR', 'PCT'];
+
+// All jobs from XIVAPI
+const allJobs: JobInfo[] = jobsData as JobInfo[];
+
+// Base classes that evolve into jobs (not usable at endgame)
+const BASE_CLASSES = ['GLA', 'PGL', 'MRD', 'LNC', 'ARC', 'CNJ', 'THM', 'ACN', 'ROG'];
+
+/**
+ * All combat jobs available for savage raiding (excludes base classes and limited jobs)
+ */
+export const RAID_JOBS: JobInfo[] = allJobs.filter(
+  (job) => job.isCombat && !job.isLimited && !BASE_CLASSES.includes(job.abbreviation)
+);
+
+/**
+ * Job abbreviations for raid-eligible jobs
+ */
+export type Job = (typeof RAID_JOBS)[number]['abbreviation'];
+
+/**
+ * Get all raid-eligible jobs
+ */
+export function getRaidJobs(): JobInfo[] {
+  return RAID_JOBS;
+}
+
+/**
+ * Get jobs filtered by role
+ */
+export function getJobsByRole(role: Role): JobInfo[] {
+  return RAID_JOBS.filter((job) => job.role === role);
+}
+
+/**
+ * Get job info by abbreviation
+ */
+export function getJobInfo(abbreviation: string): JobInfo | undefined {
+  return RAID_JOBS.find((job) => job.abbreviation === abbreviation);
+}
+
+/**
+ * Get role for a job abbreviation
+ */
+export function getRoleForJob(abbreviation: string): Role | undefined {
+  return getJobInfo(abbreviation)?.role;
+}
+
+/**
+ * Get full icon URL for a job abbreviation
+ * Uses XIVAPI classjob icons for transparent style icons
+ */
+export function getJobIconUrl(abbreviation: string): string | undefined {
+  const job = getJobInfo(abbreviation);
+  if (!job) return undefined;
+
+  // Some newer jobs don't have transparent icons yet
+  if (JOBS_WITHOUT_ICONS.includes(abbreviation)) {
+    return undefined; // Will use text fallback in JobIcon component
+  }
+
+  // Use XIVAPI classjob icons (transparent style)
+  const iconName = job.name.replace(/\s+/g, '');
+  return `${XIVAPI_BASE}/cj/1/${iconName}.png`;
+}
+
+/**
+ * Job display name mapping (capitalized properly)
+ */
+export const JOB_DISPLAY_NAMES: Record<string, string> = {
+  // Tanks
+  PLD: 'Paladin',
+  WAR: 'Warrior',
+  DRK: 'Dark Knight',
+  GNB: 'Gunbreaker',
+  // Healers
+  WHM: 'White Mage',
+  SCH: 'Scholar',
+  AST: 'Astrologian',
+  SGE: 'Sage',
+  // Melee DPS
+  MNK: 'Monk',
+  DRG: 'Dragoon',
+  NIN: 'Ninja',
+  SAM: 'Samurai',
+  RPR: 'Reaper',
+  VPR: 'Viper',
+  // Physical Ranged DPS
+  BRD: 'Bard',
+  MCH: 'Machinist',
+  DNC: 'Dancer',
+  // Magical Ranged DPS (Casters)
+  BLM: 'Black Mage',
+  SMN: 'Summoner',
+  RDM: 'Red Mage',
+  PCT: 'Pictomancer',
+};
+
+/**
+ * Get display name for a job
+ */
+export function getJobDisplayName(abbreviation: string): string {
+  return JOB_DISPLAY_NAMES[abbreviation] ?? abbreviation;
+}
+
+/**
+ * Role display configuration
+ */
+export const ROLE_CONFIG: Record<Role, { name: string; color: string; order: number }> = {
+  tank: { name: 'Tank', color: 'var(--color-role-tank)', order: 1 },
+  healer: { name: 'Healer', color: 'var(--color-role-healer)', order: 2 },
+  melee: { name: 'Melee DPS', color: 'var(--color-role-melee)', order: 3 },
+  ranged: { name: 'Physical Ranged', color: 'var(--color-role-ranged)', order: 4 },
+  caster: { name: 'Magical Ranged', color: 'var(--color-role-caster)', order: 5 },
+};
+
+/**
+ * Get display name for a role
+ */
+export function getRoleDisplayName(role: Role): string {
+  return ROLE_CONFIG[role].name;
+}
+
+/**
+ * Get color for a role
+ */
+export function getRoleColor(role: Role): string {
+  return ROLE_CONFIG[role].color;
+}
+
+/**
+ * Sort jobs by role order, then alphabetically within role
+ */
+export function sortJobsByRole(jobs: JobInfo[]): JobInfo[] {
+  return [...jobs].sort((a, b) => {
+    const roleOrderA = ROLE_CONFIG[a.role].order;
+    const roleOrderB = ROLE_CONFIG[b.role].order;
+    if (roleOrderA !== roleOrderB) {
+      return roleOrderA - roleOrderB;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Group jobs by role
+ */
+export function groupJobsByRole(): Record<Role, JobInfo[]> {
+  return {
+    tank: getJobsByRole('tank'),
+    healer: getJobsByRole('healer'),
+    melee: getJobsByRole('melee'),
+    ranged: getJobsByRole('ranged'),
+    caster: getJobsByRole('caster'),
+  };
+}

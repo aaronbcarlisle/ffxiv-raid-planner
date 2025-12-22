@@ -120,6 +120,11 @@ Key tables: `statics`, `players`, `gear_slots`, `loot_history`, `raid_schedule`,
 - Backend: Railway
 - Database: Supabase
 
+## Git Commits
+
+- Never add Claude as a co-author or contributor to commits
+- Do not append "Generated with Claude Code" or similar attribution to commit messages
+
 ## Getting Help
 
 If unsure about FFXIV mechanics, refer to docs/GEAR_LOGIC_RESEARCH.md or ask for clarification.
