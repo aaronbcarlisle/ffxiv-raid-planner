@@ -117,7 +117,7 @@ export function PlayerCard({
 
   // Calculate priority score and needs for compact view
   const priorityScore = calculatePriorityScore(player, settings);
-  const needs = calculatePlayerNeeds(player.gear);
+  const needs = calculatePlayerNeeds(player);
 
   const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
     const newGear = player.gear.map((g) =>

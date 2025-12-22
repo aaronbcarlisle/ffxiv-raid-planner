@@ -88,6 +88,8 @@ export function getPriorityForRing(
 /**
  * Get priority list for upgrade material (twine/glaze/solvent)
  * Returns players who have unaugmented tome gear for that material type
+ *
+ * For solvent, also includes players pursuing tome weapon who have it but need augmentation
  */
 export function getPriorityForUpgradeMaterial(
   players: Player[],
@@ -106,17 +108,34 @@ export function getPriorityForUpgradeMaterial(
           g.hasItem &&
           !g.isAugmented
       );
+
+      // For solvent, also check if player needs to augment tome weapon
+      if (material === 'solvent') {
+        const needsTomeWeaponAugment =
+          p.tomeWeapon?.pursuing && p.tomeWeapon?.hasItem && !p.tomeWeapon?.isAugmented;
+        return unaugmented.length > 0 || needsTomeWeaponAugment;
+      }
+
       return unaugmented.length > 0;
     })
     .map((player) => {
       // Boost score by number of pieces that need this material
-      const unaugmentedCount = player.gear.filter(
+      let unaugmentedCount = player.gear.filter(
         (g) =>
           applicableSlots.includes(g.slot) &&
           g.bisSource === 'tome' &&
           g.hasItem &&
           !g.isAugmented
       ).length;
+
+      // For solvent, add tome weapon if it needs augmentation
+      if (material === 'solvent') {
+        const needsTomeWeaponAugment =
+          player.tomeWeapon?.pursuing && player.tomeWeapon?.hasItem && !player.tomeWeapon?.isAugmented;
+        if (needsTomeWeaponAugment) {
+          unaugmentedCount++;
+        }
+      }
 
       return {
         player,
@@ -129,14 +148,18 @@ export function getPriorityForUpgradeMaterial(
 /**
  * Calculate what a player still needs
  * Returns raidNeed, tomeNeed, upgrades, and tomeWeeks
+ *
+ * Includes tome weapon tracking when player is pursuing it:
+ * - Tome weapon costs 500 tomestones + Universal Tomestone (from M6S)
+ * - Augmenting tome weapon requires Solvent (from M7S)
  */
-export function calculatePlayerNeeds(gear: GearSlotStatus[]): PlayerNeeds {
+export function calculatePlayerNeeds(player: Player): PlayerNeeds {
   let raidNeed = 0;
   let tomeNeed = 0;
   let upgrades = 0;
   let tomestoneCost = 0;
 
-  gear.forEach((g) => {
+  player.gear.forEach((g) => {
     if (g.bisSource === 'raid' && !g.hasItem) {
       raidNeed++;
     } else if (g.bisSource === 'tome') {
@@ -148,6 +171,16 @@ export function calculatePlayerNeeds(gear: GearSlotStatus[]): PlayerNeeds {
       }
     }
   });
+
+  // Include tome weapon if player is pursuing it
+  if (player.tomeWeapon?.pursuing) {
+    if (!player.tomeWeapon.hasItem) {
+      tomeNeed++;
+      tomestoneCost += 500; // Tome weapon costs 500 tomestones
+    } else if (!player.tomeWeapon.isAugmented) {
+      upgrades++; // Needs solvent to augment
+    }
+  }
 
   const tomeWeeks = Math.ceil(tomestoneCost / WEEKLY_TOMESTONE_CAP);
 
