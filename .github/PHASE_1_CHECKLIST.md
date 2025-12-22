@@ -1,102 +1,97 @@
 # Phase 1: Core MVP Checklist
 
-Track progress on Phase 1 implementation.
+## Frontend (Complete)
 
-## Setup
-- [ ] Initialize frontend with Vite + React + TypeScript
-- [ ] Configure Tailwind CSS with custom FFXIV theme
-- [ ] Set up ESLint + Prettier
-- [ ] Initialize backend with FastAPI
-- [ ] Set up PostgreSQL with Supabase
-- [ ] Configure environment variables
-- [ ] Deploy frontend to Vercel
-- [ ] Deploy backend to Railway
-
-## Frontend Components
+### Setup
+- [x] React 19 + Vite + TypeScript
+- [x] Tailwind CSS 4 with custom FFXIV theme
+- [x] ESLint + Prettier
+- [x] Zustand for state management
 
 ### UI Components
-- [ ] Button (primary, secondary, ghost variants)
-- [ ] Select (dropdown)
-- [ ] Checkbox
-- [ ] Card
-- [ ] Modal
-- [ ] Tooltip
-- [ ] LoadingSpinner
+- [x] JobIcon (with XIVAPI fallback)
+- [x] Checkbox
+- [x] Select
+- [x] Modal
 
 ### Layout
-- [ ] Header with logo and nav
-- [ ] Main content area
-- [ ] Mobile responsive navigation
+- [x] Header with logo and nav
+- [x] Responsive layout
 
 ### Player Components
-- [ ] PlayerCard (expandable)
-- [ ] PlayerHeader (name, job, role color)
-- [ ] GearTable (all slots)
-- [ ] GearSlotRow (source, have, augmented)
-- [ ] PlayerNotes
+- [x] PlayerCard (expandable with compact/full views)
+- [x] InlinePlayerEdit (name/job form)
+- [x] EmptySlotCard (template placeholder)
+- [x] GearTable (11-slot editor)
+
+### Loot Components
+- [x] LootPriorityPanel (priority lists per floor)
+- [x] FloorSelector (M5S-M8S tabs)
+- [x] SummaryPanel (tabbed Loot Priority + Team Stats)
 
 ### Team Components
-- [ ] TeamSummary panel
-- [ ] UpgradeMaterialsPanel (Twine/Glaze/Solvent counts)
-- [ ] BooksNeededPanel (per floor)
+- [x] TeamSummary (completion %, materials, books, weeks)
 
-## State Management
-- [ ] staticStore (static info, settings)
-- [ ] playerStore (player list, CRUD)
-- [ ] gearStore (gear status per player)
+### Pages
+- [x] Home (landing page)
+- [x] CreateStatic (form)
+- [x] StaticView (main management)
 
-## Backend API
+### State Management
+- [x] staticStore with full player/gear CRUD
 
-### Statics
+### Game Data
+- [x] Jobs with XIVAPI icons (21 raid jobs)
+- [x] Book costs per slot
+- [x] Floor loot tables
+- [x] Upgrade material mappings
+- [x] Raid tier configuration (M5S-M8S current)
+
+### Calculations
+- [x] Priority score (role + need weighted)
+- [x] Gear completion tracking
+- [x] Materials needed per player
+- [x] Books needed per floor
+- [x] Team summary aggregation
+
+### Styling
+- [x] Dark FFXIV theme
+- [x] Role color coding
+- [x] Raid (red) / Tome (green) indicators
+- [x] Responsive breakpoints
+
+---
+
+## Backend (Not Started)
+
+### Setup
+- [ ] FastAPI project structure
+- [ ] PostgreSQL with Supabase
+- [ ] Environment configuration
+- [ ] CORS setup
+
+### Database
+- [ ] statics table
+- [ ] players table
+- [ ] gear_slots table
+- [ ] Migrations
+
+### API Endpoints
 - [ ] GET /api/statics/:shareCode
 - [ ] POST /api/statics
 - [ ] PUT /api/statics/:id
 - [ ] DELETE /api/statics/:id
-
-### Players
 - [ ] GET /api/statics/:id/players
 - [ ] POST /api/statics/:id/players
 - [ ] PUT /api/players/:id
 - [ ] DELETE /api/players/:id
-
-### Gear
-- [ ] GET /api/players/:id/gear
 - [ ] PUT /api/players/:id/gear
 
-## Database
-- [ ] statics table
-- [ ] players table
-- [ ] gear_slots table
-- [ ] Migrations setup
+### Deployment
+- [ ] Deploy frontend to Vercel
+- [ ] Deploy backend to Railway
+- [ ] Configure production environment
 
-## Features
-- [ ] Create new static flow
-- [ ] Add/edit/remove player
-- [ ] Job selector (all 24 jobs)
-- [ ] Role auto-assignment from job
-- [ ] BiS source selection (Raid/Tome) per slot
-- [ ] Have/Augmented checkboxes
-- [ ] Auto-calculated player stats
-- [ ] Team-wide summary calculations
-- [ ] Share code generation
-- [ ] Load static by share code
-- [ ] Display order: Tank > Healer > DPS
-- [ ] Sort toggle button
-- [ ] Substitute player flag
-- [ ] Player notes field
-
-## Styling
-- [ ] Dark FFXIV theme colors
-- [ ] Role color coding
-- [ ] Raid (red) / Tome (green) indicators
-- [ ] Gold accent highlights
-- [ ] Mobile responsive breakpoints
-
-## Testing
+### Testing
 - [ ] Gear calculation unit tests
 - [ ] API endpoint tests
-- [ ] Basic E2E flow test
-
----
-
-**Target Completion**: 2 weeks

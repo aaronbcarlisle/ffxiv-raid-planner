@@ -55,7 +55,7 @@ Each Savage tier has 4 floors with specific loot tables:
 
 Books earned each week can be exchanged for guaranteed gear (bad luck protection):
 
-### Gear Costs (Current as of Patch 6.4+)
+### Gear Costs (Dawntrail - Patch 7.x)
 | Slot | Book Type | Cost |
 |------|-----------|------|
 | Weapon | Book IV | 8 |

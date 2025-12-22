@@ -40,6 +40,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
       name: name.trim(),
       job,
       role,
+      configured: true,
       sortOrder: existingPlayerCount,
       isSubstitute,
       notes: notes.trim() || undefined,

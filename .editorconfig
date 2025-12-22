@@ -1,0 +1,40 @@
+# EditorConfig - https://editorconfig.org
+# Works across VS Code, Vim, and other editors
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# TypeScript/JavaScript/React
+[*.{ts,tsx,js,jsx}]
+indent_size = 2
+
+# Python (FastAPI backend)
+[*.py]
+indent_size = 4
+
+# JSON
+[*.json]
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell scripts
+[*.sh]
+indent_size = 2
+
+# Makefile (requires tabs)
+[Makefile]
+indent_style = tab

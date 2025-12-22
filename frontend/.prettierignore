@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated
+*.min.js
+*.min.css
+
+# Assets
+*.svg
+*.ico
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+
+# Data files
+*.json
+!.prettierrc
+!tsconfig*.json
+!package.json
+
+# Docs (preserve formatting)
+CHANGELOG.md

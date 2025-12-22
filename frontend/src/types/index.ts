@@ -42,6 +42,7 @@ export interface Player {
   name: string;
   job: string; // Job abbreviation (PLD, WAR, etc.)
   role: string; // Role (tank, healer, melee, ranged, caster)
+  configured: boolean; // false for template slots, true once name/job are set
   lodestoneId?: string;
   bisLink?: string;
   fflogsId?: number;

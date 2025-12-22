@@ -1,10 +1,11 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useStaticStore } from '../stores/staticStore';
+import { useStaticStore, createTemplatePlayers } from '../stores/staticStore';
 import { getCurrentTier, getTierById } from '../gamedata';
 import { PlayerCard } from '../components/player/PlayerCard';
-import { AddPlayerModal } from '../components/player/AddPlayerModal';
-import { TeamSummary } from '../components/team/TeamSummary';
+import { EmptySlotCard } from '../components/player/EmptySlotCard';
+import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
+import { FloorSelector, SummaryPanel } from '../components/loot';
 import { calculateTeamSummary, sortPlayersByRole } from '../utils/calculations';
 import type { Player } from '../types';
 
@@ -14,26 +15,30 @@ export function StaticView() {
     currentStatic,
     isLoading,
     error,
+    selectedFloor,
+    editingPlayerId,
     setStatic,
     setLoading,
-    addPlayer,
     updatePlayer,
     removePlayer,
+    configurePlayer,
+    addPlayerSlot,
+    setSelectedFloor,
+    setEditingPlayerId,
   } = useStaticStore();
-
-  const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
 
   useEffect(() => {
     if (!shareCode) return;
 
     // TODO: Fetch static from API
-    // For now, set mock data
+    // For now, set mock data with template players
     setLoading(true);
 
     const tier = getCurrentTier();
+    const staticId = '1';
     setTimeout(() => {
       setStatic({
-        id: '1',
+        id: staticId,
         name: 'Demo Static',
         tier: tier.id,
         shareCode: shareCode,
@@ -44,7 +49,7 @@ export function StaticView() {
           autoSync: false,
           syncFrequency: 'weekly',
         },
-        players: [],
+        players: createTemplatePlayers(staticId),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -58,26 +63,17 @@ export function StaticView() {
     return sortPlayersByRole(currentStatic.players, currentStatic.settings.displayOrder);
   }, [currentStatic]);
 
+  // Only count configured players for team summary
+  const configuredPlayers = useMemo(() => {
+    return sortedPlayers.filter((p) => p.configured);
+  }, [sortedPlayers]);
+
   const teamSummary = useMemo(() => {
-    if (!currentStatic) return null;
-    return calculateTeamSummary(currentStatic.players);
-  }, [currentStatic]);
+    if (!currentStatic || configuredPlayers.length === 0) return null;
+    return calculateTeamSummary(configuredPlayers);
+  }, [currentStatic, configuredPlayers]);
 
   const tierInfo = currentStatic ? getTierById(currentStatic.tier) : null;
-
-  const handleAddPlayer = (playerData: Omit<Player, 'id' | 'staticId' | 'createdAt' | 'updatedAt'>) => {
-    if (!currentStatic) return;
-
-    const newPlayer: Player = {
-      ...playerData,
-      id: crypto.randomUUID(),
-      staticId: currentStatic.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    addPlayer(newPlayer);
-  };
 
   const handleUpdatePlayer = (playerId: string, updates: Partial<Player>) => {
     updatePlayer(playerId, {
@@ -88,6 +84,10 @@ export function StaticView() {
 
   const handleRemovePlayer = (playerId: string) => {
     removePlayer(playerId);
+  };
+
+  const handleConfigurePlayer = (playerId: string, name: string, job: string, role: string) => {
+    configurePlayer(playerId, name, job, role);
   };
 
   const handleCopyShareLink = () => {
@@ -124,12 +124,12 @@ export function StaticView() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="font-display text-3xl text-accent">{currentStatic.name}</h1>
           <p className="text-text-secondary">{tierInfo?.name ?? currentStatic.tier}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleCopyShareLink}
             className="bg-bg-secondary border border-border-default px-4 py-2 rounded font-medium text-text-secondary hover:text-text-primary hover:border-accent"
@@ -137,7 +137,7 @@ export function StaticView() {
             Copy Link
           </button>
           <button
-            onClick={() => setIsAddPlayerOpen(true)}
+            onClick={addPlayerSlot}
             className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright"
           >
             Add Player
@@ -145,40 +145,66 @@ export function StaticView() {
         </div>
       </div>
 
-      {/* Players Grid */}
-      {sortedPlayers.length === 0 ? (
-        <div className="bg-bg-card border border-border-default rounded-lg p-8 text-center mb-8">
-          <p className="text-text-secondary mb-4">No players added yet</p>
-          <button
-            onClick={() => setIsAddPlayerOpen(true)}
-            className="bg-accent/20 text-accent px-4 py-2 rounded hover:bg-accent/30"
-          >
-            Add your first player
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 mb-8">
-          {sortedPlayers.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
-              onRemove={() => handleRemovePlayer(player.id)}
-            />
-          ))}
+      {/* Floor Selector */}
+      {tierInfo && (
+        <div className="mb-6">
+          <FloorSelector
+            floors={tierInfo.floors}
+            selectedFloor={selectedFloor}
+            onFloorChange={setSelectedFloor}
+          />
         </div>
       )}
 
-      {/* Team Summary */}
-      {teamSummary && <TeamSummary summary={teamSummary} />}
+      {/* Players Grid - Always show template slots */}
+      <div className="grid gap-4 md:grid-cols-2 mb-8">
+        {sortedPlayers.map((player) => {
+          // If editing this player, show inline edit form
+          if (editingPlayerId === player.id) {
+            return (
+              <InlinePlayerEdit
+                key={player.id}
+                player={player}
+                onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
+                onCancel={() => setEditingPlayerId(null)}
+              />
+            );
+          }
 
-      {/* Add Player Modal */}
-      <AddPlayerModal
-        isOpen={isAddPlayerOpen}
-        onClose={() => setIsAddPlayerOpen(false)}
-        onAdd={handleAddPlayer}
-        existingPlayerCount={currentStatic.players.length}
-      />
+          // If player is configured, show player card
+          if (player.configured) {
+            return (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                settings={currentStatic.settings}
+                onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
+                onRemove={() => handleRemovePlayer(player.id)}
+              />
+            );
+          }
+
+          // Otherwise show empty slot - all unconfigured slots can be removed
+          return (
+            <EmptySlotCard
+              key={player.id}
+              onStartEdit={() => setEditingPlayerId(player.id)}
+              onRemove={() => handleRemovePlayer(player.id)}
+            />
+          );
+        })}
+      </div>
+
+      {/* Summary Panel (Loot Priority + Team Stats) - only show when we have configured players */}
+      {teamSummary && tierInfo && (
+        <SummaryPanel
+          players={configuredPlayers}
+          settings={currentStatic.settings}
+          selectedFloor={selectedFloor}
+          floorName={tierInfo.floors[selectedFloor - 1]}
+          teamSummary={teamSummary}
+        />
+      )}
     </div>
   );
 }

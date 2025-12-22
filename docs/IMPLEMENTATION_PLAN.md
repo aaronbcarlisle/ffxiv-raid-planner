@@ -1,1051 +1,354 @@
-# FFXIV Savage Raid Planner - Implementation Plan v2
+# FFXIV Raid Planner - Implementation Plan
 
-## Project Overview
+## Overview
 
-**Goal**: Build a free, web-based raid planning tool that replaces Google Sheets AND When2Meet for FFXIV static groups, with automatic gear sync, raid scheduling, strategy documentation, and Discord integration.
+A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sheets with automatic gear sync, smart loot distribution, and centralized static management.
 
-**Core Problems Solved**:
+**Core Problems Solved:**
 1. Players forget to update gear tracking after raids
-2. Scheduling raids across timezones is painful (When2Meet is clunky)
-3. Strategy references are scattered across Discord, Google Docs, images
-4. No centralized hub for static management
-
-**Solution**: An all-in-one static management tool with auto-sync, smart scheduling, strategy pages, and real-time collaboration.
+2. Manual calculations for books, tomes, upgrade materials
+3. No standardized loot priority system
+4. Scheduling raids across timezones is painful
 
 ---
 
 ## Tech Stack
 
-### Frontend
-- **Framework**: React 18 + TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand (local) + WebSocket (real-time sync)
-- **Routing**: React Router v6
-- **Build Tool**: Vite
-- **PWA**: Workbox for offline support
-
-### Backend
-- **Framework**: FastAPI (Python)
-- **Database**: PostgreSQL (Supabase free tier)
-- **Real-time**: WebSockets via FastAPI
-- **Task Queue**: Celery + Redis (for Discord bot, scheduled tasks)
-- **Auth**: JWT tokens + Discord OAuth
-
-### Integrations
-- **Discord Bot**: discord.py
-- **APIs**: XIVAPI, Etro, XIVGear, FFLogs
-
-### Hosting
-- **Frontend**: Vercel (free tier)
-- **Backend**: Railway (free tier)
-- **Database**: Supabase (free tier)
-- **Bot**: Railway or Fly.io
+| Component | Technology |
+|-----------|------------|
+| Frontend | React 19 + TypeScript + Tailwind CSS 4 + Vite |
+| State | Zustand |
+| Backend | FastAPI (Python) + PostgreSQL (Supabase) |
+| Real-time | WebSockets via FastAPI |
+| Hosting | Vercel (frontend) + Railway (backend) |
 
 ---
 
-## Feature Overview
+## Phase Overview
 
-### Core Features
-| Feature | Phase | Priority |
-|---------|-------|----------|
-| Gear tracking (manual) | 1 | 🔴 Critical |
-| Shareable links | 1 | 🔴 Critical |
-| Team summary | 1 | 🔴 Critical |
-| BiS import (Etro/XIVGear) | 2 | 🔴 Critical |
-| Auto-sync from Lodestone | 3 | 🔴 Critical |
-| Loot priority suggestions | 4 | 🟡 High |
-| Real-time collaboration | 4 | 🟡 High |
-| Raid schedule/calendar | 5 | 🟡 High |
-| Strategy pages per floor | 5 | 🟡 High |
-| Progress tracking | 6 | 🟡 High |
-| FFLogs integration | 7 | 🟡 High |
-| Discord bot | 8 | 🟢 Medium |
-| Offline mode (PWA) | 8 | 🟢 Medium |
-| Substitute tracking | 5 | 🟢 Medium |
-| Player notes | 5 | 🟢 Medium |
-| Alt character tracking | 6 | 🟢 Medium |
-| Optional auth/history | 9 | 🟢 Medium |
+| Phase | Focus | Status |
+|-------|-------|--------|
+| 1 | Core MVP | Frontend Complete, Backend Pending |
+| 2 | BiS Integration | Not Started |
+| 3 | Lodestone Auto-Sync | Not Started |
+| 4 | Loot Distribution + Real-Time | Not Started |
+| 5 | Scheduling + Strategies | Not Started |
+| 6 | Progress Tracking + Alts | Not Started |
+| 7 | FFLogs Integration | Not Started |
+| 8 | Discord Bot + PWA | Not Started |
+| 9 | Auth + User Accounts | Not Started |
 
 ---
 
-## Display Order vs Loot Priority
+## Phase 1: Core MVP
 
-### Display Order (Party List)
-How player cards are displayed (traditional FFXIV party order):
-```
-1. Tanks (MT, OT)
-2. Healers (Pure, Shield)
-3. Melee DPS
-4. Ranged DPS
-5. Casters
-```
+### Frontend (Complete)
 
-### Loot Priority Order
-Who gets loot first (configurable per static):
-```
-1. Melee DPS (highest damage gain from gear)
-2. Ranged DPS
-3. Casters
-4. Tanks
-5. Healers
-```
+#### Components
+- [x] PlayerCard - Expandable card with compact/full views
+- [x] InlinePlayerEdit - Name/job configuration form
+- [x] EmptySlotCard - Template slot placeholder
+- [x] GearTable - 11-slot gear editor
+- [x] LootPriorityPanel - Priority lists per floor
+- [x] FloorSelector - M5S-M8S tabs
+- [x] SummaryPanel - Loot Priority + Team Stats tabs
+- [x] TeamSummary - Aggregated statistics
+- [x] JobIcon - XIVAPI job icons with fallback
+- [x] Header - Navigation
 
-Both orders are independently configurable.
+#### Pages
+- [x] Home - Landing page with create/join options
+- [x] CreateStatic - Static creation form
+- [x] StaticView - Main static management page
+
+#### State Management
+- [x] staticStore - Players, gear, settings, UI state
+
+#### Game Data
+- [x] Jobs with XIVAPI integration (21 raid jobs)
+- [x] Book costs per slot
+- [x] Floor loot tables
+- [x] Upgrade material mappings
+- [x] Raid tier configuration
+
+#### Calculations
+- [x] Priority score calculation
+- [x] Gear completion tracking
+- [x] Materials needed calculation
+- [x] Books needed per floor
+- [x] Team summary aggregation
+
+#### Styling
+- [x] Dark FFXIV theme
+- [x] Role color coding
+- [x] Responsive design
+- [x] Cinzel font for headers
+
+### Backend (Not Started)
+
+#### Setup
+- [ ] FastAPI project structure
+- [ ] PostgreSQL with Supabase
+- [ ] Environment configuration
+- [ ] CORS setup
+
+#### Database Tables
+- [ ] statics - Raid groups
+- [ ] players - Player roster
+- [ ] gear_slots - Per-player gear status
+
+#### API Endpoints
+- [ ] `GET /api/statics/:shareCode` - Load static
+- [ ] `POST /api/statics` - Create static
+- [ ] `PUT /api/statics/:id` - Update settings
+- [ ] `DELETE /api/statics/:id` - Delete static
+- [ ] `POST /api/statics/:id/players` - Add player
+- [ ] `PUT /api/players/:id` - Update player
+- [ ] `DELETE /api/players/:id` - Remove player
+- [ ] `PUT /api/players/:id/gear` - Update gear
+
+#### Deployment
+- [ ] Deploy frontend to Vercel
+- [ ] Deploy backend to Railway
+- [ ] Configure environment variables
+
+---
+
+## Phase 2: BiS Integration
+
+### Features
+- [ ] Etro.gg link import - Parse gearset ID, fetch gear
+- [ ] XIVGear.app link import - Parse UUID, use source metadata
+- [ ] Balance BiS presets - Bundled current tier BiS per job
+- [ ] Auto-detect Raid vs Tome from item names/sources
+- [ ] BiS comparison overlay
+
+### Technical
+- [ ] API proxy endpoints (CORS handling)
+- [ ] Etro API client
+- [ ] XIVGear API client
+- [ ] Item database cache
+- [ ] BiS preset JSON files
+
+---
+
+## Phase 3: Lodestone Auto-Sync
+
+### Features
+- [ ] Character search by name + server
+- [ ] Link character with portrait preview
+- [ ] Manual sync button (per-player + sync all)
+- [ ] Sync status indicators
+- [ ] Gear change detection ("New this week" badges)
+
+### Technical
+- [ ] XIVAPI character endpoint proxy
+- [ ] Gear comparison logic
+- [ ] Rate limiting / caching
+- [ ] Background sync job (optional)
+
+---
+
+## Phase 4: Loot Distribution + Real-Time
+
+### Features
+- [ ] Per-item priority display with score breakdown
+- [ ] Configurable priority rules (role order, weights)
+- [ ] Loot assignment workflow ("Give to X" button)
+- [ ] Auto-update gear status on assignment
+- [ ] Loot history with fairness metrics
+- [ ] Book tracking (earned/spent)
+- [ ] Real-time collaboration via WebSocket
+- [ ] Live cursor indicators
+
+### Technical
+- [ ] Priority calculation algorithm refinement
+- [ ] Loot assignment API
+- [ ] WebSocket server setup
+- [ ] Real-time state sync
+- [ ] Optimistic updates
+
+---
+
+## Phase 5: Scheduling + Strategies
+
+### Raid Schedule
+- [ ] Recurring schedule setup (day/time picker)
+- [ ] Calendar view (month/week)
+- [ ] Session management (create/cancel)
+- [ ] Availability tracking (available/unavailable/tentative)
+- [ ] Timezone handling
+
+### Strategy Pages
+- [ ] One page per floor
+- [ ] Rich text editor (Markdown)
+- [ ] Section organization
+- [ ] Media embeds (images, YouTube, Toolbox)
+- [ ] Position assignments per mechanic
+- [ ] Quick reference mode
+
+### Other
+- [ ] Substitute tracking
+- [ ] Player notes
+
+---
+
+## Phase 6: Progress Tracking + Alts
+
+### Features
+- [ ] Weekly snapshots (auto-save at reset)
+- [ ] Progress dashboard with charts
+- [ ] Changelog view
+- [ ] Milestones (first clear, BiS complete)
+- [ ] Alt character support
+
+### Technical
+- [ ] Snapshot scheduling (cron job)
+- [ ] Chart components (Recharts)
+- [ ] Alt character CRUD
+
+---
+
+## Phase 7: FFLogs Integration
+
+### Features
+- [ ] FFLogs character linking
+- [ ] Parse percentile display
+- [ ] Historical parse trends
+- [ ] Report linking to raid sessions
+- [ ] XIVAnalysis links
+
+### Technical
+- [ ] FFLogs GraphQL client
+- [ ] OAuth flow (optional for private logs)
+- [ ] Parse display components
+
+---
+
+## Phase 8: Discord Bot + PWA
+
+### Discord Bot
+- [ ] Add to server flow
+- [ ] Raid reminders (configurable timing)
+- [ ] Loot priority summary before raids
+- [ ] Gear update notifications
+- [ ] Weekly summary
+
+### PWA / Offline
+- [ ] Install prompt
+- [ ] Offline viewing
+- [ ] Queue changes when offline
+- [ ] Sync when back online
+
+### Technical
+- [ ] discord.py bot setup
+- [ ] Scheduled task system (Celery)
+- [ ] Service Worker (Workbox)
+- [ ] IndexedDB for offline storage
+
+---
+
+## Phase 9: Auth + User Accounts
+
+### Features
+- [ ] Discord OAuth login
+- [ ] Claim/transfer static ownership
+- [ ] Personal dashboard (all statics)
+- [ ] Cross-static profile
+- [ ] Admin features (roles, locking)
+
+### Technical
+- [ ] Discord OAuth implementation
+- [ ] JWT token management
+- [ ] Permission system
 
 ---
 
 ## Database Schema
 
 ```sql
--- ============================================
--- CORE TABLES
--- ============================================
-
--- Statics (raid groups)
+-- Core tables
 CREATE TABLE statics (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY,
   name TEXT NOT NULL,
-  tier TEXT NOT NULL,  -- "AAC Cruiserweight (Savage)"
+  tier TEXT NOT NULL,
   share_code TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
-  -- Settings (JSON)
-  settings JSONB DEFAULT '{
-    "displayOrder": ["tank", "healer", "melee", "ranged", "caster"],
-    "lootPriority": ["melee", "ranged", "caster", "tank", "healer"],
-    "timezone": "America/New_York",
-    "autoSync": false,
-    "syncFrequency": "weekly"
-  }'
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Players in a static
 CREATE TABLE players (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY,
   static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   job TEXT NOT NULL,
-  role TEXT NOT NULL,  -- tank, healer, melee, ranged, caster
-  lodestone_id TEXT,
-  bis_link TEXT,
-  fflogs_id INTEGER,
-  last_sync TIMESTAMP,
+  role TEXT NOT NULL,
   sort_order INTEGER DEFAULT 0,
   is_substitute BOOLEAN DEFAULT FALSE,
-  notes TEXT,  -- "Out Dec 28-Jan 2"
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Alt characters per player
-CREATE TABLE player_alts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  job TEXT NOT NULL,
+  notes TEXT,
   lodestone_id TEXT,
-  is_active BOOLEAN DEFAULT FALSE,  -- Currently playing this alt?
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  bis_link TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Gear status per player
 CREATE TABLE gear_slots (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY,
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  slot TEXT NOT NULL,  -- weapon, head, body, etc.
-  bis_source TEXT NOT NULL DEFAULT 'raid',  -- 'raid' or 'tome'
+  slot TEXT NOT NULL,
+  bis_source TEXT NOT NULL DEFAULT 'raid',
   has_item BOOLEAN DEFAULT FALSE,
   is_augmented BOOLEAN DEFAULT FALSE,
-  item_id INTEGER,  -- XIVAPI item ID
-  item_name TEXT,
-  item_level INTEGER,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(player_id, slot)
 );
 
--- ============================================
--- LOOT TRACKING
--- ============================================
-
-CREATE TABLE loot_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  player_id UUID REFERENCES players(id) ON DELETE SET NULL,
-  week_number INTEGER NOT NULL,
-  floor INTEGER NOT NULL,  -- 1-4
-  item_type TEXT NOT NULL,  -- 'weapon', 'head', 'twine', etc.
-  acquisition_method TEXT DEFAULT 'drop',  -- 'drop' or 'book'
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Book/token tracking per player
-CREATE TABLE book_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  floor INTEGER NOT NULL,  -- 1-4
-  books_earned INTEGER DEFAULT 0,
-  books_spent INTEGER DEFAULT 0,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(player_id, floor)
-);
-
--- ============================================
--- SCHEDULING
--- ============================================
-
--- Raid schedule (recurring)
-CREATE TABLE raid_schedule (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  day_of_week INTEGER NOT NULL,  -- 0=Sunday, 6=Saturday
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  timezone TEXT NOT NULL DEFAULT 'America/New_York',
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Individual raid sessions (for attendance, cancellations)
-CREATE TABLE raid_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  scheduled_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  status TEXT DEFAULT 'scheduled',  -- scheduled, completed, cancelled
-  notes TEXT,
-  fflogs_report_id TEXT,  -- Link to FFLogs report
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Player availability per session
-CREATE TABLE player_availability (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID REFERENCES raid_sessions(id) ON DELETE CASCADE,
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  status TEXT DEFAULT 'unknown',  -- available, unavailable, tentative, unknown
-  notes TEXT,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(session_id, player_id)
-);
-
--- ============================================
--- STRATEGIES
--- ============================================
-
--- Strategy pages per floor
-CREATE TABLE strategies (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  floor INTEGER NOT NULL,  -- 1-4
-  title TEXT NOT NULL,  -- "M1S - Black Cat"
-  content TEXT,  -- Markdown content
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(static_id, floor)
-);
-
--- Strategy sections (for organization)
-CREATE TABLE strategy_sections (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  strategy_id UUID REFERENCES strategies(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,  -- "Phase 1", "Mouser", etc.
-  content TEXT,  -- Markdown
-  sort_order INTEGER DEFAULT 0,
-  toolbox_link TEXT,  -- Link to FF14 Toolbox
-  image_url TEXT,  -- Diagram image
-  video_url TEXT,  -- YouTube/Twitch clip
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Player-specific positions/assignments
-CREATE TABLE strategy_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  strategy_id UUID REFERENCES strategies(id) ON DELETE CASCADE,
-  mechanic_name TEXT NOT NULL,  -- "Mouser 1", "Nailchipper", etc.
-  assignments JSONB NOT NULL,  -- {"MT": "NW", "OT": "NE", ...}
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================
--- PROGRESS TRACKING
--- ============================================
-
-CREATE TABLE weekly_snapshots (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  week_number INTEGER NOT NULL,
-  snapshot_date DATE NOT NULL,
-  data JSONB NOT NULL,  -- Full state snapshot
-  summary JSONB,  -- Calculated summary stats
-  UNIQUE(static_id, week_number)
-);
-
--- ============================================
--- USER ACCOUNTS (Optional)
--- ============================================
-
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  discord_id TEXT UNIQUE,
-  discord_username TEXT,
-  email TEXT UNIQUE,
-  avatar_url TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE user_statics (
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  role TEXT DEFAULT 'member',  -- 'owner', 'admin', 'member'
-  PRIMARY KEY(user_id, static_id)
-);
-
--- ============================================
--- DISCORD INTEGRATION
--- ============================================
-
-CREATE TABLE discord_integrations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  static_id UUID REFERENCES statics(id) ON DELETE CASCADE,
-  guild_id TEXT NOT NULL,
-  channel_id TEXT NOT NULL,
-  webhook_url TEXT,
-  
-  -- Notification settings
-  notify_raid_reminder BOOLEAN DEFAULT TRUE,
-  reminder_minutes_before INTEGER DEFAULT 30,
-  notify_loot_updates BOOLEAN DEFAULT TRUE,
-  notify_gear_sync BOOLEAN DEFAULT FALSE,
-  
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(static_id)
-);
-
--- ============================================
--- INDEXES
--- ============================================
-
+-- Indexes
 CREATE INDEX idx_players_static ON players(static_id);
 CREATE INDEX idx_gear_player ON gear_slots(player_id);
-CREATE INDEX idx_loot_static ON loot_history(static_id);
-CREATE INDEX idx_sessions_static ON raid_sessions(static_id);
-CREATE INDEX idx_strategies_static ON strategies(static_id);
+CREATE INDEX idx_statics_share_code ON statics(share_code);
 ```
 
 ---
 
-## Phase Breakdown
-
-### Phase 1: Core MVP (Week 1-2)
-**Goal**: Functional replacement for basic spreadsheet tracking
-
-#### Features
-- [ ] Create new static (name, tier, timezone)
-- [ ] Add/edit/remove players
-  - Name, job selection
-  - Role auto-assigned from job
-  - Notes field
-  - Substitute flag
-- [ ] Gear tracking per player
-  - BiS source selection (Raid/Tome) per slot
-  - Have/Augmented checkboxes
-  - Auto-calculated stats
-- [ ] Team-wide summary panel
-  - Total upgrade materials needed (Twine/Glaze/Solvent)
-  - Total books needed per floor
-  - Team completion percentage
-  - Weeks to BiS estimate
-- [ ] Shareable link (unique share code)
-- [ ] Display order: Tank > Healer > DPS
-- [ ] Sort toggle button
-- [ ] Dark FFXIV theme
-- [ ] Mobile-responsive
-
-#### Technical Tasks
-- [ ] React + Vite + TypeScript setup
-- [ ] Tailwind CSS with custom theme
-- [ ] Component library (PlayerCard, GearTable, etc.)
-- [ ] Zustand stores (static, players, gear)
-- [ ] FastAPI backend setup
-- [ ] PostgreSQL with Supabase
-- [ ] CRUD API endpoints
-- [ ] Share code generation
-- [ ] Deploy frontend to Vercel
-- [ ] Deploy backend to Railway
-
-### Phase 2: BiS Integration (Week 3-4)
-**Goal**: Auto-populate BiS from community tools
-
-#### Features
-- [ ] Etro.gg link import
-  - Parse gearset ID from URL
-  - Fetch gear via API proxy
-  - Auto-detect Raid vs Tome from item names
-- [ ] XIVGear.app link import
-  - Parse UUID from URL
-  - Use built-in source metadata
-  - Support multi-set sheets
-- [ ] Bundled Balance BiS presets
-  - Current tier BiS for all jobs
-  - "Use Balance BiS" quick button
-  - Multiple options per job (SpS vs Crit builds)
-- [ ] BiS comparison overlay
-  - Current gear vs BiS side-by-side
-  - Highlight missing pieces
-- [ ] Gear name auto-detection
-  - Parse item names to determine source
-
-#### Technical Tasks
-- [ ] API proxy endpoints (CORS handling)
-- [ ] Etro API client
-- [ ] XIVGear API client
-- [ ] Item database cache
-- [ ] BiS preset JSON files
-- [ ] Import modal UI
-
-### Phase 3: Auto-Sync from Lodestone (Week 5-6)
-**Goal**: Automatically update gear from character data
-
-#### Features
-- [ ] Character linking
-  - Search by name + server
-  - Confirm with portrait preview
-  - Store Lodestone ID
-- [ ] Manual sync button
-  - Per-player sync
-  - "Sync All" for entire static
-- [ ] Sync status indicators
-  - Last sync timestamp
-  - Loading spinner
-  - Error states
-- [ ] Gear change detection
-  - "New this week" badges
-  - Changelog of recent changes
-- [ ] Sync conflict handling
-  - Alert when equipped != BiS
-  - Option to update BiS
-
-#### Technical Tasks
-- [ ] XIVAPI character endpoint proxy
-- [ ] Gear comparison logic
-- [ ] Rate limiting / caching
-- [ ] Background sync job (optional)
-
-### Phase 4: Loot Distribution & Real-Time (Week 7-8)
-**Goal**: Smart loot suggestions + live collaboration
-
-#### Features
-- [ ] Floor selector (M1S-M4S)
-- [ ] Per-item priority display
-  - Who needs each drop
-  - Priority score breakdown
-  - Clear recommendation
-- [ ] Configurable priority rules
-  - Role order customization
-  - Weight sliders
-  - Manual overrides
-- [ ] Loot assignment workflow
-  - "Give to X" button
-  - Auto-update gear status
-  - Log to history
-- [ ] Loot history view
-  - Filterable log
-  - Fairness metrics
-- [ ] Book tracking
-  - Books earned/spent per player
-  - "Buy with books" option
-- [ ] **Real-time collaboration**
-  - WebSocket connection
-  - Live cursor indicators (who's editing)
-  - Instant sync across clients
-  - Conflict resolution
-
-#### Technical Tasks
-- [ ] Priority calculation algorithm
-- [ ] Loot assignment API
-- [ ] WebSocket server setup
-- [ ] Real-time state sync
-- [ ] Presence indicators
-- [ ] Optimistic updates
-
-### Phase 5: Scheduling & Strategies (Week 9-11)
-**Goal**: Replace When2Meet + centralize strat docs
-
-#### Features
-- [ ] **Raid Schedule**
-  - Recurring schedule setup
-    - Day of week picker
-    - Start/end time
-    - Timezone selection
-  - Calendar view
-    - Month/week views
-    - Visual raid blocks
-  - Session management
-    - Create/cancel individual sessions
-    - Add notes ("Prog night", "Reclear")
-  - Availability tracking
-    - Available / Unavailable / Tentative
-    - Visual grid (like When2Meet but better)
-    - "I'm available" quick toggle
-  - Timezone handling
-    - Display in user's local time
-    - Show raid time in multiple zones
-
-- [ ] **Strategy Pages**
-  - One page per floor (M1S, M2S, M3S, M4S)
-  - Rich text editor (Markdown)
-  - Section organization
-    - Phase breakdowns
-    - Mechanic-specific sections
-  - Media embeds
-    - Image uploads (diagrams)
-    - YouTube/Twitch clips
-    - FF14 Toolbox links
-  - Position assignments
-    - Per-mechanic assignments table
-    - Visual position grid
-    - Player name → position mapping
-  - Quick reference mode
-    - Simplified view for during raid
-    - Large text, key info only
-
-- [ ] **Substitute Tracking**
-  - Mark player as sub
-  - Sub availability calendar
-  - "Looking for sub" status
-
-- [ ] **Player Notes**
-  - Free-text notes per player
-  - Visible on hover/expand
-  - "Availability notes" section
-
-#### Technical Tasks
-- [ ] Calendar component (react-big-calendar or custom)
-- [ ] Timezone conversion utilities
-- [ ] Rich text editor (TipTap or Slate)
-- [ ] Image upload (Supabase Storage)
-- [ ] Strategy CRUD API
-- [ ] Assignment table component
-
-### Phase 6: Progress Tracking & Alts (Week 12-13)
-**Goal**: Week-over-week progress visualization + alt support
-
-#### Features
-- [ ] **Weekly Snapshots**
-  - Auto-save at weekly reset (Tuesday 8am UTC)
-  - Manual snapshot creation
-- [ ] **Progress Dashboard**
-  - Team completion % over time (chart)
-  - Individual player progress
-  - Weeks remaining estimate
-  - Projected completion date
-- [ ] **Changelog View**
-  - "This week: Lloyd got Chest, Theo got Twine"
-  - Filter by player, item type, week
-- [ ] **Milestones**
-  - First clear celebration
-  - BiS complete badge
-  - Team achievements
-- [ ] **Alt Character Support**
-  - Add multiple characters per player
-  - Switch "active" character
-  - Separate gear tracking per alt
-  - Alt job selection
-
-#### Technical Tasks
-- [ ] Snapshot scheduling (cron job)
-- [ ] Progress chart components (Recharts)
-- [ ] Alt character CRUD
-- [ ] Active character switcher
-
-### Phase 7: FFLogs Integration (Week 14-15)
-**Goal**: Parse tracking and raid analysis links
-
-#### Features
-- [ ] **FFLogs Character Linking**
-  - Link via character ID
-  - OAuth for private logs (optional)
-- [ ] **Parse Display**
-  - Latest parse percentile per player
-  - Historical parse trend (chart)
-  - Per-fight breakdown
-- [ ] **Report Linking**
-  - Link reports to raid sessions
-  - Quick access to recent reports
-- [ ] **Analysis Integration**
-  - "View in XIVAnalysis" button
-  - Per-player analysis links
-  - Improvement suggestions display
-- [ ] **Raid Session Logs**
-  - List of parses from last raid night
-  - Click player → see their analysis
-  - "What went well / could improve" notes
-
-#### Technical Tasks
-- [ ] FFLogs GraphQL client
-- [ ] OAuth flow (optional)
-- [ ] Parse display components
-- [ ] XIVAnalysis link generation
-- [ ] Report linking UI
-
-### Phase 8: Discord Bot & PWA (Week 16-17)
-**Goal**: Notifications + offline support
-
-#### Features
-- [ ] **Discord Bot**
-  - Add to server flow
-  - Link to static
-  - Channel selection
-  - **Raid Reminders**
-    - Configurable timing (30 min, 1 hour, etc.)
-    - "Raid starts in 30 minutes!"
-    - Include who's marked unavailable
-  - **Loot Priority Summary**
-    - Post before raid starts
-    - "Tonight's loot priority for M2S: Head → Theo, Lloyd; Hands → Ferus..."
-  - **Gear Update Notifications**
-    - "Lloyd synced gear: Got Chest!"
-  - **Weekly Summary**
-    - End of week recap
-    - Loot distributed, progress made
-
-- [ ] **PWA / Offline Mode**
-  - Install prompt
-  - Offline viewing of static data
-  - Queue changes when offline
-  - Sync when back online
-  - Works during raid without internet
-
-#### Technical Tasks
-- [ ] discord.py bot setup
-- [ ] Bot command handlers
-- [ ] Scheduled task system (Celery)
-- [ ] Webhook message formatting
-- [ ] Service Worker setup (Workbox)
-- [ ] IndexedDB for offline storage
-- [ ] Sync queue implementation
-
-### Phase 9: Auth & History (Week 18+)
-**Goal**: Optional accounts for power users
-
-#### Features
-- [ ] **Discord OAuth Login**
-  - One-click login
-  - Link Discord profile
-- [ ] **Claim Static**
-  - Convert anonymous static to owned
-  - Transfer ownership
-- [ ] **Personal Dashboard**
-  - All statics you're in
-  - Quick switch between statics
-  - Historical archive
-- [ ] **Cross-Static Profile**
-  - See your progress across multiple statics
-  - Career loot history
-- [ ] **Admin Features**
-  - Role management (owner/admin/member)
-  - Lock static (prevent edits)
-  - Delete static
-
-#### Technical Tasks
-- [ ] Discord OAuth implementation
-- [ ] JWT token management
-- [ ] User dashboard
-- [ ] Permission system
-
----
-
-## API Endpoints
+## API Endpoints Reference
 
 ### Statics
 ```
-GET    /api/statics/:shareCode         - Get static by share code
-POST   /api/statics                    - Create new static
-PUT    /api/statics/:id                - Update static settings
-DELETE /api/statics/:id                - Delete static
-GET    /api/statics/:id/summary        - Get team-wide summary stats
+GET    /api/statics/:shareCode     - Get static by share code
+POST   /api/statics                - Create new static
+PUT    /api/statics/:id            - Update static settings
+DELETE /api/statics/:id            - Delete static
 ```
 
 ### Players
 ```
-GET    /api/statics/:id/players        - Get all players
-POST   /api/statics/:id/players        - Add player
-PUT    /api/players/:id                - Update player
-DELETE /api/players/:id                - Remove player
-PUT    /api/players/:id/substitute     - Toggle substitute status
-POST   /api/players/:id/sync           - Sync from Lodestone
-```
-
-### Alts
-```
-GET    /api/players/:id/alts           - Get player's alts
-POST   /api/players/:id/alts           - Add alt character
-PUT    /api/players/:id/alts/:altId    - Update alt
-DELETE /api/players/:id/alts/:altId    - Remove alt
-PUT    /api/players/:id/alts/:altId/activate - Set as active
+GET    /api/statics/:id/players    - Get all players
+POST   /api/statics/:id/players    - Add player
+PUT    /api/players/:id            - Update player
+DELETE /api/players/:id            - Remove player
 ```
 
 ### Gear
 ```
-GET    /api/players/:id/gear           - Get player gear status
-PUT    /api/players/:id/gear           - Bulk update gear
-PUT    /api/players/:id/gear/:slot     - Update single slot
-POST   /api/players/:id/gear/import    - Import from Etro/XIVGear
+GET    /api/players/:id/gear       - Get player gear
+PUT    /api/players/:id/gear       - Bulk update gear
+PUT    /api/players/:id/gear/:slot - Update single slot
 ```
 
-### Loot
+### Sync Proxies (Phase 2-3)
 ```
-GET    /api/statics/:id/loot           - Get loot history
-POST   /api/statics/:id/loot           - Record loot distribution
-GET    /api/statics/:id/loot/priority/:floor - Get priority for floor
-GET    /api/statics/:id/books          - Get book progress
-PUT    /api/players/:id/books/:floor   - Update book count
-```
-
-### Schedule
-```
-GET    /api/statics/:id/schedule       - Get raid schedule
-PUT    /api/statics/:id/schedule       - Update schedule
-GET    /api/statics/:id/sessions       - Get raid sessions
-POST   /api/statics/:id/sessions       - Create session
-PUT    /api/sessions/:id               - Update session
-DELETE /api/sessions/:id               - Cancel session
-PUT    /api/sessions/:id/availability  - Update player availability
-```
-
-### Strategies
-```
-GET    /api/statics/:id/strategies            - Get all strategies
-GET    /api/statics/:id/strategies/:floor     - Get floor strategy
-PUT    /api/statics/:id/strategies/:floor     - Update strategy
-GET    /api/strategies/:id/sections           - Get sections
-POST   /api/strategies/:id/sections           - Add section
-PUT    /api/strategies/sections/:id           - Update section
-DELETE /api/strategies/sections/:id           - Remove section
-PUT    /api/strategies/:id/assignments        - Update assignments
-```
-
-### Progress
-```
-GET    /api/statics/:id/snapshots      - Get weekly snapshots
-POST   /api/statics/:id/snapshots      - Create manual snapshot
-GET    /api/statics/:id/progress       - Get progress stats
-GET    /api/statics/:id/changelog      - Get recent changes
-```
-
-### Discord
-```
-GET    /api/statics/:id/discord        - Get Discord integration
-POST   /api/statics/:id/discord        - Setup Discord integration
-PUT    /api/statics/:id/discord        - Update settings
-DELETE /api/statics/:id/discord        - Remove integration
-POST   /api/statics/:id/discord/test   - Send test message
-```
-
-### Sync Proxies
-```
-GET    /api/proxy/xivapi/character/search  - Search character
-GET    /api/proxy/xivapi/character/:id     - Get character data
-GET    /api/proxy/etro/:gearsetId          - Get Etro gearset
-GET    /api/proxy/xivgear/:uuid            - Get XIVGear set
-GET    /api/proxy/fflogs/character/:id     - Get FFLogs data
-```
-
-### Real-Time (WebSocket)
-```
-WS     /ws/static/:shareCode           - Real-time updates
-  -> join                              - Join static room
-  -> leave                             - Leave room
-  -> gear_update                       - Gear changed
-  -> player_update                     - Player changed
-  -> loot_assigned                     - Loot distributed
-  -> presence                          - Who's viewing
-```
-
----
-
-## File Structure
-
-```
-ffxiv-raid-planner/
-├── frontend/
-│   ├── public/
-│   │   ├── icons/                    # PWA icons
-│   │   └── manifest.json             # PWA manifest
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── player/
-│   │   │   │   ├── PlayerCard.tsx
-│   │   │   │   ├── PlayerHeader.tsx
-│   │   │   │   ├── GearTable.tsx
-│   │   │   │   ├── GearSlotRow.tsx
-│   │   │   │   └── PlayerNotes.tsx
-│   │   │   ├── team/
-│   │   │   │   ├── TeamSummary.tsx
-│   │   │   │   ├── UpgradeMaterialsPanel.tsx
-│   │   │   │   └── BooksNeededPanel.tsx
-│   │   │   ├── loot/
-│   │   │   │   ├── LootPriorityPanel.tsx
-│   │   │   │   ├── FloorSelector.tsx
-│   │   │   │   ├── LootHistory.tsx
-│   │   │   │   └── BookTracker.tsx
-│   │   │   ├── schedule/
-│   │   │   │   ├── RaidCalendar.tsx
-│   │   │   │   ├── ScheduleSetup.tsx
-│   │   │   │   ├── AvailabilityGrid.tsx
-│   │   │   │   ├── SessionCard.tsx
-│   │   │   │   └── TimezoneSelector.tsx
-│   │   │   ├── strategy/
-│   │   │   │   ├── StrategyPage.tsx
-│   │   │   │   ├── StrategyEditor.tsx
-│   │   │   │   ├── SectionEditor.tsx
-│   │   │   │   ├── AssignmentTable.tsx
-│   │   │   │   ├── PositionGrid.tsx
-│   │   │   │   └── QuickReference.tsx
-│   │   │   ├── progress/
-│   │   │   │   ├── ProgressDashboard.tsx
-│   │   │   │   ├── ProgressChart.tsx
-│   │   │   │   ├── Changelog.tsx
-│   │   │   │   └── Milestones.tsx
-│   │   │   ├── analysis/
-│   │   │   │   ├── ParseDisplay.tsx
-│   │   │   │   ├── ParseHistory.tsx
-│   │   │   │   ├── RaidSessionLogs.tsx
-│   │   │   │   └── AnalysisLinks.tsx
-│   │   │   ├── ui/
-│   │   │   │   ├── Button.tsx
-│   │   │   │   ├── Select.tsx
-│   │   │   │   ├── Checkbox.tsx
-│   │   │   │   ├── Card.tsx
-│   │   │   │   ├── Modal.tsx
-│   │   │   │   ├── Tooltip.tsx
-│   │   │   │   └── LoadingSpinner.tsx
-│   │   │   └── layout/
-│   │   │       ├── Header.tsx
-│   │   │       ├── Sidebar.tsx
-│   │   │       ├── Navigation.tsx
-│   │   │       └── Footer.tsx
-│   │   ├── pages/
-│   │   │   ├── Home.tsx
-│   │   │   ├── CreateStatic.tsx
-│   │   │   ├── StaticView.tsx
-│   │   │   ├── GearTracker.tsx
-│   │   │   ├── LootManager.tsx
-│   │   │   ├── Schedule.tsx
-│   │   │   ├── Strategy.tsx
-│   │   │   ├── Progress.tsx
-│   │   │   ├── Analysis.tsx
-│   │   │   └── Settings.tsx
-│   │   ├── stores/
-│   │   │   ├── staticStore.ts
-│   │   │   ├── playerStore.ts
-│   │   │   ├── gearStore.ts
-│   │   │   ├── scheduleStore.ts
-│   │   │   ├── strategyStore.ts
-│   │   │   └── websocketStore.ts
-│   │   ├── hooks/
-│   │   │   ├── useCalculations.ts
-│   │   │   ├── useGearSync.ts
-│   │   │   ├── useWebSocket.ts
-│   │   │   ├── useTimezone.ts
-│   │   │   └── useOffline.ts
-│   │   ├── utils/
-│   │   │   ├── gearCalculations.ts
-│   │   │   ├── priorityCalculations.ts
-│   │   │   ├── constants.ts
-│   │   │   ├── formatters.ts
-│   │   │   └── timezone.ts
-│   │   ├── types/
-│   │   │   ├── index.ts
-│   │   │   ├── gear.ts
-│   │   │   ├── player.ts
-│   │   │   ├── schedule.ts
-│   │   │   └── strategy.ts
-│   │   ├── api/
-│   │   │   ├── client.ts
-│   │   │   ├── endpoints.ts
-│   │   │   └── websocket.ts
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── sw.ts                     # Service Worker
-│   ├── tailwind.config.js
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-│
-├── backend/
-│   ├── app/
-│   │   ├── routers/
-│   │   │   ├── statics.py
-│   │   │   ├── players.py
-│   │   │   ├── gear.py
-│   │   │   ├── loot.py
-│   │   │   ├── schedule.py
-│   │   │   ├── strategies.py
-│   │   │   ├── progress.py
-│   │   │   ├── discord.py
-│   │   │   ├── sync.py
-│   │   │   └── websocket.py
-│   │   ├── models/
-│   │   │   ├── database.py
-│   │   │   ├── schemas.py
-│   │   │   └── enums.py
-│   │   ├── services/
-│   │   │   ├── gear_calculator.py
-│   │   │   ├── priority_calculator.py
-│   │   │   ├── xivapi_client.py
-│   │   │   ├── etro_client.py
-│   │   │   ├── xivgear_client.py
-│   │   │   ├── fflogs_client.py
-│   │   │   ├── snapshot_service.py
-│   │   │   └── discord_service.py
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── security.py
-│   │   │   └── websocket_manager.py
-│   │   └── main.py
-│   ├── tests/
-│   │   ├── test_gear.py
-│   │   ├── test_priority.py
-│   │   └── test_api.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── bot/
-│   ├── cogs/
-│   │   ├── reminders.py
-│   │   ├── notifications.py
-│   │   └── commands.py
-│   ├── utils/
-│   │   └── formatters.py
-│   ├── main.py
-│   └── requirements.txt
-│
-├── docs/
-│   ├── IMPLEMENTATION_PLAN.md
-│   ├── ARCHITECTURE_SPEC.md
-│   ├── GEAR_LOGIC_RESEARCH.md
-│   └── API.md
-│
-├── docker-compose.yml
-├── README.md
-└── LICENSE
-```
-
----
-
-## UI/UX Guidelines
-
-### Color Palette
-```css
-:root {
-  /* Backgrounds */
-  --bg-primary: #0a0a12;
-  --bg-secondary: #12121a;
-  --bg-card: rgba(20, 20, 30, 0.9);
-  --bg-hover: rgba(40, 40, 50, 0.8);
-  
-  /* Accent */
-  --accent-gold: #c9a227;
-  --accent-gold-dim: rgba(201, 162, 39, 0.3);
-  --accent-gold-bright: #e0b830;
-  
-  /* Roles */
-  --role-tank: #4a90c2;
-  --role-healer: #4ab87a;
-  --role-melee: #c24a4a;
-  --role-ranged: #c29a4a;
-  --role-caster: #a24ac2;
-  
-  /* Gear Sources */
-  --source-raid: #c44444;
-  --source-tome: #44aa44;
-  --source-crafted: #aa8844;
-  
-  /* Status */
-  --status-success: #44aa44;
-  --status-warning: #aaaa44;
-  --status-error: #aa4444;
-  --status-info: #4488aa;
-  
-  /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #aaaaaa;
-  --text-muted: #666666;
-  
-  /* Borders */
-  --border-default: #444444;
-  --border-highlight: #c9a227;
-}
-```
-
-### Typography
-- **Headers**: Cinzel (Google Fonts) - FFXIV aesthetic
-- **Body**: System fonts for performance
-- **Monospace**: JetBrains Mono (for codes, IDs)
-
-### Navigation Structure
-```
-┌─────────────────────────────────────────────┐
-│  [Logo] Static Name          [Share] [Sync] │
-├─────────────────────────────────────────────┤
-│  Gear | Loot | Schedule | Strategy | More ▼ │
-├─────────────────────────────────────────────┤
-│                                             │
-│              Page Content                   │
-│                                             │
-└─────────────────────────────────────────────┘
+GET    /api/proxy/xivapi/character/search
+GET    /api/proxy/xivapi/character/:id
+GET    /api/proxy/etro/:gearsetId
+GET    /api/proxy/xivgear/:uuid
 ```
 
 ---
 
 ## Success Metrics
 
-1. **Adoption**: Statics created, daily active statics
-2. **Engagement**: Page views, session duration
-3. **Time Saved**: Estimated reduction in manual updates
-4. **Sync Success Rate**: % of successful Lodestone syncs
-5. **Feature Usage**: Which features are most used
-6. **User Satisfaction**: Feedback, NPS score
-
----
-
-## Potential Gotchas & Solutions
-
-| Issue | Solution |
-|-------|----------|
-| XIVAPI rate limits | Aggressive caching, batch requests |
-| Lodestone maintenance | Graceful fallback, show last known data |
-| Gear name matching | Fuzzy matching, item ID lookup |
-| Ring slots (2 of same) | Track as ring1/ring2 with notes |
-| Timezone confusion | Always store UTC, display in user's TZ |
-| WebSocket disconnects | Auto-reconnect with exponential backoff |
-| Offline data conflicts | Last-write-wins with conflict UI |
-| Large static history | Pagination, lazy loading |
-
----
-
-## Getting Started with Claude Code
-
-1. **Create GitHub repo**: `ffxiv-raid-planner`
-2. **Copy docs to `/docs`**: All markdown files
-3. **Initialize frontend**:
-   ```bash
-   cd frontend
-   pnpm create vite . --template react-ts
-   pnpm add tailwindcss postcss autoprefixer zustand react-router-dom
-   ```
-4. **Initialize backend**:
-   ```bash
-   cd backend
-   pip install fastapi uvicorn sqlalchemy psycopg2-binary
-   ```
-5. **Start Phase 1**: Build core components
-
-Reference this document throughout development. Each phase builds on the previous.
-
-Let's build something awesome! 🎮⚔️
+1. **Time saved** - Reduce weekly tracking from 15+ min to <2 min
+2. **Accuracy** - Auto-sync eliminates "forgot to update" errors
+3. **Adoption** - Zero-friction sharing via link
+4. **Engagement** - Week-over-week progress visualization

@@ -9,17 +9,19 @@ import {
   getRoleDisplayName,
   type Role,
 } from '../../gamedata';
-import type { Player, GearSlotStatus } from '../../types';
+import type { Player, GearSlotStatus, StaticSettings } from '../../types';
+import { calculatePriorityScore, calculatePlayerNeeds } from '../../utils/priority';
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 interface PlayerCardProps {
   player: Player;
+  settings: StaticSettings;
   onUpdate: (updates: Partial<Player>) => void;
   onRemove: () => void;
 }
 
-export function PlayerCard({ player, onUpdate, onRemove }: PlayerCardProps) {
+export function PlayerCard({ player, settings, onUpdate, onRemove }: PlayerCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
@@ -27,16 +29,22 @@ export function PlayerCard({ player, onUpdate, onRemove }: PlayerCardProps) {
   const jobPickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const roleColor = getRoleColor(player.role as any);
+  // Get the actual role color (valid roles: tank, healer, melee, ranged, caster)
+  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+  const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
+  const roleColor = getRoleColor(displayRole);
   const jobsByRole = groupJobsByRole();
 
-  // Calculate completion percentage
+  // Calculate completion count
   const completedSlots = player.gear.filter((g) => {
     if (g.bisSource === 'raid') return g.hasItem;
     return g.hasItem && g.isAugmented;
   }).length;
   const totalSlots = player.gear.length;
-  const completionPercent = totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : 0;
+
+  // Calculate priority score and needs for compact view
+  const priorityScore = calculatePriorityScore(player, settings);
+  const needs = calculatePlayerNeeds(player.gear);
 
   const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
     const newGear = player.gear.map((g) =>
@@ -230,22 +238,54 @@ export function PlayerCard({ player, onUpdate, onRemove }: PlayerCardProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Completion percentage */}
+            {/* Priority score badge */}
+            <div
+              className="px-2 py-1 rounded text-xs font-bold"
+              style={{
+                backgroundColor:
+                  priorityScore > 100
+                    ? 'rgba(196, 68, 68, 0.3)'
+                    : priorityScore > 70
+                      ? 'rgba(202, 162, 68, 0.3)'
+                      : 'rgba(68, 170, 68, 0.3)',
+                color:
+                  priorityScore > 100
+                    ? '#c44'
+                    : priorityScore > 70
+                      ? '#ca4'
+                      : '#4a4',
+              }}
+            >
+              P{priorityScore}
+            </div>
+            {/* Completion count */}
             <div className="text-right">
-              <div className="text-lg font-bold text-text-primary">{completionPercent}%</div>
-              <div className="text-xs text-text-muted">BiS</div>
+              <div className="text-lg font-bold text-text-primary">
+                {completedSlots}/{totalSlots}
+              </div>
             </div>
             {/* Expand/collapse indicator */}
             <div className="text-text-muted">
-              {isExpanded ? '▲' : '▼'}
+              {isExpanded ? '\u25BC' : '\u25C0'}
             </div>
           </div>
         </div>
 
-        {/* Compact gear view when collapsed */}
+        {/* Compact needs summary when collapsed */}
         {!isExpanded && (
-          <div className="mt-2 ml-4">
-            <GearTable gear={player.gear} onGearChange={handleGearChange} compact />
+          <div className="mt-2 ml-12 flex gap-4 text-sm">
+            <span>
+              <span className="text-source-raid">&#9632;</span>{' '}
+              <span className="text-text-secondary">{needs.raidItems} raid</span>
+            </span>
+            <span>
+              <span className="text-source-tome">&#9632;</span>{' '}
+              <span className="text-text-secondary">{needs.tomeItems} tome</span>
+            </span>
+            <span>
+              <span className="text-status-warning">&#9632;</span>{' '}
+              <span className="text-text-secondary">{needs.upgrades} aug</span>
+            </span>
           </div>
         )}
 

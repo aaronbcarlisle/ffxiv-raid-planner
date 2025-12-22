@@ -10,36 +10,43 @@ Static raid groups typically use Google Sheets to track BiS gear and loot distri
 - **No loot priority system** - leads to arguments
 - **Hard to share** - requires Google account, permission management
 
-This tool solves all of these with automatic gear sync from Lodestone, BiS import from community tools, and smart loot priority suggestions.
+This tool solves these with automatic gear sync from Lodestone, BiS import from community tools, and smart loot priority suggestions.
+
+## Current Status
+
+**Frontend: Complete** | **Backend: Not Started**
+
+The frontend is a fully functional local prototype. Data is stored in browser memory only - it resets on page refresh. Backend integration is the next phase.
 
 ## Features
 
-### Core Features (MVP)
-- ✅ Create raid groups with shareable links
-- ✅ Track gear per player (Raid vs Tome BiS)
-- ✅ Auto-calculate books, tomes, and upgrade materials needed
-- ✅ Team-wide progress summary
-- ✅ Mobile-friendly dark FFXIV theme
+### Working Now
+- Create raid groups with 8 template player slots
+- Track gear per player (Raid vs Tome BiS)
+- Auto-calculate books, tomes, and upgrade materials needed
+- Loot priority suggestions per floor
+- Team-wide progress summary
+- Mobile-friendly dark FFXIV theme
 
-### Coming Soon
-- 🔄 Auto-sync gear from Lodestone
-- 📊 Import BiS from Etro.gg / XIVGear.app
-- 🎯 Smart loot priority suggestions
-- 📈 Week-over-week progress tracking
-- 🔗 FFLogs integration
+### Planned
+- Data persistence with shareable links
+- Auto-sync gear from Lodestone
+- Import BiS from Etro.gg / XIVGear.app
+- Week-over-week progress tracking
+- FFLogs integration
+- Discord bot notifications
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: FastAPI (Python) or Express (Node.js)
-- **Database**: SQLite → PostgreSQL
-- **Hosting**: Vercel + Railway (free tiers)
+- **Frontend**: React 19 + TypeScript + Tailwind CSS 4 + Vite
+- **State**: Zustand
+- **Backend**: FastAPI (Python) + PostgreSQL (planned)
+- **Hosting**: Vercel + Railway (planned)
 
 ## Getting Started
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.10+ (if using FastAPI backend)
 - pnpm (recommended) or npm
 
 ### Installation
@@ -53,59 +60,38 @@ cd ffxiv-raid-planner
 cd frontend
 pnpm install
 
-# Install backend dependencies
-cd ../backend
-pip install -r requirements.txt
-
-# Start development servers
-# Terminal 1 - Frontend
-cd frontend && pnpm dev
-
-# Terminal 2 - Backend
-cd backend && uvicorn app.main:app --reload
+# Start development server
+pnpm dev
 ```
 
-### Environment Variables
-
-```bash
-# frontend/.env
-VITE_API_URL=http://localhost:8000
-
-# backend/.env
-DATABASE_URL=sqlite:///./raid_planner.db
-XIVAPI_KEY=your_key_here  # Optional, for higher rate limits
-```
+The app will be available at `http://localhost:5173`
 
 ## Project Structure
 
 ```
-/frontend
-  /src
-    /components     # React components
-    /stores         # Zustand state management
-    /hooks          # Custom React hooks
-    /utils          # Helper functions
-    /types          # TypeScript types
-    /api            # API client
-
-/backend
-  /app
-    /routers        # API routes
-    /models         # Database models
-    /services       # Business logic
-    main.py         # FastAPI app
-
-/docs
-  IMPLEMENTATION_PLAN.md
-  GEAR_LOGIC_RESEARCH.md
-  ARCHITECTURE_SPEC.md
+ffxiv-raid-planner/
+├── frontend/
+│   └── src/
+│       ├── components/     # React components
+│       ├── pages/          # Route pages
+│       ├── stores/         # Zustand state
+│       ├── gamedata/       # Jobs, costs, loot tables
+│       ├── utils/          # Calculations, helpers
+│       └── types/          # TypeScript types
+├── docs/
+│   ├── IMPLEMENTATION_PLAN.md   # Roadmap and status
+│   ├── GEARING_MATH.md          # FFXIV gearing mechanics
+│   ├── ARCHITECTURE_SPEC.md     # API integrations
+│   └── GEAR_LOGIC_RESEARCH.md   # Mechanics research
+└── CLAUDE.md                    # Project guide
 ```
 
 ## Documentation
 
-- [Implementation Plan](./docs/IMPLEMENTATION_PLAN.md) - Detailed phase breakdown
-- [Gear Logic Research](./docs/GEAR_LOGIC_RESEARCH.md) - FFXIV mechanics deep dive
-- [Architecture Spec](./docs/ARCHITECTURE_SPEC.md) - API integrations and data model
+- [Project Guide](./CLAUDE.md) - Quick reference for development
+- [Implementation Plan](./docs/IMPLEMENTATION_PLAN.md) - Detailed roadmap
+- [Gearing Math](./docs/GEARING_MATH.md) - FFXIV mechanics deep dive
+- [Architecture Spec](./docs/ARCHITECTURE_SPEC.md) - API integrations
 
 ## Contributing
 
@@ -123,13 +109,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [XIVAPI](https://xivapi.com/) - Character data and game info
+- [XIVAPI](https://xivapi.com/) - Character data and job icons
 - [Etro.gg](https://etro.gg/) - BiS gearset planning
 - [XIVGear.app](https://xivgear.app/) - Advanced gear planning
 - [FFLogs](https://www.fflogs.com/) - Raid analysis
 - [The Balance](https://www.thebalanceffxiv.com/) - Community BiS guides
-- [HimbeertoniRaidTool](https://github.com/Koenari/HimbeertoniRaidTool) - Inspiration
-
----
-
-Made with ❤️ for the FFXIV raiding community
