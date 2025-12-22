@@ -156,3 +156,34 @@ export const GEAR_SLOT_NAMES: Record<GearSlot, string> = {
   ring1: 'Ring 1',
   ring2: 'Ring 2',
 };
+
+// Gear slot icons from XIVAPI (outline/silhouette style - matches FFXIV character panel)
+export const GEAR_SLOT_ICONS: Record<GearSlot, string> = {
+  weapon: 'https://xivapi.com/img-misc/gear/mainhand.png',
+  head: 'https://xivapi.com/img-misc/gear/head.png',
+  body: 'https://xivapi.com/img-misc/gear/body.png',
+  hands: 'https://xivapi.com/img-misc/gear/hands.png',
+  legs: 'https://xivapi.com/img-misc/gear/legs.png',
+  feet: 'https://xivapi.com/img-misc/gear/feet.png',
+  earring: 'https://xivapi.com/img-misc/gear/ear.png',
+  necklace: 'https://xivapi.com/img-misc/gear/neck.png',
+  bracelet: 'https://xivapi.com/img-misc/gear/wrist.png',
+  ring1: 'https://xivapi.com/img-misc/gear/ring.png',
+  ring2: 'https://xivapi.com/img-misc/gear/ring.png',
+};
+
+// Gear slot filled icons from XIVAPI (colorful/filled style)
+// Future use: Show actual BiS item icon when "Have" is checked (requires Etro/XIVGear integration)
+export const GEAR_SLOT_FILLED_ICONS: Record<GearSlot, string> = {
+  weapon: 'https://xivapi.com/i/060000/060102.png', // Gladiator's Arm (generic sword)
+  head: 'https://xivapi.com/i/060000/060124.png',
+  body: 'https://xivapi.com/i/060000/060126.png',
+  hands: 'https://xivapi.com/i/060000/060129.png',
+  legs: 'https://xivapi.com/i/060000/060128.png',
+  feet: 'https://xivapi.com/i/060000/060130.png',
+  earring: 'https://xivapi.com/i/060000/060133.png',
+  necklace: 'https://xivapi.com/i/060000/060132.png',
+  bracelet: 'https://xivapi.com/i/060000/060134.png',
+  ring1: 'https://xivapi.com/i/060000/060135.png',
+  ring2: 'https://xivapi.com/i/060000/060135.png',
+};

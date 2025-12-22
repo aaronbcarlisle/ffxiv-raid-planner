@@ -22,6 +22,8 @@ export function StaticView() {
     viewMode,
     editingPlayerId,
     clipboardPlayer,
+    duplicatedPlayerId,
+    duplicatedPlayerExpanded,
     setStatic,
     setLoading,
     updatePlayer,
@@ -29,6 +31,7 @@ export function StaticView() {
     configurePlayer,
     addPlayerSlot,
     duplicatePlayer,
+    clearDuplicatedPlayerState,
     setSelectedFloor,
     setPageMode,
     setViewMode,
@@ -198,6 +201,9 @@ export function StaticView() {
                     settings={currentStatic.settings}
                     viewMode={viewMode}
                     clipboardPlayer={clipboardPlayer}
+                    initialExpanded={
+                      duplicatedPlayerId === player.id ? duplicatedPlayerExpanded : undefined
+                    }
                     onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
                     onRemove={() => handleRemovePlayer(player.id)}
                     onCopy={() => setClipboardPlayer(player)}
@@ -214,7 +220,10 @@ export function StaticView() {
                         });
                       }
                     }}
-                    onDuplicate={() => duplicatePlayer(player.id)}
+                    onDuplicate={(expanded) => duplicatePlayer(player.id, expanded)}
+                    onMounted={
+                      duplicatedPlayerId === player.id ? clearDuplicatedPlayerState : undefined
+                    }
                   />
                 );
               }

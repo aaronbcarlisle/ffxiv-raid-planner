@@ -38,11 +38,13 @@ interface PlayerCardProps {
   settings: StaticSettings;
   viewMode: ViewMode;
   clipboardPlayer: Player | null;
+  initialExpanded?: boolean; // For duplicated players to inherit expansion state
   onUpdate: (updates: Partial<Player>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;
-  onDuplicate: () => void;
+  onDuplicate: (expanded: boolean) => void;
+  onMounted?: () => void; // Called after initial render, used to clear duplicated state
 }
 
 export function PlayerCard({
@@ -50,17 +52,36 @@ export function PlayerCard({
   settings,
   viewMode,
   clipboardPlayer,
+  initialExpanded,
   onUpdate,
   onRemove,
   onCopy,
   onPaste,
   onDuplicate,
+  onMounted,
 }: PlayerCardProps) {
   // Local expansion state: null = follow global, boolean = override
-  const [localExpanded, setLocalExpanded] = useState<boolean | null>(null);
+  // Initialize with initialExpanded if provided (for duplicated players)
+  const [localExpanded, setLocalExpanded] = useState<boolean | null>(
+    initialExpanded !== undefined ? initialExpanded : null
+  );
 
-  // Reset local override when global viewMode changes
+  // Track if this is the first render to avoid resetting on mount
+  const isFirstRender = useRef(true);
+
+  // Call onMounted after first render to clear duplicated state
   useEffect(() => {
+    if (onMounted) {
+      onMounted();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset local override when global viewMode changes (but not on initial mount)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setLocalExpanded(null);
   }, [viewMode]);
 
@@ -234,7 +255,7 @@ export function PlayerCard({
     {
       label: 'Duplicate Player',
       icon: '👥',
-      onClick: onDuplicate,
+      onClick: () => onDuplicate(isExpanded),
     },
     {
       label: 'Remove Player',

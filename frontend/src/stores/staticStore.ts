@@ -63,6 +63,9 @@ interface StaticState {
   viewMode: ViewMode;
   editingPlayerId: string | null;
   clipboardPlayer: Player | null;
+  // Track if a newly duplicated player should start expanded
+  duplicatedPlayerId: string | null;
+  duplicatedPlayerExpanded: boolean;
 
   // Actions
   setStatic: (staticData: Static) => void;
@@ -73,7 +76,8 @@ interface StaticState {
   updatePlayer: (playerId: string, updates: Partial<Player>) => void;
   removePlayer: (playerId: string) => void;
   configurePlayer: (playerId: string, name: string, job: string, role: string) => void;
-  duplicatePlayer: (playerId: string) => void;
+  duplicatePlayer: (playerId: string, expanded?: boolean) => void;
+  clearDuplicatedPlayerState: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setSelectedFloor: (floor: FloorNumber) => void;
@@ -89,9 +93,11 @@ export const useStaticStore = create<StaticState>((set) => ({
   error: null,
   selectedFloor: 1,
   pageMode: 'players',
-  viewMode: 'compact',
+  viewMode: 'expanded',
   editingPlayerId: null,
   clipboardPlayer: null,
+  duplicatedPlayerId: null,
+  duplicatedPlayerExpanded: false,
 
   setStatic: (staticData) => set({ currentStatic: staticData, error: null }),
 
@@ -220,7 +226,7 @@ export const useStaticStore = create<StaticState>((set) => ({
       };
     }),
 
-  duplicatePlayer: (playerId) =>
+  duplicatePlayer: (playerId, expanded = false) =>
     set((state) => {
       if (!state.currentStatic) return state;
       const sourcePlayer = state.currentStatic.players.find((p) => p.id === playerId);
@@ -253,8 +259,13 @@ export const useStaticStore = create<StaticState>((set) => ({
           players: [...state.currentStatic.players, newPlayer],
         },
         editingPlayerId: newPlayer.id, // Open inline edit for new player
+        duplicatedPlayerId: newPlayer.id,
+        duplicatedPlayerExpanded: expanded,
       };
     }),
+
+  clearDuplicatedPlayerState: () =>
+    set({ duplicatedPlayerId: null, duplicatedPlayerExpanded: false }),
 
   setLoading: (isLoading) => set({ isLoading }),
 

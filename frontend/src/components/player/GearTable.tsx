@@ -1,6 +1,50 @@
 import { Checkbox } from '../ui/Checkbox';
-import type { GearSlotStatus, GearSource, TomeWeaponStatus } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_NAMES } from '../../types';
+import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+
+// Reusable slot icon component
+// - Empty: grey (opacity-50)
+// - Raid + Have: white (100%)
+// - Tome + Have: half-white (50%) - not complete until augmented
+// - Tome + Have + Aug: white (100%)
+function SlotIcon({
+  slot,
+  size = 16,
+  hasItem = false,
+  bisSource = 'raid',
+  isAugmented = false,
+}: {
+  slot: GearSlot;
+  size?: number;
+  hasItem?: boolean;
+  bisSource?: 'raid' | 'tome';
+  isAugmented?: boolean;
+}) {
+  // Determine the icon style based on completion state
+  let iconClass = 'opacity-50'; // Default: empty/grey
+
+  if (hasItem) {
+    if (bisSource === 'raid') {
+      // Raid gear is complete when you have it
+      iconClass = 'brightness-0 invert opacity-90';
+    } else {
+      // Tome gear: 50% when have, 100% when augmented
+      iconClass = isAugmented
+        ? 'brightness-0 invert opacity-90'
+        : 'brightness-0 invert opacity-50';
+    }
+  }
+
+  return (
+    <img
+      src={GEAR_SLOT_ICONS[slot]}
+      alt={GEAR_SLOT_NAMES[slot]}
+      width={size}
+      height={size}
+      className={iconClass}
+    />
+  );
+}
 
 // Special weapon row with optional tome weapon sub-row
 interface WeaponSlotRowProps {
@@ -20,7 +64,12 @@ function WeaponSlotRow({
     <>
       {/* Main weapon row */}
       <tr className="border-t border-border-default/50">
-        <td className="py-1.5 text-text-secondary">{GEAR_SLOT_NAMES.weapon}</td>
+        <td className="py-1.5 text-text-secondary">
+          <div className="flex items-center gap-2">
+            <SlotIcon slot="weapon" hasItem={status.hasItem} bisSource="raid" />
+            <span>{GEAR_SLOT_NAMES.weapon}</span>
+          </div>
+        </td>
         <td className="py-1.5 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
@@ -129,19 +178,39 @@ export function GearTable({
         {GEAR_SLOTS.map((slot) => {
           const status = getSlotStatus(slot);
           const isComplete = status.hasItem && (status.bisSource === 'raid' || status.isAugmented);
+
+          // Determine icon class based on completion state
+          let iconClass = 'opacity-40'; // Default: empty/grey
+          if (status.hasItem) {
+            if (status.bisSource === 'raid') {
+              iconClass = 'brightness-0 invert opacity-90';
+            } else {
+              // Tome: 50% when have, 100% when augmented
+              iconClass = status.isAugmented
+                ? 'brightness-0 invert opacity-90'
+                : 'brightness-0 invert opacity-50';
+            }
+          }
+
           return (
             <div
               key={slot}
               className={`w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
                 isComplete
-                  ? 'bg-status-success/30 text-status-success'
+                  ? 'bg-status-success/30'
                   : status.hasItem
-                    ? 'bg-status-warning/30 text-status-warning'
-                    : 'bg-bg-hover text-text-muted'
+                    ? 'bg-status-warning/30'
+                    : 'bg-bg-hover'
               }`}
               title={`${GEAR_SLOT_NAMES[slot]}: ${status.bisSource === 'raid' ? 'Raid' : 'Tome'}${status.hasItem ? ' (Have)' : ''}${status.isAugmented ? ' (Aug)' : ''}`}
             >
-              {slot === 'weapon' ? 'W' : slot.charAt(0).toUpperCase()}
+              <img
+                src={GEAR_SLOT_ICONS[slot]}
+                alt={GEAR_SLOT_NAMES[slot]}
+                width={18}
+                height={18}
+                className={iconClass}
+              />
             </div>
           );
         })}
@@ -181,7 +250,17 @@ export function GearTable({
 
           return (
             <tr key={slot} className="border-t border-border-default/50">
-              <td className="py-1.5 text-text-secondary">{GEAR_SLOT_NAMES[slot]}</td>
+              <td className="py-1.5 text-text-secondary">
+                <div className="flex items-center gap-2">
+                  <SlotIcon
+                    slot={slot}
+                    hasItem={status.hasItem}
+                    bisSource={status.bisSource}
+                    isAugmented={status.isAugmented}
+                  />
+                  <span>{GEAR_SLOT_NAMES[slot]}</span>
+                </div>
+              </td>
               <td className="py-1.5 text-center">
                 <div className="flex justify-center gap-1">
                   <button

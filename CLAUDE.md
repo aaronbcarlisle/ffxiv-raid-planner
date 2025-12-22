@@ -438,6 +438,58 @@ function calculateTomeWeeks(player: Player): number {
 
 ---
 
+## XIVAPI Integration
+
+### Gear Slot Icons
+
+Two icon sets are available from XIVAPI for gear slots:
+
+**1. ItemUICategory Icons** (colorful/filled) - Currently used in GearTable:
+```
+https://xivapi.com/i/060000/060124.png  // Head
+https://xivapi.com/i/060000/060126.png  // Body
+https://xivapi.com/i/060000/060129.png  // Hands
+https://xivapi.com/i/060000/060128.png  // Legs
+https://xivapi.com/i/060000/060130.png  // Feet
+https://xivapi.com/i/060000/060133.png  // Earring
+https://xivapi.com/i/060000/060132.png  // Necklace
+https://xivapi.com/i/060000/060134.png  // Bracelet
+https://xivapi.com/i/060000/060135.png  // Ring
+https://xivapi.com/i/060000/060102.png  // Weapon (Gladiator's Arm)
+```
+
+**2. Gear Slot Placeholder Icons** (outline/silhouette style) - For empty slots:
+```
+https://xivapi.com/img-misc/gear/head.png
+https://xivapi.com/img-misc/gear/body.png
+https://xivapi.com/img-misc/gear/hands.png
+https://xivapi.com/img-misc/gear/legs.png
+https://xivapi.com/img-misc/gear/feet.png
+https://xivapi.com/img-misc/gear/ear.png
+https://xivapi.com/img-misc/gear/neck.png
+https://xivapi.com/img-misc/gear/wrist.png
+https://xivapi.com/img-misc/gear/ring.png
+https://xivapi.com/img-misc/gear/mainhand.png
+```
+
+### Future Feature: Dynamic BiS Item Icons (Phase 4+)
+
+When Etro/XIVGear integration is added, gear slots could show:
+- **Empty state**: Placeholder icon (outline style) when slot needs to be filled
+- **Have state**: Actual BiS item icon from XIVAPI when "Have" is checked
+
+This would require:
+1. Parsing BiS link to extract item IDs
+2. Fetching item icons from XIVAPI: `https://xivapi.com/i/{folder}/{icon}.png`
+3. Storing item icon URLs in GearSlotStatus
+4. Conditionally rendering placeholder vs actual item icon
+
+Both icon sets are defined in `src/types/index.ts`:
+- `GEAR_SLOT_ICONS` - Current filled icons
+- `GEAR_SLOT_PLACEHOLDER_ICONS` - For future empty state
+
+---
+
 ## Commands
 
 ```bash
