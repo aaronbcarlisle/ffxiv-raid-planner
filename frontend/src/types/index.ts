@@ -187,3 +187,18 @@ export const GEAR_SLOT_FILLED_ICONS: Record<GearSlot, string> = {
   ring1: 'https://xivapi.com/i/060000/060135.png',
   ring2: 'https://xivapi.com/i/060000/060135.png',
 };
+
+// Context menu icons (transparent background versions)
+export const CONTEXT_MENU_ICONS = {
+  copy: '/icons/copy-transparent-bg.png',
+  paste: '/icons/paste-transparent-bg.png',
+  duplicate: '/icons/duplicate-transparent-bg.png',
+  remove: '/icons/remove-transparent-bg.png',
+};
+
+// Tab navigation icons (transparent background versions)
+export const TAB_ICONS = {
+  party: '/icons/party-transparent-bg.png',
+  loot: '/icons/loot-transparent-bg.png',
+  stats: '/icons/stats-transparent-bg.png',
+};

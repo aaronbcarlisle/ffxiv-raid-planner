@@ -168,9 +168,9 @@ export function StaticView() {
               onFloorChange={setSelectedFloor}
             />
           )}
-          {pageMode === 'players' && (
+          <div className={pageMode !== 'players' ? 'invisible' : ''}>
             <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-          )}
+          </div>
         </div>
       </div>
 

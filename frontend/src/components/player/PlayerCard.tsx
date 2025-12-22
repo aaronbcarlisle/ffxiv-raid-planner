@@ -14,6 +14,7 @@ import {
   type Role,
 } from '../../gamedata';
 import type { Player, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
+import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePriorityScore, calculatePlayerNeeds } from '../../utils/priority';
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
@@ -243,23 +244,23 @@ export function PlayerCard({
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: 'Copy Player',
-      icon: '📋',
+      icon: CONTEXT_MENU_ICONS.copy,
       onClick: onCopy,
     },
     {
       label: 'Paste Player',
-      icon: '📥',
+      icon: CONTEXT_MENU_ICONS.paste,
       onClick: onPaste,
       disabled: !clipboardPlayer,
     },
     {
       label: 'Duplicate Player',
-      icon: '👥',
+      icon: CONTEXT_MENU_ICONS.duplicate,
       onClick: () => onDuplicate(isExpanded),
     },
     {
       label: 'Remove Player',
-      icon: '🗑️',
+      icon: CONTEXT_MENU_ICONS.remove,
       onClick: () => setShowRemoveConfirm(true),
       danger: true,
     },

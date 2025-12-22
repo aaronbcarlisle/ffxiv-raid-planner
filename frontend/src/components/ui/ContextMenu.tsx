@@ -82,7 +82,18 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-bg-hover' : ''}
           `}
         >
-          {item.icon && <span>{item.icon}</span>}
+          {item.icon && (
+            item.icon.startsWith('http') || item.icon.startsWith('/') ? (
+              <img
+                src={item.icon}
+                alt=""
+                width={20}
+                height={20}
+              />
+            ) : (
+              <span>{item.icon}</span>
+            )
+          )}
           <span>{item.label}</span>
         </button>
       ))}
