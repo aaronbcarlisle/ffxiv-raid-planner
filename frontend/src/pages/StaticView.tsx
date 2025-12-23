@@ -79,13 +79,12 @@ export function StaticView() {
   // Calculate sorted players and team summary
   const sortedPlayers = useMemo(() => {
     if (!currentStatic) return [];
-    const sortPreset = currentStatic.settings.sortPreset ?? 'standard';
+    const sortPreset = currentStatic.settings.sortPreset ?? 'custom';
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? currentStatic.settings.displayOrder;
     return sortPlayersByRole(currentStatic.players, displayOrder ?? [], sortPreset);
   }, [currentStatic]);
 
-  // Whether custom drag mode is enabled
-  const isCustomSort = currentStatic?.settings.sortPreset === 'custom';
+  // Dragging is always enabled - reordering auto-switches to custom mode
 
   // Player IDs for SortableContext
   const playerIds = useMemo(() => sortedPlayers.map((p) => p.id), [sortedPlayers]);
@@ -141,7 +140,7 @@ export function StaticView() {
           settings={currentStatic!.settings}
           viewMode={viewMode}
           clipboardPlayer={clipboardPlayer}
-          isDragEnabled={isCustomSort}
+          isDragEnabled={true}
           initialExpanded={
             duplicatedPlayerId === player.id ? duplicatedPlayerExpanded : undefined
           }
@@ -289,7 +288,7 @@ export function StaticView() {
           {/* Sort mode + Group view + View mode toggle - visible in Players tab, absolutely positioned to overlap */}
           <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
             <SortModeSelector
-              sortPreset={currentStatic.settings.sortPreset ?? 'standard'}
+              sortPreset={currentStatic.settings.sortPreset ?? 'custom'}
               onPresetChange={handleSortPresetChange}
             />
             <GroupViewToggle

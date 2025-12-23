@@ -21,10 +21,11 @@ const DEFAULT_SLOT_COUNT = 8;
 const SAVE_DEBOUNCE_DELAY = 1000;
 
 // Create default gear with all slots empty
+// Ring2 defaults to tome since you can't equip two identical raid rings
 function createDefaultGear(): GearSlotStatus[] {
   return GEAR_SLOTS.map((slot) => ({
     slot,
-    bisSource: 'raid' as const,
+    bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
     hasItem: false,
     isAugmented: false,
   }));
@@ -250,6 +251,7 @@ export const useStaticStore = create<StaticState>((set, get) => {
         // Check if role is changing - if so, recalculate default position
         const currentPlayer = state.currentStatic.players.find((p) => p.id === playerId);
         let finalUpdates = { ...updates };
+        let settingsUpdates: Partial<StaticSettings> | null = null;
 
         if (updates.role && currentPlayer && updates.role !== currentPlayer.role) {
           // Role is changing - get new default position
@@ -263,6 +265,13 @@ export const useStaticStore = create<StaticState>((set, get) => {
           }
         }
 
+        // If job is changing, auto-switch to custom sort to preserve card position
+        if (updates.job && currentPlayer && updates.job !== currentPlayer.job) {
+          if (state.currentStatic.settings.sortPreset !== 'custom') {
+            settingsUpdates = { sortPreset: 'custom' };
+          }
+        }
+
         // Add to pending saves
         const newPendingSaves = new Set(state.pendingPlayerSaves);
         newPendingSaves.add(playerId);
@@ -273,6 +282,10 @@ export const useStaticStore = create<StaticState>((set, get) => {
             players: state.currentStatic.players.map((p) =>
               p.id === playerId ? { ...p, ...finalUpdates } : p
             ),
+            // Apply settings updates if job changed
+            ...(settingsUpdates && {
+              settings: { ...state.currentStatic.settings, ...settingsUpdates },
+            }),
           },
           pendingPlayerSaves: newPendingSaves,
         };
@@ -445,11 +458,18 @@ export const useStaticStore = create<StaticState>((set, get) => {
         updatedAt: new Date().toISOString(),
       }));
 
+      // Auto-switch to custom sort mode when user manually reorders
+      const shouldSwitchToCustom = state.currentStatic.settings.sortPreset !== 'custom';
+
       // Update state
       set({
         currentStatic: {
           ...state.currentStatic,
           players: updatedPlayers,
+          // Switch to custom mode to preserve the manual ordering
+          ...(shouldSwitchToCustom && {
+            settings: { ...state.currentStatic.settings, sortPreset: 'custom' },
+          }),
         },
       });
 
@@ -555,7 +575,7 @@ export const useStaticStore = create<StaticState>((set, get) => {
 export const getDefaultSettings = (): StaticSettings => ({
   displayOrder: DEFAULT_DISPLAY_ORDER,
   lootPriority: DEFAULT_LOOT_PRIORITY,
-  sortPreset: 'standard',
+  sortPreset: 'custom',
   groupView: false,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   autoSync: false,

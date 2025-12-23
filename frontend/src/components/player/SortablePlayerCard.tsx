@@ -43,26 +43,22 @@ export function SortablePlayerCard({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - only shown when drag is enabled */}
+    <div ref={setNodeRef} style={style} {...attributes} className="relative group/drag">
+      {/* Drag handle - only shown on hover when drag is enabled */}
       {isDragEnabled && (
         <div
           {...listeners}
-          className="absolute top-3 left-3 z-20 cursor-grab active:cursor-grabbing p-1.5 rounded bg-bg-secondary/80 hover:bg-bg-hover text-text-muted hover:text-text-primary border border-border-default/50"
+          className="absolute -top-2 left-1/2 -translate-x-1/2 z-50 cursor-grab active:cursor-grabbing px-3 py-1 rounded-t-md bg-bg-secondary border border-b-0 border-border-default opacity-0 group-hover/drag:opacity-100 transition-opacity text-text-muted hover:text-accent"
           title="Drag to reorder"
         >
           <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            className="w-4 h-2"
+            fill="currentColor"
+            viewBox="0 0 16 8"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 8h16M4 16h16"
-            />
+            <circle cx="2" cy="4" r="1.5" />
+            <circle cx="8" cy="4" r="1.5" />
+            <circle cx="14" cy="4" r="1.5" />
           </svg>
         </div>
       )}

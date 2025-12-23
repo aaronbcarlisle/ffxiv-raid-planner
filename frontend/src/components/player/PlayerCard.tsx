@@ -15,7 +15,7 @@ import {
 } from '../../gamedata';
 import type { Player, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
-import { calculatePriorityScore, calculatePlayerNeeds } from '../../utils/priority';
+import { calculatePlayerNeeds } from '../../utils/priority';
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
@@ -115,8 +115,7 @@ export function PlayerCard({
   }).length;
   const totalSlots = player.gear.length;
 
-  // Calculate priority score and needs for compact view
-  const priorityScore = calculatePriorityScore(player, settings);
+  // Calculate needs for compact view footer
   const needs = calculatePlayerNeeds(player);
 
   const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -270,9 +269,12 @@ export function PlayerCard({
     },
   ];
 
+  // Elevate z-index when dropdowns are open to prevent overlap issues
+  const hasOpenDropdown = showJobPicker || showPositionPicker || showTankRolePicker;
+
   return (
     <div
-      className="bg-bg-card border border-border-default rounded-lg overflow-visible flex flex-col h-full"
+      className={`bg-bg-card border border-border-default rounded-lg overflow-visible flex flex-col h-full ${hasOpenDropdown ? 'z-40 relative' : ''}`}
       onContextMenu={handleContextMenu}
     >
       {/* Context Menu */}
@@ -502,26 +504,6 @@ export function PlayerCard({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Priority score badge */}
-            <div
-              className="px-2 py-1 rounded text-xs font-bold"
-              style={{
-                backgroundColor:
-                  priorityScore > 100
-                    ? 'rgba(196, 68, 68, 0.3)'
-                    : priorityScore > 70
-                      ? 'rgba(202, 162, 68, 0.3)'
-                      : 'rgba(68, 170, 68, 0.3)',
-                color:
-                  priorityScore > 100
-                    ? '#c44'
-                    : priorityScore > 70
-                      ? '#ca4'
-                      : '#4a4',
-              }}
-            >
-              P{priorityScore}
-            </div>
             {/* Completion count */}
             <div className="text-right">
               <div className="text-lg font-bold text-text-primary">

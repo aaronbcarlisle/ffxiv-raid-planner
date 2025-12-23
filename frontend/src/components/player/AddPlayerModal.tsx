@@ -14,10 +14,11 @@ interface AddPlayerModalProps {
 }
 
 // Create default gear with all slots empty
+// Ring2 defaults to tome since you can't equip two identical raid rings
 function createDefaultGear(): GearSlotStatus[] {
   return GEAR_SLOTS.map((slot) => ({
     slot,
-    bisSource: 'raid' as const,
+    bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
     hasItem: false,
     isAugmented: false,
   }));
