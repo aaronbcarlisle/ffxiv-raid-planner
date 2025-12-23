@@ -35,7 +35,10 @@ The application now has a FastAPI backend with SQLite database for local develop
 - **Right-click context menu** (Copy/Paste/Duplicate/Mark as Sub/Remove) with FFXIV icons
 - **Substitute player support** - Mark players as subs with visible SUB badge
 - **Tome weapon tracking** (interim upgrade during prog with calculation support)
-- **Floor selector dropdown** - Compact dropdown in Loot tab only
+- **Floor selector dropdown** - Compact dropdown in Loot tab only with duty name tooltips
+- **Sort presets** - Standard, DPS-First, Healer-First, and Custom drag-and-drop ordering
+- **Drag-and-drop reordering** - Custom sort mode with @dnd-kit for manual card ordering
+- **Group view (G1/G2)** - Split players by light party based on raid positions
 - **FastAPI backend** with SQLite (local dev) / PostgreSQL (production-ready)
 - **Data persistence** - all changes auto-save with debounced updates
 - **Share code functionality** - 6-character alphanumeric codes for sharing

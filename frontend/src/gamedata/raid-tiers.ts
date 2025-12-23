@@ -14,6 +14,8 @@ export interface RaidTier {
   patch: string;
   /** Floor identifiers (e.g., M1S, M2S, M3S, M4S) */
   floors: string[];
+  /** Full duty names from game (for tooltips) */
+  dutyNames?: string[];
   /** Item levels for this tier */
   itemLevels: {
     /** Savage armor iLvl */
@@ -58,6 +60,12 @@ export const RAID_TIERS: RaidTier[] = [
     name: 'AAC Cruiserweight (Savage)',
     patch: '7.2',
     floors: ['M5S', 'M6S', 'M7S', 'M8S'],
+    dutyNames: [
+      'AAC Cruiserweight M1 (Savage)',
+      'AAC Cruiserweight M2 (Savage)',
+      'AAC Cruiserweight M3 (Savage)',
+      'AAC Cruiserweight M4 (Savage)',
+    ],
     itemLevels: {
       savage: 760,
       savageWeapon: 765,
@@ -83,6 +91,12 @@ export const RAID_TIERS: RaidTier[] = [
     name: 'AAC Light-heavyweight (Savage)',
     patch: '7.0',
     floors: ['M1S', 'M2S', 'M3S', 'M4S'],
+    dutyNames: [
+      'AAC Light-heavyweight M1 (Savage)',
+      'AAC Light-heavyweight M2 (Savage)',
+      'AAC Light-heavyweight M3 (Savage)',
+      'AAC Light-heavyweight M4 (Savage)',
+    ],
     itemLevels: {
       savage: 730,
       savageWeapon: 735,

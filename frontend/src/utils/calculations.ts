@@ -140,10 +140,26 @@ export function calculateTeamSummary(players: Player[]): TeamSummary {
 }
 
 /**
- * Sort players by role display order
+ * Sort players by role display order or custom order
+ * @param players - Players to sort
+ * @param displayOrder - Role order array (ignored if sortPreset is 'custom')
+ * @param sortPreset - Sort preset to use (defaults to role-based sorting)
  */
-export function sortPlayersByRole(players: Player[], displayOrder: string[]): Player[] {
+export function sortPlayersByRole(
+  players: Player[],
+  displayOrder: string[],
+  sortPreset: 'standard' | 'dps-first' | 'healer-first' | 'custom' = 'standard'
+): Player[] {
   return [...players].sort((a, b) => {
+    // Custom mode: sort only by sortOrder, then name
+    if (sortPreset === 'custom') {
+      if (a.sortOrder !== b.sortOrder) {
+        return a.sortOrder - b.sortOrder;
+      }
+      return a.name.localeCompare(b.name);
+    }
+
+    // Role-based sorting
     const orderA = displayOrder.indexOf(a.role);
     const orderB = displayOrder.indexOf(b.role);
 
@@ -161,4 +177,24 @@ export function sortPlayersByRole(players: Player[], displayOrder: string[]): Pl
     }
     return a.name.localeCompare(b.name);
   });
+}
+
+/**
+ * Group players by light party based on raid position
+ */
+export function groupPlayersByLightParty(players: Player[]): {
+  group1: Player[]; // T1, H1, M1, R1
+  group2: Player[]; // T2, H2, M2, R2
+  unassigned: Player[];
+} {
+  const g1Positions = ['T1', 'H1', 'M1', 'R1'];
+  const g2Positions = ['T2', 'H2', 'M2', 'R2'];
+
+  return {
+    group1: players.filter((p) => p.position && g1Positions.includes(p.position)),
+    group2: players.filter((p) => p.position && g2Positions.includes(p.position)),
+    unassigned: players.filter(
+      (p) => !p.position || (!g1Positions.includes(p.position) && !g2Positions.includes(p.position))
+    ),
+  };
 }

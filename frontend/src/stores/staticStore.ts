@@ -85,6 +85,7 @@ interface StaticState {
   configurePlayer: (playerId: string, name: string, job: string, role: string) => void;
   duplicatePlayer: (playerId: string, expanded?: boolean) => void;
   clearDuplicatedPlayerState: () => void;
+  reorderPlayers: (activeId: string, overId: string) => void;
   setLoading: (loading: boolean) => void;
   setSaving: (saving: boolean) => void;
   setError: (error: string | null) => void;
@@ -422,6 +423,46 @@ export const useStaticStore = create<StaticState>((set, get) => {
     clearDuplicatedPlayerState: () =>
       set({ duplicatedPlayerId: null, duplicatedPlayerExpanded: false }),
 
+    reorderPlayers: (activeId: string, overId: string) => {
+      const state = get();
+      if (!state.currentStatic || activeId === overId) return;
+
+      const players = state.currentStatic.players;
+      const activeIndex = players.findIndex((p) => p.id === activeId);
+      const overIndex = players.findIndex((p) => p.id === overId);
+
+      if (activeIndex === -1 || overIndex === -1) return;
+
+      // Create new array with reordered players
+      const newPlayers = [...players];
+      const [movedPlayer] = newPlayers.splice(activeIndex, 1);
+      newPlayers.splice(overIndex, 0, movedPlayer);
+
+      // Update sortOrder for all players based on new positions
+      const updatedPlayers = newPlayers.map((player, index) => ({
+        ...player,
+        sortOrder: index,
+        updatedAt: new Date().toISOString(),
+      }));
+
+      // Update state
+      set({
+        currentStatic: {
+          ...state.currentStatic,
+          players: updatedPlayers,
+        },
+      });
+
+      // Save all affected players (those whose sortOrder changed)
+      const affectedIds = updatedPlayers
+        .filter((p, i) => players.find((orig) => orig.id === p.id)?.sortOrder !== i)
+        .map((p) => p.id);
+
+      affectedIds.forEach((playerId) => {
+        get().savePlayerDebounced(playerId);
+      });
+    },
+
     setLoading: (isLoading) => set({ isLoading }),
 
     setSaving: (isSaving) => set({ isSaving }),
@@ -514,6 +555,8 @@ export const useStaticStore = create<StaticState>((set, get) => {
 export const getDefaultSettings = (): StaticSettings => ({
   displayOrder: DEFAULT_DISPLAY_ORDER,
   lootPriority: DEFAULT_LOOT_PRIORITY,
+  sortPreset: 'standard',
+  groupView: false,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   autoSync: false,
   syncFrequency: 'weekly',

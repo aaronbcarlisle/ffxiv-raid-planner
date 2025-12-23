@@ -2,17 +2,22 @@ import type { FloorNumber } from '../../gamedata/loot-tables';
 
 interface FloorSelectorProps {
   floors: string[]; // Floor names from raid tier (e.g., ['M5S', 'M6S', 'M7S', 'M8S'])
+  dutyNames?: string[]; // Full duty names for tooltips
   selectedFloor: FloorNumber;
   onFloorChange: (floor: FloorNumber) => void;
 }
 
 export function FloorSelector({
   floors,
+  dutyNames,
   selectedFloor,
   onFloorChange,
 }: FloorSelectorProps) {
+  // Get the full duty name for the currently selected floor
+  const selectedDutyName = dutyNames?.[selectedFloor - 1];
+
   return (
-    <div className="relative">
+    <div className="relative" title={selectedDutyName}>
       <select
         value={selectedFloor}
         onChange={(e) => onFloorChange(Number(e.target.value) as FloorNumber)}
@@ -20,8 +25,9 @@ export function FloorSelector({
       >
         {floors.map((floor, index) => {
           const floorNumber = (index + 1) as FloorNumber;
+          const dutyName = dutyNames?.[index];
           return (
-            <option key={floor} value={floorNumber}>
+            <option key={floor} value={floorNumber} title={dutyName}>
               {floor}
             </option>
           );

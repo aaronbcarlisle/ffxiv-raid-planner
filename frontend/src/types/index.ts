@@ -31,6 +31,9 @@ export type PageMode = 'players' | 'loot' | 'stats';
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
 
+// Sort preset for player ordering
+export type SortPreset = 'standard' | 'dps-first' | 'healer-first' | 'custom';
+
 // Raid position for mechanics (light parties, partners, spread positions)
 export type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
 
@@ -90,8 +93,10 @@ export interface Player {
 
 // Static (raid group) settings
 export interface StaticSettings {
-  displayOrder: string[]; // Role order for display
+  displayOrder: string[]; // Role order for display (used by non-custom presets)
   lootPriority: string[]; // Role order for loot priority
+  sortPreset: SortPreset; // Current sort preset
+  groupView: boolean; // Show G1/G2 light party grouping
   timezone: string;
   autoSync: boolean;
   syncFrequency: 'daily' | 'weekly';

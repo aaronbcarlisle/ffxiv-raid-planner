@@ -24,5 +24,29 @@ export const DEFAULT_DISPLAY_ORDER = ['tank', 'healer', 'melee', 'ranged', 'cast
 // Default loot priority (DPS first, as they benefit most from gear)
 export const DEFAULT_LOOT_PRIORITY = ['melee', 'ranged', 'caster', 'tank', 'healer'];
 
+// Sort presets for player ordering
+export const SORT_PRESETS = {
+  standard: {
+    name: 'Standard',
+    description: 'Tank > Healer > DPS',
+    order: ['tank', 'healer', 'melee', 'ranged', 'caster'],
+  },
+  'dps-first': {
+    name: 'DPS First',
+    description: 'Melee > Ranged > Caster > Tank > Healer',
+    order: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+  },
+  'healer-first': {
+    name: 'Healer First',
+    description: 'Healer > Tank > DPS',
+    order: ['healer', 'tank', 'melee', 'ranged', 'caster'],
+  },
+  custom: {
+    name: 'Custom',
+    description: 'Drag to reorder',
+    order: null as string[] | null, // Uses player.sortOrder only
+  },
+} as const;
+
 // Raid floors shorthand (current tier)
 export const RAID_FLOORS = ['M5S', 'M6S', 'M7S', 'M8S'];
