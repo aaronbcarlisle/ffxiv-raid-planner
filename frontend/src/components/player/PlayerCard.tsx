@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { GearTable } from './GearTable';
 import { NeedsFooter } from './NeedsFooter';
 import { PositionSelector } from './PositionSelector';
@@ -17,7 +17,7 @@ import type { Player, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, Ta
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 
-const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+const defaultRoleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 // Get position badge color classes based on position type
 function getPositionBadgeClasses(position: RaidPosition | undefined): string {
@@ -78,6 +78,13 @@ export function PlayerCard({
   const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
   const jobsByRole = groupJobsByRole();
+
+  // Sort roles with current player's role first for job picker
+  const roleOrder = useMemo(() => {
+    const currentRole = getRoleForJob(player.job);
+    if (!currentRole || !defaultRoleOrder.includes(currentRole)) return defaultRoleOrder;
+    return [currentRole, ...defaultRoleOrder.filter((r) => r !== currentRole)];
+  }, [player.job]);
 
   // Calculate completion count
   const completedSlots = player.gear.filter((g) => {
