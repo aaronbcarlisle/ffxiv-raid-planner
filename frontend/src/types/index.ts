@@ -199,6 +199,7 @@ export const CONTEXT_MENU_ICONS = {
   paste: '/icons/paste-transparent-bg.png',
   duplicate: '/icons/duplicate-transparent-bg.png',
   remove: '/icons/remove-transparent-bg.png',
+  substitute: '/icons/substitute-transparent-bg.png',
 };
 
 // Tab navigation icons (transparent background versions)

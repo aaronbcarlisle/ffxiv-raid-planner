@@ -259,6 +259,7 @@ export function PlayerCard({
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
+      icon: CONTEXT_MENU_ICONS.substitute,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
     },
     {
