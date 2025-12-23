@@ -40,6 +40,15 @@ export type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2'
 // Tank role designation (separate from T1/T2 position)
 export type TankRole = 'MT' | 'OT';
 
+// Template role for pre-populated player slots (optimal party comp)
+export type TemplateRole =
+  | 'tank'
+  | 'pure-healer'
+  | 'barrier-healer'
+  | 'melee'
+  | 'physical-ranged'
+  | 'magical-ranged';
+
 // All raid positions for iteration
 export const RAID_POSITIONS: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
@@ -77,6 +86,7 @@ export interface Player {
   role: string; // Role (tank, healer, melee, ranged, caster)
   position?: RaidPosition; // Raid position for mechanics (T1, H2, M1, etc.)
   tankRole?: TankRole; // MT/OT designation (tanks only)
+  templateRole?: TemplateRole; // Expected role for this slot (guides job selection)
   configured: boolean; // false for template slots, true once name/job are set
   lodestoneId?: string;
   bisLink?: string;

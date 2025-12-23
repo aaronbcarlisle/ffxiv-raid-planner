@@ -39,13 +39,11 @@ interface PlayerCardProps {
   settings: StaticSettings;
   viewMode: ViewMode;
   clipboardPlayer: Player | null;
-  initialExpanded?: boolean; // For duplicated players to inherit expansion state
   onUpdate: (updates: Partial<Player>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;
-  onDuplicate: (expanded: boolean) => void;
-  onMounted?: () => void; // Called after initial render, used to clear duplicated state
+  onDuplicate: () => void;
 }
 
 export function PlayerCard({
@@ -53,41 +51,14 @@ export function PlayerCard({
   settings,
   viewMode,
   clipboardPlayer,
-  initialExpanded,
   onUpdate,
   onRemove,
   onCopy,
   onPaste,
   onDuplicate,
-  onMounted,
 }: PlayerCardProps) {
-  // Local expansion state: null = follow global, boolean = override
-  // Initialize with initialExpanded if provided (for duplicated players)
-  const [localExpanded, setLocalExpanded] = useState<boolean | null>(
-    initialExpanded !== undefined ? initialExpanded : null
-  );
-
-  // Track if this is the first render to avoid resetting on mount
-  const isFirstRender = useRef(true);
-
-  // Call onMounted after first render to clear duplicated state
-  useEffect(() => {
-    if (onMounted) {
-      onMounted();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset local override when global viewMode changes (but not on initial mount)
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    setLocalExpanded(null);
-  }, [viewMode]);
-
-  // Compute effective expansion state
-  const isExpanded = localExpanded !== null ? localExpanded : viewMode === 'expanded';
+  // Expansion state follows global viewMode only (no individual override)
+  const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [showPositionPicker, setShowPositionPicker] = useState(false);
@@ -255,7 +226,7 @@ export function PlayerCard({
     {
       label: 'Duplicate Player',
       icon: CONTEXT_MENU_ICONS.duplicate,
-      onClick: () => onDuplicate(isExpanded),
+      onClick: () => onDuplicate(),
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
@@ -316,10 +287,10 @@ export function PlayerCard({
         </div>
       </Modal>
 
-      {/* Header */}
+      {/* Header with role-colored left border */}
       <div
-        className="p-3 cursor-pointer hover:bg-bg-hover transition-colors relative z-20"
-        onClick={() => setLocalExpanded(!isExpanded)}
+        className="p-3 transition-colors relative z-20 border-l-4 rounded-tl-lg"
+        style={{ borderLeftColor: roleColor }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -504,16 +475,10 @@ export function PlayerCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Completion count */}
-            <div className="text-right">
-              <div className="text-lg font-bold text-text-primary">
-                {completedSlots}/{totalSlots}
-              </div>
-            </div>
-            {/* Expand/collapse indicator */}
-            <div className="text-text-muted">
-              {isExpanded ? '\u25BC' : '\u25C0'}
+          {/* Completion count */}
+          <div className="text-right">
+            <div className="text-lg font-bold text-text-primary">
+              {completedSlots}/{totalSlots}
             </div>
           </div>
         </div>

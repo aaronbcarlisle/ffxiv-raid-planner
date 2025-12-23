@@ -58,12 +58,34 @@ def create_default_tome_weapon() -> dict:
     return {"pursuing": False, "hasItem": False, "isAugmented": False}
 
 
+def create_default_gear_for_ring2_tome() -> list[dict]:
+    """Create default gear with ring2 as tome source (for party comp)"""
+    gear = create_default_gear()
+    for slot in gear:
+        if slot["slot"] == "ring2":
+            slot["bisSource"] = "tome"
+    return gear
+
+
+# Optimal party composition for 8-player raids
+OPTIMAL_PARTY_COMP = [
+    {"template_role": "tank", "position": "T1", "tank_role": "MT"},
+    {"template_role": "tank", "position": "T2", "tank_role": "OT"},
+    {"template_role": "pure-healer", "position": "H1", "tank_role": None},
+    {"template_role": "barrier-healer", "position": "H2", "tank_role": None},
+    {"template_role": "melee", "position": "M1", "tank_role": None},
+    {"template_role": "melee", "position": "M2", "tank_role": None},
+    {"template_role": "physical-ranged", "position": "R1", "tank_role": None},
+    {"template_role": "magical-ranged", "position": "R2", "tank_role": None},
+]
+
+
 def create_template_players(static_id: str) -> list[Player]:
-    """Create 8 template player slots for a new static"""
+    """Create 8 template player slots for a new static with optimal party comp"""
     now = datetime.now(timezone.utc).isoformat()
     players = []
 
-    for i in range(8):
+    for i, slot in enumerate(OPTIMAL_PARTY_COMP):
         players.append(
             Player(
                 id=str(uuid.uuid4()),
@@ -71,10 +93,13 @@ def create_template_players(static_id: str) -> list[Player]:
                 name="",
                 job="",
                 role="",
+                position=slot["position"],
+                tank_role=slot["tank_role"],
+                template_role=slot["template_role"],
                 configured=False,
                 sort_order=i,
                 is_substitute=False,
-                gear=create_default_gear(),
+                gear=create_default_gear_for_ring2_tome(),
                 tome_weapon=create_default_tome_weapon(),
                 created_at=now,
                 updated_at=now,
@@ -115,6 +140,7 @@ def model_to_player_response(player: Player) -> PlayerResponse:
         role=player.role,
         position=player.position,
         tank_role=player.tank_role,
+        template_role=player.template_role,
         configured=player.configured,
         sort_order=player.sort_order,
         is_substitute=player.is_substitute,

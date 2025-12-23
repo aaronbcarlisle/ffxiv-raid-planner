@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { JobIcon } from '../ui/JobIcon';
+import { RoleJobSelector } from './RoleJobSelector';
 import {
   getJobsByRole,
   getJobDisplayName,
@@ -11,6 +12,7 @@ import {
   type JobInfo,
 } from '../../gamedata';
 import type { Player } from '../../types';
+import { TEMPLATE_ROLE_INFO } from '../../utils/constants';
 
 interface InlinePlayerEditProps {
   player: Player;
@@ -32,6 +34,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
   const [selectedRoles, setSelectedRoles] = useState<Set<RoleFilter>>(new Set());
   const [isJobPickerOpen, setIsJobPickerOpen] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
+  const [showNameError, setShowNameError] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const jobPickerRef = useRef<HTMLDivElement>(null);
@@ -157,9 +160,24 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !job) return;
+    // Validate name - show error and focus if empty
+    if (!name.trim()) {
+      setShowNameError(true);
+      nameInputRef.current?.focus();
+      return;
+    }
+    // Job is required but we don't block - they just need to pick one
+    if (!job) return;
     const actualRole = getRoleForJob(job) || '';
     onSave(name.trim(), job, actualRole);
+  };
+
+  // Clear name error when user starts typing
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    if (showNameError && e.target.value.trim()) {
+      setShowNameError(false);
+    }
   };
 
   const isValid = name.trim() && job;
@@ -167,166 +185,210 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
 
   const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
+  // Get role color for template slots
+  const templateRoleInfo = player.templateRole ? TEMPLATE_ROLE_INFO[player.templateRole] : null;
+  const roleColorVar = templateRoleInfo ? `var(--color-${templateRoleInfo.color})` : null;
+
   return (
-    <div className="bg-bg-card border-2 border-accent rounded-lg p-4">
+    <div
+      className="bg-bg-card border-2 rounded-lg p-4"
+      style={{ borderColor: roleColorVar || 'var(--color-accent)' }}
+    >
       <form onSubmit={handleSubmit}>
-        {/* Name input */}
+        {/* Name input - no label, placeholder is sufficient */}
         <div className="mb-4">
-          <label className="block text-xs text-text-muted mb-1">Player Name</label>
           <input
             ref={nameInputRef}
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={handleNameChange}
             placeholder="Enter player name"
-            className="w-full bg-bg-primary border border-border-default rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className={`w-full bg-bg-primary border rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:outline-none transition-colors ${
+              showNameError
+                ? 'border-status-error focus:border-status-error'
+                : 'border-border-default'
+            }`}
+            style={{
+              // Role-colored focus border when not showing error
+              ...((!showNameError && roleColorVar) ? { '--focus-color': roleColorVar } as React.CSSProperties : {}),
+            }}
+            onFocus={(e) => {
+              if (!showNameError && roleColorVar) {
+                e.target.style.borderColor = roleColorVar;
+              }
+            }}
+            onBlur={(e) => {
+              if (!showNameError) {
+                e.target.style.borderColor = '';
+              }
+            }}
           />
         </div>
 
-        {/* Role filter toggles */}
-        <div className="mb-4">
-          <label className="block text-xs text-text-muted mb-2">Filter by Role</label>
-          <div className="flex gap-2">
-            {ROLE_FILTERS.map((rf) => (
-              <button
-                key={rf.key}
-                type="button"
-                onClick={() => toggleRole(rf.key)}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
-                  selectedRoles.has(rf.key)
-                    ? 'ring-2 ring-offset-1 ring-offset-bg-card'
-                    : 'opacity-60 hover:opacity-100'
-                }`}
-                style={{
-                  backgroundColor: selectedRoles.has(rf.key)
-                    ? `color-mix(in srgb, ${rf.color} 30%, transparent)`
-                    : 'var(--color-bg-hover)',
-                  color: selectedRoles.has(rf.key) ? rf.color : 'var(--color-text-secondary)',
-                  // @ts-expect-error ringColor is a Tailwind CSS variable
-                  '--tw-ring-color': rf.color,
-                }}
-              >
-                {rf.label}
-              </button>
-            ))}
+        {/* Job selection - use RoleJobSelector for template slots, standard picker otherwise */}
+        {player.templateRole ? (
+          <div className="mb-4">
+            <RoleJobSelector
+              templateRole={player.templateRole}
+              selectedJob={job}
+              onJobSelect={handleJobSelect}
+            />
           </div>
-        </div>
-
-        {/* Job picker dropdown */}
-        <div className="mb-4 relative" ref={jobPickerRef}>
-          <label className="block text-xs text-text-muted mb-1">Select Job</label>
-          <button
-            type="button"
-            onClick={() => setIsJobPickerOpen(!isJobPickerOpen)}
-            className="w-full bg-bg-primary border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
-          >
-            {selectedJobInfo ? (
-              <>
-                <JobIcon job={selectedJobInfo.abbreviation} size="md" />
-                <span className="text-text-primary">
-                  {selectedJobInfo.abbreviation} - {getJobDisplayName(selectedJobInfo.abbreviation)}
-                </span>
-              </>
-            ) : (
-              <span className="text-text-muted">Select a job...</span>
-            )}
-            <span className="ml-auto text-text-muted">{isJobPickerOpen ? '\u25B2' : '\u25BC'}</span>
-          </button>
-
-          {/* Dropdown */}
-          {isJobPickerOpen && (
-            <div className="absolute z-50 mt-1 left-0 right-0 bg-bg-secondary border border-border-default rounded-lg shadow-lg">
-              {/* Search input */}
-              <div className="p-2 border-b border-border-default">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={jobSearch}
-                  onChange={(e) => setJobSearch(e.target.value)}
-                  placeholder="Search jobs..."
-                  className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-                />
-              </div>
-
-              {/* Job list */}
-              <div className="max-h-56 overflow-y-auto">
-                {filteredJobs.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-text-muted text-sm">
-                    No jobs found
-                  </div>
-                ) : jobSearch.trim() ? (
-                  // Flat list when searching
-                  <div className="py-1">
-                    {filteredJobs.map((j) => (
-                      <button
-                        key={j.abbreviation}
-                        type="button"
-                        onClick={() => handleJobSelect(j.abbreviation)}
-                        className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
-                          job === j.abbreviation ? 'bg-accent/10' : ''
-                        }`}
-                      >
-                        <JobIcon job={j.abbreviation} size="md" />
-                        <span className="text-text-primary">{j.abbreviation}</span>
-                        <span className="text-text-secondary text-sm">
-                          {getJobDisplayName(j.abbreviation)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  // Grouped by role when not searching
-                  roleOrder.map((role) => {
-                    const jobs = jobsByRole[role];
-                    if (jobs.length === 0) return null;
-                    return (
-                      <div key={role}>
-                        <div
-                          className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-bg-secondary border-b border-border-default"
-                          style={{ color: getRoleColor(role) }}
-                        >
-                          {getRoleDisplayName(role)}
-                        </div>
-                        <div className="py-1">
-                          {jobs.map((j) => (
-                            <button
-                              key={j.abbreviation}
-                              type="button"
-                              onClick={() => handleJobSelect(j.abbreviation)}
-                              className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
-                                job === j.abbreviation ? 'bg-accent/10' : ''
-                              }`}
-                            >
-                              <JobIcon job={j.abbreviation} size="md" />
-                              <span className="text-text-primary">{j.abbreviation}</span>
-                              <span className="text-text-secondary text-sm">
-                                {getJobDisplayName(j.abbreviation)}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+        ) : (
+          <>
+            {/* Role filter toggles */}
+            <div className="mb-4">
+              <label className="block text-xs text-text-muted mb-2">Filter by Role</label>
+              <div className="flex gap-2">
+                {ROLE_FILTERS.map((rf) => (
+                  <button
+                    key={rf.key}
+                    type="button"
+                    onClick={() => toggleRole(rf.key)}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
+                      selectedRoles.has(rf.key)
+                        ? 'ring-2 ring-offset-1 ring-offset-bg-card'
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor: selectedRoles.has(rf.key)
+                        ? `color-mix(in srgb, ${rf.color} 30%, transparent)`
+                        : 'var(--color-bg-hover)',
+                      color: selectedRoles.has(rf.key) ? rf.color : 'var(--color-text-secondary)',
+                      // @ts-expect-error ringColor is a Tailwind CSS variable
+                      '--tw-ring-color': rf.color,
+                    }}
+                  >
+                    {rf.label}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Job picker dropdown */}
+            <div className="mb-4 relative" ref={jobPickerRef}>
+              <label className="block text-xs text-text-muted mb-1">Select Job</label>
+              <button
+                type="button"
+                onClick={() => setIsJobPickerOpen(!isJobPickerOpen)}
+                className="w-full bg-bg-primary border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
+              >
+                {selectedJobInfo ? (
+                  <>
+                    <JobIcon job={selectedJobInfo.abbreviation} size="md" />
+                    <span className="text-text-primary">
+                      {selectedJobInfo.abbreviation} - {getJobDisplayName(selectedJobInfo.abbreviation)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-text-muted">Select a job...</span>
+                )}
+                <span className="ml-auto text-text-muted">{isJobPickerOpen ? '\u25B2' : '\u25BC'}</span>
+              </button>
+
+              {/* Dropdown */}
+              {isJobPickerOpen && (
+                <div className="absolute z-50 mt-1 left-0 right-0 bg-bg-secondary border border-border-default rounded-lg shadow-lg">
+                  {/* Search input */}
+                  <div className="p-2 border-b border-border-default">
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={jobSearch}
+                      onChange={(e) => setJobSearch(e.target.value)}
+                      placeholder="Search jobs..."
+                      className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Job list */}
+                  <div className="max-h-56 overflow-y-auto">
+                    {filteredJobs.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-text-muted text-sm">
+                        No jobs found
+                      </div>
+                    ) : jobSearch.trim() ? (
+                      // Flat list when searching
+                      <div className="py-1">
+                        {filteredJobs.map((j) => (
+                          <button
+                            key={j.abbreviation}
+                            type="button"
+                            onClick={() => handleJobSelect(j.abbreviation)}
+                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                              job === j.abbreviation ? 'bg-accent/10' : ''
+                            }`}
+                          >
+                            <JobIcon job={j.abbreviation} size="md" />
+                            <span className="text-text-primary">{j.abbreviation}</span>
+                            <span className="text-text-secondary text-sm">
+                              {getJobDisplayName(j.abbreviation)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      // Grouped by role when not searching
+                      roleOrder.map((role) => {
+                        const jobs = jobsByRole[role];
+                        if (jobs.length === 0) return null;
+                        return (
+                          <div key={role}>
+                            <div
+                              className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-bg-secondary border-b border-border-default"
+                              style={{ color: getRoleColor(role) }}
+                            >
+                              {getRoleDisplayName(role)}
+                            </div>
+                            <div className="py-1">
+                              {jobs.map((j) => (
+                                <button
+                                  key={j.abbreviation}
+                                  type="button"
+                                  onClick={() => handleJobSelect(j.abbreviation)}
+                                  className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                                    job === j.abbreviation ? 'bg-accent/10' : ''
+                                  }`}
+                                >
+                                  <JobIcon job={j.abbreviation} size="md" />
+                                  <span className="text-text-primary">{j.abbreviation}</span>
+                                  <span className="text-text-secondary text-sm">
+                                    {getJobDisplayName(j.abbreviation)}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Action buttons */}
         <div className="flex gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-3 py-2 rounded text-sm text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+            className="flex-1 px-3 py-2 rounded text-sm font-medium border-2 transition-colors hover:brightness-110"
+            style={{
+              borderColor: roleColorVar || 'var(--color-text-muted)',
+              color: roleColorVar || 'var(--color-text-secondary)',
+              backgroundColor: 'transparent',
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!isValid}
-            className="flex-1 px-3 py-2 rounded text-sm font-medium bg-accent text-bg-primary hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium text-bg-primary transition-colors ${
+              roleColorVar ? 'hover:brightness-110' : 'bg-accent hover:bg-accent-bright'
+            }`}
+            style={roleColorVar ? { backgroundColor: roleColorVar } : undefined}
           >
             Save
           </button>

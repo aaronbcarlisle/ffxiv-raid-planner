@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   DndContext,
@@ -22,7 +22,7 @@ import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Toast } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import type { Player, SortPreset } from '../types';
@@ -32,22 +32,17 @@ export function StaticView() {
   const {
     currentStatic,
     isLoading,
-    isSaving,
     error,
     selectedFloor,
     pageMode,
     viewMode,
     editingPlayerId,
     clipboardPlayer,
-    duplicatedPlayerId,
-    duplicatedPlayerExpanded,
     fetchStatic,
     updatePlayer,
     removePlayer,
     configurePlayer,
-    addPlayerSlot,
     duplicatePlayer,
-    clearDuplicatedPlayerState,
     reorderPlayers,
     updateSettings,
     setSelectedFloor,
@@ -68,8 +63,6 @@ export function StaticView() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (!shareCode) return;
@@ -117,6 +110,10 @@ export function StaticView() {
   // Check if we have enough position data to enable group view
   const hasPositionData = sortedPlayers.filter((p) => p.configured && p.position).length >= 2;
 
+  // Grid classes: responsive columns (1 → 2 → 3 → 4) to show full party at once
+  // grid-4xl is a custom CSS class for 4 columns at 1400px+
+  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+
   // Helper function to render a player card (used in both grouped and flat views)
   const renderPlayerCard = (player: Player) => {
     // If editing this player, show inline edit form
@@ -141,9 +138,6 @@ export function StaticView() {
           viewMode={viewMode}
           clipboardPlayer={clipboardPlayer}
           isDragEnabled={true}
-          initialExpanded={
-            duplicatedPlayerId === player.id ? duplicatedPlayerExpanded : undefined
-          }
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
@@ -160,10 +154,7 @@ export function StaticView() {
               });
             }
           }}
-          onDuplicate={(expanded) => duplicatePlayer(player.id, expanded)}
-          onMounted={
-            duplicatedPlayerId === player.id ? clearDuplicatedPlayerState : undefined
-          }
+          onDuplicate={() => duplicatePlayer(player.id)}
         />
       );
     }
@@ -172,6 +163,8 @@ export function StaticView() {
     return (
       <EmptySlotCard
         key={player.id}
+        templateRole={player.templateRole}
+        position={player.position}
         onStartEdit={() => setEditingPlayerId(player.id)}
         onRemove={() => handleRemovePlayer(player.id)}
       />
@@ -205,13 +198,6 @@ export function StaticView() {
     configurePlayer(playerId, name, job, role);
   };
 
-  const handleCopyShareLink = () => {
-    if (!currentStatic) return;
-    const url = `${window.location.origin}/static/${currentStatic.shareCode}`;
-    navigator.clipboard.writeText(url);
-    setShowToast(true);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -238,33 +224,6 @@ export function StaticView() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div>
-          <h1 className="font-display text-3xl text-accent">{currentStatic.name}</h1>
-          <div className="flex items-center gap-2">
-            <p className="text-text-secondary">{tierInfo?.name ?? currentStatic.tier}</p>
-            {isSaving && (
-              <span className="text-text-muted text-sm animate-pulse">Saving...</span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleCopyShareLink}
-            className="bg-bg-secondary border border-border-default px-4 py-2 rounded font-medium text-text-secondary hover:text-text-primary hover:border-accent"
-          >
-            Copy Link
-          </button>
-          <button
-            onClick={addPlayerSlot}
-            className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright"
-          >
-            Add Player
-          </button>
-        </div>
-      </div>
-
       {/* Toolbar: Tabs + Context Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
@@ -319,7 +278,7 @@ export function StaticView() {
                       <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G1</span>
                       Light Party 1
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className={gridClasses}>
                       {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
                     </div>
                   </div>
@@ -332,7 +291,7 @@ export function StaticView() {
                       <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G2</span>
                       Light Party 2
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className={gridClasses}>
                       {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
                     </div>
                   </div>
@@ -344,7 +303,7 @@ export function StaticView() {
                     <h3 className="text-text-muted text-sm font-medium mb-3">
                       Unassigned Positions
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className={gridClasses}>
                       {groupedPlayers.unassigned.map((player) => renderPlayerCard(player))}
                     </div>
                   </div>
@@ -352,7 +311,7 @@ export function StaticView() {
               </div>
             ) : (
               /* Standard View */
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+              <div className={`${gridClasses} mb-8`}>
                 {sortedPlayers.map((player) => renderPlayerCard(player))}
               </div>
             )}
@@ -374,12 +333,6 @@ export function StaticView() {
       {pageMode === 'stats' && teamSummary && (
         <TeamSummary summary={teamSummary} />
       )}
-
-      <Toast
-        message="Link copied to clipboard!"
-        isVisible={showToast}
-        onHide={() => setShowToast(false)}
-      />
     </div>
   );
 }

@@ -41,6 +41,15 @@ RaidPosition = Literal["T1", "T2", "H1", "H2", "M1", "M2", "R1", "R2"]
 
 TankRoleType = Literal["MT", "OT"]
 
+TemplateRole = Literal[
+    "tank",
+    "pure-healer",
+    "barrier-healer",
+    "melee",
+    "physical-ranged",
+    "magical-ranged",
+]
+
 
 class TomeWeaponStatus(CamelModel):
     """Tome weapon tracking status"""
@@ -69,6 +78,7 @@ class PlayerCreate(CamelModel):
     role: str = Field(default="", max_length=20, description="Role")
     position: RaidPosition | None = Field(default=None, description="Raid position")
     tank_role: TankRoleType | None = Field(default=None, description="Tank role")
+    template_role: TemplateRole | None = Field(default=None, description="Expected role for slot")
     configured: bool = Field(default=False, description="Is player configured")
     sort_order: int = Field(default=0, description="Sort order")
     is_substitute: bool = Field(default=False, description="Is substitute player")
@@ -90,6 +100,7 @@ class PlayerUpdate(CamelModel):
     role: str | None = Field(default=None, max_length=20)
     position: RaidPosition | None = Field(default=None)
     tank_role: TankRoleType | None = Field(default=None)
+    template_role: TemplateRole | None = Field(default=None)
     configured: bool | None = Field(default=None)
     sort_order: int | None = Field(default=None)
     is_substitute: bool | None = Field(default=None)
@@ -111,6 +122,7 @@ class PlayerResponse(CamelModel):
     role: str
     position: RaidPosition | None = None
     tank_role: TankRoleType | None = None
+    template_role: TemplateRole | None = None
     configured: bool
     sort_order: int
     is_substitute: bool

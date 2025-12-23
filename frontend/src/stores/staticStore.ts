@@ -7,6 +7,9 @@ import type {
   PageMode,
   ViewMode,
   TomeWeaponStatus,
+  TemplateRole,
+  RaidPosition,
+  TankRole,
 } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -40,15 +43,48 @@ function createDefaultTomeWeapon(): TomeWeaponStatus {
   };
 }
 
-// Create template players for a new static (for local-only mode)
+// Get light party group (1 or 2) from raid position
+function getGroupFromPosition(position: RaidPosition): 1 | 2 {
+  return position.endsWith('1') ? 1 : 2;
+}
+
+// Swap position between light party groups (M1↔M2, T1↔T2, etc.)
+function swapPositionGroup(position: RaidPosition): RaidPosition {
+  const role = position.charAt(0); // T, H, M, or R
+  const currentNum = position.charAt(1); // 1 or 2
+  const newNum = currentNum === '1' ? '2' : '1';
+  return `${role}${newNum}` as RaidPosition;
+}
+
+// Optimal party composition for savage raiding
+// Each entry: [templateRole, position, tankRole (if applicable)]
+const OPTIMAL_PARTY_COMP: Array<{
+  templateRole: TemplateRole;
+  position: RaidPosition;
+  tankRole?: TankRole;
+}> = [
+  { templateRole: 'tank', position: 'T1', tankRole: 'MT' },
+  { templateRole: 'tank', position: 'T2', tankRole: 'OT' },
+  { templateRole: 'pure-healer', position: 'H1' },
+  { templateRole: 'barrier-healer', position: 'H2' },
+  { templateRole: 'melee', position: 'M1' },
+  { templateRole: 'melee', position: 'M2' },
+  { templateRole: 'physical-ranged', position: 'R1' },
+  { templateRole: 'magical-ranged', position: 'R2' },
+];
+
+// Create template players for a new static with optimal party composition
 export function createTemplatePlayers(staticId: string): Player[] {
   const now = new Date().toISOString();
-  return Array.from({ length: DEFAULT_SLOT_COUNT }, (_, index) => ({
+  return OPTIMAL_PARTY_COMP.map((slot, index) => ({
     id: crypto.randomUUID(),
     staticId,
     name: '',
     job: '',
     role: '', // Empty role - will be set when job is selected
+    position: slot.position,
+    tankRole: slot.tankRole,
+    templateRole: slot.templateRole,
     configured: false,
     sortOrder: index,
     isSubstitute: false,
@@ -69,9 +105,6 @@ interface StaticState {
   viewMode: ViewMode;
   editingPlayerId: string | null;
   clipboardPlayer: Player | null;
-  // Track if a newly duplicated player should start expanded
-  duplicatedPlayerId: string | null;
-  duplicatedPlayerExpanded: boolean;
   // Track pending saves
   pendingPlayerSaves: Set<string>;
 
@@ -84,8 +117,7 @@ interface StaticState {
   updatePlayer: (playerId: string, updates: Partial<Player>) => void;
   removePlayer: (playerId: string) => void;
   configurePlayer: (playerId: string, name: string, job: string, role: string) => void;
-  duplicatePlayer: (playerId: string, expanded?: boolean) => void;
-  clearDuplicatedPlayerState: () => void;
+  duplicatePlayer: (playerId: string) => void;
   reorderPlayers: (activeId: string, overId: string) => void;
   setLoading: (loading: boolean) => void;
   setSaving: (saving: boolean) => void;
@@ -154,8 +186,6 @@ export const useStaticStore = create<StaticState>((set, get) => {
     viewMode: 'expanded',
     editingPlayerId: null,
     clipboardPlayer: null,
-    duplicatedPlayerId: null,
-    duplicatedPlayerExpanded: false,
     pendingPlayerSaves: new Set(),
 
     setStatic: (staticData) => set({ currentStatic: staticData, error: null }),
@@ -353,7 +383,7 @@ export const useStaticStore = create<StaticState>((set, get) => {
       get().savePlayer(playerId);
     },
 
-    duplicatePlayer: (playerId, expanded = false) => {
+    duplicatePlayer: (playerId) => {
       const state = get();
       if (!state.currentStatic) return;
 
@@ -390,8 +420,6 @@ export const useStaticStore = create<StaticState>((set, get) => {
             }
           : null,
         editingPlayerId: tempId,
-        duplicatedPlayerId: tempId,
-        duplicatedPlayerExpanded: expanded,
       }));
 
       // Create on server
@@ -424,17 +452,12 @@ export const useStaticStore = create<StaticState>((set, get) => {
                 }
               : null,
             editingPlayerId: s.editingPlayerId === tempId ? serverPlayer.id : s.editingPlayerId,
-            duplicatedPlayerId:
-              s.duplicatedPlayerId === tempId ? serverPlayer.id : s.duplicatedPlayerId,
           }));
         })
         .catch((err) => {
           console.error('Failed to create duplicated player on server:', err);
         });
     },
-
-    clearDuplicatedPlayerState: () =>
-      set({ duplicatedPlayerId: null, duplicatedPlayerExpanded: false }),
 
     reorderPlayers: (activeId: string, overId: string) => {
       const state = get();
@@ -446,10 +469,29 @@ export const useStaticStore = create<StaticState>((set, get) => {
 
       if (activeIndex === -1 || overIndex === -1) return;
 
+      const activePlayer = players[activeIndex];
+      const overPlayer = players[overIndex];
+
+      // Check if this is a cross-group move (both players have positions)
+      let newPosition = activePlayer.position;
+      if (activePlayer.position && overPlayer.position) {
+        const activeGroup = getGroupFromPosition(activePlayer.position);
+        const overGroup = getGroupFromPosition(overPlayer.position);
+
+        // If dragging to a different group, swap the position number
+        if (activeGroup !== overGroup) {
+          newPosition = swapPositionGroup(activePlayer.position);
+        }
+      }
+
       // Create new array with reordered players
       const newPlayers = [...players];
       const [movedPlayer] = newPlayers.splice(activeIndex, 1);
-      newPlayers.splice(overIndex, 0, movedPlayer);
+      // Apply new position if it changed
+      const updatedMovedPlayer = newPosition !== activePlayer.position
+        ? { ...movedPlayer, position: newPosition }
+        : movedPlayer;
+      newPlayers.splice(overIndex, 0, updatedMovedPlayer);
 
       // Update sortOrder for all players based on new positions
       const updatedPlayers = newPlayers.map((player, index) => ({

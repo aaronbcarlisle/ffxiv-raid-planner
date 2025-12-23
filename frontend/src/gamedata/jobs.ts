@@ -9,6 +9,17 @@ import jobsData from './jobs.json';
 
 export type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 
+// Healer sub-type for party composition
+export type HealerType = 'pure' | 'barrier';
+
+// Healer job to type mapping
+export const HEALER_TYPES: Record<string, HealerType> = {
+  WHM: 'pure',
+  AST: 'pure',
+  SCH: 'barrier',
+  SGE: 'barrier',
+};
+
 export interface JobInfo {
   id: number;
   abbreviation: string;
@@ -184,4 +195,34 @@ export function groupJobsByRole(): Record<Role, JobInfo[]> {
     ranged: getJobsByRole('ranged'),
     caster: getJobsByRole('caster'),
   };
+}
+
+/**
+ * Get healer type (pure or barrier) for a healer job
+ */
+export function getHealerType(abbreviation: string): HealerType | undefined {
+  return HEALER_TYPES[abbreviation];
+}
+
+/**
+ * Get jobs for a template role (used for role-based player slot selection)
+ * Template roles are more specific than base roles (e.g., pure-healer vs barrier-healer)
+ */
+export function getJobsForTemplateRole(templateRole: string): JobInfo[] {
+  switch (templateRole) {
+    case 'tank':
+      return getJobsByRole('tank');
+    case 'pure-healer':
+      return getJobsByRole('healer').filter((job) => HEALER_TYPES[job.abbreviation] === 'pure');
+    case 'barrier-healer':
+      return getJobsByRole('healer').filter((job) => HEALER_TYPES[job.abbreviation] === 'barrier');
+    case 'melee':
+      return getJobsByRole('melee');
+    case 'physical-ranged':
+      return getJobsByRole('ranged');
+    case 'magical-ranged':
+      return getJobsByRole('caster');
+    default:
+      return [];
+  }
 }

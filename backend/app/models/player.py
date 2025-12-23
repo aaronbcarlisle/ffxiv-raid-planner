@@ -26,6 +26,7 @@ class Player(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     position: Mapped[str | None] = mapped_column(String(5), nullable=True)  # T1, H2, M1, etc.
     tank_role: Mapped[str | None] = mapped_column(String(5), nullable=True)  # MT, OT
+    template_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Expected role for slot
     configured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_substitute: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

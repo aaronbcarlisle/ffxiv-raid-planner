@@ -14,7 +14,9 @@ export {
   type Job,
   type Role,
   type JobInfo,
+  type HealerType,
   RAID_JOBS,
+  HEALER_TYPES,
   getRaidJobs,
   getJobsByRole,
   getJobInfo,
@@ -25,6 +27,7 @@ export {
   getRoleColor,
   sortJobsByRole,
   groupJobsByRole,
+  getJobsForTemplateRole,
   JOB_DISPLAY_NAMES,
   ROLE_CONFIG,
 } from './jobs';
