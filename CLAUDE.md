@@ -26,7 +26,8 @@ The application now has a FastAPI backend with SQLite database for local develop
 - Team summary with materials needed, books, completion %
 - Responsive UI with dark FFXIV theme
 - **Tab-based navigation** (Party/Loot/Stats) with FFXIV icons
-- **Responsive 3-column grid layout** (1/2/3 columns by breakpoint)
+- **Responsive 4-column grid layout** (1→2→3→4 columns at breakpoints)
+- **Wide container layout** (120rem / 1920px max-width for data-tool style)
 - **Global view mode toggle** (▤/☰) + individual card expansion
 - **Player card needs footer** (Raid/Tome/Upgrades/Weeks)
 - **Raid position system** (T1/T2/H1/H2/M1/M2/R1/R2) with role-based coloring
@@ -39,6 +40,10 @@ The application now has a FastAPI backend with SQLite database for local develop
 - **Sort presets** - Standard, DPS-First, Healer-First, and Custom drag-and-drop ordering
 - **Drag-and-drop reordering** - Custom sort mode with @dnd-kit for manual card ordering
 - **Group view (G1/G2)** - Split players by light party based on raid positions
+- **Cross-group drag position swap** - Dragging between G1/G2 auto-updates position (M1↔M2, etc.)
+- **Role-based player slot templates** - Empty slots show template role with position assignment
+- **Job picker role sorting** - Current role appears first when changing jobs
+- **Header consolidation** - Centered static title, Add Player button in header
 - **FastAPI backend** with SQLite (local dev) / PostgreSQL (production-ready)
 - **Data persistence** - all changes auto-save with debounced updates
 - **Share code functionality** - 6-character alphanumeric codes for sharing
@@ -168,17 +173,26 @@ globalViewMode: 'compact' | 'expanded'  // Store
 localExpanded: boolean | null           // Per-card (null = follow global)
 ```
 
-### 3. Responsive 3-Column Grid
+### 3. Responsive 4-Column Grid
 
-| Breakpoint | Width | Columns |
-|------------|-------|---------|
-| Default | <768px | 1 |
-| md | ≥768px | 2 |
-| lg | ≥1024px | 3 |
+Wide container (120rem / 1920px) with responsive columns matching FFXIV's party structure:
+
+| Breakpoint | Width | Columns | Use Case |
+|------------|-------|---------|----------|
+| Default | <640px | 1 | Mobile |
+| sm | ≥640px | 2 | Tablet portrait |
+| lg | ≥1024px | 3 | Laptop |
+| 3xl | ≥1400px | 4 | Desktop (full party visible) |
 
 ```typescript
-<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+// Custom breakpoint defined in index.css
+--breakpoint-3xl: 1400px;
+
+// Grid classes in StaticView.tsx
+<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl">
 ```
+
+**Design rationale:** Data tools (like spreadsheets) benefit from wider layouts than content sites. 4 columns at 1400px+ allows all 8 party members to be visible in 2 rows without scrolling.
 
 ### 4. Player Card Needs Footer
 
@@ -304,9 +318,13 @@ interface Player {
   name: string;
   job: string;           // 'DRG', 'WHM', etc.
   role: Role;            // Derived from job
+  position?: RaidPosition;  // T1, H2, M1, etc.
+  tankRole?: TankRole;      // MT or OT (tanks only)
+  templateRole?: TemplateRole;  // Template slot role (Tank, Healer, etc.)
   configured: boolean;   // false for empty template slots
+  sortOrder: number;     // Display order (for drag-and-drop)
   gear: GearSlotStatus[];
-  tomeWeapon: TomeWeaponStatus;  // NEW: Interim weapon tracking
+  tomeWeapon: TomeWeaponStatus;
   isSubstitute: boolean;
   notes?: string;
   bisLink?: string;
@@ -335,6 +353,10 @@ interface StaticSettings {
 type PageMode = 'players' | 'loot' | 'stats';
 type ViewMode = 'compact' | 'expanded';
 type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
+type TankRole = 'MT' | 'OT';
+type TemplateRole = 'Tank' | 'Healer' | 'Melee' | 'Ranged' | 'Caster';
+type SortPreset = 'standard' | 'dps-first' | 'healer-first' | 'custom';
 type GearSlot = 'weapon' | 'head' | 'body' | 'hands' | 'legs' | 'feet' |
                 'earring' | 'necklace' | 'bracelet' | 'ring1' | 'ring2';
 ```
@@ -376,12 +398,16 @@ function calculatePriorityScore(player): number {
 ## Component Architecture
 
 ### Player Components
-- `PlayerCard.tsx` - Expandable card with compact/full views, context menu
+- `PlayerCard.tsx` - Expandable card with compact/full views, context menu, job picker
+- `SortablePlayerCard.tsx` - Drag-and-drop wrapper for PlayerCard
 - `InlinePlayerEdit.tsx` - Name/job form for configuring slots
-- `EmptySlotCard.tsx` - Placeholder for unconfigured template slots
+- `EmptySlotCard.tsx` - Role-based placeholder for unconfigured template slots
+- `RoleJobSelector.tsx` - Job selection with template role filtering and "Other jobs" picker
 - `GearTable.tsx` - 11-slot gear editor with source/have/augmented
 - `WeaponSlotRow.tsx` - Special weapon row with tome weapon sub-row
 - `NeedsFooter.tsx` - 4-stat footer (raid/tome/upgrades/weeks)
+- `PositionSelector.tsx` - Raid position (T1/H2/M1/etc.) selector
+- `TankRoleSelector.tsx` - MT/OT designation selector
 
 ### Loot Components
 - `LootPriorityPanel.tsx` - Priority lists for floor drops
@@ -395,9 +421,14 @@ function calculatePriorityScore(player): number {
 - `StatsView.tsx` - Full-page stats view
 
 ### UI Components
-- `TabNavigation.tsx` - Page-level tab buttons
+- `TabNavigation.tsx` - Page-level tab buttons with FFXIV icons
 - `ViewModeToggle.tsx` - ▤/☰ toggle component
-- `ContextMenu.tsx` - Right-click menu component
+- `SortModeSelector.tsx` - Sort preset dropdown (Standard/DPS-First/etc.)
+- `GroupViewToggle.tsx` - G1/G2 group view toggle
+- `ContextMenu.tsx` - Right-click menu component with FFXIV icons
+- `Modal.tsx` - Confirmation dialogs
+- `Toast.tsx` - Temporary notification messages
+- `JobIcon.tsx` - XIVAPI job icons with fallback
 
 ---
 
@@ -441,6 +472,30 @@ function calculateTomeWeeks(player: Player): number {
 ### Book Edition IV Conversion
 - Floor 4 books can convert 1:1 to any lower edition
 - This provides flexibility for players to accelerate specific slots
+
+### Cross-Group Drag Position Swap
+When dragging players between light party groups (G1/G2), the position automatically updates:
+
+```typescript
+// Helper functions in staticStore.ts
+function getGroupFromPosition(position: RaidPosition): 1 | 2 {
+  return position.endsWith('1') ? 1 : 2;
+}
+
+function swapPositionGroup(position: RaidPosition): RaidPosition {
+  const role = position.charAt(0); // T, H, M, or R
+  const currentNum = position.charAt(1);
+  const newNum = currentNum === '1' ? '2' : '1';
+  return `${role}${newNum}` as RaidPosition;
+}
+
+// In reorderPlayers: detect cross-group move and swap position
+if (activeGroup !== overGroup) {
+  newPosition = swapPositionGroup(activePlayer.position);
+}
+```
+
+This allows fluid party composition changes without manual position reassignment.
 
 ### Layout Shift Prevention Pattern
 When swapping contextual controls (e.g., floor selector in Loot tab vs view toggle in Players tab), use this pattern to prevent layout shift:
@@ -491,9 +546,11 @@ Key principles:
 
 1. **Don't use sticky/fixed panels** - Use tab navigation instead
 2. **Don't require modals for quick edits** - Use inline editing
-3. **Don't limit grid to 2 columns** - Support up to 4 on wide screens
-4. **Don't mix display order and priority order** - They're separate concepts
-5. **Don't track weapon as either raid OR tome** - BiS is always raid; tome is interim
+3. **Don't use narrow containers** - Use wide layout (120rem) for data tools
+4. **Don't limit grid columns** - Support 4 columns at 1400px+ for full party view
+5. **Don't mix display order and priority order** - They're separate concepts
+6. **Don't track weapon as either raid OR tome** - BiS is always raid; tome is interim
+7. **Don't break Tailwind arbitrary values** - Use custom CSS for complex breakpoints
 
 ---
 

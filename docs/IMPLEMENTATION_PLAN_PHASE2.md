@@ -300,50 +300,52 @@ export function StaticView() {
 
 ---
 
-## 2. Responsive 4-Column Grid
+## 2. Responsive 4-Column Grid (Implemented)
 
-### Current State
-- Grid: `md:grid-cols-2` (max 2 columns)
-- Wide monitors show 2 large cards with wasted space
+### Final Implementation
 
-### Target State
-| Breakpoint | Width | Columns |
-|------------|-------|---------|
-| Default | <768px | 1 |
-| md | ≥768px | 2 |
-| lg | ≥1024px | 3 |
-| xl | ≥1280px | 4 |
+Wide container (120rem / 1920px) with custom breakpoint at 1400px:
+
+| Breakpoint | Width | Columns | Use Case |
+|------------|-------|---------|----------|
+| Default | <640px | 1 | Mobile |
+| sm | ≥640px | 2 | Tablet portrait |
+| lg | ≥1024px | 3 | Laptop |
+| 3xl | ≥1400px | 4 | Desktop (full party) |
 
 ### Implementation
 
-#### 2.1 Update Grid Classes
+#### 2.1 Wide Container
 
-**File:** `src/pages/StaticView.tsx` (or new PlayersGrid component)
-
-Change:
+**File:** `src/components/layout/Layout.tsx`
 ```typescript
-// OLD
-<div className="grid gap-4 md:grid-cols-2 mb-8">
-
-// NEW
-<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+<main className="max-w-[120rem] mx-auto px-4 py-6">
 ```
 
-#### 2.2 Adjust Card Min-Width
+#### 2.2 Custom Breakpoint
 
-Ensure cards don't get too narrow. Add to PlayerCard:
-
+**File:** `src/index.css`
 ```css
-/* In Tailwind config or component styles */
-.player-card {
-  min-width: 280px;
+@theme {
+  --breakpoint-3xl: 1400px;
+}
+
+/* Custom 4-column breakpoint for wide screens */
+@media (min-width: 1400px) {
+  .grid-4xl {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 ```
 
-Or use grid with auto-fit:
+#### 2.3 Grid Classes
+
+**File:** `src/pages/StaticView.tsx`
 ```typescript
-<div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 ```
+
+**Note:** Tailwind v4 arbitrary breakpoint syntax (`min-[1400px]:`) had issues, so we used a custom CSS media query with `.grid-4xl` class instead.
 
 ---
 
@@ -990,9 +992,11 @@ const handleDuplicate = () => {
 ## Testing Checklist
 
 ### Grid Layout
+- [x] 4-column grid at 3xl breakpoint (≥1400px)
 - [x] 3-column grid at lg breakpoint (≥1024px)
-- [x] 2-column grid at md breakpoint (≥768px)
-- [x] 1-column grid on mobile (<768px)
+- [x] 2-column grid at sm breakpoint (≥640px)
+- [x] 1-column grid on mobile (<640px)
+- [x] Wide container (120rem / 1920px max-width)
 
 ### View Mode Toggle
 - [x] Global ▤ toggle switches all cards to compact
@@ -1007,6 +1011,8 @@ const handleDuplicate = () => {
 - [x] Tome Wks calculation is accurate
 - [x] Raid position selector with role-based coloring
 - [x] Tank role badges (MT/OT) for tanks
+- [x] Job picker shows current role first
+- [x] Clicking job icon opens job picker
 
 ### Tome Weapon
 - [x] "+Tome" toggle shows weapon sub-row
@@ -1020,13 +1026,33 @@ const handleDuplicate = () => {
 - [x] Copy stores player data
 - [x] Paste overwrites target card (disabled when no clipboard)
 - [x] Duplicate creates new card
+- [x] Mark as Sub toggles substitute status
 - [x] Remove shows confirmation modal
 
 ### Tab Navigation
 - [x] Party tab shows player grid
 - [x] Loot tab shows priority cards
 - [x] Stats tab shows team summary
-- [x] Floor selector visible in all tabs
+- [x] Floor selector visible in Loot tab only
 - [x] View mode toggle only visible on Party tab
+- [x] Sort mode selector only visible on Party tab
+- [x] Group view toggle only visible on Party tab
 - [x] FFXIV-style icons with transparent backgrounds
 - [x] No layout shift when switching tabs
+
+### Drag and Drop
+- [x] Cards reorderable via drag-and-drop
+- [x] Auto-switches to "Custom" sort mode on drag
+- [x] Cross-group drag swaps position (M1↔M2, etc.)
+- [x] Drag handle/cursor feedback
+
+### Header
+- [x] Centered static title with tier info
+- [x] Share button copies link
+- [x] Add Player button creates new slot
+
+### Empty Slots
+- [x] Role-based styling (color matches template role)
+- [x] Position badge displayed
+- [x] Animated cursor hint on hover
+- [x] Remove button for unconfigured slots

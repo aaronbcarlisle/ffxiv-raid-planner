@@ -28,9 +28,9 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| 1 | Core MVP (Frontend) | Complete |
-| 2 | UX Enhancements | **In Progress** |
-| 3 | Backend + Persistence | Not Started |
+| 1 | Core MVP (Frontend) | **Complete** |
+| 2 | UX Enhancements | **Complete** |
+| 3 | Backend + Persistence | **Complete** |
 | 4 | BiS Integration | Not Started |
 | 5 | Lodestone Auto-Sync | Not Started |
 | 6 | Loot Distribution + Real-Time | Not Started |
@@ -90,53 +90,80 @@ A free, web-based raid planning tool for FFXIV static groups. Replaces Google Sh
 
 ---
 
-## Phase 2: UX Enhancements (In Progress)
+## Phase 2: UX Enhancements (Complete)
 
 See `docs/IMPLEMENTATION_PLAN_PHASE2.md` for detailed implementation specs.
 
 ### Features
-- [ ] Tab-based navigation (Players / Loot / Stats)
-- [ ] Responsive 4-column grid (xl:4, lg:3, md:2, sm:1)
-- [ ] Global view mode toggle (▤ compact / ☰ expanded)
-- [ ] Individual card expand/collapse (hybrid with global)
-- [ ] Player card needs footer (Raid Need / Tome Need / Upgrades / Tome Wks)
-- [ ] Double-click name to edit
-- [ ] Tome weapon sub-row tracking (interim upgrade during prog)
-- [ ] Right-click context menu (Copy / Paste / Duplicate player)
+- [x] Tab-based navigation (Players / Loot / Stats)
+- [x] Responsive 4-column grid (1→2→3→4 columns at breakpoints)
+- [x] Global view mode toggle (▤ compact / ☰ expanded)
+- [x] Individual card expand/collapse (hybrid with global)
+- [x] Player card needs footer (Raid Need / Tome Need / Upgrades / Tome Wks)
+- [x] Double-click name to edit
+- [x] Tome weapon sub-row tracking (interim upgrade during prog)
+- [x] Right-click context menu (Copy / Paste / Duplicate / Mark as Sub / Remove)
+- [x] Raid positions (T1/T2/H1/H2/M1/M2/R1/R2) with role coloring
+- [x] Tank role designation (MT/OT badges)
+- [x] Sort presets and drag-and-drop reordering
+- [x] Group view (G1/G2) by light party
+- [x] Cross-group drag position swap
+- [x] Wide container layout (120rem / 1920px)
+- [x] Header consolidation (centered title, Add Player in header)
+- [x] Role-based player slot templates
+- [x] Job picker role sorting
 
-### Components to Create
-- [ ] `TabNavigation.tsx` - Page-level tabs
-- [ ] `ViewModeToggle.tsx` - ▤/☰ toggle
-- [ ] `LootModeView.tsx` - Full-screen loot distribution
-- [ ] `LootItemCard.tsx` - Item with priority list
-- [ ] `StatsView.tsx` - Full-page team stats
-- [ ] `NeedsFooter.tsx` - 4-stat footer
-- [ ] `WeaponSlotRow.tsx` - Weapon with tome sub-row
-- [ ] `ContextMenu.tsx` - Right-click menu
+### Components Created
+- [x] `TabNavigation.tsx` - Page-level tabs with FFXIV icons
+- [x] `ViewModeToggle.tsx` - ▤/☰ toggle
+- [x] `LootModeView.tsx` - Full-screen loot distribution
+- [x] `LootItemCard.tsx` - Item with priority list
+- [x] `StatsView.tsx` - Full-page team stats
+- [x] `NeedsFooter.tsx` - 4-stat footer
+- [x] `WeaponSlotRow.tsx` - Weapon with tome sub-row
+- [x] `ContextMenu.tsx` - Right-click menu with FFXIV icons
+- [x] `SortModeSelector.tsx` - Sort preset dropdown
+- [x] `GroupViewToggle.tsx` - G1/G2 toggle
+- [x] `RoleJobSelector.tsx` - Job selection with template role filtering
+- [x] `PositionSelector.tsx` - Raid position picker
+- [x] `TankRoleSelector.tsx` - MT/OT designation
+- [x] `SortablePlayerCard.tsx` - Drag-and-drop wrapper
 
-### Components to Modify
-- [ ] `StaticView.tsx` - Tab navigation, 4-column grid
-- [ ] `PlayerCard.tsx` - Global view mode, context menu, name edit
-- [ ] `GearTable.tsx` - Weapon sub-row integration
-- [ ] `staticStore.ts` - pageMode, clipboardPlayer, tomeWeapon state
-- [ ] `types/index.ts` - TomeWeaponStatus interface
+### Components Modified
+- [x] `StaticView.tsx` - Tab navigation, 4-column grid, drag-and-drop
+- [x] `PlayerCard.tsx` - Global view mode, context menu, name edit, job picker
+- [x] `GearTable.tsx` - Weapon sub-row integration
+- [x] `EmptySlotCard.tsx` - Role-based styling, template roles
+- [x] `Header.tsx` - Centered title, Add Player button
+- [x] `Layout.tsx` - Wide container (120rem)
+- [x] `staticStore.ts` - pageMode, clipboardPlayer, tomeWeapon, reorderPlayers
+- [x] `types/index.ts` - TomeWeaponStatus, RaidPosition, TemplateRole, etc.
 
 ---
 
-## Phase 3: Backend + Persistence
+## Phase 3: Backend + Persistence (Complete)
 
-Moved from Phase 1 to allow UX iteration first.
+FastAPI backend with SQLite (local dev) and PostgreSQL support (production-ready).
 
 ### Setup
-- [ ] FastAPI project structure
-- [ ] PostgreSQL with Supabase
-- [ ] Environment configuration
-- [ ] CORS setup
+- [x] FastAPI project structure
+- [x] SQLAlchemy async setup with SQLite/PostgreSQL
+- [x] Environment configuration (.env)
+- [x] CORS setup for frontend
 
 ### Database
-- [ ] statics table
-- [ ] players table
-- [ ] gear_slots table
+- [x] statics table
+- [x] players table (gear stored as JSON)
+- [x] Share code generation (6-character alphanumeric)
+
+### API Endpoints
+- [x] POST `/api/statics` - Create static
+- [x] GET `/api/statics/{shareCode}` - Get by share code
+- [x] PUT `/api/statics/{id}` - Update static
+- [x] DELETE `/api/statics/{id}` - Delete static
+- [x] POST `/api/statics/{id}/players` - Add player
+- [x] PUT `/api/statics/{id}/players/{playerId}` - Update player
+- [x] DELETE `/api/statics/{id}/players/{playerId}` - Remove player
 
 ### Deployment
 - [ ] Deploy frontend to Vercel
