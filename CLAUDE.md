@@ -12,11 +12,11 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Backend: Not Started**
+**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Phase 3 Backend: Complete**
 
-The frontend is a fully functional local-only prototype. All UI components work, but data is not persisted to a backend - it resets on page refresh.
+The application now has a FastAPI backend with SQLite database for local development. Data persists across page refreshes, and share codes work for sharing statics.
 
-### What Works (Phase 1 + Phase 2)
+### What Works (Phase 1 + Phase 2 + Phase 3)
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
 - Gear tracking with BiS source (Raid/Tome) and Have/Augmented states
@@ -34,14 +34,16 @@ The frontend is a fully functional local-only prototype. All UI components work,
 - **Double-click name edit** on player cards
 - **Right-click context menu** (Copy/Paste/Duplicate/Remove) with FFXIV icons
 - **Tome weapon tracking** (interim upgrade during prog with calculation support)
+- **FastAPI backend** with SQLite (local dev) / PostgreSQL (production-ready)
+- **Data persistence** - all changes auto-save with debounced updates
+- **Share code functionality** - 6-character alphanumeric codes for sharing
+- **RESTful API** with full CRUD for statics and players
 
 ### What's Missing
-- Backend API (FastAPI + PostgreSQL)
-- Data persistence
-- Share code functionality
 - Authentication
 - Lodestone sync
 - Real-time collaboration
+- Production deployment
 
 ---
 
@@ -51,7 +53,7 @@ The frontend is a fully functional local-only prototype. All UI components work,
 |-------|------------|
 | Frontend | React 19 + TypeScript + Tailwind CSS 4 + Vite 7 |
 | State | Zustand 5 |
-| Backend | FastAPI (Python) + PostgreSQL (Supabase) - *not implemented* |
+| Backend | FastAPI (Python) + SQLAlchemy + SQLite (dev) / PostgreSQL (prod) |
 | Hosting | Vercel (frontend) + Railway (backend) - *not deployed* |
 
 ---
@@ -59,10 +61,21 @@ The frontend is a fully functional local-only prototype. All UI components work,
 ## Quick Start
 
 ```bash
+# Terminal 1: Start Backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2: Start Frontend
 cd frontend
 pnpm install
 pnpm dev
 ```
+
+**API:** http://localhost:8000
+**Frontend:** http://localhost:5173
 
 ---
 
@@ -70,16 +83,29 @@ pnpm dev
 
 ```
 ffxiv-raid-planner/
+├── backend/                     # FastAPI Backend
+│   ├── app/
+│   │   ├── main.py              # FastAPI app entry point
+│   │   ├── config.py            # Environment configuration
+│   │   ├── database.py          # SQLAlchemy async setup
+│   │   ├── models/              # SQLAlchemy models
+│   │   │   ├── static.py        # Static model
+│   │   │   └── player.py        # Player model
+│   │   ├── schemas/             # Pydantic schemas
+│   │   │   ├── static.py        # Static request/response schemas
+│   │   │   └── player.py        # Player request/response schemas
+│   │   ├── routers/             # API route handlers
+│   │   │   ├── statics.py       # Static CRUD endpoints
+│   │   │   └── players.py       # Player CRUD endpoints
+│   │   └── services/
+│   │       └── share_code.py    # Share code generation
+│   ├── data/                    # SQLite database (auto-created)
+│   ├── requirements.txt
+│   ├── pyproject.toml
+│   └── .env                     # Environment variables
 ├── frontend/
 │   ├── public/
 │   │   └── icons/               # FFXIV-style UI icons (transparent bg)
-│   │       ├── party-transparent-bg.png
-│   │       ├── loot-transparent-bg.png
-│   │       ├── stats-transparent-bg.png
-│   │       ├── copy-transparent-bg.png
-│   │       ├── paste-transparent-bg.png
-│   │       ├── duplicate-transparent-bg.png
-│   │       └── remove-transparent-bg.png
 │   └── src/
 │       ├── components/
 │       │   ├── player/          # Player cards, inline edit, gear table
@@ -88,6 +114,8 @@ ffxiv-raid-planner/
 │       │   ├── layout/          # Header, layout wrapper
 │       │   └── ui/              # Reusable UI components
 │       ├── pages/               # Home, CreateStatic, StaticView
+│       ├── services/            # API client
+│       │   └── api.ts           # Backend API functions
 │       ├── stores/              # Zustand state (staticStore)
 │       ├── gamedata/            # Jobs, costs, loot tables, raid tiers
 │       ├── utils/               # Calculations, priority logic
@@ -448,8 +476,8 @@ function calculateTomeWeeks(player: Player): number {
 | Phase | Status | Features |
 |-------|--------|----------|
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
-| 2 | **Complete** | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
-| 3 | Planned | Backend API, data persistence |
+| 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
+| 3 | **Complete** | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
 | 4 | Planned | BiS import (Etro, XIVGear), Balance presets |
 | 5 | Planned | Lodestone auto-sync |
 | 6 | Planned | FFLogs integration |
@@ -541,18 +569,38 @@ Icon constants defined in `src/types/index.ts`:
 ## Commands
 
 ```bash
-# Development
+# Backend Development
+cd backend
+source venv/bin/activate
+uvicorn app.main:app --reload --port 8000
+
+# Frontend Development
 cd frontend && pnpm dev
 
 # Build
-pnpm build
+cd frontend && pnpm build
 
 # Type check
-pnpm tsc --noEmit
+cd frontend && pnpm tsc --noEmit
 
 # Lint
-pnpm lint
+cd frontend && pnpm lint
 
 # Format
-pnpm format
+cd frontend && pnpm format
 ```
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/api/statics` | Create static (returns with shareCode) |
+| GET | `/api/statics/{shareCode}` | Get static by share code |
+| PUT | `/api/statics/{id}` | Update static |
+| DELETE | `/api/statics/{id}` | Delete static |
+| POST | `/api/statics/{id}/players` | Add player |
+| PUT | `/api/statics/{id}/players/{playerId}` | Update player |
+| DELETE | `/api/statics/{id}/players/{playerId}` | Remove player |

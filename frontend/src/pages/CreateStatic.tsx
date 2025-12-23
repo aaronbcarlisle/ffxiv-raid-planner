@@ -1,30 +1,33 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentTier, getTierOptions } from '../gamedata';
+import { useStaticStore } from '../stores/staticStore';
 
 export function CreateStatic() {
   const navigate = useNavigate();
   const currentTier = getCurrentTier();
   const tierOptions = getTierOptions();
+  const { createNewStatic, error } = useStaticStore();
 
   const [name, setName] = useState('');
   const [tierId, setTierId] = useState(currentTier.id);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // TODO: API call to create static
-    // For now, generate a mock share code
-    const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    navigate(`/static/${shareCode}`);
+    try {
+      const staticData = await createNewStatic(name.trim(), tierId);
+      navigate(`/static/${staticData.shareCode}`);
+    } catch (err) {
+      setSubmitError(error || 'Failed to create static. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -64,6 +67,10 @@ export function CreateStatic() {
             ))}
           </select>
         </div>
+
+        {submitError && (
+          <div className="text-status-error text-sm">{submitError}</div>
+        )}
 
         <button
           type="submit"

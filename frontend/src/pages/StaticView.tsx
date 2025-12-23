@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useStaticStore, createTemplatePlayers } from '../stores/staticStore';
-import { getCurrentTier, getTierById } from '../gamedata';
+import { useStaticStore } from '../stores/staticStore';
+import { getTierById } from '../gamedata';
 import { PlayerCard } from '../components/player/PlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
@@ -16,6 +16,7 @@ export function StaticView() {
   const {
     currentStatic,
     isLoading,
+    isSaving,
     error,
     selectedFloor,
     pageMode,
@@ -24,8 +25,7 @@ export function StaticView() {
     clipboardPlayer,
     duplicatedPlayerId,
     duplicatedPlayerExpanded,
-    setStatic,
-    setLoading,
+    fetchStatic,
     updatePlayer,
     removePlayer,
     configurePlayer,
@@ -41,33 +41,8 @@ export function StaticView() {
 
   useEffect(() => {
     if (!shareCode) return;
-
-    // TODO: Fetch static from API
-    // For now, set mock data with template players
-    setLoading(true);
-
-    const tier = getCurrentTier();
-    const staticId = '1';
-    setTimeout(() => {
-      setStatic({
-        id: staticId,
-        name: 'Demo Static',
-        tier: tier.id,
-        shareCode: shareCode,
-        settings: {
-          displayOrder: ['tank', 'healer', 'melee', 'ranged', 'caster'],
-          lootPriority: ['melee', 'ranged', 'caster', 'tank', 'healer'],
-          timezone: 'America/New_York',
-          autoSync: false,
-          syncFrequency: 'weekly',
-        },
-        players: createTemplatePlayers(staticId),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      setLoading(false);
-    }, 300);
-  }, [shareCode, setStatic, setLoading]);
+    fetchStatic(shareCode);
+  }, [shareCode, fetchStatic]);
 
   // Calculate sorted players and team summary
   const sortedPlayers = useMemo(() => {
@@ -139,7 +114,12 @@ export function StaticView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="font-display text-3xl text-accent">{currentStatic.name}</h1>
-          <p className="text-text-secondary">{tierInfo?.name ?? currentStatic.tier}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-text-secondary">{tierInfo?.name ?? currentStatic.tier}</p>
+            {isSaving && (
+              <span className="text-text-muted text-sm animate-pulse">Saving...</span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button

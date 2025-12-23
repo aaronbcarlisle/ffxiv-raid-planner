@@ -12,9 +12,13 @@ import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 import { DEFAULT_DISPLAY_ORDER, DEFAULT_LOOT_PRIORITY } from '../utils/constants';
 import { getDefaultPositionForRole } from '../utils/priority';
+import * as api from '../services/api';
 
 // Number of default empty slots for new statics
 const DEFAULT_SLOT_COUNT = 8;
+
+// Debounce delay for auto-save (ms)
+const SAVE_DEBOUNCE_DELAY = 1000;
 
 // Create default gear with all slots empty
 function createDefaultGear(): GearSlotStatus[] {
@@ -35,7 +39,7 @@ function createDefaultTomeWeapon(): TomeWeaponStatus {
   };
 }
 
-// Create template players for a new static
+// Create template players for a new static (for local-only mode)
 export function createTemplatePlayers(staticId: string): Player[] {
   const now = new Date().toISOString();
   return Array.from({ length: DEFAULT_SLOT_COUNT }, (_, index) => ({
@@ -57,6 +61,7 @@ export function createTemplatePlayers(staticId: string): Player[] {
 interface StaticState {
   currentStatic: Static | null;
   isLoading: boolean;
+  isSaving: boolean;
   error: string | null;
   selectedFloor: FloorNumber;
   pageMode: PageMode;
@@ -66,6 +71,8 @@ interface StaticState {
   // Track if a newly duplicated player should start expanded
   duplicatedPlayerId: string | null;
   duplicatedPlayerExpanded: boolean;
+  // Track pending saves
+  pendingPlayerSaves: Set<string>;
 
   // Actions
   setStatic: (staticData: Static) => void;
@@ -79,62 +86,113 @@ interface StaticState {
   duplicatePlayer: (playerId: string, expanded?: boolean) => void;
   clearDuplicatedPlayerState: () => void;
   setLoading: (loading: boolean) => void;
+  setSaving: (saving: boolean) => void;
   setError: (error: string | null) => void;
   setSelectedFloor: (floor: FloorNumber) => void;
   setPageMode: (mode: PageMode) => void;
   setViewMode: (mode: ViewMode) => void;
   setEditingPlayerId: (playerId: string | null) => void;
   setClipboardPlayer: (player: Player | null) => void;
+
+  // API Actions
+  fetchStatic: (shareCode: string) => Promise<void>;
+  createNewStatic: (name: string, tier: string) => Promise<Static>;
+  savePlayer: (playerId: string) => Promise<void>;
+  savePlayerDebounced: (playerId: string) => void;
 }
 
-export const useStaticStore = create<StaticState>((set) => ({
-  currentStatic: null,
-  isLoading: false,
-  error: null,
-  selectedFloor: 1,
-  pageMode: 'players',
-  viewMode: 'expanded',
-  editingPlayerId: null,
-  clipboardPlayer: null,
-  duplicatedPlayerId: null,
-  duplicatedPlayerExpanded: false,
+// Debounced save function (created once per store instance)
+let debouncedSavePlayer: api.DebouncedFn<(state: StaticState, playerId: string) => Promise<void>> | null = null;
 
-  setStatic: (staticData) => set({ currentStatic: staticData, error: null }),
+export const useStaticStore = create<StaticState>((set, get) => {
+  // Initialize debounced save function
+  const performSave = async (state: StaticState, playerId: string) => {
+    const { currentStatic, pendingPlayerSaves } = state;
+    if (!currentStatic) return;
 
-  clearStatic: () => set({ currentStatic: null, editingPlayerId: null }),
+    const player = currentStatic.players.find((p) => p.id === playerId);
+    if (!player) return;
 
-  updateSettings: (settings) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          settings: { ...state.currentStatic.settings, ...settings },
-        },
-      };
-    }),
+    try {
+      set({ isSaving: true });
+      await api.updatePlayer(currentStatic.id, playerId, {
+        name: player.name,
+        job: player.job,
+        role: player.role,
+        position: player.position,
+        tankRole: player.tankRole,
+        configured: player.configured,
+        sortOrder: player.sortOrder,
+        isSubstitute: player.isSubstitute,
+        notes: player.notes,
+        lodestoneId: player.lodestoneId,
+        bisLink: player.bisLink,
+        fflogsId: player.fflogsId,
+        gear: player.gear,
+        tomeWeapon: player.tomeWeapon,
+      });
+      // Remove from pending saves
+      pendingPlayerSaves.delete(playerId);
+      set({ pendingPlayerSaves: new Set(pendingPlayerSaves), isSaving: false });
+    } catch (error) {
+      console.error('Failed to save player:', error);
+      set({ isSaving: false });
+    }
+  };
 
-  addPlayer: (player) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: [...state.currentStatic.players, player],
-        },
-      };
-    }),
+  debouncedSavePlayer = api.debounce(performSave, SAVE_DEBOUNCE_DELAY);
 
-  addPlayerSlot: () =>
-    set((state) => {
-      if (!state.currentStatic) return state;
+  return {
+    currentStatic: null,
+    isLoading: false,
+    isSaving: false,
+    error: null,
+    selectedFloor: 1,
+    pageMode: 'players',
+    viewMode: 'expanded',
+    editingPlayerId: null,
+    clipboardPlayer: null,
+    duplicatedPlayerId: null,
+    duplicatedPlayerExpanded: false,
+    pendingPlayerSaves: new Set(),
+
+    setStatic: (staticData) => set({ currentStatic: staticData, error: null }),
+
+    clearStatic: () => set({ currentStatic: null, editingPlayerId: null }),
+
+    updateSettings: (settings) =>
+      set((state) => {
+        if (!state.currentStatic) return state;
+        return {
+          currentStatic: {
+            ...state.currentStatic,
+            settings: { ...state.currentStatic.settings, ...settings },
+          },
+        };
+      }),
+
+    addPlayer: (player) =>
+      set((state) => {
+        if (!state.currentStatic) return state;
+        return {
+          currentStatic: {
+            ...state.currentStatic,
+            players: [...state.currentStatic.players, player],
+          },
+        };
+      }),
+
+    addPlayerSlot: () => {
+      const state = get();
+      if (!state.currentStatic) return;
+
       const now = new Date().toISOString();
       const newPlayer: Player = {
         id: crypto.randomUUID(),
         staticId: state.currentStatic.id,
         name: '',
         job: '',
-        role: '', // Generic slot - role determined when job is selected
+        role: '',
         configured: false,
         sortOrder: state.currentStatic.players.length,
         isSubstitute: false,
@@ -143,59 +201,109 @@ export const useStaticStore = create<StaticState>((set) => ({
         createdAt: now,
         updatedAt: now,
       };
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: [...state.currentStatic.players, newPlayer],
-        },
-      };
-    }),
 
-  updatePlayer: (playerId, updates) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
+      // Add player locally
+      set((s) => ({
+        currentStatic: s.currentStatic
+          ? {
+              ...s.currentStatic,
+              players: [...s.currentStatic.players, newPlayer],
+            }
+          : null,
+      }));
 
-      // Check if role is changing - if so, recalculate default position
-      const currentPlayer = state.currentStatic.players.find((p) => p.id === playerId);
-      let finalUpdates = { ...updates };
+      // Create on server
+      api
+        .createPlayer(state.currentStatic.id, {
+          name: newPlayer.name,
+          job: newPlayer.job,
+          role: newPlayer.role,
+          configured: newPlayer.configured,
+          sortOrder: newPlayer.sortOrder,
+          isSubstitute: newPlayer.isSubstitute,
+          gear: newPlayer.gear,
+          tomeWeapon: newPlayer.tomeWeapon,
+        })
+        .then((serverPlayer) => {
+          // Update with server-generated ID
+          set((s) => ({
+            currentStatic: s.currentStatic
+              ? {
+                  ...s.currentStatic,
+                  players: s.currentStatic.players.map((p) =>
+                    p.id === newPlayer.id ? { ...p, id: serverPlayer.id } : p
+                  ),
+                }
+              : null,
+          }));
+        })
+        .catch((err) => {
+          console.error('Failed to create player on server:', err);
+        });
+    },
 
-      if (updates.role && currentPlayer && updates.role !== currentPlayer.role) {
-        // Role is changing - get new default position
-        // Only auto-assign if they don't already have a position explicitly set in this update
-        if (!('position' in updates)) {
-          const { position, tankRole } = getDefaultPositionForRole(
-            state.currentStatic.players,
-            updates.role,
-            playerId
-          );
-          finalUpdates = { ...finalUpdates, position, tankRole };
+    updatePlayer: (playerId, updates) => {
+      set((state) => {
+        if (!state.currentStatic) return state;
+
+        // Check if role is changing - if so, recalculate default position
+        const currentPlayer = state.currentStatic.players.find((p) => p.id === playerId);
+        let finalUpdates = { ...updates };
+
+        if (updates.role && currentPlayer && updates.role !== currentPlayer.role) {
+          // Role is changing - get new default position
+          if (!('position' in updates)) {
+            const { position, tankRole } = getDefaultPositionForRole(
+              state.currentStatic.players,
+              updates.role,
+              playerId
+            );
+            finalUpdates = { ...finalUpdates, position, tankRole };
+          }
         }
-      }
 
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: state.currentStatic.players.map((p) =>
-            p.id === playerId ? { ...p, ...finalUpdates } : p
-          ),
-        },
-      };
-    }),
+        // Add to pending saves
+        const newPendingSaves = new Set(state.pendingPlayerSaves);
+        newPendingSaves.add(playerId);
 
-  removePlayer: (playerId) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: state.currentStatic.players.filter((p) => p.id !== playerId),
-        },
-      };
-    }),
+        return {
+          currentStatic: {
+            ...state.currentStatic,
+            players: state.currentStatic.players.map((p) =>
+              p.id === playerId ? { ...p, ...finalUpdates } : p
+            ),
+          },
+          pendingPlayerSaves: newPendingSaves,
+        };
+      });
 
-  configurePlayer: (playerId, name, job, role) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
+      // Trigger debounced save
+      get().savePlayerDebounced(playerId);
+    },
+
+    removePlayer: (playerId) => {
+      const state = get();
+      if (!state.currentStatic) return;
+
+      // Remove locally
+      set((s) => ({
+        currentStatic: s.currentStatic
+          ? {
+              ...s.currentStatic,
+              players: s.currentStatic.players.filter((p) => p.id !== playerId),
+            }
+          : null,
+      }));
+
+      // Delete on server
+      api.deletePlayer(state.currentStatic.id, playerId).catch((err) => {
+        console.error('Failed to delete player on server:', err);
+      });
+    },
+
+    configurePlayer: (playerId, name, job, role) => {
+      const state = get();
+      if (!state.currentStatic) return;
 
       // Get default position for this role
       const { position, tankRole } = getDefaultPositionForRole(
@@ -204,83 +312,203 @@ export const useStaticStore = create<StaticState>((set) => ({
         playerId
       );
 
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: state.currentStatic.players.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  name,
-                  job,
-                  role,
-                  position,
-                  tankRole,
-                  configured: true,
-                  updatedAt: new Date().toISOString(),
-                }
-              : p
-          ),
-        },
+      set((s) => ({
+        currentStatic: s.currentStatic
+          ? {
+              ...s.currentStatic,
+              players: s.currentStatic.players.map((p) =>
+                p.id === playerId
+                  ? {
+                      ...p,
+                      name,
+                      job,
+                      role,
+                      position,
+                      tankRole,
+                      configured: true,
+                      updatedAt: new Date().toISOString(),
+                    }
+                  : p
+              ),
+            }
+          : null,
         editingPlayerId: null,
-      };
-    }),
+      }));
 
-  duplicatePlayer: (playerId, expanded = false) =>
-    set((state) => {
-      if (!state.currentStatic) return state;
+      // Save to server
+      get().savePlayer(playerId);
+    },
+
+    duplicatePlayer: (playerId, expanded = false) => {
+      const state = get();
+      if (!state.currentStatic) return;
+
       const sourcePlayer = state.currentStatic.players.find((p) => p.id === playerId);
-      if (!sourcePlayer) return state;
+      if (!sourcePlayer) return;
 
       const now = new Date().toISOString();
-      const newPlayerId = crypto.randomUUID();
+      const tempId = crypto.randomUUID();
 
-      // Get default position for the duplicated player (don't copy source position)
+      // Get default position for the duplicated player
       const { position, tankRole } = getDefaultPositionForRole(
         state.currentStatic.players,
         sourcePlayer.role,
-        newPlayerId
+        tempId
       );
 
       const newPlayer: Player = {
         ...sourcePlayer,
-        id: newPlayerId,
-        name: sourcePlayer.name, // Keep name, user will edit inline
-        position, // Assign new position
-        tankRole, // Assign new tank role
+        id: tempId,
+        name: sourcePlayer.name,
+        position,
+        tankRole,
         sortOrder: state.currentStatic.players.length,
         createdAt: now,
         updatedAt: now,
       };
 
-      return {
-        currentStatic: {
-          ...state.currentStatic,
-          players: [...state.currentStatic.players, newPlayer],
-        },
-        editingPlayerId: newPlayer.id, // Open inline edit for new player
-        duplicatedPlayerId: newPlayer.id,
+      // Add locally
+      set((s) => ({
+        currentStatic: s.currentStatic
+          ? {
+              ...s.currentStatic,
+              players: [...s.currentStatic.players, newPlayer],
+            }
+          : null,
+        editingPlayerId: tempId,
+        duplicatedPlayerId: tempId,
         duplicatedPlayerExpanded: expanded,
-      };
-    }),
+      }));
 
-  clearDuplicatedPlayerState: () =>
-    set({ duplicatedPlayerId: null, duplicatedPlayerExpanded: false }),
+      // Create on server
+      api
+        .createPlayer(state.currentStatic.id, {
+          name: newPlayer.name,
+          job: newPlayer.job,
+          role: newPlayer.role,
+          position: newPlayer.position,
+          tankRole: newPlayer.tankRole,
+          configured: newPlayer.configured,
+          sortOrder: newPlayer.sortOrder,
+          isSubstitute: newPlayer.isSubstitute,
+          notes: newPlayer.notes,
+          lodestoneId: newPlayer.lodestoneId,
+          bisLink: newPlayer.bisLink,
+          fflogsId: newPlayer.fflogsId,
+          gear: newPlayer.gear,
+          tomeWeapon: newPlayer.tomeWeapon,
+        })
+        .then((serverPlayer) => {
+          // Update with server-generated ID
+          set((s) => ({
+            currentStatic: s.currentStatic
+              ? {
+                  ...s.currentStatic,
+                  players: s.currentStatic.players.map((p) =>
+                    p.id === tempId ? { ...p, id: serverPlayer.id } : p
+                  ),
+                }
+              : null,
+            editingPlayerId: s.editingPlayerId === tempId ? serverPlayer.id : s.editingPlayerId,
+            duplicatedPlayerId:
+              s.duplicatedPlayerId === tempId ? serverPlayer.id : s.duplicatedPlayerId,
+          }));
+        })
+        .catch((err) => {
+          console.error('Failed to create duplicated player on server:', err);
+        });
+    },
 
-  setLoading: (isLoading) => set({ isLoading }),
+    clearDuplicatedPlayerState: () =>
+      set({ duplicatedPlayerId: null, duplicatedPlayerExpanded: false }),
 
-  setError: (error) => set({ error }),
+    setLoading: (isLoading) => set({ isLoading }),
 
-  setSelectedFloor: (floor) => set({ selectedFloor: floor }),
+    setSaving: (isSaving) => set({ isSaving }),
 
-  setPageMode: (pageMode) => set({ pageMode }),
+    setError: (error) => set({ error }),
 
-  setViewMode: (viewMode) => set({ viewMode }),
+    setSelectedFloor: (floor) => set({ selectedFloor: floor }),
 
-  setEditingPlayerId: (editingPlayerId) => set({ editingPlayerId }),
+    setPageMode: (pageMode) => set({ pageMode }),
 
-  setClipboardPlayer: (clipboardPlayer) => set({ clipboardPlayer }),
-}));
+    setViewMode: (viewMode) => set({ viewMode }),
+
+    setEditingPlayerId: (editingPlayerId) => set({ editingPlayerId }),
+
+    setClipboardPlayer: (clipboardPlayer) => set({ clipboardPlayer }),
+
+    // API Actions
+    fetchStatic: async (shareCode: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        const staticData = await api.getStaticByShareCode(shareCode);
+        set({ currentStatic: staticData, isLoading: false });
+      } catch (error) {
+        const message = error instanceof api.ApiError ? error.message : 'Failed to load static';
+        set({ error: message, isLoading: false });
+      }
+    },
+
+    createNewStatic: async (name: string, tier: string) => {
+      set({ isLoading: true, error: null });
+      try {
+        const staticData = await api.createStatic({
+          name,
+          tier,
+          settings: getDefaultSettings(),
+        });
+        set({ currentStatic: staticData, isLoading: false });
+        return staticData;
+      } catch (error) {
+        const message = error instanceof api.ApiError ? error.message : 'Failed to create static';
+        set({ error: message, isLoading: false });
+        throw error;
+      }
+    },
+
+    savePlayer: async (playerId: string) => {
+      const state = get();
+      if (!state.currentStatic) return;
+
+      const player = state.currentStatic.players.find((p) => p.id === playerId);
+      if (!player) return;
+
+      try {
+        set({ isSaving: true });
+        await api.updatePlayer(state.currentStatic.id, playerId, {
+          name: player.name,
+          job: player.job,
+          role: player.role,
+          position: player.position,
+          tankRole: player.tankRole,
+          configured: player.configured,
+          sortOrder: player.sortOrder,
+          isSubstitute: player.isSubstitute,
+          notes: player.notes,
+          lodestoneId: player.lodestoneId,
+          bisLink: player.bisLink,
+          fflogsId: player.fflogsId,
+          gear: player.gear,
+          tomeWeapon: player.tomeWeapon,
+        });
+        // Remove from pending saves
+        const newPendingSaves = new Set(state.pendingPlayerSaves);
+        newPendingSaves.delete(playerId);
+        set({ pendingPlayerSaves: newPendingSaves, isSaving: false });
+      } catch (error) {
+        console.error('Failed to save player:', error);
+        set({ isSaving: false });
+      }
+    },
+
+    savePlayerDebounced: (playerId: string) => {
+      if (debouncedSavePlayer) {
+        debouncedSavePlayer(get(), playerId);
+      }
+    },
+  };
+});
 
 // Default settings for new statics
 export const getDefaultSettings = (): StaticSettings => ({
