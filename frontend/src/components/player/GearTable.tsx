@@ -109,7 +109,17 @@ function WeaponSlotRow({
       {/* Tome weapon sub-row (only shown when pursuing) */}
       {tomeWeapon.pursuing && (
         <tr className="border-t border-border-default/30 bg-bg-secondary/30">
-          <td className="py-1 pl-4 text-text-muted text-xs">└ Tome Wep</td>
+          <td
+            className={`py-1 pl-4 text-xs ${
+              tomeWeapon.hasItem
+                ? tomeWeapon.isAugmented
+                  ? 'text-text-primary'
+                  : 'text-text-secondary'
+                : 'text-text-muted'
+            }`}
+          >
+            └ Tome Wep
+          </td>
           <td className="py-1 text-center">
             <span className="text-xs text-source-tome">Tome</span>
           </td>

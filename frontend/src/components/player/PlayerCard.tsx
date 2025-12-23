@@ -259,6 +259,10 @@ export function PlayerCard({
       onClick: () => onDuplicate(isExpanded),
     },
     {
+      label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
+      onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
+    },
+    {
       label: 'Remove Player',
       icon: CONTEXT_MENU_ICONS.remove,
       onClick: () => setShowRemoveConfirm(true),
@@ -461,7 +465,7 @@ export function PlayerCard({
                   )}
                 </div>
                 {player.isSubstitute && (
-                  <span className="text-xs bg-bg-hover text-text-muted px-1.5 py-0.5 rounded">
+                  <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
                     SUB
                   </span>
                 )}

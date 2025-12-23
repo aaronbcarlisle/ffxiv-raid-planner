@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useStaticStore } from '../stores/staticStore';
 import { getTierById } from '../gamedata';
@@ -7,7 +7,7 @@ import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
-import { TabNavigation, ViewModeToggle } from '../components/ui';
+import { TabNavigation, ViewModeToggle, Toast } from '../components/ui';
 import { calculateTeamSummary, sortPlayersByRole } from '../utils/calculations';
 import type { Player } from '../types';
 
@@ -38,6 +38,8 @@ export function StaticView() {
     setEditingPlayerId,
     setClipboardPlayer,
   } = useStaticStore();
+
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (!shareCode) return;
@@ -81,7 +83,7 @@ export function StaticView() {
     if (!currentStatic) return;
     const url = `${window.location.origin}/static/${currentStatic.shareCode}`;
     navigator.clipboard.writeText(url);
-    // TODO: Show toast notification
+    setShowToast(true);
   };
 
   if (isLoading) {
@@ -137,18 +139,27 @@ export function StaticView() {
         </div>
       </div>
 
-      {/* Toolbar: Tabs + Floor Selector + View Toggle */}
+      {/* Toolbar: Tabs + Context Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
-        <div className="flex items-center gap-4">
-          {tierInfo && (
-            <FloorSelector
-              floors={tierInfo.floors}
-              selectedFloor={selectedFloor}
-              onFloorChange={setSelectedFloor}
-            />
-          )}
-          <div className={pageMode !== 'players' ? 'invisible' : ''}>
+        {/*
+          Right-side controls container - uses relative/absolute positioning
+          to prevent layout shift when switching tabs. Both controls are always
+          rendered but only the relevant one is visible.
+        */}
+        <div className="relative flex items-center justify-end">
+          {/* Floor selector - visible in Loot tab */}
+          <div className={pageMode !== 'loot' ? 'invisible' : ''}>
+            {tierInfo && (
+              <FloorSelector
+                floors={tierInfo.floors}
+                selectedFloor={selectedFloor}
+                onFloorChange={setSelectedFloor}
+              />
+            )}
+          </div>
+          {/* View mode toggle - visible in Players tab, absolutely positioned to overlap */}
+          <div className={`absolute right-0 ${pageMode !== 'players' ? 'invisible' : ''}`}>
             <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
           </div>
         </div>
@@ -235,6 +246,12 @@ export function StaticView() {
       {pageMode === 'stats' && teamSummary && (
         <TeamSummary summary={teamSummary} />
       )}
+
+      <Toast
+        message="Link copied to clipboard!"
+        isVisible={showToast}
+        onHide={() => setShowToast(false)}
+      />
     </div>
   );
 }

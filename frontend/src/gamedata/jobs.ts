@@ -22,9 +22,13 @@ export interface JobInfo {
 // XIVAPI base URL for icons
 const XIVAPI_BASE = 'https://xivapi.com';
 
-// Jobs that don't have transparent icons on XIVAPI (Endwalker + Dawntrail jobs)
-// These will use text abbreviation fallback
-const JOBS_WITHOUT_ICONS = ['RPR', 'SGE', 'VPR', 'PCT'];
+// Newer jobs use numeric icon IDs instead of the /cj/1/ path
+const NUMERIC_ICON_IDS: Record<string, number> = {
+  SGE: 62040,
+  RPR: 62039,
+  VPR: 62041,
+  PCT: 62042,
+};
 
 // All jobs from XIVAPI
 const allJobs: JobInfo[] = jobsData as JobInfo[];
@@ -80,9 +84,10 @@ export function getJobIconUrl(abbreviation: string): string | undefined {
   const job = getJobInfo(abbreviation);
   if (!job) return undefined;
 
-  // Some newer jobs don't have transparent icons yet
-  if (JOBS_WITHOUT_ICONS.includes(abbreviation)) {
-    return undefined; // Will use text fallback in JobIcon component
+  // Newer jobs (Endwalker + Dawntrail) use numeric icon IDs
+  if (abbreviation in NUMERIC_ICON_IDS) {
+    const iconId = NUMERIC_ICON_IDS[abbreviation];
+    return `${XIVAPI_BASE}/i/062000/0${iconId}.png`;
   }
 
   // Use XIVAPI classjob icons (transparent style)

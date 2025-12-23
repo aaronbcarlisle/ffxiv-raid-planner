@@ -4,4 +4,5 @@ export { JobIcon } from './JobIcon';
 export { Modal } from './Modal';
 export { Select } from './Select';
 export { TabNavigation } from './TabNavigation';
+export { Toast } from './Toast';
 export { ViewModeToggle } from './ViewModeToggle';

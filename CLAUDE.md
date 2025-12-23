@@ -32,8 +32,10 @@ The application now has a FastAPI backend with SQLite database for local develop
 - **Raid position system** (T1/T2/H1/H2/M1/M2/R1/R2) with role-based coloring
 - **Tank role designation** (MT/OT badges)
 - **Double-click name edit** on player cards
-- **Right-click context menu** (Copy/Paste/Duplicate/Remove) with FFXIV icons
+- **Right-click context menu** (Copy/Paste/Duplicate/Mark as Sub/Remove) with FFXIV icons
+- **Substitute player support** - Mark players as subs with visible SUB badge
 - **Tome weapon tracking** (interim upgrade during prog with calculation support)
+- **Floor selector dropdown** - Compact dropdown in Loot tab only
 - **FastAPI backend** with SQLite (local dev) / PostgreSQL (production-ready)
 - **Data persistence** - all changes auto-save with debounced updates
 - **Share code functionality** - 6-character alphanumeric codes for sharing
@@ -436,6 +438,27 @@ function calculateTomeWeeks(player: Player): number {
 ### Book Edition IV Conversion
 - Floor 4 books can convert 1:1 to any lower edition
 - This provides flexibility for players to accelerate specific slots
+
+### Layout Shift Prevention Pattern
+When swapping contextual controls (e.g., floor selector in Loot tab vs view toggle in Players tab), use this pattern to prevent layout shift:
+
+```tsx
+<div className="relative flex items-center justify-end">
+  {/* Largest element in normal flow - determines container size */}
+  <div className={pageMode !== 'loot' ? 'invisible' : ''}>
+    <FloorSelector ... />
+  </div>
+  {/* Smaller elements absolutely positioned to overlap */}
+  <div className={`absolute right-0 ${pageMode !== 'players' ? 'invisible' : ''}`}>
+    <ViewModeToggle ... />
+  </div>
+</div>
+```
+
+Key principles:
+- Use `invisible` instead of conditional rendering (keeps element in DOM)
+- Largest control in normal flow determines container dimensions
+- Smaller controls use `absolute` positioning to overlap same space
 
 ---
 
