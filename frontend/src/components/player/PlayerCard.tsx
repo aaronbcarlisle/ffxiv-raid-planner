@@ -48,7 +48,7 @@ interface PlayerCardProps {
 
 export function PlayerCard({
   player,
-  settings,
+  settings: _settings,
   viewMode,
   clipboardPlayer,
   onUpdate,

@@ -13,12 +13,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
  * API Error class for handling HTTP errors
  */
 export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string
-  ) {
+  status: number;
+
+  constructor(status: number, message: string) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
   }
 }
 
@@ -202,7 +202,7 @@ export async function checkHealth(): Promise<HealthResponse> {
 
 // ==================== Debounced Save ====================
 
-type DebouncedFn<T extends (...args: unknown[]) => unknown> = {
+export type DebouncedFn<T extends (...args: unknown[]) => unknown> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
 };

@@ -7,7 +7,7 @@
  * - Items needed (more items needed = higher priority)
  */
 
-import type { Player, StaticSettings, GearSlot, GearSlotStatus, PlayerNeeds, RaidPosition, TankRole } from '../types';
+import type { Player, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete } from './calculations';

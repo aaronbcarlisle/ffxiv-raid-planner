@@ -147,7 +147,7 @@ export function calculateTeamSummary(players: Player[]): TeamSummary {
  */
 export function sortPlayersByRole(
   players: Player[],
-  displayOrder: string[],
+  displayOrder: readonly string[],
   sortPreset: 'standard' | 'dps-first' | 'healer-first' | 'custom' = 'standard'
 ): Player[] {
   return [...players].sort((a, b) => {

@@ -5,9 +5,7 @@ import {
   getJobDisplayName,
   getRoleColor,
   getRoleDisplayName,
-  getRoleForJob,
   getRaidJobs,
-  getJobsByRole,
   type Role,
   type JobInfo,
 } from '../../gamedata';

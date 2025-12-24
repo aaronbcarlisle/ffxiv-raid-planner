@@ -16,7 +16,6 @@ import {
 } from '@dnd-kit/sortable';
 import { useStaticStore } from '../stores/staticStore';
 import { getTierById } from '../gamedata';
-import { PlayerCard } from '../components/player/PlayerCard';
 import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
