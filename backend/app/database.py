@@ -17,9 +17,9 @@ class Base(DeclarativeBase):
 
 settings = get_settings()
 
-# Create async engine
+# Create async engine (uses async_database_url for proper driver)
 engine = create_async_engine(
-    settings.database_url,
+    settings.async_database_url,
     echo=settings.debug,
 )
 
@@ -34,7 +34,7 @@ async_session_maker = async_sessionmaker(
 async def create_tables() -> None:
     """Create all database tables"""
     # Ensure data directory exists for SQLite
-    if "sqlite" in settings.database_url:
+    if "sqlite" in settings.async_database_url:
         db_path = settings.database_url.split("///")[-1]
         db_dir = os.path.dirname(db_path)
         if db_dir and not os.path.exists(db_dir):

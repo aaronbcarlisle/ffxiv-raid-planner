@@ -13,8 +13,19 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    # Database
+    # Database - Railway provides DATABASE_URL for PostgreSQL
     database_url: str = "sqlite+aiosqlite:///./data/raid_planner.db"
+
+    @property
+    def async_database_url(self) -> str:
+        """Convert database URL to async-compatible format"""
+        url = self.database_url
+        # Railway's PostgreSQL URL needs asyncpg driver
+        if url.startswith("postgresql://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
 
     # CORS - include common Vite dev server ports
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:5181,http://localhost:5182,http://127.0.0.1:5173"
