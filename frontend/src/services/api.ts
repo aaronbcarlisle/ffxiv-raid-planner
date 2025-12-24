@@ -202,7 +202,8 @@ export async function checkHealth(): Promise<HealthResponse> {
 
 // ==================== Debounced Save ====================
 
-export type DebouncedFn<T extends (...args: unknown[]) => unknown> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DebouncedFn<T extends (...args: any[]) => any> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
 };
@@ -210,7 +211,8 @@ export type DebouncedFn<T extends (...args: unknown[]) => unknown> = {
 /**
  * Create a debounced function
  */
-export function debounce<T extends (...args: unknown[]) => unknown>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   delay: number
 ): DebouncedFn<T> {

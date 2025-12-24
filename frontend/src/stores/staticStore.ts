@@ -133,8 +133,7 @@ interface StaticState {
 }
 
 // Debounced save function (created once per store instance)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let debouncedSavePlayer: ((state: StaticState, playerId: string) => void) | null = null;
+let debouncedSavePlayer: api.DebouncedFn<(state: StaticState, playerId: string) => void> | null = null;
 
 export const useStaticStore = create<StaticState>((set, get) => {
   // Initialize debounced save function
