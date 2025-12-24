@@ -26,13 +26,6 @@ function getSuggestedPositions(role: string): RaidPosition[] {
   }
 }
 
-// Position colors based on role type (unused but kept for potential future use)
-function _getPositionColorClasses(pos: RaidPosition): string {
-  if (pos.startsWith('T')) return 'text-role-tank';
-  if (pos.startsWith('H')) return 'text-role-healer';
-  return 'text-role-melee'; // M* and R* are DPS (red)
-}
-
 function getPositionBgClasses(pos: RaidPosition, isSelected: boolean, isSuggested: boolean): string {
   if (isSelected) {
     if (pos.startsWith('T')) return 'bg-role-tank text-white';

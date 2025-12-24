@@ -17,9 +17,6 @@ import { DEFAULT_DISPLAY_ORDER, DEFAULT_LOOT_PRIORITY } from '../utils/constants
 import { getDefaultPositionForRole } from '../utils/priority';
 import * as api from '../services/api';
 
-// Number of default empty slots for new statics
-const _DEFAULT_SLOT_COUNT = 8; // Prefixed to suppress unused warning
-
 // Debounce delay for auto-save (ms)
 const SAVE_DEBOUNCE_DELAY = 1000;
 
@@ -136,7 +133,8 @@ interface StaticState {
 }
 
 // Debounced save function (created once per store instance)
-let debouncedSavePlayer: ReturnType<typeof api.debounce> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let debouncedSavePlayer: ((state: StaticState, playerId: string) => void) | null = null;
 
 export const useStaticStore = create<StaticState>((set, get) => {
   // Initialize debounced save function

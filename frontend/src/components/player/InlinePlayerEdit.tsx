@@ -180,7 +180,6 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
     }
   };
 
-  const _isValid = name.trim() && job; // Prefixed - validation happens on submit
   const selectedJobInfo = job ? allJobs.find((j) => j.abbreviation === job) : null;
 
   const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
