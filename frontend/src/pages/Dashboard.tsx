@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import type { MemberRole } from '../types';
@@ -53,12 +53,12 @@ export function Dashboard() {
     if (!newGroupName.trim()) return;
 
     try {
-      const group = await createGroup(newGroupName.trim(), newGroupPublic);
+      await createGroup(newGroupName.trim(), newGroupPublic);
       setShowCreateModal(false);
       setNewGroupName('');
       setNewGroupPublic(false);
-      // Navigate to the new group
-      navigate(`/group/${group.shareCode}`);
+      // Refresh groups list (group view will be added in Phase 4.3)
+      await fetchGroups();
     } catch {
       // Error is handled in store
     }
@@ -133,9 +133,8 @@ export function Dashboard() {
         /* Groups grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
-            <Link
+            <div
               key={group.id}
-              to={`/group/${group.shareCode}`}
               className="block bg-bg-card rounded-lg border border-white/10 p-4 hover:border-accent/50 transition-colors group"
             >
               <div className="flex items-start justify-between mb-3">
@@ -192,7 +191,7 @@ export function Dashboard() {
               <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted">
                 Code: <span className="font-mono text-accent">{group.shareCode}</span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

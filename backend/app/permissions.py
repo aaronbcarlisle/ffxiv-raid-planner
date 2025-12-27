@@ -193,6 +193,7 @@ async def get_user_static_groups(
         select(StaticGroup, Membership)
         .join(Membership, Membership.static_group_id == StaticGroup.id)
         .where(Membership.user_id == user_id)
+        .options(selectinload(StaticGroup.memberships))
         .order_by(StaticGroup.name)
     )
-    return list(result.all())
+    return list(result.unique().all())
