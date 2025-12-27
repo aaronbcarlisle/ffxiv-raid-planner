@@ -23,7 +23,6 @@ import {
 } from '@dnd-kit/sortable';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
-// Note: useAuthStore available if needed for permission checks
 import { getTierById, RAID_TIERS } from '../gamedata';
 import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
@@ -31,7 +30,7 @@ import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
-import { GroupSettingsModal, RolloverDialog } from '../components/static-group';
+import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import type { MemberRole, SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
@@ -67,8 +66,6 @@ export function GroupView() {
     error: tierError,
     fetchTiers,
     fetchTier,
-    createTier,
-    deleteTier,
     updatePlayer,
     addPlayer,
     removePlayer,
@@ -80,7 +77,6 @@ export function GroupView() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
-  const [selectedTierId, setSelectedTierId] = useState<string>('');
   const [pageMode, setPageMode] = useState<PageMode>('players');
   const [viewMode, setViewMode] = useState<ViewMode>('compact');
   const [selectedFloor, setSelectedFloor] = useState(1);
@@ -138,41 +134,22 @@ export function GroupView() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier]);
 
-  const handleCreateTier = async () => {
-    if (!currentGroup?.id || !selectedTierId) return;
-
-    try {
-      await createTier(currentGroup.id, selectedTierId);
-      setShowCreateTierModal(false);
-      setSelectedTierId('');
-    } catch {
-      // Error handled in store
-    }
-  };
-
   const handleTierChange = (tierId: string) => {
     if (currentGroup?.id) {
       fetchTier(currentGroup.id, tierId);
     }
   };
 
-  const handleDeleteTier = async () => {
-    if (!currentGroup?.id || !currentTier?.tierId) return;
+  // Called when a tier is deleted - load the next available tier
+  const handleTierDeleted = async () => {
+    if (!currentGroup?.id) return;
 
-    try {
-      await deleteTier(currentGroup.id, currentTier.tierId);
-      setShowDeleteTierConfirm(false);
-
-      // Load another tier if available
-      const { tiers: freshTiers } = useTierStore.getState();
-      if (freshTiers.length > 0) {
-        const nextTier = freshTiers.find(t => t.isActive) || freshTiers[0];
-        if (nextTier) {
-          await fetchTier(currentGroup.id, nextTier.tierId);
-        }
+    const { tiers: freshTiers } = useTierStore.getState();
+    if (freshTiers.length > 0) {
+      const nextTier = freshTiers.find(t => t.isActive) || freshTiers[0];
+      if (nextTier) {
+        await fetchTier(currentGroup.id, nextTier.tierId);
       }
-    } catch {
-      // Error handled in store
     }
   };
 
@@ -613,50 +590,12 @@ export function GroupView() {
       )}
 
       {/* Create Tier Modal */}
-      {showCreateTierModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-display text-accent mb-4">Create New Tier</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm text-text-secondary mb-2">
-                Select Raid Tier
-              </label>
-              <select
-                value={selectedTierId}
-                onChange={(e) => setSelectedTierId(e.target.value)}
-                className="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-              >
-                <option value="">Choose a tier...</option>
-                {availableTiers.map((tier) => (
-                  <option key={tier.id} value={tier.id}>
-                    {tier.name} ({tier.shortName})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateTierModal(false);
-                  setSelectedTierId('');
-                }}
-                className="px-4 py-2 text-text-secondary hover:text-text-primary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateTier}
-                disabled={!selectedTierId || isSaving}
-                className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSaving ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showCreateTierModal && currentGroup && (
+        <CreateTierModal
+          groupId={currentGroup.id}
+          existingTierIds={existingTierIds}
+          onClose={() => setShowCreateTierModal(false)}
+        />
       )}
 
       {/* Group Settings Modal */}
@@ -678,35 +617,13 @@ export function GroupView() {
       )}
 
       {/* Delete Tier Confirmation */}
-      {showDeleteTierConfirm && currentTier && tierInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-display text-red-400 mb-4">Delete Tier</h2>
-
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-              <p className="text-text-secondary">
-                Are you sure you want to delete <strong className="text-text-primary">{tierInfo.name}</strong>?
-                This will remove all player data for this tier.
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteTierConfirm(false)}
-                className="px-4 py-2 text-text-secondary hover:text-text-primary"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteTier}
-                disabled={isSaving}
-                className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSaving ? 'Deleting...' : 'Delete Tier'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showDeleteTierConfirm && currentGroup && currentTier && (
+        <DeleteTierModal
+          groupId={currentGroup.id}
+          tierId={currentTier.tierId}
+          onClose={() => setShowDeleteTierConfirm(false)}
+          onDeleted={handleTierDeleted}
+        />
       )}
     </div>
   );

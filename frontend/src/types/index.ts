@@ -112,18 +112,6 @@ export interface StaticSettings {
   syncFrequency: 'daily' | 'weekly';
 }
 
-// Static (raid group)
-export interface Static {
-  id: string;
-  name: string;
-  tier: string; // Raid tier ID
-  shareCode: string;
-  settings: StaticSettings;
-  players: Player[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Team summary calculations
 export interface TeamSummary {
   totalPlayers: number;
