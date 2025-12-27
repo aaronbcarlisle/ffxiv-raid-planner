@@ -253,7 +253,7 @@ async def update_static_group(
     current_user: User = Depends(get_current_user),
 ) -> StaticGroupResponse:
     """Update a static group (owner or lead only)"""
-    group = await get_static_group(session, group_id)
+    group = await get_static_group(session, group_id, load_memberships=True)
 
     # Check permission - name requires lead, visibility requires owner
     if data.is_public is not None:

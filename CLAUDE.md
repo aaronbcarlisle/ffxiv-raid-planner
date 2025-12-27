@@ -12,62 +12,82 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Phase 3 Backend: Complete** | **Phase 4 Auth: In Progress**
+**Phase 1-3: Complete** | **Phase 4 Auth/Multi-Static: Mostly Complete** | **Phase 4 UX Polish: In Progress**
 
-The application now has a FastAPI backend with SQLite database for local development. Data persists across page refreshes, and share codes work for sharing statics. Phase 4 is adding user accounts, multi-static membership, and per-tier roster snapshots.
+The application has evolved from anonymous share-code statics to a full user account system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
 
-### What Works (Phase 1 + Phase 2 + Phase 3)
+### What Works (Phase 1-3 Core Features)
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
 - Gear tracking with BiS source (Raid/Tome) and Have/Augmented states
-- Gear slot icons with completion-based styling (white when complete)
 - Priority score calculations based on role + need
 - Loot priority lists for each floor
 - Team summary with materials needed, books, completion %
-- Responsive UI with dark FFXIV theme
-- **Tab-based navigation** (Party/Loot/Stats) with FFXIV icons
-- **Responsive 4-column grid layout** (1→2→3→4 columns at breakpoints)
-- **Wide container layout** (120rem / 1920px max-width for data-tool style)
-- **Global view mode toggle** (▤/☰) + individual card expansion
-- **Player card needs footer** (Raid/Tome/Upgrades/Weeks)
-- **Raid position system** (T1/T2/H1/H2/M1/M2/R1/R2) with role-based coloring
-- **Tank role designation** (MT/OT badges)
-- **Double-click name edit** on player cards
-- **Right-click context menu** (Copy/Paste/Duplicate/Mark as Sub/Remove) with FFXIV icons
-- **Substitute player support** - Mark players as subs with visible SUB badge
-- **Tome weapon tracking** (interim upgrade during prog with calculation support)
-- **Floor selector dropdown** - Compact dropdown in Loot tab only with duty name tooltips
-- **Sort presets** - Standard, DPS-First, Healer-First, and Custom drag-and-drop ordering
-- **Drag-and-drop reordering** - Custom sort mode with @dnd-kit for manual card ordering
-- **Group view (G1/G2)** - Split players by light party based on raid positions
-- **Cross-group drag position swap** - Dragging between G1/G2 auto-updates position (M1↔M2, etc.)
-- **Role-based player slot templates** - Empty slots show template role with position assignment
-- **Job picker role sorting** - Current role appears first when changing jobs
-- **Header consolidation** - Centered static title, Add Player button in header
-- **FastAPI backend** with SQLite (local dev) / PostgreSQL (production-ready)
-- **Data persistence** - all changes auto-save with debounced updates
-- **Share code functionality** - 6-character alphanumeric codes for sharing
-- **RESTful API** with full CRUD for statics and players
+- Tab-based navigation (Party/Loot/Stats) with FFXIV icons
+- Responsive 4-column grid layout
+- View mode toggle (compact/expanded)
+- Raid position system (T1/T2/H1/H2/M1/M2/R1/R2)
+- Context menu (Copy/Paste/Duplicate/Mark as Sub/Remove)
+- Sort presets and drag-and-drop reordering
+- Group view (G1/G2) light party split
+- FastAPI backend with SQLite (dev) / PostgreSQL (prod)
+- Share code functionality
 
-### Phase 4 In Progress (User Accounts + Multi-Tier)
-Based on user feedback, Phase 4 was significantly expanded to include:
-- **Discord OAuth** - User accounts via Discord login
-- **Multi-static membership** - Users can be in multiple statics
-- **Per-tier roster snapshots** - Each raid tier has its own roster state
-- **Access control** - Owner/Lead/Member/Viewer permissions
-- **Dashboard UX** - Static selector + Tier selector in header
+### What Works (Phase 4 - User Accounts)
+- **Discord OAuth** - Full login/logout with JWT tokens
+- **User Dashboard** (`/dashboard`) - View and create static groups
+- **Static Groups** - Multi-static membership with share codes
+- **Role-Based Access** - Owner/Lead/Member/Viewer permissions
+- **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
+- **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
+- **Tier Switching** - Switch between tier snapshots within a group
 
-**Phase 4.1 Authentication (Partially Complete):**
-- [x] Backend: User model, Discord OAuth endpoints, JWT tokens
-- [x] Frontend: authStore.ts for token/user management
-- [ ] Frontend: Login button, user menu, protected routes
+### Phase 4 In Progress (UX Polish)
+- [ ] **Home page redesign** - Auth-first UX with public static viewer
+- [ ] **Header updates** - Show group name/tier for new system
+- [ ] **Group Settings Modal** - Rename group, toggle public/private, delete
+- [ ] **Rollover Dialog** - Copy roster to new tier
+- [ ] **Tier deletion** - Remove tier snapshots
+- [ ] **Deprecate legacy flow** - Remove old `/create` route
 
-See `docs/IMPLEMENTATION_PLAN.md` for detailed Phase 4 checklist and data model.
+### Architecture Notes
+
+**Two Parallel Systems (Backward Compat):**
+- **Legacy:** `/static/{code}` → StaticView.tsx → useStaticStore
+- **New:** `/group/{code}` → GroupView.tsx → useStaticGroupStore + useTierStore
+
+**Key Stores:**
+- `authStore.ts` - Discord OAuth tokens, current user
+- `staticGroupStore.ts` - Static groups, membership
+- `tierStore.ts` - Tier snapshots, players within tiers
+- `staticStore.ts` - Legacy statics (backward compat)
+
+**API Endpoints (New System):**
+```
+POST /api/auth/discord           # Initiate Discord OAuth
+GET  /api/auth/discord/callback  # Handle callback
+GET  /api/auth/me                # Get current user
+
+GET    /api/static-groups                    # List user's groups
+POST   /api/static-groups                    # Create new group
+GET    /api/static-groups/by-code/{code}     # Viewer access
+PUT    /api/static-groups/{id}               # Update group
+DELETE /api/static-groups/{id}               # Delete group
+
+GET    /api/static-groups/{id}/tiers              # List tier snapshots
+POST   /api/static-groups/{id}/tiers              # Create tier snapshot
+GET    /api/static-groups/{id}/tiers/{tierId}     # Get tier with players
+PUT    /api/static-groups/{id}/tiers/{tierId}     # Update tier
+DELETE /api/static-groups/{id}/tiers/{tierId}     # Delete tier
+POST   /api/static-groups/{id}/tiers/{tierId}/rollover  # Copy roster
+
+PUT    /api/static-groups/{id}/tiers/{tierId}/players/{id}  # Update player
+```
 
 ### What's Missing (After Phase 4)
 - BiS import (Etro, XIVGear)
 - Lodestone sync
-- Real-time collaboration
+- Invitation system (Phase 4.4 planned)
 - Production deployment
 
 ---

@@ -4,11 +4,13 @@
  * Shows user's static groups with ability to create new ones.
  */
 
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
-import type { MemberRole } from '../types';
+import { ContextMenu } from '../components/ui';
+import { GroupSettingsModal } from '../components/static-group';
+import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
@@ -28,11 +30,19 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 export function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { groups, isLoading, isCreating, error, fetchGroups, createGroup } = useStaticGroupStore();
+  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, deleteGroup } = useStaticGroupStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupPublic, setNewGroupPublic] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<StaticGroupListItem | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -62,6 +72,90 @@ export function Dashboard() {
     } catch {
       // Error is handled in store
     }
+  };
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, group: StaticGroupListItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedGroup(group);
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleEditStatic = useCallback(() => {
+    if (selectedGroup) {
+      navigate(`/group/${selectedGroup.shareCode}`);
+    }
+  }, [selectedGroup, navigate]);
+
+  const handleDuplicateStatic = useCallback(async () => {
+    if (selectedGroup) {
+      try {
+        await createGroup(`${selectedGroup.name} (Copy)`, selectedGroup.isPublic);
+        await fetchGroups();
+      } catch {
+        // Error handled in store
+      }
+    }
+  }, [selectedGroup, createGroup, fetchGroups]);
+
+  const handleOpenSettings = useCallback(() => {
+    if (selectedGroup) {
+      setShowSettingsModal(true);
+    }
+  }, [selectedGroup]);
+
+  const handleDeleteStatic = useCallback(() => {
+    if (selectedGroup) {
+      setShowDeleteConfirm(true);
+    }
+  }, [selectedGroup]);
+
+  const handleConfirmDelete = async () => {
+    if (!selectedGroup || deleteConfirmText !== selectedGroup.name) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteGroup(selectedGroup.id);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
+      setSelectedGroup(null);
+    } catch {
+      // Error handled in store
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Build context menu items
+  const getContextMenuItems = () => {
+    if (!selectedGroup) return [];
+
+    const isOwner = selectedGroup.userRole === 'owner';
+
+    return [
+      {
+        label: 'Edit Static',
+        onClick: handleEditStatic,
+      },
+      {
+        label: 'Duplicate Static',
+        onClick: handleDuplicateStatic,
+      },
+      ...(isOwner ? [{
+        label: 'Settings',
+        onClick: handleOpenSettings,
+      }] : []),
+      ...(isOwner ? [{
+        label: 'Delete Static',
+        onClick: handleDeleteStatic,
+        danger: true,
+      }] : []),
+    ];
   };
 
   if (authLoading) {
@@ -133,10 +227,11 @@ export function Dashboard() {
         /* Groups grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
-            <Link
+            <div
               key={group.id}
-              to={`/group/${group.shareCode}`}
-              className="block bg-bg-card rounded-lg border border-white/10 p-4 hover:border-accent/50 transition-colors group"
+              onClick={() => navigate(`/group/${group.shareCode}`)}
+              onContextMenu={(e) => handleContextMenu(e, group)}
+              className="block bg-bg-card rounded-lg border border-white/10 p-4 hover:border-accent/50 transition-colors group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors">
@@ -192,9 +287,19 @@ export function Dashboard() {
               <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted">
                 Code: <span className="font-mono text-accent">{group.shareCode}</span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems()}
+          onClose={handleCloseContextMenu}
+        />
       )}
 
       {/* Create Modal */}
@@ -254,6 +359,66 @@ export function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && selectedGroup && (
+        <GroupSettingsModal
+          group={selectedGroup as StaticGroup}
+          onClose={() => {
+            setShowSettingsModal(false);
+            fetchGroups(); // Refresh list in case name/visibility changed
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-display text-red-400 mb-4">Delete Static</h2>
+
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
+              <p className="text-red-400 font-medium mb-2">Delete this static?</p>
+              <p className="text-text-secondary text-sm">
+                This will permanently delete <strong className="text-text-primary">{selectedGroup.name}</strong> and all its tier snapshots.
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-text-secondary mb-1">
+                Type <span className="font-mono text-text-primary">{selectedGroup.name}</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full bg-bg-primary border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
+                placeholder={selectedGroup.name}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText('');
+                }}
+                className="px-4 py-2 text-text-secondary hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteConfirmText !== selectedGroup.name || isDeleting}
+                className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Static'}
+              </button>
+            </div>
           </div>
         </div>
       )}

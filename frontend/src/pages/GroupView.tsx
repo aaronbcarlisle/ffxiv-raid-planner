@@ -31,6 +31,7 @@ import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
+import { GroupSettingsModal, RolloverDialog } from '../components/static-group';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import type { MemberRole, SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
@@ -68,6 +69,7 @@ export function GroupView() {
     fetchTiers,
     fetchTier,
     createTier,
+    deleteTier,
     updatePlayer,
     addPlayer,
     removePlayer,
@@ -76,6 +78,9 @@ export function GroupView() {
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showRolloverDialog, setShowRolloverDialog] = useState(false);
+  const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<string>('');
   const [pageMode, setPageMode] = useState<PageMode>('players');
   const [viewMode, setViewMode] = useState<ViewMode>('compact');
@@ -109,22 +114,30 @@ export function GroupView() {
     }
   }, [shareCode, fetchGroupByShareCode]);
 
-  // Fetch tiers when group is loaded
+  // Fetch tiers and load active tier sequentially (avoids race condition)
   useEffect(() => {
-    if (currentGroup?.id) {
-      fetchTiers(currentGroup.id);
-    }
-  }, [currentGroup?.id, fetchTiers]);
+    if (!currentGroup?.id) return;
 
-  // Load active tier or first tier
-  useEffect(() => {
-    if (currentGroup?.id && tiers.length > 0 && !currentTier) {
-      const activeTier = tiers.find(t => t.isActive) || tiers[0];
+    let cancelled = false;
+
+    (async () => {
+      // First fetch the list of tiers
+      await fetchTiers(currentGroup.id);
+      if (cancelled) return;
+
+      // Get fresh tiers from store after fetch completes
+      const { tiers: freshTiers } = useTierStore.getState();
+      if (freshTiers.length === 0) return;
+
+      // Load the active tier or first tier
+      const activeTier = freshTiers.find(t => t.isActive) || freshTiers[0];
       if (activeTier) {
-        fetchTier(currentGroup.id, activeTier.tierId);
+        await fetchTier(currentGroup.id, activeTier.tierId);
       }
-    }
-  }, [currentGroup?.id, tiers, currentTier, fetchTier]);
+    })();
+
+    return () => { cancelled = true; };
+  }, [currentGroup?.id, fetchTiers, fetchTier]);
 
   const handleCreateTier = async () => {
     if (!currentGroup?.id || !selectedTierId) return;
@@ -141,6 +154,26 @@ export function GroupView() {
   const handleTierChange = (tierId: string) => {
     if (currentGroup?.id) {
       fetchTier(currentGroup.id, tierId);
+    }
+  };
+
+  const handleDeleteTier = async () => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+
+    try {
+      await deleteTier(currentGroup.id, currentTier.tierId);
+      setShowDeleteTierConfirm(false);
+
+      // Load another tier if available
+      const { tiers: freshTiers } = useTierStore.getState();
+      if (freshTiers.length > 0) {
+        const nextTier = freshTiers.find(t => t.isActive) || freshTiers[0];
+        if (nextTier) {
+          await fetchTier(currentGroup.id, nextTier.tierId);
+        }
+      }
+    } catch {
+      // Error handled in store
     }
   };
 
@@ -353,6 +386,19 @@ export function GroupView() {
                 {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
               </span>
             )}
+            {/* Settings button (owner only) */}
+            {userRole === 'owner' && (
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="p-1.5 rounded hover:bg-white/10 text-text-muted hover:text-text-primary transition-colors"
+                title="Static Settings"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            )}
           </div>
           <p className="text-text-muted text-sm mt-1">
             Code: <span className="font-mono text-accent">{currentGroup.shareCode}</span>
@@ -385,6 +431,30 @@ export function GroupView() {
               className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm"
             >
               + New Tier
+            </button>
+          )}
+
+          {/* Rollover button (owner/lead, when tier exists and more tiers available) */}
+          {canEdit && currentTier && availableTiers.length > 0 && (
+            <button
+              onClick={() => setShowRolloverDialog(true)}
+              className="bg-purple-500/20 text-purple-400 px-3 py-2 rounded font-medium hover:bg-purple-500/30 text-sm"
+              title="Copy roster to a new tier"
+            >
+              Rollover
+            </button>
+          )}
+
+          {/* Delete tier button (owner/lead, when more than one tier) */}
+          {canEdit && currentTier && tiers.length > 1 && (
+            <button
+              onClick={() => setShowDeleteTierConfirm(true)}
+              className="text-red-400 hover:text-red-300 px-2 py-2 text-sm"
+              title="Delete this tier"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           )}
 
@@ -584,6 +654,56 @@ export function GroupView() {
                 className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Group Settings Modal */}
+      {showSettingsModal && currentGroup && (
+        <GroupSettingsModal
+          group={currentGroup}
+          onClose={() => setShowSettingsModal(false)}
+        />
+      )}
+
+      {/* Rollover Dialog */}
+      {showRolloverDialog && currentGroup && currentTier && (
+        <RolloverDialog
+          groupId={currentGroup.id}
+          currentTier={currentTier}
+          existingTierIds={existingTierIds}
+          onClose={() => setShowRolloverDialog(false)}
+        />
+      )}
+
+      {/* Delete Tier Confirmation */}
+      {showDeleteTierConfirm && currentTier && tierInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-display text-red-400 mb-4">Delete Tier</h2>
+
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
+              <p className="text-text-secondary">
+                Are you sure you want to delete <strong className="text-text-primary">{tierInfo.name}</strong>?
+                This will remove all player data for this tier.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteTierConfirm(false)}
+                className="px-4 py-2 text-text-secondary hover:text-text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTier}
+                disabled={isSaving}
+                className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? 'Deleting...' : 'Delete Tier'}
               </button>
             </div>
           </div>

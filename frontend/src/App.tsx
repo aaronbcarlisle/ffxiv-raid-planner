@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { Home } from './pages/Home';
-import { CreateStatic } from './pages/CreateStatic';
 import { StaticView } from './pages/StaticView';
 import { Dashboard } from './pages/Dashboard';
 import { GroupView } from './pages/GroupView';
@@ -19,7 +18,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="create" element={<CreateStatic />} />
+        {/* Legacy static route - kept for backward compatibility */}
         <Route path="static/:shareCode" element={<StaticView />} />
         <Route path="dashboard" element={<Dashboard />} />
         {/* Group routes - new static group system */}
