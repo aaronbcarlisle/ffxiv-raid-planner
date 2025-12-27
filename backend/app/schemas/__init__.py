@@ -14,6 +14,19 @@ from .static import (
     StaticUpdate,
     StaticWithPlayers,
 )
+from .static_group import (
+    MemberInfo,
+    MemberRoleEnum,
+    MembershipCreate,
+    MembershipResponse,
+    MembershipUpdate,
+    OwnerInfo,
+    StaticGroupCreate,
+    StaticGroupListItem,
+    StaticGroupResponse,
+    StaticGroupUpdate,
+    StaticGroupWithMembers,
+)
 from .user import (
     DiscordAuthUrl,
     DiscordCallback,
@@ -30,12 +43,24 @@ __all__ = [
     "PlayerResponse",
     "PlayerUpdate",
     "TomeWeaponStatus",
-    # Static
+    # Static (legacy)
     "StaticCreate",
     "StaticResponse",
     "StaticSettings",
     "StaticUpdate",
     "StaticWithPlayers",
+    # Static Group
+    "MemberInfo",
+    "MemberRoleEnum",
+    "MembershipCreate",
+    "MembershipResponse",
+    "MembershipUpdate",
+    "OwnerInfo",
+    "StaticGroupCreate",
+    "StaticGroupListItem",
+    "StaticGroupResponse",
+    "StaticGroupUpdate",
+    "StaticGroupWithMembers",
     # User/Auth
     "DiscordAuthUrl",
     "DiscordCallback",

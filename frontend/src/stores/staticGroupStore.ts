@@ -1,0 +1,424 @@
+/**
+ * Static Group Store - Manages static group state
+ *
+ * Handles CRUD operations for static groups and memberships.
+ */
+
+import { create } from 'zustand';
+import type { StaticGroup, StaticGroupListItem, MemberRole, Membership } from '../types';
+import { useAuthStore } from './authStore';
+
+// Get API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+interface StaticGroupState {
+  // List of user's static groups (dashboard)
+  groups: StaticGroupListItem[];
+
+  // Currently selected static group (full details)
+  currentGroup: StaticGroup | null;
+
+  // Loading states
+  isLoading: boolean;
+  isCreating: boolean;
+
+  // Error state
+  error: string | null;
+
+  // Actions
+  fetchGroups: () => Promise<void>;
+  fetchGroup: (groupId: string) => Promise<void>;
+  fetchGroupByShareCode: (shareCode: string) => Promise<void>;
+  createGroup: (name: string, isPublic?: boolean) => Promise<StaticGroup>;
+  updateGroup: (groupId: string, data: { name?: string; isPublic?: boolean }) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
+  setCurrentGroup: (group: StaticGroup | null) => void;
+  clearError: () => void;
+
+  // Membership actions
+  addMember: (groupId: string, userId: string, role?: MemberRole) => Promise<Membership>;
+  updateMemberRole: (groupId: string, userId: string, role: MemberRole) => Promise<void>;
+  removeMember: (groupId: string, userId: string) => Promise<void>;
+  transferOwnership: (groupId: string, newOwnerId: string) => Promise<void>;
+}
+
+/**
+ * Make an authenticated API request
+ */
+async function authRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const accessToken = useAuthStore.getState().accessToken;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data.detail || message;
+    } catch {
+      // Ignore JSON parse errors
+    }
+
+    // If unauthorized, try refreshing token
+    if (response.status === 401) {
+      const refreshed = await useAuthStore.getState().refreshAccessToken();
+      if (refreshed) {
+        // Retry with new token
+        const newAccessToken = useAuthStore.getState().accessToken;
+        headers['Authorization'] = `Bearer ${newAccessToken}`;
+        const retryResponse = await fetch(url, {
+          ...options,
+          headers: {
+            ...headers,
+            ...options.headers,
+          },
+        });
+
+        if (!retryResponse.ok) {
+          try {
+            const data = await retryResponse.json();
+            message = data.detail || `HTTP ${retryResponse.status}`;
+          } catch {
+            message = `HTTP ${retryResponse.status}`;
+          }
+          throw new Error(message);
+        }
+
+        if (retryResponse.status === 204) {
+          return undefined as T;
+        }
+
+        return retryResponse.json();
+      }
+    }
+
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json();
+}
+
+export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
+  // Initial state
+  groups: [],
+  currentGroup: null,
+  isLoading: false,
+  isCreating: false,
+  error: null,
+
+  /**
+   * Fetch all static groups for the current user
+   */
+  fetchGroups: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const groups = await authRequest<StaticGroupListItem[]>('/api/static-groups');
+      set({ groups, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to fetch groups',
+        isLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Fetch a specific static group by ID
+   */
+  fetchGroup: async (groupId: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const group = await authRequest<StaticGroup>(`/api/static-groups/${groupId}`);
+      set({ currentGroup: group, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to fetch group',
+        isLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Fetch a static group by share code
+   */
+  fetchGroupByShareCode: async (shareCode: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const group = await authRequest<StaticGroup>(`/api/static-groups/by-code/${shareCode}`);
+      set({ currentGroup: group, isLoading: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to fetch group',
+        isLoading: false,
+      });
+    }
+  },
+
+  /**
+   * Create a new static group
+   */
+  createGroup: async (name: string, isPublic: boolean = false) => {
+    set({ isCreating: true, error: null });
+
+    try {
+      const group = await authRequest<StaticGroup>('/api/static-groups', {
+        method: 'POST',
+        body: JSON.stringify({ name, isPublic }),
+      });
+
+      // Add to groups list
+      set((state) => ({
+        groups: [
+          ...state.groups,
+          {
+            id: group.id,
+            name: group.name,
+            shareCode: group.shareCode,
+            isPublic: group.isPublic,
+            ownerId: group.ownerId,
+            memberCount: group.memberCount,
+            userRole: 'owner' as MemberRole,
+            createdAt: group.createdAt,
+            updatedAt: group.updatedAt,
+          },
+        ],
+        currentGroup: group,
+        isCreating: false,
+      }));
+
+      return group;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to create group',
+        isCreating: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Update a static group
+   */
+  updateGroup: async (groupId: string, data: { name?: string; isPublic?: boolean }) => {
+    set({ error: null });
+
+    try {
+      const updatedGroup = await authRequest<StaticGroup>(`/api/static-groups/${groupId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+
+      // Update in groups list
+      set((state) => ({
+        groups: state.groups.map((g) =>
+          g.id === groupId
+            ? {
+                ...g,
+                name: updatedGroup.name,
+                isPublic: updatedGroup.isPublic,
+                updatedAt: updatedGroup.updatedAt,
+              }
+            : g
+        ),
+        currentGroup:
+          state.currentGroup?.id === groupId
+            ? { ...state.currentGroup, ...updatedGroup }
+            : state.currentGroup,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update group',
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a static group
+   */
+  deleteGroup: async (groupId: string) => {
+    set({ error: null });
+
+    try {
+      await authRequest<void>(`/api/static-groups/${groupId}`, {
+        method: 'DELETE',
+      });
+
+      // Remove from groups list
+      set((state) => ({
+        groups: state.groups.filter((g) => g.id !== groupId),
+        currentGroup: state.currentGroup?.id === groupId ? null : state.currentGroup,
+      }));
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete group',
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Set the current static group
+   */
+  setCurrentGroup: (group: StaticGroup | null) => {
+    set({ currentGroup: group });
+  },
+
+  /**
+   * Clear error state
+   */
+  clearError: () => {
+    set({ error: null });
+  },
+
+  // ==================== Membership Actions ====================
+
+  /**
+   * Add a member to a static group
+   */
+  addMember: async (groupId: string, userId: string, role: MemberRole = 'member') => {
+    set({ error: null });
+
+    try {
+      const membership = await authRequest<Membership>(
+        `/api/static-groups/${groupId}/members?user_id=${userId}&role=${role}`,
+        { method: 'POST' }
+      );
+
+      // Update current group's members if loaded
+      set((state) => {
+        if (state.currentGroup?.id === groupId && state.currentGroup.members) {
+          return {
+            currentGroup: {
+              ...state.currentGroup,
+              members: [...state.currentGroup.members, membership],
+              memberCount: state.currentGroup.memberCount + 1,
+            },
+          };
+        }
+        return state;
+      });
+
+      return membership;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to add member',
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Update a member's role
+   */
+  updateMemberRole: async (groupId: string, userId: string, role: MemberRole) => {
+    set({ error: null });
+
+    try {
+      const membership = await authRequest<Membership>(
+        `/api/static-groups/${groupId}/members/${userId}?role=${role}`,
+        { method: 'PUT' }
+      );
+
+      // Update current group's members if loaded
+      set((state) => {
+        if (state.currentGroup?.id === groupId && state.currentGroup.members) {
+          return {
+            currentGroup: {
+              ...state.currentGroup,
+              members: state.currentGroup.members.map((m) =>
+                m.userId === userId ? membership : m
+              ),
+            },
+          };
+        }
+        return state;
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update member role',
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a member from a static group
+   */
+  removeMember: async (groupId: string, userId: string) => {
+    set({ error: null });
+
+    try {
+      await authRequest<void>(`/api/static-groups/${groupId}/members/${userId}`, {
+        method: 'DELETE',
+      });
+
+      // Update current group's members if loaded
+      set((state) => {
+        if (state.currentGroup?.id === groupId && state.currentGroup.members) {
+          return {
+            currentGroup: {
+              ...state.currentGroup,
+              members: state.currentGroup.members.filter((m) => m.userId !== userId),
+              memberCount: state.currentGroup.memberCount - 1,
+            },
+          };
+        }
+        return state;
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to remove member',
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Transfer ownership to another member
+   */
+  transferOwnership: async (groupId: string, newOwnerId: string) => {
+    set({ error: null });
+
+    try {
+      await authRequest<StaticGroup>(
+        `/api/static-groups/${groupId}/transfer-ownership?new_owner_id=${newOwnerId}`,
+        { method: 'POST' }
+      );
+
+      // Refresh the group to get updated data
+      await get().fetchGroup(groupId);
+      await get().fetchGroups();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to transfer ownership',
+      });
+      throw error;
+    }
+  },
+}));

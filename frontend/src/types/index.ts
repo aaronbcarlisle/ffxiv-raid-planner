@@ -249,3 +249,65 @@ export interface DiscordAuthUrl {
   url: string;
   state: string;
 }
+
+// ==================== Static Group Types ====================
+
+// Membership role in a static group
+export type MemberRole = 'owner' | 'lead' | 'member' | 'viewer';
+
+// Member info for display
+export interface MemberInfo {
+  id: string;
+  discordId: string;
+  discordUsername: string;
+  discordAvatar?: string;
+  avatarUrl?: string;
+  displayName?: string;
+}
+
+// Membership in a static group
+export interface Membership {
+  id: string;
+  userId: string;
+  staticGroupId: string;
+  role: MemberRole;
+  joinedAt: string;
+  user?: MemberInfo;
+}
+
+// Owner info for display
+export interface OwnerInfo {
+  id: string;
+  discordUsername: string;
+  discordAvatar?: string;
+  avatarUrl?: string;
+  displayName?: string;
+}
+
+// Static group (persistent team identity)
+export interface StaticGroup {
+  id: string;
+  name: string;
+  shareCode: string;
+  isPublic: boolean;
+  ownerId: string;
+  owner?: OwnerInfo;
+  members?: Membership[];
+  memberCount: number;
+  userRole?: MemberRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Static group list item (for dashboard)
+export interface StaticGroupListItem {
+  id: string;
+  name: string;
+  shareCode: string;
+  isPublic: boolean;
+  ownerId: string;
+  memberCount: number;
+  userRole: MemberRole;
+  createdAt: string;
+  updatedAt: string;
+}

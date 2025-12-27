@@ -3,6 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 
 interface UserMenuProps {
@@ -65,6 +66,14 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           </div>
 
           {/* Menu Items */}
+          <Link
+            to="/dashboard"
+            onClick={() => setIsOpen(false)}
+            className="block w-full px-4 py-2 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-text-primary transition-colors"
+          >
+            My Statics
+          </Link>
+
           <button
             onClick={() => {
               setIsOpen(false);

@@ -1,11 +1,16 @@
 """User model for Discord OAuth authentication"""
 
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .membership import Membership
+    from .static_group import StaticGroup
 
 
 class User(Base):
@@ -27,6 +32,19 @@ class User(Base):
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
     last_login_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    memberships: Mapped[list["Membership"]] = relationship(
+        "Membership",
+        foreign_keys="Membership.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    owned_groups: Mapped[list["StaticGroup"]] = relationship(
+        "StaticGroup",
+        foreign_keys="StaticGroup.owner_id",
+        back_populates="owner",
+    )
 
     @property
     def avatar_url(self) -> str | None:
