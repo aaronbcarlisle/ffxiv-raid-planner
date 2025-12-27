@@ -1,6 +1,8 @@
 """Application configuration using pydantic-settings"""
 
+import secrets
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,10 +35,29 @@ class Settings(BaseSettings):
     # Debug mode
     debug: bool = True
 
+    # Discord OAuth
+    discord_client_id: str = ""
+    discord_client_secret: str = ""
+    discord_redirect_uri: str = "http://localhost:5173/auth/callback"
+
+    # JWT Configuration
+    jwt_secret_key: str = secrets.token_urlsafe(32)  # Auto-generate if not set
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 15
+    jwt_refresh_token_expire_days: int = 7
+
+    # Frontend URL (for redirects)
+    frontend_url: str = "http://localhost:5173"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse comma-separated CORS origins into a list"""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def discord_configured(self) -> bool:
+        """Check if Discord OAuth is properly configured"""
+        return bool(self.discord_client_id and self.discord_client_secret)
 
 
 @lru_cache

@@ -1,29 +1,46 @@
 """Pydantic schemas"""
 
+from .player import (
+    GearSlotStatus,
+    PlayerCreate,
+    PlayerResponse,
+    PlayerUpdate,
+    TomeWeaponStatus,
+)
 from .static import (
     StaticCreate,
-    StaticUpdate,
     StaticResponse,
     StaticSettings,
+    StaticUpdate,
     StaticWithPlayers,
 )
-from .player import (
-    PlayerCreate,
-    PlayerUpdate,
-    PlayerResponse,
-    GearSlotStatus,
-    TomeWeaponStatus,
+from .user import (
+    DiscordAuthUrl,
+    DiscordCallback,
+    RefreshTokenRequest,
+    TokenResponse,
+    UserResponse,
+    UserUpdate,
 )
 
 __all__ = [
+    # Player
+    "GearSlotStatus",
+    "PlayerCreate",
+    "PlayerResponse",
+    "PlayerUpdate",
+    "TomeWeaponStatus",
+    # Static
     "StaticCreate",
-    "StaticUpdate",
     "StaticResponse",
     "StaticSettings",
+    "StaticUpdate",
     "StaticWithPlayers",
-    "PlayerCreate",
-    "PlayerUpdate",
-    "PlayerResponse",
-    "GearSlotStatus",
-    "TomeWeaponStatus",
+    # User/Auth
+    "DiscordAuthUrl",
+    "DiscordCallback",
+    "RefreshTokenRequest",
+    "TokenResponse",
+    "UserResponse",
+    "UserUpdate",
 ]

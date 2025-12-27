@@ -12,9 +12,9 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Phase 3 Backend: Complete**
+**Phase 1 Frontend: Complete** | **Phase 2 UX: Complete** | **Phase 3 Backend: Complete** | **Phase 4 Auth: In Progress**
 
-The application now has a FastAPI backend with SQLite database for local development. Data persists across page refreshes, and share codes work for sharing statics.
+The application now has a FastAPI backend with SQLite database for local development. Data persists across page refreshes, and share codes work for sharing statics. Phase 4 is adding user accounts, multi-static membership, and per-tier roster snapshots.
 
 ### What Works (Phase 1 + Phase 2 + Phase 3)
 - Static creation with 8 template player slots
@@ -49,8 +49,23 @@ The application now has a FastAPI backend with SQLite database for local develop
 - **Share code functionality** - 6-character alphanumeric codes for sharing
 - **RESTful API** with full CRUD for statics and players
 
-### What's Missing
-- Authentication
+### Phase 4 In Progress (User Accounts + Multi-Tier)
+Based on user feedback, Phase 4 was significantly expanded to include:
+- **Discord OAuth** - User accounts via Discord login
+- **Multi-static membership** - Users can be in multiple statics
+- **Per-tier roster snapshots** - Each raid tier has its own roster state
+- **Access control** - Owner/Lead/Member/Viewer permissions
+- **Dashboard UX** - Static selector + Tier selector in header
+
+**Phase 4.1 Authentication (Partially Complete):**
+- [x] Backend: User model, Discord OAuth endpoints, JWT tokens
+- [x] Frontend: authStore.ts for token/user management
+- [ ] Frontend: Login button, user menu, protected routes
+
+See `docs/IMPLEMENTATION_PLAN.md` for detailed Phase 4 checklist and data model.
+
+### What's Missing (After Phase 4)
+- BiS import (Etro, XIVGear)
 - Lodestone sync
 - Real-time collaboration
 - Production deployment
@@ -560,11 +575,14 @@ Key principles:
 |-------|--------|----------|
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
-| 3 | **Complete** | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
-| 4 | Planned | BiS import (Etro, XIVGear), Balance presets |
-| 5 | Planned | Lodestone auto-sync |
-| 6 | Planned | FFLogs integration |
-| 7 | Planned | Discord bot, PWA offline mode |
+| 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
+| 4 | **In Progress** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard |
+| 5 | Planned | BiS import (Etro, XIVGear), Balance presets |
+| 6 | Planned | Lodestone auto-sync |
+| 7 | Planned | Loot distribution + real-time collaboration |
+| 8 | Planned | Scheduling + strategies |
+| 9 | Planned | FFLogs integration |
+| 10 | Planned | Discord bot, PWA offline mode |
 
 ---
 
@@ -677,6 +695,7 @@ cd frontend && pnpm format
 
 ## API Endpoints
 
+### Core (Phase 1-3)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check |
@@ -687,3 +706,19 @@ cd frontend && pnpm format
 | POST | `/api/statics/{id}/players` | Add player |
 | PUT | `/api/statics/{id}/players/{playerId}` | Update player |
 | DELETE | `/api/statics/{id}/players/{playerId}` | Remove player |
+
+### Authentication (Phase 4)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/auth/discord` | Get Discord OAuth URL |
+| POST | `/api/auth/discord/callback` | Handle OAuth callback, return tokens |
+| POST | `/api/auth/refresh` | Refresh access token |
+| POST | `/api/auth/logout` | Logout user |
+| GET | `/api/auth/me` | Get current user info |
+
+### Phase 4 Endpoints (Coming)
+See `docs/IMPLEMENTATION_PLAN.md` for full Phase 4 endpoint documentation including:
+- Static groups management
+- Memberships and invitations
+- Tier snapshots and rollover
+- Legacy static migration

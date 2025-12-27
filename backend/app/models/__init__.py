@@ -1,6 +1,7 @@
 """SQLAlchemy models"""
 
-from .static import Static
 from .player import Player
+from .static import Static
+from .user import User
 
-__all__ = ["Static", "Player"]
+__all__ = ["Player", "Static", "User"]

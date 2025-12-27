@@ -1,0 +1,44 @@
+"""User model for Discord OAuth authentication"""
+
+from datetime import datetime, timezone
+
+from sqlalchemy import String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from ..database import Base
+
+
+class User(Base):
+    """User model - represents a Discord-authenticated user"""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    discord_id: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    discord_username: Mapped[str] = mapped_column(String(100), nullable=False)
+    discord_discriminator: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    discord_avatar: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    last_login_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def avatar_url(self) -> str | None:
+        """Get full Discord avatar URL"""
+        if not self.discord_avatar:
+            return None
+        return f"https://cdn.discordapp.com/avatars/{self.discord_id}/{self.discord_avatar}.png"
+
+    @property
+    def effective_name(self) -> str:
+        """Get display name or fall back to Discord username"""
+        return self.display_name or self.discord_username
+
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, discord_username={self.discord_username})>"

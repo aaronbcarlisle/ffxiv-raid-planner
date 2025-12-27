@@ -218,3 +218,34 @@ export const TAB_ICONS = {
   loot: '/icons/loot-transparent-bg.png',
   stats: '/icons/stats-transparent-bg.png',
 };
+
+// ==================== User/Auth Types ====================
+
+// User from Discord OAuth
+export interface User {
+  id: string;
+  discordId: string;
+  discordUsername: string;
+  discordDiscriminator?: string;
+  discordAvatar?: string;
+  avatarUrl?: string;
+  displayName?: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+}
+
+// Auth tokens response
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+}
+
+// Discord OAuth URL response
+export interface DiscordAuthUrl {
+  url: string;
+  state: string;
+}
