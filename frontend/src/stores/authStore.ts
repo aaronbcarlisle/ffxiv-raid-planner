@@ -11,10 +11,6 @@ import type { User, AuthTokens, DiscordAuthUrl } from '../types';
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
-
 interface AuthState {
   // User state
   user: User | null;

@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
-import { useAuthStore } from '../stores/authStore';
+// Note: useAuthStore available if needed for permission checks
 import { getTierById, RAID_TIERS } from '../gamedata';
 import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
@@ -58,7 +58,6 @@ const DEFAULT_SETTINGS: StaticSettings = {
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
   const { currentGroup, isLoading: groupLoading, error: groupError, fetchGroupByShareCode } = useStaticGroupStore();
   const {
     tiers,
