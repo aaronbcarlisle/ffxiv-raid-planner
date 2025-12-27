@@ -10,6 +10,8 @@ export interface RaidTier {
   id: string;
   /** Display name */
   name: string;
+  /** Short name for dropdowns (e.g., "M5S-M8S") */
+  shortName: string;
   /** Patch version this tier was released */
   patch: string;
   /** Floor identifiers (e.g., M1S, M2S, M3S, M4S) */
@@ -58,6 +60,7 @@ export const RAID_TIERS: RaidTier[] = [
   {
     id: 'aac-cruiserweight',
     name: 'AAC Cruiserweight (Savage)',
+    shortName: 'M5S-M8S',
     patch: '7.2',
     floors: ['M5S', 'M6S', 'M7S', 'M8S'],
     dutyNames: [
@@ -89,6 +92,7 @@ export const RAID_TIERS: RaidTier[] = [
   {
     id: 'aac-light-heavyweight',
     name: 'AAC Light-heavyweight (Savage)',
+    shortName: 'M1S-M4S',
     patch: '7.0',
     floors: ['M1S', 'M2S', 'M3S', 'M4S'],
     dutyNames: [
@@ -124,6 +128,7 @@ export const RAID_TIERS: RaidTier[] = [
   {
     id: 'anabaseios',
     name: 'Anabaseios (Savage)',
+    shortName: 'P9S-P12S',
     patch: '6.4',
     floors: ['P9S', 'P10S', 'P11S', 'P12S'],
     itemLevels: {

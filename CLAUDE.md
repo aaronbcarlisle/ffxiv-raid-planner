@@ -119,15 +119,21 @@ ffxiv-raid-planner/
 │   │   ├── main.py              # FastAPI app entry point
 │   │   ├── config.py            # Environment configuration
 │   │   ├── database.py          # SQLAlchemy async setup
+│   │   ├── constants.py         # Shared constants and factory functions
 │   │   ├── models/              # SQLAlchemy models
-│   │   │   ├── static.py        # Static model
-│   │   │   └── player.py        # Player model
+│   │   │   ├── user.py          # User model (Discord OAuth)
+│   │   │   ├── static_group.py  # Static group model
+│   │   │   ├── membership.py    # Group membership model
+│   │   │   ├── tier_snapshot.py # Tier snapshot model
+│   │   │   └── snapshot_player.py # Player within tier model
 │   │   ├── schemas/             # Pydantic schemas
-│   │   │   ├── static.py        # Static request/response schemas
-│   │   │   └── player.py        # Player request/response schemas
+│   │   │   ├── user.py          # User request/response schemas
+│   │   │   ├── static_group.py  # Static group schemas
+│   │   │   └── tier_snapshot.py # Tier and player schemas
 │   │   ├── routers/             # API route handlers
-│   │   │   ├── statics.py       # Static CRUD endpoints
-│   │   │   └── players.py       # Player CRUD endpoints
+│   │   │   ├── auth.py          # Discord OAuth endpoints
+│   │   │   ├── static_groups.py # Static group CRUD
+│   │   │   └── tiers.py         # Tier and player endpoints
 │   │   └── services/
 │   │       └── share_code.py    # Share code generation
 │   ├── data/                    # SQLite database (auto-created)
@@ -423,9 +429,9 @@ function calculatePriorityScore(player): number {
 ## Component Architecture
 
 ### Static Group Components (`components/static-group/`)
-- `GroupHeader.tsx` - Group name, role badge, settings button, inline clickable share code (single row)
+- `StaticSwitcher.tsx` - Static dropdown for quick group switching (shows in header)
 - `GroupSettingsModal.tsx` - Rename, toggle public/private, delete group
-- `TierSelector.tsx` - Tier dropdown, new/rollover/delete buttons, player count badge
+- `TierSelector.tsx` - Tier dropdown (select tier within group)
 - `CreateTierModal.tsx` - Select and create new tier snapshot
 - `DeleteTierModal.tsx` - Confirm tier deletion
 - `RolloverDialog.tsx` - Copy roster to new tier with gear reset option
@@ -591,20 +597,26 @@ Key principles:
 
 ## UI/UX Design Principles
 
-### Information Hierarchy (GroupView)
+### Information Hierarchy (GroupView) - 2-Row Header
 ```
-Header:    [Logo]                                      [My Statics] [User]
-Controls:  [Static] [Owner] [⚙️] CODE                 [Tier ▼] [+] [↻] [+Add (3/8)]
-Toolbar:   [Party] [Loot] [Stats]                      [Sort] [G1/G2] [View]
-Content:   [Player Cards Grid]
+Header:   [Logo] [Static ▼][Owner][Code]              [Tier ▼] [⚙️] [User]
+Toolbar:  [Party] [Loot] [Stats]                      [Sort] [G1/G2] [View]
+Content:  [Player Cards Grid - all 8 visible without scrolling]
 ```
 
 **Key principles:**
-- Header = app-level navigation only (logo, nav, user)
-- Controls = page context (group name, tier, actions)
+- Header = unified context bar (logo, static switcher, tier, settings, user)
 - Toolbar = view options (tabs, sort, display mode)
 - No redundant information (each item appears once)
-- Minimal vertical chrome (2 info rows, not 4)
+- Minimal vertical chrome (2 rows, not 3)
+- All 8 player cards visible in expanded view without scrolling
+
+### Static Switcher Dropdown
+When on a group page, the header includes a static switcher dropdown:
+- Shows current static name with chevron
+- Lists all user's statics with role badges
+- "Go to Dashboard" link at bottom
+- Non-members see static name as plain text (no dropdown)
 
 ---
 
@@ -733,19 +745,12 @@ cd frontend && pnpm format
 
 ## API Endpoints
 
-### Core (Phase 1-3)
+### Health Check
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check |
-| POST | `/api/statics` | Create static (returns with shareCode) |
-| GET | `/api/statics/{shareCode}` | Get static by share code |
-| PUT | `/api/statics/{id}` | Update static |
-| DELETE | `/api/statics/{id}` | Delete static |
-| POST | `/api/statics/{id}/players` | Add player |
-| PUT | `/api/statics/{id}/players/{playerId}` | Update player |
-| DELETE | `/api/statics/{id}/players/{playerId}` | Remove player |
 
-### Authentication (Phase 4)
+### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/auth/discord` | Get Discord OAuth URL |
@@ -754,7 +759,7 @@ cd frontend && pnpm format
 | POST | `/api/auth/logout` | Logout user |
 | GET | `/api/auth/me` | Get current user info |
 
-### Static Groups (Phase 4 - Implemented)
+### Static Groups
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/static-groups` | List user's groups |
@@ -763,7 +768,7 @@ cd frontend && pnpm format
 | PUT | `/api/static-groups/{id}` | Update group |
 | DELETE | `/api/static-groups/{id}` | Delete group |
 
-### Tier Snapshots (Phase 4 - Implemented)
+### Tier Snapshots
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/static-groups/{id}/tiers` | List tier snapshots |
@@ -773,7 +778,7 @@ cd frontend && pnpm format
 | DELETE | `/api/static-groups/{id}/tiers/{tierId}` | Delete tier |
 | POST | `/api/static-groups/{id}/tiers/{tierId}/rollover` | Copy roster to new tier |
 
-### Players (Phase 4 - Implemented)
+### Players
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | PUT | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Update player |
