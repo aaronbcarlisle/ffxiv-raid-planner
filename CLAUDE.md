@@ -423,9 +423,9 @@ function calculatePriorityScore(player): number {
 ## Component Architecture
 
 ### Static Group Components (`components/static-group/`)
-- `GroupHeader.tsx` - Group name, role badge, settings button, share code
+- `GroupHeader.tsx` - Group name, role badge, settings button, inline clickable share code (single row)
 - `GroupSettingsModal.tsx` - Rename, toggle public/private, delete group
-- `TierSelector.tsx` - Tier dropdown, new/rollover/delete buttons
+- `TierSelector.tsx` - Tier dropdown, new/rollover/delete buttons, player count badge
 - `CreateTierModal.tsx` - Select and create new tier snapshot
 - `DeleteTierModal.tsx` - Confirm tier deletion
 - `RolloverDialog.tsx` - Copy roster to new tier with gear reset option
@@ -585,6 +585,26 @@ Key principles:
 5. **Don't mix display order and priority order** - They're separate concepts
 6. **Don't track weapon as either raid OR tome** - BiS is always raid; tome is interim
 7. **Don't break Tailwind arbitrary values** - Use custom CSS for complex breakpoints
+8. **Don't repeat information** - Static name and tier should appear only once in the UI
+
+---
+
+## UI/UX Design Principles
+
+### Information Hierarchy (GroupView)
+```
+Header:    [Logo]                                      [My Statics] [User]
+Controls:  [Static] [Owner] [⚙️] CODE                 [Tier ▼] [+] [↻] [+Add (3/8)]
+Toolbar:   [Party] [Loot] [Stats]                      [Sort] [G1/G2] [View]
+Content:   [Player Cards Grid]
+```
+
+**Key principles:**
+- Header = app-level navigation only (logo, nav, user)
+- Controls = page context (group name, tier, actions)
+- Toolbar = view options (tabs, sort, display mode)
+- No redundant information (each item appears once)
+- Minimal vertical chrome (2 info rows, not 4)
 
 ---
 
@@ -734,9 +754,28 @@ cd frontend && pnpm format
 | POST | `/api/auth/logout` | Logout user |
 | GET | `/api/auth/me` | Get current user info |
 
-### Phase 4 Endpoints (Coming)
-See `docs/IMPLEMENTATION_PLAN.md` for full Phase 4 endpoint documentation including:
-- Static groups management
-- Memberships and invitations
-- Tier snapshots and rollover
-- Legacy static migration
+### Static Groups (Phase 4 - Implemented)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/static-groups` | List user's groups |
+| POST | `/api/static-groups` | Create new group |
+| GET | `/api/static-groups/by-code/{code}` | Get group by share code |
+| PUT | `/api/static-groups/{id}` | Update group |
+| DELETE | `/api/static-groups/{id}` | Delete group |
+
+### Tier Snapshots (Phase 4 - Implemented)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/static-groups/{id}/tiers` | List tier snapshots |
+| POST | `/api/static-groups/{id}/tiers` | Create tier snapshot |
+| GET | `/api/static-groups/{id}/tiers/{tierId}` | Get tier with players |
+| PUT | `/api/static-groups/{id}/tiers/{tierId}` | Update tier |
+| DELETE | `/api/static-groups/{id}/tiers/{tierId}` | Delete tier |
+| POST | `/api/static-groups/{id}/tiers/{tierId}/rollover` | Copy roster to new tier |
+
+### Players (Phase 4 - Implemented)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PUT | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Update player |
+| POST | `/api/static-groups/{id}/tiers/{tierId}/players` | Add player |
+| DELETE | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Remove player |

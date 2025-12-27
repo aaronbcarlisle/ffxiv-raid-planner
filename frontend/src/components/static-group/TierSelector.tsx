@@ -2,7 +2,7 @@
  * Tier Selector
  *
  * Controls for selecting, creating, and managing tier snapshots.
- * Includes tier dropdown, new tier button, rollover, delete, and add player.
+ * Includes tier dropdown, new tier button, rollover, delete, add player, and player count.
  */
 
 import { getTierById, type RaidTier } from '../../gamedata';
@@ -14,6 +14,8 @@ interface TierSelectorProps {
   availableTiers: RaidTier[];
   canEdit: boolean;
   isSaving: boolean;
+  configuredCount?: number;
+  totalSlots?: number;
   onTierChange: (tierId: string) => void;
   onCreateTier: () => void;
   onRollover: () => void;
@@ -27,6 +29,8 @@ export function TierSelector({
   availableTiers,
   canEdit,
   isSaving,
+  configuredCount = 0,
+  totalSlots = 0,
   onTierChange,
   onCreateTier,
   onRollover,
@@ -41,7 +45,7 @@ export function TierSelector({
   const canAddPlayer = canEdit && hasCurrentTier;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       {/* Tier dropdown */}
       {hasTiers && (
         <select
@@ -53,7 +57,7 @@ export function TierSelector({
             const info = getTierById(tier.tierId);
             return (
               <option key={tier.tierId} value={tier.tierId}>
-                {info?.name || tier.tierId} {tier.isActive && '(Active)'}
+                {info?.shortName || info?.name || tier.tierId} {tier.isActive && '(Active)'}
               </option>
             );
           })}
@@ -65,8 +69,9 @@ export function TierSelector({
         <button
           onClick={onCreateTier}
           className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm"
+          title="Create new tier"
         >
-          + New Tier
+          +
         </button>
       )}
 
@@ -74,10 +79,12 @@ export function TierSelector({
       {canRollover && (
         <button
           onClick={onRollover}
-          className="bg-purple-500/20 text-purple-400 px-3 py-2 rounded font-medium hover:bg-purple-500/30 text-sm"
+          className="bg-purple-500/20 text-purple-400 px-2 py-2 rounded font-medium hover:bg-purple-500/30 text-sm"
           title="Copy roster to a new tier"
         >
-          Rollover
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
         </button>
       )}
 
@@ -94,14 +101,19 @@ export function TierSelector({
         </button>
       )}
 
-      {/* Add Player button */}
+      {/* Add Player button with count badge */}
       {canAddPlayer && (
         <button
           onClick={onAddPlayer}
           disabled={isSaving}
-          className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm disabled:opacity-50"
+          className="flex items-center gap-2 bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm disabled:opacity-50"
         >
-          + Add Player
+          + Add
+          {totalSlots > 0 && (
+            <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded">
+              {configuredCount}/{totalSlots}
+            </span>
+          )}
         </button>
       )}
     </div>

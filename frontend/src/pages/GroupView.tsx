@@ -337,23 +337,24 @@ export function GroupView() {
 
   return (
     <div className="max-w-[120rem] mx-auto px-4 py-6">
-      {/* Header */}
+      {/* Header: Group info + Tier controls in single row */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <GroupHeader
           name={currentGroup.name}
           shareCode={currentGroup.shareCode}
-          isPublic={currentGroup.isPublic}
           userRole={userRole}
           onSettingsClick={() => setShowSettingsModal(true)}
         />
 
-        {/* Tier selector */}
+        {/* Tier selector with player count */}
         <TierSelector
           tiers={tiers}
           currentTierId={currentTier?.tierId}
           availableTiers={availableTiers}
           canEdit={canEdit}
           isSaving={isSaving}
+          configuredCount={configuredPlayers.length}
+          totalSlots={currentTier?.players?.length || 0}
           onTierChange={handleTierChange}
           onCreateTier={() => setShowCreateTierModal(true)}
           onRollover={() => setShowRolloverDialog(true)}
@@ -383,21 +384,6 @@ export function GroupView() {
       {/* Content when tier exists */}
       {currentTier && (
         <>
-          {/* Tier info banner */}
-          {tierInfo && (
-            <div className="bg-bg-card border border-white/10 rounded-lg px-4 py-3 mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-display text-lg text-accent">{tierInfo.name}</span>
-                  <span className="text-text-muted ml-2">({tierInfo.shortName})</span>
-                </div>
-                <div className="text-sm text-text-secondary">
-                  {configuredPlayers.length} / {currentTier.players?.length || 0} players configured
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Toolbar: Tabs + Context Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
