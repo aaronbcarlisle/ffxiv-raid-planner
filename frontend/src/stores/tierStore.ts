@@ -33,6 +33,7 @@ interface TierState {
   deleteTier: (groupId: string, tierId: string) => Promise<void>;
   rollover: (groupId: string, sourceTierId: string, targetTierId: string, resetGear?: boolean) => Promise<RolloverResponse>;
   setCurrentTier: (tier: TierSnapshot | null) => void;
+  clearTiers: () => void;
   clearError: () => void;
 
   // Player actions
@@ -285,6 +286,13 @@ export const useTierStore = create<TierState>((set, get) => ({
    */
   setCurrentTier: (tier: TierSnapshot | null) => {
     set({ currentTier: tier });
+  },
+
+  /**
+   * Clear all tier state (when switching groups)
+   */
+  clearTiers: () => {
+    set({ tiers: [], currentTier: null, error: null });
   },
 
   /**

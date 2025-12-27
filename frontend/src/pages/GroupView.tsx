@@ -2,15 +2,38 @@
  * Group View Page
  *
  * Shows a static group with its tier snapshots and roster.
+ * Full integration with PlayerCard components, DnD, loot/stats tabs.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { getTierById, RAID_TIERS } from '../gamedata';
-import type { MemberRole, TierSnapshot } from '../types';
+import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
+import { EmptySlotCard } from '../components/player/EmptySlotCard';
+import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
+import { FloorSelector, LootPriorityPanel } from '../components/loot';
+import { TeamSummary } from '../components/team/TeamSummary';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
+import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
+import { SORT_PRESETS } from '../utils/constants';
+import type { MemberRole, SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
@@ -20,15 +43,64 @@ const ROLE_COLORS: Record<MemberRole, string> = {
   viewer: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
+// Default settings for display
+const DEFAULT_SETTINGS: StaticSettings = {
+  displayOrder: ['tank', 'healer', 'melee', 'ranged', 'caster'],
+  lootPriority: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+  sortPreset: 'standard',
+  groupView: false,
+  timezone: 'UTC',
+  autoSync: false,
+  syncFrequency: 'weekly',
+};
+
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const { currentGroup, isLoading: groupLoading, error: groupError, fetchGroupByShareCode } = useStaticGroupStore();
-  const { tiers, currentTier, isLoading: tierLoading, error: tierError, fetchTiers, fetchTier, createTier } = useTierStore();
+  const {
+    tiers,
+    currentTier,
+    isLoading: tierLoading,
+    isSaving,
+    error: tierError,
+    fetchTiers,
+    fetchTier,
+    createTier,
+    updatePlayer,
+    addPlayer,
+    removePlayer,
+    clearTiers,
+  } = useTierStore();
 
+  // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
   const [selectedTierId, setSelectedTierId] = useState<string>('');
+  const [pageMode, setPageMode] = useState<PageMode>('players');
+  const [viewMode, setViewMode] = useState<ViewMode>('compact');
+  const [selectedFloor, setSelectedFloor] = useState(1);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
+  const [sortPreset, setSortPreset] = useState<SortPreset>('standard');
+  const [groupView, setGroupView] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Clear tiers when shareCode changes (switching groups)
+  useEffect(() => {
+    clearTiers();
+  }, [shareCode, clearTiers]);
 
   // Fetch group on mount
   useEffect(() => {
@@ -72,6 +144,95 @@ export function GroupView() {
     }
   };
 
+  // Player update handler
+  const handleUpdatePlayer = useCallback(async (playerId: string, updates: Partial<SnapshotPlayer>) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await updatePlayer(currentGroup.id, currentTier.tierId, playerId, updates);
+  }, [currentGroup?.id, currentTier?.tierId, updatePlayer]);
+
+  // Player remove handler
+  const handleRemovePlayer = useCallback(async (playerId: string) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await removePlayer(currentGroup.id, currentTier.tierId, playerId);
+  }, [currentGroup?.id, currentTier?.tierId, removePlayer]);
+
+  // Configure player (set name, job, role)
+  const handleConfigurePlayer = useCallback(async (playerId: string, name: string, job: string, role: string) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await updatePlayer(currentGroup.id, currentTier.tierId, playerId, {
+      name,
+      job,
+      role,
+      configured: true,
+    });
+    setEditingPlayerId(null);
+  }, [currentGroup?.id, currentTier?.tierId, updatePlayer]);
+
+  // Add player handler
+  const handleAddPlayer = useCallback(async () => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await addPlayer(currentGroup.id, currentTier.tierId);
+  }, [currentGroup?.id, currentTier?.tierId, addPlayer]);
+
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !currentTier?.players) return;
+
+    const players = currentTier.players;
+    const activeIndex = players.findIndex(p => p.id === active.id);
+    const overIndex = players.findIndex(p => p.id === over.id);
+
+    if (activeIndex === -1 || overIndex === -1) return;
+
+    // Update sort orders
+    const activePlayer = players[activeIndex];
+    const overPlayer = players[overIndex];
+
+    // Swap sort orders
+    await handleUpdatePlayer(activePlayer.id, { sortOrder: overPlayer.sortOrder });
+    await handleUpdatePlayer(overPlayer.id, { sortOrder: activePlayer.sortOrder });
+
+    // Switch to custom sort
+    setSortPreset('custom');
+  }, [currentTier?.players, handleUpdatePlayer]);
+
+  // Calculate sorted players
+  const sortedPlayers = useMemo(() => {
+    if (!currentTier?.players) return [];
+    const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
+    // Convert SnapshotPlayer to format expected by sortPlayersByRole
+    const playersForSort = currentTier.players.map(p => ({
+      ...p,
+      staticId: currentTier.staticGroupId,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+    return sortPlayersByRole(playersForSort as any, displayOrder, sortPreset);
+  }, [currentTier?.players, sortPreset]);
+
+  // Player IDs for SortableContext
+  const playerIds = useMemo(() => sortedPlayers.map(p => p.id), [sortedPlayers]);
+
+  // Group players by light party when group view is enabled
+  const groupedPlayers = useMemo(() => {
+    if (!groupView) return null;
+    return groupPlayersByLightParty(sortedPlayers as any);
+  }, [groupView, sortedPlayers]);
+
+  // Check if we have enough position data to enable group view
+  const hasPositionData = sortedPlayers.filter(p => p.configured && p.position).length >= 2;
+
+  // Only count configured players for team summary
+  const configuredPlayers = useMemo(() => {
+    return sortedPlayers.filter(p => p.configured);
+  }, [sortedPlayers]);
+
+  const teamSummary = useMemo(() => {
+    if (configuredPlayers.length === 0) return null;
+    return calculateTeamSummary(configuredPlayers as any);
+  }, [configuredPlayers]);
+
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
   const userRole = currentGroup?.userRole;
@@ -83,6 +244,66 @@ export function GroupView() {
   // Available tiers for creation (filter out existing)
   const existingTierIds = tiers.map(t => t.tierId);
   const availableTiers = RAID_TIERS.filter(t => !existingTierIds.includes(t.id));
+
+  // Grid classes
+  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+
+  // Helper function to render a player card
+  const renderPlayerCard = (player: SnapshotPlayer) => {
+    // If editing this player, show inline edit form
+    if (editingPlayerId === player.id) {
+      return (
+        <InlinePlayerEdit
+          key={player.id}
+          player={player as any}
+          onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
+          onCancel={() => setEditingPlayerId(null)}
+        />
+      );
+    }
+
+    // If player is configured, show sortable player card
+    if (player.configured) {
+      return (
+        <SortablePlayerCard
+          key={player.id}
+          player={player as any}
+          settings={DEFAULT_SETTINGS}
+          viewMode={viewMode}
+          clipboardPlayer={clipboardPlayer as any}
+          isDragEnabled={canEdit}
+          onUpdate={(updates) => handleUpdatePlayer(player.id, updates as any)}
+          onRemove={() => handleRemovePlayer(player.id)}
+          onCopy={() => setClipboardPlayer(player)}
+          onPaste={() => {
+            if (clipboardPlayer) {
+              handleUpdatePlayer(player.id, {
+                job: clipboardPlayer.job,
+                role: clipboardPlayer.role,
+                gear: clipboardPlayer.gear,
+                tomeWeapon: clipboardPlayer.tomeWeapon,
+                isSubstitute: clipboardPlayer.isSubstitute,
+                notes: clipboardPlayer.notes,
+                bisLink: clipboardPlayer.bisLink,
+              });
+            }
+          }}
+          onDuplicate={() => handleAddPlayer()}
+        />
+      );
+    }
+
+    // Otherwise show empty slot
+    return (
+      <EmptySlotCard
+        key={player.id}
+        templateRole={player.templateRole}
+        position={player.position}
+        onStartEdit={() => setEditingPlayerId(player.id)}
+        onRemove={canEdit ? () => handleRemovePlayer(player.id) : undefined}
+      />
+    );
+  };
 
   if (isLoading && !currentGroup) {
     return (
@@ -166,23 +387,18 @@ export function GroupView() {
               + New Tier
             </button>
           )}
+
+          {canEdit && currentTier && (
+            <button
+              onClick={handleAddPlayer}
+              disabled={isSaving}
+              className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm disabled:opacity-50"
+            >
+              + Add Player
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Tier info banner */}
-      {tierInfo && (
-        <div className="bg-bg-card border border-white/10 rounded-lg px-4 py-3 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="font-display text-lg text-accent">{tierInfo.name}</span>
-              <span className="text-text-muted ml-2">({tierInfo.shortName})</span>
-            </div>
-            <div className="text-sm text-text-secondary">
-              {currentTier?.players?.filter(p => p.configured).length || 0} / {currentTier?.players?.length || 0} players configured
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
@@ -202,66 +418,129 @@ export function GroupView() {
         </div>
       )}
 
-      {/* Players grid */}
-      {currentTier?.players && currentTier.players.length > 0 && (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {currentTier.players.map((player) => (
-            <div
-              key={player.id}
-              className="bg-bg-card border border-white/10 rounded-lg p-4 hover:border-accent/30 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {player.position && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-text-muted">
-                      {player.position}
-                    </span>
-                  )}
-                  <span className="font-medium text-text-primary">
-                    {player.configured ? player.name : `(${player.templateRole || 'Empty'})`}
-                  </span>
+      {/* Content when tier exists */}
+      {currentTier && (
+        <>
+          {/* Tier info banner */}
+          {tierInfo && (
+            <div className="bg-bg-card border border-white/10 rounded-lg px-4 py-3 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-display text-lg text-accent">{tierInfo.name}</span>
+                  <span className="text-text-muted ml-2">({tierInfo.shortName})</span>
                 </div>
-                {player.isSubstitute && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
-                    SUB
-                  </span>
+                <div className="text-sm text-text-secondary">
+                  {configuredPlayers.length} / {currentTier.players?.length || 0} players configured
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toolbar: Tabs + Context Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+            <div className="relative flex items-center justify-end gap-3">
+              {/* Floor selector - visible in Loot tab */}
+              <div className={pageMode !== 'loot' ? 'invisible' : ''}>
+                {tierInfo && (
+                  <FloorSelector
+                    floors={tierInfo.floors}
+                    dutyNames={tierInfo.dutyNames}
+                    selectedFloor={selectedFloor}
+                    onFloorChange={setSelectedFloor}
+                  />
                 )}
               </div>
-
-              {player.configured && (
-                <>
-                  <div className="text-sm text-text-secondary mb-2">
-                    {player.job || 'No job'} • {player.role || 'No role'}
-                  </div>
-
-                  {/* Gear progress bar */}
-                  <div className="mt-3">
-                    <div className="flex justify-between text-xs text-text-muted mb-1">
-                      <span>Gear Progress</span>
-                      <span>
-                        {player.gear.filter(g => g.hasItem).length}/{player.gear.length}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent transition-all"
-                        style={{
-                          width: `${(player.gear.filter(g => g.hasItem).length / player.gear.length) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {!player.configured && (
-                <div className="text-sm text-text-muted italic">
-                  Slot not configured
-                </div>
-              )}
+              {/* Sort mode + Group view + View mode toggle - visible in Players tab */}
+              <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
+                <SortModeSelector
+                  sortPreset={sortPreset}
+                  onPresetChange={setSortPreset}
+                />
+                <GroupViewToggle
+                  enabled={groupView}
+                  onToggle={setGroupView}
+                  disabled={!hasPositionData}
+                />
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+
+          {/* Players Tab */}
+          {pageMode === 'players' && currentTier.players && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={playerIds} strategy={rectSortingStrategy}>
+                {/* Grouped View */}
+                {groupView && groupedPlayers ? (
+                  <div className="space-y-8 mb-8">
+                    {/* Group 1 */}
+                    {groupedPlayers.group1.length > 0 && (
+                      <div>
+                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G1</span>
+                          Light Party 1
+                        </h3>
+                        <div className={gridClasses}>
+                          {groupedPlayers.group1.map((player) => renderPlayerCard(player as any))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Group 2 */}
+                    {groupedPlayers.group2.length > 0 && (
+                      <div>
+                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G2</span>
+                          Light Party 2
+                        </h3>
+                        <div className={gridClasses}>
+                          {groupedPlayers.group2.map((player) => renderPlayerCard(player as any))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Unassigned */}
+                    {groupedPlayers.unassigned.length > 0 && (
+                      <div className="opacity-75">
+                        <h3 className="text-text-muted text-sm font-medium mb-3">
+                          Unassigned Positions
+                        </h3>
+                        <div className={gridClasses}>
+                          {groupedPlayers.unassigned.map((player) => renderPlayerCard(player as any))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Standard View */
+                  <div className={`${gridClasses} mb-8`}>
+                    {sortedPlayers.map((player) => renderPlayerCard(player as any))}
+                  </div>
+                )}
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {/* Loot Tab */}
+          {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
+            <LootPriorityPanel
+              players={configuredPlayers as any}
+              settings={DEFAULT_SETTINGS}
+              selectedFloor={selectedFloor}
+              floorName={tierInfo.floors[selectedFloor - 1]}
+            />
+          )}
+
+          {/* Stats Tab */}
+          {pageMode === 'stats' && teamSummary && (
+            <TeamSummary summary={teamSummary} />
+          )}
+        </>
       )}
 
       {/* Create Tier Modal */}
@@ -301,10 +580,10 @@ export function GroupView() {
               </button>
               <button
                 onClick={handleCreateTier}
-                disabled={!selectedTierId}
+                disabled={!selectedTierId || isSaving}
                 className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create
+                {isSaving ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
