@@ -1,19 +1,5 @@
 """Pydantic schemas"""
 
-from .player import (
-    GearSlotStatus,
-    PlayerCreate,
-    PlayerResponse,
-    PlayerUpdate,
-    TomeWeaponStatus,
-)
-from .static import (
-    StaticCreate,
-    StaticResponse,
-    StaticSettings,
-    StaticUpdate,
-    StaticWithPlayers,
-)
 from .static_group import (
     MemberInfo,
     MemberRoleEnum,
@@ -28,6 +14,7 @@ from .static_group import (
     StaticGroupWithMembers,
 )
 from .tier_snapshot import (
+    GearSlotStatus,
     RolloverRequest,
     RolloverResponse,
     SnapshotPlayerCreate,
@@ -37,6 +24,7 @@ from .tier_snapshot import (
     TierSnapshotResponse,
     TierSnapshotUpdate,
     TierSnapshotWithPlayers,
+    TomeWeaponStatus,
 )
 from .user import (
     DiscordAuthUrl,
@@ -48,18 +36,9 @@ from .user import (
 )
 
 __all__ = [
-    # Player (legacy)
+    # Gear Status (from tier_snapshot)
     "GearSlotStatus",
-    "PlayerCreate",
-    "PlayerResponse",
-    "PlayerUpdate",
     "TomeWeaponStatus",
-    # Static (legacy)
-    "StaticCreate",
-    "StaticResponse",
-    "StaticSettings",
-    "StaticUpdate",
-    "StaticWithPlayers",
     # Static Group
     "MemberInfo",
     "MemberRoleEnum",

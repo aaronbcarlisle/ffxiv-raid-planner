@@ -6,10 +6,7 @@
 
 import { create } from 'zustand';
 import type { StaticGroup, StaticGroupListItem, MemberRole, Membership } from '../types';
-import { useAuthStore } from './authStore';
-
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { authRequest } from '../services/api';
 
 interface StaticGroupState {
   // List of user's static groups (dashboard)
@@ -40,84 +37,6 @@ interface StaticGroupState {
   updateMemberRole: (groupId: string, userId: string, role: MemberRole) => Promise<void>;
   removeMember: (groupId: string, userId: string) => Promise<void>;
   transferOwnership: (groupId: string, newOwnerId: string) => Promise<void>;
-}
-
-/**
- * Make an authenticated API request
- */
-async function authRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const accessToken = useAuthStore.getState().accessToken;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data.detail || message;
-    } catch {
-      // Ignore JSON parse errors
-    }
-
-    // If unauthorized, try refreshing token
-    if (response.status === 401) {
-      const refreshed = await useAuthStore.getState().refreshAccessToken();
-      if (refreshed) {
-        // Retry with new token
-        const newAccessToken = useAuthStore.getState().accessToken;
-        headers['Authorization'] = `Bearer ${newAccessToken}`;
-        const retryResponse = await fetch(url, {
-          ...options,
-          headers: {
-            ...headers,
-            ...options.headers,
-          },
-        });
-
-        if (!retryResponse.ok) {
-          try {
-            const data = await retryResponse.json();
-            message = data.detail || `HTTP ${retryResponse.status}`;
-          } catch {
-            message = `HTTP ${retryResponse.status}`;
-          }
-          throw new Error(message);
-        }
-
-        if (retryResponse.status === 204) {
-          return undefined as T;
-        }
-
-        return retryResponse.json();
-      }
-    }
-
-    throw new Error(message);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
 }
 
 export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({

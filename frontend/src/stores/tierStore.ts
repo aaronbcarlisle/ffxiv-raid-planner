@@ -5,11 +5,8 @@
  */
 
 import { create } from 'zustand';
-import type { TierSnapshot, SnapshotPlayer, RolloverResponse, GearSlotStatus, TomeWeaponStatus } from '../types';
-import { useAuthStore } from './authStore';
-
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
+import { authRequest } from '../services/api';
 
 interface TierState {
   // List of tier snapshots for current group
@@ -40,83 +37,6 @@ interface TierState {
   updatePlayer: (groupId: string, tierId: string, playerId: string, data: Partial<SnapshotPlayer>) => Promise<void>;
   addPlayer: (groupId: string, tierId: string) => Promise<SnapshotPlayer>;
   removePlayer: (groupId: string, tierId: string, playerId: string) => Promise<void>;
-}
-
-/**
- * Make an authenticated API request
- */
-async function authRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const accessToken = useAuthStore.getState().accessToken;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data.detail || message;
-    } catch {
-      // Ignore JSON parse errors
-    }
-
-    // If unauthorized, try refreshing token
-    if (response.status === 401) {
-      const refreshed = await useAuthStore.getState().refreshAccessToken();
-      if (refreshed) {
-        const newAccessToken = useAuthStore.getState().accessToken;
-        headers['Authorization'] = `Bearer ${newAccessToken}`;
-        const retryResponse = await fetch(url, {
-          ...options,
-          headers: {
-            ...headers,
-            ...options.headers,
-          },
-        });
-
-        if (!retryResponse.ok) {
-          try {
-            const data = await retryResponse.json();
-            message = data.detail || `HTTP ${retryResponse.status}`;
-          } catch {
-            message = `HTTP ${retryResponse.status}`;
-          }
-          throw new Error(message);
-        }
-
-        if (retryResponse.status === 204) {
-          return undefined as T;
-        }
-
-        return retryResponse.json();
-      }
-    }
-
-    throw new Error(message);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json();
 }
 
 export const useTierStore = create<TierState>((set, get) => ({

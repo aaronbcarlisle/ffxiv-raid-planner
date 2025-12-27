@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import create_tables
-from .routers import auth_router, players_router, static_groups_router, statics_router, tiers_router
+from .routers import auth_router, static_groups_router, tiers_router
 
 settings = get_settings()
 
@@ -40,10 +40,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
-app.include_router(statics_router)
 app.include_router(static_groups_router)
 app.include_router(tiers_router)
-app.include_router(players_router)
 
 
 @app.get("/health")
