@@ -30,18 +30,10 @@ import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
-import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
+import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, GroupHeader } from '../components/static-group';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
-import type { MemberRole, SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
-
-// Role badge colors
-const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-};
+import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
 
 // Default settings for display
 const DEFAULT_SETTINGS: StaticSettings = {
@@ -210,14 +202,7 @@ export function GroupView() {
   const sortedPlayers = useMemo(() => {
     if (!currentTier?.players) return [];
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
-    // Convert SnapshotPlayer to format expected by sortPlayersByRole
-    const playersForSort = currentTier.players.map(p => ({
-      ...p,
-      staticId: currentTier.staticGroupId,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-    }));
-    return sortPlayersByRole(playersForSort as any, displayOrder, sortPreset);
+    return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
 
   // Player IDs for SortableContext
@@ -226,7 +211,7 @@ export function GroupView() {
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
     if (!groupView) return null;
-    return groupPlayersByLightParty(sortedPlayers as any);
+    return groupPlayersByLightParty(sortedPlayers);
   }, [groupView, sortedPlayers]);
 
   // Check if we have enough position data to enable group view
@@ -239,7 +224,7 @@ export function GroupView() {
 
   const teamSummary = useMemo(() => {
     if (configuredPlayers.length === 0) return null;
-    return calculateTeamSummary(configuredPlayers as any);
+    return calculateTeamSummary(configuredPlayers);
   }, [configuredPlayers]);
 
   const isLoading = groupLoading || tierLoading;
@@ -264,7 +249,7 @@ export function GroupView() {
       return (
         <InlinePlayerEdit
           key={player.id}
-          player={player as any}
+          player={player}
           onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
           onCancel={() => setEditingPlayerId(null)}
         />
@@ -276,12 +261,12 @@ export function GroupView() {
       return (
         <SortablePlayerCard
           key={player.id}
-          player={player as any}
+          player={player}
           settings={DEFAULT_SETTINGS}
           viewMode={viewMode}
-          clipboardPlayer={clipboardPlayer as any}
+          clipboardPlayer={clipboardPlayer}
           isDragEnabled={canEdit}
-          onUpdate={(updates) => handleUpdatePlayer(player.id, updates as any)}
+          onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
           onPaste={() => {
@@ -354,96 +339,27 @@ export function GroupView() {
     <div className="max-w-[120rem] mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-display text-accent">{currentGroup.name}</h1>
-            {userRole && (
-              <span className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[userRole]}`}>
-                {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-              </span>
-            )}
-            {/* Settings button (owner only) */}
-            {userRole === 'owner' && (
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="p-1.5 rounded hover:bg-white/10 text-text-muted hover:text-text-primary transition-colors"
-                title="Static Settings"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-            )}
-          </div>
-          <p className="text-text-muted text-sm mt-1">
-            Code: <span className="font-mono text-accent">{currentGroup.shareCode}</span>
-            {currentGroup.isPublic ? ' (Public)' : ' (Private)'}
-          </p>
-        </div>
+        <GroupHeader
+          name={currentGroup.name}
+          shareCode={currentGroup.shareCode}
+          isPublic={currentGroup.isPublic}
+          userRole={userRole}
+          onSettingsClick={() => setShowSettingsModal(true)}
+        />
 
         {/* Tier selector */}
-        <div className="flex items-center gap-3">
-          {tiers.length > 0 && (
-            <select
-              value={currentTier?.tierId || ''}
-              onChange={(e) => handleTierChange(e.target.value)}
-              className="bg-bg-card border border-white/10 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            >
-              {tiers.map((tier) => {
-                const info = getTierById(tier.tierId);
-                return (
-                  <option key={tier.tierId} value={tier.tierId}>
-                    {info?.name || tier.tierId} {tier.isActive && '(Active)'}
-                  </option>
-                );
-              })}
-            </select>
-          )}
-
-          {canEdit && availableTiers.length > 0 && (
-            <button
-              onClick={() => setShowCreateTierModal(true)}
-              className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm"
-            >
-              + New Tier
-            </button>
-          )}
-
-          {/* Rollover button (owner/lead, when tier exists and more tiers available) */}
-          {canEdit && currentTier && availableTiers.length > 0 && (
-            <button
-              onClick={() => setShowRolloverDialog(true)}
-              className="bg-purple-500/20 text-purple-400 px-3 py-2 rounded font-medium hover:bg-purple-500/30 text-sm"
-              title="Copy roster to a new tier"
-            >
-              Rollover
-            </button>
-          )}
-
-          {/* Delete tier button (owner/lead, when more than one tier) */}
-          {canEdit && currentTier && tiers.length > 1 && (
-            <button
-              onClick={() => setShowDeleteTierConfirm(true)}
-              className="text-red-400 hover:text-red-300 px-2 py-2 text-sm"
-              title="Delete this tier"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          )}
-
-          {canEdit && currentTier && (
-            <button
-              onClick={handleAddPlayer}
-              disabled={isSaving}
-              className="bg-accent/20 text-accent px-3 py-2 rounded font-medium hover:bg-accent/30 text-sm disabled:opacity-50"
-            >
-              + Add Player
-            </button>
-          )}
-        </div>
+        <TierSelector
+          tiers={tiers}
+          currentTierId={currentTier?.tierId}
+          availableTiers={availableTiers}
+          canEdit={canEdit}
+          isSaving={isSaving}
+          onTierChange={handleTierChange}
+          onCreateTier={() => setShowCreateTierModal(true)}
+          onRollover={() => setShowRolloverDialog(true)}
+          onDeleteTier={() => setShowDeleteTierConfirm(true)}
+          onAddPlayer={handleAddPlayer}
+        />
       </div>
 
       {/* No tiers state */}
@@ -532,7 +448,7 @@ export function GroupView() {
                           Light Party 1
                         </h3>
                         <div className={gridClasses}>
-                          {groupedPlayers.group1.map((player) => renderPlayerCard(player as any))}
+                          {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
                         </div>
                       </div>
                     )}
@@ -545,7 +461,7 @@ export function GroupView() {
                           Light Party 2
                         </h3>
                         <div className={gridClasses}>
-                          {groupedPlayers.group2.map((player) => renderPlayerCard(player as any))}
+                          {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
                         </div>
                       </div>
                     )}
@@ -557,7 +473,7 @@ export function GroupView() {
                           Unassigned Positions
                         </h3>
                         <div className={gridClasses}>
-                          {groupedPlayers.unassigned.map((player) => renderPlayerCard(player as any))}
+                          {groupedPlayers.unassigned.map((player) => renderPlayerCard(player))}
                         </div>
                       </div>
                     )}
@@ -565,7 +481,7 @@ export function GroupView() {
                 ) : (
                   /* Standard View */
                   <div className={`${gridClasses} mb-8`}>
-                    {sortedPlayers.map((player) => renderPlayerCard(player as any))}
+                    {sortedPlayers.map((player) => renderPlayerCard(player))}
                   </div>
                 )}
               </SortableContext>
@@ -575,7 +491,7 @@ export function GroupView() {
           {/* Loot Tab */}
           {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
             <LootPriorityPanel
-              players={configuredPlayers as any}
+              players={configuredPlayers}
               settings={DEFAULT_SETTINGS}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}

@@ -13,7 +13,7 @@ import {
   getRoleDisplayName,
   type Role,
 } from '../../gamedata';
-import type { Player, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 
@@ -35,11 +35,11 @@ function getPositionBadgeClasses(position: RaidPosition | undefined): string {
 }
 
 interface PlayerCardProps {
-  player: Player;
+  player: SnapshotPlayer;
   settings: StaticSettings;
   viewMode: ViewMode;
-  clipboardPlayer: Player | null;
-  onUpdate: (updates: Partial<Player>) => void;
+  clipboardPlayer: SnapshotPlayer | null;
+  onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;

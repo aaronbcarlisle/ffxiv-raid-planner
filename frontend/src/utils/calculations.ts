@@ -2,7 +2,7 @@
  * Gear and Team Calculations
  */
 
-import type { Player, GearSlotStatus, TeamSummary } from '../types';
+import type { SnapshotPlayer, GearSlotStatus, TeamSummary } from '../types';
 import {
   BOOK_COSTS,
   BOOK_TYPE_FOR_SLOT,
@@ -79,7 +79,7 @@ export function calculatePlayerBooks(gear: GearSlotStatus[]): {
 /**
  * Calculate team-wide summary
  */
-export function calculateTeamSummary(players: Player[]): TeamSummary {
+export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
   const totalPlayers = players.length;
 
   if (totalPlayers === 0) {
@@ -146,10 +146,10 @@ export function calculateTeamSummary(players: Player[]): TeamSummary {
  * @param sortPreset - Sort preset to use (defaults to role-based sorting)
  */
 export function sortPlayersByRole(
-  players: Player[],
+  players: SnapshotPlayer[],
   displayOrder: readonly string[],
   sortPreset: 'standard' | 'dps-first' | 'healer-first' | 'custom' = 'standard'
-): Player[] {
+): SnapshotPlayer[] {
   return [...players].sort((a, b) => {
     // Custom mode: sort only by sortOrder, then name
     if (sortPreset === 'custom') {
@@ -182,10 +182,10 @@ export function sortPlayersByRole(
 /**
  * Group players by light party based on raid position
  */
-export function groupPlayersByLightParty(players: Player[]): {
-  group1: Player[]; // T1, H1, M1, R1
-  group2: Player[]; // T2, H2, M2, R2
-  unassigned: Player[];
+export function groupPlayersByLightParty(players: SnapshotPlayer[]): {
+  group1: SnapshotPlayer[]; // T1, H1, M1, R1
+  group2: SnapshotPlayer[]; // T2, H2, M2, R2
+  unassigned: SnapshotPlayer[];
 } {
   const g1Positions = ['T1', 'H1', 'M1', 'R1'];
   const g2Positions = ['T2', 'H2', 'M2', 'R2'];

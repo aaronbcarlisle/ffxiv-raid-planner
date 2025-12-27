@@ -7,13 +7,13 @@
  * - Items needed (more items needed = higher priority)
  */
 
-import type { Player, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole } from '../types';
+import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete } from './calculations';
 
 export interface PriorityEntry {
-  player: Player;
+  player: SnapshotPlayer;
   score: number;
 }
 
@@ -26,7 +26,7 @@ export interface PriorityEntry {
  * - Weighted need: sum of slot weights for incomplete slots * 10
  */
 export function calculatePriorityScore(
-  player: Player,
+  player: SnapshotPlayer,
   settings: StaticSettings
 ): number {
   const roleIndex = settings.lootPriority.indexOf(player.role);
@@ -45,7 +45,7 @@ export function calculatePriorityScore(
  * sorted by priority score (highest first)
  */
 export function getPriorityForItem(
-  players: Player[],
+  players: SnapshotPlayer[],
   slot: GearSlot,
   settings: StaticSettings
 ): PriorityEntry[] {
@@ -67,7 +67,7 @@ export function getPriorityForItem(
  * A player needs ring if either ring slot has bisSource='raid' && !hasItem
  */
 export function getPriorityForRing(
-  players: Player[],
+  players: SnapshotPlayer[],
   settings: StaticSettings
 ): PriorityEntry[] {
   return players
@@ -92,7 +92,7 @@ export function getPriorityForRing(
  * For solvent, also includes players pursuing tome weapon who have it but need augmentation
  */
 export function getPriorityForUpgradeMaterial(
-  players: Player[],
+  players: SnapshotPlayer[],
   material: 'twine' | 'glaze' | 'solvent',
   settings: StaticSettings
 ): PriorityEntry[] {
@@ -153,7 +153,7 @@ export function getPriorityForUpgradeMaterial(
  * - Tome weapon costs 500 tomestones + Universal Tomestone (from M6S)
  * - Augmenting tome weapon requires Solvent (from M7S)
  */
-export function calculatePlayerNeeds(player: Player): PlayerNeeds {
+export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
   let raidNeed = 0;
   let tomeNeed = 0;
   let upgrades = 0;
@@ -198,7 +198,7 @@ export function calculatePlayerNeeds(player: Player): PlayerNeeds {
  * - Ranged/Caster: R1, R2, then overflow to M1, M2
  */
 export function getDefaultPositionForRole(
-  players: Player[],
+  players: SnapshotPlayer[],
   role: string,
   excludePlayerId?: string
 ): { position?: RaidPosition; tankRole?: TankRole } {

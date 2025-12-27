@@ -11,11 +11,11 @@ import {
   type Role,
   type JobInfo,
 } from '../../gamedata';
-import type { Player } from '../../types';
+import type { SnapshotPlayer } from '../../types';
 import { TEMPLATE_ROLE_INFO } from '../../utils/constants';
 
 interface InlinePlayerEditProps {
-  player: Player;
+  player: SnapshotPlayer;
   onSave: (name: string, job: string, role: string) => void;
   onCancel: () => void;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Player, StaticSettings, TeamSummary as TeamSummaryType } from '../../types';
+import type { SnapshotPlayer, StaticSettings, TeamSummary as TeamSummaryType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { LootPriorityPanel } from './LootPriorityPanel';
 import { TeamSummary } from '../team/TeamSummary';
@@ -7,7 +7,7 @@ import { TeamSummary } from '../team/TeamSummary';
 type Tab = 'loot' | 'stats';
 
 interface SummaryPanelProps {
-  players: Player[];
+  players: SnapshotPlayer[];
   settings: StaticSettings;
   selectedFloor: FloorNumber;
   floorName: string;

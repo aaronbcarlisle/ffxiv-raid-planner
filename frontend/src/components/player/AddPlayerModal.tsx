@@ -3,13 +3,13 @@ import { Modal } from '../ui/Modal';
 import { Checkbox } from '../ui/Checkbox';
 import { JobPicker } from './JobPicker';
 import { getRoleForJob } from '../../gamedata';
-import type { Player, GearSlotStatus } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus } from '../../types';
 import { GEAR_SLOTS } from '../../types';
 
 interface AddPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (player: Omit<Player, 'id' | 'staticId' | 'createdAt' | 'updatedAt'>) => void;
+  onAdd: (player: Omit<SnapshotPlayer, 'id' | 'tierSnapshotId' | 'createdAt' | 'updatedAt'>) => void;
   existingPlayerCount: number;
 }
 

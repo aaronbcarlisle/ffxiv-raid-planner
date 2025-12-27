@@ -1,4 +1,4 @@
-import type { Player, StaticSettings, GearSlot } from '../../types';
+import type { SnapshotPlayer, StaticSettings, GearSlot } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -11,7 +11,7 @@ import {
 import { getRoleColor } from '../../gamedata';
 
 interface LootPriorityPanelProps {
-  players: Player[];
+  players: SnapshotPlayer[];
   settings: StaticSettings;
   selectedFloor: FloorNumber;
   floorName: string; // e.g., "M5S"

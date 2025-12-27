@@ -77,30 +77,6 @@ export interface GearSlotStatus {
   itemLevel?: number;
 }
 
-// Player in a static
-export interface Player {
-  id: string;
-  staticId: string;
-  name: string;
-  job: string; // Job abbreviation (PLD, WAR, etc.)
-  role: string; // Role (tank, healer, melee, ranged, caster)
-  position?: RaidPosition; // Raid position for mechanics (T1, H2, M1, etc.)
-  tankRole?: TankRole; // MT/OT designation (tanks only)
-  templateRole?: TemplateRole; // Expected role for this slot (guides job selection)
-  configured: boolean; // false for template slots, true once name/job are set
-  lodestoneId?: string;
-  bisLink?: string;
-  fflogsId?: number;
-  lastSync?: string;
-  sortOrder: number;
-  isSubstitute: boolean;
-  notes?: string;
-  gear: GearSlotStatus[];
-  tomeWeapon: TomeWeaponStatus; // Interim tome weapon tracking
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Static (raid group) settings
 export interface StaticSettings {
   displayOrder: string[]; // Role order for display (used by non-custom presets)

@@ -1,15 +1,15 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { PlayerCard } from './PlayerCard';
-import type { Player, StaticSettings, ViewMode } from '../../types';
+import type { SnapshotPlayer, StaticSettings, ViewMode } from '../../types';
 
 interface SortablePlayerCardProps {
-  player: Player;
+  player: SnapshotPlayer;
   settings: StaticSettings;
   viewMode: ViewMode;
-  clipboardPlayer: Player | null;
+  clipboardPlayer: SnapshotPlayer | null;
   isDragEnabled: boolean;
-  onUpdate: (updates: Partial<Player>) => void;
+  onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;

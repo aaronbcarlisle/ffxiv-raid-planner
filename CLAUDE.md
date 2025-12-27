@@ -12,11 +12,19 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1-3: Complete** | **Phase 4 Auth/Multi-Static: Mostly Complete** | **Phase 4 UX Polish: In Progress**
+**Phase 1-4: Complete** | **Ready for Production**
 
-The application has evolved from anonymous share-code statics to a full user account system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
+The application is a full auth-first system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
 
-### What Works (Phase 1-3 Core Features)
+### What Works
+- **Discord OAuth** - Full login/logout with JWT tokens
+- **User Dashboard** (`/dashboard`) - View, create, and manage static groups
+- **Static Groups** - Multi-static membership with share codes
+- **Role-Based Access** - Owner/Lead/Member/Viewer permissions
+- **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
+- **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
+- **Tier Management** - Create, switch, rollover, delete tiers
+- **Group Settings** - Rename, toggle public/private, delete groups
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
 - Gear tracking with BiS source (Raid/Tome) and Have/Augmented states
@@ -33,34 +41,12 @@ The application has evolved from anonymous share-code statics to a full user acc
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
 - Share code functionality
 
-### What Works (Phase 4 - User Accounts)
-- **Discord OAuth** - Full login/logout with JWT tokens
-- **User Dashboard** (`/dashboard`) - View and create static groups
-- **Static Groups** - Multi-static membership with share codes
-- **Role-Based Access** - Owner/Lead/Member/Viewer permissions
-- **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
-- **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
-- **Tier Switching** - Switch between tier snapshots within a group
-
-### Phase 4 In Progress (UX Polish)
-- [ ] **Home page redesign** - Auth-first UX with public static viewer
-- [ ] **Header updates** - Show group name/tier for new system
-- [ ] **Group Settings Modal** - Rename group, toggle public/private, delete
-- [ ] **Rollover Dialog** - Copy roster to new tier
-- [ ] **Tier deletion** - Remove tier snapshots
-- [ ] **Deprecate legacy flow** - Remove old `/create` route
-
-### Architecture Notes
-
-**Two Parallel Systems (Backward Compat):**
-- **Legacy:** `/static/{code}` → StaticView.tsx → useStaticStore
-- **New:** `/group/{code}` → GroupView.tsx → useStaticGroupStore + useTierStore
+### Architecture
 
 **Key Stores:**
 - `authStore.ts` - Discord OAuth tokens, current user
 - `staticGroupStore.ts` - Static groups, membership
 - `tierStore.ts` - Tier snapshots, players within tiers
-- `staticStore.ts` - Legacy statics (backward compat)
 
 **API Endpoints (New System):**
 ```
@@ -158,10 +144,10 @@ ffxiv-raid-planner/
 │       │   ├── team/            # Team summary stats
 │       │   ├── layout/          # Header, layout wrapper
 │       │   └── ui/              # Reusable UI components
-│       ├── pages/               # Home, CreateStatic, StaticView
-│       ├── services/            # API client
-│       │   └── api.ts           # Backend API functions
-│       ├── stores/              # Zustand state (staticStore)
+│       ├── pages/               # Home, Dashboard, GroupView, AuthCallback
+│       ├── services/            # API client utilities
+│       │   └── api.ts           # API helpers (health check, debounce)
+│       ├── stores/              # Zustand state (authStore, staticGroupStore, tierStore)
 │       ├── gamedata/            # Jobs, costs, loot tables, raid tiers
 │       ├── utils/               # Calculations, priority logic
 │       └── types/               # TypeScript interfaces
@@ -285,7 +271,9 @@ Icons are stored locally with transparent backgrounds for better theme integrati
 
 | File | Purpose |
 |------|---------|
-| `src/stores/staticStore.ts` | All state management (players, gear, settings) |
+| `src/stores/authStore.ts` | Discord OAuth, user state |
+| `src/stores/staticGroupStore.ts` | Static groups, membership |
+| `src/stores/tierStore.ts` | Tier snapshots, players |
 | `src/utils/priority.ts` | Loot priority calculations |
 | `src/utils/calculations.ts` | Gear completion, materials needed |
 | `src/gamedata/costs.ts` | Book costs, tomestone costs |
@@ -347,15 +335,17 @@ Icons are stored locally with transparent backgrounds for better theme integrati
 ## Data Models
 
 ```typescript
-interface Player {
+// Player in a tier snapshot
+interface SnapshotPlayer {
   id: string;
-  staticId: string;
+  tierSnapshotId: string;
+  userId?: string;        // Link to user account (optional)
   name: string;
   job: string;           // 'DRG', 'WHM', etc.
-  role: Role;            // Derived from job
+  role: string;          // 'tank', 'healer', 'melee', 'ranged', 'caster'
   position?: RaidPosition;  // T1, H2, M1, etc.
   tankRole?: TankRole;      // MT or OT (tanks only)
-  templateRole?: TemplateRole;  // Template slot role (Tank, Healer, etc.)
+  templateRole?: TemplateRole;  // Template slot role
   configured: boolean;   // false for empty template slots
   sortOrder: number;     // Display order (for drag-and-drop)
   gear: GearSlotStatus[];
@@ -432,37 +422,46 @@ function calculatePriorityScore(player): number {
 
 ## Component Architecture
 
-### Player Components
+### Static Group Components (`components/static-group/`)
+- `GroupHeader.tsx` - Group name, role badge, settings button, share code
+- `GroupSettingsModal.tsx` - Rename, toggle public/private, delete group
+- `TierSelector.tsx` - Tier dropdown, new/rollover/delete buttons
+- `CreateTierModal.tsx` - Select and create new tier snapshot
+- `DeleteTierModal.tsx` - Confirm tier deletion
+- `RolloverDialog.tsx` - Copy roster to new tier with gear reset option
+
+### Auth Components (`components/auth/`)
+- `LoginButton.tsx` - Discord OAuth login button
+- `UserMenu.tsx` - User avatar dropdown with logout
+
+### Player Components (`components/player/`)
 - `PlayerCard.tsx` - Expandable card with compact/full views, context menu, job picker
 - `SortablePlayerCard.tsx` - Drag-and-drop wrapper for PlayerCard
 - `InlinePlayerEdit.tsx` - Name/job form for configuring slots
 - `EmptySlotCard.tsx` - Role-based placeholder for unconfigured template slots
-- `RoleJobSelector.tsx` - Job selection with template role filtering and "Other jobs" picker
+- `RoleJobSelector.tsx` - Job selection with template role filtering
 - `GearTable.tsx` - 11-slot gear editor with source/have/augmented
 - `WeaponSlotRow.tsx` - Special weapon row with tome weapon sub-row
 - `NeedsFooter.tsx` - 4-stat footer (raid/tome/upgrades/weeks)
-- `PositionSelector.tsx` - Raid position (T1/H2/M1/etc.) selector
+- `PositionSelector.tsx` - Raid position selector
 - `TankRoleSelector.tsx` - MT/OT designation selector
 
-### Loot Components
+### Loot Components (`components/loot/`)
 - `LootPriorityPanel.tsx` - Priority lists for floor drops
-- `LootModeView.tsx` - Full-screen loot distribution view
-- `LootItemCard.tsx` - Individual item with priority list
 - `FloorSelector.tsx` - M5S-M8S tab buttons
-- `SummaryPanel.tsx` - Tabs for Loot Priority and Team Stats (legacy)
+- `SummaryPanel.tsx` - Combined loot/stats view
 
-### Team Components
+### Team Components (`components/team/`)
 - `TeamSummary.tsx` - Aggregated stats (completion %, materials, books)
-- `StatsView.tsx` - Full-page stats view
 
-### UI Components
+### UI Components (`components/ui/`)
 - `TabNavigation.tsx` - Page-level tab buttons with FFXIV icons
 - `ViewModeToggle.tsx` - ▤/☰ toggle component
-- `SortModeSelector.tsx` - Sort preset dropdown (Standard/DPS-First/etc.)
+- `SortModeSelector.tsx` - Sort preset dropdown
 - `GroupViewToggle.tsx` - G1/G2 group view toggle
-- `ContextMenu.tsx` - Right-click menu component with FFXIV icons
+- `ContextMenu.tsx` - Right-click menu component
 - `Modal.tsx` - Confirmation dialogs
-- `Toast.tsx` - Temporary notification messages
+- `Toast.tsx` - Notification messages
 - `JobIcon.tsx` - XIVAPI job icons with fallback
 
 ---
@@ -596,13 +595,12 @@ Key principles:
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
-| 4 | **In Progress** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard |
+| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover |
 | 5 | Planned | BiS import (Etro, XIVGear), Balance presets |
-| 6 | Planned | Lodestone auto-sync |
-| 7 | Planned | Loot distribution + real-time collaboration |
-| 8 | Planned | Scheduling + strategies |
-| 9 | Planned | FFLogs integration |
-| 10 | Planned | Discord bot, PWA offline mode |
+| 6 | Planned | Invitation system (invite links for joining statics) |
+| 7 | Planned | Lodestone auto-sync |
+| 8 | Planned | FFLogs integration |
+| 9 | Planned | Discord bot, PWA offline mode |
 
 ---
 
