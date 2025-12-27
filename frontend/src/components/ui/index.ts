@@ -4,6 +4,7 @@ export { GroupViewToggle } from './GroupViewToggle';
 export { JobIcon } from './JobIcon';
 export { Modal } from './Modal';
 export { Select } from './Select';
+export { SettingsPopover } from './SettingsPopover';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { Toast } from './Toast';

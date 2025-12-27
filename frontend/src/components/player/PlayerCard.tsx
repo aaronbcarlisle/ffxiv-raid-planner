@@ -253,7 +253,8 @@ export function PlayerCard({
 
   return (
     <div
-      className={`bg-bg-card border border-border-default rounded-lg overflow-visible flex flex-col h-full ${hasOpenDropdown ? 'z-40 relative' : ''}`}
+      className={`bg-bg-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${hasOpenDropdown ? 'z-40 relative' : ''}`}
+      style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
     >
       {/* Context Menu */}
@@ -294,11 +295,8 @@ export function PlayerCard({
         </div>
       </Modal>
 
-      {/* Header with role-colored left border */}
-      <div
-        className="p-3 transition-colors relative z-20 border-l-4 rounded-tl-lg"
-        style={{ borderLeftColor: roleColor }}
-      >
+      {/* Header */}
+      <div className="p-3 transition-colors relative z-20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Clickable job icon with dropdown */}
