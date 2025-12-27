@@ -311,3 +311,59 @@ export interface StaticGroupListItem {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==================== Tier Snapshot Types ====================
+
+// Content type for tier snapshots
+export type ContentType = 'savage' | 'ultimate';
+
+// Tier snapshot (roster for a specific raid tier)
+export interface TierSnapshot {
+  id: string;
+  staticGroupId: string;
+  tierId: string;
+  contentType: ContentType;
+  isActive: boolean;
+  playerCount?: number;
+  players?: SnapshotPlayer[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Snapshot player (player within a tier snapshot)
+export interface SnapshotPlayer {
+  id: string;
+  tierSnapshotId: string;
+  userId?: string;
+  name: string;
+  job: string;
+  role: string;
+  position?: RaidPosition;
+  tankRole?: TankRole;
+  templateRole?: TemplateRole;
+  configured: boolean;
+  sortOrder: number;
+  isSubstitute: boolean;
+  notes?: string;
+  lodestoneId?: string;
+  bisLink?: string;
+  fflogsId?: number;
+  lastSync?: string;
+  gear: GearSlotStatus[];
+  tomeWeapon: TomeWeaponStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Rollover request
+export interface RolloverRequest {
+  targetTierId: string;
+  resetGear: boolean;
+}
+
+// Rollover response
+export interface RolloverResponse {
+  sourceSnapshot: TierSnapshot;
+  targetSnapshot: TierSnapshot;
+  playersCopied: number;
+}

@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import type { MemberRole } from '../types';
@@ -133,8 +133,9 @@ export function Dashboard() {
         /* Groups grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
-            <div
+            <Link
               key={group.id}
+              to={`/group/${group.shareCode}`}
               className="block bg-bg-card rounded-lg border border-white/10 p-4 hover:border-accent/50 transition-colors group"
             >
               <div className="flex items-start justify-between mb-3">
@@ -191,7 +192,7 @@ export function Dashboard() {
               <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted">
                 Code: <span className="font-mono text-accent">{group.shareCode}</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

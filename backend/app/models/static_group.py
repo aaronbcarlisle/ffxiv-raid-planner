@@ -10,6 +10,7 @@ from ..database import Base
 
 if TYPE_CHECKING:
     from .membership import Membership
+    from .tier_snapshot import TierSnapshot
     from .user import User
 
 
@@ -53,6 +54,12 @@ class StaticGroup(Base):
         "Membership",
         back_populates="static_group",
         cascade="all, delete-orphan",
+    )
+    tier_snapshots: Mapped[list["TierSnapshot"]] = relationship(
+        "TierSnapshot",
+        back_populates="static_group",
+        cascade="all, delete-orphan",
+        order_by="TierSnapshot.created_at.desc()",
     )
 
     @property

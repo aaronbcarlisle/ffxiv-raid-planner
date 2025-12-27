@@ -27,6 +27,17 @@ from .static_group import (
     StaticGroupUpdate,
     StaticGroupWithMembers,
 )
+from .tier_snapshot import (
+    RolloverRequest,
+    RolloverResponse,
+    SnapshotPlayerCreate,
+    SnapshotPlayerResponse,
+    SnapshotPlayerUpdate,
+    TierSnapshotCreate,
+    TierSnapshotResponse,
+    TierSnapshotUpdate,
+    TierSnapshotWithPlayers,
+)
 from .user import (
     DiscordAuthUrl,
     DiscordCallback,
@@ -37,7 +48,7 @@ from .user import (
 )
 
 __all__ = [
-    # Player
+    # Player (legacy)
     "GearSlotStatus",
     "PlayerCreate",
     "PlayerResponse",
@@ -61,6 +72,16 @@ __all__ = [
     "StaticGroupResponse",
     "StaticGroupUpdate",
     "StaticGroupWithMembers",
+    # Tier Snapshot
+    "RolloverRequest",
+    "RolloverResponse",
+    "SnapshotPlayerCreate",
+    "SnapshotPlayerResponse",
+    "SnapshotPlayerUpdate",
+    "TierSnapshotCreate",
+    "TierSnapshotResponse",
+    "TierSnapshotUpdate",
+    "TierSnapshotWithPlayers",
     # User/Auth
     "DiscordAuthUrl",
     "DiscordCallback",
