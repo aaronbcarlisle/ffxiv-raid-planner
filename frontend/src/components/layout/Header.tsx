@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStaticStore } from '../../stores/staticStore';
+import { useAuthStore } from '../../stores/authStore';
 import { getTierById } from '../../gamedata';
 import { Toast } from '../ui';
+import { LoginButton, UserMenu } from '../auth';
 
 export function Header() {
   const { currentStatic, addPlayerSlot } = useStaticStore();
+  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const [showToast, setShowToast] = useState(false);
 
   const tierInfo = currentStatic ? getTierById(currentStatic.tier) : null;
@@ -66,6 +69,17 @@ export function Header() {
                 Create Static
               </Link>
             )}
+
+            {/* Auth: Login button or User menu */}
+            <div className="ml-2 border-l border-white/10 pl-3">
+              {authLoading ? (
+                <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+              ) : isAuthenticated ? (
+                <UserMenu />
+              ) : (
+                <LoginButton className="text-sm px-3 py-1.5" />
+              )}
+            </div>
           </nav>
         </div>
       </header>
