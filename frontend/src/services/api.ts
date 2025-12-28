@@ -121,7 +121,30 @@ export async function checkHealth(): Promise<HealthResponse> {
   return response.json();
 }
 
-// ==================== Debounced Save ====================
+// ==================== Convenience Methods ====================
+
+/**
+ * API client with convenience methods
+ */
+export const api = {
+  get: <T>(endpoint: string) => authRequest<T>(endpoint, { method: 'GET' }),
+
+  post: <T>(endpoint: string, body?: unknown) =>
+    authRequest<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  put: <T>(endpoint: string, body?: unknown) =>
+    authRequest<T>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+
+  delete: <T>(endpoint: string) => authRequest<T>(endpoint, { method: 'DELETE' }),
+};
+
+// ==================== Utilities ====================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DebouncedFn<T extends (...args: any[]) => any> = {
