@@ -37,25 +37,48 @@ pnpm format
 ```
 src/
 ├── components/
-│   ├── player/     # PlayerCard, InlineEdit, GearTable
-│   ├── loot/       # LootPriority, FloorSelector
-│   ├── team/       # TeamSummary
-│   ├── layout/     # Header, Layout
-│   └── ui/         # JobIcon, Checkbox, Modal
-├── pages/          # Home, CreateStatic, StaticView
-├── stores/         # Zustand state management
-├── gamedata/       # Jobs, costs, loot tables, tiers
-├── utils/          # Calculations, priority logic
-└── types/          # TypeScript interfaces
+│   ├── player/        # PlayerCard, GearTable, JobPicker
+│   ├── loot/          # LootPriority, FloorSelector
+│   ├── team/          # TeamSummary
+│   ├── static-group/  # TierSelector, GroupSettings, Invitations
+│   ├── auth/          # LoginButton, UserMenu
+│   ├── layout/        # Header, Layout
+│   └── ui/            # JobIcon, Modal, Toast, ContextMenu
+├── pages/             # Home, Dashboard, GroupView, AuthCallback, InviteAccept
+├── stores/            # Zustand state management
+├── services/          # API client utilities
+├── gamedata/          # Jobs, costs, loot tables, tiers
+├── utils/             # Calculations, priority logic
+└── types/             # TypeScript interfaces
 ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `stores/staticStore.ts` | All state (players, gear, settings) |
+| `stores/authStore.ts` | Discord OAuth, user state, tokens |
+| `stores/staticGroupStore.ts` | Static groups, membership, invitations |
+| `stores/tierStore.ts` | Tier snapshots, players, gear |
 | `utils/priority.ts` | Loot priority calculations |
 | `utils/calculations.ts` | Gear completion, materials |
 | `gamedata/costs.ts` | Book and tomestone costs |
 | `gamedata/loot-tables.ts` | Floor drop tables |
-| `gamedata/jobs.ts` | Job definitions with XIVAPI |
+| `gamedata/jobs.ts` | Job definitions with XIVAPI icons |
+| `gamedata/raid-tiers.ts` | Tier configuration |
+
+## State Architecture
+
+Three Zustand stores manage application state:
+
+- **authStore** - User authentication, JWT tokens, Discord OAuth flow
+- **staticGroupStore** - User's static groups, membership roles, invitations
+- **tierStore** - Current tier's players, gear status, player reordering
+
+Each store includes async actions for API communication with automatic token refresh on 401 errors.
+
+## Environment Variables
+
+Create `.env.local`:
+```env
+VITE_API_URL=http://localhost:8000
+```

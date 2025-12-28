@@ -28,6 +28,11 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
   - Create invitations with role, expiration, and max uses
   - Accept invitations via link (requires Discord login)
   - Manage invitations in Group Settings modal
+- **Take Ownership** - Link Discord account to a player card
+  - Right-click context menu "Take Ownership" / "Release Ownership"
+  - Shows "You" badge and user avatar on owned cards
+  - Dashboard shows both memberships and linked statics
+  - Owners can unlink any user from Group Settings
 - **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
 - **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
 - **Tier Management** - Create, switch, rollover, delete tiers
@@ -78,10 +83,10 @@ POST   /api/static-groups/{id}/tiers/{tierId}/rollover  # Copy roster
 PUT    /api/static-groups/{id}/tiers/{tierId}/players/{id}  # Update player
 ```
 
-### What's Missing (After Phase 4)
+### What's Next
 - BiS import (Etro, XIVGear)
-- Lodestone sync
-- Invitation system (Phase 4.4 planned)
+- Lodestone auto-sync
+- FFLogs integration
 - Production deployment
 
 ---
@@ -275,6 +280,10 @@ Right-click on PlayerCard shows menu with FFXIV-style icons:
 | **Copy Player** | Copy icon | Stores player data in clipboard state |
 | **Paste Player** | Paste icon | Disabled if no clipboard data; overwrites target |
 | **Duplicate Player** | Duplicate icon | Creates new card with same config |
+| **Take Ownership** | - | Link your Discord account to this player card |
+| **Release Ownership** | - | Unlink yourself from this player card |
+| **Unlink User** | - | Owner-only: remove another user's link |
+| **Mark as Sub** | - | Toggle substitute player status |
 | **Remove Player** | Remove icon | Shows confirmation modal before removing |
 
 Icons are stored locally with transparent backgrounds for better theme integration.
@@ -354,6 +363,12 @@ interface SnapshotPlayer {
   id: string;
   tierSnapshotId: string;
   userId?: string;        // Link to user account (optional)
+  user?: {                // Populated when userId is set
+    id: string;
+    discordId: string;
+    username: string;
+    avatarUrl?: string;
+  };
   name: string;
   job: string;           // 'DRG', 'WHM', etc.
   role: string;          // 'tank', 'healer', 'melee', 'ranged', 'caster'
@@ -690,7 +705,7 @@ When on a group page, the header includes a static switcher dropdown:
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
-| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system |
+| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
 | 5 | Planned | BiS import (Etro, XIVGear), Balance presets |
 | 6 | Planned | Lodestone auto-sync |
 | 7 | Planned | FFLogs integration |
@@ -846,6 +861,8 @@ cd frontend && pnpm format
 | PUT | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Update player |
 | POST | `/api/static-groups/{id}/tiers/{tierId}/players` | Add player |
 | DELETE | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Remove player |
+| POST | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}/claim` | Take ownership |
+| DELETE | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}/claim` | Release ownership |
 
 ### Invitations
 | Method | Endpoint | Description |

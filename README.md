@@ -1,106 +1,141 @@
-# FFXIV Savage Raid Planner
+# FFXIV Raid Planner
 
-A free, web-based raid planning tool for FFXIV static groups. Track gear progress, manage loot distribution, and sync character data automatically.
+A free, web-based raid planning tool for FFXIV static groups. Track gear progress toward BiS, manage loot distribution, and coordinate your team.
 
-## Why This Exists
+## Live Demo
 
-Static raid groups typically use Google Sheets to track BiS gear and loot distribution. The main problems:
-- **People forget to update** after getting gear
-- **Manual calculations** for books, tomes, upgrade materials
-- **No loot priority system** - leads to arguments
-- **Hard to share** - requires Google account, permission management
-
-This tool solves these with automatic gear sync from Lodestone, BiS import from community tools, and smart loot priority suggestions.
-
-## Current Status
-
-**Frontend: Complete** | **Backend: Not Started**
-
-The frontend is a fully functional local prototype. Data is stored in browser memory only - it resets on page refresh. Backend integration is the next phase.
+- **Frontend:** Vercel (vercel.com)
+- **Backend:** Railway (railway.app)
 
 ## Features
 
-### Working Now
-- Create raid groups with 8 template player slots
-- Track gear per player (Raid vs Tome BiS)
-- Auto-calculate books, tomes, and upgrade materials needed
-- Loot priority suggestions per floor
-- Team-wide progress summary
-- Mobile-friendly dark FFXIV theme
+### Core Features
+- **Discord OAuth** - Login with Discord, no account creation needed
+- **Multi-Static Support** - Manage multiple raid groups from one account
+- **Tier Snapshots** - Separate rosters per raid tier (e.g., M1S-M4S vs M5S-M8S)
+- **Share Codes** - Public read-only links for non-members
 
-### Planned
-- Data persistence with shareable links
-- Auto-sync gear from Lodestone
-- Import BiS from Etro.gg / XIVGear.app
-- Week-over-week progress tracking
-- FFLogs integration
-- Discord bot notifications
+### Gear Tracking
+- Track all 11 gear slots per player
+- BiS source tracking (Raid vs Tome)
+- Augmentation status for tome gear
+- Tome weapon tracking (interim weapon during prog)
+
+### Team Management
+- Drag-and-drop player reordering
+- Light party split view (G1/G2)
+- Raid position assignments (T1/T2, H1/H2, M1/M2, R1/R2)
+- Tank role designation (MT/OT)
+
+### Loot Distribution
+- Auto-calculated loot priority per floor
+- Priority based on role + gear needs
+- Book cost tracking (weeks to BiS)
+- Upgrade material tracking (Twine/Glaze/Solvent)
+
+### Collaboration
+- **Role-Based Access** - Owner/Lead/Member/Viewer permissions
+- **Invitation System** - Invite links with configurable roles and expiration
+- **Player Ownership** - Link your Discord to your player card
 
 ## Tech Stack
 
-- **Frontend**: React 19 + TypeScript + Tailwind CSS 4 + Vite
-- **State**: Zustand
-- **Backend**: FastAPI (Python) + PostgreSQL (planned)
-- **Hosting**: Vercel + Railway (planned)
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19 + TypeScript + Tailwind CSS 4 + Vite 7 |
+| State | Zustand 5 |
+| Backend | FastAPI (Python) + SQLAlchemy + PostgreSQL |
+| Auth | Discord OAuth 2.0 + JWT |
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- pnpm (recommended) or npm
+- Node.js 18+ and pnpm
+- Python 3.11+
+- PostgreSQL (or SQLite for development)
 
-### Installation
+### Development Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/ffxiv-raid-planner.git
 cd ffxiv-raid-planner
 
-# Install frontend dependencies
+# Backend setup
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env  # Configure Discord OAuth credentials
+uvicorn app.main:app --reload --port 8000
+
+# Frontend setup (new terminal)
 cd frontend
 pnpm install
-
-# Start development server
 pnpm dev
 ```
 
-The app will be available at `http://localhost:5173`
+**Backend:** http://localhost:8000
+**Frontend:** http://localhost:5173
+
+### Environment Variables
+
+Create `backend/.env`:
+```env
+DATABASE_URL=sqlite+aiosqlite:///./data/raid_planner.db
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+DISCORD_REDIRECT_URI=http://localhost:5173/auth/callback
+JWT_SECRET=your_jwt_secret
+FRONTEND_URL=http://localhost:5173
+```
 
 ## Project Structure
 
 ```
 ffxiv-raid-planner/
-├── frontend/
+├── backend/                 # FastAPI Backend
+│   ├── app/
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── schemas/         # Pydantic schemas
+│   │   ├── routers/         # API endpoints
+│   │   └── services/        # Business logic
+│   └── requirements.txt
+├── frontend/                # React Frontend
 │   └── src/
-│       ├── components/     # React components
-│       ├── pages/          # Route pages
-│       ├── stores/         # Zustand state
-│       ├── gamedata/       # Jobs, costs, loot tables
-│       ├── utils/          # Calculations, helpers
-│       └── types/          # TypeScript types
-├── docs/
-│   ├── IMPLEMENTATION_PLAN.md   # Roadmap and status
-│   ├── GEARING_MATH.md          # FFXIV gearing mechanics
-│   ├── ARCHITECTURE_SPEC.md     # API integrations
-│   └── GEAR_LOGIC_RESEARCH.md   # Mechanics research
-└── CLAUDE.md                    # Project guide
+│       ├── components/      # React components
+│       ├── pages/           # Route pages
+│       ├── stores/          # Zustand state
+│       ├── gamedata/        # FFXIV data (jobs, costs, tiers)
+│       └── types/           # TypeScript types
+├── docs/                    # Documentation
+│   ├── GEARING_MATH.md      # FFXIV gearing mechanics
+│   ├── ROADMAP.md           # Future features
+│   └── UNIFIED_AUDIT_PLAN.md # Technical debt tracking
+└── CLAUDE.md                # Project guide (detailed)
 ```
 
 ## Documentation
 
-- [Project Guide](./CLAUDE.md) - Quick reference for development
-- [Implementation Plan](./docs/IMPLEMENTATION_PLAN.md) - Detailed roadmap
-- [Gearing Math](./docs/GEARING_MATH.md) - FFXIV mechanics deep dive
-- [Architecture Spec](./docs/ARCHITECTURE_SPEC.md) - API integrations
+- [CLAUDE.md](./CLAUDE.md) - Comprehensive project guide
+- [docs/GEARING_MATH.md](./docs/GEARING_MATH.md) - FFXIV gearing mechanics reference
+- [docs/ROADMAP.md](./docs/ROADMAP.md) - Future feature plans
+
+## Current Raid Tier
+
+**AAC Cruiserweight (Savage)** - Patch 7.2
+- Floors: M5S, M6S, M7S, M8S
+- Savage gear: iLvl 760 (weapon 765)
+- Tome gear: iLvl 750 (augmented 760)
 
 ## Contributing
 
-Contributions welcome! Please read the implementation plan first to understand the project direction.
+Contributions welcome! Please read CLAUDE.md for development guidelines.
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch
+3. Make your changes
+4. Run `pnpm tsc --noEmit` and `pnpm lint`
 5. Open a Pull Request
 
 ## License
@@ -109,8 +144,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [XIVAPI](https://xivapi.com/) - Character data and job icons
+- [XIVAPI](https://xivapi.com/) - Character data and icons
 - [Etro.gg](https://etro.gg/) - BiS gearset planning
-- [XIVGear.app](https://xivgear.app/) - Advanced gear planning
-- [FFLogs](https://www.fflogs.com/) - Raid analysis
 - [The Balance](https://www.thebalanceffxiv.com/) - Community BiS guides
