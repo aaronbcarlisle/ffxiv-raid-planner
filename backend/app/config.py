@@ -2,7 +2,9 @@
 
 import secrets
 from functools import lru_cache
+from typing import Self
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +16,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
+
+    # Environment (development/production)
+    environment: str = "development"
 
     # Database - Railway provides DATABASE_URL for PostgreSQL
     database_url: str = "sqlite+aiosqlite:///./data/raid_planner.db"
@@ -41,13 +46,27 @@ class Settings(BaseSettings):
     discord_redirect_uri: str = "http://localhost:5173/auth/callback"
 
     # JWT Configuration
-    jwt_secret_key: str = secrets.token_urlsafe(32)  # Auto-generate if not set
+    jwt_secret_key: str = ""  # Set via JWT_SECRET_KEY env var (required in production)
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
     # Frontend URL (for redirects)
     frontend_url: str = "http://localhost:5173"
+
+    @model_validator(mode='after')
+    def validate_jwt_secret(self) -> Self:
+        """Ensure JWT secret is set in production, auto-generate for local dev."""
+        if not self.jwt_secret_key:
+            if self.environment == "production":
+                raise ValueError(
+                    "JWT_SECRET_KEY environment variable must be set in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+                )
+            # Auto-generate for local development only
+            object.__setattr__(self, 'jwt_secret_key', secrets.token_urlsafe(32))
+            print("⚠️  Using auto-generated JWT secret (development mode)")
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:
