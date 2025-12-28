@@ -30,6 +30,7 @@ import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
 import { PlayerCard } from '../components/player/PlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
+import { DropZone } from '../components/player/DropZone';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
@@ -314,6 +315,13 @@ export function GroupView() {
       return;
     }
 
+    // Check if this is a drop zone (start/end of list)
+    if (typeof overId === 'string' && overId.startsWith('drop-')) {
+      // Drop zones are always insert mode
+      setInsertSide(overId.includes('start') ? 'before' : 'after');
+      return;
+    }
+
     // Get cursor position from the drag event
     const pointerX = (event.activatorEvent as PointerEvent)?.clientX;
     if (pointerX === undefined) {
@@ -366,15 +374,82 @@ export function GroupView() {
 
     const players = currentTier.players;
     const activeIndex = players.findIndex(p => p.id === active.id);
-    const overIndex = players.findIndex(p => p.id === over.id);
-
-    if (activeIndex === -1 || overIndex === -1) return;
+    if (activeIndex === -1) return;
 
     const activePlayer = players[activeIndex];
+    const activeGroup = getGroupFromPosition(activePlayer.position);
+    const overId = over.id as string;
+
+    // Handle drop zones (start/end of list)
+    if (overId.startsWith('drop-')) {
+      const sortedByOrder = [...players].sort((a, b) => a.sortOrder - b.sortOrder);
+      const activeOrderIndex = sortedByOrder.findIndex(p => p.id === active.id);
+
+      // Determine target position and group
+      let targetIndex: number;
+      let targetGroup: 1 | 2 | null = null;
+
+      if (overId === 'drop-start' || overId === 'drop-start-g1') {
+        targetIndex = 0;
+        if (overId === 'drop-start-g1') targetGroup = 1;
+      } else if (overId === 'drop-end') {
+        targetIndex = sortedByOrder.length - 1;
+      } else if (overId === 'drop-end-g1') {
+        // Find the last G1 player index
+        const g1Players = sortedByOrder.filter(p => getGroupFromPosition(p.position) === 1);
+        targetIndex = g1Players.length > 0
+          ? sortedByOrder.findIndex(p => p.id === g1Players[g1Players.length - 1].id)
+          : 0;
+        targetGroup = 1;
+      } else if (overId === 'drop-start-g2') {
+        // Find the first G2 player index
+        const firstG2Index = sortedByOrder.findIndex(p => getGroupFromPosition(p.position) === 2);
+        targetIndex = firstG2Index >= 0 ? firstG2Index : sortedByOrder.length;
+        targetGroup = 2;
+      } else if (overId === 'drop-end-g2') {
+        targetIndex = sortedByOrder.length - 1;
+        targetGroup = 2;
+      } else {
+        return; // Unknown drop zone
+      }
+
+      // Adjust if moving from before target
+      if (activeOrderIndex < targetIndex) {
+        targetIndex--;
+      }
+
+      // Build updates
+      const updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }> = [];
+      const withoutActive = sortedByOrder.filter(p => p.id !== active.id);
+      withoutActive.splice(targetIndex, 0, activePlayer);
+
+      withoutActive.forEach((player, index) => {
+        if (player.sortOrder !== index) {
+          const playerUpdates: Partial<SnapshotPlayer> = { sortOrder: index };
+
+          // Update position if moving to different group
+          if (player.id === activePlayer.id && groupView && targetGroup && activeGroup !== targetGroup && activePlayer.position) {
+            playerUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+          }
+
+          updates.push({ playerId: player.id, data: playerUpdates });
+        }
+      });
+
+      if (updates.length > 0) {
+        await reorderPlayers(currentGroup.id, currentTier.tierId, updates);
+        setSortPreset('custom');
+      }
+      return;
+    }
+
+    // Regular player card drop
+    const overIndex = players.findIndex(p => p.id === over.id);
+    if (overIndex === -1) return;
+
     const overPlayer = players[overIndex];
 
     // Check if this is a cross-group move (G1 <-> G2)
-    const activeGroup = getGroupFromPosition(activePlayer.position);
     const overGroup = getGroupFromPosition(overPlayer.position);
 
     if (wasInsertMode) {
@@ -659,7 +734,9 @@ export function GroupView() {
                           Light Party 1
                         </h3>
                         <div className={gridClasses}>
+                          {activeDragId && <DropZone id="drop-start-g1" isActive={!!activeDragId} />}
                           {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
+                          {activeDragId && <DropZone id="drop-end-g1" isActive={!!activeDragId} />}
                         </div>
                       </div>
                     )}
@@ -672,7 +749,9 @@ export function GroupView() {
                           Light Party 2
                         </h3>
                         <div className={gridClasses}>
+                          {activeDragId && <DropZone id="drop-start-g2" isActive={!!activeDragId} />}
                           {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
+                          {activeDragId && <DropZone id="drop-end-g2" isActive={!!activeDragId} />}
                         </div>
                       </div>
                     )}
@@ -692,7 +771,9 @@ export function GroupView() {
                 ) : (
                   /* Standard View */
                   <div className={`${gridClasses} mb-8`}>
+                    {activeDragId && <DropZone id="drop-start" isActive={!!activeDragId} />}
                     {sortedPlayers.map((player) => renderPlayerCard(player))}
+                    {activeDragId && <DropZone id="drop-end" isActive={!!activeDragId} />}
                   </div>
                 )}
               </SortableContext>

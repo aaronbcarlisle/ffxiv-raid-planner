@@ -1,5 +1,6 @@
 export { AddPlayerModal } from './AddPlayerModal';
 export { AddSlotCard } from './AddSlotCard';
+export { DropZone } from './DropZone';
 export { EmptySlotCard } from './EmptySlotCard';
 export { GearTable } from './GearTable';
 export { InlinePlayerEdit } from './InlinePlayerEdit';
