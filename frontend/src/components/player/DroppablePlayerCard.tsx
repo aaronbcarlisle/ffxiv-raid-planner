@@ -20,6 +20,8 @@ interface DroppablePlayerCardProps {
   onResetGear?: () => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
 }
 
 export function DroppablePlayerCard({

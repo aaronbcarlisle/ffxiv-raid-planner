@@ -400,3 +400,21 @@ export interface InvitationAcceptResponse {
   shareCode?: string;
   role?: MemberRole;
 }
+
+// ==================== BiS Import Types ====================
+
+// Gear slot data from BiS import
+export interface BiSGearSlotData {
+  slot: GearSlot;
+  source: GearSource;
+  itemId?: number;
+  itemName?: string;
+  itemLevel?: number;
+}
+
+// BiS import response from XIVGear
+export interface BiSImportData {
+  name: string;
+  job: string;
+  slots: BiSGearSlotData[];
+}

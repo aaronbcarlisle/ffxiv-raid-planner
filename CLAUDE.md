@@ -53,6 +53,11 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - Group view (G1/G2) light party split with cross-group position swap
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
 - Share code functionality (copy button with Shift for full URL)
+- **BiS Import** - Import gear sets from XIVGear
+  - Supports XIVGear share links, UUIDs, and curated BiS URLs
+  - Preview changes before importing with job mismatch warnings
+  - BiS link badge on player card header (opens XIVGear in new tab)
+  - Context menu shows "Update BiS" when player has linked set
 
 ### Architecture
 
@@ -84,7 +89,8 @@ PUT    /api/static-groups/{id}/tiers/{tierId}/players/{id}  # Update player
 ```
 
 ### What's Next
-- BiS import (Etro, XIVGear)
+- BiS presets by job (predefined BiS dropdown)
+- Item icons from BiS with hover cards
 - Lodestone auto-sync
 - FFLogs integration
 - Production deployment
@@ -277,6 +283,7 @@ Right-click on PlayerCard shows menu with FFXIV-style icons:
 
 | Action | Icon | Description |
 |--------|------|-------------|
+| **Import BiS** / **Update BiS** | Upload icon | Opens BiS import modal (label changes if player has linked BiS) |
 | **Copy Player** | Copy icon | Stores player data in clipboard state |
 | **Paste Player** | Paste icon | Disabled if no clipboard data; overwrites target |
 | **Duplicate Player** | Duplicate icon | Creates new card with same config |
@@ -284,6 +291,7 @@ Right-click on PlayerCard shows menu with FFXIV-style icons:
 | **Release Ownership** | - | Unlink yourself from this player card |
 | **Unlink User** | - | Owner-only: remove another user's link |
 | **Mark as Sub** | - | Toggle substitute player status |
+| **Reset Gear** | - | Reset all gear to unchecked state |
 | **Remove Player** | Remove icon | Shows confirmation modal before removing |
 
 Icons are stored locally with transparent backgrounds for better theme integration.
@@ -390,6 +398,8 @@ interface GearSlotStatus {
   bisSource: 'raid' | 'tome';
   hasItem: boolean;
   isAugmented: boolean;  // Only relevant for tome pieces
+  itemName?: string;     // From BiS import
+  itemLevel?: number;    // From BiS import
 }
 
 interface TomeWeaponStatus {
@@ -464,8 +474,8 @@ function calculatePriorityScore(player): number {
 - `UserMenu.tsx` - User avatar dropdown with logout
 
 ### Player Components (`components/player/`)
-- `PlayerCard.tsx` - Expandable card with compact/full views, context menu, job picker
-- `SortablePlayerCard.tsx` - Drag-and-drop wrapper for PlayerCard
+- `PlayerCard.tsx` - Expandable card with compact/full views, context menu, job picker, BiS badge
+- `DroppablePlayerCard.tsx` - Drag-and-drop wrapper for PlayerCard
 - `InlinePlayerEdit.tsx` - Name/job form for configuring slots
 - `EmptySlotCard.tsx` - Role-based placeholder for unconfigured template slots
 - `RoleJobSelector.tsx` - Job selection with template role filtering
@@ -474,6 +484,7 @@ function calculatePriorityScore(player): number {
 - `NeedsFooter.tsx` - 4-stat footer (raid/tome/upgrades/weeks)
 - `PositionSelector.tsx` - Raid position selector
 - `TankRoleSelector.tsx` - MT/OT designation selector
+- `BiSImportModal.tsx` - Modal for importing BiS from XIVGear
 
 ### Loot Components (`components/loot/`)
 - `LootPriorityPanel.tsx` - Priority lists for floor drops
@@ -705,8 +716,9 @@ When on a group page, the header includes a static switcher dropdown:
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
-| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
-| 5 | Planned | BiS import (Etro, XIVGear), Balance presets |
+| 4 | Complete | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
+| 5 | **Complete** | XIVGear BiS import with preview, BiS link badge, dynamic menu labels |
+| 5.2 | Planned | BiS presets by job, item icons with hover cards |
 | 6 | Planned | Lodestone auto-sync |
 | 7 | Planned | FFLogs integration |
 | 8 | Planned | Discord bot, PWA offline mode |
@@ -872,3 +884,37 @@ cd frontend && pnpm format
 | DELETE | `/api/static-groups/{id}/invitations/{inviteId}` | Revoke invitation |
 | GET | `/api/invitations/{code}` | Get invitation preview (public) |
 | POST | `/api/invitations/{code}/accept` | Accept invitation |
+
+### BiS Import
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/bis/xivgear/{uuid_or_url}` | Fetch BiS from XIVGear (UUID, share link, or curated BiS) |
+
+---
+
+## Development Practices
+
+### Documentation Maintenance
+- **On Planning:** Update CLAUDE.md with planned features and architecture changes
+- **On Commit:** Update CLAUDE.md to reflect completed work (new endpoints, components, data model changes)
+- Keep Phase Roadmap current with status updates
+
+### Modal and DnD Interaction
+When modals are open inside a DnD context, disable drag sensors to prevent text selection from triggering drags:
+
+```typescript
+// useDragAndDrop.ts - accepts disabled parameter
+const sensors = disabled ? [] : baseSensors;
+
+// GroupView.tsx - track modal state
+const [playerModalCount, setPlayerModalCount] = useState(0);
+const isAnyModalOpen = showSettingsModal || playerModalCount > 0;
+const dnd = useDragAndDrop({ disabled: isAnyModalOpen, ... });
+
+// PlayerCard.tsx - notify parent of modal state changes
+useEffect(() => {
+  const isModalOpen = showRemoveConfirm || showBiSImport;
+  if (isModalOpen) onModalOpen?.();
+  return () => { if (isModalOpen) onModalClose?.(); };
+}, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
+```

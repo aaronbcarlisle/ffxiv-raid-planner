@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import create_tables
-from .routers import auth_router, invitations_router, static_groups_router, tiers_router
+from .routers import auth_router, bis_router, invitations_router, static_groups_router, tiers_router
 
 settings = get_settings()
 
@@ -40,6 +40,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(bis_router)
 app.include_router(invitations_router)
 app.include_router(static_groups_router)
 app.include_router(tiers_router)

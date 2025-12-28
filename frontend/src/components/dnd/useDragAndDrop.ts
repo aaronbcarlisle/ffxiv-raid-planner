@@ -28,6 +28,7 @@ interface UseDragAndDropOptions {
   players: SnapshotPlayer[];
   groupView: boolean;
   canEdit: boolean;
+  disabled?: boolean; // Disable DnD when modal is open
   onReorder: (updates: PlayerUpdate[]) => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ export function useDragAndDrop({
   players,
   groupView,
   canEdit,
+  disabled = false,
   onReorder,
 }: UseDragAndDropOptions) {
   // Drag state
@@ -82,11 +84,12 @@ export function useDragAndDrop({
     return () => document.removeEventListener('pointermove', handlePointerMove);
   }, [dragState.activeId, dragState.overId, dragState.dropMode]);
 
-  // Sensors
+  // Sensors - use impossibly high activation distance when disabled
+  // This keeps array size constant to avoid React useEffect warnings from @dnd-kit
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: disabled ? 999999 : 8,
       },
     }),
     useSensor(KeyboardSensor, {

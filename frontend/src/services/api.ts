@@ -6,6 +6,7 @@
  */
 
 import { useAuthStore } from '../stores/authStore';
+import type { BiSImportData } from '../types';
 
 // Get API base URL from environment or default to localhost
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -143,6 +144,18 @@ export const api = {
 
   delete: <T>(endpoint: string) => authRequest<T>(endpoint, { method: 'DELETE' }),
 };
+
+// ==================== BiS Import ====================
+
+/**
+ * Fetch BiS gear set from XIVGear.app
+ * Accepts UUID or full URL - backend handles extraction
+ */
+export async function fetchBiSFromXIVGear(uuidOrUrl: string): Promise<BiSImportData> {
+  // Encode the URL/UUID for safe path parameter
+  const encoded = encodeURIComponent(uuidOrUrl);
+  return api.get(`/api/bis/xivgear/${encoded}`);
+}
 
 // ==================== Utilities ====================
 

@@ -75,6 +75,7 @@ export function GroupView() {
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
   const [sortPreset, setSortPresetState] = useState<SortPreset>('standard');
   const [groupView, setGroupView] = useState(false);
+  const [playerModalCount, setPlayerModalCount] = useState(0); // Track open modals in PlayerCards
 
   // Wrapper to persist sortPreset per-tier
   const setSortPreset = useCallback((preset: SortPreset) => {
@@ -362,11 +363,26 @@ export function GroupView() {
     setSortPreset('custom');
   }, [currentGroup?.id, currentTier?.tierId, reorderPlayers]);
 
+  // Check if any modal is open (page-level or player-level)
+  const isAnyModalOpen = showSettingsModal || showRolloverDialog ||
+                          showDeleteTierConfirm || showCreateTierModal ||
+                          playerModalCount > 0;
+
+  // Modal callbacks for PlayerCards
+  const handlePlayerModalOpen = useCallback(() => {
+    setPlayerModalCount(prev => prev + 1);
+  }, []);
+
+  const handlePlayerModalClose = useCallback(() => {
+    setPlayerModalCount(prev => Math.max(0, prev - 1));
+  }, []);
+
   // DnD hook - encapsulates all drag and drop logic
   const dnd = useDragAndDrop({
     players: sortedPlayers,
     groupView,
     canEdit,
+    disabled: isAnyModalOpen,
     onReorder: handleReorder,
   });
 
@@ -420,6 +436,8 @@ export function GroupView() {
           onResetGear={canEdit ? () => handleResetGear(player.id) : undefined}
           onClaimPlayer={() => handleClaimPlayer(player.id)}
           onReleasePlayer={() => handleReleasePlayer(player.id)}
+          onModalOpen={handlePlayerModalOpen}
+          onModalClose={handlePlayerModalClose}
         />
       );
     }

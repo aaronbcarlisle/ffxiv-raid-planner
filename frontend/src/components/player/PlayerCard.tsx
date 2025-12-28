@@ -3,6 +3,7 @@ import { GearTable } from './GearTable';
 import { NeedsFooter } from './NeedsFooter';
 import { PositionSelector } from './PositionSelector';
 import { TankRoleSelector } from './TankRoleSelector';
+import { BiSImportModal } from './BiSImportModal';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import {
@@ -18,6 +19,16 @@ import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 
 const defaultRoleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+
+// Build XIVGear URL from bisLink (UUID, share URL, or bis|job|tier format)
+function buildXIVGearUrl(bisLink: string): string {
+  // Already a full URL
+  if (bisLink.startsWith('http')) return bisLink;
+  // Curated BiS format (bis|job|tier)
+  if (bisLink.includes('|')) return `https://xivgear.app/?page=${bisLink}`;
+  // UUID format
+  return `https://xivgear.app/?page=sl|${bisLink}`;
+}
 
 // Get position badge color classes based on position type
 function getPositionBadgeClasses(position: RaidPosition | null | undefined): string {
@@ -49,6 +60,8 @@ interface PlayerCardProps {
   onResetGear?: () => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
 }
 
 export function PlayerCard({
@@ -66,10 +79,13 @@ export function PlayerCard({
   onResetGear,
   onClaimPlayer,
   onReleasePlayer,
+  onModalOpen,
+  onModalClose,
 }: PlayerCardProps) {
   // Expansion state follows global viewMode only (no individual override)
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [showBiSImport, setShowBiSImport] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [showPositionPicker, setShowPositionPicker] = useState(false);
   const [showTankRolePicker, setShowTankRolePicker] = useState(false);
@@ -150,6 +166,19 @@ export function PlayerCard({
   useEffect(() => {
     setEditedName(player.name);
   }, [player.name]);
+
+  // Notify parent when modals open/close (for DnD disable)
+  useEffect(() => {
+    const isModalOpen = showRemoveConfirm || showBiSImport;
+    if (isModalOpen) {
+      onModalOpen?.();
+    }
+    return () => {
+      if (isModalOpen) {
+        onModalClose?.();
+      }
+    };
+  }, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
 
   const handleNameDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -237,6 +266,26 @@ export function PlayerCard({
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
   const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: player.bisLink ? 'Update BiS' : 'Import BiS',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+      ),
+      onClick: () => setShowBiSImport(true),
+    },
+    ...(player.bisLink ? [{
+      label: 'Unlink BiS',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
+        </svg>
+      ),
+      onClick: () => onUpdate({ bisLink: null }),
+    }] : []),
+    { separator: true },
     {
       label: 'Copy Player',
       icon: CONTEXT_MENU_ICONS.copy,
@@ -343,6 +392,14 @@ export function PlayerCard({
           </button>
         </div>
       </Modal>
+
+      {/* BiS Import Modal */}
+      <BiSImportModal
+        isOpen={showBiSImport}
+        onClose={() => setShowBiSImport(false)}
+        player={player}
+        onImport={(updates) => onUpdate(updates)}
+      />
 
       {/* Header */}
       <div className="p-3 transition-colors relative z-20">
@@ -496,6 +553,23 @@ export function PlayerCard({
                   <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
                     SUB
                   </span>
+                )}
+                {/* BiS link badge */}
+                {player.bisLink && (
+                  <a
+                    href={buildXIVGearUrl(player.bisLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
+                               hover:bg-accent/30 flex items-center gap-1 transition-colors"
+                    title="Open BiS in XIVGear"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    BiS
+                  </a>
                 )}
                 {/* Linked user badge */}
                 {isLinkedToMe && (

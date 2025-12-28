@@ -1,5 +1,6 @@
 export { AddPlayerModal } from './AddPlayerModal';
 export { AddSlotCard } from './AddSlotCard';
+export { BiSImportModal } from './BiSImportModal';
 export { DragOverlayCard } from './DragOverlayCard';
 export { DroppablePlayerCard } from './DroppablePlayerCard';
 export { EmptySlotCard } from './EmptySlotCard';
