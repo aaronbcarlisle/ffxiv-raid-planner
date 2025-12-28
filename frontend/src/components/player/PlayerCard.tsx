@@ -205,11 +205,13 @@ export function PlayerCard({
   };
 
   const handlePositionChange = (position: RaidPosition | undefined) => {
-    onUpdate({ position });
+    // Use null instead of undefined so JSON.stringify doesn't strip it
+    onUpdate({ position: position ?? null });
   };
 
   const handleTankRoleChange = (tankRole: TankRole | undefined) => {
-    onUpdate({ tankRole });
+    // Use null instead of undefined so JSON.stringify doesn't strip it
+    onUpdate({ tankRole: tankRole ?? null });
   };
 
   const handlePositionBadgeClick = (e: React.MouseEvent) => {
