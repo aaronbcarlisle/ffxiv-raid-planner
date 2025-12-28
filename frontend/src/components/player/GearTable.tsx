@@ -119,9 +119,9 @@ function WeaponSlotRow({
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
             <span className="px-2 py-0.5 rounded text-xs bg-source-raid/30 text-source-raid">
-              Raid
+              R
             </span>
-            {/* +Tome is a toggle */}
+            {/* +T is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
               className={`px-2 py-0.5 rounded text-xs transition-colors ${
@@ -131,7 +131,7 @@ function WeaponSlotRow({
               }`}
               title={tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon'}
             >
-              +Tome
+              +T
             </button>
           </div>
         </td>
@@ -166,7 +166,7 @@ function WeaponSlotRow({
             └ Tome Wep
           </td>
           <td className="py-1 text-center">
-            <span className="text-xs text-source-tome">Tome</span>
+            <span className="text-xs text-source-tome">T</span>
           </td>
           <td className="py-1">
             <div className="flex justify-center">
