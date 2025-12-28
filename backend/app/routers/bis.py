@@ -19,6 +19,8 @@ class GearSlotData(BaseModel):
     itemId: Optional[int] = None
     itemName: Optional[str] = None
     itemLevel: Optional[int] = None
+    itemIcon: Optional[str] = None  # Full icon URL from XIVAPI
+    itemStats: Optional[dict[str, int]] = None  # Base stats (e.g., {"Strength": 847, "Vitality": 943})
 
 
 class BiSImportResponse(BaseModel):
@@ -95,8 +97,56 @@ def extract_bis_path(url_or_uuid: str) -> tuple[str, str | None]:
     raise ValueError(f"Could not extract UUID or BiS path from: {url_or_uuid}")
 
 
+def build_icon_url(icon_data: dict) -> str | None:
+    """Build XIVAPI icon URL from icon path data."""
+    if not icon_data or not isinstance(icon_data, dict):
+        return None
+
+    path = icon_data.get("path", "")
+    if not path:
+        return None
+
+    # Extract folder and icon ID from path like "ui/icon/031000/031676.tex"
+    # URL format: https://xivapi.com/i/031000/031676.png
+    import re
+    match = re.search(r'ui/icon/(\d+)/(\d+)', path)
+    if match:
+        folder, icon_id = match.groups()
+        return f"https://xivapi.com/i/{folder}/{icon_id}.png"
+
+    return None
+
+
+def extract_item_stats(fields: dict) -> dict[str, int]:
+    """Extract base stats from XIVAPI item fields."""
+    stats = {}
+    base_params = fields.get("BaseParam", [])
+    base_values = fields.get("BaseParamValue", [])
+
+    # Relevant combat stats we care about
+    relevant_stats = {
+        "Strength", "Dexterity", "Vitality", "Intelligence", "Mind",
+        "Critical Hit", "Determination", "Direct Hit Rate",
+        "Skill Speed", "Spell Speed", "Tenacity", "Piety"
+    }
+
+    for i, param in enumerate(base_params):
+        if not param or not isinstance(param, dict):
+            continue
+
+        param_fields = param.get("fields", {})
+        stat_name = param_fields.get("Name", "")
+
+        if stat_name in relevant_stats and i < len(base_values):
+            value = base_values[i]
+            if value and value > 0:
+                stats[stat_name] = value
+
+    return stats
+
+
 async def fetch_item_from_xivapi(item_id: int) -> dict:
-    """Fetch item details from XIVAPI beta with caching"""
+    """Fetch item details from XIVAPI beta with caching."""
     if item_id in _item_cache:
         return _item_cache[item_id]
 
@@ -110,20 +160,31 @@ async def fetch_item_from_xivapi(item_id: int) -> dict:
             if response.status_code == 200:
                 data = response.json()
                 fields = data.get("fields", {})
-                # Beta API has nested structure for LevelItem
+
+                # Extract item level
                 level_item = fields.get("LevelItem", {})
                 level = level_item.get("value", 0) if isinstance(level_item, dict) else 0
+
+                # Extract icon URL
+                icon_data = fields.get("Icon", {})
+                icon_url = build_icon_url(icon_data)
+
+                # Extract base stats
+                stats = extract_item_stats(fields)
+
                 result = {
                     "id": item_id,
                     "name": fields.get("Name", "Unknown"),
                     "level": level,
+                    "icon": icon_url,
+                    "stats": stats,
                 }
                 _item_cache[item_id] = result
                 return result
         except Exception:
             pass
 
-    return {"id": item_id, "name": "Unknown", "level": 0}
+    return {"id": item_id, "name": "Unknown", "level": 0, "icon": None, "stats": {}}
 
 
 def determine_source(item_name: str, item_level: int, slot: str) -> str:
@@ -356,6 +417,8 @@ async def fetch_xivgear_bis(uuid_or_url: str, set_index: int = 0):
                 itemId=item_id,
                 itemName=item_info["name"],
                 itemLevel=item_info["level"],
+                itemIcon=item_info.get("icon"),
+                itemStats=item_info.get("stats") or None,
             ))
         else:
             # No item in this slot - default to raid

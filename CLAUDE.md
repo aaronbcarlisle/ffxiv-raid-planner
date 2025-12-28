@@ -12,7 +12,7 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1-4: Complete** | **Ready for Production**
+**Phase 1-5.3: Complete** | **Ready for Production**
 
 The application is a full auth-first system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
 
@@ -59,6 +59,8 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
   - Preview changes before importing with job mismatch warnings
   - BiS link badge on player card header (opens XIVGear in new tab)
   - Context menu shows "Update BiS" / "Unlink BiS" when player has linked set
+  - **Item icons** - Actual gear icons from XIVAPI replace placeholders after BiS import
+  - **Hover cards** - Show item name, iLvl, stats, and source badge on gear slot hover
 
 ### Architecture
 
@@ -90,8 +92,6 @@ PUT    /api/static-groups/{id}/tiers/{tierId}/players/{id}  # Update player
 ```
 
 ### What's Next
-- BiS presets by job (predefined BiS dropdown)
-- Item icons from BiS with hover cards
 - Lodestone auto-sync
 - FFLogs integration
 - Production deployment
@@ -401,6 +401,23 @@ interface GearSlotStatus {
   isAugmented: boolean;  // Only relevant for tome pieces
   itemName?: string;     // From BiS import
   itemLevel?: number;    // From BiS import
+  itemIcon?: string;     // XIVAPI icon URL (from BiS import)
+  itemStats?: ItemStats; // Base stats for hover card
+}
+
+interface ItemStats {
+  Strength?: number;
+  Dexterity?: number;
+  Vitality?: number;
+  Intelligence?: number;
+  Mind?: number;
+  'Critical Hit'?: number;
+  Determination?: number;
+  'Direct Hit Rate'?: number;
+  'Skill Speed'?: number;
+  'Spell Speed'?: number;
+  Tenacity?: number;
+  Piety?: number;
 }
 
 interface TomeWeaponStatus {
@@ -504,6 +521,7 @@ function calculatePriorityScore(player): number {
 - `Modal.tsx` - Confirmation dialogs
 - `Toast.tsx` - Notification messages
 - `JobIcon.tsx` - XIVAPI job icons with fallback
+- `ItemHoverCard.tsx` - Gear item hover card with name, iLvl, stats, source badge
 
 ---
 
@@ -719,8 +737,8 @@ When on a group page, the header includes a static switcher dropdown:
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
 | 4 | Complete | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
 | 5 | Complete | XIVGear BiS import with preview, BiS link badge, dynamic menu labels, Unlink BiS |
-| 5.2 | **Complete** | BiS presets by job (dropdown from The Balance), in-game gear slot names |
-| 5.3 | Planned | Item icons with hover cards |
+| 5.2 | Complete | BiS presets by job (dropdown from The Balance), in-game gear slot names |
+| 5.3 | **Complete** | Item icons from XIVAPI with hover cards (stats, iLvl, source badge) |
 | 6 | Planned | Lodestone auto-sync |
 | 7 | Planned | FFLogs integration |
 | 8 | Planned | Discord bot, PWA offline mode |
@@ -790,21 +808,39 @@ https://xivapi.com/i/060000/060135.png  // Ring
 https://xivapi.com/i/060000/060102.png  // Weapon (Gladiator's Arm)
 ```
 
-### Future Feature: Dynamic BiS Item Icons (Phase 4+)
+### BiS Item Icons with Hover Cards (Phase 5.3)
 
-When Etro/XIVGear integration is added, gear slots could show:
-- **Empty state**: Placeholder icon (outline style) when slot needs to be filled
-- **Have state**: Actual BiS item icon from XIVAPI when "Have" is checked
+After importing BiS from XIVGear, gear slots show actual item icons from XIVAPI:
 
-This would require:
-1. Parsing BiS link to extract item IDs
-2. Fetching item icons from XIVAPI: `https://xivapi.com/i/{folder}/{icon}.png`
-3. Storing item icon URLs in GearSlotStatus
-4. Conditionally rendering placeholder vs actual item icon
+**How it works:**
+1. BiS import fetches item IDs from XIVGear shortlink API
+2. Backend fetches item details from XIVAPI beta: `beta.xivapi.com/api/1/sheet/Item/{id}`
+3. Icon URL extracted from path: `ui/icon/{folder}/{id}.tex` → `https://xivapi.com/i/{folder}/{id}.png`
+4. Base stats extracted from `BaseParam[]` and `BaseParamValue[]` arrays
+5. Icon URLs and stats stored in `GearSlotStatus` and returned to frontend
+
+**Icon styling (based on completion state):**
+- Actual item icons: Full opacity when have, 75% for tome without aug, 50% + grayscale when missing
+- Placeholder icons: White via brightness inversion when have, grey when missing
+
+**Hover card displays:**
+- Item name (colored by source: raid=red, tome=teal)
+- Item level
+- Two-column stat grid (STR, VIT, CRT, DET, etc.)
+- Source badge (Savage / Tomestone)
+
+**XIVAPI endpoints used:**
+```
+# Item details (beta API for current patch data)
+GET https://beta.xivapi.com/api/1/sheet/Item/{id}
+
+# Icon URL format
+https://xivapi.com/i/{folder}/{iconId}.png
+```
 
 Icon constants defined in `src/types/index.ts`:
-- `GEAR_SLOT_ICONS` - Current placeholder/outline icons
-- `GEAR_SLOT_FILLED_ICONS` - For future BiS item display
+- `GEAR_SLOT_ICONS` - Placeholder/outline icons (used when no BiS imported)
+- `GEAR_SLOT_FILLED_ICONS` - Legacy constant (not used after Phase 5.3)
 
 ---
 
@@ -896,7 +932,7 @@ cd frontend && pnpm format
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/bis/presets/{job}` | Get available BiS presets for a job |
-| GET | `/api/bis/xivgear/{uuid_or_url}` | Fetch BiS from XIVGear (UUID, share link, or curated BiS) |
+| GET | `/api/bis/xivgear/{uuid_or_url}` | Fetch BiS from XIVGear with item icons/stats from XIVAPI |
 
 ---
 

@@ -1,48 +1,93 @@
+import { useState, useRef } from 'react';
 import { Checkbox } from '../ui/Checkbox';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 
-// Reusable slot icon component
+// Reusable slot icon component with optional item icon and hover card
+// - Shows actual item icon if available, otherwise placeholder
 // - Empty: grey (opacity-50)
 // - Raid + Have: white (100%)
 // - Tome + Have: half-white (50%) - not complete until augmented
 // - Tome + Have + Aug: white (100%)
 function SlotIcon({
   slot,
+  status,
   size = 16,
-  hasItem = false,
-  bisSource = 'raid',
-  isAugmented = false,
+  showHover = false,
 }: {
   slot: GearSlot;
+  status: GearSlotStatus;
   size?: number;
-  hasItem?: boolean;
-  bisSource?: 'raid' | 'tome';
-  isAugmented?: boolean;
+  showHover?: boolean;
 }) {
-  // Determine the icon style based on completion state
-  let iconClass = 'opacity-50'; // Default: empty/grey
+  const [isHovered, setIsHovered] = useState(false);
+  const iconRef = useRef<HTMLDivElement>(null);
 
-  if (hasItem) {
-    if (bisSource === 'raid') {
-      // Raid gear is complete when you have it
-      iconClass = 'brightness-0 invert opacity-90';
+  const hasItem = status.hasItem;
+  const bisSource = status.bisSource;
+  const isAugmented = status.isAugmented;
+  const hasItemData = status.itemName && status.itemLevel;
+
+  // Use actual item icon if available, otherwise use placeholder
+  const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
+  const isActualItemIcon = !!status.itemIcon;
+
+  // Determine the icon style based on completion state
+  let iconClass = '';
+
+  if (isActualItemIcon) {
+    // Actual item icons - just adjust opacity based on state
+    if (!hasItem) {
+      iconClass = 'opacity-50 grayscale';
+    } else if (bisSource === 'tome' && !isAugmented) {
+      iconClass = 'opacity-75';
     } else {
-      // Tome gear: 50% when have, 100% when augmented
-      iconClass = isAugmented
-        ? 'brightness-0 invert opacity-90'
-        : 'brightness-0 invert opacity-50';
+      iconClass = '';
+    }
+  } else {
+    // Placeholder icons - use brightness inversion
+    iconClass = 'opacity-50'; // Default: empty/grey
+
+    if (hasItem) {
+      if (bisSource === 'raid') {
+        iconClass = 'brightness-0 invert opacity-90';
+      } else {
+        iconClass = isAugmented
+          ? 'brightness-0 invert opacity-90'
+          : 'brightness-0 invert opacity-50';
+      }
     }
   }
 
   return (
-    <img
-      src={GEAR_SLOT_ICONS[slot]}
-      alt={GEAR_SLOT_NAMES[slot]}
-      width={size}
-      height={size}
-      className={iconClass}
-    />
+    <div
+      ref={iconRef}
+      className="relative"
+      onMouseEnter={() => showHover && hasItemData && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <img
+        src={iconUrl}
+        alt={status.itemName || GEAR_SLOT_NAMES[slot]}
+        width={size}
+        height={size}
+        className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
+      />
+
+      {/* Hover card */}
+      {showHover && isHovered && hasItemData && (
+        <div className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2">
+          <ItemHoverCard
+            itemName={status.itemName!}
+            itemLevel={status.itemLevel!}
+            itemIcon={status.itemIcon}
+            itemStats={status.itemStats}
+            bisSource={bisSource}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -66,7 +111,7 @@ function WeaponSlotRow({
       <tr className="border-t border-border-default/50">
         <td className="py-1.5 text-text-secondary">
           <div className="flex items-center gap-2">
-            <SlotIcon slot="weapon" hasItem={status.hasItem} bisSource="raid" />
+            <SlotIcon slot="weapon" status={status} showHover />
             <span>{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
@@ -189,18 +234,37 @@ export function GearTable({
           const status = getSlotStatus(slot);
           const isComplete = status.hasItem && (status.bisSource === 'raid' || status.isAugmented);
 
-          // Determine icon class based on completion state
-          let iconClass = 'opacity-40'; // Default: empty/grey
-          if (status.hasItem) {
-            if (status.bisSource === 'raid') {
-              iconClass = 'brightness-0 invert opacity-90';
-            } else {
-              // Tome: 50% when have, 100% when augmented
-              iconClass = status.isAugmented
-                ? 'brightness-0 invert opacity-90'
-                : 'brightness-0 invert opacity-50';
+          // Use actual item icon if available, otherwise placeholder
+          const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
+          const isActualItemIcon = !!status.itemIcon;
+
+          // Determine icon class based on completion state and icon type
+          let iconClass = '';
+          if (isActualItemIcon) {
+            // Actual item icons - adjust opacity based on state
+            if (!status.hasItem) {
+              iconClass = 'opacity-50 grayscale';
+            } else if (status.bisSource === 'tome' && !status.isAugmented) {
+              iconClass = 'opacity-75';
+            }
+          } else {
+            // Placeholder icons - use brightness inversion
+            iconClass = 'opacity-40'; // Default: empty/grey
+            if (status.hasItem) {
+              if (status.bisSource === 'raid') {
+                iconClass = 'brightness-0 invert opacity-90';
+              } else {
+                iconClass = status.isAugmented
+                  ? 'brightness-0 invert opacity-90'
+                  : 'brightness-0 invert opacity-50';
+              }
             }
           }
+
+          // Build title with item name if available
+          const itemInfo = status.itemName ? `${status.itemName} (iLvl ${status.itemLevel})` : GEAR_SLOT_NAMES[slot];
+          const sourceInfo = status.bisSource === 'raid' ? 'Raid' : 'Tome';
+          const stateInfo = `${status.hasItem ? ' ✓' : ''}${status.isAugmented ? ' Aug' : ''}`;
 
           return (
             <div
@@ -212,14 +276,14 @@ export function GearTable({
                     ? 'bg-status-warning/30'
                     : 'bg-bg-hover'
               }`}
-              title={`${GEAR_SLOT_NAMES[slot]}: ${status.bisSource === 'raid' ? 'Raid' : 'Tome'}${status.hasItem ? ' (Have)' : ''}${status.isAugmented ? ' (Aug)' : ''}`}
+              title={`${itemInfo}: ${sourceInfo}${stateInfo}`}
             >
               <img
-                src={GEAR_SLOT_ICONS[slot]}
-                alt={GEAR_SLOT_NAMES[slot]}
+                src={iconUrl}
+                alt={status.itemName || GEAR_SLOT_NAMES[slot]}
                 width={18}
                 height={18}
-                className={iconClass}
+                className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
               />
             </div>
           );
@@ -262,12 +326,7 @@ export function GearTable({
             <tr key={slot} className="border-t border-border-default/50">
               <td className="py-1.5 text-text-secondary">
                 <div className="flex items-center gap-2">
-                  <SlotIcon
-                    slot={slot}
-                    hasItem={status.hasItem}
-                    bisSource={status.bisSource}
-                    isAugmented={status.isAugmented}
-                  />
+                  <SlotIcon slot={slot} status={status} showHover />
                   <span>{GEAR_SLOT_NAMES[slot]}</span>
                 </div>
               </td>

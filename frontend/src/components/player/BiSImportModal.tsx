@@ -161,6 +161,8 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
         // Include item metadata from import
         itemName: importedSlot.itemName,
         itemLevel: importedSlot.itemLevel,
+        itemIcon: importedSlot.itemIcon,
+        itemStats: importedSlot.itemStats,
         // Reset progress if checkbox is checked and source changed
         hasItem: shouldResetProgress ? false : currentSlot.hasItem,
         isAugmented: shouldResetProgress ? false : currentSlot.isAugmented,

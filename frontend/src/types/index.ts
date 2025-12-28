@@ -67,6 +67,22 @@ export interface PlayerNeeds {
   tomeWeeks: number; // Weeks to acquire all tome gear at 450/week cap
 }
 
+// Item stats from BiS import (base stats on the item)
+export interface ItemStats {
+  Strength?: number;
+  Dexterity?: number;
+  Vitality?: number;
+  Intelligence?: number;
+  Mind?: number;
+  'Critical Hit'?: number;
+  Determination?: number;
+  'Direct Hit Rate'?: number;
+  'Skill Speed'?: number;
+  'Spell Speed'?: number;
+  Tenacity?: number;
+  Piety?: number;
+}
+
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
@@ -75,6 +91,8 @@ export interface GearSlotStatus {
   isAugmented: boolean;
   itemName?: string;
   itemLevel?: number;
+  itemIcon?: string;
+  itemStats?: ItemStats;
 }
 
 // Static (raid group) settings
@@ -410,6 +428,8 @@ export interface BiSGearSlotData {
   itemId?: number;
   itemName?: string;
   itemLevel?: number;
+  itemIcon?: string;
+  itemStats?: ItemStats;
 }
 
 // BiS import response from XIVGear
