@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { TankRole } from '../../types';
 
 interface TankRoleSelectorProps {
-  tankRole: TankRole | undefined;
+  tankRole: TankRole | null | undefined;
   onSelect: (role: TankRole | undefined) => void;
   onClose: () => void;
 }

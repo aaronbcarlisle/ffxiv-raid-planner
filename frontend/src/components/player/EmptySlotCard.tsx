@@ -2,8 +2,8 @@ import type { TemplateRole, RaidPosition } from '../../types';
 import { TEMPLATE_ROLE_INFO, getRoleIconUrl } from '../../utils/constants';
 
 interface EmptySlotCardProps {
-  templateRole?: TemplateRole;
-  position?: RaidPosition;
+  templateRole?: TemplateRole | null;
+  position?: RaidPosition | null;
   onStartEdit: () => void;
   onRemove?: () => void;
 }

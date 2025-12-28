@@ -3,7 +3,7 @@ import type { RaidPosition } from '../../types';
 import { RAID_POSITIONS } from '../../types';
 
 interface PositionSelectorProps {
-  position: RaidPosition | undefined;
+  position: RaidPosition | null | undefined;
   role: string;
   onSelect: (position: RaidPosition | undefined) => void;
   onClose: () => void;

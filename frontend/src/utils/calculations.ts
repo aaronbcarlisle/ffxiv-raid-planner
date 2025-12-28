@@ -202,7 +202,7 @@ export function groupPlayersByLightParty(players: SnapshotPlayer[]): {
 /**
  * Get which group (1 or 2) a position belongs to
  */
-export function getGroupFromPosition(position: string | undefined): 1 | 2 | null {
+export function getGroupFromPosition(position: string | null | undefined): 1 | 2 | null {
   if (!position) return null;
   const g1Positions = ['T1', 'H1', 'M1', 'R1'];
   const g2Positions = ['T2', 'H2', 'M2', 'R2'];
