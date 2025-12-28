@@ -519,8 +519,9 @@ async def create_snapshot_player(
     gear = [g.model_dump(by_alias=True) for g in data.gear] if data.gear else create_default_gear_ring2_tome()
     tome_weapon = data.tome_weapon.model_dump(by_alias=True) if data.tome_weapon else create_default_tome_weapon()
 
+    player_id = str(uuid.uuid4())
     player = SnapshotPlayer(
-        id=str(uuid.uuid4()),
+        id=player_id,
         tier_snapshot_id=snapshot.id,
         user_id=data.user_id,
         name=data.name,
@@ -544,6 +545,14 @@ async def create_snapshot_player(
     session.add(player)
     await session.flush()
 
+    # Reload with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
     return player_to_response(player)
 
 
@@ -563,7 +572,7 @@ async def update_snapshot_player(
     if not membership:
         raise PermissionDenied("You are not a member of this static group")
 
-    # Get player
+    # Get player with user relationship
     result = await session.execute(
         select(SnapshotPlayer)
         .join(TierSnapshot)
@@ -572,6 +581,7 @@ async def update_snapshot_player(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
+        .options(selectinload(SnapshotPlayer.user))
     )
     player = result.scalar_one_or_none()
 
@@ -777,5 +787,13 @@ async def release_player(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+
+    # Reload to get fresh state (user relationship now None)
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
 
     return player_to_response(player)
