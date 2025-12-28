@@ -52,11 +52,35 @@ export function useDragAndDrop({
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       pointerRef.current = { x: e.clientX, y: e.clientY };
+
+      // Recalculate dropMode continuously while dragging over a player card
+      if (dragState.activeId && dragState.overId && !dragState.overId.startsWith('edge-')) {
+        const element = document.querySelector(`[data-droppable-id="${dragState.overId}"]`);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const relativeX = e.clientX - rect.left;
+          const percentage = relativeX / rect.width;
+
+          let newDropMode: DropMode;
+          if (percentage < EDGE_THRESHOLD) {
+            newDropMode = 'insert-before';
+          } else if (percentage > 1 - EDGE_THRESHOLD) {
+            newDropMode = 'insert-after';
+          } else {
+            newDropMode = 'swap';
+          }
+
+          // Only update if changed to avoid unnecessary re-renders
+          if (newDropMode !== dragState.dropMode) {
+            setDragState(prev => ({ ...prev, dropMode: newDropMode }));
+          }
+        }
+      }
     };
 
     document.addEventListener('pointermove', handlePointerMove);
     return () => document.removeEventListener('pointermove', handlePointerMove);
-  }, []);
+  }, [dragState.activeId, dragState.overId, dragState.dropMode]);
 
   // Sensors
   const sensors = useSensors(
