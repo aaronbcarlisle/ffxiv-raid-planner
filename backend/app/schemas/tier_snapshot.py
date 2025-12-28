@@ -32,6 +32,8 @@ class GearSlotStatus(CamelModel):
     is_augmented: bool = False
     item_name: str | None = None
     item_level: int | None = None
+    item_icon: str | None = None
+    item_stats: dict[str, int] | None = None
 
 
 class TomeWeaponStatus(CamelModel):

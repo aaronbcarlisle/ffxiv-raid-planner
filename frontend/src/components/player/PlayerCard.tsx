@@ -6,6 +6,7 @@ import { TankRoleSelector } from './TankRoleSelector';
 import { BiSImportModal } from './BiSImportModal';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
+import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import {
   getJobDisplayName,
   getRoleColor,
@@ -52,6 +53,8 @@ interface PlayerCardProps {
   clipboardPlayer: SnapshotPlayer | null;
   currentUserId?: string;
   isGroupOwner?: boolean;
+  dragListeners?: DragListeners;
+  dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
@@ -71,6 +74,8 @@ export function PlayerCard({
   clipboardPlayer,
   currentUserId,
   isGroupOwner,
+  dragListeners,
+  dragAttributes,
   onUpdate,
   onRemove,
   onCopy,
@@ -401,8 +406,12 @@ export function PlayerCard({
         onImport={(updates) => onUpdate(updates)}
       />
 
-      {/* Header */}
-      <div className="p-3 transition-colors relative z-20">
+      {/* Header - drag handle area */}
+      <div
+        className={`p-3 transition-colors relative z-20 ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        {...dragAttributes}
+        {...dragListeners}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Clickable job icon with dropdown */}

@@ -63,7 +63,7 @@ function SlotIcon({
   return (
     <div
       ref={iconRef}
-      className="relative"
+      className={`relative ${showHover && hasItemData ? 'cursor-pointer' : ''}`}
       onMouseEnter={() => showHover && hasItemData && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

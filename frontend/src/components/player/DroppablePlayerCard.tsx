@@ -1,7 +1,13 @@
 import { useDroppable, useDraggable } from '@dnd-kit/core';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
 import type { SnapshotPlayer, StaticSettings, ViewMode } from '../../types';
+
+// Export types for drag handle
+export type DragListeners = SyntheticListenerMap | undefined;
+export type DragAttributes = DraggableAttributes;
 
 interface DroppablePlayerCardProps {
   player: SnapshotPlayer;
@@ -66,14 +72,11 @@ export function DroppablePlayerCard({
     <div
       ref={setNodeRef}
       data-droppable-id={player.id}
-      {...attributes}
-      {...(canEdit ? listeners : {})}
       style={{
         opacity: isBeingDragged ? 0.3 : 1,
       }}
       className={`
         relative
-        ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''}
         ${showSwapHighlight ? 'ring-2 ring-accent shadow-lg shadow-accent/20 rounded-lg' : ''}
         transition-all duration-150
       `}
@@ -83,7 +86,12 @@ export function DroppablePlayerCard({
         <div className="absolute -left-2 top-0 bottom-0 w-1 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
 
-      <PlayerCard player={player} {...props} />
+      <PlayerCard
+        player={player}
+        dragListeners={canEdit ? listeners : undefined}
+        dragAttributes={canEdit ? attributes : undefined}
+        {...props}
+      />
 
       {/* Insert indicator - vertical line on right */}
       {showInsertAfter && (
