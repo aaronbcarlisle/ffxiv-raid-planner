@@ -321,12 +321,14 @@ export function GroupView() {
       return;
     }
 
-    // Get cursor position from the drag event
-    const pointerX = (event.activatorEvent as PointerEvent)?.clientX;
-    if (pointerX === undefined) {
+    // Get CURRENT cursor position (initial position + drag delta)
+    const initialX = (event.activatorEvent as PointerEvent)?.clientX;
+    const deltaX = event.delta?.x ?? 0;
+    if (initialX === undefined) {
       setInsertSide(null);
       return;
     }
+    const currentPointerX = initialX + deltaX;
 
     // Find the over element and get its bounds
     const overElement = document.querySelector(`[data-player-id="${overId}"]`);
@@ -336,7 +338,7 @@ export function GroupView() {
     }
 
     const rect = overElement.getBoundingClientRect();
-    const relativeX = pointerX - rect.left;
+    const relativeX = currentPointerX - rect.left;
     const percentage = relativeX / rect.width;
 
     // Edge threshold: 25% on each side for insert mode
