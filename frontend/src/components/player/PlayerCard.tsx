@@ -266,7 +266,7 @@ export function PlayerCard({
 
   return (
     <div
-      className={`bg-bg-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${hasOpenDropdown ? 'z-40 relative' : ''}`}
+      className={`bg-bg-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${hasOpenDropdown ? 'z-[100] relative' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
     >
