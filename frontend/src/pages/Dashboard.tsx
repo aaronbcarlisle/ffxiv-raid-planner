@@ -36,8 +36,16 @@ export function Dashboard() {
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupPublic, setNewGroupPublic] = useState(false);
 
-  // View mode state (grid or list)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // View mode state (grid or list) - persisted to localStorage
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const saved = localStorage.getItem('dashboard-view-mode');
+    return saved === 'list' ? 'list' : 'grid';
+  });
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboard-view-mode', viewMode);
+  }, [viewMode]);
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);

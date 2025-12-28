@@ -164,7 +164,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
           `/api/static-groups/${sourceGroupId}/tiers/${sourceTier.tierId}`
         );
 
-        // Create the tier in the new group
+        // Create the tier in the new group (this auto-creates 8 template slots)
         const newTier = await authRequest<TierSnapshot>(
           `/api/static-groups/${newGroup.id}/tiers`,
           {
@@ -176,9 +176,25 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
           }
         );
 
-        // Copy each configured player
-        if (fullTier.players) {
-          for (const sourcePlayer of fullTier.players.filter(p => p.configured)) {
+        // Get configured players from source
+        const configuredPlayers = fullTier.players?.filter(p => p.configured) || [];
+
+        // If there are configured players to copy, delete the auto-created template slots first
+        if (configuredPlayers.length > 0 && newTier.players) {
+          // Delete all template slots (unconfigured players)
+          await Promise.all(
+            newTier.players
+              .filter(p => !p.configured)
+              .map(p =>
+                authRequest<void>(
+                  `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players/${p.id}`,
+                  { method: 'DELETE' }
+                )
+              )
+          );
+
+          // Copy each configured player from source
+          for (const sourcePlayer of configuredPlayers) {
             // Create player slot
             const newPlayer = await authRequest<SnapshotPlayer>(
               `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players`,
@@ -211,6 +227,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
             );
           }
         }
+        // If no configured players, keep the template slots as-is
       }
 
       // Add to groups list

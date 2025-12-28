@@ -1,12 +1,65 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
+import type { MemberRole } from '../types';
+
+// Role badge colors
+const ROLE_COLORS: Record<MemberRole, string> = {
+  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+};
+
+// Get recently accessed share codes from localStorage
+function getRecentStaticCodes(): string[] {
+  try {
+    const saved = localStorage.getItem('recent-statics');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function Home() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuthStore();
+  const { groups, fetchGroups } = useStaticGroupStore();
   const [shareCode, setShareCode] = useState('');
+
+  // Fetch user's groups when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchGroups();
+    }
+  }, [isAuthenticated, fetchGroups]);
+
+  // Get recent statics from user's groups based on localStorage access history
+  const recentStatics = useMemo(() => {
+    if (!isAuthenticated || groups.length === 0) return [];
+
+    const recentCodes = getRecentStaticCodes();
+    const groupsByCode = new Map(groups.map(g => [g.shareCode, g]));
+
+    // Get groups that match recent codes, in order of recency
+    const recent = recentCodes
+      .filter(code => groupsByCode.has(code))
+      .map(code => groupsByCode.get(code)!)
+      .slice(0, 3);
+
+    // If not enough recent, fill with most recent from groups list
+    if (recent.length < 3) {
+      const recentSet = new Set(recent.map(g => g.shareCode));
+      const remaining = groups
+        .filter(g => !recentSet.has(g.shareCode))
+        .slice(0, 3 - recent.length);
+      return [...recent, ...remaining];
+    }
+
+    return recent;
+  }, [isAuthenticated, groups]);
 
   const handleViewStatic = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,36 +121,92 @@ export function Home() {
         </button>
       </form>
 
-      {/* Feature cards */}
-      <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
-        <div className="bg-bg-card p-6 rounded-lg border border-border-default">
-          <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
-          <p className="text-text-secondary text-sm">
-            Track BiS progress for your entire static. See who needs what at a glance.
-          </p>
+      {/* Content section - different for logged in vs logged out users */}
+      {isAuthenticated && recentStatics.length > 0 ? (
+        /* Recent Statics for logged-in users */
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-display text-xl text-text-primary mb-4 text-left">
+            Recent Statics
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {recentStatics.map((group) => (
+              <Link
+                key={group.id}
+                to={`/group/${group.shareCode}`}
+                className="bg-bg-card p-6 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left group"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
+                    {group.name}
+                  </h3>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 ${ROLE_COLORS[group.userRole]}`}
+                  >
+                    {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-text-muted">
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                    {group.memberCount}
+                  </span>
+                  <span className="font-mono text-xs text-accent">{group.shareCode}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {groups.length > 3 && (
+            <div className="mt-4 text-center">
+              <Link
+                to="/dashboard"
+                className="text-sm text-accent hover:text-accent-bright transition-colors"
+              >
+                View all {groups.length} statics →
+              </Link>
+            </div>
+          )}
         </div>
-        <div className="bg-bg-card p-6 rounded-lg border border-border-default">
-          <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
-          <p className="text-text-secondary text-sm">
-            Smart loot suggestions based on need, role priority, and past distributions.
-          </p>
-        </div>
-        <div className="bg-bg-card p-6 rounded-lg border border-border-default">
-          <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
-          <p className="text-text-secondary text-sm">
-            See total materials needed, books required, and estimated weeks to BiS.
-          </p>
-        </div>
-      </div>
+      ) : (
+        /* Feature cards for non-logged-in users */
+        <>
+          <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
+            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+              <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
+              <p className="text-text-secondary text-sm">
+                Track BiS progress for your entire static. See who needs what at a glance.
+              </p>
+            </div>
+            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+              <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
+              <p className="text-text-secondary text-sm">
+                Smart loot suggestions based on need, role priority, and past distributions.
+              </p>
+            </div>
+            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+              <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
+              <p className="text-text-secondary text-sm">
+                See total materials needed, books required, and estimated weeks to BiS.
+              </p>
+            </div>
+          </div>
 
-      {/* Multi-tier feature highlight */}
-      <div className="mt-12 max-w-2xl mx-auto bg-bg-card p-6 rounded-lg border border-accent/20">
-        <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
-        <p className="text-text-secondary text-sm">
-          Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.
-          Switch between tiers anytime to view historical progress.
-        </p>
-      </div>
+          {/* Multi-tier feature highlight */}
+          <div className="mt-12 max-w-2xl mx-auto bg-bg-card p-6 rounded-lg border border-accent/20">
+            <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
+            <p className="text-text-secondary text-sm">
+              Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.
+              Switch between tiers anytime to view historical progress.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

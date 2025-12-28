@@ -103,6 +103,25 @@ export function GroupView() {
     }
   }, [shareCode, fetchGroupByShareCode]);
 
+  // Track recently accessed statics in localStorage
+  useEffect(() => {
+    if (!shareCode) return;
+
+    try {
+      const MAX_RECENT = 10;
+      const saved = localStorage.getItem('recent-statics');
+      const recent: string[] = saved ? JSON.parse(saved) : [];
+
+      // Remove this code if it exists, then add to front
+      const filtered = recent.filter(code => code !== shareCode);
+      const updated = [shareCode, ...filtered].slice(0, MAX_RECENT);
+
+      localStorage.setItem('recent-statics', JSON.stringify(updated));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [shareCode]);
+
   // Fetch tiers and load active tier sequentially (avoids race condition)
   useEffect(() => {
     if (!currentGroup?.id) return;
