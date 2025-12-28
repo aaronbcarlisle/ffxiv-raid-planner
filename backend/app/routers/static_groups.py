@@ -29,6 +29,7 @@ from ..schemas import (
     MemberInfo,
     MemberRoleEnum,
     MembershipResponse,
+    MembershipUpdate,
     OwnerInfo,
     StaticGroupCreate,
     StaticGroupListItem,
@@ -461,7 +462,7 @@ async def add_member(
 async def update_member_role(
     group_id: str,
     user_id: str,
-    role: MemberRoleEnum,
+    data: MembershipUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> MembershipResponse:
@@ -483,18 +484,18 @@ async def update_member_role(
         raise PermissionDenied("Cannot change owner's role")
 
     # Cannot promote to owner
-    if role == MemberRoleEnum.OWNER:
+    if data.role == MemberRoleEnum.OWNER:
         raise PermissionDenied("Cannot promote to owner")
 
     # Leads can only manage members/viewers, not other leads
     if actor_membership.role != MemberRole.OWNER.value:
         if target_membership.role == MemberRole.LEAD.value:
             raise PermissionDenied("Only owners can manage leads")
-        if role == MemberRoleEnum.LEAD:
+        if data.role == MemberRoleEnum.LEAD:
             raise PermissionDenied("Only owners can promote to lead")
 
     # Update role
-    target_membership.role = role.value
+    target_membership.role = data.role.value
     target_membership.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
