@@ -6,7 +6,7 @@
  */
 
 import { useAuthStore } from '../stores/authStore';
-import type { BiSImportData } from '../types';
+import type { BiSImportData, BiSPresetsResponse } from '../types';
 
 // Get API base URL from environment or default to localhost
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -148,13 +148,26 @@ export const api = {
 // ==================== BiS Import ====================
 
 /**
+ * Fetch available BiS presets for a job
+ */
+export async function fetchBiSPresets(job: string): Promise<BiSPresetsResponse> {
+  return api.get(`/api/bis/presets/${job.toLowerCase()}`);
+}
+
+/**
  * Fetch BiS gear set from XIVGear.app
  * Accepts UUID or full URL - backend handles extraction
+ * @param uuidOrUrl - XIVGear UUID, share URL, or curated BiS path
+ * @param setIndex - Optional index for preset selection (0-based)
  */
-export async function fetchBiSFromXIVGear(uuidOrUrl: string): Promise<BiSImportData> {
+export async function fetchBiSFromXIVGear(
+  uuidOrUrl: string,
+  setIndex?: number
+): Promise<BiSImportData> {
   // Encode the URL/UUID for safe path parameter
   const encoded = encodeURIComponent(uuidOrUrl);
-  return api.get(`/api/bis/xivgear/${encoded}`);
+  const queryString = setIndex !== undefined ? `?set_index=${setIndex}` : '';
+  return api.get(`/api/bis/xivgear/${encoded}${queryString}`);
 }
 
 // ==================== Utilities ====================

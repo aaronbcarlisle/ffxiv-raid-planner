@@ -28,6 +28,18 @@ class BiSImportResponse(BaseModel):
     slots: list[GearSlotData]
 
 
+class BiSPreset(BaseModel):
+    """A single BiS preset option"""
+    name: str
+    index: int  # Index in the sets array
+
+
+class BiSPresetsResponse(BaseModel):
+    """Available BiS presets for a job"""
+    job: str
+    presets: list[BiSPreset]
+
+
 # XIVGear slot names to our slot names
 XIVGEAR_SLOT_MAP = {
     "Weapon": "weapon",
@@ -227,8 +239,49 @@ async def fetch_bis_from_shortlink(uuid: str) -> dict:
         raise HTTPException(status_code=502, detail="Invalid response from XIVGear")
 
 
+@router.get("/presets/{job}", response_model=BiSPresetsResponse)
+async def get_bis_presets(job: str):
+    """
+    Get available BiS presets for a job.
+
+    Returns a list of curated BiS sets from The Balance (via xiv-gear-planner/static-bis-sets).
+    Each preset can be imported by using the bis|{job}|current format with set index.
+    """
+    job_lower = job.lower()
+
+    # Fetch the current.json for this job
+    try:
+        data = await fetch_bis_from_github(job_lower, "current")
+    except HTTPException as e:
+        if e.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No BiS presets found for job '{job.upper()}'. Check the job abbreviation."
+            )
+        raise
+
+    # Extract set names from the sets array
+    presets: list[BiSPreset] = []
+    sets = data.get("sets", [])
+
+    for i, bis_set in enumerate(sets):
+        # Skip separator entries
+        if bis_set.get("isSeparator"):
+            continue
+        name = bis_set.get("name", f"Set {i + 1}")
+        presets.append(BiSPreset(name=name, index=i))
+
+    if not presets:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No BiS sets found for {job.upper()}"
+        )
+
+    return BiSPresetsResponse(job=job.upper(), presets=presets)
+
+
 @router.get("/xivgear/{uuid_or_url:path}", response_model=BiSImportResponse)
-async def fetch_xivgear_bis(uuid_or_url: str):
+async def fetch_xivgear_bis(uuid_or_url: str, set_index: int = 0):
     """
     Fetch and parse a BiS set from XIVGear.app
 
@@ -263,13 +316,22 @@ async def fetch_xivgear_bis(uuid_or_url: str):
     # Handle different data structures
     items_data = {}
     if "sets" in data and data["sets"]:
-        # Shortlink format: multiple sets, use first one
-        first_set = data["sets"][0]
-        items_data = first_set.get("items", {})
-        if first_set.get("name"):
-            set_name = first_set["name"]
+        # Multiple sets available - use set_index to select which one
+        sets = data["sets"]
+        # Filter out separator entries for index calculation
+        actual_sets = [(i, s) for i, s in enumerate(sets) if not s.get("isSeparator")]
+
+        if set_index >= len(actual_sets):
+            set_index = 0  # Fall back to first set if index out of range
+
+        # Find the actual index in the original array
+        if actual_sets:
+            _, selected_set = actual_sets[set_index]
+            items_data = selected_set.get("items", {})
+            if selected_set.get("name"):
+                set_name = selected_set["name"]
     elif "items" in data:
-        # GitHub format or single-set shortlink: items at root
+        # Single-set format: items at root
         items_data = data["items"]
 
     if not items_data:

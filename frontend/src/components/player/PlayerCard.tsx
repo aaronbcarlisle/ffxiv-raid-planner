@@ -283,7 +283,7 @@ export function PlayerCard({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
         </svg>
       ),
-      onClick: () => onUpdate({ bisLink: null }),
+      onClick: () => onUpdate({ bisLink: '' }),
     }] : []),
     { separator: true },
     {

@@ -631,7 +631,8 @@ async def update_snapshot_player(
     if "lodestone_id" in sent_fields:
         player.lodestone_id = data.lodestone_id  # Can be None to clear
     if "bis_link" in sent_fields:
-        player.bis_link = data.bis_link  # Can be None to clear
+        # Treat empty string as None to clear the field
+        player.bis_link = data.bis_link if data.bis_link else None
     if "fflogs_id" in sent_fields:
         player.fflogs_id = data.fflogs_id  # Can be None to clear
     if "gear" in sent_fields and data.gear is not None:

@@ -54,10 +54,11 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
 - Share code functionality (copy button with Shift for full URL)
 - **BiS Import** - Import gear sets from XIVGear
+  - Predefined BiS presets dropdown (from The Balance via xiv-gear-planner/static-bis-sets)
   - Supports XIVGear share links, UUIDs, and curated BiS URLs
   - Preview changes before importing with job mismatch warnings
   - BiS link badge on player card header (opens XIVGear in new tab)
-  - Context menu shows "Update BiS" when player has linked set
+  - Context menu shows "Update BiS" / "Unlink BiS" when player has linked set
 
 ### Architecture
 
@@ -717,8 +718,9 @@ When on a group page, the header includes a static switcher dropdown:
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
 | 4 | Complete | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
-| 5 | **Complete** | XIVGear BiS import with preview, BiS link badge, dynamic menu labels |
-| 5.2 | Planned | BiS presets by job, item icons with hover cards |
+| 5 | Complete | XIVGear BiS import with preview, BiS link badge, dynamic menu labels, Unlink BiS |
+| 5.2 | **Complete** | BiS presets by job (dropdown from The Balance), in-game gear slot names |
+| 5.3 | Planned | Item icons with hover cards |
 | 6 | Planned | Lodestone auto-sync |
 | 7 | Planned | FFLogs integration |
 | 8 | Planned | Discord bot, PWA offline mode |
@@ -893,6 +895,7 @@ cd frontend && pnpm format
 ### BiS Import
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/api/bis/presets/{job}` | Get available BiS presets for a job |
 | GET | `/api/bis/xivgear/{uuid_or_url}` | Fetch BiS from XIVGear (UUID, share link, or curated BiS) |
 
 ---

@@ -1,9 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Checkbox } from '../ui/Checkbox';
-import { fetchBiSFromXIVGear } from '../../services/api';
+import { fetchBiSFromXIVGear, fetchBiSPresets } from '../../services/api';
 import { GEAR_SLOT_NAMES } from '../../types';
-import type { BiSImportData, GearSlotStatus, GearSource, SnapshotPlayer } from '../../types';
+import type {
+  BiSImportData,
+  BiSPreset,
+  GearSlotStatus,
+  GearSource,
+  SnapshotPlayer,
+} from '../../types';
 
 interface BiSImportModalProps {
   isOpen: boolean;
@@ -30,6 +36,29 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
   const [resetHaveStatus, setResetHaveStatus] = useState(false);
   const [jobMismatch, setJobMismatch] = useState(false);
 
+  // Preset state
+  const [presets, setPresets] = useState<BiSPreset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState<number | null>(null);
+
+  // Fetch presets when modal opens
+  useEffect(() => {
+    if (isOpen && player.job && player.configured) {
+      setPresetsLoading(true);
+      fetchBiSPresets(player.job)
+        .then((response) => {
+          setPresets(response.presets);
+        })
+        .catch(() => {
+          // Silently fail - presets are optional
+          setPresets([]);
+        })
+        .finally(() => {
+          setPresetsLoading(false);
+        });
+    }
+  }, [isOpen, player.job, player.configured]);
+
   // Prefill with existing bisLink when modal opens
   useEffect(() => {
     if (isOpen && player.bisLink) {
@@ -46,6 +75,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     setChanges([]);
     setResetHaveStatus(false);
     setJobMismatch(false);
+    setSelectedPresetIndex(null);
   }, [player.bisLink]);
 
   const handleClose = () => {
@@ -54,13 +84,23 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
   };
 
   const handlePreview = async () => {
-    if (!inputValue.trim()) return;
+    // Need either a preset selected or a URL entered
+    if (selectedPresetIndex === null && !inputValue.trim()) return;
 
     setState('loading');
     setError('');
 
     try {
-      const data = await fetchBiSFromXIVGear(inputValue.trim());
+      let data: BiSImportData;
+
+      if (selectedPresetIndex !== null) {
+        // Use preset - build the curated BiS URL
+        const bisUrl = `bis|${player.job.toLowerCase()}|current`;
+        data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
+      } else {
+        // Use manual URL input
+        data = await fetchBiSFromXIVGear(inputValue.trim());
+      }
       setPreviewData(data);
 
       // Check for job mismatch
@@ -127,9 +167,18 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
       };
     });
 
+    // Determine what to store as bisLink
+    let bisLink: string;
+    if (selectedPresetIndex !== null) {
+      // Store the curated BiS path
+      bisLink = `bis|${player.job.toLowerCase()}|current`;
+    } else {
+      bisLink = inputValue.trim();
+    }
+
     onImport({
       gear: newGear,
-      bisLink: inputValue.trim(),
+      bisLink,
     });
 
     handleClose();
@@ -147,21 +196,76 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
       {state === 'input' && (
         <div className="space-y-4">
+          {/* Preset dropdown - only show if presets available */}
+          {player.configured && (
+            <div>
+              <label htmlFor="bisPreset" className="block text-text-secondary mb-1 text-sm">
+                Select a preset
+              </label>
+              <select
+                id="bisPreset"
+                value={selectedPresetIndex ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedPresetIndex(value === '' ? null : parseInt(value, 10));
+                  // Clear manual input when preset selected
+                  if (value !== '') {
+                    setInputValue('');
+                  }
+                }}
+                disabled={presetsLoading || presets.length === 0}
+                className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-50"
+              >
+                <option value="">
+                  {presetsLoading
+                    ? 'Loading presets...'
+                    : presets.length === 0
+                      ? `No presets for ${player.job}`
+                      : 'Choose a preset...'}
+                </option>
+                {presets.map((preset) => (
+                  <option key={preset.index} value={preset.index}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Divider */}
+          {player.configured && presets.length > 0 && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t border-border-default" />
+              <span className="text-text-muted text-xs">or paste a link</span>
+              <div className="flex-1 border-t border-border-default" />
+            </div>
+          )}
+
+          {/* Manual URL input */}
           <div>
             <label htmlFor="bisLink" className="block text-text-secondary mb-1 text-sm">
-              Paste XIVGear link or UUID
+              {player.configured && presets.length > 0
+                ? 'XIVGear link or UUID'
+                : 'Paste XIVGear link or UUID'}
             </label>
             <input
               id="bisLink"
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                // Clear preset selection when typing
+                if (e.target.value) {
+                  setSelectedPresetIndex(null);
+                }
+              }}
               onKeyDown={handleKeyDown}
-              placeholder="https://xivgear.app/?page=bis|drg|current"
+              placeholder="https://xivgear.app/?page=sl|..."
               className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-              autoFocus
+              autoFocus={!player.configured || presets.length === 0}
             />
           </div>
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
@@ -173,7 +277,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
             <button
               type="button"
               onClick={handlePreview}
-              disabled={!inputValue.trim()}
+              disabled={selectedPresetIndex === null && !inputValue.trim()}
               className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Preview

@@ -129,11 +129,11 @@ export const GEAR_SLOT_NAMES: Record<GearSlot, string> = {
   hands: 'Hands',
   legs: 'Legs',
   feet: 'Feet',
-  earring: 'Earring',
-  necklace: 'Necklace',
-  bracelet: 'Bracelet',
-  ring1: 'Ring 1',
-  ring2: 'Ring 2',
+  earring: 'Ears',
+  necklace: 'Neck',
+  bracelet: 'Wrists',
+  ring1: 'R. Ring',
+  ring2: 'L. Ring',
 };
 
 // Gear slot icons from XIVAPI (outline/silhouette style - matches FFXIV character panel)
@@ -417,4 +417,16 @@ export interface BiSImportData {
   name: string;
   job: string;
   slots: BiSGearSlotData[];
+}
+
+// BiS preset option (for dropdown)
+export interface BiSPreset {
+  name: string;
+  index: number;
+}
+
+// BiS presets response
+export interface BiSPresetsResponse {
+  job: string;
+  presets: BiSPreset[];
 }
