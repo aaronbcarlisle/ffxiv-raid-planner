@@ -646,9 +646,9 @@ export function PlayerCard({
 
       </div>
 
-      {/* Expanded content */}
+      {/* Expanded content - z-30 to ensure hover cards appear above header (z-20) */}
       {isExpanded && (
-        <div className="border-t border-border-default p-3 relative z-10">
+        <div className="border-t border-border-default p-3 relative z-30">
           <GearTable
             gear={player.gear}
             tomeWeapon={player.tomeWeapon}
