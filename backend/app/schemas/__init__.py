@@ -22,6 +22,7 @@ from .static_group import (
 )
 from .tier_snapshot import (
     GearSlotStatus,
+    LinkedPlayerInfo,
     LinkedUserInfo,
     RolloverRequest,
     RolloverResponse,
@@ -46,6 +47,7 @@ from .user import (
 __all__ = [
     # Gear Status (from tier_snapshot)
     "GearSlotStatus",
+    "LinkedPlayerInfo",
     "LinkedUserInfo",
     "TomeWeaponStatus",
     # Invitation

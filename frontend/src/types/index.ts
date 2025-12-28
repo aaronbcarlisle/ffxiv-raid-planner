@@ -295,6 +295,15 @@ export interface LinkedUserInfo {
   displayName?: string;
 }
 
+// Linked player info (for members panel)
+export interface LinkedPlayerInfo {
+  playerId: string;
+  playerName: string;
+  playerJob: string;
+  tierId: string;
+  user: LinkedUserInfo;
+}
+
 // Tier snapshot (roster for a specific raid tier)
 export interface TierSnapshot {
   id: string;

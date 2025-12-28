@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
-from ..models import Membership, MemberRole, StaticGroup, User
+from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from ..permissions import (
     NotFound,
     check_view_permission,
@@ -24,6 +24,8 @@ from ..permissions import (
 )
 from ..schemas import (
     GroupSourceEnum,
+    LinkedPlayerInfo,
+    LinkedUserInfo,
     MemberInfo,
     MemberRoleEnum,
     MembershipResponse,
@@ -346,6 +348,54 @@ async def list_members(
     await check_view_permission(session, group, current_user)
 
     return [membership_to_response(m) for m in group.memberships]
+
+
+@router.get("/{group_id}/linked-players", response_model=list[LinkedPlayerInfo])
+async def list_linked_players(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> list[LinkedPlayerInfo]:
+    """List all users who have claimed player cards in this group (across all tiers)"""
+    # Check group exists and user has view permission
+    group = await get_static_group(session, group_id, load_memberships=False)
+    await check_view_permission(session, group, current_user)
+
+    # Get all linked players across all tiers for this group
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(TierSnapshot.static_group_id == group_id)
+        .where(SnapshotPlayer.user_id.isnot(None))
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    players = result.scalars().all()
+
+    # Deduplicate by user_id (same user might be linked in multiple tiers)
+    seen_users: set[str] = set()
+    linked_players: list[LinkedPlayerInfo] = []
+
+    for player in players:
+        if player.user_id and player.user_id not in seen_users and player.user:
+            seen_users.add(player.user_id)
+            linked_players.append(
+                LinkedPlayerInfo(
+                    player_id=player.id,
+                    player_name=player.name,
+                    player_job=player.job,
+                    tier_id=player.tier_snapshot_id,
+                    user=LinkedUserInfo(
+                        id=player.user.id,
+                        discord_id=player.user.discord_id,
+                        discord_username=player.user.discord_username,
+                        discord_avatar=player.user.discord_avatar,
+                        avatar_url=player.user.avatar_url,
+                        display_name=player.user.display_name,
+                    ),
+                )
+            )
+
+    return linked_players
 
 
 @router.post("/{group_id}/members", response_model=MembershipResponse, status_code=status.HTTP_201_CREATED)

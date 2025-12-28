@@ -56,6 +56,16 @@ class LinkedUserInfo(CamelModel):
     display_name: str | None = None
 
 
+class LinkedPlayerInfo(CamelModel):
+    """Info about a player card that is linked to a user"""
+
+    player_id: str
+    player_name: str
+    player_job: str
+    tier_id: str
+    user: LinkedUserInfo
+
+
 # --- Snapshot Player Schemas ---
 
 
