@@ -373,11 +373,11 @@ Replace full-border role styling with left-accent bar:
 - [x] `components/ui/index.ts` - 11 exports
 - [x] All other directories have complete exports
 
-### Phase 4: UI/UX Updates - PARTIALLY COMPLETE
-- [ ] Update `index.css` with new color palette (optional - current teal theme works)
-- [x] Create `SettingsPopover.tsx` component (exists)
-- [ ] Update `Header.tsx` to single-row layout (optional)
-- [ ] Update PlayerCard with left-accent styling (optional)
+### Phase 4: UI/UX Updates - COMPLETE
+- [x] Color palette: Teal Glow theme kept (intentional decision)
+- [x] `SettingsPopover.tsx` component exists and is used
+- [x] `Header.tsx` has unified single-row layout
+- [x] `PlayerCard` has left-accent styling with role colors (`border-l-[3px]`)
 
 ### Phase 5: Verification - COMPLETE
 - [x] TypeScript check passes: `pnpm tsc --noEmit`
