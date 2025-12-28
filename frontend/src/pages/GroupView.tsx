@@ -9,22 +9,25 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { getTierById } from '../gamedata';
 import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
+import { PlayerCard } from '../components/player/PlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
@@ -79,6 +82,10 @@ export function GroupView() {
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
   const [sortPreset, setSortPreset] = useState<SortPreset>('standard');
   const [groupView, setGroupView] = useState(false);
+
+  // DnD state for drag overlay and drop target highlighting
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [overPlayerId, setOverPlayerId] = useState<string | null>(null);
 
   // DnD sensors
   const sensors = useSensors(
@@ -290,8 +297,26 @@ export function GroupView() {
     };
   }, [handleTierChange, handleAddPlayer]);
 
+  // DnD event handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    setOverPlayerId(event.over?.id as string | null);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+    setOverPlayerId(null);
+  }, []);
+
   // Handle drag end for reordering
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    // Clear drag state
+    setActiveDragId(null);
+    setOverPlayerId(null);
+
     const { active, over } = event;
     if (!over || active.id === over.id || !currentTier?.players || !currentGroup?.id) return;
 
@@ -393,6 +418,7 @@ export function GroupView() {
           viewMode={viewMode}
           clipboardPlayer={clipboardPlayer}
           isDragEnabled={canEdit}
+          isDropTarget={overPlayerId === player.id && activeDragId !== player.id}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
@@ -522,9 +548,12 @@ export function GroupView() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
             >
-              <SortableContext items={playerIds} strategy={rectSortingStrategy}>
+              <SortableContext items={playerIds}>
                 {/* Grouped View */}
                 {groupView && groupedPlayers ? (
                   <div className="space-y-8 mb-8">
@@ -573,6 +602,29 @@ export function GroupView() {
                   </div>
                 )}
               </SortableContext>
+
+              {/* Drag overlay - ghost card that follows cursor */}
+              <DragOverlay dropAnimation={null}>
+                {activeDragId && (() => {
+                  const draggedPlayer = sortedPlayers.find(p => p.id === activeDragId);
+                  if (!draggedPlayer || !draggedPlayer.configured) return null;
+                  return (
+                    <div className="opacity-90 shadow-xl">
+                      <PlayerCard
+                        player={draggedPlayer}
+                        settings={DEFAULT_SETTINGS}
+                        viewMode={viewMode}
+                        clipboardPlayer={null}
+                        onUpdate={() => {}}
+                        onRemove={() => {}}
+                        onCopy={() => {}}
+                        onPaste={() => {}}
+                        onDuplicate={() => {}}
+                      />
+                    </div>
+                  );
+                })()}
+              </DragOverlay>
             </DndContext>
           )}
 

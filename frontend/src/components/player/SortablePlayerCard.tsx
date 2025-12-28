@@ -9,6 +9,7 @@ interface SortablePlayerCardProps {
   viewMode: ViewMode;
   clipboardPlayer: SnapshotPlayer | null;
   isDragEnabled: boolean;
+  isDropTarget?: boolean;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
@@ -20,6 +21,7 @@ interface SortablePlayerCardProps {
 export function SortablePlayerCard({
   player,
   isDragEnabled,
+  isDropTarget = false,
   ...props
 }: SortablePlayerCardProps) {
   const {
@@ -37,8 +39,7 @@ export function SortablePlayerCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 'auto',
+    opacity: isDragging ? 0.3 : 1,
   };
 
   return (
@@ -47,7 +48,11 @@ export function SortablePlayerCard({
       style={style}
       {...attributes}
       {...(isDragEnabled ? listeners : {})}
-      className={isDragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}
+      className={`
+        ${isDragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}
+        ${isDropTarget ? 'ring-2 ring-accent shadow-lg shadow-accent/20 rounded-lg' : ''}
+        transition-shadow duration-150
+      `}
     >
       <PlayerCard player={player} {...props} />
     </div>
