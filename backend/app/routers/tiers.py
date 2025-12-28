@@ -80,6 +80,8 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
             is_augmented=g.get("isAugmented", False),
             item_name=g.get("itemName"),
             item_level=g.get("itemLevel"),
+            item_icon=g.get("itemIcon"),
+            item_stats=g.get("itemStats"),
         )
         for g in (player.gear or [])
     ]
