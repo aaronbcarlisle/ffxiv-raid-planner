@@ -36,9 +36,11 @@ export function SortablePlayerCard({
     disabled: !isDragEnabled,
   });
 
+  // Only apply transform to the dragged item - other cards stay in place
+  // This prevents the confusing "shifting" preview and matches swap behavior
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: isDragging ? CSS.Transform.toString(transform) : undefined,
+    transition: isDragging ? transition : undefined,
     opacity: isDragging ? 0.3 : 1,
   };
 
