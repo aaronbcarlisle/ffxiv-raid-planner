@@ -73,8 +73,20 @@ export function GroupView() {
   const [selectedFloor, setSelectedFloor] = useState<FloorNumber>(1);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
-  const [sortPreset, setSortPreset] = useState<SortPreset>('standard');
+  const [sortPreset, setSortPresetState] = useState<SortPreset>('standard');
   const [groupView, setGroupView] = useState(false);
+
+  // Wrapper to persist sortPreset per-tier
+  const setSortPreset = useCallback((preset: SortPreset) => {
+    setSortPresetState(preset);
+    if (currentTier?.tierId) {
+      try {
+        localStorage.setItem(`sort-preset-${currentTier.tierId}`, preset);
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+  }, [currentTier?.tierId]);
 
   // Clear tiers when shareCode changes (switching groups)
   useEffect(() => {
@@ -111,6 +123,21 @@ export function GroupView() {
   useEffect(() => {
     localStorage.setItem('party-view-mode', viewMode);
   }, [viewMode]);
+
+  // Load sortPreset from localStorage when tier changes
+  useEffect(() => {
+    if (!currentTier?.tierId) return;
+    try {
+      const saved = localStorage.getItem(`sort-preset-${currentTier.tierId}`);
+      if (saved === 'standard' || saved === 'dps-first' || saved === 'healer-first' || saved === 'custom') {
+        setSortPresetState(saved);
+      } else {
+        setSortPresetState('standard');
+      }
+    } catch {
+      setSortPresetState('standard');
+    }
+  }, [currentTier?.tierId]);
 
   // Fetch tiers and load active tier sequentially (avoids race condition)
   useEffect(() => {
