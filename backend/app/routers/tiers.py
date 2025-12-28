@@ -593,38 +593,40 @@ async def update_snapshot_player(
             if field not in allowed_fields:
                 raise PermissionDenied(f"Members cannot update '{field}'")
 
-    # Apply updates
-    if data.name is not None:
-        player.name = data.name
-    if data.job is not None:
-        player.job = data.job
-    if data.role is not None:
-        player.role = data.role
-    if data.position is not None:
-        player.position = data.position
-    if data.tank_role is not None:
-        player.tank_role = data.tank_role
-    if data.template_role is not None:
-        player.template_role = data.template_role
-    if data.configured is not None:
+    # Apply updates - use model_fields_set to detect explicitly sent fields (including null)
+    sent_fields = data.model_fields_set
+
+    if "name" in sent_fields:
+        player.name = data.name or ""
+    if "job" in sent_fields:
+        player.job = data.job or ""
+    if "role" in sent_fields:
+        player.role = data.role or ""
+    if "position" in sent_fields:
+        player.position = data.position  # Can be None to clear
+    if "tank_role" in sent_fields:
+        player.tank_role = data.tank_role  # Can be None to clear
+    if "template_role" in sent_fields:
+        player.template_role = data.template_role  # Can be None to clear
+    if "configured" in sent_fields and data.configured is not None:
         player.configured = data.configured
-    if data.sort_order is not None:
+    if "sort_order" in sent_fields and data.sort_order is not None:
         player.sort_order = data.sort_order
-    if data.is_substitute is not None:
+    if "is_substitute" in sent_fields and data.is_substitute is not None:
         player.is_substitute = data.is_substitute
-    if data.user_id is not None:
-        player.user_id = data.user_id
-    if data.notes is not None:
-        player.notes = data.notes
-    if data.lodestone_id is not None:
-        player.lodestone_id = data.lodestone_id
-    if data.bis_link is not None:
-        player.bis_link = data.bis_link
-    if data.fflogs_id is not None:
-        player.fflogs_id = data.fflogs_id
-    if data.gear is not None:
+    if "user_id" in sent_fields:
+        player.user_id = data.user_id  # Can be None to clear
+    if "notes" in sent_fields:
+        player.notes = data.notes  # Can be None to clear
+    if "lodestone_id" in sent_fields:
+        player.lodestone_id = data.lodestone_id  # Can be None to clear
+    if "bis_link" in sent_fields:
+        player.bis_link = data.bis_link  # Can be None to clear
+    if "fflogs_id" in sent_fields:
+        player.fflogs_id = data.fflogs_id  # Can be None to clear
+    if "gear" in sent_fields and data.gear is not None:
         player.gear = [g.model_dump(by_alias=True) for g in data.gear]
-    if data.tome_weapon is not None:
+    if "tome_weapon" in sent_fields and data.tome_weapon is not None:
         player.tome_weapon = data.tome_weapon.model_dump(by_alias=True)
 
     player.updated_at = datetime.now(timezone.utc).isoformat()
