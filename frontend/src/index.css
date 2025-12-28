@@ -1,52 +1,54 @@
 @import "tailwindcss";
 
-/* FFXIV Theme: Obsidian & Amber */
+/* FRP Theme: Teal Glow */
 @theme {
-  /* Backgrounds - Deep blacks with subtle blue undertone */
+  /* Backgrounds - Deep blacks with cool undertone */
   --color-bg-primary: #050508;
-  --color-bg-secondary: #0a0a10;
+  --color-bg-secondary: #0a0a0f;
   --color-bg-card: #0e0e14;
-  --color-bg-elevated: #141420;
-  --color-bg-hover: #1a1a28;
+  --color-bg-elevated: #121218;
+  --color-bg-hover: #18181f;
 
-  /* Accent - Warm, rich gold */
-  --color-accent: #d4a422;
-  --color-accent-dim: rgba(212, 164, 34, 0.15);
-  --color-accent-bright: #f0c040;
-  --color-accent-muted: #8a7428;
+  /* Accent - Teal gradient */
+  --color-accent: #14b8a6;
+  --color-accent-dim: rgba(20, 184, 166, 0.15);
+  --color-accent-bright: #2dd4bf;
+  --color-accent-muted: #0d7377;
+  --color-accent-deep: #0891b2;
 
-  /* Roles - Unchanged for visual identity */
+  /* Roles - Unchanged for FFXIV visual identity */
   --color-role-tank: #5a9fd4;
   --color-role-healer: #5ad490;
   --color-role-melee: #d45a5a;
   --color-role-ranged: #d4a05a;
   --color-role-caster: #b45ad4;
 
-  /* Gear Sources */
-  --color-source-raid: #c44444;
-  --color-source-tome: #44aa44;
-  --color-source-crafted: #aa8844;
+  /* Gear Sources - Updated */
+  --color-source-raid: #ef4444;
+  --color-source-tome: #14b8a6;
+  --color-source-crafted: #a78bfa;
+  --color-source-augmented: #fbbf24;
 
   /* Status */
-  --color-status-success: #50d070;
-  --color-status-warning: #d0c050;
-  --color-status-error: #d05050;
-  --color-status-info: #50a0d0;
+  --color-status-success: #22c55e;
+  --color-status-warning: #eab308;
+  --color-status-error: #ef4444;
+  --color-status-info: #14b8a6;
 
   /* Text - Slightly softer contrast */
   --color-text-primary: #f0f0f5;
-  --color-text-secondary: #9090a0;
-  --color-text-muted: #505060;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
 
   /* Borders - Ultra subtle */
-  --color-border-default: #1f1f2e;
-  --color-border-subtle: #14141e;
-  --color-border-highlight: #d4a422;
+  --color-border-default: #1f1f28;
+  --color-border-subtle: #14141c;
+  --color-border-highlight: #14b8a6;
 
   /* Font families */
-  --font-display: "Cinzel", serif;
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Custom breakpoints */
   --breakpoint-3xl: 1400px;
@@ -66,6 +68,240 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+/* ================================
+   GLOW EFFECTS
+   ================================ */
+
+/* Logo/icon glow */
+.glow-teal {
+  filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.4));
+}
+
+.glow-teal-strong {
+  filter: drop-shadow(0 0 12px rgba(20, 184, 166, 0.6));
+}
+
+/* Card hover glow */
+.card-glow {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-glow:hover {
+  box-shadow:
+    0 0 20px rgba(20, 184, 166, 0.1),
+    0 0 40px rgba(20, 184, 166, 0.05);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+/* Active/selected state glow */
+.border-glow {
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 184, 166, 0.3),
+    0 0 15px rgba(20, 184, 166, 0.1);
+}
+
+/* ================================
+   BUTTON STYLES
+   ================================ */
+
+.btn-primary {
+  background: linear-gradient(135deg, #14b8a6 0%, #0891b2 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(20, 184, 166, 0.3);
+  color: var(--color-text-primary);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-accent);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background-color: rgba(20, 184, 166, 0.1);
+}
+
+/* ================================
+   BADGE STYLES
+   ================================ */
+
+.badge-raid {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-tome {
+  background-color: rgba(20, 184, 166, 0.2);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-crafted {
+  background-color: rgba(167, 139, 250, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-augmented {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: #fcd34d;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ================================
+   CARD STYLES
+   ================================ */
+
+.card {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 0.5rem;
+}
+
+.card-interactive {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.card-interactive:hover {
+  border-color: rgba(20, 184, 166, 0.3);
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.1);
+}
+
+.card-selected {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 0 20px rgba(20, 184, 166, 0.2);
+}
+
+/* ================================
+   PROGRESS BAR
+   ================================ */
+
+.progress-track {
+  background-color: var(--color-bg-elevated);
+  border-radius: 9999px;
+  height: 0.5rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #14b8a6 0%, #0891b2 100%);
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+/* ================================
+   TAB NAVIGATION
+   ================================ */
+
+.tab {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+.tab-active {
+  background-color: rgba(20, 184, 166, 0.2);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+/* ================================
+   FORM ELEMENTS
+   ================================ */
+
+.input {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(20, 184, 166, 0.5);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:hover {
+  border-color: rgba(20, 184, 166, 0.5);
 }
 
 /* Custom 4-column breakpoint for wide screens */

@@ -18,10 +18,10 @@ import type { MemberRole } from '../../types';
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
   lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
 };
 
 // Custom event types for communication with GroupView
@@ -156,9 +156,18 @@ export function Header() {
           {/* Logo */}
           <Link
             to="/"
-            className="font-display text-xl text-accent hover:text-accent-bright flex-shrink-0"
+            className="flex items-center gap-3 flex-shrink-0 group"
           >
-            FFXIV Raid Planner
+            <div className="relative">
+              <div className="absolute inset-0 bg-accent/20 rounded-lg blur-md group-hover:bg-accent/30 transition-colors" />
+              <div className="relative w-9 h-9 bg-bg-secondary rounded-lg flex items-center justify-center border border-accent/30 glow-teal">
+                <span className="text-sm font-bold text-accent">FRP</span>
+              </div>
+            </div>
+            <span className="text-lg font-semibold tracking-wide hidden sm:block">
+              <span className="text-accent">FFXIV</span>
+              <span className="text-text-primary"> Raid Planner</span>
+            </span>
           </Link>
 
           {/* Group context (only on group pages) */}

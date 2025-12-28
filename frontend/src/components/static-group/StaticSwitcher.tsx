@@ -11,10 +11,10 @@ import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-yellow-500/20 text-yellow-400',
+  owner: 'bg-teal-500/20 text-teal-400',
   lead: 'bg-purple-500/20 text-purple-400',
   member: 'bg-blue-500/20 text-blue-400',
-  viewer: 'bg-gray-500/20 text-gray-400',
+  viewer: 'bg-zinc-500/20 text-zinc-400',
 };
 
 interface StaticSwitcherProps {

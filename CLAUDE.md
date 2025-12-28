@@ -562,23 +562,78 @@ Key principles:
 
 ## Styling
 
-### Colors
+### Design Theme: Teal Glow
+
+The application uses a dark theme with teal accents and subtle glow effects.
+
+### Color Palette
 ```css
---bg-primary: #0a0a12;
---bg-card: rgba(20, 20, 30, 0.9);
---accent-gold: #c9a227;
---role-tank: #4a90c2;
---role-healer: #4ab87a;
---role-melee: #c24a4a;
---role-ranged: #c29a4a;
---role-caster: #a24ac2;
---source-raid: #c44444;
---source-tome: #44aa44;
+/* Backgrounds - Deep blacks with cool undertone */
+--color-bg-primary: #050508;
+--color-bg-secondary: #0a0a0f;
+--color-bg-card: #0e0e14;
+--color-bg-elevated: #121218;
+--color-bg-hover: #18181f;
+
+/* Accent - Teal gradient */
+--color-accent: #14b8a6;
+--color-accent-dim: rgba(20, 184, 166, 0.15);
+--color-accent-bright: #2dd4bf;
+--color-accent-muted: #0d7377;
+--color-accent-deep: #0891b2;
+
+/* Roles - FFXIV standard colors */
+--color-role-tank: #5a9fd4;
+--color-role-healer: #5ad490;
+--color-role-melee: #d45a5a;
+--color-role-ranged: #d4a05a;
+--color-role-caster: #b45ad4;
+
+/* Gear Sources */
+--color-source-raid: #ef4444;
+--color-source-tome: #14b8a6;  /* Matches accent */
+--color-source-crafted: #a78bfa;
+--color-source-augmented: #fbbf24;
+
+/* Status */
+--color-status-success: #22c55e;
+--color-status-warning: #eab308;
+--color-status-error: #ef4444;
+--color-status-info: #14b8a6;
 ```
 
 ### Typography
-- Headers: Cinzel (Google Fonts)
-- Body: System fonts
+- Display/Headers: Inter (Google Fonts)
+- Body: Inter, system-ui fallback
+- Monospace: JetBrains Mono (for numbers, codes)
+
+### Glow Effects
+```css
+/* Logo/icon glow */
+.glow-teal {
+  filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.4));
+}
+
+/* Card hover glow */
+.card-glow:hover {
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.1);
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+/* Active/selected state */
+.border-glow {
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.3),
+              0 0 15px rgba(20, 184, 166, 0.1);
+}
+```
+
+### Badge Styles
+| Type | Background | Text | Border |
+|------|------------|------|--------|
+| Raid | `rgba(239, 68, 68, 0.2)` | `#f87171` | `rgba(239, 68, 68, 0.4)` |
+| Tome | `rgba(20, 184, 166, 0.2)` | `#2dd4bf` | `rgba(20, 184, 166, 0.4)` |
+| Crafted | `rgba(167, 139, 250, 0.2)` | `#c4b5fd` | `rgba(167, 139, 250, 0.4)` |
+| Augmented | `rgba(251, 191, 36, 0.2)` | `#fcd34d` | `rgba(251, 191, 36, 0.4)` |
 
 ---
 

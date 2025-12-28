@@ -14,10 +14,10 @@ import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
   lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
 };
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -258,7 +258,7 @@ export function Dashboard() {
                 </span>
 
                 {group.isPublic ? (
-                  <span className="flex items-center gap-1 text-green-400">
+                  <span className="flex items-center gap-1 text-teal-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
