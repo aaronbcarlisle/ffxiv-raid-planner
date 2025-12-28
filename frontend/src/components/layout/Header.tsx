@@ -58,17 +58,21 @@ export function Header() {
   const configuredPlayerCount = currentTier?.players?.filter(p => p.configured).length ?? 0;
   const totalPlayerCount = currentTier?.players?.length ?? 0;
 
-  // Handle share code copy
-  const handleCopyCode = async () => {
+  // Handle share code copy (hold Shift for full URL)
+  const handleCopyCode = async (e: React.MouseEvent) => {
     if (!currentGroup) return;
+    const textToCopy = e.shiftKey
+      ? `${window.location.origin}/group/${currentGroup.shareCode}`
+      : currentGroup.shareCode;
+
     try {
-      await navigator.clipboard.writeText(currentGroup.shareCode);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
-      textArea.value = currentGroup.shareCode;
+      textArea.value = textToCopy;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand('copy');
@@ -193,9 +197,9 @@ export function Header() {
 
               {/* Share code - clickable to copy */}
               <button
-                onClick={handleCopyCode}
+                onClick={(e) => handleCopyCode(e)}
                 className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-card hover:bg-bg-hover transition-colors group flex-shrink-0"
-                title="Click to copy share code"
+                title="Copy code (hold Shift for full URL)"
               >
                 <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
                 {copied ? (

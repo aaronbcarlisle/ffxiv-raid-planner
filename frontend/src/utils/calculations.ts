@@ -198,3 +198,25 @@ export function groupPlayersByLightParty(players: SnapshotPlayer[]): {
     ),
   };
 }
+
+/**
+ * Get which group (1 or 2) a position belongs to
+ */
+export function getGroupFromPosition(position: string | undefined): 1 | 2 | null {
+  if (!position) return null;
+  const g1Positions = ['T1', 'H1', 'M1', 'R1'];
+  const g2Positions = ['T2', 'H2', 'M2', 'R2'];
+  if (g1Positions.includes(position)) return 1;
+  if (g2Positions.includes(position)) return 2;
+  return null;
+}
+
+/**
+ * Swap a position to the other group (T1 -> T2, M2 -> M1, etc.)
+ */
+export function swapPositionGroup(position: string): string {
+  const role = position.charAt(0); // T, H, M, or R
+  const currentNum = position.charAt(1);
+  const newNum = currentNum === '1' ? '2' : '1';
+  return `${role}${newNum}`;
+}

@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { StaticGroup, StaticGroupListItem, MemberRole, Membership } from '../types';
+import type { StaticGroup, StaticGroupListItem, MemberRole, Membership, TierSnapshot, SnapshotPlayer } from '../types';
 import { authRequest } from '../services/api';
 
 interface StaticGroupState {
@@ -27,6 +27,7 @@ interface StaticGroupState {
   fetchGroup: (groupId: string) => Promise<void>;
   fetchGroupByShareCode: (shareCode: string) => Promise<void>;
   createGroup: (name: string, isPublic?: boolean) => Promise<StaticGroup>;
+  duplicateGroup: (sourceGroupId: string, newName: string) => Promise<StaticGroup>;
   updateGroup: (groupId: string, data: { name?: string; isPublic?: boolean }) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
   setCurrentGroup: (group: StaticGroup | null) => void;
@@ -134,6 +135,107 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to create group',
+        isCreating: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Duplicate a static group with all tiers and players
+   */
+  duplicateGroup: async (sourceGroupId: string, newName: string) => {
+    set({ isCreating: true, error: null });
+
+    try {
+      // 1. Fetch source group's tiers
+      const sourceTiers = await authRequest<TierSnapshot[]>(`/api/static-groups/${sourceGroupId}/tiers`);
+
+      // 2. Create the new group
+      const newGroup = await authRequest<StaticGroup>('/api/static-groups', {
+        method: 'POST',
+        body: JSON.stringify({ name: newName, isPublic: false }),
+      });
+
+      // 3. For each tier, create it in the new group and copy players
+      for (const sourceTier of sourceTiers) {
+        // Fetch full tier data with players
+        const fullTier = await authRequest<TierSnapshot>(
+          `/api/static-groups/${sourceGroupId}/tiers/${sourceTier.tierId}`
+        );
+
+        // Create the tier in the new group
+        const newTier = await authRequest<TierSnapshot>(
+          `/api/static-groups/${newGroup.id}/tiers`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              tierId: fullTier.tierId,
+              contentType: fullTier.contentType,
+            }),
+          }
+        );
+
+        // Copy each configured player
+        if (fullTier.players) {
+          for (const sourcePlayer of fullTier.players.filter(p => p.configured)) {
+            // Create player slot
+            const newPlayer = await authRequest<SnapshotPlayer>(
+              `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players`,
+              {
+                method: 'POST',
+                body: JSON.stringify({ sortOrder: sourcePlayer.sortOrder }),
+              }
+            );
+
+            // Update with source player's data
+            await authRequest<SnapshotPlayer>(
+              `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players/${newPlayer.id}`,
+              {
+                method: 'PUT',
+                body: JSON.stringify({
+                  name: sourcePlayer.name,
+                  job: sourcePlayer.job,
+                  role: sourcePlayer.role,
+                  position: sourcePlayer.position,
+                  tankRole: sourcePlayer.tankRole,
+                  templateRole: sourcePlayer.templateRole,
+                  configured: true,
+                  gear: sourcePlayer.gear,
+                  tomeWeapon: sourcePlayer.tomeWeapon,
+                  isSubstitute: sourcePlayer.isSubstitute,
+                  notes: sourcePlayer.notes,
+                  bisLink: sourcePlayer.bisLink,
+                }),
+              }
+            );
+          }
+        }
+      }
+
+      // Add to groups list
+      set((state) => ({
+        groups: [
+          ...state.groups,
+          {
+            id: newGroup.id,
+            name: newGroup.name,
+            shareCode: newGroup.shareCode,
+            isPublic: newGroup.isPublic,
+            ownerId: newGroup.ownerId,
+            memberCount: newGroup.memberCount,
+            userRole: 'owner' as MemberRole,
+            createdAt: newGroup.createdAt,
+            updatedAt: newGroup.updatedAt,
+          },
+        ],
+        isCreating: false,
+      }));
+
+      return newGroup;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to duplicate group',
         isCreating: false,
       });
       throw error;

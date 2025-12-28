@@ -37,6 +37,7 @@ interface TierState {
   updatePlayer: (groupId: string, tierId: string, playerId: string, data: Partial<SnapshotPlayer>) => Promise<void>;
   addPlayer: (groupId: string, tierId: string) => Promise<SnapshotPlayer>;
   removePlayer: (groupId: string, tierId: string, playerId: string) => Promise<void>;
+  reorderPlayers: (groupId: string, tierId: string, updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }>) => Promise<void>;
 }
 
 export const useTierStore = create<TierState>((set, get) => ({
@@ -336,6 +337,53 @@ export const useTierStore = create<TierState>((set, get) => ({
         isSaving: false,
       });
       throw error;
+    }
+  },
+
+  /**
+   * Reorder players with optimistic update (prevents visual "pop" during drag)
+   * Updates local state immediately, then persists to backend
+   */
+  reorderPlayers: async (groupId: string, tierId: string, updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }>) => {
+    const previousTier = get().currentTier;
+    if (!previousTier?.players) return;
+
+    // Apply optimistic update immediately
+    set((state) => {
+      if (!state.currentTier?.players) return state;
+
+      const updatedPlayers = state.currentTier.players.map(player => {
+        const update = updates.find(u => u.playerId === player.id);
+        return update ? { ...player, ...update.data } : player;
+      });
+
+      return {
+        currentTier: {
+          ...state.currentTier,
+          players: updatedPlayers,
+        },
+      };
+    });
+
+    // Persist to backend (fire and forget, but track for error handling)
+    try {
+      await Promise.all(
+        updates.map(({ playerId, data }) =>
+          authRequest<SnapshotPlayer>(
+            `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}`,
+            {
+              method: 'PUT',
+              body: JSON.stringify(data),
+            }
+          )
+        )
+      );
+    } catch (error) {
+      // Revert optimistic update on error
+      set({
+        currentTier: previousTier,
+        error: error instanceof Error ? error.message : 'Failed to reorder players',
+      });
     }
   },
 }));

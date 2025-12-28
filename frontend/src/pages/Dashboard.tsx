@@ -30,11 +30,17 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 export function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, deleteGroup } = useStaticGroupStore();
+  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup } = useStaticGroupStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupPublic, setNewGroupPublic] = useState(false);
+
+  // View mode state (grid or list)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Copy state for feedback
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -43,6 +49,30 @@ export function Dashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Copy share code (or full URL if shift is held)
+  const handleCopyCode = useCallback(async (shareCode: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const textToCopy = e.shiftKey
+      ? `${window.location.origin}/group/${shareCode}`
+      : shareCode;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedCode(shareCode);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedCode(shareCode);
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -95,13 +125,12 @@ export function Dashboard() {
   const handleDuplicateStatic = useCallback(async () => {
     if (selectedGroup) {
       try {
-        await createGroup(`${selectedGroup.name} (Copy)`, selectedGroup.isPublic);
-        await fetchGroups();
+        await duplicateGroup(selectedGroup.id, `${selectedGroup.name} (Copy)`);
       } catch {
         // Error handled in store
       }
     }
-  }, [selectedGroup, createGroup, fetchGroups]);
+  }, [selectedGroup, duplicateGroup]);
 
   const handleOpenSettings = useCallback(() => {
     if (selectedGroup) {
@@ -174,12 +203,50 @@ export function Dashboard() {
           <h1 className="text-3xl font-display text-accent">My Statics</h1>
           <p className="text-text-muted mt-1">Manage your raid groups</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright transition-colors"
-        >
-          Create Static
-        </button>
+        <div className="flex items-center gap-3">
+          {/* View mode toggle */}
+          {groups.length > 0 && (
+            <div className="flex bg-bg-secondary rounded-md border border-border-default">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-2 rounded-l-md text-sm font-medium transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+                title="Grid view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                  <rect x="1" y="1" width="6" height="6" rx="1" />
+                  <rect x="9" y="1" width="6" height="6" rx="1" />
+                  <rect x="1" y="9" width="6" height="6" rx="1" />
+                  <rect x="9" y="9" width="6" height="6" rx="1" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-border-default ${
+                  viewMode === 'list'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+                title="List view"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                  <rect x="1" y="1" width="14" height="4" rx="1" />
+                  <rect x="1" y="7" width="14" height="4" rx="1" />
+                  <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
+                </svg>
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright transition-colors"
+          >
+            Create Static
+          </button>
+        </div>
       </div>
 
       {/* Error */}
@@ -223,7 +290,7 @@ export function Dashboard() {
             Create Your First Static
           </button>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         /* Groups grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
@@ -284,8 +351,111 @@ export function Dashboard() {
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted">
-                Code: <span className="font-mono text-accent">{group.shareCode}</span>
+              <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted flex items-center justify-between">
+                <span>
+                  Code: <span className="font-mono text-accent">{group.shareCode}</span>
+                </span>
+                <button
+                  onClick={(e) => handleCopyCode(group.shareCode, e)}
+                  className="p-1 rounded hover:bg-bg-hover transition-colors"
+                  title="Copy code (hold Shift for full URL)"
+                >
+                  {copiedCode === group.shareCode ? (
+                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Groups list */
+        <div className="bg-bg-card rounded-lg border border-white/10 divide-y divide-white/5">
+          {groups.map((group) => (
+            <div
+              key={group.id}
+              onClick={() => navigate(`/group/${group.shareCode}`)}
+              onContextMenu={(e) => handleContextMenu(e, group)}
+              className="flex items-center justify-between p-4 hover:bg-bg-hover transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
+                  {group.name}
+                </h3>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[group.userRole]}`}
+                >
+                  {ROLE_LABELS[group.userRole]}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-6 text-sm text-text-muted flex-shrink-0">
+                <span className="flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                  {group.memberCount}
+                </span>
+
+                {group.isPublic ? (
+                  <span className="flex items-center gap-1 text-teal-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Public
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    Private
+                  </span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-accent">{group.shareCode}</span>
+                  <button
+                    onClick={(e) => handleCopyCode(group.shareCode, e)}
+                    className="p-1 rounded hover:bg-bg-elevated transition-colors"
+                    title="Copy code (hold Shift for full URL)"
+                  >
+                    {copiedCode === group.shareCode ? (
+                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+
+                <span className="text-text-muted text-xs">
+                  {new Date(group.createdAt).toLocaleDateString()}
+                </span>
               </div>
             </div>
           ))}

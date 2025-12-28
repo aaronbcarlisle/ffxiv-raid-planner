@@ -32,7 +32,7 @@ import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
+import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty, getGroupFromPosition, swapPositionGroup } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -62,6 +62,7 @@ export function GroupView() {
     updatePlayer,
     addPlayer,
     removePlayer,
+    reorderPlayers,
     clearTiers,
   } = useTierStore();
 
@@ -176,6 +177,32 @@ export function GroupView() {
     await addPlayer(currentGroup.id, currentTier.tierId);
   }, [currentGroup?.id, currentTier?.tierId, addPlayer]);
 
+  // Duplicate player handler - creates a copy of the player
+  const handleDuplicatePlayer = useCallback(async (sourcePlayer: SnapshotPlayer) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    try {
+      // Create a new player slot
+      const newPlayer = await addPlayer(currentGroup.id, currentTier.tierId);
+      // Update the new player with the source player's data
+      await updatePlayer(currentGroup.id, currentTier.tierId, newPlayer.id, {
+        name: `${sourcePlayer.name} (Copy)`,
+        job: sourcePlayer.job,
+        role: sourcePlayer.role,
+        position: sourcePlayer.position,
+        tankRole: sourcePlayer.tankRole,
+        templateRole: sourcePlayer.templateRole,
+        configured: true,
+        gear: sourcePlayer.gear,
+        tomeWeapon: sourcePlayer.tomeWeapon,
+        isSubstitute: sourcePlayer.isSubstitute,
+        notes: sourcePlayer.notes,
+        bisLink: sourcePlayer.bisLink,
+      });
+    } catch {
+      // Error handled in store
+    }
+  }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer]);
+
   // Listen for header events
   useEffect(() => {
     const handleTierChangeEvent = (e: Event) => {
@@ -225,7 +252,7 @@ export function GroupView() {
   // Handle drag end for reordering
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id || !currentTier?.players) return;
+    if (!over || active.id === over.id || !currentTier?.players || !currentGroup?.id) return;
 
     const players = currentTier.players;
     const activeIndex = players.findIndex(p => p.id === active.id);
@@ -233,17 +260,30 @@ export function GroupView() {
 
     if (activeIndex === -1 || overIndex === -1) return;
 
-    // Update sort orders
     const activePlayer = players[activeIndex];
     const overPlayer = players[overIndex];
 
-    // Swap sort orders
-    await handleUpdatePlayer(activePlayer.id, { sortOrder: overPlayer.sortOrder });
-    await handleUpdatePlayer(overPlayer.id, { sortOrder: activePlayer.sortOrder });
+    // Check if this is a cross-group move (G1 <-> G2)
+    const activeGroup = getGroupFromPosition(activePlayer.position);
+    const overGroup = getGroupFromPosition(overPlayer.position);
+
+    // Build updates for the active player
+    const activeUpdates: Partial<SnapshotPlayer> = { sortOrder: overPlayer.sortOrder };
+
+    // If moving between groups and player has a position, swap the position number
+    if (groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
+      activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+    }
+
+    // Use optimistic reorder to prevent visual "pop"
+    await reorderPlayers(currentGroup.id, currentTier.tierId, [
+      { playerId: activePlayer.id, data: activeUpdates },
+      { playerId: overPlayer.id, data: { sortOrder: activePlayer.sortOrder } },
+    ]);
 
     // Switch to custom sort
     setSortPreset('custom');
-  }, [currentTier?.players, handleUpdatePlayer]);
+  }, [currentTier?.players, currentTier?.tierId, currentGroup?.id, reorderPlayers, groupView]);
 
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
@@ -328,7 +368,7 @@ export function GroupView() {
               });
             }
           }}
-          onDuplicate={() => handleAddPlayer()}
+          onDuplicate={() => handleDuplicatePlayer(player)}
         />
       );
     }
