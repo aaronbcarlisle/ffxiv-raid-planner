@@ -386,13 +386,13 @@ export function Dashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded border ${LINKED_BADGE_COLOR}`}>
                     Linked
                   </span>
-                ) : (
+                ) : group.userRole ? (
                   <span
                     className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}
                   >
                     {ROLE_LABELS[group.userRole]}
                   </span>
-                )}
+                ) : null}
               </div>
 
               <div className="flex items-center gap-4 text-sm text-text-muted">
@@ -476,13 +476,13 @@ export function Dashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${LINKED_BADGE_COLOR}`}>
                     Linked
                   </span>
-                ) : (
+                ) : group.userRole ? (
                   <span
                     className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[group.userRole]}`}
                   >
                     {ROLE_LABELS[group.userRole]}
                   </span>
-                )}
+                ) : null}
               </div>
 
               <div className="flex items-center gap-6 text-sm text-text-muted flex-shrink-0">

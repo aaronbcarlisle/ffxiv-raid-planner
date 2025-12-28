@@ -126,9 +126,15 @@ export function StaticSwitcher({
                     }`}
                   >
                     <span className="truncate font-medium">{group.name}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${ROLE_COLORS[group.userRole]}`}>
-                      {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
-                    </span>
+                    {group.userRole ? (
+                      <span className={`text-xs px-2 py-0.5 rounded ${ROLE_COLORS[group.userRole]}`}>
+                        {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                      </span>
+                    ) : group.source === 'linked' ? (
+                      <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                        Linked
+                      </span>
+                    ) : null}
                   </button>
                 );
               })

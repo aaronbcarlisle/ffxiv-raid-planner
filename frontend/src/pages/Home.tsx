@@ -174,11 +174,17 @@ export function Home() {
                   <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
                     {group.name}
                   </h3>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 ${ROLE_COLORS[group.userRole]}`}
-                  >
-                    {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
-                  </span>
+                  {group.userRole ? (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 ${ROLE_COLORS[group.userRole]}`}
+                    >
+                      {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                    </span>
+                  ) : group.source === 'linked' ? (
+                    <span className="text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 bg-amber-500/20 text-amber-400 border-amber-500/30">
+                      Linked
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex items-center justify-between text-sm text-text-muted">
                   <div className="flex items-center gap-3">
