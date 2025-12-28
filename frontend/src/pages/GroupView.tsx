@@ -7,35 +7,21 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  DndContext,
-  DragOverlay,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-  type DragOverEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
+import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { getTierById } from '../gamedata';
-import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
-import { PlayerCard } from '../components/player/PlayerCard';
+import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
+import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
+import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty, getGroupFromPosition, swapPositionGroup } from '../utils/calculations';
+import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus } from '../types';
 import { GEAR_SLOTS } from '../types';
@@ -82,24 +68,6 @@ export function GroupView() {
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
   const [sortPreset, setSortPreset] = useState<SortPreset>('standard');
   const [groupView, setGroupView] = useState(false);
-
-  // DnD state for drag overlay and drop target highlighting
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [overPlayerId, setOverPlayerId] = useState<string | null>(null);
-  // Insert mode: 'before' or 'after' the over card, null means swap mode
-  const [insertSide, setInsertSide] = useState<'before' | 'after' | null>(null);
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   // Clear tiers when shareCode changes (switching groups)
   useEffect(() => {
@@ -299,234 +267,12 @@ export function GroupView() {
     };
   }, [handleTierChange, handleAddPlayer]);
 
-  // DnD event handlers
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveDragId(event.active.id as string);
-  }, []);
-
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const overId = event.over?.id as string | null;
-    setOverPlayerId(overId);
-
-    // Detect if cursor is near edge (insert mode) or center (swap mode)
-    if (!overId || !event.over) {
-      setInsertSide(null);
-      return;
-    }
-
-    // Check if this is a drop zone (start/end of list)
-    if (typeof overId === 'string' && overId.startsWith('drop-')) {
-      // Drop zones are always insert mode
-      setInsertSide(overId.includes('start') ? 'before' : 'after');
-      return;
-    }
-
-    // Get CURRENT cursor position (initial position + drag delta)
-    const initialX = (event.activatorEvent as PointerEvent)?.clientX;
-    const deltaX = event.delta?.x ?? 0;
-    if (initialX === undefined) {
-      setInsertSide(null);
-      return;
-    }
-    const currentPointerX = initialX + deltaX;
-
-    // Find the over element and get its bounds
-    const overElement = document.querySelector(`[data-player-id="${overId}"]`);
-    if (!overElement) {
-      setInsertSide(null);
-      return;
-    }
-
-    const rect = overElement.getBoundingClientRect();
-    const relativeX = currentPointerX - rect.left;
-    const percentage = relativeX / rect.width;
-
-    // Edge threshold: 25% on each side for insert mode
-    const EDGE_THRESHOLD = 0.25;
-
-    if (percentage < EDGE_THRESHOLD) {
-      setInsertSide('before');
-    } else if (percentage > 1 - EDGE_THRESHOLD) {
-      setInsertSide('after');
-    } else {
-      setInsertSide(null); // Center = swap mode
-    }
-  }, []);
-
-  const handleDragCancel = useCallback(() => {
-    setActiveDragId(null);
-    setOverPlayerId(null);
-    setInsertSide(null);
-  }, []);
-
-  // Handle drag end for reordering
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    // Capture insert state before clearing
-    const wasInsertMode = insertSide !== null;
-    const insertDirection = insertSide;
-
-    // Clear drag state
-    setActiveDragId(null);
-    setOverPlayerId(null);
-    setInsertSide(null);
-
-    const { active, over } = event;
-    if (!over || active.id === over.id || !currentTier?.players || !currentGroup?.id) return;
-
-    const players = currentTier.players;
-    const activeIndex = players.findIndex(p => p.id === active.id);
-    if (activeIndex === -1) return;
-
-    const activePlayer = players[activeIndex];
-    const activeGroup = getGroupFromPosition(activePlayer.position);
-    const overId = over.id as string;
-
-    // Handle drop zones (start/end of list)
-    if (overId.startsWith('drop-')) {
-      const sortedByOrder = [...players].sort((a, b) => a.sortOrder - b.sortOrder);
-      const activeOrderIndex = sortedByOrder.findIndex(p => p.id === active.id);
-
-      // Determine target position and group
-      let targetIndex: number;
-      let targetGroup: 1 | 2 | null = null;
-
-      if (overId === 'drop-start' || overId === 'drop-start-g1') {
-        targetIndex = 0;
-        if (overId === 'drop-start-g1') targetGroup = 1;
-      } else if (overId === 'drop-end') {
-        targetIndex = sortedByOrder.length - 1;
-      } else if (overId === 'drop-end-g1') {
-        // Find the last G1 player index
-        const g1Players = sortedByOrder.filter(p => getGroupFromPosition(p.position) === 1);
-        targetIndex = g1Players.length > 0
-          ? sortedByOrder.findIndex(p => p.id === g1Players[g1Players.length - 1].id)
-          : 0;
-        targetGroup = 1;
-      } else if (overId === 'drop-start-g2') {
-        // Find the first G2 player index
-        const firstG2Index = sortedByOrder.findIndex(p => getGroupFromPosition(p.position) === 2);
-        targetIndex = firstG2Index >= 0 ? firstG2Index : sortedByOrder.length;
-        targetGroup = 2;
-      } else if (overId === 'drop-end-g2') {
-        targetIndex = sortedByOrder.length - 1;
-        targetGroup = 2;
-      } else {
-        return; // Unknown drop zone
-      }
-
-      // Adjust if moving from before target
-      if (activeOrderIndex < targetIndex) {
-        targetIndex--;
-      }
-
-      // Build updates
-      const updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }> = [];
-      const withoutActive = sortedByOrder.filter(p => p.id !== active.id);
-      withoutActive.splice(targetIndex, 0, activePlayer);
-
-      withoutActive.forEach((player, index) => {
-        if (player.sortOrder !== index) {
-          const playerUpdates: Partial<SnapshotPlayer> = { sortOrder: index };
-
-          // Update position if moving to different group
-          if (player.id === activePlayer.id && groupView && targetGroup && activeGroup !== targetGroup && activePlayer.position) {
-            playerUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
-          }
-
-          updates.push({ playerId: player.id, data: playerUpdates });
-        }
-      });
-
-      if (updates.length > 0) {
-        await reorderPlayers(currentGroup.id, currentTier.tierId, updates);
-        setSortPreset('custom');
-      }
-      return;
-    }
-
-    // Regular player card drop
-    const overIndex = players.findIndex(p => p.id === over.id);
-    if (overIndex === -1) return;
-
-    const overPlayer = players[overIndex];
-
-    // Check if this is a cross-group move (G1 <-> G2)
-    const overGroup = getGroupFromPosition(overPlayer.position);
-
-    if (wasInsertMode) {
-      // INSERT MODE: Move active card to before/after over card
-      // Sort players by current sortOrder to work with actual positions
-      const sortedByOrder = [...players].sort((a, b) => a.sortOrder - b.sortOrder);
-      const activeOrderIndex = sortedByOrder.findIndex(p => p.id === active.id);
-      const overOrderIndex = sortedByOrder.findIndex(p => p.id === over.id);
-
-      // Calculate target position
-      let targetIndex = insertDirection === 'before' ? overOrderIndex : overOrderIndex + 1;
-      // Adjust if we're moving from before the target
-      if (activeOrderIndex < targetIndex) {
-        targetIndex--;
-      }
-
-      // Build updates: shift cards and insert active at target position
-      const updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }> = [];
-
-      // Remove active from sorted list and insert at target
-      const withoutActive = sortedByOrder.filter(p => p.id !== active.id);
-      withoutActive.splice(targetIndex, 0, activePlayer);
-
-      // Update sortOrder for all affected cards
-      withoutActive.forEach((player, index) => {
-        if (player.sortOrder !== index) {
-          const playerUpdates: Partial<SnapshotPlayer> = { sortOrder: index };
-
-          // Handle cross-group position swap for the dragged player
-          if (player.id === activePlayer.id && groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
-            playerUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
-          }
-
-          updates.push({ playerId: player.id, data: playerUpdates });
-        }
-      });
-
-      if (updates.length > 0) {
-        await reorderPlayers(currentGroup.id, currentTier.tierId, updates);
-      }
-    } else {
-      // SWAP MODE: Swap positions of active and over cards
-      const activeUpdates: Partial<SnapshotPlayer> = { sortOrder: overPlayer.sortOrder };
-      const overUpdates: Partial<SnapshotPlayer> = { sortOrder: activePlayer.sortOrder };
-
-      // If moving between groups, both cards need their position numbers swapped
-      // e.g., M2 swapping with T1 → M2 becomes M1, T1 becomes T2
-      if (groupView && activeGroup && overGroup && activeGroup !== overGroup) {
-        if (activePlayer.position) {
-          activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
-        }
-        if (overPlayer.position) {
-          overUpdates.position = swapPositionGroup(overPlayer.position) as SnapshotPlayer['position'];
-        }
-      }
-
-      // Use optimistic reorder to prevent visual "pop"
-      await reorderPlayers(currentGroup.id, currentTier.tierId, [
-        { playerId: activePlayer.id, data: activeUpdates },
-        { playerId: overPlayer.id, data: overUpdates },
-      ]);
-    }
-
-    // Switch to custom sort
-    setSortPreset('custom');
-  }, [currentTier?.players, currentTier?.tierId, currentGroup?.id, reorderPlayers, groupView, insertSide]);
-
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
     if (!currentTier?.players) return [];
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
     return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
-
-  // Player IDs for SortableContext
-  const playerIds = useMemo(() => sortedPlayers.map(p => p.id), [sortedPlayers]);
 
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
@@ -558,6 +304,21 @@ export function GroupView() {
   // Available tiers for creation (filter out existing)
   const existingTierIds = tiers.map(t => t.tierId);
 
+  // Reorder handler for DnD hook
+  const handleReorder = useCallback(async (updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }>) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await reorderPlayers(currentGroup.id, currentTier.tierId, updates);
+    setSortPreset('custom');
+  }, [currentGroup?.id, currentTier?.tierId, reorderPlayers]);
+
+  // DnD hook - encapsulates all drag and drop logic
+  const dnd = useDragAndDrop({
+    players: sortedPlayers,
+    groupView,
+    canEdit,
+    onReorder: handleReorder,
+  });
+
   // Grid classes
   const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
@@ -575,20 +336,17 @@ export function GroupView() {
       );
     }
 
-    // If player is configured, show sortable player card
+    // If player is configured, show droppable player card
     if (player.configured) {
-      const isOver = overPlayerId === player.id && activeDragId !== player.id;
       return (
-        <SortablePlayerCard
+        <DroppablePlayerCard
           key={player.id}
           player={player}
           settings={DEFAULT_SETTINGS}
           viewMode={viewMode}
           clipboardPlayer={clipboardPlayer}
-          isDragEnabled={canEdit}
-          isDropTarget={isOver}
-          insertBefore={isOver && insertSide === 'before'}
-          insertAfter={isOver && insertSide === 'after'}
+          dragState={dnd.dragState}
+          canEdit={canEdit}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
@@ -716,82 +474,72 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              onDragCancel={handleDragCancel}
+              sensors={dnd.sensors}
+              collisionDetection={pointerWithin}
+              onDragStart={dnd.handleDragStart}
+              onDragOver={dnd.handleDragOver}
+              onDragEnd={dnd.handleDragEnd}
+              onDragCancel={dnd.handleDragCancel}
             >
-              <SortableContext items={playerIds}>
-                {/* Grouped View */}
-                {groupView && groupedPlayers ? (
-                  <div className="space-y-8 mb-8">
-                    {/* Group 1 */}
-                    {groupedPlayers.group1.length > 0 && (
-                      <div>
-                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G1</span>
-                          Light Party 1
-                        </h3>
-                        <div className={gridClasses}>
-                          {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
-                        </div>
+              {/* Grouped View */}
+              {groupView && groupedPlayers ? (
+                <div className="space-y-8 mb-8">
+                  {/* Group 1 */}
+                  {groupedPlayers.group1.length > 0 && (
+                    <div>
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G1</span>
+                        Light Party 1
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Group 2 */}
-                    {groupedPlayers.group2.length > 0 && (
-                      <div>
-                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G2</span>
-                          Light Party 2
-                        </h3>
-                        <div className={gridClasses}>
-                          {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
-                        </div>
+                  {/* Group 2 */}
+                  {groupedPlayers.group2.length > 0 && (
+                    <div>
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G2</span>
+                        Light Party 2
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Unassigned */}
-                    {groupedPlayers.unassigned.length > 0 && (
-                      <div className="opacity-75">
-                        <h3 className="text-text-muted text-sm font-medium mb-3">
-                          Unassigned Positions
-                        </h3>
-                        <div className={gridClasses}>
-                          {groupedPlayers.unassigned.map((player) => renderPlayerCard(player))}
-                        </div>
+                  {/* Unassigned */}
+                  {groupedPlayers.unassigned.length > 0 && (
+                    <div className="opacity-75">
+                      <h3 className="text-text-muted text-sm font-medium mb-3">
+                        Unassigned Positions
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.unassigned.map((player) => renderPlayerCard(player))}
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  /* Standard View */
-                  <div className={`${gridClasses} mb-8`}>
-                    {sortedPlayers.map((player) => renderPlayerCard(player))}
-                  </div>
-                )}
-              </SortableContext>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Standard View */
+                <div className={`${gridClasses} mb-8`}>
+                  {sortedPlayers.map((player) => renderPlayerCard(player))}
+                </div>
+              )}
 
               {/* Drag overlay - ghost card that follows cursor */}
               <DragOverlay dropAnimation={null}>
-                {activeDragId && (() => {
-                  const draggedPlayer = sortedPlayers.find(p => p.id === activeDragId);
+                {dnd.dragState.activeId && (() => {
+                  const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
                   if (!draggedPlayer || !draggedPlayer.configured) return null;
                   return (
-                    <div className="opacity-90 shadow-xl">
-                      <PlayerCard
-                        player={draggedPlayer}
-                        settings={DEFAULT_SETTINGS}
-                        viewMode={viewMode}
-                        clipboardPlayer={null}
-                        onUpdate={() => {}}
-                        onRemove={() => {}}
-                        onCopy={() => {}}
-                        onPaste={() => {}}
-                        onDuplicate={() => {}}
-                      />
-                    </div>
+                    <DragOverlayCard
+                      player={draggedPlayer}
+                      settings={DEFAULT_SETTINGS}
+                      viewMode={viewMode}
+                    />
                   );
                 })()}
               </DragOverlay>

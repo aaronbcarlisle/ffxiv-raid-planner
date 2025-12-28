@@ -1,6 +1,7 @@
 export { AddPlayerModal } from './AddPlayerModal';
 export { AddSlotCard } from './AddSlotCard';
-export { DropZone } from './DropZone';
+export { DragOverlayCard } from './DragOverlayCard';
+export { DroppablePlayerCard } from './DroppablePlayerCard';
 export { EmptySlotCard } from './EmptySlotCard';
 export { GearTable } from './GearTable';
 export { InlinePlayerEdit } from './InlinePlayerEdit';
@@ -9,5 +10,4 @@ export { NeedsFooter } from './NeedsFooter';
 export { PlayerCard } from './PlayerCard';
 export { PositionSelector } from './PositionSelector';
 export { RoleJobSelector } from './RoleJobSelector';
-export { SortablePlayerCard } from './SortablePlayerCard';
 export { TankRoleSelector } from './TankRoleSelector';
