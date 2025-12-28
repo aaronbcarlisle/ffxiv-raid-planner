@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..database import Base
 
 if TYPE_CHECKING:
+    from .invitation import Invitation
     from .membership import Membership
     from .tier_snapshot import TierSnapshot
     from .user import User
@@ -60,6 +61,12 @@ class StaticGroup(Base):
         back_populates="static_group",
         cascade="all, delete-orphan",
         order_by="TierSnapshot.created_at.desc()",
+    )
+    invitations: Mapped[list["Invitation"]] = relationship(
+        "Invitation",
+        back_populates="static_group",
+        cascade="all, delete-orphan",
+        order_by="Invitation.created_at.desc()",
     )
 
     @property

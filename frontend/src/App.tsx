@@ -5,6 +5,7 @@ import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { GroupView } from './pages/GroupView';
 import { AuthCallback } from './pages/AuthCallback';
+import { InviteAccept } from './pages/InviteAccept';
 import { initializeAuth } from './stores/authStore';
 
 function App() {
@@ -22,6 +23,8 @@ function App() {
       </Route>
       {/* Auth callback route (outside Layout for cleaner UX) */}
       <Route path="/auth/callback" element={<AuthCallback />} />
+      {/* Invite accept route (outside Layout for focused experience) */}
+      <Route path="/invite/:inviteCode" element={<InviteAccept />} />
     </Routes>
   );
 }

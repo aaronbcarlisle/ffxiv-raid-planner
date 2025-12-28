@@ -46,6 +46,9 @@ const ROLE_LABELS: Record<MemberRole, string> = {
   viewer: 'Viewer',
 };
 
+// Linked badge (for groups where user is linked to a player but not a member)
+const LINKED_BADGE_COLOR = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+
 export function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
@@ -379,11 +382,17 @@ export function Dashboard() {
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors">
                   {group.name}
                 </h3>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}
-                >
-                  {ROLE_LABELS[group.userRole]}
-                </span>
+                {group.source === 'linked' ? (
+                  <span className={`text-xs px-2 py-0.5 rounded border ${LINKED_BADGE_COLOR}`}>
+                    Linked
+                  </span>
+                ) : (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}
+                  >
+                    {ROLE_LABELS[group.userRole]}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-4 text-sm text-text-muted">
@@ -463,11 +472,17 @@ export function Dashboard() {
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
                   {group.name}
                 </h3>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[group.userRole]}`}
-                >
-                  {ROLE_LABELS[group.userRole]}
-                </span>
+                {group.source === 'linked' ? (
+                  <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${LINKED_BADGE_COLOR}`}>
+                    Linked
+                  </span>
+                ) : (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[group.userRole]}`}
+                  >
+                    {ROLE_LABELS[group.userRole]}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-6 text-sm text-text-muted flex-shrink-0">

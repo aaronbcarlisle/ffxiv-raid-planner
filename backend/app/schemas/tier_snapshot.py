@@ -42,6 +42,20 @@ class TomeWeaponStatus(CamelModel):
     is_augmented: bool = False
 
 
+# --- Linked User Info ---
+
+
+class LinkedUserInfo(CamelModel):
+    """Info about a user linked to a player card"""
+
+    id: str
+    discord_id: str
+    discord_username: str
+    discord_avatar: str | None = None
+    avatar_url: str | None = None
+    display_name: str | None = None
+
+
 # --- Snapshot Player Schemas ---
 
 
@@ -93,6 +107,7 @@ class SnapshotPlayerResponse(CamelModel):
     id: str
     tier_snapshot_id: str
     user_id: str | None = None
+    linked_user: LinkedUserInfo | None = None
     name: str
     job: str
     role: str

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import Membership, MemberRole, StaticGroup, User
+from .models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 
 
 class PermissionDenied(HTTPException):
@@ -197,3 +197,25 @@ async def get_user_static_groups(
         .order_by(StaticGroup.name)
     )
     return list(result.unique().all())
+
+
+async def get_user_linked_static_groups(
+    session: AsyncSession,
+    user_id: str,
+) -> list[StaticGroup]:
+    """
+    Get all static groups where the user is linked to a player (but not a member).
+
+    Returns:
+        List of StaticGroup objects
+    """
+    # Get groups where user is linked to a player
+    result = await session.execute(
+        select(StaticGroup)
+        .join(TierSnapshot, TierSnapshot.static_group_id == StaticGroup.id)
+        .join(SnapshotPlayer, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(SnapshotPlayer.user_id == user_id)
+        .options(selectinload(StaticGroup.memberships))
+        .order_by(StaticGroup.name)
+    )
+    return list(result.unique().scalars().all())

@@ -219,6 +219,9 @@ export interface DiscordAuthUrl {
 // Membership role in a static group
 export type MemberRole = 'owner' | 'lead' | 'member' | 'viewer';
 
+// How user is associated with a group
+export type GroupSource = 'membership' | 'linked';
+
 // Member info for display
 export interface MemberInfo {
   id: string;
@@ -271,7 +274,8 @@ export interface StaticGroupListItem {
   isPublic: boolean;
   ownerId: string;
   memberCount: number;
-  userRole: MemberRole;
+  userRole?: MemberRole;
+  source: GroupSource;
   createdAt: string;
   updatedAt: string;
 }
@@ -280,6 +284,16 @@ export interface StaticGroupListItem {
 
 // Content type for tier snapshots
 export type ContentType = 'savage' | 'ultimate';
+
+// Linked user info (for player cards)
+export interface LinkedUserInfo {
+  id: string;
+  discordId: string;
+  discordUsername: string;
+  discordAvatar?: string;
+  avatarUrl?: string;
+  displayName?: string;
+}
 
 // Tier snapshot (roster for a specific raid tier)
 export interface TierSnapshot {
@@ -299,6 +313,7 @@ export interface SnapshotPlayer {
   id: string;
   tierSnapshotId: string;
   userId?: string;
+  linkedUser?: LinkedUserInfo;
   name: string;
   job: string;
   role: string;
@@ -330,4 +345,49 @@ export interface RolloverResponse {
   sourceSnapshot: TierSnapshot;
   targetSnapshot: TierSnapshot;
   playersCopied: number;
+}
+
+// ==================== Invitation Types ====================
+
+// Invitation for joining a static group
+export interface Invitation {
+  id: string;
+  staticGroupId: string;
+  inviteCode: string;
+  role: MemberRole;
+  expiresAt?: string;
+  maxUses?: number;
+  useCount: number;
+  isActive: boolean;
+  isValid: boolean;
+  createdAt: string;
+  createdById: string;
+  staticGroupName?: string;
+}
+
+// Invitation preview (public info before accepting)
+export interface InvitationPreview {
+  inviteCode: string;
+  staticGroupName: string;
+  staticGroupId: string;
+  role: MemberRole;
+  isValid: boolean;
+  expiresAt?: string;
+  alreadyMember: boolean;
+}
+
+// Invitation create request
+export interface InvitationCreate {
+  role?: MemberRole;
+  expiresInDays?: number;
+  maxUses?: number;
+}
+
+// Invitation accept response
+export interface InvitationAcceptResponse {
+  success: boolean;
+  message: string;
+  staticGroupId?: string;
+  shareCode?: string;
+  role?: MemberRole;
 }

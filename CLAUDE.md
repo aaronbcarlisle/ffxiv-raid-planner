@@ -24,10 +24,14 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
   - Duplicate static copies all tiers and configured players
 - **Static Groups** - Multi-static membership with share codes
 - **Role-Based Access** - Owner/Lead/Member/Viewer permissions
+- **Invitation System** - Invite links for joining statics (`/invite/{code}`)
+  - Create invitations with role, expiration, and max uses
+  - Accept invitations via link (requires Discord login)
+  - Manage invitations in Group Settings modal
 - **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
 - **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
 - **Tier Management** - Create, switch, rollover, delete tiers
-- **Group Settings** - Rename, toggle public/private, delete groups
+- **Group Settings** - Rename, toggle public/private, manage invitations, delete groups
 - **Home Page** - Recent statics for logged-in users, feature cards for visitors
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
@@ -686,12 +690,11 @@ When on a group page, the header includes a static switcher dropdown:
 | 1 | Complete | Core tracking, player cards, gear tables, priority |
 | 2 | Complete | Tab navigation, view modes, needs footer, context menu, FFXIV icons, raid positions, tome weapon |
 | 3 | Complete | FastAPI backend, SQLite/PostgreSQL, data persistence, share codes |
-| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover |
+| 4 | **Complete** | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system |
 | 5 | Planned | BiS import (Etro, XIVGear), Balance presets |
-| 6 | Planned | Invitation system (invite links for joining statics) |
-| 7 | Planned | Lodestone auto-sync |
-| 8 | Planned | FFLogs integration |
-| 9 | Planned | Discord bot, PWA offline mode |
+| 6 | Planned | Lodestone auto-sync |
+| 7 | Planned | FFLogs integration |
+| 8 | Planned | Discord bot, PWA offline mode |
 
 ---
 
@@ -843,3 +846,12 @@ cd frontend && pnpm format
 | PUT | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Update player |
 | POST | `/api/static-groups/{id}/tiers/{tierId}/players` | Add player |
 | DELETE | `/api/static-groups/{id}/tiers/{tierId}/players/{playerId}` | Remove player |
+
+### Invitations
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/static-groups/{id}/invitations` | List group invitations |
+| POST | `/api/static-groups/{id}/invitations` | Create invitation |
+| DELETE | `/api/static-groups/{id}/invitations/{inviteId}` | Revoke invitation |
+| GET | `/api/invitations/{code}` | Get invitation preview (public) |
+| POST | `/api/invitations/{code}/accept` | Accept invitation |

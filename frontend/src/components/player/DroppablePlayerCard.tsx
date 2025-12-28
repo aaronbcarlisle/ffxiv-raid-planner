@@ -10,12 +10,16 @@ interface DroppablePlayerCardProps {
   clipboardPlayer: SnapshotPlayer | null;
   dragState: DragState;
   canEdit: boolean;
+  currentUserId?: string;
+  isGroupOwner?: boolean;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;
   onDuplicate: () => void;
   onResetGear?: () => void;
+  onClaimPlayer?: () => void;
+  onReleasePlayer?: () => void;
 }
 
 export function DroppablePlayerCard({

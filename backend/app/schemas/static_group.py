@@ -29,6 +29,13 @@ class MemberRoleEnum(str, Enum):
     VIEWER = "viewer"
 
 
+class GroupSourceEnum(str, Enum):
+    """How user is associated with a group"""
+
+    MEMBERSHIP = "membership"
+    LINKED = "linked"
+
+
 # --- Membership Schemas ---
 
 
@@ -139,6 +146,7 @@ class StaticGroupListItem(CamelModel):
     is_public: bool
     owner_id: str
     member_count: int = 0
-    user_role: MemberRoleEnum
+    user_role: MemberRoleEnum | None = None
+    source: GroupSourceEnum = GroupSourceEnum.MEMBERSHIP
     created_at: str
     updated_at: str

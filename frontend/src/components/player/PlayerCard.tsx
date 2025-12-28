@@ -39,12 +39,16 @@ interface PlayerCardProps {
   settings: StaticSettings;
   viewMode: ViewMode;
   clipboardPlayer: SnapshotPlayer | null;
+  currentUserId?: string;
+  isGroupOwner?: boolean;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
   onPaste: () => void;
   onDuplicate: () => void;
   onResetGear?: () => void;
+  onClaimPlayer?: () => void;
+  onReleasePlayer?: () => void;
 }
 
 export function PlayerCard({
@@ -52,12 +56,16 @@ export function PlayerCard({
   settings: _settings,
   viewMode,
   clipboardPlayer,
+  currentUserId,
+  isGroupOwner,
   onUpdate,
   onRemove,
   onCopy,
   onPaste,
   onDuplicate,
   onResetGear,
+  onClaimPlayer,
+  onReleasePlayer,
 }: PlayerCardProps) {
   // Expansion state follows global viewMode only (no individual override)
   const isExpanded = viewMode === 'expanded';
@@ -220,6 +228,12 @@ export function PlayerCard({
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  // Determine ownership status
+  const isLinkedToMe = player.userId === currentUserId;
+  const isLinkedToOther = player.userId && player.userId !== currentUserId;
+  const canClaim = !player.userId && currentUserId && onClaimPlayer;
+  const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
+
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: 'Copy Player',
@@ -242,6 +256,26 @@ export function PlayerCard({
       icon: CONTEXT_MENU_ICONS.substitute,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
     },
+    { separator: true },
+    // Ownership actions
+    ...(canClaim ? [{
+      label: 'Take Ownership',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+      onClick: onClaimPlayer,
+    }] : []),
+    ...(canRelease ? [{
+      label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+        </svg>
+      ),
+      onClick: onReleasePlayer,
+    }] : []),
     { separator: true },
     {
       label: 'Reset Gear',
@@ -459,6 +493,29 @@ export function PlayerCard({
                 {player.isSubstitute && (
                   <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
                     SUB
+                  </span>
+                )}
+                {/* Linked user badge */}
+                {isLinkedToMe && (
+                  <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium" title="This is you">
+                    You
+                  </span>
+                )}
+                {isLinkedToOther && player.linkedUser && (
+                  <span
+                    className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
+                    title={`Linked to ${player.linkedUser.displayName || player.linkedUser.discordUsername}`}
+                  >
+                    {player.linkedUser.avatarUrl ? (
+                      <img
+                        src={player.linkedUser.avatarUrl}
+                        alt=""
+                        className="w-3 h-3 rounded-full"
+                      />
+                    ) : null}
+                    <span className="max-w-16 truncate">
+                      {player.linkedUser.displayName || player.linkedUser.discordUsername}
+                    </span>
                   </span>
                 )}
               </div>

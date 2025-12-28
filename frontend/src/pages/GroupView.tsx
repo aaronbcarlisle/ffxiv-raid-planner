@@ -10,6 +10,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
+import { useAuthStore } from '../stores/authStore';
 import { getTierById } from '../gamedata';
 import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
@@ -53,8 +54,11 @@ export function GroupView() {
     addPlayer,
     removePlayer,
     reorderPlayers,
+    claimPlayer,
+    releasePlayer,
     clearTiers,
   } = useTierStore();
+  const { user } = useAuthStore();
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
@@ -163,6 +167,18 @@ export function GroupView() {
     if (!currentGroup?.id || !currentTier?.tierId) return;
     await removePlayer(currentGroup.id, currentTier.tierId, playerId);
   }, [currentGroup?.id, currentTier?.tierId, removePlayer]);
+
+  // Claim player handler (take ownership)
+  const handleClaimPlayer = useCallback(async (playerId: string) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await claimPlayer(currentGroup.id, currentTier.tierId, playerId);
+  }, [currentGroup?.id, currentTier?.tierId, claimPlayer]);
+
+  // Release player handler (remove ownership)
+  const handleReleasePlayer = useCallback(async (playerId: string) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    await releasePlayer(currentGroup.id, currentTier.tierId, playerId);
+  }, [currentGroup?.id, currentTier?.tierId, releasePlayer]);
 
   // Configure player (set name, job, role)
   const handleConfigurePlayer = useCallback(async (playerId: string, name: string, job: string, role: string) => {
@@ -355,6 +371,8 @@ export function GroupView() {
           clipboardPlayer={clipboardPlayer}
           dragState={dnd.dragState}
           canEdit={canEdit}
+          currentUserId={user?.id}
+          isGroupOwner={currentGroup?.userRole === 'owner'}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
@@ -373,6 +391,8 @@ export function GroupView() {
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
           onResetGear={canEdit ? () => handleResetGear(player.id) : undefined}
+          onClaimPlayer={() => handleClaimPlayer(player.id)}
+          onReleasePlayer={() => handleReleasePlayer(player.id)}
         />
       );
     }

@@ -38,6 +38,10 @@ interface TierState {
   addPlayer: (groupId: string, tierId: string) => Promise<SnapshotPlayer>;
   removePlayer: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   reorderPlayers: (groupId: string, tierId: string, updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }>) => Promise<void>;
+
+  // Ownership actions
+  claimPlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
+  releasePlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
 }
 
 export const useTierStore = create<TierState>((set, get) => ({
@@ -384,6 +388,84 @@ export const useTierStore = create<TierState>((set, get) => ({
         currentTier: previousTier,
         error: error instanceof Error ? error.message : 'Failed to reorder players',
       });
+    }
+  },
+
+  // ==================== Ownership Actions ====================
+
+  /**
+   * Claim a player (link current user to player card)
+   */
+  claimPlayer: async (groupId: string, tierId: string, playerId: string) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/claim`,
+        { method: 'POST' }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to claim player',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Release a player (unlink user from player card)
+   */
+  releasePlayer: async (groupId: string, tierId: string, playerId: string) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/claim`,
+        { method: 'DELETE' }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to release player',
+        isSaving: false,
+      });
+      throw error;
     }
   },
 }));

@@ -20,6 +20,7 @@ from ..permissions import (
     require_can_edit_roster,
 )
 from ..schemas import (
+    LinkedUserInfo,
     RolloverRequest,
     RolloverResponse,
     SnapshotPlayerCreate,
@@ -90,10 +91,23 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
         is_augmented=tw.get("isAugmented", False),
     )
 
+    # Build linked user info if user is loaded
+    linked_user = None
+    if player.user:
+        linked_user = LinkedUserInfo(
+            id=player.user.id,
+            discord_id=player.user.discord_id,
+            discord_username=player.user.discord_username,
+            discord_avatar=player.user.discord_avatar,
+            avatar_url=player.user.avatar_url,
+            display_name=player.user.display_name,
+        )
+
     return SnapshotPlayerResponse(
         id=player.id,
         tier_snapshot_id=player.tier_snapshot_id,
         user_id=player.user_id,
+        linked_user=linked_user,
         name=player.name,
         job=player.job,
         role=player.role,
@@ -161,7 +175,7 @@ async def list_tier_snapshots(
     result = await session.execute(
         select(TierSnapshot)
         .where(TierSnapshot.static_group_id == group_id)
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
         .order_by(TierSnapshot.created_at.desc())
     )
     snapshots = result.scalars().all()
@@ -230,7 +244,7 @@ async def create_tier_snapshot(
     result = await session.execute(
         select(TierSnapshot)
         .where(TierSnapshot.id == snapshot_id)
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     snapshot = result.scalar_one()
 
@@ -254,7 +268,7 @@ async def get_tier_snapshot(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     snapshot = result.scalar_one_or_none()
 
@@ -282,7 +296,7 @@ async def update_tier_snapshot(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     snapshot = result.scalar_one_or_none()
 
@@ -354,7 +368,7 @@ async def rollover_tier(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     source_snapshot = result.scalar_one_or_none()
 
@@ -433,7 +447,7 @@ async def rollover_tier(
     result = await session.execute(
         select(TierSnapshot)
         .where(TierSnapshot.id == target_snapshot_id)
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     target_snapshot = result.scalar_one()
 
@@ -464,7 +478,7 @@ async def list_snapshot_players(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     snapshot = result.scalar_one_or_none()
 
@@ -492,7 +506,7 @@ async def create_snapshot_player(
             TierSnapshot.static_group_id == group_id,
             TierSnapshot.tier_id == tier_id,
         )
-        .options(selectinload(TierSnapshot.players))
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
     snapshot = result.scalar_one_or_none()
 
@@ -647,3 +661,119 @@ async def delete_snapshot_player(
         raise NotFound("Player not found")
 
     await session.delete(player)
+
+
+# --- Player Ownership (Claim/Release) ---
+
+
+@router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)
+async def claim_player(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Link current user to a player card (take ownership)"""
+    group = await get_static_group(session, group_id)
+
+    # User must have at least viewer access to the group
+    await check_view_permission(session, group, current_user)
+
+    # Get player with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # Check if already claimed by someone else
+    if player.user_id and player.user_id != current_user.id:
+        raise PermissionDenied("This player is already linked to another user")
+
+    # Check if user is already linked to another player in this tier
+    existing_link = await session.execute(
+        select(SnapshotPlayer)
+        .where(
+            SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
+            SnapshotPlayer.user_id == current_user.id,
+            SnapshotPlayer.id != player_id,
+        )
+    )
+    if existing_link.scalar_one_or_none():
+        raise PermissionDenied("You are already linked to another player in this tier")
+
+    # Link the user
+    player.user_id = current_user.id
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    # Reload with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    return player_to_response(player)
+
+
+@router.delete("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)
+async def release_player(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Unlink user from a player card. User can release self, owner can release anyone."""
+    group = await get_static_group(session, group_id)
+
+    # Get player with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    if not player.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This player is not linked to any user",
+        )
+
+    # Check permissions: user can release self, owner can release anyone
+    is_self = player.user_id == current_user.id
+    membership = await get_user_membership(session, current_user.id, group_id)
+    is_owner = membership and membership.role == MemberRole.OWNER.value
+
+    if not is_self and not is_owner:
+        raise PermissionDenied("You can only unlink yourself or you must be the group owner")
+
+    # Unlink the user
+    player.user_id = None
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    return player_to_response(player)

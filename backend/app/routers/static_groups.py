@@ -16,12 +16,14 @@ from ..permissions import (
     check_view_permission,
     get_static_group,
     get_static_group_by_share_code,
+    get_user_linked_static_groups,
     get_user_membership,
     get_user_static_groups,
     require_can_manage_members,
     require_owner,
 )
 from ..schemas import (
+    GroupSourceEnum,
     MemberInfo,
     MemberRoleEnum,
     MembershipResponse,
@@ -120,10 +122,12 @@ async def list_user_static_groups(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[StaticGroupListItem]:
-    """List all static groups the current user is a member of"""
+    """List all static groups the current user is a member of or linked to"""
+    # Get groups via membership
     groups_with_memberships = await get_user_static_groups(session, current_user.id)
+    member_group_ids = {group.id for group, _ in groups_with_memberships}
 
-    return [
+    result: list[StaticGroupListItem] = [
         StaticGroupListItem(
             id=group.id,
             name=group.name,
@@ -132,11 +136,35 @@ async def list_user_static_groups(
             owner_id=group.owner_id,
             member_count=group.member_count,
             user_role=MemberRoleEnum(membership.role),
+            source=GroupSourceEnum.MEMBERSHIP,
             created_at=group.created_at,
             updated_at=group.updated_at,
         )
         for group, membership in groups_with_memberships
     ]
+
+    # Get groups via player link (excluding those already in membership)
+    linked_groups = await get_user_linked_static_groups(session, current_user.id)
+    for group in linked_groups:
+        if group.id not in member_group_ids:
+            result.append(
+                StaticGroupListItem(
+                    id=group.id,
+                    name=group.name,
+                    share_code=group.share_code,
+                    is_public=group.is_public,
+                    owner_id=group.owner_id,
+                    member_count=group.member_count,
+                    user_role=None,  # No membership role for linked groups
+                    source=GroupSourceEnum.LINKED,
+                    created_at=group.created_at,
+                    updated_at=group.updated_at,
+                )
+            )
+
+    # Sort by name
+    result.sort(key=lambda x: x.name)
+    return result
 
 
 @router.post("", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
