@@ -321,14 +321,14 @@ export interface TierSnapshot {
 export interface SnapshotPlayer {
   id: string;
   tierSnapshotId: string;
-  userId?: string;
-  linkedUser?: LinkedUserInfo;
+  userId?: string | null;
+  linkedUser?: LinkedUserInfo | null;
   name: string;
   job: string;
   role: string;
-  position?: RaidPosition;
-  tankRole?: TankRole;
-  templateRole?: TemplateRole;
+  position?: RaidPosition | null;
+  tankRole?: TankRole | null;
+  templateRole?: TemplateRole | null;
   configured: boolean;
   sortOrder: number;
   isSubstitute: boolean;
