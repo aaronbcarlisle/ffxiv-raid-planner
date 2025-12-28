@@ -20,7 +20,7 @@ import { calculatePlayerNeeds } from '../../utils/priority';
 const defaultRoleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 // Get position badge color classes based on position type
-function getPositionBadgeClasses(position: RaidPosition | undefined): string {
+function getPositionBadgeClasses(position: RaidPosition | null | undefined): string {
   if (!position) {
     return 'bg-bg-hover text-text-muted hover:text-text-secondary hover:bg-bg-hover/80';
   }
