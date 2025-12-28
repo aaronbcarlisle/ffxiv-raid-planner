@@ -164,9 +164,11 @@ export function Header() {
           >
             <div className="relative">
               <div className="absolute inset-0 bg-accent/20 rounded-lg blur-md group-hover:bg-accent/30 transition-colors" />
-              <div className="relative w-9 h-9 bg-bg-secondary rounded-lg flex items-center justify-center border border-accent/30 glow-teal">
-                <span className="text-sm font-bold text-accent">FRP</span>
-              </div>
+              <img
+                src="/logo.svg"
+                alt="FRP"
+                className="relative w-9 h-9 rounded-lg"
+              />
             </div>
             <span className="text-lg font-semibold tracking-wide hidden sm:block">
               <span className="text-accent">FFXIV</span>

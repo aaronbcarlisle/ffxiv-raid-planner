@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
@@ -28,6 +28,32 @@ export function Home() {
   const { isAuthenticated, isLoading } = useAuthStore();
   const { groups, fetchGroups } = useStaticGroupStore();
   const [shareCode, setShareCode] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Copy share code (or full URL if shift is held)
+  const handleCopyCode = useCallback(async (code: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const textToCopy = e.shiftKey
+      ? `${window.location.origin}/group/${code}`
+      : code;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
+  }, []);
 
   // Fetch user's groups when authenticated
   useEffect(() => {
@@ -70,11 +96,20 @@ export function Home() {
 
   return (
     <div className="text-center py-16">
+      {/* Hero Logo */}
+      <div className="mb-6">
+        <img
+          src="/logo-hero.svg"
+          alt="FFXIV Raid Planner"
+          className="w-24 h-24 mx-auto"
+        />
+      </div>
+
       <h1 className="font-display text-4xl text-accent mb-4">
-        FFXIV Savage Raid Planner
+        FFXIV Raid Planner
       </h1>
       <p className="text-text-secondary text-lg mb-8 max-w-2xl mx-auto">
-        Track gear progress, manage loot distribution, and coordinate your static.
+        Gear tracking & loot planning for your static
       </p>
 
       {/* Primary CTA */}
@@ -145,19 +180,36 @@ export function Home() {
                     {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-text-muted">
-                  <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                      />
-                    </svg>
-                    {group.memberCount}
-                  </span>
-                  <span className="font-mono text-xs text-accent">{group.shareCode}</span>
+                <div className="flex items-center justify-between text-sm text-text-muted">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                        />
+                      </svg>
+                      {group.memberCount}
+                    </span>
+                    <span className="font-mono text-xs text-accent">{group.shareCode}</span>
+                  </div>
+                  <button
+                    onClick={(e) => handleCopyCode(group.shareCode, e)}
+                    className="p-1 rounded hover:bg-bg-hover transition-colors"
+                    title="Copy code (hold Shift for full URL)"
+                  >
+                    {copiedCode === group.shareCode ? (
+                      <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </Link>
             ))}
