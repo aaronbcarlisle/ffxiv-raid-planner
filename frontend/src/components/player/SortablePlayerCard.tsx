@@ -10,6 +10,8 @@ interface SortablePlayerCardProps {
   clipboardPlayer: SnapshotPlayer | null;
   isDragEnabled: boolean;
   isDropTarget?: boolean;
+  insertBefore?: boolean;  // Show vertical line on left (insert before this card)
+  insertAfter?: boolean;   // Show vertical line on right (insert after this card)
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
@@ -22,6 +24,8 @@ export function SortablePlayerCard({
   player,
   isDragEnabled,
   isDropTarget = false,
+  insertBefore = false,
+  insertAfter = false,
   ...props
 }: SortablePlayerCardProps) {
   const {
@@ -44,19 +48,35 @@ export function SortablePlayerCard({
     opacity: isDragging ? 0.3 : 1,
   };
 
+  // Determine if we're in insert mode (shows line) vs swap mode (shows ring)
+  const isInsertMode = insertBefore || insertAfter;
+  const showSwapHighlight = isDropTarget && !isInsertMode;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
+      data-player-id={player.id}
       {...attributes}
       {...(isDragEnabled ? listeners : {})}
       className={`
+        relative
         ${isDragEnabled ? 'cursor-grab active:cursor-grabbing' : ''}
-        ${isDropTarget ? 'ring-2 ring-accent shadow-lg shadow-accent/20 rounded-lg' : ''}
+        ${showSwapHighlight ? 'ring-2 ring-accent shadow-lg shadow-accent/20 rounded-lg' : ''}
         transition-shadow duration-150
       `}
     >
+      {/* Insert indicator - vertical line on left */}
+      {insertBefore && (
+        <div className="absolute -left-2 top-0 bottom-0 w-1 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
+      )}
+
       <PlayerCard player={player} {...props} />
+
+      {/* Insert indicator - vertical line on right */}
+      {insertAfter && (
+        <div className="absolute -right-2 top-0 bottom-0 w-1 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
+      )}
     </div>
   );
 }

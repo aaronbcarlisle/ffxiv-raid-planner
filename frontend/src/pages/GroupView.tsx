@@ -86,6 +86,8 @@ export function GroupView() {
   // DnD state for drag overlay and drop target highlighting
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overPlayerId, setOverPlayerId] = useState<string | null>(null);
+  // Insert mode: 'before' or 'after' the over card, null means swap mode
+  const [insertSide, setInsertSide] = useState<'before' | 'after' | null>(null);
 
   // DnD sensors
   const sensors = useSensors(
@@ -303,19 +305,61 @@ export function GroupView() {
   }, []);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
-    setOverPlayerId(event.over?.id as string | null);
+    const overId = event.over?.id as string | null;
+    setOverPlayerId(overId);
+
+    // Detect if cursor is near edge (insert mode) or center (swap mode)
+    if (!overId || !event.over) {
+      setInsertSide(null);
+      return;
+    }
+
+    // Get cursor position from the drag event
+    const pointerX = (event.activatorEvent as PointerEvent)?.clientX;
+    if (pointerX === undefined) {
+      setInsertSide(null);
+      return;
+    }
+
+    // Find the over element and get its bounds
+    const overElement = document.querySelector(`[data-player-id="${overId}"]`);
+    if (!overElement) {
+      setInsertSide(null);
+      return;
+    }
+
+    const rect = overElement.getBoundingClientRect();
+    const relativeX = pointerX - rect.left;
+    const percentage = relativeX / rect.width;
+
+    // Edge threshold: 25% on each side for insert mode
+    const EDGE_THRESHOLD = 0.25;
+
+    if (percentage < EDGE_THRESHOLD) {
+      setInsertSide('before');
+    } else if (percentage > 1 - EDGE_THRESHOLD) {
+      setInsertSide('after');
+    } else {
+      setInsertSide(null); // Center = swap mode
+    }
   }, []);
 
   const handleDragCancel = useCallback(() => {
     setActiveDragId(null);
     setOverPlayerId(null);
+    setInsertSide(null);
   }, []);
 
   // Handle drag end for reordering
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    // Capture insert state before clearing
+    const wasInsertMode = insertSide !== null;
+    const insertDirection = insertSide;
+
     // Clear drag state
     setActiveDragId(null);
     setOverPlayerId(null);
+    setInsertSide(null);
 
     const { active, over } = event;
     if (!over || active.id === over.id || !currentTier?.players || !currentGroup?.id) return;
@@ -333,23 +377,63 @@ export function GroupView() {
     const activeGroup = getGroupFromPosition(activePlayer.position);
     const overGroup = getGroupFromPosition(overPlayer.position);
 
-    // Build updates for the active player
-    const activeUpdates: Partial<SnapshotPlayer> = { sortOrder: overPlayer.sortOrder };
+    if (wasInsertMode) {
+      // INSERT MODE: Move active card to before/after over card
+      // Sort players by current sortOrder to work with actual positions
+      const sortedByOrder = [...players].sort((a, b) => a.sortOrder - b.sortOrder);
+      const activeOrderIndex = sortedByOrder.findIndex(p => p.id === active.id);
+      const overOrderIndex = sortedByOrder.findIndex(p => p.id === over.id);
 
-    // If moving between groups and player has a position, swap the position number
-    if (groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
-      activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+      // Calculate target position
+      let targetIndex = insertDirection === 'before' ? overOrderIndex : overOrderIndex + 1;
+      // Adjust if we're moving from before the target
+      if (activeOrderIndex < targetIndex) {
+        targetIndex--;
+      }
+
+      // Build updates: shift cards and insert active at target position
+      const updates: Array<{ playerId: string; data: Partial<SnapshotPlayer> }> = [];
+
+      // Remove active from sorted list and insert at target
+      const withoutActive = sortedByOrder.filter(p => p.id !== active.id);
+      withoutActive.splice(targetIndex, 0, activePlayer);
+
+      // Update sortOrder for all affected cards
+      withoutActive.forEach((player, index) => {
+        if (player.sortOrder !== index) {
+          const playerUpdates: Partial<SnapshotPlayer> = { sortOrder: index };
+
+          // Handle cross-group position swap for the dragged player
+          if (player.id === activePlayer.id && groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
+            playerUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+          }
+
+          updates.push({ playerId: player.id, data: playerUpdates });
+        }
+      });
+
+      if (updates.length > 0) {
+        await reorderPlayers(currentGroup.id, currentTier.tierId, updates);
+      }
+    } else {
+      // SWAP MODE: Swap positions of active and over cards
+      const activeUpdates: Partial<SnapshotPlayer> = { sortOrder: overPlayer.sortOrder };
+
+      // If moving between groups and player has a position, swap the position number
+      if (groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
+        activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+      }
+
+      // Use optimistic reorder to prevent visual "pop"
+      await reorderPlayers(currentGroup.id, currentTier.tierId, [
+        { playerId: activePlayer.id, data: activeUpdates },
+        { playerId: overPlayer.id, data: { sortOrder: activePlayer.sortOrder } },
+      ]);
     }
-
-    // Use optimistic reorder to prevent visual "pop"
-    await reorderPlayers(currentGroup.id, currentTier.tierId, [
-      { playerId: activePlayer.id, data: activeUpdates },
-      { playerId: overPlayer.id, data: { sortOrder: activePlayer.sortOrder } },
-    ]);
 
     // Switch to custom sort
     setSortPreset('custom');
-  }, [currentTier?.players, currentTier?.tierId, currentGroup?.id, reorderPlayers, groupView]);
+  }, [currentTier?.players, currentTier?.tierId, currentGroup?.id, reorderPlayers, groupView, insertSide]);
 
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
@@ -410,6 +494,7 @@ export function GroupView() {
 
     // If player is configured, show sortable player card
     if (player.configured) {
+      const isOver = overPlayerId === player.id && activeDragId !== player.id;
       return (
         <SortablePlayerCard
           key={player.id}
@@ -418,7 +503,9 @@ export function GroupView() {
           viewMode={viewMode}
           clipboardPlayer={clipboardPlayer}
           isDragEnabled={canEdit}
-          isDropTarget={overPlayerId === player.id && activeDragId !== player.id}
+          isDropTarget={isOver}
+          insertBefore={isOver && insertSide === 'before'}
+          insertAfter={isOver && insertSide === 'after'}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => setClipboardPlayer(player)}
