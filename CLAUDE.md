@@ -809,12 +809,17 @@ Icon constants defined in `src/types/index.ts`:
 ## Commands
 
 ```bash
-# Backend Development
+# Start both servers (recommended)
+./dev.sh              # Kills existing, starts fresh frontend + backend
+./dev.sh stop         # Stop both servers
+./dev.sh logs         # Tail both log files
+
+# Backend Development (manual)
 cd backend
 source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 
-# Frontend Development
+# Frontend Development (manual)
 cd frontend && pnpm dev
 
 # Build
@@ -896,15 +901,26 @@ cd frontend && pnpm format
 
 ### Documentation Maintenance
 - **On Planning:** Update CLAUDE.md with planned features and architecture changes
-- **On Commit:** Update CLAUDE.md to reflect completed work (new endpoints, components, data model changes)
+- **Before Commit:** ALWAYS update CLAUDE.md to reflect completed work (new endpoints, components, data model changes)
+- **Rule:** Never commit without verifying documentation is current
 - Keep Phase Roadmap current with status updates
 
 ### Modal and DnD Interaction
 When modals are open inside a DnD context, disable drag sensors to prevent text selection from triggering drags:
 
 ```typescript
-// useDragAndDrop.ts - accepts disabled parameter
-const sensors = disabled ? [] : baseSensors;
+// useDragAndDrop.ts - use high activation distance when disabled
+// This keeps array size constant to avoid React useEffect warnings from @dnd-kit
+const sensors = useSensors(
+  useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: disabled ? 999999 : 8,
+    },
+  }),
+  useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  })
+);
 
 // GroupView.tsx - track modal state
 const [playerModalCount, setPlayerModalCount] = useState(0);
