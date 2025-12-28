@@ -30,7 +30,6 @@ import { SortablePlayerCard } from '../components/player/SortablePlayerCard';
 import { PlayerCard } from '../components/player/PlayerCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
-import { DropZone } from '../components/player/DropZone';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
@@ -734,9 +733,7 @@ export function GroupView() {
                           Light Party 1
                         </h3>
                         <div className={gridClasses}>
-                          {activeDragId && <DropZone id="drop-start-g1" isActive={!!activeDragId} />}
                           {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
-                          {activeDragId && <DropZone id="drop-end-g1" isActive={!!activeDragId} />}
                         </div>
                       </div>
                     )}
@@ -749,9 +746,7 @@ export function GroupView() {
                           Light Party 2
                         </h3>
                         <div className={gridClasses}>
-                          {activeDragId && <DropZone id="drop-start-g2" isActive={!!activeDragId} />}
                           {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
-                          {activeDragId && <DropZone id="drop-end-g2" isActive={!!activeDragId} />}
                         </div>
                       </div>
                     )}
@@ -771,9 +766,7 @@ export function GroupView() {
                 ) : (
                   /* Standard View */
                   <div className={`${gridClasses} mb-8`}>
-                    {activeDragId && <DropZone id="drop-start" isActive={!!activeDragId} />}
                     {sortedPlayers.map((player) => renderPlayerCard(player))}
-                    {activeDragId && <DropZone id="drop-end" isActive={!!activeDragId} />}
                   </div>
                 )}
               </SortableContext>
