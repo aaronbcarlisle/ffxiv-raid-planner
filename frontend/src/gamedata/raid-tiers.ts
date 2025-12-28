@@ -58,6 +58,38 @@ export const RAID_TIERS: RaidTier[] = [
   // DAWNTRAIL (7.x)
   // ==========================================
   {
+    id: 'aac-heavyweight',
+    name: 'AAC Heavyweight (Savage)',
+    shortName: 'M9S-M12S',
+    patch: '7.4',
+    floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+    dutyNames: [
+      'AAC Heavyweight M1 (Savage)',
+      'AAC Heavyweight M2 (Savage)',
+      'AAC Heavyweight M3 (Savage)',
+      'AAC Heavyweight M4 (Savage)',
+    ],
+    itemLevels: {
+      savage: 790,
+      savageWeapon: 795,
+      tome: 780,
+      tomeAugmented: 790,
+      crafted: 770,
+      minimum: 765,
+    },
+    gearPrefixes: {
+      savage: 'Grand Champion',
+      tome: 'TBD', // Update when 7.4 tomestone gear name is known
+      crafted: 'TBD', // Update when 7.4 crafted gear name is known
+    },
+    upgradeMaterials: {
+      twine: 'Thundersteeped Twine',
+      glaze: 'Thundersteeped Glaze',
+      solvent: 'Thundersteeped Solvent',
+    },
+    isCurrent: true,
+  },
+  {
     id: 'aac-cruiserweight',
     name: 'AAC Cruiserweight (Savage)',
     shortName: 'M5S-M8S',
@@ -87,7 +119,7 @@ export const RAID_TIERS: RaidTier[] = [
       glaze: 'Cruiserweight Glaze',
       solvent: 'Cruiserweight Solvent',
     },
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     id: 'aac-light-heavyweight',

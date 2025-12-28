@@ -62,7 +62,10 @@ export function GroupView() {
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [pageMode, setPageMode] = useState<PageMode>('players');
-  const [viewMode, setViewMode] = useState<ViewMode>('compact');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('party-view-mode');
+    return saved === 'expanded' ? 'expanded' : 'compact';
+  });
   const [selectedFloor, setSelectedFloor] = useState<FloorNumber>(1);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
@@ -99,6 +102,11 @@ export function GroupView() {
       // Ignore localStorage errors
     }
   }, [shareCode]);
+
+  // Persist view mode preference
+  useEffect(() => {
+    localStorage.setItem('party-view-mode', viewMode);
+  }, [viewMode]);
 
   // Fetch tiers and load active tier sequentially (avoids race condition)
   useEffect(() => {
