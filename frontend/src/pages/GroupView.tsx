@@ -418,16 +418,23 @@ export function GroupView() {
     } else {
       // SWAP MODE: Swap positions of active and over cards
       const activeUpdates: Partial<SnapshotPlayer> = { sortOrder: overPlayer.sortOrder };
+      const overUpdates: Partial<SnapshotPlayer> = { sortOrder: activePlayer.sortOrder };
 
-      // If moving between groups and player has a position, swap the position number
-      if (groupView && activeGroup && overGroup && activeGroup !== overGroup && activePlayer.position) {
-        activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+      // If moving between groups, both cards need their position numbers swapped
+      // e.g., M2 swapping with T1 → M2 becomes M1, T1 becomes T2
+      if (groupView && activeGroup && overGroup && activeGroup !== overGroup) {
+        if (activePlayer.position) {
+          activeUpdates.position = swapPositionGroup(activePlayer.position) as SnapshotPlayer['position'];
+        }
+        if (overPlayer.position) {
+          overUpdates.position = swapPositionGroup(overPlayer.position) as SnapshotPlayer['position'];
+        }
       }
 
       // Use optimistic reorder to prevent visual "pop"
       await reorderPlayers(currentGroup.id, currentTier.tierId, [
         { playerId: activePlayer.id, data: activeUpdates },
-        { playerId: overPlayer.id, data: { sortOrder: activePlayer.sortOrder } },
+        { playerId: overPlayer.id, data: overUpdates },
       ]);
     }
 
