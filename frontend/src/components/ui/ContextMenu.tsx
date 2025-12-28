@@ -1,13 +1,22 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
-export interface ContextMenuItem {
+export type ContextMenuItem = {
   label: string;
-  icon?: string;
-  onClick: () => void;
+  icon?: string | ReactNode;
+  onClick?: () => void;
   disabled?: boolean;
   danger?: boolean;
   keepOpen?: boolean; // Don't close menu after clicking
-}
+  separator?: never;
+} | {
+  separator: true;
+  label?: never;
+  icon?: never;
+  onClick?: never;
+  disabled?: never;
+  danger?: never;
+  keepOpen?: never;
+};
 
 interface ContextMenuProps {
   x: number;
@@ -63,40 +72,57 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       className="fixed z-50 bg-bg-secondary border border-border-default rounded-lg shadow-lg py-1 min-w-40"
       style={{ left: x, top: y }}
     >
-      {items.map((item, index) => (
-        <button
-          key={index}
-          onClick={() => {
-            if (!item.disabled) {
-              item.onClick();
-              if (!item.keepOpen) {
-                onClose();
+      {items.map((item, index) => {
+        // Render separator
+        if ('separator' in item && item.separator) {
+          return (
+            <div
+              key={index}
+              className="my-1 border-t border-border-default"
+            />
+          );
+        }
+
+        // Render menu item
+        return (
+          <button
+            key={index}
+            onClick={() => {
+              if (!item.disabled && item.onClick) {
+                item.onClick();
+                if (!item.keepOpen) {
+                  onClose();
+                }
               }
-            }
-          }}
-          disabled={item.disabled}
-          className={`
-            w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
-            ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
-            ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10' : ''}
-            ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-bg-hover' : ''}
-          `}
-        >
-          {item.icon && (
-            item.icon.startsWith('http') || item.icon.startsWith('/') ? (
-              <img
-                src={item.icon}
-                alt=""
-                width={20}
-                height={20}
-              />
-            ) : (
-              <span>{item.icon}</span>
-            )
-          )}
-          <span>{item.label}</span>
-        </button>
-      ))}
+            }}
+            disabled={item.disabled}
+            className={`
+              w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
+              ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
+              ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10' : ''}
+              ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-bg-hover' : ''}
+            `}
+          >
+            {item.icon && (
+              typeof item.icon === 'string' ? (
+                item.icon.startsWith('http') || item.icon.startsWith('/') ? (
+                  <img
+                    src={item.icon}
+                    alt=""
+                    width={20}
+                    height={20}
+                  />
+                ) : (
+                  <span>{item.icon}</span>
+                )
+              ) : (
+                <span className="flex items-center justify-center w-5 h-5">{item.icon}</span>
+              )
+            )}
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

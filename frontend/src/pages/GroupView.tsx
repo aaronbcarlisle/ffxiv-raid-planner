@@ -34,7 +34,8 @@ import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } 
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty, getGroupFromPosition, swapPositionGroup } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
-import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings } from '../types';
+import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus } from '../types';
+import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
 // Default settings for display
@@ -222,6 +223,27 @@ export function GroupView() {
     }
   }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer]);
 
+  // Reset gear handler - resets all gear slots and tome weapon to default
+  const handleResetGear = useCallback(async (playerId: string) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+
+    // Create default gear with all slots empty
+    // Ring2 defaults to tome since you can't equip two identical raid rings
+    const defaultGear: GearSlotStatus[] = GEAR_SLOTS.map((slot) => ({
+      slot,
+      bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
+      hasItem: false,
+      isAugmented: false,
+    }));
+
+    const defaultTomeWeapon = { pursuing: false, hasItem: false, isAugmented: false };
+
+    await updatePlayer(currentGroup.id, currentTier.tierId, playerId, {
+      gear: defaultGear,
+      tomeWeapon: defaultTomeWeapon,
+    });
+  }, [currentGroup?.id, currentTier?.tierId, updatePlayer]);
+
   // Listen for header events
   useEffect(() => {
     const handleTierChangeEvent = (e: Event) => {
@@ -388,6 +410,7 @@ export function GroupView() {
             }
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
+          onResetGear={canEdit ? () => handleResetGear(player.id) : undefined}
         />
       );
     }

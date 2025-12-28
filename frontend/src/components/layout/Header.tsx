@@ -166,14 +166,10 @@ export function Header() {
               <div className="absolute inset-0 bg-accent/20 rounded-lg blur-md group-hover:bg-accent/30 transition-colors" />
               <img
                 src="/logo.svg"
-                alt="FRP"
-                className="relative w-9 h-9 rounded-lg"
+                alt="FFXIV Raid Planner"
+                className="relative w-9 h-9"
               />
             </div>
-            <span className="text-lg font-semibold tracking-wide hidden sm:block">
-              <span className="text-accent">FFXIV</span>
-              <span className="text-text-primary"> Raid Planner</span>
-            </span>
           </Link>
 
           {/* Group context (only on group pages) */}

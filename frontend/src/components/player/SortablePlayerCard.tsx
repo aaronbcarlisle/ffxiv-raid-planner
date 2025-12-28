@@ -14,6 +14,7 @@ interface SortablePlayerCardProps {
   onCopy: () => void;
   onPaste: () => void;
   onDuplicate: () => void;
+  onResetGear?: () => void;
 }
 
 export function SortablePlayerCard({

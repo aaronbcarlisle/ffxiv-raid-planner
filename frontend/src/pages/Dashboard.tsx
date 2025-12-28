@@ -4,13 +4,32 @@
  * Shows user's static groups with ability to create new ones.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { ContextMenu } from '../components/ui';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
+
+// Sort options
+type DashboardSort = 'recent' | 'updated' | 'alphabetical';
+
+const SORT_LABELS: Record<DashboardSort, string> = {
+  recent: 'Most Recent',
+  updated: 'Last Updated',
+  alphabetical: 'Alphabetical',
+};
+
+// Get recently accessed share codes from localStorage
+function getRecentStaticCodes(): string[] {
+  try {
+    const saved = localStorage.getItem('recent-statics');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
 
 // Role badge colors
 const ROLE_COLORS: Record<MemberRole, string> = {
@@ -42,10 +61,44 @@ export function Dashboard() {
     return saved === 'list' ? 'list' : 'grid';
   });
 
+  // Sort mode state - persisted to localStorage
+  const [sortMode, setSortMode] = useState<DashboardSort>(() => {
+    const saved = localStorage.getItem('dashboard-sort-mode');
+    return (saved as DashboardSort) || 'recent';
+  });
+
   // Persist view mode to localStorage
   useEffect(() => {
     localStorage.setItem('dashboard-view-mode', viewMode);
   }, [viewMode]);
+
+  // Persist sort mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboard-sort-mode', sortMode);
+  }, [sortMode]);
+
+  // Sort groups based on current sort mode
+  const sortedGroups = useMemo(() => {
+    if (sortMode === 'alphabetical') {
+      return [...groups].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    if (sortMode === 'updated') {
+      return [...groups].sort((a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+    }
+    // 'recent' - use localStorage access order
+    const recentCodes = getRecentStaticCodes();
+    return [...groups].sort((a, b) => {
+      const aIndex = recentCodes.indexOf(a.shareCode);
+      const bIndex = recentCodes.indexOf(b.shareCode);
+      // Not in recent list = sort to end
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [groups, sortMode]);
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -212,6 +265,20 @@ export function Dashboard() {
           <p className="text-text-muted mt-1">Manage your raid groups</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Sort mode dropdown */}
+          {groups.length > 0 && (
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as DashboardSort)}
+              className="bg-bg-secondary border border-border-default rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer"
+            >
+              {(Object.entries(SORT_LABELS) as [DashboardSort, string][]).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          )}
           {/* View mode toggle */}
           {groups.length > 0 && (
             <div className="flex bg-bg-secondary rounded-md border border-border-default">
@@ -301,7 +368,7 @@ export function Dashboard() {
       ) : viewMode === 'grid' ? (
         /* Groups grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((group) => (
+          {sortedGroups.map((group) => (
             <div
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
@@ -385,7 +452,7 @@ export function Dashboard() {
       ) : (
         /* Groups list */
         <div className="bg-bg-card rounded-lg border border-white/10 divide-y divide-white/5">
-          {groups.map((group) => (
+          {sortedGroups.map((group) => (
             <div
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}

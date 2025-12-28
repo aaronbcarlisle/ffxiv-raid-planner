@@ -12,10 +12,7 @@
       </feMerge>
     </filter>
   </defs>
-  
-  <!-- Background -->
-  <rect width="64" height="64" rx="12" fill="#0a0a0a"/>
-  
+
   <!-- Eye outline -->
   <path d="M20 32 Q32 24 44 32 Q32 40 20 32 Z" 
         fill="none" 

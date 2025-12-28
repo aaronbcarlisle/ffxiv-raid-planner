@@ -19,12 +19,16 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 ### What Works
 - **Discord OAuth** - Full login/logout with JWT tokens
 - **User Dashboard** (`/dashboard`) - View, create, and manage static groups
+  - Grid/list view toggle (persisted to localStorage)
+  - Copy button on cards (Shift+click for full URL)
+  - Duplicate static copies all tiers and configured players
 - **Static Groups** - Multi-static membership with share codes
 - **Role-Based Access** - Owner/Lead/Member/Viewer permissions
 - **Tier Snapshots** - Per-tier roster (e.g., M1S-M4S vs M5S-M8S)
 - **GroupView** (`/group/{shareCode}`) - Full player card editing with gear tracking
 - **Tier Management** - Create, switch, rollover, delete tiers
 - **Group Settings** - Rename, toggle public/private, delete groups
+- **Home Page** - Recent statics for logged-in users, feature cards for visitors
 - Static creation with 8 template player slots
 - Inline player editing (name, job selection)
 - Gear tracking with BiS source (Raid/Tome) and Have/Augmented states
@@ -36,10 +40,10 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - View mode toggle (compact/expanded)
 - Raid position system (T1/T2/H1/H2/M1/M2/R1/R2)
 - Context menu (Copy/Paste/Duplicate/Mark as Sub/Remove)
-- Sort presets and drag-and-drop reordering
-- Group view (G1/G2) light party split
+- Sort presets and drag-and-drop reordering (optimistic updates)
+- Group view (G1/G2) light party split with cross-group position swap
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
-- Share code functionality
+- Share code functionality (copy button with Shift for full URL)
 
 ### Architecture
 
