@@ -12,6 +12,8 @@ interface TooltipProps {
   side?: 'top' | 'right' | 'bottom' | 'left';
   /** Alignment along the side */
   align?: 'start' | 'center' | 'end';
+  /** Offset from the trigger element (px) */
+  sideOffset?: number;
   /** Delay before showing (ms) */
   delayDuration?: number;
   /** Skip delay when moving between tooltips */
@@ -23,6 +25,7 @@ export function Tooltip({
   content,
   side = 'top',
   align = 'center',
+  sideOffset = 4,
   delayDuration = 200,
   skipDelayDuration = 100,
 }: TooltipProps) {
@@ -34,7 +37,7 @@ export function Tooltip({
           <TooltipPrimitive.Content
             side={side}
             align={align}
-            sideOffset={4}
+            sideOffset={sideOffset}
             className="z-50 rounded-md bg-surface-overlay px-3 py-1.5 text-sm text-text-primary shadow-lg border border-border-default animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
           >
             {content}
