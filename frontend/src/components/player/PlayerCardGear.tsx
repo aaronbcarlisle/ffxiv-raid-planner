@@ -32,7 +32,7 @@ export function PlayerCardGear({
 }: PlayerCardGearProps) {
   if (isExpanded) {
     return (
-      <div className="border-t border-border-default p-3 relative z-30">
+      <div className="border-t border-border-default p-3">
         <GearTable
           gear={gear}
           tomeWeapon={tomeWeapon}
