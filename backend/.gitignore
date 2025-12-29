@@ -29,8 +29,8 @@ env/
 # Environment variables
 .env
 
-# SQLite database
-data/
+# SQLite database (top-level only)
+/data/
 *.db
 
 # IDE

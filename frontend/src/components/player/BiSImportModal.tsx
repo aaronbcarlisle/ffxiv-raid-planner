@@ -1,7 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Checkbox } from '../ui/Checkbox';
-import { fetchBiSFromXIVGear, fetchBiSPresets } from '../../services/api';
+import {
+  fetchBiSFromXIVGear,
+  fetchBiSFromEtro,
+  fetchBiSPresets,
+  detectBiSSource,
+} from '../../services/api';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type {
   BiSImportData,
@@ -10,6 +15,42 @@ import type {
   GearSource,
   SnapshotPlayer,
 } from '../../types';
+
+// Balance URL role mapping for job guide links
+const BALANCE_ROLE_MAP: Record<string, string> = {
+  // Tanks
+  PLD: 'tanks/paladin',
+  WAR: 'tanks/warrior',
+  DRK: 'tanks/dark-knight',
+  GNB: 'tanks/gunbreaker',
+  // Healers
+  WHM: 'healers/white-mage',
+  SCH: 'healers/scholar',
+  AST: 'healers/astrologian',
+  SGE: 'healers/sage',
+  // Melee
+  MNK: 'melee/monk',
+  DRG: 'melee/dragoon',
+  NIN: 'melee/ninja',
+  SAM: 'melee/samurai',
+  RPR: 'melee/reaper',
+  VPR: 'melee/viper',
+  // Ranged
+  BRD: 'ranged/bard',
+  MCH: 'ranged/machinist',
+  DNC: 'ranged/dancer',
+  // Casters
+  BLM: 'casters/black-mage',
+  SMN: 'casters/summoner',
+  RDM: 'casters/red-mage',
+  PCT: 'casters/pictomancer',
+};
+
+function getBalanceGuideUrl(job: string): string {
+  const path = BALANCE_ROLE_MAP[job.toUpperCase()];
+  if (!path) return 'https://www.thebalanceffxiv.com/';
+  return `https://www.thebalanceffxiv.com/jobs/${path}/best-in-slot/`;
+}
 
 interface BiSImportModalProps {
   isOpen: boolean;
@@ -94,12 +135,23 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
       let data: BiSImportData;
 
       if (selectedPresetIndex !== null) {
-        // Use preset - build the curated BiS URL
-        const bisUrl = `bis|${player.job.toLowerCase()}|current`;
-        data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
+        const selectedPreset = presets[selectedPresetIndex];
+        if (selectedPreset?.uuid) {
+          // Local preset with direct XIVGear UUID
+          data = await fetchBiSFromXIVGear(selectedPreset.uuid, selectedPreset.setIndex ?? 0);
+        } else {
+          // GitHub preset - use curated BiS URL format
+          const bisUrl = `bis|${player.job.toLowerCase()}|current`;
+          data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
+        }
       } else {
-        // Use manual URL input
-        data = await fetchBiSFromXIVGear(inputValue.trim());
+        // Detect source and call appropriate API
+        const source = detectBiSSource(inputValue.trim());
+        if (source === 'etro') {
+          data = await fetchBiSFromEtro(inputValue.trim());
+        } else {
+          data = await fetchBiSFromXIVGear(inputValue.trim());
+        }
       }
       setPreviewData(data);
 
@@ -132,9 +184,9 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
         if (err.message.includes('404')) {
           setError('Gear set not found. Please check the link or UUID.');
         } else if (err.message.includes('Could not extract UUID')) {
-          setError('Invalid XIVGear link format. Please paste a valid link or UUID.');
+          setError('Invalid link format. Please paste a valid Etro or XIVGear link.');
         } else if (err.message.includes('timeout')) {
-          setError('XIVGear API timed out. Please try again.');
+          setError('API timed out. Please try again.');
         } else {
           setError(err.message);
         }
@@ -172,8 +224,14 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     // Determine what to store as bisLink
     let bisLink: string;
     if (selectedPresetIndex !== null) {
-      // Store the curated BiS path
-      bisLink = `bis|${player.job.toLowerCase()}|current`;
+      const selectedPreset = presets[selectedPresetIndex];
+      if (selectedPreset?.uuid) {
+        // Local preset - store the XIVGear shortlink format
+        bisLink = `sl|${selectedPreset.uuid}`;
+      } else {
+        // GitHub preset - store the curated BiS path
+        bisLink = `bis|${player.job.toLowerCase()}|current`;
+      }
     } else {
       bisLink = inputValue.trim();
     }
@@ -192,7 +250,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     }
   };
 
-  const modalTitle = player.bisLink ? 'Update BiS from XIVGear' : 'Import BiS from XIVGear';
+  const modalTitle = player.bisLink ? 'Update BiS' : 'Import BiS';
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
@@ -225,12 +283,43 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
                       ? `No presets for ${player.job}`
                       : 'Choose a preset...'}
                 </option>
-                {presets.map((preset) => (
-                  <option key={preset.index} value={preset.index}>
+                {presets.map((preset, idx) => (
+                  <option key={preset.index} value={idx}>
                     {preset.name}
                   </option>
                 ))}
               </select>
+              {/* Description for selected preset */}
+              {selectedPresetIndex !== null && presets[selectedPresetIndex]?.description && (
+                <p className="mt-1.5 text-xs text-text-muted italic">
+                  {presets[selectedPresetIndex].description}
+                </p>
+              )}
+              {/* Attribution line - only show when presets loaded */}
+              {!presetsLoading && presets.length > 0 && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted">
+                  <span>Presets curated by</span>
+                  <a
+                    href={getBalanceGuideUrl(player.job)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:text-accent-bright hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    The Balance
+                  </a>
+                  <span className="text-text-muted/50">→</span>
+                  <a
+                    href={getBalanceGuideUrl(player.job)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:text-accent-bright hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View {player.job} guide
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -247,8 +336,8 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
           <div>
             <label htmlFor="bisLink" className="block text-text-secondary mb-1 text-sm">
               {player.configured && presets.length > 0
-                ? 'XIVGear link or UUID'
-                : 'Paste XIVGear link or UUID'}
+                ? 'Etro or XIVGear link'
+                : 'Paste Etro or XIVGear link'}
             </label>
             <input
               id="bisLink"
@@ -262,7 +351,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
                 }
               }}
               onKeyDown={handleKeyDown}
-              placeholder="https://xivgear.app/?page=sl|..."
+              placeholder="https://etro.gg/gearset/..."
               className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               autoFocus={!player.configured || presets.length === 0}
             />

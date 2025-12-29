@@ -443,6 +443,9 @@ export interface BiSImportData {
 export interface BiSPreset {
   name: string;
   index: number;
+  uuid?: string; // XIVGear shortlink UUID (for local presets)
+  setIndex?: number; // Set index within the XIVGear sheet
+  description?: string; // Optional description from The Balance
 }
 
 // BiS presets response

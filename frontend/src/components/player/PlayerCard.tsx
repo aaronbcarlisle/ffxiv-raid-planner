@@ -21,14 +21,24 @@ import { calculatePlayerNeeds } from '../../utils/priority';
 
 const defaultRoleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
-// Build XIVGear URL from bisLink (UUID, share URL, or bis|job|tier format)
-function buildXIVGearUrl(bisLink: string): string {
-  // Already a full URL
+// Build URL from bisLink - supports both Etro and XIVGear formats
+function buildBiSUrl(bisLink: string): string {
+  // Already a full URL - return as-is
   if (bisLink.startsWith('http')) return bisLink;
-  // Curated BiS format (bis|job|tier)
+
+  // XIVGear curated BiS format (bis|job|tier)
   if (bisLink.includes('|')) return `https://xivgear.app/?page=${bisLink}`;
-  // UUID format
-  return `https://xivgear.app/?page=sl|${bisLink}`;
+
+  // Plain UUID - default to Etro (user's preference)
+  return `https://etro.gg/gearset/${bisLink}`;
+}
+
+// Detect if bisLink is from Etro or XIVGear for tooltip
+function getBiSSourceName(bisLink: string): string {
+  if (bisLink.includes('etro.gg')) return 'Etro';
+  if (bisLink.includes('xivgear')) return 'XIVGear';
+  if (bisLink.includes('|')) return 'XIVGear'; // bis|job|tier format
+  return 'Etro'; // Plain UUID defaults to Etro
 }
 
 // Get position badge color classes based on position type
@@ -406,9 +416,9 @@ export function PlayerCard({
         onImport={(updates) => onUpdate(updates)}
       />
 
-      {/* Header - drag handle area */}
+      {/* Header - drag handle area, elevate z-index when job picker open */}
       <div
-        className={`p-3 transition-colors relative z-20 ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`p-3 transition-colors relative ${showJobPicker ? 'z-[60]' : 'z-20'} ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
         {...dragAttributes}
         {...dragListeners}
       >
@@ -566,12 +576,12 @@ export function PlayerCard({
                 {/* BiS link badge */}
                 {player.bisLink && (
                   <a
-                    href={buildXIVGearUrl(player.bisLink)}
+                    href={buildBiSUrl(player.bisLink)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
                                hover:bg-accent/30 flex items-center gap-1 transition-colors"
-                    title="Open BiS in XIVGear"
+                    title={`Open BiS in ${getBiSSourceName(player.bisLink)}`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

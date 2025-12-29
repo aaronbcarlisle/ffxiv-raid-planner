@@ -170,6 +170,32 @@ export async function fetchBiSFromXIVGear(
   return api.get(`/api/bis/xivgear/${encoded}${queryString}`);
 }
 
+/**
+ * Fetch BiS gear set from Etro.gg
+ * Accepts UUID or full URL - backend handles extraction
+ */
+export async function fetchBiSFromEtro(uuidOrUrl: string): Promise<BiSImportData> {
+  const encoded = encodeURIComponent(uuidOrUrl);
+  return api.get(`/api/bis/etro/${encoded}`);
+}
+
+/**
+ * Detect whether a BiS link is from Etro or XIVGear
+ */
+export function detectBiSSource(link: string): 'etro' | 'xivgear' {
+  // Explicit Etro URLs
+  if (link.includes('etro.gg')) return 'etro';
+
+  // Explicit XIVGear URLs
+  if (link.includes('xivgear.app')) return 'xivgear';
+
+  // XIVGear-specific formats (sl|, bis|)
+  if (link.includes('|')) return 'xivgear';
+
+  // Plain UUID - default to Etro per user preference
+  return 'etro';
+}
+
 // ==================== Utilities ====================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

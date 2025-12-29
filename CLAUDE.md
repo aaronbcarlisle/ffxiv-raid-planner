@@ -53,12 +53,13 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - Group view (G1/G2) light party split with cross-group position swap
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
 - Share code functionality (copy button with Shift for full URL)
-- **BiS Import** - Import gear sets from XIVGear
-  - Predefined BiS presets dropdown (from The Balance via xiv-gear-planner/static-bis-sets)
+- **BiS Import** - Import gear sets from Etro.gg or XIVGear
+  - Supports Etro gearset links and UUIDs (auto-detected, preferred)
   - Supports XIVGear share links, UUIDs, and curated BiS URLs
+  - Predefined BiS presets dropdown (from The Balance via xiv-gear-planner/static-bis-sets)
   - Preview changes before importing with job mismatch warnings
-  - BiS link badge on player card header (opens XIVGear in new tab)
-  - Context menu shows "Update BiS" / "Unlink BiS" when player has linked set
+  - BiS link badge on player card header (opens source site in new tab)
+  - Context menu shows "Update BiS" when player has linked set
   - **Item icons** - Actual gear icons from XIVAPI replace placeholders after BiS import
   - **Hover cards** - Show item name, iLvl, stats, and source badge on gear slot hover
 
@@ -933,6 +934,7 @@ cd frontend && pnpm format
 |--------|----------|-------------|
 | GET | `/api/bis/presets/{job}` | Get available BiS presets for a job |
 | GET | `/api/bis/xivgear/{uuid_or_url}` | Fetch BiS from XIVGear with item icons/stats from XIVAPI |
+| GET | `/api/bis/etro/{uuid_or_url}` | Fetch BiS from Etro.gg with item icons/stats from XIVAPI |
 
 ---
 

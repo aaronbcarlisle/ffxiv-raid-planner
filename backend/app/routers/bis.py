@@ -33,13 +33,42 @@ class BiSImportResponse(BaseModel):
 class BiSPreset(BaseModel):
     """A single BiS preset option"""
     name: str
-    index: int  # Index in the sets array
+    index: int  # Index in the sets array (for GitHub presets)
+    uuid: Optional[str] = None  # XIVGear shortlink UUID (for local presets)
+    setIndex: Optional[int] = None  # Set index within the XIVGear sheet
+    description: Optional[str] = None  # Optional description from The Balance
 
 
 class BiSPresetsResponse(BaseModel):
     """Available BiS presets for a job"""
     job: str
     presets: list[BiSPreset]
+
+
+# Local preset cache (loaded from file)
+_local_presets: Optional[dict] = None
+
+
+def load_local_presets() -> dict:
+    """Load local BiS presets from JSON file."""
+    global _local_presets
+    if _local_presets is not None:
+        return _local_presets
+
+    import json
+    from pathlib import Path
+
+    preset_file = Path(__file__).parent.parent / "data" / "local_bis_presets.json"
+    if preset_file.exists():
+        try:
+            with open(preset_file, "r") as f:
+                _local_presets = json.load(f)
+        except Exception:
+            _local_presets = {}
+    else:
+        _local_presets = {}
+
+    return _local_presets
 
 
 # XIVGear slot names to our slot names
@@ -55,6 +84,21 @@ XIVGEAR_SLOT_MAP = {
     "Wrist": "bracelet",
     "RingLeft": "ring1",
     "RingRight": "ring2",
+}
+
+# Etro slot names to our slot names
+ETRO_SLOT_MAP = {
+    "weapon": "weapon",
+    "head": "head",
+    "body": "body",
+    "hands": "hands",
+    "legs": "legs",
+    "feet": "feet",
+    "ears": "earring",
+    "neck": "necklace",
+    "wrists": "bracelet",
+    "fingerL": "ring1",
+    "fingerR": "ring2",
 }
 
 
@@ -300,24 +344,96 @@ async def fetch_bis_from_shortlink(uuid: str) -> dict:
         raise HTTPException(status_code=502, detail="Invalid response from XIVGear")
 
 
+def extract_etro_uuid(url_or_uuid: str) -> str:
+    """
+    Extract UUID from Etro URL or return UUID directly.
+
+    Accepts:
+    - UUID: 464585cc-099f-4438-b442-6d15723db90f
+    - URL: https://etro.gg/gearset/464585cc-099f-4438-b442-6d15723db90f
+    """
+    # Already a UUID (with dashes)
+    uuid_pattern = r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$'
+    if re.match(uuid_pattern, url_or_uuid, re.IGNORECASE):
+        return url_or_uuid
+
+    # URL format: https://etro.gg/gearset/{uuid}
+    etro_match = re.search(r'etro\.gg/gearset/([a-f0-9-]+)', url_or_uuid, re.IGNORECASE)
+    if etro_match:
+        return etro_match.group(1)
+
+    # Try to extract any UUID-like string
+    any_uuid = re.search(r'([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})', url_or_uuid, re.IGNORECASE)
+    if any_uuid:
+        return any_uuid.group(1)
+
+    raise ValueError(f"Could not extract UUID from Etro link: {url_or_uuid}")
+
+
+async def fetch_bis_from_etro(uuid: str) -> dict:
+    """Fetch gearset from Etro.gg API."""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"https://etro.gg/api/gearsets/{uuid}/",
+                timeout=15.0
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Etro API timeout")
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Failed to reach Etro: {e}")
+
+    if response.status_code == 404:
+        raise HTTPException(status_code=404, detail="Gearset not found on Etro")
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Etro API error: {response.status_code}")
+
+    try:
+        return response.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="Invalid response from Etro")
+
+
 @router.get("/presets/{job}", response_model=BiSPresetsResponse)
 async def get_bis_presets(job: str):
     """
     Get available BiS presets for a job.
 
-    Returns a list of curated BiS sets from The Balance (via xiv-gear-planner/static-bis-sets).
-    Each preset can be imported by using the bis|{job}|current format with set index.
+    Returns a list of curated BiS sets from The Balance.
+    Checks local cache first (for jobs not in static-bis-sets repo),
+    then falls back to GitHub (xiv-gear-planner/static-bis-sets).
+
+    Local presets include uuid and setIndex for direct XIVGear import.
+    GitHub presets use index for bis|{job}|current format.
     """
     job_lower = job.lower()
+    job_upper = job.upper()
 
-    # Fetch the current.json for this job
+    # Check local presets first
+    local_data = load_local_presets()
+    if job_lower in local_data:
+        local_job_data = local_data[job_lower]
+        local_sets = local_job_data.get("sets", [])
+        if local_sets:
+            presets: list[BiSPreset] = []
+            for i, bis_set in enumerate(local_sets):
+                presets.append(BiSPreset(
+                    name=bis_set.get("name", f"Set {i + 1}"),
+                    index=i,
+                    uuid=bis_set.get("uuid"),
+                    setIndex=bis_set.get("setIndex"),
+                    description=bis_set.get("description"),
+                ))
+            return BiSPresetsResponse(job=job_upper, presets=presets)
+
+    # Fall back to GitHub (xiv-gear-planner/static-bis-sets)
     try:
         data = await fetch_bis_from_github(job_lower, "current")
     except HTTPException as e:
         if e.status_code == 404:
             raise HTTPException(
                 status_code=404,
-                detail=f"No BiS presets found for job '{job.upper()}'. Check the job abbreviation."
+                detail=f"No BiS presets found for job '{job_upper}'. Check the job abbreviation."
             )
         raise
 
@@ -335,10 +451,10 @@ async def get_bis_presets(job: str):
     if not presets:
         raise HTTPException(
             status_code=404,
-            detail=f"No BiS sets found for {job.upper()}"
+            detail=f"No BiS sets found for {job_upper}"
         )
 
-    return BiSPresetsResponse(job=job.upper(), presets=presets)
+    return BiSPresetsResponse(job=job_upper, presets=presets)
 
 
 @router.get("/xivgear/{uuid_or_url:path}", response_model=BiSImportResponse)
@@ -406,6 +522,61 @@ async def fetch_xivgear_bis(uuid_or_url: str, set_index: int = 0):
 
         if item_data and "id" in item_data:
             item_id = item_data["id"]
+            # Fetch item details from XIVAPI
+            item_info = await fetch_item_from_xivapi(item_id)
+
+            source = determine_source(item_info["name"], item_info["level"], our_slot)
+
+            slots.append(GearSlotData(
+                slot=our_slot,
+                source=source,
+                itemId=item_id,
+                itemName=item_info["name"],
+                itemLevel=item_info["level"],
+                itemIcon=item_info.get("icon"),
+                itemStats=item_info.get("stats") or None,
+            ))
+        else:
+            # No item in this slot - default to raid
+            slots.append(GearSlotData(
+                slot=our_slot,
+                source="raid",
+            ))
+
+    return BiSImportResponse(
+        name=set_name,
+        job=job,
+        slots=slots,
+    )
+
+
+@router.get("/etro/{uuid_or_url:path}", response_model=BiSImportResponse)
+async def fetch_etro_bis(uuid_or_url: str):
+    """
+    Fetch and parse a BiS set from Etro.gg
+
+    Accepts:
+    - UUID: 464585cc-099f-4438-b442-6d15723db90f
+    - URL: https://etro.gg/gearset/464585cc-099f-4438-b442-6d15723db90f
+    """
+    try:
+        uuid = extract_etro_uuid(uuid_or_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    data = await fetch_bis_from_etro(uuid)
+
+    # Extract set name and job
+    set_name = data.get("name", "Etro Import")
+    job = data.get("jobAbbrev", "Unknown")
+
+    # Build slot data using existing XIVAPI lookups
+    slots: list[GearSlotData] = []
+
+    for etro_slot, our_slot in ETRO_SLOT_MAP.items():
+        item_id = data.get(etro_slot)
+
+        if item_id:
             # Fetch item details from XIVAPI
             item_info = await fetch_item_from_xivapi(item_id)
 
