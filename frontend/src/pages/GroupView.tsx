@@ -497,7 +497,7 @@ export function GroupView() {
   }
 
   return (
-    <div className="max-w-[120rem] mx-auto px-4 py-3">
+    <>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -679,6 +679,6 @@ export function GroupView() {
           onDeleted={handleTierDeleted}
         />
       )}
-    </div>
+    </>
   );
 }
