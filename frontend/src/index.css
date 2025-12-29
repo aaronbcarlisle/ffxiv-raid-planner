@@ -124,6 +124,28 @@ html {
   font-family: var(--font-sans);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
+  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+  scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
+  scrollbar-width: thin;
+}
+
+/* Webkit (Chrome, Safari) scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-raised);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-interactive);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #252530;
 }
 
 body {

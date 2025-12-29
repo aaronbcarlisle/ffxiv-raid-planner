@@ -497,7 +497,7 @@ export function GroupView() {
   }
 
   return (
-    <div className="max-w-[120rem] mx-auto px-4 py-4">
+    <div className="max-w-[120rem] mx-auto px-4 py-3">
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -520,7 +520,7 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* Toolbar: Tabs + Context Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
               {/* Floor selector - visible in Loot tab */}
