@@ -114,13 +114,13 @@ function WeaponSlotRow({
     <>
       {/* Main weapon row */}
       <tr className="border-t border-border-default/50">
-        <td className="py-2 text-text-secondary">
+        <td className="py-1 text-text-secondary">
           <div className="flex items-center gap-3">
             <SlotIcon slot="weapon" status={status} size={24} showHover />
             <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
-        <td className="py-2 text-center">
+        <td className="py-1 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
             <span className="px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium">
@@ -140,7 +140,7 @@ function WeaponSlotRow({
             </button>
           </div>
         </td>
-        <td className="py-2">
+        <td className="py-1">
           <div className="flex justify-center">
             <Checkbox
               checked={status.hasItem}
@@ -148,7 +148,7 @@ function WeaponSlotRow({
             />
           </div>
         </td>
-        <td className="py-2">
+        <td className="py-1">
           <div className="flex justify-center text-text-muted">
             {/* Raid weapon can't be augmented */}
             —
@@ -160,7 +160,7 @@ function WeaponSlotRow({
       {tomeWeapon.pursuing && (
         <tr className="border-t border-border-default/30 bg-surface-elevated/30">
           <td
-            className={`py-1.5 pl-6 text-sm ${
+            className={`py-1 pl-6 text-sm ${
               tomeWeapon.hasItem
                 ? tomeWeapon.isAugmented
                   ? 'text-text-primary'
@@ -170,10 +170,10 @@ function WeaponSlotRow({
           >
             └ Tome Weapon
           </td>
-          <td className="py-1.5 text-center">
+          <td className="py-1 text-center">
             <span className="text-xs text-gear-tome font-medium">Tome</span>
           </td>
-          <td className="py-1.5">
+          <td className="py-1">
             <div className="flex justify-center">
               <Checkbox
                 checked={tomeWeapon.hasItem}
@@ -188,7 +188,7 @@ function WeaponSlotRow({
               />
             </div>
           </td>
-          <td className="py-1.5">
+          <td className="py-1">
             <div className="flex justify-center">
               <Checkbox
                 checked={tomeWeapon.isAugmented}
@@ -314,10 +314,10 @@ export function GearTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="text-text-muted text-xs">
-            <th className="text-left py-2 font-medium">Slot</th>
-            <th className="text-center py-2 font-medium w-24">BiS Source</th>
-            <th className="text-center py-2 font-medium w-16">Have</th>
-            <th className="text-center py-2 font-medium w-16">Aug</th>
+            <th className="text-left py-1 font-medium">Slot</th>
+            <th className="text-center py-1 font-medium w-24">BiS Source</th>
+            <th className="text-center py-1 font-medium w-16">Have</th>
+            <th className="text-center py-1 font-medium w-16">Aug</th>
           </tr>
         </thead>
         <tbody>
@@ -342,13 +342,13 @@ export function GearTable({
 
             return (
               <tr key={slot} className="border-t border-border-default/50">
-                <td className="py-2 text-text-secondary">
+                <td className="py-1 text-text-secondary">
                   <div className="flex items-center gap-3">
                     <SlotIcon slot={slot} status={status} size={24} showHover />
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
                 </td>
-                <td className="py-2 text-center">
+                <td className="py-1 text-center">
                   <div className="flex justify-center gap-1">
                     <button
                       onClick={() => handleSourceChange(slot, 'raid')}
@@ -372,7 +372,7 @@ export function GearTable({
                     </button>
                   </div>
                 </td>
-                <td className="py-2">
+                <td className="py-1">
                   <div className="flex justify-center">
                     <Checkbox
                       checked={status.hasItem}
@@ -380,7 +380,7 @@ export function GearTable({
                     />
                   </div>
                 </td>
-                <td className="py-2">
+                <td className="py-1">
                   <div className="flex justify-center">
                     <Checkbox
                       checked={status.isAugmented}

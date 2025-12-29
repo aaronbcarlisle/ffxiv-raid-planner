@@ -322,11 +322,11 @@ export function PlayerCard({
         onTomeWeaponChange={handleTomeWeaponChange}
       />
 
-      {/* Expanded mode: spacer after gear (aligns gear rows at top, gap before footer) */}
+      {/* Expanded mode: spacer after gear (fills remaining space, footer hidden) */}
       {isExpanded && <div className="flex-1" />}
 
-      {/* Needs Footer - always visible at bottom */}
-      <NeedsFooter needs={needs} />
+      {/* Needs Footer - only visible in compact mode */}
+      {!isExpanded && <NeedsFooter needs={needs} />}
     </div>
   );
 }
