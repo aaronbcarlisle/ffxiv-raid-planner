@@ -278,7 +278,7 @@ export function PlayerCard({
 
       {/* Header - drag handle area */}
       <div
-        className={`p-3 transition-colors relative z-20 ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`p-3 transition-colors ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
         {...dragAttributes}
         {...dragListeners}
       >
