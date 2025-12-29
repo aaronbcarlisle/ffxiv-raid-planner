@@ -228,7 +228,7 @@ export function PlayerCardHeader({
                   roleOrder.map((r) => (
                     <div key={r}>
                       <div
-                        className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-overlay border-b border-border-default"
+                        className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-raised border-b border-border-default"
                         style={{ color: getRoleColor(r) }}
                       >
                         {getRoleDisplayName(r)}
