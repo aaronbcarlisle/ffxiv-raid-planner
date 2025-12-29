@@ -314,8 +314,8 @@ export function PlayerCardHeader({
         </div>
       </div>
 
-      {/* Completion count */}
-      <div className="text-right">
+      {/* Completion count - pr-5 reserves space for the menu button */}
+      <div className="text-right pr-5">
         <div className="text-lg font-bold text-text-primary">
           {completedSlots}/{totalSlots}
         </div>
