@@ -419,9 +419,9 @@ export function PlayerCard({
         onImport={(updates) => onUpdate(updates)}
       />
 
-      {/* Header - drag handle area, elevate z-index when job picker open */}
+      {/* Header - drag handle area, elevate z-index when any dropdown open */}
       <div
-        className={`p-3 transition-colors relative ${showJobPicker ? 'z-[60]' : 'z-20'} ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`p-3 transition-colors relative ${hasOpenDropdown ? 'z-[60]' : 'z-20'} ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
         {...dragAttributes}
         {...dragListeners}
       >
