@@ -75,9 +75,9 @@ export function StaticSwitcher({
         </button>
       </DropdownTrigger>
 
-      <DropdownContent align="start" className="w-72">
+      <DropdownContent align="start" className="w-72 overflow-hidden">
         {/* Static list */}
-        <div className="max-h-64 overflow-y-auto">
+        <div className="max-h-64 overflow-y-auto overflow-x-hidden">
           {groups.length === 0 ? (
             <div className="px-4 py-3 text-text-muted text-sm">
               No statics found
@@ -91,8 +91,8 @@ export function StaticSwitcher({
                   onSelect={() => navigate(`/group/${group.shareCode}`)}
                   className={isCurrent ? 'bg-active-bg text-accent' : ''}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-medium truncate flex-1 min-w-0">{group.name}</span>
+                  <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
+                    <span className="font-medium truncate min-w-0">{group.name}</span>
                     {group.userRole ? (
                       <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
                         {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
