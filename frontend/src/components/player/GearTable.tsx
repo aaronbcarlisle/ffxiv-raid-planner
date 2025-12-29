@@ -1,19 +1,24 @@
-import { useState, useRef } from 'react';
+/**
+ * GearTable - Gear tracking table with BiS source and completion tracking
+ *
+ * Improvements in Phase 6.4:
+ * - Larger slot icons (24x24)
+ * - Better row spacing
+ * - Clearer "Raid"/"Tome" labels
+ * - Radix Tooltip for hover cards
+ */
+
 import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 
 // Reusable slot icon component with optional item icon and hover card
-// - Shows actual item icon if available, otherwise placeholder
-// - Empty: grey (opacity-50)
-// - Raid + Have: white (100%)
-// - Tome + Have: half-white (50%) - not complete until augmented
-// - Tome + Have + Aug: white (100%)
 function SlotIcon({
   slot,
   status,
-  size = 16,
+  size = 24,
   showHover = false,
 }: {
   slot: GearSlot;
@@ -21,9 +26,6 @@ function SlotIcon({
   size?: number;
   showHover?: boolean;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const iconRef = useRef<HTMLDivElement>(null);
-
   const hasItem = status.hasItem;
   const bisSource = status.bisSource;
   const isAugmented = status.isAugmented;
@@ -60,24 +62,21 @@ function SlotIcon({
     }
   }
 
-  return (
-    <div
-      ref={iconRef}
-      className={`relative ${showHover && hasItemData ? 'cursor-pointer' : ''}`}
-      onMouseEnter={() => showHover && hasItemData && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <img
-        src={iconUrl}
-        alt={status.itemName || GEAR_SLOT_NAMES[slot]}
-        width={size}
-        height={size}
-        className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
-      />
+  const iconElement = (
+    <img
+      src={iconUrl}
+      alt={status.itemName || GEAR_SLOT_NAMES[slot]}
+      width={size}
+      height={size}
+      className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
+    />
+  );
 
-      {/* Hover card */}
-      {showHover && isHovered && hasItemData && (
-        <div className="absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2">
+  // Wrap with Tooltip if we have item data and hover is enabled
+  if (showHover && hasItemData) {
+    return (
+      <Tooltip
+        content={
           <ItemHoverCard
             itemName={status.itemName!}
             itemLevel={status.itemLevel!}
@@ -85,10 +84,16 @@ function SlotIcon({
             itemStats={status.itemStats}
             bisSource={bisSource}
           />
-        </div>
-      )}
-    </div>
-  );
+        }
+        side="right"
+        sideOffset={8}
+      >
+        <div className="cursor-pointer">{iconElement}</div>
+      </Tooltip>
+    );
+  }
+
+  return <div>{iconElement}</div>;
 }
 
 // Special weapon row with optional tome weapon sub-row
@@ -109,33 +114,33 @@ function WeaponSlotRow({
     <>
       {/* Main weapon row */}
       <tr className="border-t border-border-default/50">
-        <td className="py-1.5 text-text-secondary">
-          <div className="flex items-center gap-2">
-            <SlotIcon slot="weapon" status={status} showHover />
-            <span>{GEAR_SLOT_NAMES.weapon}</span>
+        <td className="py-2 text-text-secondary">
+          <div className="flex items-center gap-3">
+            <SlotIcon slot="weapon" status={status} size={24} showHover />
+            <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
-        <td className="py-1.5 text-center">
+        <td className="py-2 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
-            <span className="px-2 py-0.5 rounded text-xs bg-source-raid/30 text-source-raid">
-              R
+            <span className="px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium">
+              Raid
             </span>
-            {/* +T is a toggle for interim tome weapon */}
+            {/* +Tome is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`px-2 py-0.5 rounded text-xs transition-colors ${
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                 tomeWeapon.pursuing
-                  ? 'bg-source-tome/30 text-source-tome'
-                  : 'bg-bg-hover text-text-muted hover:text-text-secondary'
+                  ? 'bg-gear-tome/20 text-gear-tome'
+                  : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
               }`}
               title={tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon'}
             >
-              +T
+              +Tome
             </button>
           </div>
         </td>
-        <td className="py-1.5">
+        <td className="py-2">
           <div className="flex justify-center">
             <Checkbox
               checked={status.hasItem}
@@ -143,7 +148,7 @@ function WeaponSlotRow({
             />
           </div>
         </td>
-        <td className="py-1.5">
+        <td className="py-2">
           <div className="flex justify-center text-text-muted">
             {/* Raid weapon can't be augmented */}
             —
@@ -153,9 +158,9 @@ function WeaponSlotRow({
 
       {/* Tome weapon sub-row (only shown when pursuing) */}
       {tomeWeapon.pursuing && (
-        <tr className="border-t border-border-default/30 bg-bg-secondary/30">
+        <tr className="border-t border-border-default/30 bg-surface-elevated/30">
           <td
-            className={`py-1 pl-4 text-xs ${
+            className={`py-1.5 pl-6 text-sm ${
               tomeWeapon.hasItem
                 ? tomeWeapon.isAugmented
                   ? 'text-text-primary'
@@ -163,12 +168,12 @@ function WeaponSlotRow({
                 : 'text-text-muted'
             }`}
           >
-            └ Tome Wep
+            └ Tome Weapon
           </td>
-          <td className="py-1 text-center">
-            <span className="text-xs text-source-tome">T</span>
+          <td className="py-1.5 text-center">
+            <span className="text-xs text-gear-tome font-medium">Tome</span>
           </td>
-          <td className="py-1">
+          <td className="py-1.5">
             <div className="flex justify-center">
               <Checkbox
                 checked={tomeWeapon.hasItem}
@@ -176,7 +181,7 @@ function WeaponSlotRow({
               />
             </div>
           </td>
-          <td className="py-1">
+          <td className="py-1.5">
             <div className="flex justify-center">
               <Checkbox
                 checked={tomeWeapon.isAugmented}
@@ -274,7 +279,7 @@ export function GearTable({
                   ? 'bg-status-success/30'
                   : status.hasItem
                     ? 'bg-status-warning/30'
-                    : 'bg-bg-hover'
+                    : 'bg-surface-interactive'
               }`}
               title={`${itemInfo}: ${sourceInfo}${stateInfo}`}
             >
@@ -293,88 +298,90 @@ export function GearTable({
   }
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-text-muted text-xs">
-          <th className="text-left py-1 font-normal">Slot</th>
-          <th className="text-center py-1 font-normal w-20">BiS</th>
-          <th className="text-center py-1 font-normal w-16">Have</th>
-          <th className="text-center py-1 font-normal w-16">Aug</th>
-        </tr>
-      </thead>
-      <tbody>
-        {GEAR_SLOTS.map((slot) => {
-          const status = getSlotStatus(slot);
-          const isWeapon = slot === 'weapon';
+    <TooltipProvider>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-text-muted text-xs">
+            <th className="text-left py-2 font-medium">Slot</th>
+            <th className="text-center py-2 font-medium w-24">BiS Source</th>
+            <th className="text-center py-2 font-medium w-16">Have</th>
+            <th className="text-center py-2 font-medium w-16">Aug</th>
+          </tr>
+        </thead>
+        <tbody>
+          {GEAR_SLOTS.map((slot) => {
+            const status = getSlotStatus(slot);
+            const isWeapon = slot === 'weapon';
 
-          // For weapon slot, use special handling
-          if (isWeapon) {
+            // For weapon slot, use special handling
+            if (isWeapon) {
+              return (
+                <WeaponSlotRow
+                  key={slot}
+                  status={status}
+                  tomeWeapon={tomeWeapon}
+                  onGearChange={(updates) => onGearChange(slot, updates)}
+                  onTomeWeaponChange={onTomeWeaponChange}
+                />
+              );
+            }
+
+            const canAugment = status.bisSource === 'tome' && status.hasItem;
+
             return (
-              <WeaponSlotRow
-                key={slot}
-                status={status}
-                tomeWeapon={tomeWeapon}
-                onGearChange={(updates) => onGearChange(slot, updates)}
-                onTomeWeaponChange={onTomeWeaponChange}
-              />
+              <tr key={slot} className="border-t border-border-default/50">
+                <td className="py-2 text-text-secondary">
+                  <div className="flex items-center gap-3">
+                    <SlotIcon slot={slot} status={status} size={24} showHover />
+                    <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
+                  </div>
+                </td>
+                <td className="py-2 text-center">
+                  <div className="flex justify-center gap-1">
+                    <button
+                      onClick={() => handleSourceChange(slot, 'raid')}
+                      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                        status.bisSource === 'raid'
+                          ? 'bg-gear-raid/20 text-gear-raid'
+                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                      }`}
+                    >
+                      Raid
+                    </button>
+                    <button
+                      onClick={() => handleSourceChange(slot, 'tome')}
+                      className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                        status.bisSource === 'tome'
+                          ? 'bg-gear-tome/20 text-gear-tome'
+                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                      }`}
+                    >
+                      Tome
+                    </button>
+                  </div>
+                </td>
+                <td className="py-2">
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={status.hasItem}
+                      onChange={(checked) => handleHasItemChange(slot, checked)}
+                    />
+                  </div>
+                </td>
+                <td className="py-2">
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={status.isAugmented}
+                      onChange={(checked) => handleAugmentedChange(slot, checked)}
+                      disabled={!canAugment}
+                    />
+                  </div>
+                </td>
+              </tr>
             );
-          }
-
-          const canAugment = status.bisSource === 'tome' && status.hasItem;
-
-          return (
-            <tr key={slot} className="border-t border-border-default/50">
-              <td className="py-1.5 text-text-secondary">
-                <div className="flex items-center gap-2">
-                  <SlotIcon slot={slot} status={status} showHover />
-                  <span>{GEAR_SLOT_NAMES[slot]}</span>
-                </div>
-              </td>
-              <td className="py-1.5 text-center">
-                <div className="flex justify-center gap-1">
-                  <button
-                    onClick={() => handleSourceChange(slot, 'raid')}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                      status.bisSource === 'raid'
-                        ? 'bg-source-raid/30 text-source-raid'
-                        : 'bg-bg-hover text-text-muted hover:text-text-secondary'
-                    }`}
-                  >
-                    R
-                  </button>
-                  <button
-                    onClick={() => handleSourceChange(slot, 'tome')}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                      status.bisSource === 'tome'
-                        ? 'bg-source-tome/30 text-source-tome'
-                        : 'bg-bg-hover text-text-muted hover:text-text-secondary'
-                    }`}
-                  >
-                    T
-                  </button>
-                </div>
-              </td>
-              <td className="py-1.5">
-                <div className="flex justify-center">
-                  <Checkbox
-                    checked={status.hasItem}
-                    onChange={(checked) => handleHasItemChange(slot, checked)}
-                  />
-                </div>
-              </td>
-              <td className="py-1.5">
-                <div className="flex justify-center">
-                  <Checkbox
-                    checked={status.isAugmented}
-                    onChange={(checked) => handleAugmentedChange(slot, checked)}
-                    disabled={!canAugment}
-                  />
-                </div>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          })}
+        </tbody>
+      </table>
+    </TooltipProvider>
   );
 }

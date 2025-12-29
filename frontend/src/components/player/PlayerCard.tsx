@@ -1,45 +1,22 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { GearTable } from './GearTable';
+/**
+ * PlayerCard - Main player card component
+ *
+ * Orchestrates sub-components for a player's gear tracking display.
+ * Supports drag-and-drop, context menu, and inline editing.
+ */
+
+import { useState, useEffect } from 'react';
+import { PlayerCardHeader } from './PlayerCardHeader';
+import { PlayerCardStatus } from './PlayerCardStatus';
+import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
-import { PositionSelector } from './PositionSelector';
-import { TankRoleSelector } from './TankRoleSelector';
 import { BiSImportModal } from './BiSImportModal';
-import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
-import {
-  getJobDisplayName,
-  getRoleColor,
-  getRoleForJob,
-  groupJobsByRole,
-  getRoleDisplayName,
-  type Role,
-} from '../../gamedata';
+import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
-
-const defaultRoleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-
-// Build URL from bisLink - supports both Etro and XIVGear formats
-function buildBiSUrl(bisLink: string): string {
-  // Already a full URL - return as-is
-  if (bisLink.startsWith('http')) return bisLink;
-
-  // XIVGear curated BiS format (bis|job|tier)
-  if (bisLink.includes('|')) return `https://xivgear.app/?page=${bisLink}`;
-
-  // Plain UUID - default to Etro (user's preference)
-  return `https://etro.gg/gearset/${bisLink}`;
-}
-
-// Detect if bisLink is from Etro or XIVGear for tooltip
-function getBiSSourceName(bisLink: string): string {
-  if (bisLink.includes('etro.gg')) return 'Etro';
-  if (bisLink.includes('xivgear')) return 'XIVGear';
-  if (bisLink.includes('|')) return 'XIVGear'; // bis|job|tier format
-  return 'Etro'; // Plain UUID defaults to Etro
-}
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
@@ -84,31 +61,16 @@ export function PlayerCard({
   onModalOpen,
   onModalClose,
 }: PlayerCardProps) {
-  // Expansion state follows global viewMode only (no individual override)
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
-  const [showJobPicker, setShowJobPicker] = useState(false);
-  const [jobSearch, setJobSearch] = useState('');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(player.name);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const jobPickerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [isHoveringCard, setIsHoveringCard] = useState(false);
 
-  // Get the actual role color (valid roles: tank, healer, melee, ranged, caster)
+  // Get role color for left border
   const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
   const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
-  const jobsByRole = groupJobsByRole();
-
-  // Sort roles with current player's role first for job picker
-  const roleOrder = useMemo(() => {
-    const currentRole = getRoleForJob(player.job);
-    if (!currentRole || !defaultRoleOrder.includes(currentRole)) return defaultRoleOrder;
-    return [currentRole, ...defaultRoleOrder.filter((r) => r !== currentRole)];
-  }, [player.job]);
 
   // Calculate completion count
   const completedSlots = player.gear.filter((g) => {
@@ -117,53 +79,8 @@ export function PlayerCard({
   }).length;
   const totalSlots = player.gear.length;
 
-  // Calculate needs for compact view footer
+  // Calculate needs for footer
   const needs = calculatePlayerNeeds(player);
-
-  const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
-    const newGear = player.gear.map((g) =>
-      g.slot === slot ? { ...g, ...updates } : g
-    );
-    onUpdate({ gear: newGear });
-  };
-
-  const handleTomeWeaponChange = (updates: Partial<typeof player.tomeWeapon>) => {
-    onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
-  };
-
-  // Close job picker on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (jobPickerRef.current && !jobPickerRef.current.contains(event.target as Node)) {
-        setShowJobPicker(false);
-        setJobSearch('');
-      }
-    }
-    if (showJobPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showJobPicker]);
-
-  // Focus search when job picker opens
-  useEffect(() => {
-    if (showJobPicker && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [showJobPicker]);
-
-  // Focus name input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
-    }
-  }, [isEditingName]);
-
-  // Sync editedName with player.name when it changes externally
-  useEffect(() => {
-    setEditedName(player.name);
-  }, [player.name]);
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
@@ -178,66 +95,34 @@ export function PlayerCard({
     };
   }, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
 
-  const handleNameDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingName(true);
-    setEditedName(player.name);
+  // Handlers
+  const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
+    const newGear = player.gear.map((g) =>
+      g.slot === slot ? { ...g, ...updates } : g
+    );
+    onUpdate({ gear: newGear });
   };
 
-  const handleNameSave = () => {
-    const trimmedName = editedName.trim();
-    if (trimmedName && trimmedName !== player.name) {
-      onUpdate({ name: trimmedName });
-    } else {
-      setEditedName(player.name);
-    }
-    setIsEditingName(false);
+  const handleTomeWeaponChange = (updates: Partial<typeof player.tomeWeapon>) => {
+    onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
   };
-
-  const handleNameCancel = () => {
-    setEditedName(player.name);
-    setIsEditingName(false);
-  };
-
-  const handleNameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleNameSave();
-    } else if (e.key === 'Escape') {
-      handleNameCancel();
-    }
-  };
-
-  // Filter jobs based on search
-  const allJobs = Object.values(jobsByRole).flat();
-  const filteredJobs = jobSearch.trim()
-    ? allJobs.filter(
-        (job) =>
-          job.abbreviation.toLowerCase().includes(jobSearch.toLowerCase()) ||
-          getJobDisplayName(job.abbreviation).toLowerCase().includes(jobSearch.toLowerCase())
-      )
-    : null;
 
   const handleJobChange = (newJob: string) => {
     const newRole = getRoleForJob(newJob);
     if (newRole) {
       onUpdate({ job: newJob, role: newRole });
     }
-    setShowJobPicker(false);
-    setJobSearch('');
   };
 
-  const handleJobIconClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowJobPicker(!showJobPicker);
+  const handleNameChange = (name: string) => {
+    onUpdate({ name });
   };
 
   const handlePositionChange = (position: RaidPosition | undefined) => {
-    // Use null instead of undefined so JSON.stringify doesn't strip it
     onUpdate({ position: position ?? null });
   };
 
   const handleTankRoleChange = (tankRole: TankRole | undefined) => {
-    // Use null instead of undefined so JSON.stringify doesn't strip it
     onUpdate({ tankRole: tankRole ?? null });
   };
 
@@ -247,12 +132,18 @@ export function PlayerCard({
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
-  // Determine ownership status
+  const handleMenuButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setContextMenu({ x: rect.right, y: rect.bottom });
+  };
+
+  // Ownership status
   const isLinkedToMe = player.userId === currentUserId;
-  const isLinkedToOther = player.userId && player.userId !== currentUserId;
   const canClaim = !player.userId && currentUserId && onClaimPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
+  // Context menu items
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
@@ -296,7 +187,6 @@ export function PlayerCard({
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
     },
     { separator: true },
-    // Ownership actions
     ...(canClaim ? [{
       label: 'Take Ownership',
       icon: (
@@ -334,14 +224,13 @@ export function PlayerCard({
     },
   ];
 
-  // Elevate z-index when job picker is open (position/tank role use Radix portals)
-  const hasOpenDropdown = showJobPicker;
-
   return (
     <div
-      className={`bg-bg-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${hasOpenDropdown ? 'z-[100] relative' : ''}`}
+      className="bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px]"
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
+      onMouseEnter={() => setIsHoveringCard(true)}
+      onMouseLeave={() => setIsHoveringCard(false)}
     >
       {/* Context Menu */}
       {contextMenu && (
@@ -365,7 +254,7 @@ export function PlayerCard({
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowRemoveConfirm(false)}
-            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Cancel
           </button>
@@ -390,229 +279,63 @@ export function PlayerCard({
         onImport={(updates) => onUpdate(updates)}
       />
 
-      {/* Header - drag handle area, elevate z-index when any dropdown open */}
+      {/* Header - drag handle area */}
       <div
-        className={`p-3 transition-colors relative ${hasOpenDropdown ? 'z-[60]' : 'z-20'} ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`p-3 transition-colors relative z-20 ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
         {...dragAttributes}
         {...dragListeners}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Clickable job icon with dropdown */}
-            <div ref={jobPickerRef} className="relative">
-              <button
-                type="button"
-                onClick={handleJobIconClick}
-                className="p-0.5 rounded cursor-pointer hover:ring-2 hover:ring-accent/50 transition-all"
-                style={{ backgroundColor: roleColor }}
-                title="Click to change job"
-              >
-                <JobIcon job={player.job} size="lg" className="rounded-sm" />
-              </button>
+        {/* Menu button - visible on hover */}
+        <button
+          onClick={handleMenuButtonClick}
+          className={`absolute top-2 right-2 p-1 rounded hover:bg-surface-interactive transition-opacity ${
+            isHoveringCard ? 'opacity-100' : 'opacity-0'
+          }`}
+          title="Player options"
+          aria-label="Player options menu"
+        >
+          <svg className="w-4 h-4 text-text-muted" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
 
-              {/* Job picker dropdown */}
-              {showJobPicker && (
-                <div
-                  className="absolute z-50 top-full left-0 mt-2 w-64 bg-bg-secondary border border-border-default rounded-lg shadow-lg"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Search input */}
-                  <div className="p-2 border-b border-border-default">
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={jobSearch}
-                      onChange={(e) => setJobSearch(e.target.value)}
-                      placeholder="Search jobs..."
-                      className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') {
-                          setShowJobPicker(false);
-                          setJobSearch('');
-                        }
-                      }}
-                    />
-                  </div>
+        <PlayerCardHeader
+          job={player.job}
+          name={player.name}
+          role={player.role}
+          position={player.position}
+          completedSlots={completedSlots}
+          totalSlots={totalSlots}
+          onJobChange={handleJobChange}
+          onNameChange={handleNameChange}
+          onPositionChange={handlePositionChange}
+        />
 
-                  {/* Job list */}
-                  <div className="max-h-56 overflow-y-auto">
-                    {filteredJobs ? (
-                      filteredJobs.length > 0 ? (
-                        <div className="py-1">
-                          {filteredJobs.map((job) => (
-                            <button
-                              key={job.abbreviation}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleJobChange(job.abbreviation);
-                              }}
-                              className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
-                                player.job === job.abbreviation ? 'bg-accent/10' : ''
-                              }`}
-                            >
-                              <JobIcon job={job.abbreviation} size="md" />
-                              <span className="text-text-primary">{job.abbreviation}</span>
-                              <span className="text-text-secondary text-sm">
-                                {getJobDisplayName(job.abbreviation)}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-3 py-4 text-center text-text-muted text-sm">
-                          No jobs found
-                        </div>
-                      )
-                    ) : (
-                      roleOrder.map((role) => (
-                        <div key={role}>
-                          <div
-                            className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-bg-secondary border-b border-border-default"
-                            style={{ color: getRoleColor(role) }}
-                          >
-                            {getRoleDisplayName(role)}
-                          </div>
-                          <div className="py-1">
-                            {jobsByRole[role].map((job) => (
-                              <button
-                                key={job.abbreviation}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleJobChange(job.abbreviation);
-                                }}
-                                className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
-                                  player.job === job.abbreviation ? 'bg-accent/10' : ''
-                                }`}
-                              >
-                                <JobIcon job={job.abbreviation} size="md" />
-                                <span className="text-text-primary">{job.abbreviation}</span>
-                                <span className="text-text-secondary text-sm">
-                                  {getJobDisplayName(job.abbreviation)}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                {isEditingName ? (
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onBlur={handleNameSave}
-                    onKeyDown={handleNameKeyDown}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-text-primary bg-bg-primary border border-accent rounded px-2 py-0.5 w-32 focus:outline-none"
-                  />
-                ) : (
-                  <span
-                    className="font-medium text-text-primary cursor-pointer hover:text-accent"
-                    onClick={(e) => e.stopPropagation()}
-                    onDoubleClick={handleNameDoubleClick}
-                    title="Double-click to edit name"
-                  >
-                    {player.name}
-                  </span>
-                )}
-                {/* Position badge */}
-                <PositionSelector
-                  position={player.position}
-                  role={player.role}
-                  onSelect={handlePositionChange}
-                />
-                {player.isSubstitute && (
-                  <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
-                    SUB
-                  </span>
-                )}
-                {/* BiS link badge */}
-                {player.bisLink && (
-                  <a
-                    href={buildBiSUrl(player.bisLink)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
-                               hover:bg-accent/30 flex items-center gap-1 transition-colors"
-                    title={`Open BiS in ${getBiSSourceName(player.bisLink)}`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    BiS
-                  </a>
-                )}
-                {/* Linked user badge */}
-                {isLinkedToMe && (
-                  <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium" title="This is you">
-                    You
-                  </span>
-                )}
-                {isLinkedToOther && player.linkedUser && (
-                  <span
-                    className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
-                    title={`Linked to ${player.linkedUser.displayName || player.linkedUser.discordUsername}`}
-                  >
-                    {player.linkedUser.avatarUrl ? (
-                      <img
-                        src={player.linkedUser.avatarUrl}
-                        alt=""
-                        className="w-3 h-3 rounded-full"
-                      />
-                    ) : null}
-                    <span className="max-w-16 truncate">
-                      {player.linkedUser.displayName || player.linkedUser.discordUsername}
-                    </span>
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span style={{ color: roleColor }}>{player.job}</span>
-                <span className="text-text-muted">-</span>
-                <span className="text-text-secondary">{getJobDisplayName(player.job)}</span>
-                {/* Tank role badge (MT/OT) - only for tanks */}
-                {player.role === 'tank' && (
-                  <TankRoleSelector
-                    tankRole={player.tankRole}
-                    onSelect={handleTankRoleChange}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Completion count */}
-          <div className="text-right">
-            <div className="text-lg font-bold text-text-primary">
-              {completedSlots}/{totalSlots}
-            </div>
-          </div>
-        </div>
-
-
-      </div>
-
-      {/* Expanded content - z-30 to ensure hover cards appear above header (z-20) */}
-      {isExpanded && (
-        <div className="border-t border-border-default p-3 relative z-30">
-          <GearTable
-            gear={player.gear}
-            tomeWeapon={player.tomeWeapon}
-            onGearChange={handleGearChange}
-            onTomeWeaponChange={handleTomeWeaponChange}
+        {/* Status badges row */}
+        <div className="mt-1">
+          <PlayerCardStatus
+            role={player.role}
+            isSubstitute={player.isSubstitute}
+            bisLink={player.bisLink}
+            tankRole={player.tankRole}
+            userId={player.userId}
+            linkedUser={player.linkedUser}
+            currentUserId={currentUserId}
+            onTankRoleChange={handleTankRoleChange}
           />
         </div>
-      )}
+      </div>
+
+      {/* Gear section - compact icons or expanded table */}
+      <PlayerCardGear
+        gear={player.gear}
+        tomeWeapon={player.tomeWeapon}
+        isExpanded={isExpanded}
+        onGearChange={handleGearChange}
+        onTomeWeaponChange={handleTomeWeaponChange}
+      />
 
       {/* Spacer to push footer to bottom */}
       <div className="flex-1" />
