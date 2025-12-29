@@ -18,10 +18,11 @@ def configure_logging(settings: "Settings") -> None:
     - Production: JSON format for log aggregation
     """
     # Shared processors for all environments
+    # Note: We don't use add_logger_name because PrintLoggerFactory doesn't support it
+    # The logger name is passed via get_logger() and bound to the context instead
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
@@ -96,4 +97,4 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
 
         logger.info("something_happened", user_id="123", action="login")
     """
-    return structlog.get_logger(name)
+    return structlog.get_logger().bind(logger=name)
