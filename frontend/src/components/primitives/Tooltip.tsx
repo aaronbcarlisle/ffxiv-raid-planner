@@ -38,10 +38,10 @@ export function Tooltip({
             side={side}
             align={align}
             sideOffset={sideOffset}
-            className="z-50 rounded-md bg-surface-overlay px-3 py-1.5 text-sm text-text-primary shadow-lg border border-border-default animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+            className="z-50 rounded-md bg-[#0a0a0f] px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
           >
             {content}
-            <TooltipPrimitive.Arrow className="fill-surface-overlay" />
+            <TooltipPrimitive.Arrow className="fill-[#0a0a0f]" />
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>
