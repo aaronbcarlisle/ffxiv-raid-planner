@@ -89,7 +89,7 @@ export function StaticSwitcher({
                 <DropdownItem
                   key={group.id}
                   onSelect={() => navigate(`/group/${group.shareCode}`)}
-                  className={isCurrent ? 'bg-active-bg text-accent' : ''}
+                  className={isCurrent ? 'bg-active-bg text-accent flex items-center gap-2' : 'flex items-center gap-2'}
                 >
                   <span className="truncate font-medium flex-1">{group.name}</span>
                   {group.userRole ? (

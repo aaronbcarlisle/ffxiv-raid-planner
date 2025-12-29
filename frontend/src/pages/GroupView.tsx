@@ -387,7 +387,7 @@ export function GroupView() {
     onReorder: handleReorder,
   });
 
-  // Grid classes (padding handled by parent wrapper)
+  // Grid classes
   const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
   // Helper function to render a player card

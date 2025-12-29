@@ -270,17 +270,30 @@ export function Dashboard() {
         <div className="flex items-center gap-3">
           {/* Sort mode dropdown */}
           {groups.length > 0 && (
-            <select
-              value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as DashboardSort)}
-              className="bg-surface-raised border border-border-default rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer"
-            >
-              {(Object.entries(SORT_LABELS) as [DashboardSort, string][]).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as DashboardSort)}
+                className="appearance-none bg-surface-raised border border-border-default rounded-md px-3 py-2 pr-8 text-sm font-medium text-text-primary cursor-pointer hover:border-accent focus:border-accent focus:outline-none"
+              >
+                {(Object.entries(SORT_LABELS) as [DashboardSort, string][]).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg
+                  className="w-4 h-4 text-text-muted"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           )}
           {/* View mode toggle */}
           {groups.length > 0 && (
