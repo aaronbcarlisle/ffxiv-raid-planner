@@ -10,5 +10,4 @@ export { JobPicker } from './JobPicker';
 export { NeedsFooter } from './NeedsFooter';
 export { PlayerCard } from './PlayerCard';
 export { PositionSelector } from './PositionSelector';
-export { RoleJobSelector } from './RoleJobSelector';
 export { TankRoleSelector } from './TankRoleSelector';

@@ -83,13 +83,12 @@ export function StaticSwitcher({
               No statics found
             </div>
           ) : (
-            groups.map((group) => {
-              const isCurrent = group.id === currentGroup.id;
-              return (
+            groups
+              .filter((group) => group.id !== currentGroup.id) // Exclude current group from list
+              .map((group) => (
                 <DropdownItem
                   key={group.id}
                   onSelect={() => navigate(`/group/${group.shareCode}`)}
-                  className={isCurrent ? 'bg-active-bg text-accent' : ''}
                 >
                   <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
                     <Tooltip content={group.name}>
@@ -108,8 +107,7 @@ export function StaticSwitcher({
                     ) : null}
                   </div>
                 </DropdownItem>
-              );
-            })
+              ))
           )}
         </div>
 

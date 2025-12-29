@@ -11,7 +11,6 @@ import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
 import {
   getRoleColor,
-  getRoleForJob,
   type Role,
 } from '../../gamedata';
 import type { RaidPosition } from '../../types';

@@ -80,7 +80,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
           <label className="block text-text-secondary mb-1 text-sm">
             Job
           </label>
-          <JobPicker value={job} onChange={setJob} />
+          <JobPicker selectedJob={job} onJobSelect={setJob} />
         </div>
 
         <div>

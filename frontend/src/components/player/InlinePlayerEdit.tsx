@@ -96,7 +96,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
           <JobPicker
             selectedJob={job}
             onJobSelect={handleJobSelect}
-            templateRole={player.templateRole}
+            templateRole={player.templateRole ?? undefined}
           />
         </div>
 
