@@ -65,7 +65,6 @@ export function PlayerCard({
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [isHoveringCard, setIsHoveringCard] = useState(false);
 
   // Get role color for left border
   const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
@@ -229,8 +228,6 @@ export function PlayerCard({
       className="bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px]"
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
-      onMouseEnter={() => setIsHoveringCard(true)}
-      onMouseLeave={() => setIsHoveringCard(false)}
     >
       {/* Context Menu */}
       {contextMenu && (
@@ -285,22 +282,6 @@ export function PlayerCard({
         {...dragAttributes}
         {...dragListeners}
       >
-        {/* Menu button - visible on hover */}
-        <button
-          onClick={handleMenuButtonClick}
-          className={`absolute top-2 right-2 p-1 rounded hover:bg-surface-interactive transition-opacity ${
-            isHoveringCard ? 'opacity-100' : 'opacity-0'
-          }`}
-          title="Player options"
-          aria-label="Player options menu"
-        >
-          <svg className="w-4 h-4 text-text-muted" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="12" cy="19" r="2" />
-          </svg>
-        </button>
-
         <PlayerCardHeader
           job={player.job}
           name={player.name}
@@ -311,6 +292,7 @@ export function PlayerCard({
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
+          onMenuClick={handleMenuButtonClick}
         />
 
         {/* Status badges row */}

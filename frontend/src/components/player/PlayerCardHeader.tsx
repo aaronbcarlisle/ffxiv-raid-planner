@@ -30,6 +30,7 @@ interface PlayerCardHeaderProps {
   onJobChange: (job: string) => void;
   onNameChange: (name: string) => void;
   onPositionChange: (position: RaidPosition | undefined) => void;
+  onMenuClick?: (e: React.MouseEvent) => void;
 }
 
 export function PlayerCardHeader({
@@ -42,12 +43,12 @@ export function PlayerCardHeader({
   onJobChange,
   onNameChange,
   onPositionChange,
+  onMenuClick,
 }: PlayerCardHeaderProps) {
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(name);
-  const [isHoveringName, setIsHoveringName] = useState(false);
 
   const jobPickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -276,11 +277,7 @@ export function PlayerCardHeader({
                 className="font-medium text-text-primary bg-surface-base border border-accent rounded px-2 py-0.5 w-32 focus:outline-none"
               />
             ) : (
-              <div
-                className="flex items-center gap-1 group"
-                onMouseEnter={() => setIsHoveringName(true)}
-                onMouseLeave={() => setIsHoveringName(false)}
-              >
+              <div className="flex items-center gap-1">
                 <span
                   className="font-medium text-text-primary cursor-pointer hover:text-accent"
                   onClick={(e) => e.stopPropagation()}
@@ -289,12 +286,10 @@ export function PlayerCardHeader({
                 >
                   {name}
                 </span>
-                {/* Edit button - visible on hover */}
+                {/* Edit button - always visible but subtle */}
                 <button
                   onClick={handleEditClick}
-                  className={`p-0.5 rounded hover:bg-surface-interactive transition-opacity ${
-                    isHoveringName ? 'opacity-100' : 'opacity-0'
-                  }`}
+                  className="p-0.5 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity"
                   title="Edit name"
                   aria-label="Edit player name"
                 >
@@ -314,11 +309,25 @@ export function PlayerCardHeader({
         </div>
       </div>
 
-      {/* Completion count - pr-5 reserves space for the menu button */}
-      <div className="text-right pr-5">
+      {/* Completion count + menu button */}
+      <div className="flex items-center gap-1">
         <div className="text-lg font-bold text-text-primary">
           {completedSlots}/{totalSlots}
         </div>
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="p-1 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity"
+            title="Player options"
+            aria-label="Player options menu"
+          >
+            <svg className="w-4 h-4 text-text-muted" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
