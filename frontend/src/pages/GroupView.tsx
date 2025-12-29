@@ -497,10 +497,10 @@ export function GroupView() {
   }
 
   return (
-    <div className="max-w-[120rem] mx-auto py-3">
+    <div className="max-w-[120rem] mx-auto px-4 py-3">
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
-        <div className="mx-4 text-center py-12 bg-surface-card rounded-lg border border-border-default">
+        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
           <h2 className="text-xl font-display text-accent mb-2">No Raid Tiers</h2>
           <p className="text-text-muted mb-6">
             Create your first tier snapshot to start tracking gear progress.
@@ -518,7 +518,7 @@ export function GroupView() {
 
       {/* Content when tier exists */}
       {currentTier && (
-        <div className="px-4">
+        <>
           {/* Toolbar: Tabs + Context Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
@@ -640,7 +640,7 @@ export function GroupView() {
           {pageMode === 'stats' && teamSummary && (
             <TeamSummary summary={teamSummary} />
           )}
-        </div>
+        </>
       )}
 
       {/* Create Tier Modal */}
