@@ -91,8 +91,8 @@ export function StaticSwitcher({
                   onSelect={() => navigate(`/group/${group.shareCode}`)}
                   className={isCurrent ? 'bg-active-bg text-accent' : ''}
                 >
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="truncate font-medium flex-1">{group.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{group.name}</span>
                     {group.userRole ? (
                       <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
                         {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
