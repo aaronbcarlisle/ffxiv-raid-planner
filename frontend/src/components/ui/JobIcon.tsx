@@ -19,7 +19,7 @@ export function JobIcon({ job, size = 'md', className = '' }: JobIconProps) {
     // Fallback to abbreviation if no icon
     return (
       <span
-        className={`${sizeClasses[size]} flex items-center justify-center bg-bg-hover rounded text-xs font-medium text-text-secondary ${className}`}
+        className={`${sizeClasses[size]} flex items-center justify-center bg-surface-interactive rounded text-xs font-medium text-text-secondary ${className}`}
       >
         {job.slice(0, 2)}
       </span>

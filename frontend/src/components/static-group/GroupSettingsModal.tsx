@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
 import { MembersPanel } from './MembersPanel';
 import type { StaticGroup } from '../../types';
@@ -47,9 +48,12 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
 
     try {
       await updateGroup(group.id, { name, isPublic });
+      toast.success('Settings saved!');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save changes');
+      const message = err instanceof Error ? err.message : 'Failed to save changes';
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -63,9 +67,12 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
 
     try {
       await deleteGroup(group.id);
+      toast.success('Static deleted');
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete group');
+      const message = err instanceof Error ? err.message : 'Failed to delete group';
+      setError(message);
+      toast.error(message);
       setIsDeleting(false);
     }
   };
@@ -73,14 +80,15 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
   const handleCopyShareCode = () => {
     navigator.clipboard.writeText(`${window.location.origin}/group/${group.shareCode}`);
     setCopied(true);
+    toast.success('Share link copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-bg-card rounded-lg border border-white/10 w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+      <div className="bg-surface-card rounded-lg border border-border-default w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="text-xl font-display text-accent">Static Settings</h2>
           <button
             onClick={onClose}
@@ -91,7 +99,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/10">
+        <div className="flex border-b border-border-default">
           <button
             onClick={() => setActiveTab('general')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
@@ -142,7 +150,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={!isOwner}
-                  className="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
+                  className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
                 />
               </div>
 
@@ -154,7 +162,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
                     disabled={!isOwner}
-                    className="w-4 h-4 rounded border-white/20 bg-bg-primary text-accent focus:ring-accent focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-border-default bg-surface-elevated text-accent focus:ring-accent focus:ring-offset-0"
                   />
                   <div>
                     <span className="text-text-primary">Public Static</span>
@@ -173,7 +181,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                     type="text"
                     value={`${window.location.origin}/group/${group.shareCode}`}
                     readOnly
-                    className="flex-1 bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary text-sm font-mono"
+                    className="flex-1 bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary text-sm font-mono"
                   />
                   <button
                     onClick={handleCopyShareCode}
@@ -234,7 +242,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full bg-bg-primary border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
+                className="w-full bg-surface-elevated border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
                 placeholder={group.name}
               />
             </div>

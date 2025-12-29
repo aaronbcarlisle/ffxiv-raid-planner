@@ -132,9 +132,9 @@ export function Home() {
 
       {/* Divider */}
       <div className="flex items-center gap-4 max-w-md mx-auto mb-8">
-        <div className="flex-1 border-t border-white/10" />
+        <div className="flex-1 border-t border-border-default" />
         <span className="text-text-muted text-sm">or view a public static</span>
-        <div className="flex-1 border-t border-white/10" />
+        <div className="flex-1 border-t border-border-default" />
       </div>
 
       {/* Share code input */}
@@ -145,12 +145,12 @@ export function Home() {
           onChange={(e) => setShareCode(e.target.value.toUpperCase())}
           placeholder="Enter share code..."
           maxLength={8}
-          className="bg-bg-secondary border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none w-48 text-center font-mono uppercase"
+          className="bg-surface-raised border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none w-48 text-center font-mono uppercase"
         />
         <button
           type="submit"
           disabled={!shareCode.trim()}
-          className="bg-bg-secondary border border-border-default px-6 py-3 rounded-lg text-text-primary hover:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="bg-surface-raised border border-border-default px-6 py-3 rounded-lg text-text-primary hover:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           View
         </button>
@@ -168,7 +168,7 @@ export function Home() {
               <Link
                 key={group.id}
                 to={`/group/${group.shareCode}`}
-                className="bg-bg-card p-6 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left group"
+                className="bg-surface-card p-6 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left group"
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
@@ -203,7 +203,7 @@ export function Home() {
                   </div>
                   <button
                     onClick={(e) => handleCopyCode(group.shareCode, e)}
-                    className="p-1 rounded hover:bg-bg-hover transition-colors"
+                    className="p-1 rounded hover:bg-surface-interactive transition-colors"
                     title="Copy code (hold Shift for full URL)"
                   >
                     {copiedCode === group.shareCode ? (
@@ -235,19 +235,19 @@ export function Home() {
         /* Feature cards for non-logged-in users */
         <>
           <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
-            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
               <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
               <p className="text-text-secondary text-sm">
                 Track BiS progress for your entire static. See who needs what at a glance.
               </p>
             </div>
-            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
               <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
               <p className="text-text-secondary text-sm">
                 Smart loot suggestions based on need, role priority, and past distributions.
               </p>
             </div>
-            <div className="bg-bg-card p-6 rounded-lg border border-border-default">
+            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
               <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
               <p className="text-text-secondary text-sm">
                 See total materials needed, books required, and estimated weeks to BiS.
@@ -256,7 +256,7 @@ export function Home() {
           </div>
 
           {/* Multi-tier feature highlight */}
-          <div className="mt-12 max-w-2xl mx-auto bg-bg-card p-6 rounded-lg border border-accent/20">
+          <div className="mt-12 max-w-2xl mx-auto bg-surface-card p-6 rounded-lg border border-accent/20">
             <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
             <p className="text-text-secondary text-sm">
               Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.

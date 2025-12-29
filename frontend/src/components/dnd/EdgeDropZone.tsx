@@ -28,7 +28,7 @@ export function EdgeDropZone({ id, position, isDragging }: EdgeDropZoneProps) {
         transition-all duration-150
         ${isOver
           ? 'border-accent bg-accent/10'
-          : 'border-white/20 bg-white/5'
+          : 'border-border-default bg-surface-interactive/50'
         }
       `}
     >

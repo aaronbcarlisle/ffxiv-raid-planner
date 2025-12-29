@@ -12,7 +12,7 @@ export function GroupViewToggle({ enabled, onToggle, disabled = false }: GroupVi
       className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
         enabled
           ? 'bg-accent/20 text-accent border border-accent/50'
-          : 'bg-bg-secondary border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+          : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       title={enabled ? 'Switch to standard view' : 'Group by light party (G1/G2)'}
     >

@@ -11,6 +11,7 @@ import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
@@ -419,7 +420,10 @@ export function GroupView() {
           isGroupOwner={currentGroup?.userRole === 'owner'}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
-          onCopy={() => setClipboardPlayer(player)}
+          onCopy={() => {
+            setClipboardPlayer(player);
+            toast.info(`Copied ${player.name}`);
+          }}
           onPaste={() => {
             if (clipboardPlayer) {
               handleUpdatePlayer(player.id, {
@@ -431,6 +435,7 @@ export function GroupView() {
                 notes: clipboardPlayer.notes,
                 bisLink: clipboardPlayer.bisLink,
               });
+              toast.success(`Pasted ${clipboardPlayer.name}'s data`);
             }
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
@@ -495,7 +500,7 @@ export function GroupView() {
     <div className="max-w-[120rem] mx-auto px-4 py-4">
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
-        <div className="text-center py-12 bg-bg-card rounded-lg border border-white/10">
+        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
           <h2 className="text-xl font-display text-accent mb-2">No Raid Tiers</h2>
           <p className="text-text-muted mb-6">
             Create your first tier snapshot to start tracking gear progress.

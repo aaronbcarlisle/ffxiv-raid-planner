@@ -9,7 +9,7 @@ export function TeamSummary({ summary }: TeamSummaryProps) {
   const tier = getCurrentTier();
 
   return (
-    <div className="bg-bg-card border border-border-default rounded-lg p-6">
+    <div className="bg-surface-card border border-border-default rounded-lg p-6">
       <h2 className="font-display text-xl text-accent mb-4">Team Summary</h2>
 
       {/* Main stats */}
@@ -49,7 +49,7 @@ export function TeamSummary({ summary }: TeamSummaryProps) {
       {/* Detailed breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Upgrade Materials */}
-        <div className="bg-bg-primary rounded-lg p-4">
+        <div className="bg-surface-base rounded-lg p-4">
           <h3 className="text-text-secondary text-sm mb-2">Upgrade Materials Needed</h3>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -68,7 +68,7 @@ export function TeamSummary({ summary }: TeamSummaryProps) {
         </div>
 
         {/* Books Needed */}
-        <div className="bg-bg-primary rounded-lg p-4">
+        <div className="bg-surface-base rounded-lg p-4">
           <h3 className="text-text-secondary text-sm mb-2">Books Needed (Worst Case)</h3>
           <div className="space-y-2">
             {tier.floors.map((floor, index) => (

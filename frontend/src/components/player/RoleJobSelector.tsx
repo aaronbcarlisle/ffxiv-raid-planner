@@ -126,7 +126,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
             className={`p-1.5 rounded-lg transition-all ${
               selectedJob === job.abbreviation
                 ? 'ring-2'
-                : 'bg-bg-hover hover:bg-bg-tertiary hover:ring-1 hover:ring-border-default'
+                : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
             }`}
             style={
               selectedJob === job.abbreviation
@@ -154,7 +154,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
               className={`p-1.5 rounded-lg transition-all ${
                 showSelected
                   ? 'ring-2'
-                  : 'bg-bg-hover hover:bg-bg-tertiary hover:ring-1 hover:ring-border-default'
+                  : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
               }`}
               style={
                 showSelected
@@ -179,7 +179,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
       {/* Expanded picker dropdown - positioned below the icons */}
       {showFullPicker && (
         <div className="relative">
-          <div className="absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-bg-secondary border border-border-default rounded-lg shadow-lg">
+          <div className="absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg">
             {/* Search input */}
             <div className="p-2 border-b border-border-default">
               <input
@@ -188,7 +188,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
                 placeholder="Search jobs..."
-                className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               />
             </div>
 
@@ -204,7 +204,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
                       key={j.abbreviation}
                       type="button"
                       onClick={() => handleJobClick(j.abbreviation)}
-                      className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                      className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                         selectedJob === j.abbreviation ? 'bg-accent/10' : ''
                       }`}
                     >
@@ -224,7 +224,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
                   return (
                     <div key={role}>
                       <div
-                        className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-bg-secondary border-b border-border-default"
+                        className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-raised border-b border-border-default"
                         style={{ color: getRoleColor(role) }}
                       >
                         {getRoleDisplayName(role)}
@@ -235,7 +235,7 @@ export function RoleJobSelector({ templateRole, selectedJob, onJobSelect }: Role
                             key={j.abbreviation}
                             type="button"
                             onClick={() => handleJobClick(j.abbreviation)}
-                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                               selectedJob === j.abbreviation ? 'bg-accent/10' : ''
                             }`}
                           >

@@ -10,6 +10,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { SettingsPopover } from '../ui';
@@ -61,13 +62,15 @@ export function Header() {
   // Handle share code copy (hold Shift for full URL)
   const handleCopyCode = async (e: React.MouseEvent) => {
     if (!currentGroup) return;
-    const textToCopy = e.shiftKey
+    const isFullUrl = e.shiftKey;
+    const textToCopy = isFullUrl
       ? `${window.location.origin}/group/${currentGroup.shareCode}`
       : currentGroup.shareCode;
 
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
+      toast.success(isFullUrl ? 'Full URL copied!' : 'Share code copied!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers
@@ -78,6 +81,7 @@ export function Header() {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopied(true);
+      toast.success(isFullUrl ? 'Full URL copied!' : 'Share code copied!');
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -153,7 +157,7 @@ export function Header() {
   }, [canEdit, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, userRole, tiers.length]);
 
   return (
-    <header className="bg-bg-secondary border-b border-border-default">
+    <header className="bg-surface-raised border-b border-border-default">
       <div className="max-w-[120rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-4 min-w-0">
@@ -196,7 +200,7 @@ export function Header() {
               {/* Share code - clickable to copy */}
               <button
                 onClick={(e) => handleCopyCode(e)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-card hover:bg-bg-hover transition-colors group flex-shrink-0"
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
                 title="Copy code (hold Shift for full URL)"
               >
                 <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
@@ -236,7 +240,7 @@ export function Header() {
           {/* Auth: Login button or User menu */}
           <div className={isGroupRoute && currentGroup ? 'border-l border-border-subtle pl-3' : ''}>
             {authLoading ? (
-              <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
             ) : isAuthenticated ? (
               <UserMenu />
             ) : (

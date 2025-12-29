@@ -41,8 +41,8 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
         <h2 className="text-xl font-display text-accent mb-4">Roll Over to New Tier</h2>
 
         {error && (
@@ -52,7 +52,7 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
         )}
 
         {/* Source Tier */}
-        <div className="mb-4 p-3 bg-bg-primary rounded border border-white/5">
+        <div className="mb-4 p-3 bg-surface-elevated rounded border border-border-subtle">
           <span className="text-text-muted text-sm">Source:</span>
           <span className="text-text-primary ml-2 font-medium">
             {sourceTierInfo?.name || currentTier.tierId}
@@ -69,7 +69,7 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
             <select
               value={targetTierId}
               onChange={(e) => setTargetTierId(e.target.value)}
-              className="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
+              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
               <option value="">Select a tier...</option>
               {availableTiers.map((tier) => (

@@ -190,7 +190,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
 
   return (
     <div
-      className="bg-bg-card border-2 rounded-lg p-4"
+      className="bg-surface-card border-2 rounded-lg p-4"
       style={{ borderColor: roleColorVar || 'var(--color-accent)' }}
     >
       <form onSubmit={handleSubmit}>
@@ -202,7 +202,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
             value={name}
             onChange={handleNameChange}
             placeholder="Enter player name"
-            className={`w-full bg-bg-primary border rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:outline-none transition-colors ${
+            className={`w-full bg-surface-base border rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:outline-none transition-colors ${
               showNameError
                 ? 'border-status-error focus:border-status-error'
                 : 'border-border-default'
@@ -270,7 +270,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
               <button
                 type="button"
                 onClick={() => setIsJobPickerOpen(!isJobPickerOpen)}
-                className="w-full bg-bg-primary border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
+                className="w-full bg-surface-base border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
               >
                 {selectedJobInfo ? (
                   <>
@@ -287,7 +287,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
 
               {/* Dropdown */}
               {isJobPickerOpen && (
-                <div className="absolute z-50 mt-1 left-0 right-0 bg-bg-secondary border border-border-default rounded-lg shadow-lg">
+                <div className="absolute z-50 mt-1 left-0 right-0 bg-surface-raised border border-border-default rounded-lg shadow-lg">
                   {/* Search input */}
                   <div className="p-2 border-b border-border-default">
                     <input
@@ -296,7 +296,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
                       value={jobSearch}
                       onChange={(e) => setJobSearch(e.target.value)}
                       placeholder="Search jobs..."
-                      className="w-full bg-bg-primary border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                      className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
                     />
                   </div>
 
@@ -314,7 +314,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
                             key={j.abbreviation}
                             type="button"
                             onClick={() => handleJobSelect(j.abbreviation)}
-                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                               job === j.abbreviation ? 'bg-accent/10' : ''
                             }`}
                           >
@@ -334,7 +334,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
                         return (
                           <div key={role}>
                             <div
-                              className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-bg-secondary border-b border-border-default"
+                              className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-raised border-b border-border-default"
                               style={{ color: getRoleColor(role) }}
                             >
                               {getRoleDisplayName(role)}
@@ -345,7 +345,7 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
                                   key={j.abbreviation}
                                   type="button"
                                   onClick={() => handleJobSelect(j.abbreviation)}
-                                  className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-bg-hover text-left ${
+                                  className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                                     job === j.abbreviation ? 'bg-accent/10' : ''
                                   }`}
                                 >

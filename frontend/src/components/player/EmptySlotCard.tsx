@@ -18,7 +18,7 @@ function getRoleClasses(templateRole: TemplateRole): { border: string; hoverBord
     'role-caster': { border: 'border-role-caster/50', hoverBorder: 'hover:border-role-caster', text: 'text-role-caster', bg: 'bg-role-caster/10' },
   };
   const roleInfo = TEMPLATE_ROLE_INFO[templateRole];
-  return colorMap[roleInfo.color] || { border: 'border-border-default', hoverBorder: 'hover:border-accent', text: 'text-text-muted', bg: 'bg-bg-hover' };
+  return colorMap[roleInfo.color] || { border: 'border-border-default', hoverBorder: 'hover:border-accent', text: 'text-text-muted', bg: 'bg-surface-interactive' };
 }
 
 export function EmptySlotCard({ templateRole, position, onStartEdit, onRemove }: EmptySlotCardProps) {
@@ -29,7 +29,7 @@ export function EmptySlotCard({ templateRole, position, onStartEdit, onRemove }:
     <button
       type="button"
       onClick={onStartEdit}
-      className={`w-full h-full bg-bg-card border-2 border-dashed rounded-lg p-4 transition-all hover:border-solid hover:bg-bg-hover group cursor-pointer text-left flex flex-col ${
+      className={`w-full h-full bg-surface-card border-2 border-dashed rounded-lg p-4 transition-all hover:border-solid hover:bg-surface-interactive group cursor-pointer text-left flex flex-col ${
         roleClasses ? `${roleClasses.border} ${roleClasses.hoverBorder}` : 'border-border-default hover:border-accent'
       }`}
     >
@@ -38,7 +38,7 @@ export function EmptySlotCard({ templateRole, position, onStartEdit, onRemove }:
         {/* Role icon */}
         <div
           className={`w-10 h-10 rounded flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity ${
-            roleClasses ? roleClasses.bg : 'bg-bg-hover'
+            roleClasses ? roleClasses.bg : 'bg-surface-interactive'
           }`}
         >
           {roleInfo ? (
@@ -78,7 +78,7 @@ export function EmptySlotCard({ templateRole, position, onStartEdit, onRemove }:
             {position && (
               <span
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                  roleClasses ? `${roleClasses.bg} ${roleClasses.text}` : 'bg-bg-hover text-text-muted'
+                  roleClasses ? `${roleClasses.bg} ${roleClasses.text}` : 'bg-surface-interactive text-text-muted'
                 }`}
               >
                 {position}

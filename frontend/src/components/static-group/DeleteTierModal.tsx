@@ -29,8 +29,8 @@ export function DeleteTierModal({ groupId, tierId, onClose, onDeleted }: DeleteT
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
         <h2 className="text-xl font-display text-red-400 mb-4">Delete Tier</h2>
 
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">

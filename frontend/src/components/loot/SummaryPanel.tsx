@@ -34,8 +34,8 @@ export function SummaryPanel({
           onClick={() => setActiveTab('loot')}
           className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
             activeTab === 'loot'
-              ? 'bg-bg-card border border-b-0 border-border-default text-accent'
-              : 'bg-bg-hover text-text-muted hover:text-text-primary'
+              ? 'bg-surface-card border border-b-0 border-border-default text-accent'
+              : 'bg-surface-interactive text-text-muted hover:text-text-primary'
           }`}
         >
           Loot Priority
@@ -45,8 +45,8 @@ export function SummaryPanel({
           onClick={() => setActiveTab('stats')}
           className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
             activeTab === 'stats'
-              ? 'bg-bg-card border border-b-0 border-border-default text-accent'
-              : 'bg-bg-hover text-text-muted hover:text-text-primary'
+              ? 'bg-surface-card border border-b-0 border-border-default text-accent'
+              : 'bg-surface-interactive text-text-muted hover:text-text-primary'
           }`}
         >
           Team Stats

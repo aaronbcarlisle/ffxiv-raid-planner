@@ -311,11 +311,6 @@ export function PlayerCardHeader({
               onSelect={onPositionChange}
             />
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span style={{ color: roleColor }}>{job}</span>
-            <span className="text-text-muted">-</span>
-            <span className="text-text-secondary">{getJobDisplayName(job)}</span>
-          </div>
         </div>
       </div>
 

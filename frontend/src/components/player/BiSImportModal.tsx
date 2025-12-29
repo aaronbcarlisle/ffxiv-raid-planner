@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Checkbox } from '../ui/Checkbox';
+import { toast } from '../../stores/toastStore';
 import {
   fetchBiSFromXIVGear,
   fetchBiSFromEtro,
@@ -199,6 +200,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         }
       } else {
         setError('Failed to fetch gear set. Please try again.');
+        toast.error('Failed to fetch gear set');
       }
     }
   };
@@ -251,6 +253,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       bisLink,
     });
 
+    toast.success('BiS imported successfully!');
     handleClose();
   };
 
@@ -285,7 +288,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                   }
                 }}
                 disabled={presetsLoading || presets.length === 0}
-                className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-50"
+                className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-50"
               >
                 <option value="">
                   {presetsLoading
@@ -364,7 +367,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               }}
               onKeyDown={handleKeyDown}
               placeholder="https://etro.gg/gearset/..."
-              className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               autoFocus={!player.configured || presets.length === 0}
             />
           </div>
@@ -373,7 +376,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 bg-bg-primary border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
+              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
             >
               Cancel
             </button>
@@ -405,7 +408,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 bg-bg-primary border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
+              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
             >
               Cancel
             </button>
@@ -423,7 +426,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       {state === 'preview' && previewData && (
         <div className="space-y-4">
           {/* Set info */}
-          <div className="p-3 bg-bg-primary rounded-lg border border-border-default">
+          <div className="p-3 bg-surface-base rounded-lg border border-border-default">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-text-primary font-medium">{previewData.name}</div>
@@ -450,7 +453,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                 {changes.map((change) => (
                   <div
                     key={change.slot}
-                    className="flex items-center justify-between p-2 bg-bg-primary rounded border border-border-default"
+                    className="flex items-center justify-between p-2 bg-surface-base rounded border border-border-default"
                   >
                     <span className="text-text-primary">{change.slotName}</span>
                     <div className="flex items-center gap-2 text-sm">
@@ -467,7 +470,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-bg-primary rounded-lg border border-border-default">
+            <div className="p-3 bg-surface-base rounded-lg border border-border-default">
               <p className="text-text-secondary text-sm text-center">
                 No source changes - all slots already match!
               </p>
@@ -488,7 +491,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 bg-bg-primary border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
+              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
             >
               Cancel
             </button>

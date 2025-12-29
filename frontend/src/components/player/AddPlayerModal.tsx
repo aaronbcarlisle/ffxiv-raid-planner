@@ -70,7 +70,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Cloud Strife"
-            className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
             required
             autoFocus
           />
@@ -93,7 +93,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g., Out Dec 28-Jan 2"
-            className="w-full bg-bg-primary border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
@@ -107,7 +107,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-bg-primary border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
+            className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
           >
             Cancel
           </button>

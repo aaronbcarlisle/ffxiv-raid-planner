@@ -32,8 +32,8 @@ export function CreateTierModal({ groupId, existingTierIds, onClose }: CreateTie
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
         <h2 className="text-xl font-display text-accent mb-4">Create New Tier</h2>
 
         <div className="mb-4">
@@ -43,7 +43,7 @@ export function CreateTierModal({ groupId, existingTierIds, onClose }: CreateTie
           <select
             value={selectedTierId}
             onChange={(e) => setSelectedTierId(e.target.value)}
-            className="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
+            className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
           >
             <option value="">Choose a tier...</option>
             {availableTiers.map((tier) => (

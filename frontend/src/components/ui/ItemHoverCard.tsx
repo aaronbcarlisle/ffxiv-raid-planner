@@ -63,7 +63,7 @@ export function ItemHoverCard({
   const rightStats = sortedStats.slice(midPoint);
 
   return (
-    <div className="bg-bg-elevated border border-border-default rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px]">
+    <div className="bg-surface-elevated border border-border-default rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px]">
       {/* Header with icon and name */}
       <div className="flex items-start gap-3 mb-2">
         {itemIcon && (

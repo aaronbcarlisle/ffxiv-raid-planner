@@ -101,7 +101,7 @@ export function LootPriorityPanel({
   }));
 
   return (
-    <div className="bg-bg-card border border-border-default rounded-lg p-4">
+    <div className="bg-surface-card border border-border-default rounded-lg p-4">
       <h3 className="font-display text-lg text-accent mb-4">
         {floorName} Loot Priority
       </h3>
@@ -111,7 +111,7 @@ export function LootPriorityPanel({
         {itemPriorities.map(({ slot, label, entries }) => (
           <div
             key={slot}
-            className="bg-bg-primary rounded-lg p-3"
+            className="bg-surface-base rounded-lg p-3"
           >
             <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
               {label}
@@ -130,7 +130,7 @@ export function LootPriorityPanel({
               {materialPriorities.map(({ material, label, entries }) => (
                 <div
                   key={material}
-                  className="bg-bg-primary rounded-lg p-3"
+                  className="bg-surface-base rounded-lg p-3"
                 >
                   <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
                     {label}

@@ -14,14 +14,14 @@ const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
 };
 
 const TABS: { id: PageMode; label: string }[] = [
-  { id: 'players', label: 'Party' },
+  { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Loot' },
-  { id: 'stats', label: 'Stats' },
+  { id: 'stats', label: 'Progress' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   return (
-    <div className="flex gap-1 bg-bg-secondary rounded-lg p-1">
+    <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -30,8 +30,8 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
             flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors border
             ${
               activeTab === tab.id
-                ? 'bg-bg-tertiary text-text-primary border-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary border-transparent'
+                ? 'bg-surface-elevated text-text-primary border-accent'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
             }
           `}
         >

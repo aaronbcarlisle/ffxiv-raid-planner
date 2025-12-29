@@ -129,7 +129,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
             return (
               <div
                 key={membership.id}
-                className="flex items-center justify-between p-3 bg-bg-secondary rounded-lg border border-border-subtle"
+                className="flex items-center justify-between p-3 bg-surface-raised rounded-lg border border-border-subtle"
               >
                 <div className="flex items-center gap-3">
                   {member.avatarUrl ? (
@@ -161,7 +161,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
                       value={membership.role}
                       onChange={(e) => handleRoleChange(member.id, e.target.value as MemberRole)}
                       disabled={isSaving}
-                      className="bg-bg-primary border border-border-default rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:border-accent"
+                      className="bg-surface-base border border-border-default rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:border-accent"
                     >
                       {isOwner && <option value="lead">Lead</option>}
                       <option value="member">Member</option>
@@ -235,7 +235,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
             {linkedPlayers.map((linked) => (
               <div
                 key={linked.playerId}
-                className="flex items-center justify-between p-3 bg-bg-secondary rounded-lg border border-amber-500/20"
+                className="flex items-center justify-between p-3 bg-surface-raised rounded-lg border border-amber-500/20"
               >
                 <div className="flex items-center gap-3">
                   {linked.user.avatarUrl ? (

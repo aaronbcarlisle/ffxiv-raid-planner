@@ -273,7 +273,7 @@ export function Dashboard() {
             <select
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as DashboardSort)}
-              className="bg-bg-secondary border border-border-default rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer"
+              className="bg-surface-raised border border-border-default rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer"
             >
               {(Object.entries(SORT_LABELS) as [DashboardSort, string][]).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -284,13 +284,13 @@ export function Dashboard() {
           )}
           {/* View mode toggle */}
           {groups.length > 0 && (
-            <div className="flex bg-bg-secondary rounded-md border border-border-default">
+            <div className="flex bg-surface-raised rounded-md border border-border-default">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-2 rounded-l-md text-sm font-medium transition-colors ${
                   viewMode === 'grid'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
                 }`}
                 title="Grid view"
               >
@@ -306,7 +306,7 @@ export function Dashboard() {
                 className={`px-3 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-border-default ${
                   viewMode === 'list'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
                 }`}
                 title="List view"
               >
@@ -341,7 +341,7 @@ export function Dashboard() {
         </div>
       ) : groups.length === 0 ? (
         /* Empty state */
-        <div className="text-center py-12 bg-bg-card rounded-lg border border-white/10">
+        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
           <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
             <svg
               className="w-8 h-8 text-accent"
@@ -376,7 +376,7 @@ export function Dashboard() {
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="block bg-bg-card rounded-lg border border-white/10 p-4 hover:border-accent/50 transition-colors group cursor-pointer"
+              className="block bg-surface-card rounded-lg border border-border-default p-4 hover:border-accent/50 transition-colors group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors">
@@ -435,13 +435,13 @@ export function Dashboard() {
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-white/5 text-xs text-text-muted flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border-subtle text-xs text-text-muted flex items-center justify-between">
                 <span>
                   Code: <span className="font-mono text-accent">{group.shareCode}</span>
                 </span>
                 <button
                   onClick={(e) => handleCopyCode(group.shareCode, e)}
-                  className="p-1 rounded hover:bg-bg-hover transition-colors"
+                  className="p-1 rounded hover:bg-surface-interactive transition-colors"
                   title="Copy code (hold Shift for full URL)"
                 >
                   {copiedCode === group.shareCode ? (
@@ -460,13 +460,13 @@ export function Dashboard() {
         </div>
       ) : (
         /* Groups list */
-        <div className="bg-bg-card rounded-lg border border-white/10 divide-y divide-white/5">
+        <div className="bg-surface-card rounded-lg border border-border-default divide-y divide-border-subtle">
           {sortedGroups.map((group) => (
             <div
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="flex items-center justify-between p-4 hover:bg-bg-hover transition-colors cursor-pointer group"
+              className="flex items-center justify-between p-4 hover:bg-surface-interactive transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
@@ -528,7 +528,7 @@ export function Dashboard() {
                   <span className="font-mono text-accent">{group.shareCode}</span>
                   <button
                     onClick={(e) => handleCopyCode(group.shareCode, e)}
-                    className="p-1 rounded hover:bg-bg-elevated transition-colors"
+                    className="p-1 rounded hover:bg-surface-elevated transition-colors"
                     title="Copy code (hold Shift for full URL)"
                   >
                     {copiedCode === group.shareCode ? (
@@ -564,8 +564,8 @@ export function Dashboard() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+          <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
             <h2 className="text-xl font-display text-accent mb-4">Create Static Group</h2>
 
             <form onSubmit={handleCreateGroup}>
@@ -579,7 +579,7 @@ export function Dashboard() {
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="e.g., Girliepops, Hardcore Raiders"
-                  className="w-full bg-bg-primary border border-white/10 rounded px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
                   autoFocus
                 />
               </div>
@@ -590,7 +590,7 @@ export function Dashboard() {
                     type="checkbox"
                     checked={newGroupPublic}
                     onChange={(e) => setNewGroupPublic(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 bg-bg-primary text-accent focus:ring-accent focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-border-default bg-surface-elevated text-accent focus:ring-accent focus:ring-offset-0"
                   />
                   <span className="text-sm text-text-secondary">
                     Make this group public (anyone with the link can view)
@@ -636,8 +636,8 @@ export function Dashboard() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-bg-card rounded-lg border border-white/10 p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+          <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
             <h2 className="text-xl font-display text-red-400 mb-4">Delete Static</h2>
 
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
@@ -656,7 +656,7 @@ export function Dashboard() {
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full bg-bg-primary border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
+                className="w-full bg-surface-elevated border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
                 placeholder={selectedGroup.name}
               />
             </div>

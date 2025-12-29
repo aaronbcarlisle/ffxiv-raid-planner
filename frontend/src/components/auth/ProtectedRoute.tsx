@@ -68,7 +68,7 @@ export function ProtectedRoute({
 
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center max-w-md mx-auto p-8 bg-bg-card rounded-lg border border-white/10">
+        <div className="text-center max-w-md mx-auto p-8 bg-surface-card rounded-lg border border-border-default">
           <h2 className="text-xl font-display text-accent mb-4">Login Required</h2>
           <p className="text-text-secondary mb-6">
             You need to be logged in to access this page. Sign in with your Discord account to continue.

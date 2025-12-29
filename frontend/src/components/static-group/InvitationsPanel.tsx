@@ -131,7 +131,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
           + Create Invitation Link
         </button>
       ) : (
-        <div className="bg-bg-elevated border border-border-default rounded-lg p-4 space-y-4">
+        <div className="bg-surface-elevated border border-border-default rounded-lg p-4 space-y-4">
           <h4 className="text-text-primary font-medium">New Invitation</h4>
 
           <div className="grid grid-cols-2 gap-4">
@@ -140,7 +140,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as MemberRole)}
-                className="w-full px-3 py-2 bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
               >
                 <option value="member">Member</option>
                 <option value="lead">Lead</option>
@@ -153,7 +153,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
               <select
                 value={expiresInDays ?? 'never'}
                 onChange={(e) => setExpiresInDays(e.target.value === 'never' ? null : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-bg-primary border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
               >
                 <option value="1">1 day</option>
                 <option value="7">7 days</option>
@@ -172,7 +172,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
                 placeholder="Unlimited"
                 min="1"
                 max="100"
-                className="w-full px-3 py-2 bg-bg-primary border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -208,7 +208,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
           {invitations.map((inv) => (
             <div
               key={inv.id}
-              className={`bg-bg-elevated border border-border-default rounded-lg p-3 ${!inv.isValid ? 'opacity-60' : ''}`}
+              className={`bg-surface-elevated border border-border-default rounded-lg p-3 ${!inv.isValid ? 'opacity-60' : ''}`}
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -231,7 +231,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
                   {inv.isValid && (
                     <button
                       onClick={() => copyInviteLink(inv.inviteCode)}
-                      className="px-3 py-1.5 text-sm bg-bg-hover hover:bg-bg-primary border border-border-default rounded transition-colors"
+                      className="px-3 py-1.5 text-sm bg-surface-interactive hover:bg-surface-base border border-border-default rounded transition-colors"
                       title="Copy invite link"
                     >
                       {copiedCode === inv.inviteCode ? '✓ Copied' : 'Copy Link'}
