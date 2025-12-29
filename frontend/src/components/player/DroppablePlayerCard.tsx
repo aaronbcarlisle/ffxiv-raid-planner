@@ -3,7 +3,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
-import type { SnapshotPlayer, StaticSettings, ViewMode } from '../../types';
+import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType } from '../../types';
 
 // Export types for drag handle
 export type DragListeners = SyntheticListenerMap | undefined;
@@ -13,6 +13,7 @@ interface DroppablePlayerCardProps {
   player: SnapshotPlayer;
   settings: StaticSettings;
   viewMode: ViewMode;
+  contentType: ContentType;
   clipboardPlayer: SnapshotPlayer | null;
   dragState: DragState;
   canEdit: boolean;
@@ -34,6 +35,7 @@ export function DroppablePlayerCard({
   player,
   dragState,
   canEdit,
+  contentType,
   ...props
 }: DroppablePlayerCardProps) {
   // Make this card a drop target
@@ -88,6 +90,7 @@ export function DroppablePlayerCard({
 
       <PlayerCard
         player={player}
+        contentType={contentType}
         dragListeners={canEdit ? listeners : undefined}
         dragAttributes={canEdit ? attributes : undefined}
         {...props}

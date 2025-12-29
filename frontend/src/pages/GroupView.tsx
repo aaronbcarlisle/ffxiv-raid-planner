@@ -411,6 +411,7 @@ export function GroupView() {
           player={player}
           settings={DEFAULT_SETTINGS}
           viewMode={viewMode}
+          contentType={currentTier?.contentType ?? 'savage'}
           clipboardPlayer={clipboardPlayer}
           dragState={dnd.dragState}
           canEdit={canEdit}

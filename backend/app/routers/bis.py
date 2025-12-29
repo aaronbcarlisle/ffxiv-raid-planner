@@ -33,10 +33,14 @@ class BiSImportResponse(BaseModel):
 class BiSPreset(BaseModel):
     """A single BiS preset option"""
     name: str
-    index: int  # Index in the sets array (for GitHub presets)
-    uuid: Optional[str] = None  # XIVGear shortlink UUID (for local presets)
+    index: int  # Display order index
+    uuid: Optional[str] = None  # XIVGear shortlink UUID (for shortlink presets)
     setIndex: Optional[int] = None  # Set index within the XIVGear sheet
+    githubIndex: Optional[int] = None  # Set index in GitHub tier file (for GitHub presets)
+    githubTier: Optional[str] = None  # GitHub tier name (e.g., "current", "fru", "top")
     description: Optional[str] = None  # Optional description from The Balance
+    category: Optional[str] = None  # 'savage', 'ultimate', or 'prog'
+    gcd: Optional[str] = None  # GCD tier (e.g., "2.50")
 
 
 class BiSPresetsResponse(BaseModel):
@@ -395,7 +399,7 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
 
 
 @router.get("/presets/{job}", response_model=BiSPresetsResponse)
-async def get_bis_presets(job: str):
+async def get_bis_presets(job: str, category: Optional[str] = None):
     """
     Get available BiS presets for a job.
 
@@ -405,6 +409,10 @@ async def get_bis_presets(job: str):
 
     Local presets include uuid and setIndex for direct XIVGear import.
     GitHub presets use index for bis|{job}|current format.
+
+    Args:
+        job: Job abbreviation (e.g., "DRG", "WHM")
+        category: Optional filter - 'savage', 'ultimate', or 'prog'
     """
     job_lower = job.lower()
     job_upper = job.upper()
@@ -413,18 +421,28 @@ async def get_bis_presets(job: str):
     local_data = load_local_presets()
     if job_lower in local_data:
         local_job_data = local_data[job_lower]
-        local_sets = local_job_data.get("sets", [])
-        if local_sets:
+        local_presets_data = local_job_data.get("presets", [])
+        if local_presets_data:
             presets: list[BiSPreset] = []
-            for i, bis_set in enumerate(local_sets):
+            for i, bis_set in enumerate(local_presets_data):
+                # Apply category filter if specified
+                preset_category = bis_set.get("category", "savage")
+                if category and preset_category != category:
+                    continue
+
                 presets.append(BiSPreset(
-                    name=bis_set.get("name", f"Set {i + 1}"),
+                    name=bis_set.get("displayName", bis_set.get("originalName", f"Set {i + 1}")),
                     index=i,
                     uuid=bis_set.get("uuid"),
                     setIndex=bis_set.get("setIndex"),
-                    description=bis_set.get("description"),
+                    githubIndex=bis_set.get("githubIndex"),
+                    githubTier=bis_set.get("githubTier"),
+                    description=bis_set.get("originalName"),  # Show original name as description
+                    category=preset_category,
+                    gcd=bis_set.get("gcd"),
                 ))
-            return BiSPresetsResponse(job=job_upper, presets=presets)
+            if presets:
+                return BiSPresetsResponse(job=job_upper, presets=presets)
 
     # Fall back to GitHub (xiv-gear-planner/static-bis-sets)
     try:
@@ -446,7 +464,10 @@ async def get_bis_presets(job: str):
         if bis_set.get("isSeparator"):
             continue
         name = bis_set.get("name", f"Set {i + 1}")
-        presets.append(BiSPreset(name=name, index=i))
+        # GitHub presets are assumed to be savage (current tier)
+        if category and category != "savage":
+            continue
+        presets.append(BiSPreset(name=name, index=i, category="savage"))
 
     if not presets:
         raise HTTPException(

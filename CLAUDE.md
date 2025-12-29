@@ -12,7 +12,7 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1-5.3: Complete** | **Ready for Production**
+**Phase 1-5.4: Complete** | **Ready for Production**
 
 The application is a full auth-first system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
 
@@ -56,7 +56,8 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - **BiS Import** - Import gear sets from Etro.gg or XIVGear
   - Supports Etro gearset links and UUIDs (auto-detected, preferred)
   - Supports XIVGear share links, UUIDs, and curated BiS URLs
-  - Predefined BiS presets dropdown (from The Balance via xiv-gear-planner/static-bis-sets)
+  - Predefined BiS presets dropdown with GCD in name (e.g., "2.50 Savage BiS")
+  - Auto-filters presets by tier content type (Savage shows Savage BiS, Ultimate shows Ultimate BiS)
   - Preview changes before importing with job mismatch warnings
   - BiS link badge on player card header (opens source site in new tab)
   - Context menu shows "Update BiS" when player has linked set
@@ -157,6 +158,9 @@ ffxiv-raid-planner/
 │   │   │   └── tiers.py         # Tier and player endpoints
 │   │   └── services/
 │   │       └── share_code.py    # Share code generation
+│   ├── scripts/                 # Data maintenance scripts
+│   │   ├── backfill_gcd.py      # Fetch GCD for BiS presets
+│   │   └── normalize_preset_names.py  # Standardize preset display names
 │   ├── data/                    # SQLite database (auto-created)
 │   ├── requirements.txt
 │   ├── pyproject.toml
@@ -318,8 +322,13 @@ Icons are stored locally with transparent backgrounds for better theme integrati
 
 ## Gearing Reference
 
-### Current Tier: AAC Cruiserweight (Savage) - Patch 7.2
-- Floors: M5S, M6S, M7S, M8S
+### Current Target: AAC Heavyweight (Savage) - Patch 7.4
+- Floors: M9S, M10S, M11S, M12S (releasing January 7, 2025)
+- Savage gear: iLvl 790 (weapon 795) - "Grand Champion's" gear
+- Tome gear: iLvl 780 (augmented 790) - "Bygone Brass" / "Aug. Bygone Brass" gear
+
+### Previous Tier: AAC Cruiserweight (Savage) - Patch 7.2
+- Floors: M5S, M6S, M7S, M8S (deprecated - crafted gear now higher iLvl)
 - Savage gear: iLvl 760 (weapon 765)
 - Tome gear: iLvl 750 (augmented 760)
 
@@ -335,14 +344,14 @@ Icons are stored locally with transparent backgrounds for better theme integrati
 | Feet | II | 4 | 4 |
 | Accessories | I | 3 | 3 |
 
-### Floor Drop Tables
+### Floor Drop Tables (7.4 Heavyweight - Expected)
 
 | Floor | Gear Drops | Upgrade Materials | Special |
 |-------|------------|-------------------|---------|
-| 1 (M5S) | Accessories | Glaze | - |
-| 2 (M6S) | Head, Hands, Feet | Glaze | **Universal Tomestone** |
-| 3 (M7S) | Body, Legs | Twine, Solvent | - |
-| 4 (M8S) | Weapon | - | - |
+| 1 (M9S) | Accessories | Glaze | - |
+| 2 (M10S) | Head, Hands, Feet | Glaze | **Universal Tomestone** |
+| 3 (M11S) | Body, Legs | Twine, Solvent | - |
+| 4 (M12S) | Weapon | - | - |
 
 ### Tomestone Costs
 
@@ -503,7 +512,7 @@ function calculatePriorityScore(player): number {
 - `NeedsFooter.tsx` - 4-stat footer (raid/tome/upgrades/weeks)
 - `PositionSelector.tsx` - Raid position selector
 - `TankRoleSelector.tsx` - MT/OT designation selector
-- `BiSImportModal.tsx` - Modal for importing BiS from XIVGear
+- `BiSImportModal.tsx` - Modal for importing BiS (uses tier contentType to filter presets)
 
 ### Loot Components (`components/loot/`)
 - `LootPriorityPanel.tsx` - Priority lists for floor drops
@@ -739,7 +748,8 @@ When on a group page, the header includes a static switcher dropdown:
 | 4 | Complete | Discord OAuth, multi-static membership, per-tier roster snapshots, access control, dashboard, group settings, rollover, invitation system, player ownership |
 | 5 | Complete | XIVGear BiS import with preview, BiS link badge, dynamic menu labels, Unlink BiS |
 | 5.2 | Complete | BiS presets by job (dropdown from The Balance), in-game gear slot names |
-| 5.3 | **Complete** | Item icons from XIVAPI with hover cards (stats, iLvl, source badge) |
+| 5.3 | Complete | Item icons from XIVAPI with hover cards (stats, iLvl, source badge) |
+| 5.4 | **Complete** | BiS preset GCD display, auto-filter by tier contentType (no toggle), all 21 jobs covered |
 | 6 | Planned | Lodestone auto-sync |
 | 7 | Planned | FFLogs integration |
 | 8 | Planned | Discord bot, PWA offline mode |
@@ -842,6 +852,94 @@ https://xivapi.com/i/{folder}/{iconId}.png
 Icon constants defined in `src/types/index.ts`:
 - `GEAR_SLOT_ICONS` - Placeholder/outline icons (used when no BiS imported)
 - `GEAR_SLOT_FILLED_ICONS` - Legacy constant (not used after Phase 5.3)
+
+### BiS Preset Data Sources (Phase 5.4)
+
+BiS presets are sourced from two complementary data sources to provide full coverage for all 21 combat jobs:
+
+**1. The Balance (thebalanceffxiv.com) - Scraped XIVGear embeds**
+- Coverage: Healers (WHM, SCH, AST, SGE), Casters (BLM, SMN, RDM, PCT), BRD, MCH, MNK
+- Data stored in: `backend/app/data/local_bis_presets.json`
+- Contains both Savage and Ultimate presets with normalized display names
+
+**2. GitHub static-bis-sets repo (xiv-gear-planner/static-bis-sets)**
+- Coverage: Tanks (PLD, WAR, DRK, GNB), DRG, SAM, and overlapping jobs
+- Authoritative source maintained by The Balance contributors
+- URL pattern: `https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/current.json`
+
+**Combined = All 21 jobs covered for 7.4 Heavyweight Savage tier**
+
+**Normalized Preset Format:**
+```json
+{
+  "uuid": "shortlink-uuid",
+  "setIndex": 0,
+  "githubTier": "current",
+  "githubIndex": 0,
+  "displayName": "2.50 Savage BiS (High Crit)",
+  "originalName": "Original name from source",
+  "category": "savage",
+  "gcd": "2.50"
+}
+```
+
+Note: Presets have either `uuid`/`setIndex` (for XIVGear shortlinks) OR `githubTier`/`githubIndex` (for GitHub static-bis-sets).
+
+**Category Filtering:**
+- Category is auto-determined by the selected tier's `contentType` (Savage or Ultimate)
+- Backend `/api/bis/presets/{job}?category=savage` filters by category
+- No manual toggle in UI - presets match the tier being tracked
+
+**Display Name Normalization:**
+- Format: `{GCD} {Category} BiS ({note})`
+- Examples:
+  - "2.40 max damage" → "2.40 Savage BiS"
+  - "FRU 2.43 with chaotic gear" → "2.43 FRU BiS (Chaotic)"
+  - "2.45 High Crit Caster Friendly BiS" → "2.45 Savage BiS (High Crit, Caster Friendly)"
+
+### Regenerating BiS Preset Data
+
+Scripts are located in `backend/scripts/`:
+
+**1. `backfill_gcd.py`** - Fetch GCD data for presets missing it
+```bash
+cd backend
+source venv/bin/activate
+pip install httpx  # if not installed
+python scripts/backfill_gcd.py
+```
+
+This script:
+- Reads `app/data/local_bis_presets.json`
+- For presets missing GCD, fetches gear from XIVGear API or GitHub static-bis-sets
+- Calculates GCD from total Skill Speed / Spell Speed
+- Updates displayName and saves
+
+**2. `normalize_preset_names.py`** - Standardize display names
+```bash
+python scripts/normalize_preset_names.py
+```
+
+This script:
+- Normalizes all display names to format: `{GCD} {Category} BiS ({descriptor})`
+- Removes redundant words (patch versions, "BiS", "Savage", "GCD", etc.)
+- Properly capitalizes Ultimate names (FRU, TOP, DSR, etc.)
+
+**GCD Calculation Formula (Level 100):**
+```python
+LEVEL_MOD = 420   # Base stat at level 100
+LEVEL_DIV = 2780  # Divisor for level 100
+BASE_GCD = 2500   # Base GCD in milliseconds
+
+speed_mod = 130 * (speed - LEVEL_MOD) // LEVEL_DIV
+gcd_ms = (BASE_GCD * (1000 - speed_mod)) // 1000
+gcd_sec = gcd_ms / 1000  # e.g., 2.50, 2.40, 1.94
+```
+
+**When to Regenerate:**
+- New raid tier releases (update job presets from The Balance/GitHub)
+- Balance updates with new BiS sets
+- Adding Ultimate BiS sets
 
 ---
 

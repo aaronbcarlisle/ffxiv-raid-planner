@@ -443,10 +443,17 @@ export interface BiSImportData {
 export interface BiSPreset {
   name: string;
   index: number;
-  uuid?: string; // XIVGear shortlink UUID (for local presets)
+  uuid?: string; // XIVGear shortlink UUID (for shortlink presets)
   setIndex?: number; // Set index within the XIVGear sheet
-  description?: string; // Optional description from The Balance
+  githubIndex?: number; // Set index in GitHub tier file (for GitHub presets)
+  githubTier?: string; // GitHub tier name (e.g., "current", "fru", "top")
+  description?: string; // Original name from The Balance
+  category?: 'savage' | 'ultimate' | 'prog'; // Content type
+  gcd?: string; // GCD tier (e.g., "2.50")
 }
+
+// BiS category type
+export type BiSCategory = 'savage' | 'ultimate' | 'all';
 
 // BiS presets response
 export interface BiSPresetsResponse {

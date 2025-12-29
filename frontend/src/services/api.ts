@@ -149,9 +149,15 @@ export const api = {
 
 /**
  * Fetch available BiS presets for a job
+ * @param job - Job abbreviation (e.g., "DRG")
+ * @param category - Optional filter: 'savage', 'ultimate', or undefined for all
  */
-export async function fetchBiSPresets(job: string): Promise<BiSPresetsResponse> {
-  return api.get(`/api/bis/presets/${job.toLowerCase()}`);
+export async function fetchBiSPresets(
+  job: string,
+  category?: 'savage' | 'ultimate' | 'prog'
+): Promise<BiSPresetsResponse> {
+  const params = category ? `?category=${category}` : '';
+  return api.get(`/api/bis/presets/${job.toLowerCase()}${params}`);
 }
 
 /**

@@ -1,432 +1,2283 @@
 {
   "_meta": {
-    "source": "The Balance (thebalanceffxiv.com)",
-    "scraped": "2025-12-28",
-    "note": "Jobs not covered by xiv-gear-planner/static-bis-sets GitHub repo"
+    "version": "2.0",
+    "updated": "2025-12-29",
+    "sources": [
+      "The Balance (thebalanceffxiv.com) - scraped XIVGear embeds",
+      "GitHub xiv-gear-planner/static-bis-sets - authoritative BiS repo"
+    ],
+    "note": "Merged BiS presets for all 21 combat jobs - 7.4 Heavyweight Savage"
   },
-  "rdm": {
-    "job": "RDM",
-    "sets": [
+  "pld": {
+    "job": "PLD",
+    "presets": [
       {
-        "name": "7.4 RDM BiS - 2.5 GCD",
-        "uuid": "bfc781a4-ef20-4f2d-ba35-66388adb30c6",
-        "setIndex": 0,
-        "description": "Only recommended for use if you also play Pictomancer at 2.50."
+        "displayName": "2.50 Savage BiS (Popcorn)",
+        "originalName": "2.50 Popcorn",
+        "category": "savage",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "current"
       },
       {
-        "name": "7.4 RDM BiS - 2.49 GCD",
-        "uuid": "14e2ed2f-0836-4970-9e42-98ba83311a78",
-        "setIndex": 0,
-        "description": "Better oGCD alignment with Fleche and Contre Sixte."
+        "displayName": "FRU BiS",
+        "originalName": "True BiS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 RDM BiS - 2.48 GCD",
-        "uuid": "14e2ed2f-0836-4970-9e42-98ba83311a78",
-        "setIndex": 1,
-        "description": "Better alignment for 123e double combos at burst windows."
+        "displayName": "FRU BiS (No Ultimate Weapon)",
+        "originalName": "No Ultimate Weapon",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 RDM Week 1 Savage Sets",
-        "uuid": "df8c3e59-ac79-4933-9fcd-fd611fd67526",
-        "setIndex": 0,
-        "description": "Savage week 1 sets with 4 weeks worth of tomes."
+        "displayName": "FRU BiS (No Ultimate Weapon, No Dungeon)",
+        "originalName": "No Ultimate Weapon, No Dungeon Gear",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 RDM FRU BiS",
-        "uuid": "67c7d792-7685-41d8-8b46-b559fb74b1fc",
-        "setIndex": 0,
-        "description": "Click the hyperlink at the top of the set to view full composite sheet."
+        "displayName": "2.50 TOP BiS",
+        "originalName": "2.50 True BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "top"
       },
       {
-        "name": "7.2 RDM Legacy Ultimates BiS",
-        "uuid": "5117ed12-28cb-4cea-8446-4f599c00ceeb",
-        "setIndex": 0,
-        "description": "Sets designed for each specific Ultimate encounter."
+        "displayName": "2.50 TOP BiS",
+        "originalName": "2.50 Prog Set",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.50 TOP BiS (Synced + Relic)",
+        "originalName": "2.50 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.50 DSR BiS",
+        "originalName": "2.50 True BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 DSR BiS",
+        "originalName": "2.50 Prog Set",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 DSR BiS (Synced + Relic)",
+        "originalName": "2.50 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 TEA BiS",
+        "originalName": "2.50 True BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (ShB Relic)",
+        "originalName": "2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (Endwalker Relic)",
+        "originalName": "2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (No Relic)",
+        "originalName": "2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB True)",
+        "originalName": "UCOB 2.50 True BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB ShB Relic)",
+        "originalName": "UCOB 2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.46 UCoB BiS (UCOB ShB Relic)",
+        "originalName": "UCOB 2.46 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 3,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB Endwalker Relic)",
+        "originalName": "UCOB 2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 4,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB No Relic)",
+        "originalName": "UCOB 2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 5,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU ShB Relic)",
+        "originalName": "UWU 2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.48 UWU BiS (UWU ShB Relic)",
+        "originalName": "UWU 2.48 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.48",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU Endwalker Relic)",
+        "originalName": "UWU 2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU No Relic)",
+        "originalName": "UWU 2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 4,
+        "githubTier": "uwu"
       }
     ]
   },
-  "blm": {
-    "job": "BLM",
-    "sets": [
+  "war": {
+    "job": "WAR",
+    "presets": [
       {
-        "name": "2.15 High SpS BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 0,
-        "description": "Raw solver output with alternative BiS options."
+        "displayName": "2.50 Savage BiS",
+        "originalName": "2.5",
+        "category": "savage",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "current"
       },
       {
-        "name": "2.20 High SpS BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 1,
-        "description": "Gear Sheet for comparing various gearsets/meld options."
+        "displayName": "2.45 Savage BiS",
+        "originalName": "2.45",
+        "category": "savage",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "current"
       },
       {
-        "name": "2.32 High Crit BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 2,
-        "description": "Raw solver output with alternative prog sets."
+        "displayName": "FRU BiS (Fru Axe)",
+        "originalName": "7.4 BiS - Fru Axe",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "fru"
       },
       {
-        "name": "2.37 High Crit BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 3
+        "displayName": "FRU BiS (Axe)",
+        "originalName": "7.4 BiS - Savage Axe",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "fru"
       },
       {
-        "name": "2.41 High Crit BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 4
+        "displayName": "FRU BiS (Alternate FRU Axe)",
+        "originalName": "Alternate Set - FRU Axe",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 4,
+        "githubTier": "fru"
       },
       {
-        "name": "2.45 High Crit Caster Friendly BiS",
-        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
-        "setIndex": 5
+        "displayName": "FRU BiS (Alternate Weapon)",
+        "originalName": "Alternate Set - Savage Weapon",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 5,
+        "githubTier": "fru"
       },
       {
-        "name": "Alternative BiS sets",
-        "uuid": "da31bd0a-7b95-430d-986e-0d2682a3d713",
-        "setIndex": 0
+        "displayName": "TOP BiS (Warrior)",
+        "originalName": "Warrior BIS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "top"
       },
       {
-        "name": "Gear Sheet",
-        "uuid": "43e2309d-0986-4fe3-b344-905f59b7d0ec",
-        "setIndex": 0
+        "displayName": "TOP BiS (No Dungeon No)",
+        "originalName": "No Dungeon No Savage",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "top"
       },
       {
-        "name": "Prog - 4 weeks tome, buying tome weapon",
-        "uuid": "2cf5e3c4-b844-45ea-bd61-0911c1f7854e",
-        "setIndex": 0
+        "displayName": "DSR BiS (War)",
+        "originalName": "War BIS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "dsr"
       },
       {
-        "name": "Prog - 4 weeks tome, no tome weapon",
-        "uuid": "52b55b28-92a4-4872-933a-a2145a04e688",
-        "setIndex": 0
+        "displayName": "DSR BiS (No Dungeon. No)",
+        "originalName": "No Dungeon. No Savage",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "dsr"
       },
       {
-        "name": "Prog - Full crafted with EX weapon",
-        "uuid": "ee84489e-c9c2-47b7-bea7-f9a9b4c617cd",
-        "setIndex": 0
+        "displayName": "TEA BiS (war)",
+        "originalName": "war set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (synced+ew relic)",
+        "originalName": "synced+ew relic",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (synced)",
+        "originalName": "synced",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.40 UCoB BiS (ShB relic)",
+        "originalName": "2.40 ShB relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.45 UCoB BiS (ShB relic)",
+        "originalName": "2.45 ShB relic ",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.45 UCoB BiS (EW relic)",
+        "originalName": "2.45 EW relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 3,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (EW relic)",
+        "originalName": "2.50 EW relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 4,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Synced)",
+        "originalName": "Synced",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 6,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UWU BiS (WAR ShB relic)",
+        "originalName": "WAR 2.40 ShB relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.45 UWU BiS (WAR ShB relic copy)",
+        "originalName": "WAR 2.45 ShB relic copy",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.45 UWU BiS (WAR EW relic)",
+        "originalName": "WAR 2.45 EW relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 3,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (WAR EW relic)",
+        "originalName": "WAR 2.50 EW relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 4,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (WAR Synced)",
+        "originalName": "WAR 2.5 Synced set",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 6,
+        "githubTier": "uwu"
       }
     ]
   },
-  "smn": {
-    "job": "SMN",
-    "sets": [
+  "drk": {
+    "job": "DRK",
+    "presets": [
       {
-        "name": "7.4 Savage BiS - 2.48",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 0,
-        "description": "This set performs as a 2.50 GCD in level synced content."
+        "displayName": "2.50 Savage BiS",
+        "originalName": "2.50",
+        "category": "savage",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "current"
       },
       {
-        "name": "7.4 Savage BiS - 2.48 (Level Sync Friendly)",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 1,
-        "description": "Uses equipment to achieve 2.48, always plays as 2.48."
+        "displayName": "2.46 Savage BiS",
+        "originalName": "2.46",
+        "category": "savage",
+        "gcd": "2.46",
+        "githubIndex": 1,
+        "githubTier": "current"
       },
       {
-        "name": "7.4 Savage BiS - 2.47",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 2,
-        "description": "This set performs as a 2.50 GCD in level synced content."
+        "displayName": "2.46 Savage BiS (Compatible Melds)",
+        "originalName": "2.46 Compatible Melds",
+        "category": "savage",
+        "gcd": "2.46",
+        "githubIndex": 2,
+        "githubTier": "current"
       },
       {
-        "name": "7.4 Savage BiS - 2.47 (Level Sync Friendly)",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 3,
-        "description": "Uses equipment to achieve 2.47, always plays as 2.48."
+        "displayName": "2.50 FRU BiS ((Relic))",
+        "originalName": "2.50 BiS (Relic)",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage BiS - 2.46",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 4,
-        "description": "This set performs as a 2.49 GCD in level synced content."
+        "displayName": "2.50 FRU BiS ((Dark Horse Greatsword))",
+        "originalName": "2.50 BiS (Dark Horse Greatsword)",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage BiS - 2.46 (Level Sync Friendly)",
-        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
-        "setIndex": 5,
-        "description": "Uses equipment to achieve 2.46, always plays as 2.48."
+        "displayName": "2.50 FRU BiS ((Cleared))",
+        "originalName": "2.50 BiS (Cleared)",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "fru"
       },
       {
-        "name": "FRU 2.48 GCD",
-        "uuid": "6cd23e71-db6b-4cb9-9bf6-42a3d82cd0f9",
-        "setIndex": 0
+        "displayName": "2.46 FRU BiS ((Relic))",
+        "originalName": "2.46 BiS (Relic)",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 3,
+        "githubTier": "fru"
       },
       {
-        "name": "TOP 2.47 GCD",
-        "uuid": "3fcc6119-b46d-460c-8648-f556f2fa0d7e",
-        "setIndex": 0
+        "displayName": "2.46 FRU BiS ((Dark Horse Greatsword))",
+        "originalName": "2.46 BiS (Dark Horse Greatsword)",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 4,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.46 FRU BiS ((Cleared))",
+        "originalName": "2.46 BiS (Cleared)",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 5,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.50 TOP BiS (True TOP)",
+        "originalName": "2.50 True TOP BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.50 TOP BiS (Synced + Relic)",
+        "originalName": "2.50 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.45 TOP BiS (True TOP)",
+        "originalName": "2.45 True TOP BiS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.45 TOP BiS (Synced + Relic)",
+        "originalName": "2.45 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 3,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.50 DSR BiS (True DSR)",
+        "originalName": "2.50 True DSR BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 DSR BiS (Synced + Relic)",
+        "originalName": "2.50 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 DSR BiS (Synced)",
+        "originalName": "2.50 Synced Gear",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.45 DSR BiS (True DSR)",
+        "originalName": "2.45 True DSR BiS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 3,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.45 DSR BiS (Synced + Relic)",
+        "originalName": "2.45 Synced Gear + Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 4,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.50 TEA BiS (TEA True)",
+        "originalName": "TEA 2.50 True BiS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (TEA ShB Relic)",
+        "originalName": "TEA 2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (TEA Endwalker Relic)",
+        "originalName": "TEA 2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 TEA BiS (TEA No Relic)",
+        "originalName": "TEA 2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.45 TEA BiS (TEA True)",
+        "originalName": "TEA 2.45 True BiS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 4,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.45 TEA BiS (TEA ShB Relic)",
+        "originalName": "TEA 2.45 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 5,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.45 TEA BiS (TEA Endwalker Relic)",
+        "originalName": "TEA 2.45 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 6,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.45 TEA BiS (TEA No Relic)",
+        "originalName": "TEA 2.45 No Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 7,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB ShB Relic)",
+        "originalName": "UCOB 2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB Endwalker Relic)",
+        "originalName": "UCOB 2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (UCOB No Relic)",
+        "originalName": "UCOB 2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UCoB BiS (UCOB True)",
+        "originalName": "UCOB 2.40 True BiS",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 4,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UCoB BiS (UCOB ShB Relic)",
+        "originalName": "UCOB 2.40 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 5,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UCoB BiS (UCOB Endwalker Relic)",
+        "originalName": "UCOB 2.40 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 6,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UCoB BiS (UCOB No Relic)",
+        "originalName": "UCOB 2.40 No Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 7,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU ShB Relic)",
+        "originalName": "UWU 2.50 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU Endwalker Relic)",
+        "originalName": "UWU 2.50 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (UWU No Relic)",
+        "originalName": "UWU 2.50 No Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (UWU True)",
+        "originalName": "UWU 2.40 True BiS",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 4,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (UWU ShB Relic)",
+        "originalName": "UWU 2.40 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 5,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (UWU Endwalker Relic)",
+        "originalName": "UWU 2.40 Endwalker Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 6,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (UWU No Relic)",
+        "originalName": "UWU 2.40 No Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 7,
+        "githubTier": "uwu"
       }
     ]
   },
-  "brd": {
-    "job": "BRD",
-    "sets": [
+  "gnb": {
+    "job": "GNB",
+    "presets": [
       {
-        "name": "i790 Best-in-Slot",
-        "uuid": "e2c1efce-33f8-4cfe-9db2-bd389aa921bb",
-        "setIndex": 0,
-        "description": "Swap Skill Speed materia for Direct Hit to play at 2.50."
+        "displayName": "2.50 Savage BiS",
+        "originalName": "2.50",
+        "category": "savage",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "current"
       },
       {
-        "name": "Heavyweight Savage Prog - 1575 tomes",
-        "uuid": "0aaed8b0-b3cc-49a1-ac4f-cb79a95a938c",
-        "setIndex": 0,
-        "description": "Additional niche sets available in the full xivgear sheet."
-      }
-    ]
-  },
-  "mch": {
-    "job": "MCH",
-    "sets": [
-      {
-        "name": "7.4 iLvl 790 BiS",
-        "uuid": "3dac7eb3-10e4-4ef3-9373-e1e1a78fcc9b",
-        "setIndex": 0,
-        "description": "Change x3 DH melds to DET for DNC/scouting compatibility."
+        "displayName": "2.45 Savage BiS",
+        "originalName": "2.45",
+        "category": "savage",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "current"
       },
       {
-        "name": "7.4 Week 1 - 1800 Tomestones",
-        "uuid": "4c5c04a8-d1ff-4ab3-823b-d94b53a4a50d",
-        "setIndex": 0,
-        "description": "Uses Manderville 645/665 Relic with CRIT + DET > DH."
+        "displayName": "2.40 Savage BiS",
+        "originalName": "2.40",
+        "category": "savage",
+        "gcd": "2.40",
+        "githubIndex": 2,
+        "githubTier": "current"
       },
       {
-        "name": "7.3 BiS 2.5 GCD",
-        "uuid": "29b58122-8c79-4c92-8569-2aac404fe861",
-        "setIndex": 0,
-        "description": "665/645 Manderville Relic. Prio is CRIT + DET > DH."
-      }
-    ]
-  },
-  "dnc": {
-    "job": "DNC",
-    "sets": [
-      {
-        "name": "7.4 ilvl 790 BiS 2.5 GCD",
-        "uuid": "aa7afb9b-0155-4aba-b4c5-4f14095a5d40",
-        "setIndex": 0,
-        "description": "Set for starting savage progression without any gear from weekly capped tomestones or savage raids."
+        "displayName": "2.50 FRU BiS (FRU Weapon)",
+        "originalName": "2.50 FRU Weapon",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 ilvl 770 Baseline Set",
-        "uuid": "aa7afb9b-0155-4aba-b4c5-4f14095a5d40",
-        "setIndex": 1
-      }
-    ]
-  },
-  "nin": {
-    "job": "NIN",
-    "sets": [
-      {
-        "name": "7.4 Savage BiS",
-        "uuid": "00cf7fea-60dc-4283-9b3e-6609b5d2a196",
-        "setIndex": 0,
-        "description": "Compatible with VPR as long as they run 2.12."
+        "displayName": "2.45 FRU BiS (FRU Weapon)",
+        "originalName": "2.45 FRU Weapon",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage Prog Set (Pentamelded)",
-        "uuid": "66143664-580b-46c5-80fe-1d1765524dac",
-        "setIndex": 0
+        "displayName": "2.40 FRU BiS (FRU Weapon)",
+        "originalName": "2.40 FRU Weapon",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 2,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage Prog Set (Budget)",
-        "uuid": "af4efba1-3817-47e1-beda-91ce07e4e739",
-        "setIndex": 0,
-        "description": "The i665 relic weapon can be substituted for the i645 relic."
-      }
-    ]
-  },
-  "rpr": {
-    "job": "RPR",
-    "sets": [
-      {
-        "name": "7.4 2.49 Savage BiS",
-        "uuid": "887c54fb-ee93-4784-98b8-4260ada6383b",
-        "setIndex": 0,
-        "description": "Recommended BiS. Fully compatible with DRG and SAM BiS, but not with MNK."
+        "displayName": "2.50 FRU BiS (M4 Weapon)",
+        "originalName": "2.50 M4 Weapon",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 3,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage Prog Option (3 weeks of tomes)",
-        "uuid": "887c54fb-ee93-4784-98b8-4260ada6383b",
-        "setIndex": 1,
-        "description": "Uses 3 weeks of tomes before entering savage for week 1 prog."
+        "displayName": "2.45 FRU BiS (M4 Weapon)",
+        "originalName": "2.45 M4 Weapon",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 4,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage Prog Option (3 weeks tomes + tome weapon)",
-        "uuid": "0f15813f-d162-4e40-9bcf-584506ae7f92",
-        "setIndex": 0,
-        "description": "Uses three weeks of tomes plus tome weapon."
-      }
-    ]
-  },
-  "vpr": {
-    "job": "VPR",
-    "sets": [
-      {
-        "name": "7.4 Savage BiS",
-        "uuid": "3cee67ac-1e2e-45af-bbd3-1c41bc55ff4e",
-        "setIndex": 0
+        "displayName": "2.40 FRU BiS (M4 Weapon)",
+        "originalName": "2.40 M4 Weapon",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 5,
+        "githubTier": "fru"
       },
       {
-        "name": "7.4 Savage Prog Set Options",
-        "uuid": "56ae8077-eb7b-4b5d-a310-95cbd584f2a0",
-        "setIndex": 0
+        "displayName": "2.50 FRU BiS (Moon/Raen/Veena/Lala FRU)",
+        "originalName": "2.50 Moon/Raen/Veena/Lala FRU",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 7,
+        "githubTier": "fru"
       },
       {
-        "name": "7.3 FRU BiS",
-        "uuid": "48b50415-eb38-4d8f-80c8-ff7a5f15f987",
-        "setIndex": 0,
-        "description": "Replace with TOP weapon with 3x DET melds if using it."
+        "displayName": "2.50 FRU BiS (Moon/Raen/Veena/Lala M4)",
+        "originalName": "2.50 Moon/Raen/Veena/Lala M4",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 8,
+        "githubTier": "fru"
       },
       {
-        "name": "Viper TOP BiS",
-        "uuid": "c942a55f-d10a-4b97-936c-a440693bb073",
-        "setIndex": 0,
-        "description": "SkS sets outperform crit sets at level 90 and below due to lack of powerful oGCDs."
+        "displayName": "2.40 FRU BiS (Sun/Sea/Mid FRU)",
+        "originalName": "2.40 Sun/Sea/Mid FRU",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 10,
+        "githubTier": "fru"
       },
       {
-        "name": "Viper DSR BiS",
-        "uuid": "1e3e2816-cb5e-4d7f-b5e2-bb1d24f29921",
-        "setIndex": 0
+        "displayName": "2.40 FRU BiS (Sun/Sea/Mid M4)",
+        "originalName": "2.40 Sun/Sea/Mid M4",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 11,
+        "githubTier": "fru"
       },
       {
-        "name": "TEA SkS BiS - 1.91 GCD",
-        "uuid": "07ed5469-7b71-44c9-9e0b-f8b3f98d061c",
-        "setIndex": 0
-      }
-    ]
-  },
-  "ast": {
-    "job": "AST",
-    "sets": [
-      {
-        "name": "Week 1 - 2.32 Tome Earring (Highest Damage)",
-        "uuid": "f8eed45a-5c8d-4331-a8a4-46ecf7658817",
-        "setIndex": 0
+        "displayName": "2.50 TOP BiS",
+        "originalName": "2.50",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "top"
       },
       {
-        "name": "Week 1 - 2.32 Tome Ring",
-        "uuid": "3fb02abc-8617-49e0-80ca-d8a3b9f9b9eb",
-        "setIndex": 0
+        "displayName": "2.45 TOP BiS",
+        "originalName": "2.45",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "top"
       },
       {
-        "name": "Week 1 - 2.31 Tome Earring",
-        "uuid": "24adc5cc-e541-4715-89fa-915617d1548d",
-        "setIndex": 0
+        "displayName": "2.40 TOP BiS",
+        "originalName": "2.40",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 2,
+        "githubTier": "top"
       },
       {
-        "name": "Week 1 - 2.31 Tome Ring",
-        "uuid": "d223a0a1-dde4-410a-ac59-e8593e019a63",
-        "setIndex": 0
+        "displayName": "2.40 DSR BiS (DSR)",
+        "originalName": "DSR 2.40",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "dsr"
       },
       {
-        "name": "Week 1 - Composite Sheet",
-        "uuid": "dca27524-4c12-4cd0-b26b-9bc4abba2d27",
-        "setIndex": 0
+        "displayName": "2.45 DSR BiS (DSR)",
+        "originalName": "DSR 2.45",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "dsr"
       },
       {
-        "name": "2.43 Max Damage",
-        "uuid": "5a11be40-8c70-49f1-8b8a-e18214c10708",
-        "setIndex": 0
-      }
-    ]
-  },
-  "sge": {
-    "job": "SGE",
-    "sets": [
-      {
-        "name": "Week 1 Mid Piety",
-        "uuid": "fa2387e4-e9ce-410b-b757-2f2cb29e89ed",
-        "setIndex": 0
+        "displayName": "2.40 TEA BiS",
+        "originalName": "2.40 - BIS",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "tea"
       },
       {
-        "name": "Week 1 Min Piety",
-        "uuid": "9819c827-f701-4aec-8b21-2f46e37cb1e6",
-        "setIndex": 0
+        "displayName": "2.45 TEA BiS",
+        "originalName": "2.45 - BIS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "tea"
       },
       {
-        "name": "2.44 Max Damage",
-        "uuid": "cb86be25-c3c0-4abf-b63c-a1967f34d73e",
-        "setIndex": 0
+        "displayName": "2.50 TEA BiS",
+        "originalName": "2.50 - BIS",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 2,
+        "githubTier": "tea"
       },
       {
-        "name": "2.39 Max Damage",
-        "uuid": "5a21d4d0-b46d-4f3a-92c1-b49b36455af9",
-        "setIndex": 0
+        "displayName": "2.40 UCoB BiS",
+        "originalName": "2.40 - BIS",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "ucob"
       },
       {
-        "name": "2.45 Max ilvl",
-        "uuid": "aa469de7-d685-4b6a-be2c-789961204c42",
-        "setIndex": 0
-      }
-    ]
-  },
-  "pct": {
-    "job": "PCT",
-    "sets": [
-      {
-        "name": "2.5 GCD BiS - Patch 7.4",
-        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
-        "setIndex": 0,
-        "description": "Highest simming set."
+        "displayName": "2.45 UCoB BiS",
+        "originalName": "2.45 - BIS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "ucob"
       },
       {
-        "name": "2.49 GCD BiS - Patch 7.4",
-        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
-        "setIndex": 1,
-        "description": "For those unable to complete burst windows at 2.5 GCD."
+        "displayName": "2.40 UCoB BiS (Sync)",
+        "originalName": "2.40 - Sync",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 2,
+        "githubTier": "ucob"
       },
       {
-        "name": "2.48 GCD BiS - Patch 7.4",
-        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
-        "setIndex": 2,
-        "description": "For those unable to complete burst windows at 2.5 or 2.49 GCDs."
-      }
-    ]
-  },
-  "sch": {
-    "job": "SCH",
-    "sets": [
-      {
-        "name": "2.40 Max Damage",
-        "uuid": "9920f282-327e-430a-8a76-1325264f4947",
-        "setIndex": 0
+        "displayName": "2.45 UCoB BiS (Sync)",
+        "originalName": "2.45 - Sync",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 3,
+        "githubTier": "ucob"
       },
       {
-        "name": "2.31 Max Damage",
-        "uuid": "97a84dd4-31fc-4818-a9b7-ace016b366f1",
-        "setIndex": 0
+        "displayName": "2.40 UCoB BiS (EW Relic)",
+        "originalName": "2.40 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 5,
+        "githubTier": "ucob"
       },
       {
-        "name": "FRU BiS",
-        "uuid": "6bb5fbca-35e6-4142-8bf0-9b50b80e900e",
-        "setIndex": 0
+        "displayName": "2.45 UCoB BiS (EW Relic)",
+        "originalName": "2.45 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 6,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.50 UCoB BiS (EW Relic)",
+        "originalName": "2.50 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 7,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.40 UWU BiS",
+        "originalName": "2.40 - BIS",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 0,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.45 UWU BiS",
+        "originalName": "2.45 - BIS",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.46 UWU BiS",
+        "originalName": "2.46 - BIS",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (Sync)",
+        "originalName": "2.40 - Sync",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 4,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.45 UWU BiS (Sync)",
+        "originalName": "2.45 - Sync",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 5,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.46 UWU BiS (Sync)",
+        "originalName": "2.46 - Sync",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 6,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.40 UWU BiS (EW Relic)",
+        "originalName": "2.40 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 8,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.45 UWU BiS (EW Relic)",
+        "originalName": "2.45 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.45",
+        "githubIndex": 9,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.50 UWU BiS (EW Relic)",
+        "originalName": "2.50 - EW Relic",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 10,
+        "githubTier": "uwu"
       }
     ]
   },
   "whm": {
     "job": "WHM",
-    "sets": [
+    "presets": [
       {
-        "name": "Best in Slot",
         "uuid": "73551d94-354a-4e30-9205-5d52d2efaf3f",
-        "setIndex": 0
+        "setIndex": 0,
+        "displayName": "2.44 Savage BiS",
+        "originalName": "Best in Slot:",
+        "category": "savage",
+        "gcd": "2.44"
       },
       {
-        "name": "Week 1 Prog Sets",
-        "uuid": "c5aa9ab0-b846-4af9-b6d3-53205b25753d",
-        "setIndex": 0
+        "uuid": "a1149754-8156-4dd0-abca-b89d27f5380c",
+        "setIndex": 0,
+        "displayName": "2.43 Ultimate BiS (FRU with chaotic)",
+        "originalName": "FRU 2.43 with chaotic gear",
+        "category": "ultimate",
+        "gcd": "2.43"
+      },
+      {
+        "uuid": "b170c30d-ac07-43dd-afc7-fc87ec0195d8",
+        "setIndex": 0,
+        "displayName": "2.46 Ultimate BiS (fru without chaotic)",
+        "originalName": "fru 2.46 without chaotic gear",
+        "category": "ultimate",
+        "gcd": "2.46"
+      },
+      {
+        "uuid": "3ac6a52a-784a-4415-bace-d83715cd2f31",
+        "setIndex": 0,
+        "displayName": "2.48 Ultimate BiS (fru relic with chaotic)",
+        "originalName": "fru 2.48 relic with chaotic",
+        "category": "ultimate",
+        "gcd": "2.48"
+      }
+    ]
+  },
+  "sch": {
+    "job": "SCH",
+    "presets": [
+      {
+        "uuid": "9920f282-327e-430a-8a76-1325264f4947",
+        "setIndex": 0,
+        "displayName": "2.40 Savage BiS (max damage)",
+        "originalName": "2.40 max damage",
+        "category": "savage",
+        "gcd": "2.40"
+      },
+      {
+        "uuid": "97a84dd4-31fc-4818-a9b7-ace016b366f1",
+        "setIndex": 0,
+        "displayName": "2.31 Savage BiS (max damage)",
+        "originalName": "2.31 max damage",
+        "category": "savage",
+        "gcd": "2.31"
+      },
+      {
+        "uuid": "6bb5fbca-35e6-4142-8bf0-9b50b80e900e",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (FRU)",
+        "originalName": "FRU",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "displayName": "TOP BiS (base)",
+        "originalName": "base",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.40 TOP BiS (6.5 TOP SPS Relic)",
+        "originalName": "6.5 TOP BiS - 2.40 SPS Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.31 TOP BiS (6.5 TOP SPS Relic)",
+        "originalName": "6.5 TOP BiS - 2.31 SPS Relic",
+        "category": "ultimate",
+        "gcd": "2.31",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.40 TOP BiS (6.5 TOP Det Relic)",
+        "originalName": "6.5 TOP BiS - 2.40 Det Relic",
+        "category": "ultimate",
+        "gcd": "2.40",
+        "githubIndex": 3,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "DSR BiS (Default)",
+        "originalName": "Default Set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "DSR BiS (3-2-2 DSR)",
+        "originalName": "3-2-2 DSR set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "DSR BiS (6-1-1 DSR)",
+        "originalName": "6-1-1 DSR set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "dsr"
+      }
+    ]
+  },
+  "ast": {
+    "job": "AST",
+    "presets": [
+      {
+        "uuid": "d223a0a1-dde4-410a-ac59-e8593e019a63",
+        "setIndex": 0,
+        "displayName": "2.43 Savage BiS (Max Damage)",
+        "originalName": "2.43 Max Damage",
+        "category": "savage",
+        "gcd": "2.43"
+      },
+      {
+        "uuid": "dca27524-4c12-4cd0-b26b-9bc4abba2d27",
+        "setIndex": 0,
+        "displayName": "2.31 Savage BiS (Max Damage)",
+        "originalName": "2.31 Max Damage",
+        "category": "savage",
+        "gcd": "2.31"
+      }
+    ]
+  },
+  "sge": {
+    "job": "SGE",
+    "presets": [
+      {
+        "uuid": "cb86be25-c3c0-4abf-b63c-a1967f34d73e",
+        "setIndex": 0,
+        "displayName": "2.44 Savage BiS (Max Damage)",
+        "originalName": "2.44 Max Damage",
+        "category": "savage",
+        "gcd": "2.44"
+      },
+      {
+        "uuid": "5a21d4d0-b46d-4f3a-92c1-b49b36455af9",
+        "setIndex": 0,
+        "displayName": "2.39 Savage BiS (Max Damage)",
+        "originalName": "2.39 Max Damage",
+        "category": "savage",
+        "gcd": "2.39"
+      },
+      {
+        "uuid": "326bbcc1-6390-484e-91a7-c608eeba192e",
+        "setIndex": 0,
+        "displayName": "2.45 Ultimate BiS (fru with chaotic)",
+        "originalName": "fru 2.45 with chaotic",
+        "category": "ultimate",
+        "gcd": "2.45"
+      },
+      {
+        "displayName": "2.44 TOP BiS (Crit/Det Relic)",
+        "originalName": "2.44 - Crit/Det Relic",
+        "category": "ultimate",
+        "gcd": "2.44",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.39 TOP BiS (Crit/SpS Relic)",
+        "originalName": "2.39 - Crit/SpS Relic",
+        "category": "ultimate",
+        "gcd": "2.39",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.44 TOP BiS (Babyface Champion weapon)",
+        "originalName": "2.44 - Babyface Champion weapon",
+        "category": "ultimate",
+        "gcd": "2.44",
+        "githubIndex": 4,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.47 TOP BiS (TOP weapon)",
+        "originalName": "2.47 - TOP weapon",
+        "category": "ultimate",
+        "gcd": "2.47",
+        "githubIndex": 6,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.39 TOP BiS (TOP weapon)",
+        "originalName": "2.39 - TOP weapon",
+        "category": "ultimate",
+        "gcd": "2.39",
+        "githubIndex": 7,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.50 TOP BiS (Synced only)",
+        "originalName": "2.50 - Synced gear only",
+        "category": "ultimate",
+        "gcd": "2.50",
+        "githubIndex": 9,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.47 TOP BiS (Synced only)",
+        "originalName": "2.47 - Synced gear only",
+        "category": "ultimate",
+        "gcd": "2.47",
+        "githubIndex": 10,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.44 TOP BiS (Minimal prep from)",
+        "originalName": "2.44 - Minimal prep from current gear",
+        "category": "ultimate",
+        "gcd": "2.44",
+        "githubIndex": 11,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.46 DSR BiS (Crit/Det Relic)",
+        "originalName": "2.46 Crit/Det Relic",
+        "category": "ultimate",
+        "gcd": "2.46",
+        "githubIndex": 0,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.48 DSR BiS (No Relic)",
+        "originalName": "2.48 No Relic",
+        "category": "ultimate",
+        "gcd": "2.48",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "TEA BiS (TEA)",
+        "originalName": "TEA BiS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Synced)",
+        "originalName": "Synced",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Piety)",
+        "originalName": "Piety Set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "UWU BiS",
+        "originalName": "BiS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Synced)",
+        "originalName": "Synced",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (High Piety)",
+        "originalName": "High Piety",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "uwu"
       }
     ]
   },
   "mnk": {
     "job": "MNK",
-    "sets": [
+    "presets": [
       {
-        "name": "1.94 Savage BiS",
         "uuid": "f9bcd4a7-ddfc-49bf-be48-b1caf4e0fa8b",
-        "setIndex": 0
+        "setIndex": 1,
+        "displayName": "1.94 Savage BiS",
+        "originalName": "1.94 Savage BiS",
+        "category": "savage",
+        "gcd": "1.94"
+      }
+    ]
+  },
+  "drg": {
+    "job": "DRG",
+    "presets": [
+      {
+        "displayName": "2.50 Savage BiS",
+        "originalName": "Savage BIS",
+        "category": "savage",
+        "gcd": "2.50",
+        "githubIndex": 0,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "FRU BiS (FRU)",
+        "originalName": "7.3 FRU BiS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "fru"
+      }
+    ]
+  },
+  "nin": {
+    "job": "NIN",
+    "presets": [
+      {
+        "uuid": "00cf7fea-60dc-4283-9b3e-6609b5d2a196",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "7.4 Savage BiS",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "d3479b42-1d9f-4ed2-b003-f3b5f3059f01",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (FRU)",
+        "originalName": "7.3 FRU BiS",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "displayName": "2.10 TOP BiS (Relic)",
+        "originalName": "2.10 Relic",
+        "category": "ultimate",
+        "gcd": "2.10",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.10 TOP BiS (Ult Weapon)",
+        "originalName": "2.10 Ult Weapon",
+        "category": "ultimate",
+        "gcd": "2.10",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.10 TOP BiS (i765 Weapon)",
+        "originalName": "2.10 i765 Weapon",
+        "category": "ultimate",
+        "gcd": "2.10",
+        "githubIndex": 3,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.12 TOP BiS (Relic)",
+        "originalName": "2.12 Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 5,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.12 TOP BiS (Ult Weapon)",
+        "originalName": "2.12 Ult Weapon",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 6,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.12 TOP BiS (i765 Weapon)",
+        "originalName": "2.12 i765 Weapon",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 7,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "DSR BiS (NIN DSR)",
+        "originalName": "NIN DSR BIS",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 0,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.12 DSR BiS (NIN DSR)",
+        "originalName": "NIN DSR 2.12 Set",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.12 TEA BiS (ShB Relic)",
+        "originalName": "2.12 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 0,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.12 TEA BiS (EW Relic)",
+        "originalName": "2.12 EW Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.12 TEA BiS (No Relic)",
+        "originalName": "2.12 No Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.09 UCoB BiS (ShB Relic)",
+        "originalName": "2.09 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.09",
+        "githubIndex": 0,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.12 UCoB BiS (EW Relic)",
+        "originalName": "2.12 EW Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.12 UCoB BiS (No Relic)",
+        "originalName": "2.12 No Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 2,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.10 UWU BiS (ShB Relic)",
+        "originalName": "2.10 ShB Relic",
+        "category": "ultimate",
+        "gcd": "2.10",
+        "githubIndex": 0,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.12 UWU BiS (EW Relic)",
+        "originalName": "2.12 EW Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "2.12 UWU BiS (No Relic)",
+        "originalName": "2.12 No Relic",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      }
+    ]
+  },
+  "sam": {
+    "job": "SAM",
+    "presets": [
+      {
+        "displayName": "2.14 Savage BiS",
+        "originalName": "2.14 Best-in-Slot",
+        "category": "savage",
+        "gcd": "2.14",
+        "githubIndex": 1,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.14 Savage BiS (Pentamelded Crafted)",
+        "originalName": "2.14 Pentamelded Crafted",
+        "category": "savage",
+        "gcd": "2.14",
+        "githubIndex": 2,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.14 Savage BiS (Economy Crafted)",
+        "originalName": "2.14 Economy Crafted",
+        "category": "savage",
+        "gcd": "2.14",
+        "githubIndex": 3,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.08 Savage BiS",
+        "originalName": "2.08 Best-in-Slot",
+        "category": "savage",
+        "gcd": "2.08",
+        "githubIndex": 6,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.08 Savage BiS (Pentamelded Crafted)",
+        "originalName": "2.08 Pentamelded Crafted",
+        "category": "savage",
+        "gcd": "2.08",
+        "githubIndex": 7,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.08 Savage BiS (Economy Crafted)",
+        "originalName": "2.08 Economy Crafted",
+        "category": "savage",
+        "gcd": "2.08",
+        "githubIndex": 8,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.47 Savage BiS (Pre- chest + earring)",
+        "originalName": "Pre-savage chest + earring",
+        "category": "savage",
+        "gcd": "2.47",
+        "githubIndex": 11,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.47 Savage BiS (Pre- chest + earring + neck)",
+        "originalName": "Pre-savage chest + earring + neck",
+        "category": "savage",
+        "gcd": "2.47",
+        "githubIndex": 12,
+        "githubTier": "current"
+      },
+      {
+        "displayName": "2.14 FRU BiS (FRU |)",
+        "originalName": "FRU 7.4 | 2.14",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 0,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.17 FRU BiS (FRU |)",
+        "originalName": "FRU 7.4 | 2.17",
+        "category": "ultimate",
+        "gcd": "2.17",
+        "githubIndex": 1,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.14 FRU BiS (FRU | weapon)",
+        "originalName": "FRU 7.4 | 2.14 savage weapon",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 2,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.14 FRU BiS (FRU | relic)",
+        "originalName": "FRU 7.4 | 2.14 relic",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 3,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.14 FRU BiS (FRU | no dungeon)",
+        "originalName": "FRU 7.4 | 2.14 no dungeon gear",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 4,
+        "githubTier": "fru"
+      },
+      {
+        "displayName": "2.14 TOP BiS (TOP |)",
+        "originalName": "TOP 7.4 | 2.14",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.15 TOP BiS (TOP |)",
+        "originalName": "TOP 7.4 | 2.15",
+        "category": "ultimate",
+        "gcd": "2.15",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.17 TOP BiS (TOP |)",
+        "originalName": "TOP 7.4 | 2.17",
+        "category": "ultimate",
+        "gcd": "2.17",
+        "githubIndex": 3,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.14 TOP BiS (TOP | budget)",
+        "originalName": "TOP 7.4 | 2.14 budget ",
+        "category": "ultimate",
+        "gcd": "2.14",
+        "githubIndex": 6,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.15 TOP BiS (TOP | budget)",
+        "originalName": "TOP 7.4 | 2.15 budget",
+        "category": "ultimate",
+        "gcd": "2.15",
+        "githubIndex": 7,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.17 TOP BiS (TOP | budget)",
+        "originalName": "TOP 7.4 | 2.17 budget",
+        "category": "ultimate",
+        "gcd": "2.17",
+        "githubIndex": 8,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "DSR BiS (DSR)",
+        "originalName": "DSR 7.4",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "DSR BiS (DSR | +22 str)",
+        "originalName": "DSR 7.4 | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "DSR BiS (No relic DSR)",
+        "originalName": "No relic DSR 7.4",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 5,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "DSR BiS (Full synced DSR)",
+        "originalName": "Full synced DSR 7.4",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 6,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "TEA BiS (Bozja Crit)",
+        "originalName": "Bozja Crit ",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Manderville Crit)",
+        "originalName": "Manderville Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Budget Crit)",
+        "originalName": "Budget Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 3,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Bozja Fast)",
+        "originalName": "Bozja Fast ",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 5,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Manderville Fast)",
+        "originalName": "Manderville Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 6,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Manderville Fast | +22 str)",
+        "originalName": "Manderville Fast | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 7,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Bozja Fastest)",
+        "originalName": "Bozja Fastest",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 9,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Bozja Fastest | +23 str)",
+        "originalName": "Bozja Fastest | +23 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 10,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Manderville Fastest)",
+        "originalName": "Manderville Fastest",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 11,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "TEA BiS (Manderville Fastest | +22 str)",
+        "originalName": "Manderville Fastest | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 12,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "UCoB BiS (Bozja Fast)",
+        "originalName": "Bozja Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Bozja Fast | +23 str)",
+        "originalName": "Bozja Fast | +23 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Manderville Fast)",
+        "originalName": "Manderville Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 3,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Budget Fast)",
+        "originalName": "Budget Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 4,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Bozja Crit)",
+        "originalName": "Bozja Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 6,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Bozja Crit | +22 str)",
+        "originalName": "Bozja Crit | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 7,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Manderville Crit)",
+        "originalName": "Manderville Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 8,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Manderville Crit | +22 str)",
+        "originalName": "Manderville Crit | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 9,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UCoB BiS (Budget Crit)",
+        "originalName": "Budget Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 10,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Fast)",
+        "originalName": "Bozja Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Manderville Fast)",
+        "originalName": "Manderville Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Budget Fast)",
+        "originalName": "Budget Fast",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 3,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Crit)",
+        "originalName": "Bozja Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 5,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Manderville Crit)",
+        "originalName": "Manderville Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 6,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Budget Crit)",
+        "originalName": "Budget Crit",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 7,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Crit Cursed)",
+        "originalName": "Bozja Crit Cursed",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 9,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Fast Cursed | +23 str)",
+        "originalName": "Bozja Fast Cursed | +23 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 10,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Fast Cursed | +23 str)",
+        "originalName": "Bozja Fast Cursed | +23 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 11,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "UWU BiS (Bozja Fast Cursed | +22 str)",
+        "originalName": "Bozja Fast Cursed | +22 str",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 12,
+        "githubTier": "uwu"
+      }
+    ]
+  },
+  "rpr": {
+    "job": "RPR",
+    "presets": [
+      {
+        "uuid": "887c54fb-ee93-4784-98b8-4260ada6383b",
+        "setIndex": 0,
+        "displayName": "2.49 Savage BiS",
+        "originalName": "7.4 2.49 Savage BiS",
+        "category": "savage",
+        "gcd": "2.49"
+      },
+      {
+        "uuid": "1cf30cb3-3fb2-47b9-a500-d8b117791a8e",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (FRU Options)",
+        "originalName": "7.3 FRU Options",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "displayName": "2.49 TOP BiS (6.5 RPR TOP)",
+        "originalName": "2.49 6.5 RPR TOP BiS",
+        "category": "ultimate",
+        "gcd": "2.49",
+        "githubIndex": 0,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "7.05 TOP BiS (Mixed)",
+        "originalName": "7.05 Mixed Set",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 1,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "TOP BiS (Synced Left Side, 630 Right Side)",
+        "originalName": "7.2 Synced Left Side, 630 Right Side",
+        "category": "ultimate",
+        "gcd": "",
+        "githubIndex": 2,
+        "githubTier": "top"
+      },
+      {
+        "displayName": "2.49 DSR BiS (RPR 6.45 Relic DSR)",
+        "originalName": "2.49 RPR 6.45 Relic DSR",
+        "category": "ultimate",
+        "gcd": "2.49",
+        "githubIndex": 1,
+        "githubTier": "dsr"
+      },
+      {
+        "displayName": "2.49 DSR BiS (DSR Synced+600/605)",
+        "originalName": "2.49 DSR Synced+600/605 Set",
+        "category": "ultimate",
+        "gcd": "2.49",
+        "githubIndex": 2,
+        "githubTier": "dsr"
+      }
+    ]
+  },
+  "vpr": {
+    "job": "VPR",
+    "presets": [
+      {
+        "uuid": "3cee67ac-1e2e-45af-bbd3-1c41bc55ff4e",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "7.4 Savage BiS",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "764814e5-62d2-430b-a7ac-09f9ab72a266",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (FRU)",
+        "originalName": "7.3 FRU BiS",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "uuid": "56ae8077-eb7b-4b5d-a310-95cbd584f2a0",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (Viper TOP)",
+        "originalName": "Viper TOP BiS",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "uuid": "48b50415-eb38-4d8f-80c8-ff7a5f15f987",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (Viper DSR)",
+        "originalName": "Viper DSR BiS",
+        "category": "ultimate",
+        "gcd": ""
+      },
+      {
+        "displayName": "2.12 TEA BiS",
+        "originalName": "2.12",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "1.92 TEA BiS",
+        "originalName": "1.92",
+        "category": "ultimate",
+        "gcd": "1.92",
+        "githubIndex": 2,
+        "githubTier": "tea"
+      },
+      {
+        "displayName": "2.12 UCoB BiS",
+        "originalName": "2.12",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "1.80 UCoB BiS",
+        "originalName": "1.80",
+        "category": "ultimate",
+        "gcd": "1.80",
+        "githubIndex": 2,
+        "githubTier": "ucob"
+      },
+      {
+        "displayName": "2.12 UWU BiS",
+        "originalName": "2.12",
+        "category": "ultimate",
+        "gcd": "2.12",
+        "githubIndex": 1,
+        "githubTier": "uwu"
+      },
+      {
+        "displayName": "1.82 UWU BiS",
+        "originalName": "1.82",
+        "category": "ultimate",
+        "gcd": "1.82",
+        "githubIndex": 2,
+        "githubTier": "uwu"
+      }
+    ]
+  },
+  "brd": {
+    "job": "BRD",
+    "presets": [
+      {
+        "uuid": "e2c1efce-33f8-4cfe-9db2-bd389aa921bb",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "i790 Best-in-Slot",
+        "category": "savage",
+        "gcd": "2.50"
+      }
+    ]
+  },
+  "mch": {
+    "job": "MCH",
+    "presets": [
+      {
+        "uuid": "3dac7eb3-10e4-4ef3-9373-e1e1a78fcc9b",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "7.4 iLvl 790 BiS",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "29b58122-8c79-4c92-8569-2aac404fe861",
+        "setIndex": 0,
+        "displayName": "2.50 Ultimate BiS (FRU)",
+        "originalName": "FRU Best-in-Slot 2.5 GCD",
+        "category": "ultimate",
+        "gcd": "2.50"
+      }
+    ]
+  },
+  "dnc": {
+    "job": "DNC",
+    "presets": [
+      {
+        "uuid": "aa7afb9b-0155-4aba-b4c5-4f14095a5d40",
+        "setIndex": 1,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "7.4 ilvl 790 BiS 2.5 GCD",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "2af8238e-4b85-4308-b0ab-33df7bb255ea",
+        "setIndex": 0,
+        "displayName": "Ultimate BiS (FRU Weapon)",
+        "originalName": "7.4 - FRU BiS Savage Weapon",
+        "category": "ultimate",
+        "gcd": ""
+      }
+    ]
+  },
+  "blm": {
+    "job": "BLM",
+    "presets": [
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 0,
+        "displayName": "2.15 Savage BiS (High SpS)",
+        "originalName": "2.15 High SpS BiS",
+        "category": "savage",
+        "gcd": "2.15"
+      },
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 1,
+        "displayName": "2.20 Savage BiS (High SpS)",
+        "originalName": "2.20 High SpS BiS",
+        "category": "savage",
+        "gcd": "2.20"
+      },
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 2,
+        "displayName": "2.32 Savage BiS (High Crit)",
+        "originalName": "2.32 High Crit BiS",
+        "category": "savage",
+        "gcd": "2.32"
+      },
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 3,
+        "displayName": "2.37 Savage BiS (High Crit)",
+        "originalName": "2.37 High Crit BiS",
+        "category": "savage",
+        "gcd": "2.37"
+      },
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 4,
+        "displayName": "2.41 Savage BiS (High Crit)",
+        "originalName": "2.41 High Crit BiS",
+        "category": "savage",
+        "gcd": "2.41"
+      },
+      {
+        "uuid": "08698620-8f30-42df-b4c8-df525fe78a95",
+        "setIndex": 5,
+        "displayName": "2.45 Savage BiS (High Crit Caster Friendly)",
+        "originalName": "2.45 High Crit Caster Friendly BiS",
+        "category": "savage",
+        "gcd": "2.45"
+      }
+    ]
+  },
+  "smn": {
+    "job": "SMN",
+    "presets": [
+      {
+        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
+        "setIndex": 0,
+        "displayName": "2.48 Savage BiS",
+        "originalName": "7.4 Savage Best in Slot - 2.48",
+        "category": "savage",
+        "gcd": "2.48"
+      },
+      {
+        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
+        "setIndex": 2,
+        "displayName": "2.47 Savage BiS",
+        "originalName": "7.4 Savage Best in Slot - 2.47",
+        "category": "savage",
+        "gcd": "2.47"
+      },
+      {
+        "uuid": "cff8f14d-cc73-459a-86b8-b7476b4d878c",
+        "setIndex": 4,
+        "displayName": "2.46 Savage BiS",
+        "originalName": "7.4 Savage Best in Slot - 2.46",
+        "category": "savage",
+        "gcd": "2.46"
+      },
+      {
+        "uuid": "02243465-733d-4ee5-b92e-6e924fb4591c",
+        "setIndex": 1,
+        "displayName": "2.48 Ultimate BiS (FRU)",
+        "originalName": "FRU 2.48 GCD",
+        "category": "ultimate",
+        "gcd": "2.48"
+      }
+    ]
+  },
+  "rdm": {
+    "job": "RDM",
+    "presets": [
+      {
+        "uuid": "bfc781a4-ef20-4f2d-ba35-66388adb30c6",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "7.4 RDM BiS - 2.5 GCD",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "14e2ed2f-0836-4970-9e42-98ba83311a78",
+        "setIndex": 0,
+        "displayName": "2.49 Savage BiS",
+        "originalName": "7.4 RDM BiS - 2.49 GCD",
+        "category": "savage",
+        "gcd": "2.49"
+      },
+      {
+        "uuid": "14e2ed2f-0836-4970-9e42-98ba83311a78",
+        "setIndex": 1,
+        "displayName": "2.48 Savage BiS",
+        "originalName": "7.4 RDM BiS - 2.48 GCD",
+        "category": "savage",
+        "gcd": "2.48"
+      },
+      {
+        "uuid": "67c7d792-7685-41d8-8b46-b559fb74b1fc",
+        "setIndex": 3,
+        "displayName": "Ultimate BiS (RDM FRU)",
+        "originalName": "7.4 RDM FRU BiS",
+        "category": "ultimate",
+        "gcd": ""
+      }
+    ]
+  },
+  "pct": {
+    "job": "PCT",
+    "presets": [
+      {
+        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
+        "setIndex": 0,
+        "displayName": "2.50 Savage BiS",
+        "originalName": "2.5 GCD BiS - Patch 7.4",
+        "category": "savage",
+        "gcd": "2.50"
+      },
+      {
+        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
+        "setIndex": 1,
+        "displayName": "2.49 Savage BiS",
+        "originalName": "2.49 GCD BiS - Patch 7.4",
+        "category": "savage",
+        "gcd": "2.49"
+      },
+      {
+        "uuid": "4bd90c49-7a54-483f-9107-042c89c8c68f",
+        "setIndex": 2,
+        "displayName": "2.48 Savage BiS",
+        "originalName": "2.48 GCD BiS - Patch 7.4",
+        "category": "savage",
+        "gcd": "2.48"
       }
     ]
   }

@@ -11,6 +11,7 @@ import { GEAR_SLOT_NAMES } from '../../types';
 import type {
   BiSImportData,
   BiSPreset,
+  ContentType,
   GearSlotStatus,
   GearSource,
   SnapshotPlayer,
@@ -56,6 +57,7 @@ interface BiSImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   player: SnapshotPlayer;
+  contentType: ContentType;
   onImport: (updates: { gear: GearSlotStatus[]; bisLink?: string }) => void;
 }
 
@@ -68,7 +70,7 @@ interface GearChange {
   to: GearSource;
 }
 
-export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportModalProps) {
+export function BiSImportModal({ isOpen, onClose, player, contentType, onImport }: BiSImportModalProps) {
   const [inputValue, setInputValue] = useState('');
   const [state, setState] = useState<ModalState>('input');
   const [error, setError] = useState('');
@@ -82,11 +84,12 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
   const [presetsLoading, setPresetsLoading] = useState(false);
   const [selectedPresetIndex, setSelectedPresetIndex] = useState<number | null>(null);
 
-  // Fetch presets when modal opens
+  // Fetch presets when modal opens (category determined by tier's contentType)
   useEffect(() => {
     if (isOpen && player.job && player.configured) {
       setPresetsLoading(true);
-      fetchBiSPresets(player.job)
+      setSelectedPresetIndex(null);
+      fetchBiSPresets(player.job, contentType)
         .then((response) => {
           setPresets(response.presets);
         })
@@ -98,7 +101,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
           setPresetsLoading(false);
         });
     }
-  }, [isOpen, player.job, player.configured]);
+  }, [isOpen, player.job, player.configured, contentType]);
 
   // Prefill with existing bisLink when modal opens
   useEffect(() => {
@@ -137,10 +140,14 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
       if (selectedPresetIndex !== null) {
         const selectedPreset = presets[selectedPresetIndex];
         if (selectedPreset?.uuid) {
-          // Local preset with direct XIVGear UUID
+          // Shortlink preset with direct XIVGear UUID
           data = await fetchBiSFromXIVGear(selectedPreset.uuid, selectedPreset.setIndex ?? 0);
+        } else if (selectedPreset?.githubTier !== undefined) {
+          // GitHub preset - use curated BiS URL format with tier file
+          const bisUrl = `bis|${player.job.toLowerCase()}|${selectedPreset.githubTier}`;
+          data = await fetchBiSFromXIVGear(bisUrl, selectedPreset.githubIndex ?? 0);
         } else {
-          // GitHub preset - use curated BiS URL format
+          // Fallback for presets without githubTier (legacy)
           const bisUrl = `bis|${player.job.toLowerCase()}|current`;
           data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
         }
@@ -226,10 +233,13 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     if (selectedPresetIndex !== null) {
       const selectedPreset = presets[selectedPresetIndex];
       if (selectedPreset?.uuid) {
-        // Local preset - store the XIVGear shortlink format
+        // Shortlink preset - store the XIVGear shortlink format
         bisLink = `sl|${selectedPreset.uuid}`;
+      } else if (selectedPreset?.githubTier !== undefined) {
+        // GitHub preset - store the curated BiS path with tier file
+        bisLink = `bis|${player.job.toLowerCase()}|${selectedPreset.githubTier}`;
       } else {
-        // GitHub preset - store the curated BiS path
+        // Fallback for presets without githubTier (legacy)
         bisLink = `bis|${player.job.toLowerCase()}|current`;
       }
     } else {
@@ -256,13 +266,14 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
       {state === 'input' && (
         <div className="space-y-4">
-          {/* Preset dropdown - only show if presets available */}
+          {/* Preset dropdown */}
           {player.configured && (
-            <div>
-              <label htmlFor="bisPreset" className="block text-text-secondary mb-1 text-sm">
-                Select a preset
-              </label>
-              <select
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="bisPreset" className="block text-text-secondary mb-1 text-sm">
+                  Select a preset
+                </label>
+                <select
                 id="bisPreset"
                 value={selectedPresetIndex ?? ''}
                 onChange={(e) => {
@@ -320,6 +331,7 @@ export function BiSImportModal({ isOpen, onClose, player, onImport }: BiSImportM
                   </a>
                 </div>
               )}
+              </div>
             </div>
           )}
 

@@ -15,7 +15,7 @@ import {
   getRoleDisplayName,
   type Role,
 } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 
@@ -60,6 +60,7 @@ interface PlayerCardProps {
   player: SnapshotPlayer;
   settings: StaticSettings;
   viewMode: ViewMode;
+  contentType: ContentType;
   clipboardPlayer: SnapshotPlayer | null;
   currentUserId?: string;
   isGroupOwner?: boolean;
@@ -81,6 +82,7 @@ export function PlayerCard({
   player,
   settings: _settings,
   viewMode,
+  contentType,
   clipboardPlayer,
   currentUserId,
   isGroupOwner,
@@ -413,6 +415,7 @@ export function PlayerCard({
         isOpen={showBiSImport}
         onClose={() => setShowBiSImport(false)}
         player={player}
+        contentType={contentType}
         onImport={(updates) => onUpdate(updates)}
       />
 
