@@ -387,8 +387,8 @@ export function GroupView() {
     onReorder: handleReorder,
   });
 
-  // Grid classes with padding for edge alignment
-  const gridClasses = 'grid gap-4 px-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+  // Grid classes (padding handled by parent wrapper)
+  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
   // Helper function to render a player card
   const renderPlayerCard = (player: SnapshotPlayer) => {
@@ -518,9 +518,9 @@ export function GroupView() {
 
       {/* Content when tier exists */}
       {currentTier && (
-        <>
+        <div className="px-4">
           {/* Toolbar: Tabs + Context Controls */}
-          <div className="px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
               {/* Floor selector - visible in Loot tab */}
@@ -628,23 +628,19 @@ export function GroupView() {
 
           {/* Loot Tab */}
           {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
-            <div className="px-4">
-              <LootPriorityPanel
-                players={configuredPlayers}
-                settings={DEFAULT_SETTINGS}
-                selectedFloor={selectedFloor}
-                floorName={tierInfo.floors[selectedFloor - 1]}
-              />
-            </div>
+            <LootPriorityPanel
+              players={configuredPlayers}
+              settings={DEFAULT_SETTINGS}
+              selectedFloor={selectedFloor}
+              floorName={tierInfo.floors[selectedFloor - 1]}
+            />
           )}
 
           {/* Stats Tab */}
           {pageMode === 'stats' && teamSummary && (
-            <div className="px-4">
-              <TeamSummary summary={teamSummary} />
-            </div>
+            <TeamSummary summary={teamSummary} />
           )}
-        </>
+        </div>
       )}
 
       {/* Create Tier Modal */}

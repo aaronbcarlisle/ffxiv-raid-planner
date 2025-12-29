@@ -173,7 +173,7 @@ export function PlayerCardHeader({
           {/* Job picker dropdown */}
           {showJobPicker && (
             <div
-              className="absolute z-50 top-full left-0 mt-2 w-64 bg-surface-overlay border border-border-default rounded-lg shadow-xl"
+              className="absolute z-50 top-full left-0 mt-2 w-64 bg-[#0a0a0f] border border-border-default rounded-lg shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Search input */}
