@@ -613,6 +613,7 @@ export function GroupView() {
                       player={draggedPlayer}
                       settings={DEFAULT_SETTINGS}
                       viewMode={viewMode}
+                      contentType={currentTier?.contentType ?? 'savage'}
                     />
                   );
                 })()}
