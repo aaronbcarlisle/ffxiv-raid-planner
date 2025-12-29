@@ -3,23 +3,45 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
+from .cache import close_cache, init_cache
 from .config import get_settings
 from .database import create_tables
+from .exceptions import register_exception_handlers
+from .logging_config import configure_logging, get_logger
+from .middleware import SecurityHeadersMiddleware
+from .rate_limit import limiter
 from .routers import auth_router, bis_router, invitations_router, static_groups_router, tiers_router
 
 settings = get_settings()
+configure_logging(settings)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler"""
-    # Startup: Create database tables
-    await create_tables()
+    logger.info(
+        "app_starting",
+        environment=settings.environment,
+        debug=settings.debug,
+    )
+    # Initialize cache (Redis or in-memory fallback)
+    await init_cache()
+    # Startup: Create database tables (only in development - use migrations in production)
+    if settings.environment == "development":
+        await create_tables()
+        logger.info("database_tables_created", mode="auto")
+    else:
+        logger.info("database_setup", mode="migrations")
     yield
-    # Shutdown: Nothing to clean up
+    # Shutdown
+    await close_cache()
+    logger.info("app_shutdown")
 
 
 app = FastAPI(
@@ -29,6 +51,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Rate limiting
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """Handle rate limit exceeded errors."""
+    logger.warning(
+        "rate_limit_exceeded",
+        path=request.url.path,
+        client_ip=request.client.host if request.client else "unknown",
+        limit=str(exc.detail),
+    )
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "rate_limit_exceeded",
+            "message": f"Too many requests. {exc.detail}",
+        },
+    )
+
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +81,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Security headers middleware (production only)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Register centralized exception handlers
+register_exception_handlers(app)
 
 # Include routers
 app.include_router(auth_router)

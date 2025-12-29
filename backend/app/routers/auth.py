@@ -2,19 +2,22 @@
 
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth_utils import create_access_token, create_refresh_token, verify_token
+from ..cache import oauth_state_cache
 from ..config import get_settings
 from ..database import get_session
 from ..dependencies import get_current_user
+from ..logging_config import get_logger
 from ..models import User
+from ..rate_limit import RATE_LIMITS, limiter
 from ..schemas import (
     DiscordAuthUrl,
     DiscordCallback,
@@ -25,26 +28,17 @@ from ..schemas import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
+logger = get_logger(__name__)
 
 # Discord OAuth URLs
 DISCORD_API_URL = "https://discord.com/api/v10"
 DISCORD_OAUTH_URL = "https://discord.com/oauth2/authorize"
 DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
 
-# In-memory state storage (for production, use Redis or database)
-_oauth_states: dict[str, datetime] = {}
-
-
-def _cleanup_expired_states() -> None:
-    """Remove expired OAuth states"""
-    now = datetime.now(timezone.utc)
-    expired = [k for k, v in _oauth_states.items() if now - v > timedelta(minutes=10)]
-    for k in expired:
-        del _oauth_states[k]
-
 
 @router.get("/discord", response_model=DiscordAuthUrl)
-async def get_discord_auth_url() -> DiscordAuthUrl:
+@limiter.limit(RATE_LIMITS["auth"])
+async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
     """Get Discord OAuth authorization URL"""
     if not settings.discord_configured:
         raise HTTPException(
@@ -52,10 +46,8 @@ async def get_discord_auth_url() -> DiscordAuthUrl:
             detail="Discord OAuth is not configured",
         )
 
-    _cleanup_expired_states()
-
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = datetime.now(timezone.utc)
+    await oauth_state_cache.set(state, {"created": datetime.now(timezone.utc).isoformat()})
 
     params = {
         "client_id": settings.discord_client_id,
@@ -66,13 +58,15 @@ async def get_discord_auth_url() -> DiscordAuthUrl:
     }
 
     url = f"{DISCORD_OAUTH_URL}?{urlencode(params)}"
+    logger.debug("oauth_url_generated", state=state[:8] + "...")
     return DiscordAuthUrl(url=url, state=state)
 
 
 @router.post("/discord/callback", response_model=TokenResponse)
+@limiter.limit(RATE_LIMITS["auth"])
 async def discord_callback(
+    request: Request,
     data: DiscordCallback,
-    response: Response,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     """Handle Discord OAuth callback"""
@@ -82,14 +76,14 @@ async def discord_callback(
             detail="Discord OAuth is not configured",
         )
 
-    # Verify state
-    _cleanup_expired_states()
-    if data.state not in _oauth_states:
+    # Verify state (cache handles TTL expiration automatically)
+    if not await oauth_state_cache.exists(data.state):
+        logger.warning("oauth_invalid_state", state=data.state[:8] + "...")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth state",
         )
-    del _oauth_states[data.state]
+    await oauth_state_cache.delete(data.state)
 
     # Exchange code for tokens
     async with httpx.AsyncClient() as client:
@@ -174,7 +168,9 @@ async def discord_callback(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit(RATE_LIMITS["auth"])
 async def refresh_access_token(
+    request: Request,
     data: RefreshTokenRequest,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:

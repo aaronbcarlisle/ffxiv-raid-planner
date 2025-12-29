@@ -10,3 +10,15 @@ python-dotenv>=1.0.0
 # Authentication
 python-jose[cryptography]>=3.3.0
 httpx>=0.27.0
+
+# Logging
+structlog>=24.0.0
+
+# Migrations
+alembic>=1.13.0
+
+# Caching
+redis>=5.0.0
+
+# Rate Limiting
+slowapi>=0.1.9

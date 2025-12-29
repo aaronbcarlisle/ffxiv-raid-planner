@@ -3,13 +3,15 @@
 import re
 from typing import Optional
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/bis", tags=["bis"])
+from ..cache import xivapi_item_cache
+from ..logging_config import get_logger
+from ..rate_limit import RATE_LIMITS, limiter
 
-# Cache for XIVAPI item lookups (in-memory, simple)
-_item_cache: dict[int, dict] = {}
+router = APIRouter(prefix="/api/bis", tags=["bis"])
+logger = get_logger(__name__)
 
 
 class GearSlotData(BaseModel):
@@ -195,8 +197,12 @@ def extract_item_stats(fields: dict) -> dict[str, int]:
 
 async def fetch_item_from_xivapi(item_id: int) -> dict:
     """Fetch item details from XIVAPI beta with caching."""
-    if item_id in _item_cache:
-        return _item_cache[item_id]
+    cache_key = str(item_id)
+
+    # Check cache first
+    cached = await xivapi_item_cache.get(cache_key)
+    if cached:
+        return cached
 
     async with httpx.AsyncClient() as client:
         try:
@@ -227,10 +233,11 @@ async def fetch_item_from_xivapi(item_id: int) -> dict:
                     "icon": icon_url,
                     "stats": stats,
                 }
-                _item_cache[item_id] = result
+                await xivapi_item_cache.set(cache_key, result)
+                logger.debug("xivapi_item_cached", item_id=item_id, name=result["name"])
                 return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("xivapi_fetch_error", item_id=item_id, error=str(e))
 
     return {"id": item_id, "name": "Unknown", "level": 0, "icon": None, "stats": {}}
 
@@ -399,7 +406,8 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
 
 
 @router.get("/presets/{job}", response_model=BiSPresetsResponse)
-async def get_bis_presets(job: str, category: Optional[str] = None):
+@limiter.limit(RATE_LIMITS["external_api"])
+async def get_bis_presets(request: Request, job: str, category: Optional[str] = None):
     """
     Get available BiS presets for a job.
 
@@ -479,7 +487,8 @@ async def get_bis_presets(job: str, category: Optional[str] = None):
 
 
 @router.get("/xivgear/{uuid_or_url:path}", response_model=BiSImportResponse)
-async def fetch_xivgear_bis(uuid_or_url: str, set_index: int = 0):
+@limiter.limit(RATE_LIMITS["external_api"])
+async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int = 0):
     """
     Fetch and parse a BiS set from XIVGear.app
 
@@ -572,7 +581,8 @@ async def fetch_xivgear_bis(uuid_or_url: str, set_index: int = 0):
 
 
 @router.get("/etro/{uuid_or_url:path}", response_model=BiSImportResponse)
-async def fetch_etro_bis(uuid_or_url: str):
+@limiter.limit(RATE_LIMITS["external_api"])
+async def fetch_etro_bis(request: Request, uuid_or_url: str):
     """
     Fetch and parse a BiS set from Etro.gg
 

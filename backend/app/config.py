@@ -34,11 +34,20 @@ class Settings(BaseSettings):
             return url.replace("postgres://", "postgresql+asyncpg://", 1)
         return url
 
-    # CORS - include common Vite dev server ports
+    # CORS - development includes common Vite dev server ports
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:5181,http://localhost:5182,http://127.0.0.1:5173"
+
+    # CORS for production - only the actual frontend domain (set via CORS_ORIGINS_PRODUCTION)
+    cors_origins_production: str = ""  # e.g., "https://raidplanner.example.com"
 
     # Debug mode
     debug: bool = True
+
+    # Logging
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+    # Redis (optional - falls back to in-memory cache if not configured)
+    redis_url: str = ""  # e.g., "redis://localhost:6379/0"
 
     # Discord OAuth
     discord_client_id: str = ""
@@ -70,8 +79,17 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Parse comma-separated CORS origins into a list"""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        """
+        Parse comma-separated CORS origins into a list.
+
+        In production, uses cors_origins_production (strict whitelist).
+        Falls back to cors_origins if production origins not configured.
+        """
+        if self.environment == "production" and self.cors_origins_production:
+            origins = self.cors_origins_production
+        else:
+            origins = self.cors_origins
+        return [origin.strip() for origin in origins.split(",") if origin.strip()]
 
     @property
     def discord_configured(self) -> bool:

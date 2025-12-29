@@ -1,3 +1,10 @@
+/**
+ * Context Menu - Right-click menu component
+ *
+ * Fixed-position menu that appears at cursor location.
+ * Uses design tokens for consistent styling.
+ */
+
 import { useEffect, useRef, type ReactNode } from 'react';
 
 export type ContextMenuItem = {
@@ -69,7 +76,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-bg-secondary border border-border-default rounded-lg shadow-lg py-1 min-w-40"
+      className="fixed z-50 bg-surface-overlay border border-border-default rounded-lg shadow-xl py-1 min-w-40
+                 animate-in fade-in-0 zoom-in-95"
       style={{ left: x, top: y }}
     >
       {items.map((item, index) => {
@@ -100,7 +108,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
               ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
               ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10' : ''}
-              ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-bg-hover' : ''}
+              ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-surface-interactive' : ''}
             `}
           >
             {item.icon && (

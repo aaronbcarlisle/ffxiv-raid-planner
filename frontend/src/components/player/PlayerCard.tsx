@@ -41,21 +41,6 @@ function getBiSSourceName(bisLink: string): string {
   return 'Etro'; // Plain UUID defaults to Etro
 }
 
-// Get position badge color classes based on position type
-function getPositionBadgeClasses(position: RaidPosition | null | undefined): string {
-  if (!position) {
-    return 'bg-bg-hover text-text-muted hover:text-text-secondary hover:bg-bg-hover/80';
-  }
-  if (position.startsWith('T')) {
-    return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';
-  }
-  if (position.startsWith('H')) {
-    return 'bg-role-healer/20 text-role-healer hover:bg-role-healer/30';
-  }
-  // M* and R* are DPS (red)
-  return 'bg-role-melee/20 text-role-melee hover:bg-role-melee/30';
-}
-
 interface PlayerCardProps {
   player: SnapshotPlayer;
   settings: StaticSettings;
@@ -104,15 +89,11 @@ export function PlayerCard({
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
-  const [showPositionPicker, setShowPositionPicker] = useState(false);
-  const [showTankRolePicker, setShowTankRolePicker] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(player.name);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const jobPickerRef = useRef<HTMLDivElement>(null);
-  const positionPickerRef = useRef<HTMLDivElement>(null);
-  const tankRolePickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -260,16 +241,6 @@ export function PlayerCard({
     onUpdate({ tankRole: tankRole ?? null });
   };
 
-  const handlePositionBadgeClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowPositionPicker(!showPositionPicker);
-  };
-
-  const handleTankRoleBadgeClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowTankRolePicker(!showTankRolePicker);
-  };
-
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -363,8 +334,8 @@ export function PlayerCard({
     },
   ];
 
-  // Elevate z-index when dropdowns are open to prevent overlap issues
-  const hasOpenDropdown = showJobPicker || showPositionPicker || showTankRolePicker;
+  // Elevate z-index when job picker is open (position/tank role use Radix portals)
+  const hasOpenDropdown = showJobPicker;
 
   return (
     <div
@@ -554,23 +525,11 @@ export function PlayerCard({
                   </span>
                 )}
                 {/* Position badge */}
-                <div ref={positionPickerRef} className="relative">
-                  <button
-                    onClick={handlePositionBadgeClick}
-                    className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getPositionBadgeClasses(player.position)}`}
-                    title={player.position ? `Position: ${player.position}` : 'Click to set position'}
-                  >
-                    {player.position || '--'}
-                  </button>
-                  {showPositionPicker && (
-                    <PositionSelector
-                      position={player.position}
-                      role={player.role}
-                      onSelect={handlePositionChange}
-                      onClose={() => setShowPositionPicker(false)}
-                    />
-                  )}
-                </div>
+                <PositionSelector
+                  position={player.position}
+                  role={player.role}
+                  onSelect={handlePositionChange}
+                />
                 {player.isSubstitute && (
                   <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
                     SUB
@@ -623,26 +582,10 @@ export function PlayerCard({
                 <span className="text-text-secondary">{getJobDisplayName(player.job)}</span>
                 {/* Tank role badge (MT/OT) - only for tanks */}
                 {player.role === 'tank' && (
-                  <div ref={tankRolePickerRef} className="relative">
-                    <button
-                      onClick={handleTankRoleBadgeClick}
-                      className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
-                        player.tankRole
-                          ? 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
-                          : 'bg-bg-hover text-text-muted hover:text-text-secondary hover:bg-bg-hover/80'
-                      }`}
-                      title={player.tankRole ? `Tank role: ${player.tankRole}` : 'Click to set MT/OT'}
-                    >
-                      {player.tankRole || '--'}
-                    </button>
-                    {showTankRolePicker && (
-                      <TankRoleSelector
-                        tankRole={player.tankRole}
-                        onSelect={handleTankRoleChange}
-                        onClose={() => setShowTankRolePicker(false)}
-                      />
-                    )}
-                  </div>
+                  <TankRoleSelector
+                    tankRole={player.tankRole}
+                    onSelect={handleTankRoleChange}
+                  />
                 )}
               </div>
             </div>

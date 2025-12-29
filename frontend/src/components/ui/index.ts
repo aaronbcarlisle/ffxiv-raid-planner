@@ -8,4 +8,5 @@ export { SettingsPopover } from './SettingsPopover';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { Toast } from './Toast';
+export { ToastContainer } from './ToastContainer';
 export { ViewModeToggle } from './ViewModeToggle';

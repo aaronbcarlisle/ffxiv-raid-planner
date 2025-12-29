@@ -2,56 +2,121 @@
 
 /* FRP Theme: Teal Glow */
 @theme {
-  /* Backgrounds - Deep blacks with cool undertone */
-  --color-bg-primary: #050508;
-  --color-bg-secondary: #0a0a0f;
-  --color-bg-card: #0e0e14;
-  --color-bg-elevated: #121218;
-  --color-bg-hover: #18181f;
+  /* ================================
+     SURFACE HIERARCHY
+     Clear naming for layered UI
+     ================================ */
+  --color-surface-base: #050508;       /* Page background */
+  --color-surface-raised: #0a0a0f;     /* Sections, sidebars */
+  --color-surface-card: #0e0e14;       /* Cards, panels */
+  --color-surface-elevated: #121218;   /* Nested containers, inputs */
+  --color-surface-overlay: #18181f;    /* Dropdowns, modals, popovers */
+  --color-surface-interactive: #1e1e26; /* Hover states */
 
-  /* Accent - Teal gradient */
+  /* Legacy aliases (for backward compatibility) */
+  --color-bg-primary: var(--color-surface-base);
+  --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-card: var(--color-surface-card);
+  --color-bg-elevated: var(--color-surface-elevated);
+  --color-bg-hover: var(--color-surface-interactive);
+
+  /* ================================
+     ACCENT COLORS
+     Teal gradient theme
+     ================================ */
   --color-accent: #14b8a6;
   --color-accent-dim: rgba(20, 184, 166, 0.15);
   --color-accent-bright: #2dd4bf;
   --color-accent-muted: #0d7377;
   --color-accent-deep: #0891b2;
 
-  /* Roles - Unchanged for FFXIV visual identity */
+  /* ================================
+     ROLE COLORS
+     FFXIV standard party colors
+     ================================ */
   --color-role-tank: #5a9fd4;
   --color-role-healer: #5ad490;
   --color-role-melee: #d45a5a;
   --color-role-ranged: #d4a05a;
   --color-role-caster: #b45ad4;
 
-  /* Gear Sources - Updated */
-  --color-source-raid: #ef4444;
-  --color-source-tome: #14b8a6;
-  --color-source-crafted: #a78bfa;
-  --color-source-augmented: #fbbf24;
+  /* ================================
+     GEAR SOURCE COLORS
+     Distinct from status colors
+     ================================ */
+  --color-gear-raid: #f87171;          /* Lighter red, distinct from error */
+  --color-gear-tome: #2dd4bf;          /* Bright teal */
+  --color-gear-augmented: #fcd34d;     /* Gold/amber */
+  --color-gear-crafted: #c4b5fd;       /* Soft purple */
 
-  /* Status */
+  /* Legacy aliases */
+  --color-source-raid: var(--color-gear-raid);
+  --color-source-tome: var(--color-gear-tome);
+  --color-source-crafted: var(--color-gear-crafted);
+  --color-source-augmented: var(--color-gear-augmented);
+
+  /* ================================
+     STATUS COLORS
+     Semantic feedback colors
+     ================================ */
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
   --color-status-info: #14b8a6;
 
-  /* Text - Slightly softer contrast */
+  /* ================================
+     TEXT COLORS
+     Softer contrast hierarchy
+     ================================ */
   --color-text-primary: #f0f0f5;
   --color-text-secondary: #a1a1aa;
   --color-text-muted: #52525b;
+  --color-text-disabled: #3f3f46;
 
-  /* Borders - Ultra subtle */
+  /* ================================
+     BORDER COLORS
+     Ultra subtle layering
+     ================================ */
   --color-border-default: #1f1f28;
   --color-border-subtle: #14141c;
   --color-border-highlight: #14b8a6;
+  --color-border-focus: rgba(20, 184, 166, 0.5);
 
-  /* Font families */
+  /* ================================
+     INTERACTIVE FEEDBACK
+     Focus rings, active states
+     ================================ */
+  --color-focus-ring: rgba(20, 184, 166, 0.4);
+  --color-active-bg: rgba(20, 184, 166, 0.15);
+  --color-hover-overlay: rgba(255, 255, 255, 0.05);
+
+  /* ================================
+     SHADOWS
+     Consistent elevation
+     ================================ */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.15);
+
+  /* ================================
+     TYPOGRAPHY
+     ================================ */
   --font-display: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Custom breakpoints */
+  /* ================================
+     SPACING & SIZING
+     Custom breakpoints
+     ================================ */
   --breakpoint-3xl: 1400px;
+
+  /* Animation durations */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
 }
 
 /* Base styles */
