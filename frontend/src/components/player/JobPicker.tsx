@@ -27,11 +27,12 @@ interface JobPickerProps {
   selectedJob: string;
   onJobSelect: (job: string) => void;
   templateRole?: TemplateRole; // Optional - only for template cards
+  onRequestClose?: () => void; // Optional - called when picker wants to close (click outside, escape)
 }
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
-export function JobPicker({ selectedJob, onJobSelect, templateRole }: JobPickerProps) {
+export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose }: JobPickerProps) {
   const [showFullPicker, setShowFullPicker] = useState(false);
   const [jobSearch, setJobSearch] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -79,13 +80,17 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole }: JobPickerP
       if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
         setShowFullPicker(false);
         setJobSearch('');
+        // Notify parent if this is a controlled picker
+        onRequestClose?.();
       }
     }
-    if (showFullPicker) {
+    // For template cards: only listen when expanded picker is shown
+    // For non-template cards: always listen (picker is always shown when parent renders it)
+    if (showFullPicker || !templateRole) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showFullPicker]);
+  }, [showFullPicker, templateRole, onRequestClose]);
 
   // Focus search when picker opens
   useEffect(() => {
@@ -97,19 +102,26 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole }: JobPickerP
   // Handle escape key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && showFullPicker) {
-        setShowFullPicker(false);
-        setJobSearch('');
+      if (e.key === 'Escape') {
+        // For template cards: only close if expanded picker is open
+        // For non-template cards: always close
+        if (showFullPicker || !templateRole) {
+          setShowFullPicker(false);
+          setJobSearch('');
+          onRequestClose?.();
+        }
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showFullPicker]);
+  }, [showFullPicker, templateRole, onRequestClose]);
 
   const handleJobClick = (job: string) => {
     onJobSelect(job);
     setShowFullPicker(false);
     setJobSearch('');
+    // Notify parent to close if this is a controlled picker
+    onRequestClose?.();
   };
 
   return (

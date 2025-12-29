@@ -133,6 +133,7 @@ export function PlayerCardHeader({
               <JobPicker
                 selectedJob={job}
                 onJobSelect={handleJobSelect}
+                onRequestClose={() => setShowJobPicker(false)}
               />
             </div>
           )}

@@ -89,18 +89,20 @@ export function StaticSwitcher({
                 <DropdownItem
                   key={group.id}
                   onSelect={() => navigate(`/group/${group.shareCode}`)}
-                  className={isCurrent ? 'bg-active-bg text-accent flex items-center gap-2' : 'flex items-center gap-2'}
+                  className={isCurrent ? 'bg-active-bg text-accent' : ''}
                 >
-                  <span className="truncate font-medium flex-1">{group.name}</span>
-                  {group.userRole ? (
-                    <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
-                      {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
-                    </Badge>
-                  ) : group.source === 'linked' ? (
-                    <Badge variant="warning" size="sm">
-                      Linked
-                    </Badge>
-                  ) : null}
+                  <div className="flex items-center gap-2 w-full">
+                    <span className="truncate font-medium flex-1">{group.name}</span>
+                    {group.userRole ? (
+                      <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
+                        {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                      </Badge>
+                    ) : group.source === 'linked' ? (
+                      <Badge variant="warning" size="sm">
+                        Linked
+                      </Badge>
+                    ) : null}
+                  </div>
                 </DropdownItem>
               );
             })
