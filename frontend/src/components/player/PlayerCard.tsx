@@ -328,6 +328,9 @@ export function PlayerCard({
         </div>
       </div>
 
+      {/* Spacer to push gear and footer to bottom (aligns cards with/without badges) */}
+      <div className="flex-1" />
+
       {/* Gear section - compact icons or expanded table */}
       <PlayerCardGear
         gear={player.gear}
@@ -336,9 +339,6 @@ export function PlayerCard({
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
       />
-
-      {/* Spacer to push footer to bottom */}
-      <div className="flex-1" />
 
       {/* Needs Footer - always visible at bottom */}
       <NeedsFooter needs={needs} />
