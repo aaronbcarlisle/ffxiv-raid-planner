@@ -1,161 +1,291 @@
 /**
- * Job Picker - Popover-based job selection with search
+ * Unified Job Picker Component
  *
- * Displays jobs grouped by role with search filtering.
- * Uses Radix Popover for accessibility.
+ * Reusable job selector for both template and configured player cards.
+ * - With templateRole: Shows role-specific quick-select icons + dropdown
+ * - Without templateRole: Just shows dropdown with all jobs
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { JobIcon } from '../ui/JobIcon';
-import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import {
-  groupJobsByRole,
-  getRoleDisplayName,
+  getJobsForTemplateRole,
   getJobDisplayName,
   getRoleColor,
+  getRoleDisplayName,
   getRaidJobs,
   type Role,
+  type JobInfo,
 } from '../../gamedata';
+import type { TemplateRole } from '../../types';
+import { TEMPLATE_ROLE_INFO, getRoleIconUrl } from '../../utils/constants';
+
+// Icon for "Other jobs" button
+const OTHER_JOBS_ICON_ID = 1;
 
 interface JobPickerProps {
-  value: string;
-  onChange: (job: string) => void;
+  selectedJob: string;
+  onJobSelect: (job: string) => void;
+  templateRole?: TemplateRole; // Optional - only for template cards
 }
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
-export function JobPicker({ value, onChange }: JobPickerProps) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
+export function JobPicker({ selectedJob, onJobSelect, templateRole }: JobPickerProps) {
+  const [showFullPicker, setShowFullPicker] = useState(false);
+  const [jobSearch, setJobSearch] = useState('');
+  const pickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const jobsByRole = groupJobsByRole();
+
+  // Get jobs for template role (if provided)
+  const templateJobs = useMemo(
+    () => (templateRole ? getJobsForTemplateRole(templateRole) : []),
+    [templateRole]
+  );
+
   const allJobs = getRaidJobs();
+  const roleInfo = templateRole ? TEMPLATE_ROLE_INFO[templateRole] : null;
+  const roleColorVar = roleInfo ? `var(--color-${roleInfo.color})` : null;
 
-  // Filter jobs based on search
+  // Filter all jobs for the expanded picker
   const filteredJobs = useMemo(() => {
-    if (!search.trim()) return null;
-    const query = search.toLowerCase();
+    if (!jobSearch.trim()) return allJobs;
+    const query = jobSearch.toLowerCase();
     return allJobs.filter(
-      (job) =>
-        job.abbreviation.toLowerCase().includes(query) ||
-        getJobDisplayName(job.abbreviation).toLowerCase().includes(query)
+      (j) =>
+        j.abbreviation.toLowerCase().includes(query) ||
+        getJobDisplayName(j.abbreviation).toLowerCase().includes(query)
     );
-  }, [search, allJobs]);
+  }, [jobSearch, allJobs]);
 
-  // Focus search input when dropdown opens, clear on close
+  // Group jobs by role for the expanded picker
+  const jobsByRole = useMemo(() => {
+    const groups: Record<Role, JobInfo[]> = {
+      tank: [],
+      healer: [],
+      melee: [],
+      ranged: [],
+      caster: [],
+    };
+    for (const j of filteredJobs) {
+      groups[j.role].push(j);
+    }
+    return groups;
+  }, [filteredJobs]);
+
+  // Close picker on click outside
   useEffect(() => {
-    if (open && searchInputRef.current) {
-      // Small delay to ensure popover is mounted
-      setTimeout(() => searchInputRef.current?.focus(), 10);
+    function handleClickOutside(event: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setShowFullPicker(false);
+        setJobSearch('');
+      }
     }
-    if (!open) {
-      setSearch('');
+    if (showFullPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [open]);
+  }, [showFullPicker]);
 
-  const handleSelect = (job: string) => {
-    onChange(job);
-    setOpen(false);
-    setSearch('');
+  // Focus search when picker opens
+  useEffect(() => {
+    if (showFullPicker && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showFullPicker]);
+
+  // Handle escape key
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && showFullPicker) {
+        setShowFullPicker(false);
+        setJobSearch('');
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showFullPicker]);
+
+  const handleJobClick = (job: string) => {
+    onJobSelect(job);
+    setShowFullPicker(false);
+    setJobSearch('');
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button
-          type="button"
-          className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
-        >
-          {value ? (
-            <>
-              <JobIcon job={value} size="md" />
-              <span className="text-text-primary">
-                {value} - {getJobDisplayName(value)}
-              </span>
-            </>
-          ) : (
-            <span className="text-text-muted">Select a job...</span>
-          )}
-          <span className="ml-auto text-text-muted">{open ? '▲' : '▼'}</span>
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-        {/* Search input */}
-        <div className="p-2 border-b border-border-default">
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search jobs..."
-            className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-          />
+    <div className="space-y-3" ref={pickerRef}>
+      {/* Template role label - only show if templateRole provided */}
+      {templateRole && roleInfo && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-text-muted">Select Job for</span>
+          <span
+            className="text-xs font-medium px-2 py-0.5 rounded"
+            style={{
+              backgroundColor: `var(--color-${roleInfo.color})/0.2`,
+              color: `var(--color-${roleInfo.color})`,
+            }}
+          >
+            {roleInfo.label}
+          </span>
         </div>
+      )}
 
-        {/* Job list */}
-        <div className="max-h-56 overflow-y-auto">
-          {filteredJobs ? (
-            // Show filtered results as flat list
-            filteredJobs.length > 0 ? (
-              <div className="py-1">
-                {filteredJobs.map((job) => (
-                  <button
-                    key={job.abbreviation}
-                    type="button"
-                    onClick={() => handleSelect(job.abbreviation)}
-                    className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
-                      value === job.abbreviation ? 'bg-active-bg' : ''
-                    }`}
-                  >
-                    <JobIcon job={job.abbreviation} size="md" />
-                    <span className="text-text-primary">{job.abbreviation}</span>
-                    <span className="text-text-secondary text-sm">
-                      {getJobDisplayName(job.abbreviation)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="px-3 py-4 text-center text-text-muted text-sm">
-                No jobs found
-              </div>
-            )
-          ) : (
-            // Show grouped by role when not searching
-            roleOrder.map((role) => (
-              <div key={role}>
-                {/* Role header */}
-                <div
-                  className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-overlay border-b border-border-default"
-                  style={{ color: getRoleColor(role) }}
-                >
-                  {getRoleDisplayName(role)}
-                </div>
-                {/* Jobs in role */}
+      {/* Quick select job icons - only show if templateRole provided */}
+      {templateRole && roleInfo && templateJobs.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {templateJobs.map((job) => (
+            <button
+              key={job.abbreviation}
+              type="button"
+              onClick={() => handleJobClick(job.abbreviation)}
+              className={`p-1.5 rounded-lg transition-all ${
+                selectedJob === job.abbreviation
+                  ? 'ring-2'
+                  : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
+              }`}
+              style={
+                selectedJob === job.abbreviation
+                  ? {
+                      boxShadow: `0 0 0 2px ${roleColorVar}`,
+                      backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
+                    }
+                  : undefined
+              }
+              title={`${job.abbreviation} - ${getJobDisplayName(job.abbreviation)}`}
+            >
+              <JobIcon job={job.abbreviation} size="lg" />
+            </button>
+          ))}
+
+          {/* "Other jobs" icon button */}
+          {(() => {
+            const isTemplateJob = templateJobs.some((j) => j.abbreviation === selectedJob);
+            const showSelected = showFullPicker && !isTemplateJob;
+            return (
+              <button
+                type="button"
+                onClick={() => setShowFullPicker(!showFullPicker)}
+                className={`p-1.5 rounded-lg transition-all ${
+                  showSelected
+                    ? 'ring-2'
+                    : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
+                }`}
+                style={
+                  showSelected
+                    ? {
+                        boxShadow: `0 0 0 2px ${roleColorVar}`,
+                        backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
+                      }
+                    : undefined
+                }
+                title="Other jobs..."
+              >
+                <img
+                  src={getRoleIconUrl(OTHER_JOBS_ICON_ID)}
+                  alt="Other jobs"
+                  className="w-10 h-10"
+                />
+              </button>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Expanded picker dropdown */}
+      {(showFullPicker || !templateRole) && (
+        <div className={templateRole ? 'relative' : ''}>
+          <div className={templateRole ? 'absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
+            {/* Search input */}
+            <div className="p-2 border-b border-border-default">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={jobSearch}
+                onChange={(e) => setJobSearch(e.target.value)}
+                placeholder="Search jobs..."
+                className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowFullPicker(false);
+                    setJobSearch('');
+                  }
+                }}
+              />
+            </div>
+
+            {/* Job list */}
+            <div className="max-h-56 overflow-y-auto">
+              {filteredJobs.length === 0 ? (
+                <div className="px-3 py-4 text-center text-text-muted text-sm">No jobs found</div>
+              ) : jobSearch.trim() ? (
+                // Flat list when searching
                 <div className="py-1">
-                  {jobsByRole[role].map((job) => (
+                  {filteredJobs.map((j) => (
                     <button
-                      key={job.abbreviation}
+                      key={j.abbreviation}
                       type="button"
-                      onClick={() => handleSelect(job.abbreviation)}
+                      onClick={() => handleJobClick(j.abbreviation)}
                       className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
-                        value === job.abbreviation ? 'bg-active-bg' : ''
+                        selectedJob === j.abbreviation ? 'bg-accent/10' : ''
                       }`}
                     >
-                      <JobIcon job={job.abbreviation} size="md" />
-                      <span className="text-text-primary">{job.abbreviation}</span>
+                      <JobIcon job={j.abbreviation} size="md" />
+                      <span className="text-text-primary">{j.abbreviation}</span>
                       <span className="text-text-secondary text-sm">
-                        {getJobDisplayName(job.abbreviation)}
+                        {getJobDisplayName(j.abbreviation)}
                       </span>
                     </button>
                   ))}
                 </div>
-              </div>
-            ))
-          )}
+              ) : (
+                // Grouped by role when not searching
+                roleOrder.map((role) => {
+                  const jobs = jobsByRole[role];
+                  if (jobs.length === 0) return null;
+                  return (
+                    <div key={role}>
+                      <div
+                        className="px-3 py-1.5 text-xs font-medium sticky top-0 bg-surface-raised border-b border-border-default"
+                        style={{ color: getRoleColor(role) }}
+                      >
+                        {getRoleDisplayName(role)}
+                      </div>
+                      <div className="py-1">
+                        {jobs.map((j) => (
+                          <button
+                            key={j.abbreviation}
+                            type="button"
+                            onClick={() => handleJobClick(j.abbreviation)}
+                            className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
+                              selectedJob === j.abbreviation ? 'bg-accent/10' : ''
+                            }`}
+                          >
+                            <JobIcon job={j.abbreviation} size="md" />
+                            <span className="text-text-primary">{j.abbreviation}</span>
+                            <span className="text-text-secondary text-sm">
+                              {getJobDisplayName(j.abbreviation)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+
+      {/* Selected job display - only show for template cards */}
+      {templateRole && selectedJob && (
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <span>Selected:</span>
+          <JobIcon job={selectedJob} size="sm" />
+          <span className="text-text-primary font-medium">{selectedJob}</span>
+          <span>- {getJobDisplayName(selectedJob)}</span>
+        </div>
+      )}
+    </div>
   );
 }
