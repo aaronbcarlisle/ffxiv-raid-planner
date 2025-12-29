@@ -387,8 +387,8 @@ export function GroupView() {
     onReorder: handleReorder,
   });
 
-  // Grid classes
-  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+  // Grid classes with padding for edge alignment
+  const gridClasses = 'grid gap-4 px-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
   // Helper function to render a player card
   const renderPlayerCard = (player: SnapshotPlayer) => {
@@ -497,10 +497,10 @@ export function GroupView() {
   }
 
   return (
-    <div className="max-w-[120rem] mx-auto px-4 py-3">
+    <div className="max-w-[120rem] mx-auto py-3">
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
-        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
+        <div className="mx-4 text-center py-12 bg-surface-card rounded-lg border border-border-default">
           <h2 className="text-xl font-display text-accent mb-2">No Raid Tiers</h2>
           <p className="text-text-muted mb-6">
             Create your first tier snapshot to start tracking gear progress.
@@ -520,7 +520,7 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* Toolbar: Tabs + Context Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+          <div className="px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
               {/* Floor selector - visible in Loot tab */}
@@ -628,17 +628,21 @@ export function GroupView() {
 
           {/* Loot Tab */}
           {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
-            <LootPriorityPanel
-              players={configuredPlayers}
-              settings={DEFAULT_SETTINGS}
-              selectedFloor={selectedFloor}
-              floorName={tierInfo.floors[selectedFloor - 1]}
-            />
+            <div className="px-4">
+              <LootPriorityPanel
+                players={configuredPlayers}
+                settings={DEFAULT_SETTINGS}
+                selectedFloor={selectedFloor}
+                floorName={tierInfo.floors[selectedFloor - 1]}
+              />
+            </div>
           )}
 
           {/* Stats Tab */}
           {pageMode === 'stats' && teamSummary && (
-            <TeamSummary summary={teamSummary} />
+            <div className="px-4">
+              <TeamSummary summary={teamSummary} />
+            </div>
           )}
         </>
       )}
