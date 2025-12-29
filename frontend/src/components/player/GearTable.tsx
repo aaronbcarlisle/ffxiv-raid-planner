@@ -177,7 +177,14 @@ function WeaponSlotRow({
             <div className="flex justify-center">
               <Checkbox
                 checked={tomeWeapon.hasItem}
-                onChange={(checked) => onTomeWeaponChange({ hasItem: checked })}
+                onChange={(checked) => {
+                  // When unchecking "Have", also uncheck "Augmented"
+                  if (!checked) {
+                    onTomeWeaponChange({ hasItem: checked, isAugmented: false });
+                  } else {
+                    onTomeWeaponChange({ hasItem: checked });
+                  }
+                }}
               />
             </div>
           </td>
@@ -225,7 +232,12 @@ export function GearTable({
   };
 
   const handleHasItemChange = (slot: string, hasItem: boolean) => {
-    onGearChange(slot, { hasItem });
+    // When unchecking "Have", also uncheck "Augmented" to keep state consistent
+    if (!hasItem) {
+      onGearChange(slot, { hasItem, isAugmented: false });
+    } else {
+      onGearChange(slot, { hasItem });
+    }
   };
 
   const handleAugmentedChange = (slot: string, isAugmented: boolean) => {
