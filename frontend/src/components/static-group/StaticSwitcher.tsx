@@ -15,7 +15,7 @@ import {
   DropdownSeparator,
   DropdownTrigger,
 } from '../primitives';
-import { Badge } from '../primitives';
+import { Badge, Tooltip } from '../primitives';
 
 // Role badge variants
 const ROLE_VARIANTS: Record<MemberRole, 'info' | 'caster' | 'tank' | 'default'> = {
@@ -92,7 +92,11 @@ export function StaticSwitcher({
                   className={isCurrent ? 'bg-active-bg text-accent' : ''}
                 >
                   <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
-                    <span className="font-medium truncate min-w-0">{group.name}</span>
+                    <Tooltip content={group.name}>
+                      <span className="font-medium truncate min-w-0 max-w-[180px] block">
+                        {group.name}
+                      </span>
+                    </Tooltip>
                     {group.userRole ? (
                       <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
                         {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
