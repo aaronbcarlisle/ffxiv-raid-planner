@@ -5,14 +5,18 @@ import {
 } from '../../gamedata';
 import type { SnapshotPlayer } from '../../types';
 import { TEMPLATE_ROLE_INFO } from '../../utils/constants';
+import { canManageRoster, type MemberRole } from '../../utils/permissions';
 
 interface InlinePlayerEditProps {
   player: SnapshotPlayer;
+  userRole?: MemberRole | null;
   onSave: (name: string, job: string, role: string) => void;
   onCancel: () => void;
 }
 
-export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditProps) {
+export function InlinePlayerEdit({ player, userRole, onSave, onCancel }: InlinePlayerEditProps) {
+  // Check roster management permission (needed to configure template slots)
+  const rosterPermission = canManageRoster(userRole);
   const [name, setName] = useState(player.name);
   const [job, setJob] = useState(player.job);
   const [showNameError, setShowNameError] = useState(false);
@@ -54,6 +58,33 @@ export function InlinePlayerEdit({ player, onSave, onCancel }: InlinePlayerEditP
   // Get role color for template slots
   const templateRoleInfo = player.templateRole ? TEMPLATE_ROLE_INFO[player.templateRole] : null;
   const roleColorVar = templateRoleInfo ? `var(--color-${templateRoleInfo.color})` : null;
+
+  // Show permission denied message if user lacks roster management
+  if (!rosterPermission.allowed) {
+    return (
+      <div
+        className="bg-surface-card border-2 rounded-lg p-4"
+        style={{ borderColor: roleColorVar || 'var(--color-accent)' }}
+      >
+        <div className="mb-4">
+          <p className="text-text-muted text-sm mb-2">Cannot configure player slot</p>
+          <p className="text-xs text-text-secondary">{rosterPermission.reason}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full px-3 py-2 rounded text-sm font-medium border-2 transition-colors hover:brightness-110"
+          style={{
+            borderColor: roleColorVar || 'var(--color-text-muted)',
+            color: roleColorVar || 'var(--color-text-secondary)',
+            backgroundColor: 'transparent',
+          }}
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

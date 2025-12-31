@@ -398,6 +398,7 @@ export function GroupView() {
         <InlinePlayerEdit
           key={player.id}
           player={player}
+          userRole={userRole}
           onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
           onCancel={() => setEditingPlayerId(null)}
         />
