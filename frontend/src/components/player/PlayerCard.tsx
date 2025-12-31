@@ -98,34 +98,59 @@ export function PlayerCard({
   }, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
 
   // Handlers
-  const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
+  const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
     const newGear = player.gear.map((g) =>
       g.slot === slot ? { ...g, ...updates } : g
     );
-    onUpdate({ gear: newGear });
-  };
-
-  const handleTomeWeaponChange = (updates: Partial<typeof player.tomeWeapon>) => {
-    onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
-  };
-
-  const handleJobChange = (newJob: string) => {
-    const newRole = getRoleForJob(newJob);
-    if (newRole) {
-      onUpdate({ job: newJob, role: newRole });
+    try {
+      await onUpdate({ gear: newGear });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
     }
   };
 
-  const handleNameChange = (name: string) => {
-    onUpdate({ name });
+  const handleTomeWeaponChange = async (updates: Partial<typeof player.tomeWeapon>) => {
+    try {
+      await onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
   };
 
-  const handlePositionChange = (position: RaidPosition | undefined) => {
-    onUpdate({ position: position ?? null });
+  const handleJobChange = async (newJob: string) => {
+    const newRole = getRoleForJob(newJob);
+    if (newRole) {
+      try {
+        await onUpdate({ job: newJob, role: newRole });
+      } catch (error) {
+        // Error already handled by api.ts (toast shown)
+        // Just prevent unhandled promise rejection
+      }
+    }
   };
 
-  const handleTankRoleChange = (tankRole: TankRole | undefined) => {
-    onUpdate({ tankRole: tankRole ?? null });
+  const handleNameChange = async (name: string) => {
+    try {
+      await onUpdate({ name });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
+  };
+
+  const handlePositionChange = async (position: RaidPosition | undefined) => {
+    try {
+      await onUpdate({ position: position ?? null });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
+  };
+
+  const handleTankRoleChange = async (tankRole: TankRole | undefined) => {
+    try {
+      await onUpdate({ tankRole: tankRole ?? null });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {

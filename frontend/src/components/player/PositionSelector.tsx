@@ -50,16 +50,6 @@ function getPositionBgClasses(pos: RaidPosition, isSelected: boolean, isSuggeste
   return 'bg-surface-base text-text-muted hover:bg-surface-interactive hover:text-text-secondary';
 }
 
-// Get trigger classes with hover effects (for dropdown items and enabled trigger)
-function getTriggerClasses(position: RaidPosition | null | undefined): string {
-  if (!position) {
-    return 'bg-surface-interactive text-text-muted hover:text-text-secondary';
-  }
-  if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';
-  if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer hover:bg-role-healer/30';
-  return 'bg-role-melee/20 text-role-melee hover:bg-role-melee/30';
-}
-
 // Base colors only (no hover) - for permission-disabled trigger
 function getBaseClasses(position: RaidPosition | null | undefined): string {
   if (!position) {

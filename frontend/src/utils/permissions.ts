@@ -30,7 +30,7 @@ export interface PermissionCheck {
  * - Viewers cannot edit
  */
 export function canEditPlayer(
-  userRole: MemberRole | null,
+  userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string
 ): PermissionCheck {
@@ -61,7 +61,7 @@ export function canEditPlayer(
  * Same rules as canEditPlayer, but with gear-specific error messaging.
  */
 export function canEditGear(
-  userRole: MemberRole | null,
+  userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string
 ): PermissionCheck {
@@ -78,7 +78,7 @@ export function canEditGear(
  * This is a destructive action, so same rules as editing but with specific messaging.
  */
 export function canResetGear(
-  userRole: MemberRole | null,
+  userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string
 ): PermissionCheck {
@@ -113,7 +113,7 @@ export function canResetGear(
  * - Viewers cannot claim
  */
 export function canClaimPlayer(
-  userRole: MemberRole | null,
+  userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string
 ): PermissionCheck {
@@ -146,7 +146,7 @@ export function canClaimPlayer(
  * - Owners and Leads can manage roster
  * - Members and Viewers cannot
  */
-export function canManageRoster(userRole: MemberRole | null): PermissionCheck {
+export function canManageRoster(userRole: MemberRole | null | undefined): PermissionCheck {
   if (!userRole) {
     return { allowed: false, reason: 'You must be logged in' };
   }
@@ -167,7 +167,7 @@ export function canManageRoster(userRole: MemberRole | null): PermissionCheck {
  *
  * Same permission level as managing roster.
  */
-export function canManageTiers(userRole: MemberRole | null): PermissionCheck {
+export function canManageTiers(userRole: MemberRole | null | undefined): PermissionCheck {
   const check = canManageRoster(userRole);
   if (!check.allowed && check.reason?.includes('players')) {
     return { allowed: false, reason: 'Only Leads and Owners can create, delete, or rollover tiers' };
@@ -183,7 +183,7 @@ export function canManageTiers(userRole: MemberRole | null): PermissionCheck {
  * Rules:
  * - Only the Owner can manage group settings
  */
-export function canManageGroup(userRole: MemberRole | null): PermissionCheck {
+export function canManageGroup(userRole: MemberRole | null | undefined): PermissionCheck {
   if (!userRole) {
     return { allowed: false, reason: 'You must be logged in' };
   }
@@ -201,7 +201,7 @@ export function canManageGroup(userRole: MemberRole | null): PermissionCheck {
  * Rules:
  * - Owners and Leads can manage invitations
  */
-export function canManageInvitations(userRole: MemberRole | null): PermissionCheck {
+export function canManageInvitations(userRole: MemberRole | null | undefined): PermissionCheck {
   if (!userRole) {
     return { allowed: false, reason: 'You must be logged in' };
   }
@@ -218,7 +218,7 @@ export function canManageInvitations(userRole: MemberRole | null): PermissionChe
 /**
  * Get a user-friendly role description for UI display.
  */
-export function getRoleDescription(role: MemberRole | null): string {
+export function getRoleDescription(role: MemberRole | null | undefined): string {
   if (!role) return 'No access';
 
   const descriptions: Record<MemberRole, string> = {
@@ -234,7 +234,7 @@ export function getRoleDescription(role: MemberRole | null): string {
 /**
  * Get role display name (capitalized).
  */
-export function getRoleDisplayName(role: MemberRole | null): string {
+export function getRoleDisplayName(role: MemberRole | null | undefined): string {
   if (!role) return 'Viewer';
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
@@ -242,7 +242,7 @@ export function getRoleDisplayName(role: MemberRole | null): string {
 /**
  * Get role color classes for Tailwind styling.
  */
-export function getRoleColorClasses(role: MemberRole | null): string {
+export function getRoleColorClasses(role: MemberRole | null | undefined): string {
   if (!role) return 'bg-gray-500/10 border-gray-500/30 text-gray-400';
 
   const colorClasses: Record<MemberRole, string> = {

@@ -75,6 +75,8 @@ export function PlayerCardHeader({
 
   const handleJobIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before opening job picker
+    if (!editPermission.allowed) return;
     setShowJobPicker(!showJobPicker);
   };
 
@@ -130,9 +132,18 @@ export function PlayerCardHeader({
           <button
             type="button"
             onClick={handleJobIconClick}
-            className="p-0.5 rounded cursor-pointer hover:ring-2 hover:ring-accent/50 transition-all"
+            className={`p-0.5 rounded transition-all ${
+              editPermission.allowed
+                ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
+                : 'cursor-not-allowed opacity-75'
+            }`}
             style={{ backgroundColor: roleColor }}
-            title="Click to change job"
+            title={
+              editPermission.allowed
+                ? 'Click to change job'
+                : editPermission.reason
+            }
+            disabled={!editPermission.allowed}
           >
             <JobIcon job={job} size="lg" className="rounded-sm" />
           </button>
