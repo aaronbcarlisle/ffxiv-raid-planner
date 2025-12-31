@@ -82,10 +82,8 @@ export function PositionSelector({
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
-            !editPermission.allowed
-              ? 'opacity-50 cursor-not-allowed'
-              : getTriggerClasses(position)
+          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getTriggerClasses(position)} ${
+            !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           title={
             !editPermission.allowed
