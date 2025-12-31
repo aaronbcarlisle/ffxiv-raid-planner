@@ -14,6 +14,7 @@ export type ContextMenuItem = {
   disabled?: boolean;
   danger?: boolean;
   keepOpen?: boolean; // Don't close menu after clicking
+  tooltip?: string; // Tooltip shown on hover (especially useful for disabled items)
   separator?: never;
 } | {
   separator: true;
@@ -23,6 +24,7 @@ export type ContextMenuItem = {
   disabled?: never;
   danger?: never;
   keepOpen?: never;
+  tooltip?: never;
 };
 
 interface ContextMenuProps {
@@ -104,6 +106,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               }
             }}
             disabled={item.disabled}
+            title={item.tooltip}
             className={`
               w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
               ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
