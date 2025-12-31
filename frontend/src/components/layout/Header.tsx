@@ -15,6 +15,7 @@ import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { SettingsPopover } from '../ui';
 import { RAID_TIERS } from '../../gamedata';
+import { canManageTiers, canManageGroup } from '../../utils/permissions';
 import type { MemberRole } from '../../types';
 
 // Role badge colors
@@ -91,9 +92,13 @@ export function Header() {
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   };
 
+  // Check permissions
+  const tierPermission = canManageTiers(userRole);
+  const groupPermission = canManageGroup(userRole);
+
   // Build settings actions
   const settingsActions = useMemo(() => {
-    if (!canEdit) return [];
+    if (!tierPermission.allowed) return [];
 
     return [
       {
@@ -106,6 +111,7 @@ export function Header() {
           </svg>
         ),
         disabled: !currentTier || isSaving,
+        tooltip: !currentTier ? 'Create a tier first' : isSaving ? 'Saving...' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ADD_PLAYER),
       },
       {
@@ -117,6 +123,7 @@ export function Header() {
           </svg>
         ),
         disabled: availableTiers.length === 0,
+        tooltip: availableTiers.length === 0 ? 'All tiers have been created' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.NEW_TIER),
       },
       {
@@ -128,9 +135,10 @@ export function Header() {
           </svg>
         ),
         disabled: !currentTier || availableTiers.length === 0,
+        tooltip: !currentTier ? 'Create a tier first' : availableTiers.length === 0 ? 'All tiers have been created' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ROLLOVER),
       },
-      ...(userRole === 'owner' ? [{
+      ...(groupPermission.allowed ? [{
         id: 'settings',
         label: 'Static Settings',
         icon: (
@@ -151,10 +159,11 @@ export function Header() {
         ),
         danger: true,
         disabled: !currentTier || tiers.length <= 1,
+        tooltip: !currentTier ? 'No tier to delete' : tiers.length <= 1 ? 'Cannot delete the last tier' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.DELETE_TIER),
       },
     ];
-  }, [canEdit, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, userRole, tiers.length]);
+  }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length]);
 
   return (
     <header className="bg-surface-raised border-b border-border-default">

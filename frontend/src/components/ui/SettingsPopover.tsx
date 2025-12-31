@@ -21,6 +21,7 @@ interface PopoverAction {
   badge?: string;
   danger?: boolean;
   disabled?: boolean;
+  tooltip?: string;
   onClick: () => void;
 }
 
@@ -67,6 +68,7 @@ export function SettingsPopover({ actions }: SettingsPopoverProps) {
               icon={<span className="w-5 flex-shrink-0">{action.icon}</span>}
               onSelect={action.onClick}
               disabled={action.disabled}
+              title={action.tooltip}
               className={action.danger ? 'text-status-error focus:text-status-error' : ''}
             >
               <span className="flex-1">{action.label}</span>

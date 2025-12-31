@@ -17,6 +17,7 @@ import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
+import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
@@ -26,6 +27,7 @@ interface PlayerCardProps {
   clipboardPlayer: SnapshotPlayer | null;
   currentUserId?: string;
   isGroupOwner?: boolean;
+  userRole?: MemberRole | null;
   dragListeners?: DragListeners;
   dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
@@ -48,6 +50,7 @@ export function PlayerCard({
   clipboardPlayer,
   currentUserId,
   isGroupOwner,
+  userRole,
   dragListeners,
   dragAttributes,
   onUpdate,
@@ -142,6 +145,11 @@ export function PlayerCard({
   const canClaim = !player.userId && currentUserId && onClaimPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
+  // Permission checks
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
+  const rosterPermission = canManageRoster(userRole);
+  const resetPermission = canResetGear(userRole, player, currentUserId);
+
   // Context menu items
   const contextMenuItems: ContextMenuItem[] = [
     {
@@ -152,6 +160,8 @@ export function PlayerCard({
         </svg>
       ),
       onClick: () => setShowBiSImport(true),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
     ...(player.bisLink ? [{
       label: 'Unlink BiS',
@@ -162,28 +172,36 @@ export function PlayerCard({
         </svg>
       ),
       onClick: () => onUpdate({ bisLink: '' }),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
     { separator: true },
     {
       label: 'Copy Player',
       icon: CONTEXT_MENU_ICONS.copy,
       onClick: onCopy,
+      // Copy is always allowed (read-only operation)
     },
     {
       label: 'Paste Player',
       icon: CONTEXT_MENU_ICONS.paste,
       onClick: onPaste,
-      disabled: !clipboardPlayer,
+      disabled: !clipboardPlayer || !editPermission.allowed,
+      tooltip: !clipboardPlayer ? 'No player copied' : !editPermission.allowed ? editPermission.reason : undefined,
     },
     {
       label: 'Duplicate Player',
       icon: CONTEXT_MENU_ICONS.duplicate,
       onClick: () => onDuplicate(),
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
       icon: CONTEXT_MENU_ICONS.substitute,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     { separator: true },
     ...(canClaim ? [{
@@ -213,13 +231,16 @@ export function PlayerCard({
         </svg>
       ),
       onClick: onResetGear,
-      disabled: !onResetGear,
+      disabled: !onResetGear || !resetPermission.allowed,
+      tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
     },
     {
       label: 'Remove Player',
       icon: CONTEXT_MENU_ICONS.remove,
       onClick: () => setShowRemoveConfirm(true),
       danger: true,
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
   ];
 
