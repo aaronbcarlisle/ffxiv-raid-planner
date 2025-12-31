@@ -14,7 +14,7 @@ import {
   type Role,
 } from '../../gamedata';
 import type { RaidPosition, SnapshotPlayer } from '../../types';
-import type { MemberRole } from '../../utils/permissions';
+import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -57,6 +57,9 @@ export function PlayerCardHeader({
   const displayRole = validRoles.includes(role as Role) ? role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
 
+  // Check edit permission
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
+
   // Focus name input when editing starts
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
@@ -82,12 +85,16 @@ export function PlayerCardHeader({
 
   const handleNameDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before entering edit mode
+    if (!editPermission.allowed) return;
     setIsEditingName(true);
     setEditedName(name);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before entering edit mode
+    if (!editPermission.allowed) return;
     setIsEditingName(true);
     setEditedName(name);
   };
@@ -162,18 +169,29 @@ export function PlayerCardHeader({
             ) : (
               <div className="flex items-center gap-1">
                 <span
-                  className="font-medium text-text-primary cursor-pointer hover:text-accent"
+                  className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
                   onClick={(e) => e.stopPropagation()}
                   onDoubleClick={handleNameDoubleClick}
-                  title="Double-click to edit name"
+                  title={
+                    !editPermission.allowed
+                      ? editPermission.reason
+                      : "Double-click to edit name"
+                  }
                 >
                   {name}
                 </span>
                 {/* Edit button - always visible but subtle */}
                 <button
                   onClick={handleEditClick}
-                  className="p-0.5 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity"
-                  title="Edit name"
+                  className={`p-0.5 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity ${
+                    !editPermission.allowed ? 'cursor-not-allowed opacity-30' : ''
+                  }`}
+                  title={
+                    !editPermission.allowed
+                      ? editPermission.reason
+                      : "Edit name"
+                  }
+                  disabled={!editPermission.allowed}
                   aria-label="Edit player name"
                 >
                   <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
