@@ -310,6 +310,9 @@ export function PlayerCard({
           position={player.position}
           completedSlots={completedSlots}
           totalSlots={totalSlots}
+          player={player}
+          userRole={userRole}
+          currentUserId={currentUserId}
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
@@ -326,6 +329,8 @@ export function PlayerCard({
             userId={player.userId}
             linkedUser={player.linkedUser}
             currentUserId={currentUserId}
+            player={player}
+            userRole={userRole}
             onTankRoleChange={handleTankRoleChange}
           />
         </div>
@@ -339,6 +344,9 @@ export function PlayerCard({
         gear={player.gear}
         tomeWeapon={player.tomeWeapon}
         isExpanded={isExpanded}
+        player={player}
+        userRole={userRole}
+        currentUserId={currentUserId}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
       />

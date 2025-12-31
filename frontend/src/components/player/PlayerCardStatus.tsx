@@ -6,7 +6,8 @@
  */
 
 import { TankRoleSelector } from './TankRoleSelector';
-import type { TankRole, LinkedUserInfo } from '../../types';
+import type { TankRole, LinkedUserInfo, SnapshotPlayer } from '../../types';
+import type { MemberRole } from '../../utils/permissions';
 
 // Build URL from bisLink - supports both Etro and XIVGear formats
 function buildBiSUrl(bisLink: string): string {
@@ -31,6 +32,8 @@ interface PlayerCardStatusProps {
   userId?: string | null;
   linkedUser?: LinkedUserInfo | null;
   currentUserId?: string;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
   onTankRoleChange: (tankRole: TankRole | undefined) => void;
 }
 
@@ -42,6 +45,8 @@ export function PlayerCardStatus({
   userId,
   linkedUser,
   currentUserId,
+  player,
+  userRole,
   onTankRoleChange,
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
@@ -109,6 +114,9 @@ export function PlayerCardStatus({
         <TankRoleSelector
           tankRole={tankRole}
           onSelect={onTankRoleChange}
+          player={player}
+          userRole={userRole}
+          currentUserId={currentUserId}
         />
       )}
     </div>

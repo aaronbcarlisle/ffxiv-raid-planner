@@ -4,6 +4,7 @@ import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
 import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType } from '../../types';
+import type { MemberRole } from '../../utils/permissions';
 
 // Export types for drag handle
 export type DragListeners = SyntheticListenerMap | undefined;
@@ -19,6 +20,7 @@ interface DroppablePlayerCardProps {
   canEdit: boolean;
   currentUserId?: string;
   isGroupOwner?: boolean;
+  userRole?: MemberRole | null;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;

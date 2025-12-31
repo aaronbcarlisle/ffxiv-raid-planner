@@ -5,14 +5,18 @@
  */
 
 import { useState } from 'react';
-import type { RaidPosition } from '../../types';
+import type { RaidPosition, SnapshotPlayer } from '../../types';
 import { RAID_POSITIONS } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
+import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface PositionSelectorProps {
   position: RaidPosition | null | undefined;
   role: string;
   onSelect: (position: RaidPosition | undefined) => void;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
 }
 
 // Get suggested positions based on role
@@ -59,9 +63,15 @@ export function PositionSelector({
   position,
   role,
   onSelect,
+  player,
+  userRole,
+  currentUserId,
 }: PositionSelectorProps) {
   const [open, setOpen] = useState(false);
   const suggested = getSuggestedPositions(role);
+
+  // Check edit permission
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
 
   const handleSelect = (pos: RaidPosition | undefined) => {
     onSelect(pos);
@@ -69,11 +79,22 @@ export function PositionSelector({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getTriggerClasses(position)}`}
-          title={position ? `Position: ${position}` : 'Click to set position'}
+          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
+            !editPermission.allowed
+              ? 'opacity-50 cursor-not-allowed'
+              : getTriggerClasses(position)
+          }`}
+          title={
+            !editPermission.allowed
+              ? editPermission.reason
+              : position
+                ? `Position: ${position}`
+                : 'Click to set position'
+          }
+          disabled={!editPermission.allowed}
         >
           {position || '--'}
         </button>

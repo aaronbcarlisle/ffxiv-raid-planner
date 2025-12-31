@@ -13,7 +13,8 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition } from '../../types';
+import type { RaidPosition, SnapshotPlayer } from '../../types';
+import type { MemberRole } from '../../utils/permissions';
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -22,6 +23,9 @@ interface PlayerCardHeaderProps {
   position: RaidPosition | null | undefined;
   completedSlots: number;
   totalSlots: number;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
   onJobChange: (job: string) => void;
   onNameChange: (name: string) => void;
   onPositionChange: (position: RaidPosition | undefined) => void;
@@ -35,6 +39,9 @@ export function PlayerCardHeader({
   position,
   completedSlots,
   totalSlots,
+  player,
+  userRole,
+  currentUserId,
   onJobChange,
   onNameChange,
   onPositionChange,
@@ -180,6 +187,9 @@ export function PlayerCardHeader({
               position={position}
               role={role}
               onSelect={onPositionChange}
+              player={player}
+              userRole={userRole}
+              currentUserId={currentUserId}
             />
           </div>
         </div>

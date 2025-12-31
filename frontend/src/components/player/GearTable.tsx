@@ -11,8 +11,10 @@
 import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider } from '../primitives';
-import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot } from '../../types';
+import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+import { canEditGear, type MemberRole } from '../../utils/permissions';
+import { toast } from '../../stores/toastStore';
 
 // Reusable slot icon component with optional item icon and hover card
 function SlotIcon({
@@ -102,6 +104,8 @@ interface WeaponSlotRowProps {
   tomeWeapon: TomeWeaponStatus;
   onGearChange: (updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
+  disabled?: boolean;
+  disabledTooltip?: string;
 }
 
 function WeaponSlotRow({
@@ -109,6 +113,8 @@ function WeaponSlotRow({
   tomeWeapon,
   onGearChange,
   onTomeWeaponChange,
+  disabled = false,
+  disabledTooltip,
 }: WeaponSlotRowProps) {
   return (
     <>
@@ -130,21 +136,25 @@ function WeaponSlotRow({
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
               className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                tomeWeapon.pursuing
-                  ? 'bg-gear-tome/20 text-gear-tome'
-                  : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                disabled
+                  ? 'opacity-50 cursor-not-allowed'
+                  : tomeWeapon.pursuing
+                    ? 'bg-gear-tome/20 text-gear-tome'
+                    : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
               }`}
-              title={tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon'}
+              title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
+              disabled={disabled}
             >
               +Tome
             </button>
           </div>
         </td>
         <td className="py-1">
-          <div className="flex justify-center">
+          <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
             <Checkbox
               checked={status.hasItem}
               onChange={(checked) => onGearChange({ hasItem: checked })}
+              disabled={disabled}
             />
           </div>
         </td>
@@ -174,7 +184,7 @@ function WeaponSlotRow({
             <span className="text-xs text-gear-tome font-medium">Tome</span>
           </td>
           <td className="py-1">
-            <div className="flex justify-center">
+            <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
               <Checkbox
                 checked={tomeWeapon.hasItem}
                 onChange={(checked) => {
@@ -185,15 +195,16 @@ function WeaponSlotRow({
                     onTomeWeaponChange({ hasItem: checked });
                   }
                 }}
+                disabled={disabled}
               />
             </div>
           </td>
           <td className="py-1">
-            <div className="flex justify-center">
+            <div className="flex justify-center" title={disabled ? (disabledTooltip || 'Get the tome weapon first') : 'Get the tome weapon first'}>
               <Checkbox
                 checked={tomeWeapon.isAugmented}
                 onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
-                disabled={!tomeWeapon.hasItem}
+                disabled={disabled || !tomeWeapon.hasItem}
               />
             </div>
           </td>
@@ -209,6 +220,9 @@ interface GearTableProps {
   onGearChange: (slot: string, updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
   compact?: boolean;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
 }
 
 export function GearTable({
@@ -217,7 +231,12 @@ export function GearTable({
   onGearChange,
   onTomeWeaponChange,
   compact = false,
+  player,
+  userRole,
+  currentUserId,
 }: GearTableProps) {
+  // Check gear edit permission
+  const gearPermission = canEditGear(userRole, player, currentUserId);
   const getSlotStatus = (slot: string): GearSlotStatus => {
     return gear.find((g) => g.slot === slot) ?? {
       slot: slot as GearSlotStatus['slot'],
@@ -228,10 +247,18 @@ export function GearTable({
   };
 
   const handleSourceChange = (slot: string, source: GearSource) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
     onGearChange(slot, { bisSource: source });
   };
 
   const handleHasItemChange = (slot: string, hasItem: boolean) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
     // When unchecking "Have", also uncheck "Augmented" to keep state consistent
     if (!hasItem) {
       onGearChange(slot, { hasItem, isAugmented: false });
@@ -241,7 +268,19 @@ export function GearTable({
   };
 
   const handleAugmentedChange = (slot: string, isAugmented: boolean) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
     onGearChange(slot, { isAugmented });
+  };
+
+  const handleTomeWeaponUpdate = (updates: Partial<TomeWeaponStatus>) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
+    onTomeWeaponChange(updates);
   };
 
   if (compact) {
@@ -333,7 +372,9 @@ export function GearTable({
                   status={status}
                   tomeWeapon={tomeWeapon}
                   onGearChange={(updates) => onGearChange(slot, updates)}
-                  onTomeWeaponChange={onTomeWeaponChange}
+                  onTomeWeaponChange={handleTomeWeaponUpdate}
+                  disabled={!gearPermission.allowed}
+                  disabledTooltip={gearPermission.reason}
                 />
               );
             }
@@ -353,39 +394,48 @@ export function GearTable({
                     <button
                       onClick={() => handleSourceChange(slot, 'raid')}
                       className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        status.bisSource === 'raid'
-                          ? 'bg-gear-raid/20 text-gear-raid'
-                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                        !gearPermission.allowed
+                          ? 'opacity-50 cursor-not-allowed'
+                          : status.bisSource === 'raid'
+                            ? 'bg-gear-raid/20 text-gear-raid'
+                            : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
                       }`}
+                      disabled={!gearPermission.allowed}
+                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
                     >
                       Raid
                     </button>
                     <button
                       onClick={() => handleSourceChange(slot, 'tome')}
                       className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        status.bisSource === 'tome'
-                          ? 'bg-gear-tome/20 text-gear-tome'
-                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                        !gearPermission.allowed
+                          ? 'opacity-50 cursor-not-allowed'
+                          : status.bisSource === 'tome'
+                            ? 'bg-gear-tome/20 text-gear-tome'
+                            : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
                       }`}
+                      disabled={!gearPermission.allowed}
+                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
                     >
                       Tome
                     </button>
                   </div>
                 </td>
                 <td className="py-1">
-                  <div className="flex justify-center">
+                  <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : undefined}>
                     <Checkbox
                       checked={status.hasItem}
                       onChange={(checked) => handleHasItemChange(slot, checked)}
+                      disabled={!gearPermission.allowed}
                     />
                   </div>
                 </td>
                 <td className="py-1">
-                  <div className="flex justify-center">
+                  <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : (!canAugment ? 'Get tome gear first' : undefined)}>
                     <Checkbox
                       checked={status.isAugmented}
                       onChange={(checked) => handleAugmentedChange(slot, checked)}
-                      disabled={!canAugment}
+                      disabled={!gearPermission.allowed || !canAugment}
                     />
                   </div>
                 </td>

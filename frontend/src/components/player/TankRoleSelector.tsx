@@ -5,20 +5,30 @@
  */
 
 import { useState } from 'react';
-import type { TankRole } from '../../types';
+import type { TankRole, SnapshotPlayer } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
+import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface TankRoleSelectorProps {
   tankRole: TankRole | null | undefined;
   onSelect: (role: TankRole | undefined) => void;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
 }
 
 export function TankRoleSelector({
   tankRole,
   onSelect,
+  player,
+  userRole,
+  currentUserId,
 }: TankRoleSelectorProps) {
   const [open, setOpen] = useState(false);
   const roles: TankRole[] = ['MT', 'OT'];
+
+  // Check edit permission
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
 
   const handleSelect = (role: TankRole | undefined) => {
     onSelect(role);
@@ -26,15 +36,24 @@ export function TankRoleSelector({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
           className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${
-            tankRole
-              ? 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
-              : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+            !editPermission.allowed
+              ? 'opacity-50 cursor-not-allowed'
+              : tankRole
+                ? 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
+                : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
           }`}
-          title={tankRole ? `Tank role: ${tankRole}` : 'Click to set MT/OT'}
+          title={
+            !editPermission.allowed
+              ? editPermission.reason
+              : tankRole
+                ? `Tank role: ${tankRole}`
+                : 'Click to set MT/OT'
+          }
+          disabled={!editPermission.allowed}
         >
           {tankRole || '--'}
         </button>

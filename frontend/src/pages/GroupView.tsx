@@ -418,6 +418,7 @@ export function GroupView() {
           canEdit={canEdit}
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
+          userRole={userRole}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => {
