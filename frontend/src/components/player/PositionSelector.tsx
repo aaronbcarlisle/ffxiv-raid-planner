@@ -50,6 +50,7 @@ function getPositionBgClasses(pos: RaidPosition, isSelected: boolean, isSuggeste
   return 'bg-surface-base text-text-muted hover:bg-surface-interactive hover:text-text-secondary';
 }
 
+// Get trigger classes with hover effects (for dropdown items and enabled trigger)
 function getTriggerClasses(position: RaidPosition | null | undefined): string {
   if (!position) {
     return 'bg-surface-interactive text-text-muted hover:text-text-secondary';
@@ -57,6 +58,26 @@ function getTriggerClasses(position: RaidPosition | null | undefined): string {
   if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';
   if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer hover:bg-role-healer/30';
   return 'bg-role-melee/20 text-role-melee hover:bg-role-melee/30';
+}
+
+// Base colors only (no hover) - for permission-disabled trigger
+function getBaseClasses(position: RaidPosition | null | undefined): string {
+  if (!position) {
+    return 'bg-surface-interactive text-text-muted';
+  }
+  if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank';
+  if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer';
+  return 'bg-role-melee/20 text-role-melee';
+}
+
+// Hover effects only - conditionally applied based on permission
+function getHoverClasses(position: RaidPosition | null | undefined): string {
+  if (!position) {
+    return 'hover:text-text-secondary';
+  }
+  if (position.startsWith('T')) return 'hover:bg-role-tank/30';
+  if (position.startsWith('H')) return 'hover:bg-role-healer/30';
+  return 'hover:bg-role-melee/30';
 }
 
 export function PositionSelector({
@@ -82,9 +103,9 @@ export function PositionSelector({
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getTriggerClasses(position)} ${
-            !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
+          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
+            editPermission.allowed ? getHoverClasses(position) : ''
+          } ${!editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
           title={
             !editPermission.allowed
               ? editPermission.reason

@@ -183,8 +183,10 @@ export function PlayerCardHeader({
                 {/* Edit button - always visible but subtle */}
                 <button
                   onClick={handleEditClick}
-                  className={`p-0.5 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity ${
-                    !editPermission.allowed ? 'cursor-not-allowed opacity-30' : ''
+                  className={`p-0.5 rounded opacity-40 transition-opacity ${
+                    editPermission.allowed
+                      ? 'hover:bg-surface-interactive hover:opacity-100'
+                      : 'cursor-not-allowed opacity-30'
                   }`}
                   title={
                     !editPermission.allowed

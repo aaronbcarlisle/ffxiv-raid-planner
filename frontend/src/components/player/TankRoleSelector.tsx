@@ -35,16 +35,20 @@ export function TankRoleSelector({
     setOpen(false);
   };
 
-  // Extract color classes to always show tank role color
-  const colorClasses = tankRole
-    ? 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
-    : 'bg-surface-interactive text-text-muted hover:text-text-secondary';
+  // Separate base and hover classes for permission-aware styling
+  const baseClasses = tankRole
+    ? 'bg-role-tank/20 text-role-tank'
+    : 'bg-surface-interactive text-text-muted';
+
+  const hoverClasses = editPermission.allowed
+    ? (tankRole ? 'hover:bg-role-tank/30' : 'hover:text-text-secondary')
+    : '';
 
   return (
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${colorClasses} ${
+          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${baseClasses} ${hoverClasses} ${
             !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           title={
