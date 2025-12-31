@@ -127,15 +127,15 @@ function WeaponSlotRow({
           </div>
         </td>
         <td className="py-1 text-center">
-          <div className="flex justify-center items-center gap-1">
+          <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
-            <span className={`px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium leading-none flex items-center ${disabled ? 'opacity-50' : ''}`}>
+            <span className={`px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium ${disabled ? 'opacity-50' : ''}`}>
               Raid
             </span>
             {/* +Tome is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`px-2 py-0.5 rounded text-xs font-medium leading-none flex items-center transition-colors ${
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                 tomeWeapon.pursuing
                   ? 'bg-gear-tome/20 text-gear-tome'
                   : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
@@ -179,7 +179,7 @@ function WeaponSlotRow({
             └ Tome Weapon
           </td>
           <td className="py-1 text-center">
-            <span className="text-xs text-gear-tome font-medium">Tome</span>
+            <span className={`text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
           </td>
           <td className="py-1">
             <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
