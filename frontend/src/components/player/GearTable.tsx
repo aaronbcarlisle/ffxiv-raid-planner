@@ -136,12 +136,10 @@ function WeaponSlotRow({
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
               className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                disabled
-                  ? 'opacity-50 cursor-not-allowed'
-                  : tomeWeapon.pursuing
-                    ? 'bg-gear-tome/20 text-gear-tome'
-                    : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
-              }`}
+                tomeWeapon.pursuing
+                  ? 'bg-gear-tome/20 text-gear-tome'
+                  : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
               disabled={disabled}
             >
@@ -394,12 +392,10 @@ export function GearTable({
                     <button
                       onClick={() => handleSourceChange(slot, 'raid')}
                       className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        !gearPermission.allowed
-                          ? 'opacity-50 cursor-not-allowed'
-                          : status.bisSource === 'raid'
-                            ? 'bg-gear-raid/20 text-gear-raid'
-                            : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
-                      }`}
+                        status.bisSource === 'raid'
+                          ? 'bg-gear-raid/20 text-gear-raid'
+                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!gearPermission.allowed}
                       title={!gearPermission.allowed ? gearPermission.reason : undefined}
                     >
@@ -408,12 +404,10 @@ export function GearTable({
                     <button
                       onClick={() => handleSourceChange(slot, 'tome')}
                       className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        !gearPermission.allowed
-                          ? 'opacity-50 cursor-not-allowed'
-                          : status.bisSource === 'tome'
-                            ? 'bg-gear-tome/20 text-gear-tome'
-                            : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
-                      }`}
+                        status.bisSource === 'tome'
+                          ? 'bg-gear-tome/20 text-gear-tome'
+                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!gearPermission.allowed}
                       title={!gearPermission.allowed ? gearPermission.reason : undefined}
                     >

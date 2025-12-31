@@ -559,8 +559,8 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
-              {/* Permission message when DnD is disabled */}
-              {!rosterPermission.allowed && (
+              {/* Permission message when DnD is disabled and user is on custom sort */}
+              {!rosterPermission.allowed && sortPreset === 'custom' && (
                 <div className="mb-3 p-3 bg-surface-card border border-border-subtle rounded-lg">
                   <p className="text-sm text-text-muted flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
