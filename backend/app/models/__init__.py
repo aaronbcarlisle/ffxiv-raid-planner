@@ -3,7 +3,7 @@
 from .invitation import Invitation
 from .loot_log_entry import LootLogEntry
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
-from .page_ledger_entry import PageLedgerEntry, TransactionType
+from .page_ledger_entry import PageLedgerEntry
 from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
 from .tier_snapshot import TierSnapshot
@@ -19,6 +19,5 @@ __all__ = [
     "SnapshotPlayer",
     "StaticGroup",
     "TierSnapshot",
-    "TransactionType",
     "User",
 ]
