@@ -67,7 +67,7 @@ export function AddLootEntryModal({
   const [updateGear, setUpdateGear] = useState(true);
   const [notes, setNotes] = useState(editEntry?.notes || '');
   const [isSaving, setIsSaving] = useState(false);
-  const [showAllRecipients, setShowAllRecipients] = useState(isEditMode); // Show all in edit mode
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
 
   // Reset form when editEntry changes (e.g., opening edit for different entry)
   useEffect(() => {
@@ -78,7 +78,7 @@ export function AddLootEntryModal({
       setRecipientPlayerId(editEntry.recipientPlayerId);
       setMethod(editEntry.method as LootMethod);
       setNotes(editEntry.notes || '');
-      setShowAllRecipients(true);
+      setShowAllRecipients(false);
     } else {
       setWeekNumber(currentWeek || 1);
       setFloor(floors[0] || '');
@@ -217,7 +217,10 @@ export function AddLootEntryModal({
   };
 
   const selectedPlayer = players.find((p) => p.id === recipientPlayerId);
-  const slotName = GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
+  // Show "Ring" for floor 1 ring drops since it's a generic ring drop
+  const slotName = itemSlot === 'ring1' && getFloorNumber(floor) === 1
+    ? 'Ring'
+    : GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}>
@@ -260,7 +263,8 @@ export function AddLootEntryModal({
           >
             {availableSlots.map((slot) => (
               <option key={slot} value={slot}>
-                {GEAR_SLOT_NAMES[slot]}
+                {/* Show "Ring" for ring1 on floor 1 since it's a generic ring drop */}
+                {slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot]}
               </option>
             ))}
           </select>

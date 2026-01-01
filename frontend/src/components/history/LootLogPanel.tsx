@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { AddLootEntryModal } from './AddLootEntryModal';
 import { DeleteLootConfirmModal } from './DeleteLootConfirmModal';
-import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -32,7 +32,7 @@ export function LootLogPanel({
   canEdit,
   onLootLogged,
 }: LootLogPanelProps) {
-  const { lootLog, isLoading, fetchLootLog, updateLootEntry } = useLootTrackingStore();
+  const { lootLog, isLoading, fetchLootLog } = useLootTrackingStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<LootLogEntry | null>(null);
@@ -178,7 +178,12 @@ export function LootLogPanel({
           onSubmit={handleAddLoot}
           onUpdate={entryToEdit ? async (updates: LootLogEntryUpdate) => {
             try {
-              await updateLootEntry(groupId, tierId, entryToEdit.id, updates);
+              // Use coordinated update that syncs gear when recipient/slot changes
+              await updateLootAndSyncGear(groupId, tierId, entryToEdit.id, entryToEdit, updates, {
+                syncGear: entryToEdit.method === 'drop',
+              });
+              // Refresh loot log for the current week
+              await fetchLootLog(groupId, tierId, currentWeek);
               const slot = updates.itemSlot || entryToEdit.itemSlot;
               const slotName = GEAR_SLOT_NAMES[slot as keyof typeof GEAR_SLOT_NAMES] || slot;
               toast.success(`Updated ${slotName} entry`);
