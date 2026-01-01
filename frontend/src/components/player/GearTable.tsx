@@ -16,6 +16,26 @@ import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 
+// Helper function to get upgrade material tooltip based on gear slot
+function getUpgradeMaterialTooltip(slot: GearSlot): string {
+  // Accessories need Glaze
+  if (['earring', 'necklace', 'bracelet', 'ring1', 'ring2'].includes(slot)) {
+    return 'Get Glaze from Floor 1 (M9S) or Floor 2 (M10S)';
+  }
+
+  // Left-side armor needs Twine
+  if (['head', 'body', 'hands', 'legs', 'feet'].includes(slot)) {
+    return 'Get Twine from Floor 3 (M11S)';
+  }
+
+  // Weapon needs Solvent
+  if (slot === 'weapon') {
+    return 'Get Solvent from Floor 3 (M11S)';
+  }
+
+  return 'Augmentation needed';
+}
+
 // Reusable slot icon component with optional item icon and hover card
 function SlotIcon({
   slot,
@@ -198,7 +218,16 @@ function WeaponSlotRow({
             </div>
           </td>
           <td className="py-1">
-            <div className="flex justify-center" title={disabled ? (disabledTooltip || 'Get the tome weapon first') : 'Get the tome weapon first'}>
+            <div
+              className="flex justify-center"
+              title={
+                disabled
+                  ? disabledTooltip || 'Get the tome weapon first'
+                  : tomeWeapon.hasItem && !tomeWeapon.isAugmented
+                    ? 'Get Solvent from Floor 3 (M11S)'
+                    : undefined
+              }
+            >
               <Checkbox
                 checked={tomeWeapon.isAugmented}
                 onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
@@ -430,7 +459,18 @@ export function GearTable({
                       {/* Raid gear can't be augmented - empty cell */}
                     </div>
                   ) : (
-                    <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : (!canAugment ? 'Get tome gear first' : undefined)}>
+                    <div
+                      className="flex justify-center"
+                      title={
+                        !gearPermission.allowed
+                          ? gearPermission.reason
+                          : status.bisSource === 'tome' && !status.hasItem
+                            ? 'Get tome gear first'
+                            : status.bisSource === 'tome' && status.hasItem && !status.isAugmented
+                              ? getUpgradeMaterialTooltip(status.slot)
+                              : undefined
+                      }
+                    >
                       <Checkbox
                         checked={status.isAugmented}
                         onChange={(checked) => handleAugmentedChange(slot, checked)}

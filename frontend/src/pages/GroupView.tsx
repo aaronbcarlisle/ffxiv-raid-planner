@@ -25,7 +25,7 @@ import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } 
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
-import { canManageRoster } from '../utils/permissions';
+import { canManageRoster, canResetGear } from '../utils/permissions';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -411,6 +411,9 @@ export function GroupView() {
 
     // If player is configured, show droppable player card
     if (player.configured) {
+      // Check if user can reset this player's gear
+      const resetPermission = canResetGear(userRole, player, user?.id);
+
       return (
         <DroppablePlayerCard
           key={player.id}
@@ -445,7 +448,7 @@ export function GroupView() {
             }
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
-          onResetGear={canEdit ? () => handleResetGear(player.id) : undefined}
+          onResetGear={resetPermission.allowed ? () => handleResetGear(player.id) : undefined}
           onClaimPlayer={() => handleClaimPlayer(player.id)}
           onReleasePlayer={() => handleReleasePlayer(player.id)}
           onModalOpen={handlePlayerModalOpen}
