@@ -23,7 +23,6 @@ from app.permissions import (
     check_view_permission,
     get_static_group,
     require_can_edit_roster,
-    require_owner,
 )
 from app.schemas import (
     LootLogEntryCreate,
@@ -140,7 +139,7 @@ async def create_loot_log_entry(
 ):
     """Create a new loot log entry (requires lead or owner role)"""
     # Check permissions
-    group = await get_static_group(db, group_id)
+    await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
@@ -206,7 +205,7 @@ async def update_loot_log_entry(
 ):
     """Update a loot log entry (requires lead or owner role)"""
     # Check permissions
-    group = await get_static_group(db, group_id)
+    await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
@@ -278,7 +277,7 @@ async def delete_loot_log_entry(
 ):
     """Delete a loot log entry (requires owner or lead role)"""
     # Check permissions - leads can also delete loot entries
-    group = await get_static_group(db, group_id)
+    await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier (to verify it exists)
@@ -426,7 +425,7 @@ async def create_page_ledger_entry(
 ):
     """Create a new page ledger entry (requires lead or owner role)"""
     # Check permissions
-    group = await get_static_group(db, group_id)
+    await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
@@ -490,7 +489,7 @@ async def mark_floor_cleared(
 ):
     """Batch create 'earned' entries for players who cleared a floor (requires lead or owner)"""
     # Check permissions
-    group = await get_static_group(db, group_id)
+    await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier

@@ -4,7 +4,7 @@ Loot Log Entry Model
 Tracks individual loot drops and how they were obtained.
 """
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 import enum

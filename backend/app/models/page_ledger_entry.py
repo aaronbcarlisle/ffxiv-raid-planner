@@ -5,7 +5,7 @@ Tracks earning and spending of book pages (tokens) for each player.
 Source of truth for book balances.
 """
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 import enum

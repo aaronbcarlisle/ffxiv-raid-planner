@@ -851,7 +851,7 @@ async def update_weapon_priorities(
     current_user: User = Depends(get_current_user),
 ) -> SnapshotPlayerResponse:
     """Update a player's weapon priority list"""
-    group = await get_static_group(session, group_id)
+    await get_static_group(session, group_id)
     membership = await get_user_membership(session, current_user.id, group_id)
 
     if not membership:
@@ -940,7 +940,7 @@ async def lock_player_weapon_priorities(
     current_user: User = Depends(get_current_user),
 ) -> SnapshotPlayerResponse:
     """Lock a player's weapon priorities (Owner/Lead only)"""
-    group = await get_static_group(session, group_id)
+    await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
     # Get player
@@ -990,7 +990,7 @@ async def unlock_player_weapon_priorities(
     current_user: User = Depends(get_current_user),
 ) -> SnapshotPlayerResponse:
     """Unlock a player's weapon priorities (Owner/Lead only)"""
-    group = await get_static_group(session, group_id)
+    await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
     # Get player
@@ -1040,7 +1040,7 @@ async def update_weapon_priority_settings(
     current_user: User = Depends(get_current_user),
 ) -> TierSnapshotResponse:
     """Update tier-level weapon priority settings (Owner/Lead only)"""
-    group = await get_static_group(session, group_id)
+    await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
     # Get tier snapshot
