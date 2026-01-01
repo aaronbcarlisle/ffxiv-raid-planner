@@ -13,16 +13,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     e.stopPropagation();
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={handleBackdropEvent}
-      onContextMenu={handleContextMenu}
+      onContextMenu={handleBackdropEvent}
     >
       <div className="bg-surface-card border border-border-default rounded-lg w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
