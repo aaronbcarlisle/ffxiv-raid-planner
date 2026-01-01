@@ -73,9 +73,7 @@ export function WeaponPriorityEditor({
 
     const newPriority: WeaponPriority = {
       job,
-      weaponName: undefined,
       received: false,
-      receivedDate: undefined,
     };
 
     onChange([...weaponPriorities, newPriority]);
@@ -97,7 +95,7 @@ export function WeaponPriorityEditor({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 overflow-x-hidden">
       {/* List */}
       {weaponPriorities.length > 0 && (
         <DndContext
@@ -109,7 +107,7 @@ export function WeaponPriorityEditor({
             items={weaponPriorities.map((wp) => wp.job)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-x-hidden">
               {weaponPriorities.map((priority, index) => (
                 <WeaponPriorityListItem
                   key={priority.job}

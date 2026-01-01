@@ -31,7 +31,16 @@ export class ApiError extends Error {
 function extractErrorMessage(response: Response, fallback: string): Promise<string> {
   return response
     .json()
-    .then((data) => data.detail || fallback)
+    .then((data) => {
+      // Handle both string and object details
+      if (typeof data.detail === 'string') {
+        return data.detail;
+      } else if (typeof data.detail === 'object' && data.detail !== null) {
+        // If detail is an object (like validation errors), stringify it
+        return JSON.stringify(data.detail);
+      }
+      return data.message || fallback;
+    })
     .catch(() => fallback);
 }
 

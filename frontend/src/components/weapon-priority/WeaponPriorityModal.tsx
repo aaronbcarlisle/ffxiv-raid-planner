@@ -75,8 +75,18 @@ export function WeaponPriorityModal({
       onClose();
     } catch (error: any) {
       console.error('Failed to save weapon priorities:', error);
-      console.error('Error message:', error?.message);
-      console.error('Error response:', error?.response);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      // Extract actual error message
+      let errorMessage = 'Failed to save weapon priorities';
+      if (typeof error === 'object' && error !== null) {
+        errorMessage = error.message || error.detail || errorMessage;
+      }
+      console.error('Parsed error message:', errorMessage);
+
+      // Show error to user via toast
+      const { toast } = await import('../../stores/toastStore');
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
