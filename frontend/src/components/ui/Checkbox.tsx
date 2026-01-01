@@ -17,7 +17,9 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
         className={`w-4 h-4 rounded border-border-default bg-surface-raised text-accent focus:ring-accent focus:ring-offset-0 transition-none ${
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:border-accent/50'
+          disabled
+            ? 'cursor-not-allowed disabled:hover:border-border-default disabled:hover:bg-surface-raised'
+            : 'cursor-pointer hover:border-accent/50'
         }`}
         style={disabled ? { pointerEvents: 'none' } : undefined}
       />
