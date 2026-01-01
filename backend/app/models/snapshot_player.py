@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..database import Base
 
 if TYPE_CHECKING:
+    from .loot_log_entry import LootLogEntry
+    from .page_ledger_entry import PageLedgerEntry
     from .tier_snapshot import TierSnapshot
     from .user import User
 
@@ -75,6 +77,16 @@ class SnapshotPlayer(Base):
     # Relationships
     tier_snapshot: Mapped["TierSnapshot"] = relationship("TierSnapshot", back_populates="players")
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+    loot_log_entries: Mapped[list["LootLogEntry"]] = relationship(
+        "LootLogEntry",
+        back_populates="recipient_player",
+        cascade="all, delete-orphan",
+    )
+    page_ledger_entries: Mapped[list["PageLedgerEntry"]] = relationship(
+        "PageLedgerEntry",
+        back_populates="player",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<SnapshotPlayer(id={self.id}, name={self.name}, job={self.job})>"

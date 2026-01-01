@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..database import Base
 
 if TYPE_CHECKING:
+    from .loot_log_entry import LootLogEntry
+    from .page_ledger_entry import PageLedgerEntry
     from .snapshot_player import SnapshotPlayer
     from .static_group import StaticGroup
 
@@ -64,6 +66,16 @@ class TierSnapshot(Base):
         back_populates="tier_snapshot",
         cascade="all, delete-orphan",
         order_by="SnapshotPlayer.sort_order",
+    )
+    loot_log_entries: Mapped[list["LootLogEntry"]] = relationship(
+        "LootLogEntry",
+        back_populates="tier_snapshot",
+        cascade="all, delete-orphan",
+    )
+    page_ledger_entries: Mapped[list["PageLedgerEntry"]] = relationship(
+        "PageLedgerEntry",
+        back_populates="tier_snapshot",
+        cascade="all, delete-orphan",
     )
 
     # Unique constraint: one snapshot per tier per group
