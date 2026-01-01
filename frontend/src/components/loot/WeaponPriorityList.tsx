@@ -1,0 +1,131 @@
+/**
+ * Weapon Priority List
+ *
+ * Display calculated weapon priority for Floor 4 (weapon floor).
+ * Shows which players should receive weapons in what order.
+ */
+
+import type { SnapshotPlayer, StaticSettings } from '../../types';
+import { getWeaponPriorityForJob } from '../../utils/weaponPriority';
+import { JOBS } from '../../gamedata/jobs';
+import { JobIcon } from '../ui/JobIcon';
+import { getRoleColor } from '../../gamedata';
+
+interface WeaponPriorityListProps {
+  players: SnapshotPlayer[];
+  settings: StaticSettings;
+}
+
+export function WeaponPriorityList({
+  players,
+  settings,
+}: WeaponPriorityListProps) {
+  // Get all jobs that appear in weapon priorities
+  const allJobs = new Set<string>();
+  for (const player of players) {
+    for (const wp of player.weaponPriorities || []) {
+      allJobs.add(wp.job);
+    }
+  }
+
+  // Sort jobs by role (tank > healer > melee > ranged > caster)
+  const sortedJobs = Array.from(allJobs).sort((a, b) => {
+    const jobA = JOBS.find((j) => j.abbreviation === a);
+    const jobB = JOBS.find((j) => j.abbreviation === b);
+    if (!jobA || !jobB) return 0;
+
+    const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+    const indexA = roleOrder.indexOf(jobA.role);
+    const indexB = roleOrder.indexOf(jobB.role);
+
+    return indexA - indexB;
+  });
+
+  if (sortedJobs.length === 0) {
+    return (
+      <div className="text-center py-8 text-text-muted">
+        <p>No weapon priorities set yet.</p>
+        <p className="text-sm mt-1">
+          Players can set weapon priorities from their player card context menu.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {sortedJobs.map((job) => {
+        const priority = getWeaponPriorityForJob(players, job, settings);
+        const jobInfo = JOBS.find((j) => j.abbreviation === job);
+        const jobName = jobInfo?.name || job;
+
+        return (
+          <div
+            key={job}
+            className="bg-surface-base rounded-lg p-3"
+          >
+            {/* Job header */}
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border-default">
+              <JobIcon job={job} size="sm" />
+              <div className="font-medium text-text-primary">{jobName}</div>
+            </div>
+
+            {/* Priority list */}
+            {priority.length === 0 ? (
+              <div className="text-sm text-text-muted py-2">No one needs</div>
+            ) : (
+              <div className="space-y-1">
+                {priority.slice(0, 3).map((entry, index) => {
+                  const roleColor = getRoleColor(entry.player.role as any);
+                  const isFirst = index === 0;
+
+                  return (
+                    <div
+                      key={entry.player.id}
+                      className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
+                        isFirst ? 'bg-accent/20' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`flex-shrink-0 ${
+                            isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                          }`}
+                        >
+                          {index + 1}.
+                        </span>
+                        <span
+                          className={`truncate ${
+                            isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                          }`}
+                        >
+                          {entry.player.name}
+                        </span>
+                        {entry.isMainJob && (
+                          <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
+                            Main
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      >
+                        {entry.score}
+                      </span>
+                    </div>
+                  );
+                })}
+                {priority.length > 3 && (
+                  <div className="text-text-muted text-xs px-2">
+                    +{priority.length - 3} more
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

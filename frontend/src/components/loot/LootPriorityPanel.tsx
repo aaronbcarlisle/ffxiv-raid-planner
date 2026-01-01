@@ -9,6 +9,7 @@ import {
   type PriorityEntry,
 } from '../../utils/priority';
 import { getRoleColor } from '../../gamedata';
+import { WeaponPriorityList } from './WeaponPriorityList';
 
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
@@ -157,6 +158,14 @@ export function LootPriorityPanel({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Weapon Priority (Floor 4 only) */}
+      {selectedFloor === 4 && (
+        <div className="border-t border-border-default pt-4 mt-4">
+          <h4 className="text-text-secondary text-sm mb-3">Weapon Priority</h4>
+          <WeaponPriorityList players={players} settings={settings} />
         </div>
       )}
     </div>
