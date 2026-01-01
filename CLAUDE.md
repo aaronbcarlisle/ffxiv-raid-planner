@@ -12,9 +12,9 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1-5.4: Complete** | **Ready for Production**
+**Phase 1-6: Complete** | **Ready for Production**
 
-The application is a full auth-first system with Discord OAuth, multi-static membership, and per-tier roster snapshots.
+The application is a full auth-first system with Discord OAuth, multi-static membership, per-tier roster snapshots, and comprehensive permission-aware UI.
 
 ### What Works
 - **Discord OAuth** - Full login/logout with JWT tokens
@@ -23,7 +23,14 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
   - Copy button on cards (Shift+click for full URL)
   - Duplicate static copies all tiers and configured players
 - **Static Groups** - Multi-static membership with share codes
-- **Role-Based Access** - Owner/Lead/Member/Viewer permissions
+- **Role-Based Access** - Owner/Lead/Member/Viewer permissions with permission-aware UI
+  - **Members** can edit their own claimed cards (job, name, position, gear)
+  - **Leads** can edit roster and manage all players
+  - **Owners** have full control over group and roster
+  - **Viewers** have read-only access with helpful tooltips explaining restrictions
+  - Destructive actions (delete, remove) are disabled upfront with tooltips
+  - Edit actions fail gracefully with toast notifications
+  - Consistent disabled state styling across all UI elements
 - **Invitation System** - Invite links for joining statics (`/invite/{code}`)
   - Create invitations with role, expiration, and max uses
   - Accept invitations via link (requires Discord login)
@@ -273,8 +280,14 @@ BiS weapon is ALWAYS raid. But during prog, players may get tome weapon as inter
 - **Raid** (default): Track raid weapon only
 - **Raid + Tome**: Shows sub-row for tome weapon tracking
 
+**Aug Column Indicator:**
+- Shows `—` when tome weapon tracking is disabled (Raid only)
+- Shows `+` when tome weapon tracking is enabled (Raid + Tome)
+- Makes it easy to see at a glance which players are tracking interim tome weapons
+
 ```
-| Weapon      | [Raid][Raid+Tome] | ☐ Have | —    |
+| Weapon      | [Raid][Raid+Tome] | ☐ Have | —    |  (Raid only)
+| Weapon      | [Raid][Raid+Tome] | ☐ Have | +    |  (Raid + Tome enabled)
 | └ Tome Wep  | Tome (fixed)      | ☐ Have | ☐ Aug |
 ```
 
@@ -302,6 +315,39 @@ Right-click on PlayerCard shows menu with FFXIV-style icons:
 
 Icons are stored locally with transparent backgrounds for better theme integration.
 
+### 8. Aug Column Behavior (GearTable)
+
+The Augmented (Aug) column in the gear table has context-aware behavior:
+
+**For Raid Gear:**
+- Aug column shows **empty cell** (no dash, no checkbox)
+- Raid gear cannot be augmented, so showing a dash was deemed "too noisy"
+- Clean, minimal appearance
+
+**For Tome Gear:**
+- Aug column shows **checkbox** to track augmentation status
+- Checkbox disabled until player has the tome gear (`hasItem === true`)
+- Tooltip: "Get tome gear first" when disabled
+
+**For Weapon:**
+- Aug column shows `—` (dash) when tracking raid weapon only
+- Aug column shows `+` (plus) when "+Tome" button is active
+- Visual indicator of tome weapon tracking status
+- Tome weapon sub-row has its own Aug checkbox when shown
+
+**Visual Example:**
+```
+| Head (Raid) | [Raid][Tome] | ☑ Have |      |  ← Empty cell for Raid
+| Body (Tome) | [Raid][Tome] | ☑ Have | ☐ Aug |  ← Checkbox for Tome
+| Weapon      | [Raid][+Tome]| ☑ Have | +    |  ← Plus indicates tome tracking
+| └ Tome Wep  | Tome         | ☐ Have | ☐ Aug |  ← Sub-row with checkbox
+```
+
+**User Badge Colors:**
+- "You" badge: Blue (`bg-blue-500/20 text-blue-400`)
+- Other claimed users: Blue (`bg-blue-500/20 text-blue-400`)
+- Previously: "You" was teal/accent, now unified with all claimed badges
+
 ---
 
 ## Key Files
@@ -311,6 +357,7 @@ Icons are stored locally with transparent backgrounds for better theme integrati
 | `src/stores/authStore.ts` | Discord OAuth, user state |
 | `src/stores/staticGroupStore.ts` | Static groups, membership |
 | `src/stores/tierStore.ts` | Tier snapshots, players |
+| `src/utils/permissions.ts` | Role-based permission checks and UI helpers |
 | `src/utils/priority.ts` | Loot priority calculations |
 | `src/utils/calculations.ts` | Gear completion, materials needed |
 | `src/gamedata/costs.ts` | Book costs, tomestone costs |
@@ -455,6 +502,152 @@ type GearSlot = 'weapon' | 'head' | 'body' | 'hands' | 'legs' | 'feet' |
 
 ---
 
+## Permission System
+
+The application implements a comprehensive role-based permission system with visual feedback and graceful error handling.
+
+### Permission Roles
+
+| Role | Access Level |
+|------|-------------|
+| **Owner** | Full control - manage group settings, delete group, edit all players, manage roster |
+| **Lead** | Edit roster - manage tiers, add/remove/reorder players, edit all players |
+| **Member** | Edit own cards - can only edit players they've claimed via "Take Ownership" |
+| **Viewer** | Read-only - view via share code, no edit permissions |
+
+### Permission Utilities (`utils/permissions.ts`)
+
+Core permission check functions that return `{ allowed: boolean, reason?: string }`:
+
+```typescript
+// Player-level permissions
+canEditPlayer(userRole, player, currentUserId) // Edit name, job, position
+canEditGear(userRole, player, currentUserId)   // Edit gear slots
+canClaimPlayer(userRole, player, currentUserId) // Take/release ownership
+canResetGear(userRole, player, currentUserId)  // Reset all gear to unchecked
+
+// Roster-level permissions
+canManageRoster(userRole)  // Add, remove, reorder players
+canManageTiers(userRole)   // Create, delete, rollover tiers
+
+// Group-level permissions
+canManageGroup(userRole)       // Edit settings, delete group
+canManageInvitations(userRole) // Create, revoke invites
+
+// UI helpers
+getRoleDescription(role)      // Human-readable role description
+getRoleDisplayName(role)      // Capitalized role name
+getRoleColorClasses(role)     // Tailwind color classes for badges
+```
+
+### Permission Enforcement Strategy
+
+**Hybrid approach** for optimal UX:
+
+1. **Destructive actions** - Disabled upfront with tooltips
+   - Delete tier, remove player, delete group, reset gear
+   - Buttons show `disabled` state with helpful tooltip explaining why
+   - Prevents accidental clicks and wasted effort
+
+2. **Edit actions** - Fail gracefully with toast messages
+   - Player name, job, position, gear, BiS source
+   - Allow interaction attempt, show toast notification on permission denial
+   - Less cluttered UI, clear feedback on action
+
+3. **Defense in depth** - Frontend UX + Backend enforcement
+   - Frontend checks provide immediate feedback
+   - Backend always validates permissions (never trust client)
+   - API returns 403 with helpful error messages
+
+### Disabled State Styling Pattern
+
+**Consistent pattern across all components:**
+
+```tsx
+// 1. Always apply base colors (maintains visual context)
+const baseClasses = 'bg-role-tank/20 text-role-tank';
+
+// 2. Conditionally apply hover effects (only when enabled)
+const hoverClasses = permission.allowed
+  ? 'hover:bg-role-tank/30'
+  : '';
+
+// 3. Append disabled state (visual feedback)
+const disabledClasses = !permission.allowed
+  ? 'opacity-50 cursor-not-allowed'
+  : '';
+
+// 4. Combine all classes
+className={`${baseClasses} ${hoverClasses} ${disabledClasses}`}
+```
+
+**Key principles:**
+- Base colors always visible (role colors, BiS source colors preserved)
+- Hover effects only when interaction is possible
+- `opacity-50 cursor-not-allowed` for all disabled elements
+- No hover border/background changes when disabled
+- Tooltips explain permission requirements
+
+### Special Cases
+
+**Checkboxes** - Use inline styles for higher CSS specificity:
+```tsx
+<input
+  disabled={!permission.allowed}
+  className="..."
+  style={
+    disabled
+      ? { pointerEvents: 'none', borderColor: 'var(--color-border-default)' }
+      : undefined
+  }
+/>
+```
+
+**BiS Source Buttons** - Conditional hover on inactive state:
+```tsx
+className={`... ${
+  isActive
+    ? 'bg-gear-raid/20 text-gear-raid'  // Active - no hover
+    : `bg-surface-interactive text-text-muted ${
+        permission.allowed ? 'hover:text-text-secondary' : ''  // Inactive - conditional hover
+      }`
+} ${!permission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+```
+
+### Error Handling
+
+**403 Permission Denied** - Show toast notification:
+```typescript
+// api.ts - Handles 403 responses
+if (error.status === 403) {
+  toast.error(extractErrorMessage(error));
+  // Don't redirect, just show feedback
+}
+```
+
+**Toast Messages** - Auto-dismiss after 5 seconds:
+- Permission errors: `toast.warning(permission.reason)`
+- API errors: `toast.error(errorMessage)`
+- Success: `toast.success(message)`
+
+### Component Permission Integration
+
+**Components with permission checks:**
+- `PlayerCard` - Edit name, job, position, gear, context menu
+- `GearTable` - Gear checkboxes, BiS source buttons, augment checkboxes
+- `PositionSelector` - Raid position popover
+- `TankRoleSelector` - MT/OT selector
+- `InlinePlayerEdit` - Name/job form for configuring slots
+- `TierSelector` - Delete tier button
+- `CreateTierModal` - Create tier action
+- `RolloverDialog` - Rollover action
+- `GroupSettingsModal` - Delete group button
+- `GroupView` - Drag-and-drop reordering
+
+**Pattern:** All components receive `userRole` and `currentUserId` props, check permissions before allowing actions.
+
+---
+
 ## Priority System
 
 ### Display Order (party list style)
@@ -491,27 +684,29 @@ function calculatePriorityScore(player): number {
 
 ### Static Group Components (`components/static-group/`)
 - `StaticSwitcher.tsx` - Static dropdown for quick group switching (shows in header)
-- `GroupSettingsModal.tsx` - Rename, toggle public/private, delete group
-- `TierSelector.tsx` - Tier dropdown (select tier within group)
-- `CreateTierModal.tsx` - Select and create new tier snapshot
+- `GroupSettingsModal.tsx` - Rename, toggle public/private, delete group (permission-aware)
+- `TierSelector.tsx` - Tier dropdown with permission-aware delete button
+- `CreateTierModal.tsx` - Create tier snapshot (permission-aware)
 - `DeleteTierModal.tsx` - Confirm tier deletion
-- `RolloverDialog.tsx` - Copy roster to new tier with gear reset option
+- `RolloverDialog.tsx` - Copy roster to new tier with gear reset option (permission-aware)
 
 ### Auth Components (`components/auth/`)
 - `LoginButton.tsx` - Discord OAuth login button
 - `UserMenu.tsx` - User avatar dropdown with logout
 
 ### Player Components (`components/player/`)
-- `PlayerCard.tsx` - Expandable card with compact/full views, context menu, job picker, BiS badge
+- `PlayerCard.tsx` - Expandable card with permission-aware editing (name, job, gear, context menu)
+- `PlayerCardHeader.tsx` - Player name with permission-aware inline editing
+- `PlayerCardStatus.tsx` - Status badges (SUB, BiS, You, claimed user, MT/OT)
 - `DroppablePlayerCard.tsx` - Drag-and-drop wrapper for PlayerCard
-- `InlinePlayerEdit.tsx` - Name/job form for configuring slots
+- `InlinePlayerEdit.tsx` - Permission-aware name/job form for configuring slots
 - `EmptySlotCard.tsx` - Role-based placeholder for unconfigured template slots
 - `RoleJobSelector.tsx` - Job selection with template role filtering
-- `GearTable.tsx` - 11-slot gear editor with source/have/augmented
-- `WeaponSlotRow.tsx` - Special weapon row with tome weapon sub-row
+- `GearTable.tsx` - Permission-aware 11-slot gear editor with Aug column behavior
+- `WeaponSlotRow.tsx` - Special weapon row with tome weapon sub-row and Aug indicator
 - `NeedsFooter.tsx` - 4-stat footer (raid/tome/upgrades/weeks)
-- `PositionSelector.tsx` - Raid position selector
-- `TankRoleSelector.tsx` - MT/OT designation selector
+- `PositionSelector.tsx` - Permission-aware raid position selector with disabled state styling
+- `TankRoleSelector.tsx` - Permission-aware MT/OT selector with disabled state styling
 - `BiSImportModal.tsx` - Modal for importing BiS (uses tier contentType to filter presets)
 
 ### Loot Components (`components/loot/`)
@@ -527,9 +722,10 @@ function calculatePriorityScore(player): number {
 - `ViewModeToggle.tsx` - ▤/☰ toggle component
 - `SortModeSelector.tsx` - Sort preset dropdown
 - `GroupViewToggle.tsx` - G1/G2 group view toggle
-- `ContextMenu.tsx` - Right-click menu component
+- `ContextMenu.tsx` - Right-click menu component with tooltip support
 - `Modal.tsx` - Confirmation dialogs
-- `Toast.tsx` - Notification messages
+- `Toast.tsx` - Notification messages (error/warning/success)
+- `Checkbox.tsx` - Permission-aware checkbox with disabled state styling
 - `JobIcon.tsx` - XIVAPI job icons with fallback
 - `ItemHoverCard.tsx` - Gear item hover card with name, iLvl, stats, source badge
 
@@ -749,10 +945,11 @@ When on a group page, the header includes a static switcher dropdown:
 | 5 | Complete | XIVGear BiS import with preview, BiS link badge, dynamic menu labels, Unlink BiS |
 | 5.2 | Complete | BiS presets by job (dropdown from The Balance), in-game gear slot names |
 | 5.3 | Complete | Item icons from XIVAPI with hover cards (stats, iLvl, source badge) |
-| 5.4 | **Complete** | BiS preset GCD display, auto-filter by tier contentType (no toggle), all 21 jobs covered |
-| 6 | Planned | Lodestone auto-sync |
-| 7 | Planned | FFLogs integration |
-| 8 | Planned | Discord bot, PWA offline mode |
+| 5.4 | Complete | BiS preset GCD display, auto-filter by tier contentType (no toggle), all 21 jobs covered |
+| 6 | **Complete** | Permission-aware UI - role-based access control, member card ownership, disabled state styling, graceful error handling |
+| 7 | Planned | Lodestone auto-sync |
+| 8 | Planned | FFLogs integration |
+| 9 | Planned | Discord bot, PWA offline mode |
 
 ---
 
