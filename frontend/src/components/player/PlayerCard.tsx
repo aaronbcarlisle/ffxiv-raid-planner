@@ -336,7 +336,8 @@ export function PlayerCard({
               value="progress"
               checked={resetMode === 'progress'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
+              className="mt-1 w-4 h-4 cursor-pointer"
+              style={{ accentColor: 'var(--color-accent)' }}
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
@@ -358,7 +359,8 @@ export function PlayerCard({
               value="unlink"
               checked={resetMode === 'unlink'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
+              className="mt-1 w-4 h-4 cursor-pointer"
+              style={{ accentColor: 'var(--color-accent)' }}
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
@@ -380,7 +382,8 @@ export function PlayerCard({
               value="all"
               checked={resetMode === 'all'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
+              className="mt-1 w-4 h-4 cursor-pointer"
+              style={{ accentColor: 'var(--color-accent)' }}
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
