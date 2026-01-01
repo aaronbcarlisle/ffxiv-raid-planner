@@ -26,7 +26,7 @@ import { HEADER_EVENTS } from '../components/layout/Header';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
-import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus } from '../types';
+import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -254,26 +254,63 @@ export function GroupView() {
     }
   }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer]);
 
-  // Reset gear handler - resets all gear slots and tome weapon to default
-  const handleResetGear = useCallback(async (playerId: string) => {
+  // Reset gear handler - handles three reset modes
+  const handleResetGear = useCallback(async (playerId: string, mode: ResetMode) => {
     if (!currentGroup?.id || !currentTier?.tierId) return;
 
-    // Create default gear with all slots empty
-    // Ring2 defaults to tome since you can't equip two identical raid rings
-    const defaultGear: GearSlotStatus[] = GEAR_SLOTS.map((slot) => ({
-      slot,
-      bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
-      hasItem: false,
-      isAugmented: false,
-    }));
+    const player = currentTier.players.find(p => p.id === playerId);
+    if (!player) return;
 
-    const defaultTomeWeapon = { pursuing: false, hasItem: false, isAugmented: false };
+    let updates: Partial<SnapshotPlayer>;
 
-    await updatePlayer(currentGroup.id, currentTier.tierId, playerId, {
-      gear: defaultGear,
-      tomeWeapon: defaultTomeWeapon,
-    });
-  }, [currentGroup?.id, currentTier?.tierId, updatePlayer]);
+    switch (mode) {
+      case 'progress':
+        // Reset progress only (keep BiS config)
+        const progressResetGear = player.gear.map(slot => ({
+          ...slot,
+          hasItem: false,
+          isAugmented: false,
+          // Keep: bisSource, itemName, itemIcon, itemLevel, itemStats
+        }));
+        updates = {
+          gear: progressResetGear,
+          tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
+        };
+        break;
+
+      case 'unlink':
+        // Unlink BiS (keep progress and sources)
+        const unlinkGear = player.gear.map(slot => ({
+          slot: slot.slot,
+          bisSource: slot.bisSource,
+          hasItem: slot.hasItem,
+          isAugmented: slot.isAugmented,
+          // Clear: itemName, itemIcon, itemLevel, itemStats
+        }));
+        updates = {
+          gear: unlinkGear,
+          bisLink: '',
+        };
+        break;
+
+      case 'all':
+        // Reset everything
+        const defaultGear: GearSlotStatus[] = GEAR_SLOTS.map((slot) => ({
+          slot,
+          bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
+          hasItem: false,
+          isAugmented: false,
+        }));
+        updates = {
+          gear: defaultGear,
+          tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
+          bisLink: '',
+        };
+        break;
+    }
+
+    await updatePlayer(currentGroup.id, currentTier.tierId, playerId, updates);
+  }, [currentGroup?.id, currentTier?.tierId, currentTier?.players, updatePlayer]);
 
   // Listen for header events
   useEffect(() => {
@@ -448,7 +485,7 @@ export function GroupView() {
             }
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
-          onResetGear={resetPermission.allowed ? () => handleResetGear(player.id) : undefined}
+          onResetGear={resetPermission.allowed ? (mode) => handleResetGear(player.id, mode) : undefined}
           onClaimPlayer={() => handleClaimPlayer(player.id)}
           onReleasePlayer={() => handleReleasePlayer(player.id)}
           onModalOpen={handlePlayerModalOpen}

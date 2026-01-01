@@ -34,6 +34,9 @@ export type ViewMode = 'compact' | 'expanded';
 // Sort preset for player ordering
 export type SortPreset = 'standard' | 'dps-first' | 'healer-first' | 'custom';
 
+// Reset mode for Reset Gear action
+export type ResetMode = 'progress' | 'unlink' | 'all';
+
 // Raid position for mechanics (light parties, partners, spread positions)
 export type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
 

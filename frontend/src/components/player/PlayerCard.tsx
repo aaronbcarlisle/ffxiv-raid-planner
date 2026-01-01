@@ -14,7 +14,7 @@ import { BiSImportModal } from './BiSImportModal';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
@@ -35,7 +35,7 @@ interface PlayerCardProps {
   onCopy: () => void;
   onPaste: () => void;
   onDuplicate: () => void;
-  onResetGear?: () => void;
+  onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
   onModalOpen?: () => void;
@@ -67,6 +67,7 @@ export function PlayerCard({
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -314,16 +315,81 @@ export function PlayerCard({
         </div>
       </Modal>
 
-      {/* Reset Gear Confirmation Modal */}
+      {/* Reset Gear Options Modal */}
       <Modal
         isOpen={showResetConfirm}
         onClose={() => setShowResetConfirm(false)}
         title="Reset Gear Progress"
       >
-        <p className="text-text-secondary mb-6">
-          Are you sure you want to reset all gear progress for <span className="text-text-primary font-medium">{player.name}</span>?
-          This will uncheck all gear slots and cannot be undone.
-        </p>
+        <div className="mb-6">
+          <p className="text-text-secondary mb-4">
+            Choose what to reset for <span className="text-text-primary font-medium">{player.name}</span> ({player.job}):
+          </p>
+
+          {/* Radio option 1: Reset progress only */}
+          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+            <input
+              type="radio"
+              name="resetMode"
+              value="progress"
+              checked={resetMode === 'progress'}
+              onChange={(e) => setResetMode(e.target.value as ResetMode)}
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+            />
+            <div className="flex-1">
+              <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
+              <ul className="text-text-secondary text-sm space-y-0.5">
+                <li>• Unchecks all Have/Aug checkboxes</li>
+                <li>• Resets tome weapon tracking</li>
+                <li>• Keeps BiS link and sources</li>
+              </ul>
+            </div>
+          </label>
+
+          {/* Radio option 2: Unlink BiS */}
+          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+            <input
+              type="radio"
+              name="resetMode"
+              value="unlink"
+              checked={resetMode === 'unlink'}
+              onChange={(e) => setResetMode(e.target.value as ResetMode)}
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+            />
+            <div className="flex-1">
+              <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
+              <ul className="text-text-secondary text-sm space-y-0.5">
+                <li>• Removes BiS reference</li>
+                <li>• Clears item metadata (names, icons)</li>
+                <li>• Keeps current sources and progress</li>
+              </ul>
+            </div>
+          </label>
+
+          {/* Radio option 3: Reset everything */}
+          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+            <input
+              type="radio"
+              name="resetMode"
+              value="all"
+              checked={resetMode === 'all'}
+              onChange={(e) => setResetMode(e.target.value as ResetMode)}
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+            />
+            <div className="flex-1">
+              <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
+              <ul className="text-text-secondary text-sm space-y-0.5">
+                <li>• Unchecks all Have/Aug checkboxes</li>
+                <li>• Resets BiS sources to defaults</li>
+                <li>• Removes BiS link and metadata</li>
+                <li>• Resets tome weapon tracking</li>
+              </ul>
+            </div>
+          </label>
+
+          <p className="text-status-warning text-sm mt-4">⚠️ This action cannot be undone.</p>
+        </div>
+
         <div className="flex justify-end gap-3">
           <button
             onClick={() => setShowResetConfirm(false)}
@@ -333,7 +399,7 @@ export function PlayerCard({
           </button>
           <button
             onClick={() => {
-              onResetGear?.();
+              onResetGear?.(resetMode);
               setShowResetConfirm(false);
             }}
             className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
