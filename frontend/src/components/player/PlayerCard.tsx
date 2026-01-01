@@ -334,7 +334,7 @@ export function PlayerCard({
               value="progress"
               checked={resetMode === 'progress'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
@@ -354,7 +354,7 @@ export function PlayerCard({
               value="unlink"
               checked={resetMode === 'unlink'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
@@ -374,7 +374,7 @@ export function PlayerCard({
               value="all"
               checked={resetMode === 'all'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 text-accent focus:ring-accent"
+              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
