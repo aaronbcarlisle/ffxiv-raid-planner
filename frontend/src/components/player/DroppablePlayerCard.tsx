@@ -3,7 +3,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
-import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType } from '../../types';
+import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Export types for drag handle
@@ -26,7 +26,7 @@ interface DroppablePlayerCardProps {
   onCopy: () => void;
   onPaste: () => void;
   onDuplicate: () => void;
-  onResetGear?: () => void;
+  onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
   onModalOpen?: () => void;
