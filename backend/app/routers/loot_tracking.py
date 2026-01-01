@@ -163,7 +163,7 @@ async def create_loot_log_entry(
         floor=data.floor,
         item_slot=data.item_slot,
         recipient_player_id=data.recipient_player_id,
-        method=data.method,
+        method=data.method.value,  # Use .value to get lowercase string for PostgreSQL enum
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
