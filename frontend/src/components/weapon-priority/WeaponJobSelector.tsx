@@ -5,7 +5,7 @@
  * Shows all combat jobs grouped by role.
  */
 
-import { JOBS } from '../../gamedata/jobs';
+import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 
 interface WeaponJobSelectorProps {
@@ -20,13 +20,13 @@ export function WeaponJobSelector({
   onCancel,
 }: WeaponJobSelectorProps) {
   // Group jobs by role
-  const jobsByRole = JOBS.reduce((acc, job) => {
+  const jobsByRole = RAID_JOBS.reduce((acc, job) => {
     if (!acc[job.role]) {
       acc[job.role] = [];
     }
     acc[job.role].push(job);
     return acc;
-  }, {} as Record<string, typeof JOBS>);
+  }, {} as Record<string, typeof RAID_JOBS>);
 
   const roleOrder: Array<keyof typeof jobsByRole> = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 

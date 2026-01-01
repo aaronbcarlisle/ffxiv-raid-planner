@@ -7,7 +7,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WeaponPriority } from '../../types';
-import { JOBS } from '../../gamedata/jobs';
+import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 
 interface WeaponPriorityListItemProps {
@@ -43,7 +43,7 @@ export function WeaponPriorityListItem({
     transition,
   };
 
-  const jobInfo = JOBS.find((j) => j.abbreviation === priority.job);
+  const jobInfo = RAID_JOBS.find((j) => j.abbreviation === priority.job);
   const jobName = jobInfo?.name || priority.job;
 
   return (

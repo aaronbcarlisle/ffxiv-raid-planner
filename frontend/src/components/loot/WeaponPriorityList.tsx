@@ -7,7 +7,7 @@
 
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob } from '../../utils/weaponPriority';
-import { JOBS } from '../../gamedata/jobs';
+import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
 
@@ -30,8 +30,8 @@ export function WeaponPriorityList({
 
   // Sort jobs by role (tank > healer > melee > ranged > caster)
   const sortedJobs = Array.from(allJobs).sort((a, b) => {
-    const jobA = JOBS.find((j) => j.abbreviation === a);
-    const jobB = JOBS.find((j) => j.abbreviation === b);
+    const jobA = RAID_JOBS.find((j) => j.abbreviation === a);
+    const jobB = RAID_JOBS.find((j) => j.abbreviation === b);
     if (!jobA || !jobB) return 0;
 
     const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
@@ -56,7 +56,7 @@ export function WeaponPriorityList({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {sortedJobs.map((job) => {
         const priority = getWeaponPriorityForJob(players, job, settings);
-        const jobInfo = JOBS.find((j) => j.abbreviation === job);
+        const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
         const jobName = jobInfo?.name || job;
 
         return (
