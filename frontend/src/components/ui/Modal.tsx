@@ -1,5 +1,3 @@
-import { useEffect, useRef } from 'react';
-
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -8,44 +6,21 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen) {
-      dialog.showModal();
-    } else {
-      dialog.close();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => onClose();
-    dialog.addEventListener('close', handleClose);
-    return () => dialog.removeEventListener('close', handleClose);
-  }, [onClose]);
+  if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === dialogRef.current) {
+    // Only close if clicking the backdrop, not the modal content
+    if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
   return (
-    <dialog
-      ref={dialogRef}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={handleBackdropClick}
-      className="bg-transparent p-0 backdrop:bg-black/70 backdrop:backdrop-blur-sm open:flex open:items-center open:justify-center open:fixed open:inset-0 open:w-full open:h-full open:max-w-none open:max-h-none"
     >
-      <div
-        className="bg-surface-card border border-border-default rounded-lg w-full max-w-md mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-surface-card border border-border-default rounded-lg w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <h2 className="font-display text-xl text-accent">{title}</h2>
           <button
@@ -57,6 +32,6 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         </div>
         <div className="p-4">{children}</div>
       </div>
-    </dialog>
+    </div>
   );
 }
