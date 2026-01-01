@@ -138,7 +138,7 @@ function WeaponSlotRow({
               className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                 tomeWeapon.pursuing
                   ? 'bg-gear-tome/20 text-gear-tome'
-                  : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                  : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
               } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
               disabled={disabled}
@@ -394,7 +394,7 @@ export function GearTable({
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                         status.bisSource === 'raid'
                           ? 'bg-gear-raid/20 text-gear-raid'
-                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
                       } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!gearPermission.allowed}
                       title={!gearPermission.allowed ? gearPermission.reason : undefined}
@@ -406,7 +406,7 @@ export function GearTable({
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                         status.bisSource === 'tome'
                           ? 'bg-gear-tome/20 text-gear-tome'
-                          : 'bg-surface-interactive text-text-muted hover:text-text-secondary'
+                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
                       } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={!gearPermission.allowed}
                       title={!gearPermission.allowed ? gearPermission.reason : undefined}
