@@ -15,7 +15,14 @@ from .exceptions import register_exception_handlers
 from .logging_config import configure_logging, get_logger
 from .middleware import SecurityHeadersMiddleware
 from .rate_limit import limiter
-from .routers import auth_router, bis_router, invitations_router, static_groups_router, tiers_router
+from .routers import (
+    auth_router,
+    bis_router,
+    invitations_router,
+    loot_tracking_router,
+    static_groups_router,
+    tiers_router,
+)
 
 settings = get_settings()
 configure_logging(settings)
@@ -92,6 +99,7 @@ register_exception_handlers(app)
 app.include_router(auth_router)
 app.include_router(bis_router)
 app.include_router(invitations_router)
+app.include_router(loot_tracking_router)
 app.include_router(static_groups_router)
 app.include_router(tiers_router)
 
