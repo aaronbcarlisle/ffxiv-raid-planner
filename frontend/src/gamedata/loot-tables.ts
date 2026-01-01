@@ -16,6 +16,8 @@ export interface FloorLootTable {
   gearDrops: GearSlot[];
   /** Upgrade materials that drop from this floor */
   upgradeMaterials: ('twine' | 'glaze' | 'solvent')[];
+  /** Special materials like Universal Tomestone (informational only, no priority calc) */
+  specialMaterials?: string[];
   /** Book type earned from this floor */
   bookType: string;
   /** Number of coffers that drop (typically 2) */
@@ -30,7 +32,7 @@ export const FLOOR_LOOT_TABLES: Record<FloorNumber, FloorLootTable> = {
   1: {
     floor: 1,
     gearDrops: ['earring', 'necklace', 'bracelet', 'ring1'], // ring1 represents "ring" drop
-    upgradeMaterials: ['glaze'], // Only from chest/full clear reward
+    upgradeMaterials: [], // First floor never has upgrade materials
     bookType: 'I',
     cofferCount: 2,
   },
@@ -38,6 +40,7 @@ export const FLOOR_LOOT_TABLES: Record<FloorNumber, FloorLootTable> = {
     floor: 2,
     gearDrops: ['head', 'hands', 'feet'],
     upgradeMaterials: ['glaze'],
+    specialMaterials: ['Universal Tomestone'],
     bookType: 'II',
     cofferCount: 2,
   },
@@ -86,7 +89,7 @@ export function getFloorForSlot(slot: GearSlot): FloorNumber {
 export function getFloorForUpgradeMaterial(material: 'twine' | 'glaze' | 'solvent'): FloorNumber[] {
   switch (material) {
     case 'glaze':
-      return [1, 2]; // Floors 1 and 2
+      return [2]; // Floor 2 only
     case 'twine':
       return [3]; // Floor 3 only
     case 'solvent':

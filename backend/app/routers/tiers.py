@@ -105,6 +105,18 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
             display_name=player.user.display_name,
         )
 
+    # Build weapon priorities
+    from ..schemas.tier_snapshot import WeaponPriority
+    weapon_priorities = [
+        WeaponPriority(
+            job=wp.get("job", ""),
+            weapon_name=wp.get("weaponName"),
+            received=wp.get("received", False),
+            received_date=wp.get("receivedDate"),
+        )
+        for wp in (player.weapon_priorities or [])
+    ]
+
     return SnapshotPlayerResponse(
         id=player.id,
         tier_snapshot_id=player.tier_snapshot_id,
@@ -126,6 +138,10 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
         last_sync=player.last_sync,
         gear=gear,
         tome_weapon=tome_weapon,
+        weapon_priorities=weapon_priorities,
+        weapon_priorities_locked=player.weapon_priorities_locked,
+        weapon_priorities_locked_by=player.weapon_priorities_locked_by,
+        weapon_priorities_locked_at=player.weapon_priorities_locked_at,
         created_at=player.created_at,
         updated_at=player.updated_at,
     )
@@ -140,6 +156,12 @@ def snapshot_to_response(snapshot: TierSnapshot) -> TierSnapshotResponse:
         content_type=snapshot.content_type,
         is_active=snapshot.is_active,
         player_count=snapshot.player_count,
+        weapon_priorities_auto_lock_date=snapshot.weapon_priorities_auto_lock_date,
+        weapon_priorities_global_lock=snapshot.weapon_priorities_global_lock,
+        weapon_priorities_global_locked_by=snapshot.weapon_priorities_global_locked_by,
+        weapon_priorities_global_locked_at=snapshot.weapon_priorities_global_locked_at,
+        current_week=snapshot.current_week,
+        week_start_date=snapshot.week_start_date,
         created_at=snapshot.created_at,
         updated_at=snapshot.updated_at,
     )
@@ -156,6 +178,12 @@ def snapshot_to_response_with_players(snapshot: TierSnapshot) -> TierSnapshotWit
         content_type=snapshot.content_type,
         is_active=snapshot.is_active,
         players=players,
+        weapon_priorities_auto_lock_date=snapshot.weapon_priorities_auto_lock_date,
+        weapon_priorities_global_lock=snapshot.weapon_priorities_global_lock,
+        weapon_priorities_global_locked_by=snapshot.weapon_priorities_global_locked_by,
+        weapon_priorities_global_locked_at=snapshot.weapon_priorities_global_locked_at,
+        current_week=snapshot.current_week,
+        week_start_date=snapshot.week_start_date,
         created_at=snapshot.created_at,
         updated_at=snapshot.updated_at,
     )
@@ -803,3 +831,258 @@ async def release_player(
     player = result.scalar_one()
 
     return player_to_response(player)
+
+
+# --- Weapon Priority Endpoints ---
+
+
+@router.put(
+    "/{group_id}/tiers/{tier_id}/players/{player_id}/weapon-priorities",
+    response_model=SnapshotPlayerResponse,
+)
+async def update_weapon_priorities(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    data: "WeaponPrioritiesUpdate",
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Update a player's weapon priority list"""
+    from ..schemas import WeaponPrioritiesUpdate
+
+    group = await get_static_group(session, group_id)
+    membership = await get_user_membership(session, current_user.id, group_id)
+
+    if not membership:
+        raise PermissionDenied("You are not a member of this static group")
+
+    # Get player and tier snapshot
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # Get tier snapshot to check lock states
+    tier_result = await session.execute(
+        select(TierSnapshot).where(TierSnapshot.id == player.tier_snapshot_id)
+    )
+    tier = tier_result.scalar_one()
+
+    # Check if locked
+    can_edit_all = membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+    is_own_player = player.user_id == current_user.id
+
+    # Determine if locked
+    is_locked = False
+    lock_reason = None
+
+    if tier.weapon_priorities_global_lock:
+        is_locked = True
+        lock_reason = "Weapon priorities are globally locked"
+    elif player.weapon_priorities_locked:
+        is_locked = True
+        lock_reason = "This player's weapon priorities are locked"
+    elif tier.weapon_priorities_auto_lock_date:
+        from dateutil import parser as date_parser
+
+        lock_date = date_parser.isoparse(tier.weapon_priorities_auto_lock_date)
+        now = datetime.now(timezone.utc)
+        if now >= lock_date:
+            is_locked = True
+            lock_reason = f"Weapon priorities auto-locked on {tier.weapon_priorities_auto_lock_date}"
+
+    # Only Owner/Lead can edit when locked
+    if is_locked and not can_edit_all:
+        raise PermissionDenied(lock_reason or "Weapon priorities are locked")
+
+    # Members can only edit their own player
+    if not can_edit_all and not is_own_player:
+        raise PermissionDenied("You can only edit your own character's weapon priorities")
+
+    # Update weapon priorities
+    weapon_priorities_data = [wp.model_dump(mode="json") for wp in data.weapon_priorities]
+    player.weapon_priorities = weapon_priorities_data
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    # Reload to get fresh state
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    return player_to_response(player)
+
+
+@router.post(
+    "/{group_id}/tiers/{tier_id}/players/{player_id}/weapon-priorities/lock",
+    response_model=SnapshotPlayerResponse,
+)
+async def lock_player_weapon_priorities(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Lock a player's weapon priorities (Owner/Lead only)"""
+    group = await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Get player
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # Lock the player's weapon priorities
+    player.weapon_priorities_locked = True
+    player.weapon_priorities_locked_by = current_user.id
+    player.weapon_priorities_locked_at = datetime.now(timezone.utc).isoformat()
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    # Reload to get fresh state
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    return player_to_response(player)
+
+
+@router.delete(
+    "/{group_id}/tiers/{tier_id}/players/{player_id}/weapon-priorities/lock",
+    response_model=SnapshotPlayerResponse,
+)
+async def unlock_player_weapon_priorities(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Unlock a player's weapon priorities (Owner/Lead only)"""
+    group = await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Get player
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # Unlock the player's weapon priorities
+    player.weapon_priorities_locked = False
+    player.weapon_priorities_locked_by = None
+    player.weapon_priorities_locked_at = None
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    # Reload to get fresh state
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    return player_to_response(player)
+
+
+@router.put(
+    "/{group_id}/tiers/{tier_id}/weapon-priority-settings",
+    response_model=TierSnapshotResponse,
+)
+async def update_weapon_priority_settings(
+    group_id: str,
+    tier_id: str,
+    data: "WeaponPrioritySettingsUpdate",
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TierSnapshotResponse:
+    """Update tier-level weapon priority settings (Owner/Lead only)"""
+    from ..schemas import WeaponPrioritySettingsUpdate
+
+    group = await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Get tier snapshot
+    result = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id, TierSnapshot.tier_id == tier_id
+        )
+    )
+    tier = result.scalar_one_or_none()
+
+    if not tier:
+        raise NotFound("Tier snapshot not found")
+
+    # Apply updates
+    update_data = data.model_dump(exclude_unset=True)
+
+    if "weapon_priorities_auto_lock_date" in update_data:
+        tier.weapon_priorities_auto_lock_date = update_data["weapon_priorities_auto_lock_date"]
+
+    if "weapon_priorities_global_lock" in update_data:
+        is_locking = update_data["weapon_priorities_global_lock"]
+        tier.weapon_priorities_global_lock = is_locking
+
+        if is_locking:
+            tier.weapon_priorities_global_locked_by = current_user.id
+            tier.weapon_priorities_global_locked_at = datetime.now(timezone.utc).isoformat()
+        else:
+            tier.weapon_priorities_global_locked_by = None
+            tier.weapon_priorities_global_locked_at = None
+
+    tier.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+
+    # Reload to get fresh state
+    result = await session.execute(
+        select(TierSnapshot)
+        .where(TierSnapshot.id == tier.id)
+        .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
+    )
+    tier = result.scalar_one()
+
+    return snapshot_to_response(tier)

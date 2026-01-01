@@ -34,6 +34,9 @@ from .tier_snapshot import (
     TierSnapshotUpdate,
     TierSnapshotWithPlayers,
     TomeWeaponStatus,
+    WeaponPrioritiesUpdate,
+    WeaponPriority,
+    WeaponPrioritySettingsUpdate,
 )
 from .user import (
     DiscordAuthUrl,
@@ -78,6 +81,9 @@ __all__ = [
     "TierSnapshotResponse",
     "TierSnapshotUpdate",
     "TierSnapshotWithPlayers",
+    "WeaponPrioritiesUpdate",
+    "WeaponPriority",
+    "WeaponPrioritySettingsUpdate",
     # User/Auth
     "DiscordAuthUrl",
     "DiscordCallback",

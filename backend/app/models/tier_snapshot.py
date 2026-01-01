@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -38,6 +38,16 @@ class TierSnapshot(Base):
 
     # Whether this is the currently active tier for the group
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Weapon priority settings
+    weapon_priorities_auto_lock_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    weapon_priorities_global_lock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    weapon_priorities_global_locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    weapon_priorities_global_locked_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Week tracking for loot log and page tracking
+    current_week: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    week_start_date: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Timestamps
     created_at: Mapped[str] = mapped_column(

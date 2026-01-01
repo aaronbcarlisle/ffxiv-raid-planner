@@ -142,6 +142,23 @@ export function LootPriorityPanel({
           </div>
         </>
       )}
+
+      {/* Special materials (informational only) */}
+      {lootTable.specialMaterials && lootTable.specialMaterials.length > 0 && (
+        <div className="border-t border-border-default pt-4 mt-4">
+          <h4 className="text-text-secondary text-sm mb-3">Special Materials</h4>
+          <div className="flex flex-wrap gap-2">
+            {lootTable.specialMaterials.map((material) => (
+              <div
+                key={material}
+                className="bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary"
+              >
+                {material}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

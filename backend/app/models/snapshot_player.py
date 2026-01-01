@@ -57,6 +57,13 @@ class SnapshotPlayer(Base):
     gear: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     tome_weapon: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
+    # Weapon priority tracking
+    weapon_priorities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Format: [{"job": "DRG", "weaponName": null, "received": false, "receivedDate": null}, ...]
+    weapon_priorities_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    weapon_priorities_locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    weapon_priorities_locked_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Timestamps
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
