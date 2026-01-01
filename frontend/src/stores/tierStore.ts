@@ -42,6 +42,12 @@ interface TierState {
   // Ownership actions
   claimPlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
   releasePlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
+
+  // Weapon priority actions
+  updateWeaponPriorities: (groupId: string, tierId: string, playerId: string, weaponPriorities: import('../types').WeaponPriority[]) => Promise<SnapshotPlayer>;
+  lockPlayerWeaponPriorities: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
+  unlockPlayerWeaponPriorities: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
+  updateWeaponPrioritySettings: (groupId: string, tierId: string, settings: { weaponPrioritiesAutoLockDate?: string; weaponPrioritiesGlobalLock?: boolean }) => Promise<void>;
 }
 
 export const useTierStore = create<TierState>((set, get) => ({
@@ -463,6 +469,151 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to release player',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Update a player's weapon priorities
+   */
+  updateWeaponPriorities: async (groupId: string, tierId: string, playerId: string, weaponPriorities) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/weapon-priorities`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ weaponPriorities }),
+        }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update weapon priorities',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Lock a player's weapon priorities (Owner/Lead only)
+   */
+  lockPlayerWeaponPriorities: async (groupId: string, tierId: string, playerId: string) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/weapon-priorities/lock`,
+        { method: 'POST' }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to lock weapon priorities',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Unlock a player's weapon priorities (Owner/Lead only)
+   */
+  unlockPlayerWeaponPriorities: async (groupId: string, tierId: string, playerId: string) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/weapon-priorities/lock`,
+        { method: 'DELETE' }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to unlock weapon priorities',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Update tier-level weapon priority settings (Owner/Lead only)
+   */
+  updateWeaponPrioritySettings: async (groupId: string, tierId: string, settings) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      await authRequest<TierSnapshot>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/weapon-priority-settings`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(settings),
+        }
+      );
+
+      // Refresh the current tier to get updated settings
+      await get().fetchTier(groupId, tierId);
+
+      set({ isSaving: false });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update weapon priority settings',
         isSaving: false,
       });
       throw error;

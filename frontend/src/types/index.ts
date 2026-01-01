@@ -62,6 +62,14 @@ export interface TomeWeaponStatus {
   isAugmented: boolean; // Augmented it
 }
 
+// Weapon priority entry (for multi-job weapon tracking)
+export interface WeaponPriority {
+  job: string;
+  weaponName?: string;
+  received: boolean;
+  receivedDate?: string;
+}
+
 // Player needs calculation result
 export interface PlayerNeeds {
   raidNeed: number; // Raid gear pieces still missing
@@ -334,6 +342,12 @@ export interface TierSnapshot {
   isActive: boolean;
   playerCount?: number;
   players?: SnapshotPlayer[];
+  weaponPrioritiesAutoLockDate?: string;
+  weaponPrioritiesGlobalLock: boolean;
+  weaponPrioritiesGlobalLockedBy?: string;
+  weaponPrioritiesGlobalLockedAt?: string;
+  currentWeek: number;
+  weekStartDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -360,6 +374,10 @@ export interface SnapshotPlayer {
   lastSync?: string;
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
+  weaponPriorities: WeaponPriority[];
+  weaponPrioritiesLocked: boolean;
+  weaponPrioritiesLockedBy?: string;
+  weaponPrioritiesLockedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
