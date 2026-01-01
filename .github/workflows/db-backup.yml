@@ -1,0 +1,48 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create database backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE="backup_${BACKUP_DATE}.sql"
+
+          echo "Creating backup: $BACKUP_FILE"
+          pg_dump $DATABASE_URL > $BACKUP_FILE
+          gzip $BACKUP_FILE
+
+          echo "Backup created: ${BACKUP_FILE}.gz"
+          ls -lh ${BACKUP_FILE}.gz
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: backup_*.sql.gz
+          retention-days: 30
+
+      # Optional: Upload to S3/Cloud Storage
+      # - name: Upload to S3
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+      # - run: |
+      #     aws s3 cp backup_*.sql.gz s3://your-bucket/ffxiv-backups/
