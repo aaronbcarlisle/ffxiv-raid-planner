@@ -55,11 +55,12 @@ export function WeaponPriorityEditor({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = weaponPriorities.findIndex((_, i) => `weapon-${i}` === active.id);
-      const newIndex = weaponPriorities.findIndex((_, i) => `weapon-${i}` === over.id);
+      const oldIndex = weaponPriorities.findIndex((wp) => wp.job === active.id);
+      const newIndex = weaponPriorities.findIndex((wp) => wp.job === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
-        onChange(arrayMove(weaponPriorities, oldIndex, newIndex));
+        const reordered = arrayMove(weaponPriorities, oldIndex, newIndex);
+        onChange(reordered);
       }
     }
   };
@@ -105,14 +106,14 @@ export function WeaponPriorityEditor({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={weaponPriorities.map((_, i) => `weapon-${i}`)}
+            items={weaponPriorities.map((wp) => wp.job)}
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-2">
               {weaponPriorities.map((priority, index) => (
                 <WeaponPriorityListItem
-                  key={`weapon-${index}`}
-                  id={`weapon-${index}`}
+                  key={priority.job}
+                  id={priority.job}
                   priority={priority}
                   index={index}
                   isMainJob={priority.job === mainJob}

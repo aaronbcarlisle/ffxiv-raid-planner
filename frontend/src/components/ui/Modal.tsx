@@ -15,12 +15,12 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={handleBackdropEvent}
       onContextMenu={handleBackdropEvent}
     >
-      <div className="bg-surface-card border border-border-default rounded-lg w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b border-border-default">
+      <div className="bg-surface-card border border-border-default rounded-lg w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 className="font-display text-xl text-accent">{title}</h2>
           <button
             onClick={onClose}
@@ -29,7 +29,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             &times;
           </button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="p-4 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

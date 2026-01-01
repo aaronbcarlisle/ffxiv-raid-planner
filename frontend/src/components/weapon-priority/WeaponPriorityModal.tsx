@@ -70,10 +70,13 @@ export function WeaponPriorityModal({
 
     setIsSaving(true);
     try {
+      console.log('Saving weapon priorities:', JSON.stringify(weaponPriorities, null, 2));
       await updateWeaponPriorities(groupId, tierId, player.id, weaponPriorities);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save weapon priorities:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error response:', error?.response);
     } finally {
       setIsSaving(false);
     }
