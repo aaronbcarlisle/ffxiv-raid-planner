@@ -29,18 +29,20 @@ interface AddLootEntryModalProps {
   editEntry?: LootLogEntry;
 }
 
-// Map floor name to floor number
+// Map floor name to floor number (1-4)
 function getFloorNumber(floorName: string): 1 | 2 | 3 | 4 {
   // Extract number from floor name like "M9S" -> 1, "M10S" -> 2, etc.
-  // Or "M5S" -> 1, "M6S" -> 2, etc.
-  const match = floorName.match(/M(\d+)S/i);
+  // Supports M-series (M1S-M12S) and P-series (P1S-P12S) Pandaemonium
+  const match = floorName.match(/[MP](\d+)S/i);
   if (match) {
     const num = parseInt(match[1], 10);
     // For 7.x tier (M9S-M12S): 9->1, 10->2, 11->3, 12->4
+    // For 6.4 tier (P9S-P12S): 9->1, 10->2, 11->3, 12->4
     if (num >= 9) return ((num - 9) % 4 + 1) as 1 | 2 | 3 | 4;
     // For 7.0 tier (M5S-M8S): 5->1, 6->2, 7->3, 8->4
+    // For 6.2 tier (P5S-P8S): 5->1, 6->2, 7->3, 8->4
     if (num >= 5) return ((num - 5) % 4 + 1) as 1 | 2 | 3 | 4;
-    // For older tiers: 1->1, 2->2, 3->3, 4->4
+    // For 6.0 tier (P1S-P4S) and older tiers: 1->1, 2->2, 3->3, 4->4
     return (num % 4 || 4) as 1 | 2 | 3 | 4;
   }
   return 1;
@@ -139,8 +141,11 @@ export function AddLootEntryModal({
     return sortedRecipients.filter(r => r.needsItem);
   }, [sortedRecipients, showAllRecipients]);
 
-  // Auto-select top priority recipient when slot changes
+  // Auto-select top priority recipient when slot changes (add mode only)
   useEffect(() => {
+    // Skip auto-selection in edit mode - preserve the original recipient
+    if (isEditMode) return;
+
     if (sortedRecipients.length > 0) {
       const topPriority = sortedRecipients.find(r => r.needsItem);
       if (topPriority) {
@@ -150,7 +155,7 @@ export function AddLootEntryModal({
         setRecipientPlayerId(sortedRecipients[0].player.id);
       }
     }
-  }, [itemSlot, sortedRecipients]);
+  }, [itemSlot, sortedRecipients, isEditMode]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {

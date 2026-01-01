@@ -896,11 +896,16 @@ async def update_weapon_priorities(
     elif tier.weapon_priorities_auto_lock_date:
         from dateutil import parser as date_parser
 
-        lock_date = date_parser.isoparse(tier.weapon_priorities_auto_lock_date)
-        now = datetime.now(timezone.utc)
-        if now >= lock_date:
-            is_locked = True
-            lock_reason = f"Weapon priorities auto-locked on {tier.weapon_priorities_auto_lock_date}"
+        try:
+            lock_date = date_parser.isoparse(tier.weapon_priorities_auto_lock_date)
+            now = datetime.now(timezone.utc)
+            if now >= lock_date:
+                is_locked = True
+                lock_reason = f"Weapon priorities auto-locked on {tier.weapon_priorities_auto_lock_date}"
+        except (ValueError, TypeError):
+            # Invalid date format stored - log but don't block (data corruption shouldn't break the app)
+            import logging
+            logging.warning(f"Invalid auto-lock date format: {tier.weapon_priorities_auto_lock_date}")
 
     # Only Owner/Lead can edit when locked
     if is_locked and not can_edit_all:
@@ -910,8 +915,8 @@ async def update_weapon_priorities(
     if not can_edit_all and not is_own_player:
         raise PermissionDenied("You can only edit your own character's weapon priorities")
 
-    # Update weapon priorities
-    weapon_priorities_data = [wp.model_dump(mode="json") for wp in data.weapon_priorities]
+    # Update weapon priorities (use by_alias=True to preserve camelCase keys for frontend)
+    weapon_priorities_data = [wp.model_dump(mode="json", by_alias=True) for wp in data.weapon_priorities]
     player.weapon_priorities = weapon_priorities_data
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
