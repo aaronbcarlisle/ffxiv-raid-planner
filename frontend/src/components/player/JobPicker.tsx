@@ -33,7 +33,8 @@ interface JobPickerProps {
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose }: JobPickerProps) {
-  const [showFullPicker, setShowFullPicker] = useState(false);
+  // For non-template cards, start with picker open; for template cards, start closed
+  const [showFullPicker, setShowFullPicker] = useState(!templateRole);
   const [jobSearch, setJobSearch] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -84,13 +85,12 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
         onRequestClose?.();
       }
     }
-    // For template cards: only listen when expanded picker is shown
-    // For non-template cards: always listen (picker is always shown when parent renders it)
-    if (showFullPicker || !templateRole) {
+    // Only listen when picker is shown
+    if (showFullPicker) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showFullPicker, templateRole, onRequestClose]);
+  }, [showFullPicker, onRequestClose]);
 
   // Focus search when picker opens
   useEffect(() => {
@@ -102,19 +102,15 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
   // Handle escape key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        // For template cards: only close if expanded picker is open
-        // For non-template cards: always close
-        if (showFullPicker || !templateRole) {
-          setShowFullPicker(false);
-          setJobSearch('');
-          onRequestClose?.();
-        }
+      if (e.key === 'Escape' && showFullPicker) {
+        setShowFullPicker(false);
+        setJobSearch('');
+        onRequestClose?.();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showFullPicker, templateRole, onRequestClose]);
+  }, [showFullPicker, onRequestClose]);
 
   const handleJobClick = (job: string) => {
     onJobSelect(job);
@@ -204,7 +200,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
       )}
 
       {/* Expanded picker dropdown */}
-      {(showFullPicker || !templateRole) && (
+      {showFullPicker && (
         <div className={templateRole ? 'relative' : ''}>
           <div className={templateRole ? 'absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
             {/* Search input */}
@@ -289,7 +285,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
         </div>
       )}
 
-      {/* Selected job display - only show for template cards */}
+      {/* Selected job display - for template cards */}
       {templateRole && selectedJob && (
         <div className="flex items-center gap-2 text-sm text-text-secondary">
           <span>Selected:</span>
@@ -297,6 +293,33 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
           <span className="text-text-primary font-medium">{selectedJob}</span>
           <span>- {getJobDisplayName(selectedJob)}</span>
         </div>
+      )}
+
+      {/* Selected job display with re-open button - for non-template cards when picker is closed */}
+      {!templateRole && !showFullPicker && (
+        <button
+          type="button"
+          onClick={() => setShowFullPicker(true)}
+          className="w-full flex items-center gap-3 p-3 bg-surface-interactive hover:bg-surface-elevated border border-border-default rounded-lg transition-colors"
+        >
+          {selectedJob ? (
+            <>
+              <JobIcon job={selectedJob} size="lg" />
+              <div className="flex-1 text-left">
+                <span className="text-text-primary font-medium">{selectedJob}</span>
+                <span className="text-text-secondary ml-2">- {getJobDisplayName(selectedJob)}</span>
+              </div>
+              <span className="text-text-muted text-sm">Change</span>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 bg-surface-base rounded flex items-center justify-center">
+                <span className="text-text-muted text-xl">?</span>
+              </div>
+              <span className="text-text-muted">Select a job...</span>
+            </>
+          )}
+        </button>
       )}
     </div>
   );
