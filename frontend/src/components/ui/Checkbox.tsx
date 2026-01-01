@@ -9,14 +9,24 @@ interface CheckboxProps {
 
 export function Checkbox({ id, checked, onChange, label, disabled, className = '' }: CheckboxProps) {
   return (
-    <label className={`flex items-center gap-2 cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+    <label className={`flex items-center gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}>
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="w-4 h-4 rounded border-border-default bg-surface-raised text-accent focus:ring-accent focus:ring-offset-0 cursor-pointer disabled:cursor-not-allowed"
+        className={`w-4 h-4 rounded bg-surface-raised text-accent focus:ring-accent focus:ring-offset-0 transition-none ${
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:border-accent/50'
+        }`}
+        style={
+          disabled
+            ? {
+                pointerEvents: 'none',
+                borderColor: 'var(--color-border-default)',
+              }
+            : undefined
+        }
       />
       {label && <span className="text-text-secondary text-sm">{label}</span>}
     </label>

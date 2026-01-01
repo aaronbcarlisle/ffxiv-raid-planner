@@ -5,14 +5,18 @@
  */
 
 import { useState } from 'react';
-import type { RaidPosition } from '../../types';
+import type { RaidPosition, SnapshotPlayer } from '../../types';
 import { RAID_POSITIONS } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
+import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface PositionSelectorProps {
   position: RaidPosition | null | undefined;
   role: string;
   onSelect: (position: RaidPosition | undefined) => void;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
 }
 
 // Get suggested positions based on role
@@ -46,22 +50,39 @@ function getPositionBgClasses(pos: RaidPosition, isSelected: boolean, isSuggeste
   return 'bg-surface-base text-text-muted hover:bg-surface-interactive hover:text-text-secondary';
 }
 
-function getTriggerClasses(position: RaidPosition | null | undefined): string {
+// Base colors only (no hover) - for permission-disabled trigger
+function getBaseClasses(position: RaidPosition | null | undefined): string {
   if (!position) {
-    return 'bg-surface-interactive text-text-muted hover:text-text-secondary';
+    return 'bg-surface-interactive text-text-muted';
   }
-  if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';
-  if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer hover:bg-role-healer/30';
-  return 'bg-role-melee/20 text-role-melee hover:bg-role-melee/30';
+  if (position.startsWith('T')) return 'bg-role-tank/20 text-role-tank';
+  if (position.startsWith('H')) return 'bg-role-healer/20 text-role-healer';
+  return 'bg-role-melee/20 text-role-melee';
+}
+
+// Hover effects only - conditionally applied based on permission
+function getHoverClasses(position: RaidPosition | null | undefined): string {
+  if (!position) {
+    return 'hover:text-text-secondary';
+  }
+  if (position.startsWith('T')) return 'hover:bg-role-tank/30';
+  if (position.startsWith('H')) return 'hover:bg-role-healer/30';
+  return 'hover:bg-role-melee/30';
 }
 
 export function PositionSelector({
   position,
   role,
   onSelect,
+  player,
+  userRole,
+  currentUserId,
 }: PositionSelectorProps) {
   const [open, setOpen] = useState(false);
   const suggested = getSuggestedPositions(role);
+
+  // Check edit permission
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
 
   const handleSelect = (pos: RaidPosition | undefined) => {
     onSelect(pos);
@@ -69,11 +90,20 @@ export function PositionSelector({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
       <PopoverTrigger>
         <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getTriggerClasses(position)}`}
-          title={position ? `Position: ${position}` : 'Click to set position'}
+          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
+            editPermission.allowed ? getHoverClasses(position) : ''
+          } ${!editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title={
+            !editPermission.allowed
+              ? editPermission.reason
+              : position
+                ? `Position: ${position}`
+                : 'Click to set position'
+          }
+          disabled={!editPermission.allowed}
         >
           {position || '--'}
         </button>

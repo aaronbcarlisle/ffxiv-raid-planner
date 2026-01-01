@@ -6,8 +6,9 @@
  */
 
 import { GearTable } from './GearTable';
-import type { GearSlotStatus, TomeWeaponStatus } from '../../types';
+import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer } from '../../types';
 import { GEAR_SLOT_ICONS } from '../../types';
+import type { MemberRole } from '../../utils/permissions';
 
 // Slot order for compact display
 const SLOT_ORDER: (keyof typeof GEAR_SLOT_ICONS)[] = [
@@ -19,6 +20,9 @@ interface PlayerCardGearProps {
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
   isExpanded: boolean;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
   onGearChange: (slot: string, updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
 }
@@ -27,6 +31,9 @@ export function PlayerCardGear({
   gear,
   tomeWeapon,
   isExpanded,
+  player,
+  userRole,
+  currentUserId,
   onGearChange,
   onTomeWeaponChange,
 }: PlayerCardGearProps) {
@@ -38,6 +45,9 @@ export function PlayerCardGear({
           tomeWeapon={tomeWeapon}
           onGearChange={onGearChange}
           onTomeWeaponChange={onTomeWeaponChange}
+          player={player}
+          userRole={userRole}
+          currentUserId={currentUserId}
         />
       </div>
     );

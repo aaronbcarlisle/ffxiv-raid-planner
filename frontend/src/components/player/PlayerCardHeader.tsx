@@ -13,7 +13,8 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition } from '../../types';
+import type { RaidPosition, SnapshotPlayer } from '../../types';
+import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -22,6 +23,9 @@ interface PlayerCardHeaderProps {
   position: RaidPosition | null | undefined;
   completedSlots: number;
   totalSlots: number;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
   onJobChange: (job: string) => void;
   onNameChange: (name: string) => void;
   onPositionChange: (position: RaidPosition | undefined) => void;
@@ -35,6 +39,9 @@ export function PlayerCardHeader({
   position,
   completedSlots,
   totalSlots,
+  player,
+  userRole,
+  currentUserId,
   onJobChange,
   onNameChange,
   onPositionChange,
@@ -49,6 +56,9 @@ export function PlayerCardHeader({
   const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
   const displayRole = validRoles.includes(role as Role) ? role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
+
+  // Check edit permission
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
 
   // Focus name input when editing starts
   useEffect(() => {
@@ -65,6 +75,8 @@ export function PlayerCardHeader({
 
   const handleJobIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before opening job picker
+    if (!editPermission.allowed) return;
     setShowJobPicker(!showJobPicker);
   };
 
@@ -75,12 +87,16 @@ export function PlayerCardHeader({
 
   const handleNameDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before entering edit mode
+    if (!editPermission.allowed) return;
     setIsEditingName(true);
     setEditedName(name);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Check permission before entering edit mode
+    if (!editPermission.allowed) return;
     setIsEditingName(true);
     setEditedName(name);
   };
@@ -116,9 +132,18 @@ export function PlayerCardHeader({
           <button
             type="button"
             onClick={handleJobIconClick}
-            className="p-0.5 rounded cursor-pointer hover:ring-2 hover:ring-accent/50 transition-all"
+            className={`p-0.5 rounded transition-all ${
+              editPermission.allowed
+                ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
+                : 'cursor-not-allowed opacity-75'
+            }`}
             style={{ backgroundColor: roleColor }}
-            title="Click to change job"
+            title={
+              editPermission.allowed
+                ? 'Click to change job'
+                : editPermission.reason
+            }
+            disabled={!editPermission.allowed}
           >
             <JobIcon job={job} size="lg" className="rounded-sm" />
           </button>
@@ -155,18 +180,31 @@ export function PlayerCardHeader({
             ) : (
               <div className="flex items-center gap-1">
                 <span
-                  className="font-medium text-text-primary cursor-pointer hover:text-accent"
+                  className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
                   onClick={(e) => e.stopPropagation()}
                   onDoubleClick={handleNameDoubleClick}
-                  title="Double-click to edit name"
+                  title={
+                    !editPermission.allowed
+                      ? editPermission.reason
+                      : "Double-click to edit name"
+                  }
                 >
                   {name}
                 </span>
                 {/* Edit button - always visible but subtle */}
                 <button
                   onClick={handleEditClick}
-                  className="p-0.5 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity"
-                  title="Edit name"
+                  className={`p-0.5 rounded opacity-40 transition-opacity ${
+                    editPermission.allowed
+                      ? 'hover:bg-surface-interactive hover:opacity-100'
+                      : 'cursor-not-allowed opacity-30'
+                  }`}
+                  title={
+                    !editPermission.allowed
+                      ? editPermission.reason
+                      : "Edit name"
+                  }
+                  disabled={!editPermission.allowed}
                   aria-label="Edit player name"
                 >
                   <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,6 +218,9 @@ export function PlayerCardHeader({
               position={position}
               role={role}
               onSelect={onPositionChange}
+              player={player}
+              userRole={userRole}
+              currentUserId={currentUserId}
             />
           </div>
         </div>

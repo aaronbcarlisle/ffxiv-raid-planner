@@ -6,6 +6,7 @@
  */
 
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 import type { BiSImportData, BiSPresetsResponse } from '../types';
 
 // Get API base URL from environment or default to localhost
@@ -22,6 +23,16 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
   }
+}
+
+/**
+ * Extract error message from API response
+ */
+function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  return response
+    .json()
+    .then((data) => data.detail || fallback)
+    .catch(() => fallback);
 }
 
 // ==================== Authenticated Request ====================
@@ -53,13 +64,7 @@ export async function authRequest<T>(
   });
 
   if (!response.ok) {
-    let message = `HTTP ${response.status}`;
-    try {
-      const data = await response.json();
-      message = data.detail || message;
-    } catch {
-      // Ignore JSON parse errors
-    }
+    const message = await extractErrorMessage(response, `HTTP ${response.status}`);
 
     // If unauthorized, try refreshing token
     if (response.status === 401) {
@@ -77,13 +82,17 @@ export async function authRequest<T>(
         });
 
         if (!retryResponse.ok) {
-          try {
-            const data = await retryResponse.json();
-            message = data.detail || `HTTP ${retryResponse.status}`;
-          } catch {
-            message = `HTTP ${retryResponse.status}`;
+          const retryMessage = await extractErrorMessage(
+            retryResponse,
+            `HTTP ${retryResponse.status}`
+          );
+
+          // Show toast for permission errors
+          if (retryResponse.status === 403) {
+            toast.error(retryMessage);
           }
-          throw new ApiError(retryResponse.status, message);
+
+          throw new ApiError(retryResponse.status, retryMessage);
         }
 
         if (retryResponse.status === 204) {
@@ -92,6 +101,11 @@ export async function authRequest<T>(
 
         return retryResponse.json();
       }
+    }
+
+    // Show toast for permission errors
+    if (response.status === 403) {
+      toast.error(message);
     }
 
     throw new ApiError(response.status, message);

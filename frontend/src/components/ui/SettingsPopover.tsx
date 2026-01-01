@@ -21,6 +21,7 @@ interface PopoverAction {
   badge?: string;
   danger?: boolean;
   disabled?: boolean;
+  tooltip?: string;
   onClick: () => void;
 }
 
@@ -61,7 +62,7 @@ export function SettingsPopover({ actions }: SettingsPopoverProps) {
 
       <DropdownContent align="end" className="w-56">
         {items.map(({ action, showSeparator }) => (
-          <div key={action.id}>
+          <div key={action.id} title={action.tooltip}>
             {showSeparator && <DropdownSeparator />}
             <DropdownItem
               icon={<span className="w-5 flex-shrink-0">{action.icon}</span>}

@@ -17,6 +17,7 @@ import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
+import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
@@ -26,6 +27,7 @@ interface PlayerCardProps {
   clipboardPlayer: SnapshotPlayer | null;
   currentUserId?: string;
   isGroupOwner?: boolean;
+  userRole?: MemberRole | null;
   dragListeners?: DragListeners;
   dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
@@ -48,6 +50,7 @@ export function PlayerCard({
   clipboardPlayer,
   currentUserId,
   isGroupOwner,
+  userRole,
   dragListeners,
   dragAttributes,
   onUpdate,
@@ -95,34 +98,59 @@ export function PlayerCard({
   }, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
 
   // Handlers
-  const handleGearChange = (slot: string, updates: Partial<GearSlotStatus>) => {
+  const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
     const newGear = player.gear.map((g) =>
       g.slot === slot ? { ...g, ...updates } : g
     );
-    onUpdate({ gear: newGear });
-  };
-
-  const handleTomeWeaponChange = (updates: Partial<typeof player.tomeWeapon>) => {
-    onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
-  };
-
-  const handleJobChange = (newJob: string) => {
-    const newRole = getRoleForJob(newJob);
-    if (newRole) {
-      onUpdate({ job: newJob, role: newRole });
+    try {
+      await onUpdate({ gear: newGear });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
     }
   };
 
-  const handleNameChange = (name: string) => {
-    onUpdate({ name });
+  const handleTomeWeaponChange = async (updates: Partial<typeof player.tomeWeapon>) => {
+    try {
+      await onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
   };
 
-  const handlePositionChange = (position: RaidPosition | undefined) => {
-    onUpdate({ position: position ?? null });
+  const handleJobChange = async (newJob: string) => {
+    const newRole = getRoleForJob(newJob);
+    if (newRole) {
+      try {
+        await onUpdate({ job: newJob, role: newRole });
+      } catch (error) {
+        // Error already handled by api.ts (toast shown)
+        // Just prevent unhandled promise rejection
+      }
+    }
   };
 
-  const handleTankRoleChange = (tankRole: TankRole | undefined) => {
-    onUpdate({ tankRole: tankRole ?? null });
+  const handleNameChange = async (name: string) => {
+    try {
+      await onUpdate({ name });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
+  };
+
+  const handlePositionChange = async (position: RaidPosition | undefined) => {
+    try {
+      await onUpdate({ position: position ?? null });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
+  };
+
+  const handleTankRoleChange = async (tankRole: TankRole | undefined) => {
+    try {
+      await onUpdate({ tankRole: tankRole ?? null });
+    } catch (error) {
+      // Error already handled by api.ts (toast shown)
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -142,6 +170,11 @@ export function PlayerCard({
   const canClaim = !player.userId && currentUserId && onClaimPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
+  // Permission checks
+  const editPermission = canEditPlayer(userRole, player, currentUserId);
+  const rosterPermission = canManageRoster(userRole);
+  const resetPermission = canResetGear(userRole, player, currentUserId);
+
   // Context menu items
   const contextMenuItems: ContextMenuItem[] = [
     {
@@ -152,6 +185,8 @@ export function PlayerCard({
         </svg>
       ),
       onClick: () => setShowBiSImport(true),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
     ...(player.bisLink ? [{
       label: 'Unlink BiS',
@@ -162,28 +197,36 @@ export function PlayerCard({
         </svg>
       ),
       onClick: () => onUpdate({ bisLink: '' }),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
     { separator: true },
     {
       label: 'Copy Player',
       icon: CONTEXT_MENU_ICONS.copy,
       onClick: onCopy,
+      // Copy is always allowed (read-only operation)
     },
     {
       label: 'Paste Player',
       icon: CONTEXT_MENU_ICONS.paste,
       onClick: onPaste,
-      disabled: !clipboardPlayer,
+      disabled: !clipboardPlayer || !editPermission.allowed,
+      tooltip: !clipboardPlayer ? 'No player copied' : !editPermission.allowed ? editPermission.reason : undefined,
     },
     {
       label: 'Duplicate Player',
       icon: CONTEXT_MENU_ICONS.duplicate,
       onClick: () => onDuplicate(),
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
       icon: CONTEXT_MENU_ICONS.substitute,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     { separator: true },
     ...(canClaim ? [{
@@ -213,13 +256,16 @@ export function PlayerCard({
         </svg>
       ),
       onClick: onResetGear,
-      disabled: !onResetGear,
+      disabled: !onResetGear || !resetPermission.allowed,
+      tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
     },
     {
       label: 'Remove Player',
       icon: CONTEXT_MENU_ICONS.remove,
       onClick: () => setShowRemoveConfirm(true),
       danger: true,
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
   ];
 
@@ -289,6 +335,9 @@ export function PlayerCard({
           position={player.position}
           completedSlots={completedSlots}
           totalSlots={totalSlots}
+          player={player}
+          userRole={userRole}
+          currentUserId={currentUserId}
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
@@ -305,6 +354,8 @@ export function PlayerCard({
             userId={player.userId}
             linkedUser={player.linkedUser}
             currentUserId={currentUserId}
+            player={player}
+            userRole={userRole}
             onTankRoleChange={handleTankRoleChange}
           />
         </div>
@@ -318,6 +369,9 @@ export function PlayerCard({
         gear={player.gear}
         tomeWeapon={player.tomeWeapon}
         isExpanded={isExpanded}
+        player={player}
+        userRole={userRole}
+        currentUserId={currentUserId}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
       />

@@ -597,9 +597,12 @@ async def update_snapshot_player(
     if not can_edit_all and not is_own_player:
         raise PermissionDenied("You can only edit your own character")
 
-    # Members can only update gear-related fields
+    # Members can only update their own player's fields
     if not can_edit_all and is_own_player:
-        allowed_fields = {"gear", "tome_weapon", "bis_link", "lodestone_id"}
+        allowed_fields = {
+            "gear", "tome_weapon", "bis_link", "lodestone_id",
+            "job", "name", "role", "position", "tank_role"
+        }
         update_data = data.model_dump(exclude_unset=True)
         for field in update_data:
             if field not in allowed_fields:

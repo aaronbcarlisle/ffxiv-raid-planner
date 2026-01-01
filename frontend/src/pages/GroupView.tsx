@@ -25,6 +25,7 @@ import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } 
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS } from '../utils/constants';
+import { canManageRoster } from '../utils/permissions';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -378,12 +379,15 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, []);
 
+  // Check roster management permission for DnD
+  const rosterPermission = canManageRoster(userRole);
+
   // DnD hook - encapsulates all drag and drop logic
   const dnd = useDragAndDrop({
     players: sortedPlayers,
     groupView,
     canEdit,
-    disabled: isAnyModalOpen,
+    disabled: isAnyModalOpen || !rosterPermission.allowed,
     onReorder: handleReorder,
   });
 
@@ -398,6 +402,7 @@ export function GroupView() {
         <InlinePlayerEdit
           key={player.id}
           player={player}
+          userRole={userRole}
           onSave={(name, job, role) => handleConfigurePlayer(player.id, name, job, role)}
           onCancel={() => setEditingPlayerId(null)}
         />
@@ -418,6 +423,7 @@ export function GroupView() {
           canEdit={canEdit}
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
+          userRole={userRole}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => {
@@ -552,14 +558,27 @@ export function GroupView() {
 
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
-            <DndContext
-              sensors={dnd.sensors}
-              collisionDetection={pointerWithin}
-              onDragStart={dnd.handleDragStart}
-              onDragOver={dnd.handleDragOver}
-              onDragEnd={dnd.handleDragEnd}
-              onDragCancel={dnd.handleDragCancel}
-            >
+            <>
+              {/* Permission message when DnD is disabled and user is on custom sort */}
+              {!rosterPermission.allowed && sortPreset === 'custom' && (
+                <div className="mb-3 p-3 bg-surface-card border border-border-subtle rounded-lg">
+                  <p className="text-sm text-text-muted flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Player reordering is disabled. {rosterPermission.reason}
+                  </p>
+                </div>
+              )}
+
+              <DndContext
+                sensors={dnd.sensors}
+                collisionDetection={pointerWithin}
+                onDragStart={dnd.handleDragStart}
+                onDragOver={dnd.handleDragOver}
+                onDragEnd={dnd.handleDragEnd}
+                onDragCancel={dnd.handleDragCancel}
+              >
               {/* Grouped View */}
               {groupView && groupedPlayers ? (
                 <div className="space-y-8 mb-8">
@@ -624,6 +643,7 @@ export function GroupView() {
                 })()}
               </DragOverlay>
             </DndContext>
+            </>
           )}
 
           {/* Loot Tab */}
