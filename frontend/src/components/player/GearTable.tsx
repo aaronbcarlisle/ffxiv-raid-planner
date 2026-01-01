@@ -158,8 +158,8 @@ function WeaponSlotRow({
         </td>
         <td className="py-1">
           <div className="flex justify-center text-text-muted">
-            {/* Raid weapon can't be augmented */}
-            —
+            {/* Show + when tome weapon tracking enabled, otherwise — */}
+            {tomeWeapon.pursuing ? '+' : '—'}
           </div>
         </td>
       </tr>
