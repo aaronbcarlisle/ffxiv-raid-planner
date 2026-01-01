@@ -3,7 +3,7 @@
  *
  * Reusable job selector for both template and configured player cards.
  * - With templateRole: Shows role-specific quick-select icons + dropdown
- * - Without templateRole: Shows role filter icons, then job icons for selected role
+ * - Without templateRole: Just shows dropdown with all jobs
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -20,15 +20,8 @@ import {
 import type { TemplateRole } from '../../types';
 import { TEMPLATE_ROLE_INFO, getRoleIconUrl } from '../../utils/constants';
 
-// Role icon IDs from XIVAPI
-const ROLE_ICON_IDS: Record<Role | 'all', number> = {
-  tank: 24,      // Tank role icon
-  healer: 25,    // Healer role icon
-  melee: 26,     // Melee DPS icon
-  ranged: 27,    // Physical ranged icon
-  caster: 28,    // Caster icon
-  all: 1,        // Generic/all icon
-};
+// Icon for "Other jobs" button
+const OTHER_JOBS_ICON_ID = 1;
 
 interface JobPickerProps {
   selectedJob: string;
@@ -40,10 +33,9 @@ interface JobPickerProps {
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose }: JobPickerProps) {
-  const [showFullPicker, setShowFullPicker] = useState(false);
+  // For non-template cards, start with picker open; for template cards, start closed
+  const [showFullPicker, setShowFullPicker] = useState(!templateRole);
   const [jobSearch, setJobSearch] = useState('');
-  // For non-template cards: track which role filter is selected
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<Role | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,13 +49,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
   const roleInfo = templateRole ? TEMPLATE_ROLE_INFO[templateRole] : null;
   const roleColorVar = roleInfo ? `var(--color-${roleInfo.color})` : null;
 
-  // Get jobs for the selected role filter (non-template cards)
-  const filteredRoleJobs = useMemo(() => {
-    if (!selectedRoleFilter) return [];
-    return allJobs.filter((j) => j.role === selectedRoleFilter);
-  }, [selectedRoleFilter, allJobs]);
-
-  // Filter all jobs for the expanded picker (search)
+  // Filter all jobs for the expanded picker
   const filteredJobs = useMemo(() => {
     if (!jobSearch.trim()) return allJobs;
     const query = jobSearch.toLowerCase();
@@ -95,9 +81,11 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
       if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
         setShowFullPicker(false);
         setJobSearch('');
+        // Notify parent if this is a controlled picker
         onRequestClose?.();
       }
     }
+    // Only listen when picker is shown
     if (showFullPicker) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -128,222 +116,93 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
     onJobSelect(job);
     setShowFullPicker(false);
     setJobSearch('');
+    // Notify parent to close if this is a controlled picker
     onRequestClose?.();
   };
 
-  // Get the color for the selected role filter
-  const selectedRoleColor = selectedRoleFilter ? getRoleColor(selectedRoleFilter) : null;
-
   return (
     <div className="space-y-3" ref={pickerRef}>
-      {/* === TEMPLATE CARD MODE === */}
+      {/* Template role label - only show if templateRole provided */}
       {templateRole && roleInfo && (
-        <>
-          {/* Template role label */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">Select Job for</span>
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded"
-              style={{
-                backgroundColor: `var(--color-${roleInfo.color})/0.2`,
-                color: `var(--color-${roleInfo.color})`,
-              }}
-            >
-              {roleInfo.label}
-            </span>
-          </div>
-
-          {/* Quick select job icons for template role */}
-          {templateJobs.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {templateJobs.map((job) => (
-                <button
-                  key={job.abbreviation}
-                  type="button"
-                  onClick={() => handleJobClick(job.abbreviation)}
-                  className={`p-1.5 rounded-lg transition-all ${
-                    selectedJob === job.abbreviation
-                      ? 'ring-2'
-                      : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
-                  }`}
-                  style={
-                    selectedJob === job.abbreviation
-                      ? {
-                          boxShadow: `0 0 0 2px ${roleColorVar}`,
-                          backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
-                        }
-                      : undefined
-                  }
-                  title={`${job.abbreviation} - ${getJobDisplayName(job.abbreviation)}`}
-                >
-                  <JobIcon job={job.abbreviation} size="lg" />
-                </button>
-              ))}
-
-              {/* "Other jobs" icon button */}
-              {(() => {
-                const isTemplateJob = templateJobs.some((j) => j.abbreviation === selectedJob);
-                const showSelected = showFullPicker && !isTemplateJob;
-                return (
-                  <button
-                    type="button"
-                    onClick={() => setShowFullPicker(!showFullPicker)}
-                    className={`p-1.5 rounded-lg transition-all ${
-                      showSelected
-                        ? 'ring-2'
-                        : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
-                    }`}
-                    style={
-                      showSelected
-                        ? {
-                            boxShadow: `0 0 0 2px ${roleColorVar}`,
-                            backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
-                          }
-                        : undefined
-                    }
-                    title="Other jobs..."
-                  >
-                    <img
-                      src={getRoleIconUrl(ROLE_ICON_IDS.all)}
-                      alt="Other jobs"
-                      className="w-10 h-10"
-                    />
-                  </button>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Selected job display for template cards */}
-          {selectedJob && (
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <span>Selected:</span>
-              <JobIcon job={selectedJob} size="sm" />
-              <span className="text-text-primary font-medium">{selectedJob}</span>
-              <span>- {getJobDisplayName(selectedJob)}</span>
-            </div>
-          )}
-        </>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-text-muted">Select Job for</span>
+          <span
+            className="text-xs font-medium px-2 py-0.5 rounded"
+            style={{
+              backgroundColor: `var(--color-${roleInfo.color})/0.2`,
+              color: `var(--color-${roleInfo.color})`,
+            }}
+          >
+            {roleInfo.label}
+          </span>
+        </div>
       )}
 
-      {/* === NON-TEMPLATE CARD MODE === */}
-      {!templateRole && (
-        <>
-          {/* Role filter label */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">Select Job for</span>
-            {selectedRoleFilter ? (
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded"
-                style={{
-                  backgroundColor: `${selectedRoleColor}20`,
-                  color: selectedRoleColor || undefined,
-                }}
-              >
-                {getRoleDisplayName(selectedRoleFilter)}
-              </span>
-            ) : (
-              <span className="text-xs text-text-muted">Any Role</span>
-            )}
-          </div>
+      {/* Quick select job icons - only show if templateRole provided */}
+      {templateRole && roleInfo && templateJobs.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {templateJobs.map((job) => (
+            <button
+              key={job.abbreviation}
+              type="button"
+              onClick={() => handleJobClick(job.abbreviation)}
+              className={`p-1.5 rounded-lg transition-all ${
+                selectedJob === job.abbreviation
+                  ? 'ring-2'
+                  : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
+              }`}
+              style={
+                selectedJob === job.abbreviation
+                  ? {
+                      boxShadow: `0 0 0 2px ${roleColorVar}`,
+                      backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
+                    }
+                  : undefined
+              }
+              title={`${job.abbreviation} - ${getJobDisplayName(job.abbreviation)}`}
+            >
+              <JobIcon job={job.abbreviation} size="lg" />
+            </button>
+          ))}
 
-          {/* Role filter icons */}
-          <div className="flex flex-wrap gap-2">
-            {roleOrder.map((role) => (
+          {/* "Other jobs" icon button */}
+          {(() => {
+            const isTemplateJob = templateJobs.some((j) => j.abbreviation === selectedJob);
+            const showSelected = showFullPicker && !isTemplateJob;
+            return (
               <button
-                key={role}
                 type="button"
-                onClick={() => setSelectedRoleFilter(selectedRoleFilter === role ? null : role)}
+                onClick={() => setShowFullPicker(!showFullPicker)}
                 className={`p-1.5 rounded-lg transition-all ${
-                  selectedRoleFilter === role
+                  showSelected
                     ? 'ring-2'
                     : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
                 }`}
                 style={
-                  selectedRoleFilter === role
+                  showSelected
                     ? {
-                        boxShadow: `0 0 0 2px ${getRoleColor(role)}`,
-                        backgroundColor: `${getRoleColor(role)}20`,
+                        boxShadow: `0 0 0 2px ${roleColorVar}`,
+                        backgroundColor: `color-mix(in srgb, ${roleColorVar} 20%, transparent)`,
                       }
                     : undefined
                 }
-                title={getRoleDisplayName(role)}
+                title="Other jobs..."
               >
                 <img
-                  src={getRoleIconUrl(ROLE_ICON_IDS[role])}
-                  alt={getRoleDisplayName(role)}
+                  src={getRoleIconUrl(OTHER_JOBS_ICON_ID)}
+                  alt="Other jobs"
                   className="w-10 h-10"
                 />
               </button>
-            ))}
-
-            {/* "All jobs" dropdown button */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedRoleFilter(null);
-                setShowFullPicker(!showFullPicker);
-              }}
-              className={`p-1.5 rounded-lg transition-all ${
-                showFullPicker && !selectedRoleFilter
-                  ? 'ring-2 ring-accent'
-                  : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
-              }`}
-              title="Search all jobs..."
-            >
-              <img
-                src={getRoleIconUrl(ROLE_ICON_IDS.all)}
-                alt="All jobs"
-                className="w-10 h-10"
-              />
-            </button>
-          </div>
-
-          {/* Job icons for selected role */}
-          {selectedRoleFilter && filteredRoleJobs.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {filteredRoleJobs.map((job) => (
-                <button
-                  key={job.abbreviation}
-                  type="button"
-                  onClick={() => handleJobClick(job.abbreviation)}
-                  className={`p-1.5 rounded-lg transition-all ${
-                    selectedJob === job.abbreviation
-                      ? 'ring-2'
-                      : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
-                  }`}
-                  style={
-                    selectedJob === job.abbreviation
-                      ? {
-                          boxShadow: `0 0 0 2px ${selectedRoleColor}`,
-                          backgroundColor: `${selectedRoleColor}20`,
-                        }
-                      : undefined
-                  }
-                  title={`${job.abbreviation} - ${getJobDisplayName(job.abbreviation)}`}
-                >
-                  <JobIcon job={job.abbreviation} size="lg" />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Selected job display for non-template cards */}
-          {selectedJob && (
-            <div className="flex items-center gap-2 text-sm text-text-secondary">
-              <span>Selected:</span>
-              <JobIcon job={selectedJob} size="sm" />
-              <span className="text-text-primary font-medium">{selectedJob}</span>
-              <span>- {getJobDisplayName(selectedJob)}</span>
-            </div>
-          )}
-        </>
+            );
+          })()}
+        </div>
       )}
 
-      {/* === EXPANDED PICKER DROPDOWN (both modes) === */}
+      {/* Expanded picker dropdown */}
       {showFullPicker && (
         <div className={templateRole ? 'relative' : ''}>
-          <div className={templateRole ? 'absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
+          <div className={templateRole ? 'absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
             {/* Search input */}
             <div className="p-2 border-b border-border-default">
               <input
@@ -424,6 +283,43 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
             </div>
           </div>
         </div>
+      )}
+
+      {/* Selected job display - for template cards */}
+      {templateRole && selectedJob && (
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <span>Selected:</span>
+          <JobIcon job={selectedJob} size="sm" />
+          <span className="text-text-primary font-medium">{selectedJob}</span>
+          <span>- {getJobDisplayName(selectedJob)}</span>
+        </div>
+      )}
+
+      {/* Selected job display with re-open button - for non-template cards when picker is closed */}
+      {!templateRole && !showFullPicker && (
+        <button
+          type="button"
+          onClick={() => setShowFullPicker(true)}
+          className="w-full flex items-center gap-3 p-3 bg-surface-interactive hover:bg-surface-elevated border border-border-default rounded-lg transition-colors"
+        >
+          {selectedJob ? (
+            <>
+              <JobIcon job={selectedJob} size="lg" />
+              <div className="flex-1 text-left">
+                <span className="text-text-primary font-medium">{selectedJob}</span>
+                <span className="text-text-secondary ml-2">- {getJobDisplayName(selectedJob)}</span>
+              </div>
+              <span className="text-text-muted text-sm">Change</span>
+            </>
+          ) : (
+            <>
+              <div className="w-10 h-10 bg-surface-base rounded flex items-center justify-center">
+                <span className="text-text-muted text-xl">?</span>
+              </div>
+              <span className="text-text-muted">Select a job...</span>
+            </>
+          )}
+        </button>
       )}
     </div>
   );
