@@ -85,7 +85,7 @@ export function PlayerCardStatus({
 
       {/* "You" badge */}
       {isLinkedToMe && (
-        <span className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium" title="This is you">
+        <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-medium" title="This is you">
           You
         </span>
       )}

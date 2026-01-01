@@ -426,9 +426,8 @@ export function GearTable({
                 </td>
                 <td className="py-1">
                   {status.bisSource === 'raid' ? (
-                    <div className="flex justify-center text-text-muted">
-                      {/* Raid gear can't be augmented */}
-                      —
+                    <div className="flex justify-center">
+                      {/* Raid gear can't be augmented - empty cell */}
                     </div>
                   ) : (
                     <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : (!canAugment ? 'Get tome gear first' : undefined)}>
