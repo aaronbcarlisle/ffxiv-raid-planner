@@ -5,7 +5,7 @@
  * Shows loot log and page balances side-by-side with week navigation.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { WeekSelector } from './WeekSelector';
 import { LootLogPanel } from './LootLogPanel';
@@ -27,18 +27,48 @@ export function HistoryView({
   floors,
   userRole,
 }: HistoryViewProps) {
-  const { currentWeek, fetchCurrentWeek } = useLootTrackingStore();
-  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const { currentWeek, maxWeek, weeksWithEntries, fetchCurrentWeek, fetchWeeksWithEntries } = useLootTrackingStore();
 
-  // Fetch current week on mount
+  // Get localStorage key for this tier's week selection
+  const weekStorageKey = `history-week-${groupId}-${tierId}`;
+
+  // Initialize selected week from localStorage or default to currentWeek
+  const [selectedWeek, setSelectedWeekState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(weekStorageKey);
+      return saved ? parseInt(saved, 10) : currentWeek;
+    } catch {
+      return currentWeek;
+    }
+  });
+
+  // Persist week selection to localStorage
+  const setSelectedWeek = useCallback((week: number) => {
+    setSelectedWeekState(week);
+    try {
+      localStorage.setItem(weekStorageKey, String(week));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [weekStorageKey]);
+
+  // Fetch current week and weeks with entries on mount
   useEffect(() => {
     fetchCurrentWeek(groupId, tierId);
-  }, [groupId, tierId, fetchCurrentWeek]);
+    fetchWeeksWithEntries(groupId, tierId);
+  }, [groupId, tierId, fetchCurrentWeek, fetchWeeksWithEntries]);
 
-  // Sync selected week with store's current week
+  // Sync selected week with store's current week only on first load (when no saved value)
   useEffect(() => {
-    setSelectedWeek(currentWeek);
-  }, [currentWeek]);
+    try {
+      const saved = localStorage.getItem(weekStorageKey);
+      if (!saved) {
+        setSelectedWeek(currentWeek);
+      }
+    } catch {
+      setSelectedWeek(currentWeek);
+    }
+  }, [currentWeek, weekStorageKey, setSelectedWeek]);
 
   const handleWeekChange = (week: number) => {
     setSelectedWeek(week);
@@ -53,8 +83,9 @@ export function HistoryView({
       <div className="flex justify-center">
         <WeekSelector
           currentWeek={selectedWeek}
-          maxWeek={currentWeek}
+          maxWeek={maxWeek}
           onWeekChange={handleWeekChange}
+          weeksWithEntries={weeksWithEntries}
         />
       </div>
 
@@ -68,6 +99,7 @@ export function HistoryView({
           floors={floors}
           currentWeek={selectedWeek}
           canEdit={canEdit}
+          onLootLogged={(weekNumber) => setSelectedWeek(weekNumber)}
         />
 
         {/* Page Balances (right) */}

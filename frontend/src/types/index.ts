@@ -549,6 +549,16 @@ export interface LootLogEntryCreate {
   notes?: string;
 }
 
+// Loot log entry update request
+export interface LootLogEntryUpdate {
+  weekNumber?: number;
+  floor?: string;
+  itemSlot?: string;
+  recipientPlayerId?: string;
+  method?: LootMethod;
+  notes?: string;
+}
+
 // Page ledger entry create request
 export interface PageLedgerEntryCreate {
   playerId: string;

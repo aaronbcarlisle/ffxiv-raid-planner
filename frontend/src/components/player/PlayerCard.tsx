@@ -236,7 +236,7 @@ export function PlayerCard({
     }] : []),
     { separator: true },
     {
-      label: player.weaponPriorities.length > 0 ? 'Update Weapon Priorities' : 'Set Weapon Priorities',
+      label: 'Weapon Priorities',
       icon: CONTEXT_MENU_ICONS.weaponPriority,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,

@@ -4,7 +4,7 @@
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations, and (planned) sync with Lodestone/FFLogs.
 
-**Status:** Phase 1-6.1 Complete | Ready for Production
+**Status:** Phase 1-6.5 Complete | Ready for Production
 
 ---
 
@@ -50,17 +50,20 @@ ffxiv-raid-planner/
 │   └── data/              # SQLite database, local_bis_presets.json
 ├── frontend/src/
 │   ├── components/
-│   │   ├── player/        # PlayerCard, GearTable, BiSImportModal, etc.
-│   │   ├── loot/          # LootPriorityPanel, FloorSelector
-│   │   ├── static-group/  # StaticSwitcher, TierSelector, GroupSettingsModal
-│   │   ├── auth/          # LoginButton, UserMenu
-│   │   └── ui/            # Modal, Toast, ContextMenu, Checkbox
-│   ├── pages/             # Home, Dashboard, GroupView, AuthCallback
-│   ├── stores/            # authStore, staticGroupStore, tierStore
-│   ├── gamedata/          # jobs, costs, loot-tables, raid-tiers
-│   ├── utils/             # calculations, priority, permissions
+│   │   ├── player/           # PlayerCard, GearTable, BiSImportModal, etc.
+│   │   ├── loot/             # LootPriorityPanel, FloorSelector, QuickLogDropModal
+│   │   ├── history/          # HistoryView, LootLogPanel, PageBalancesPanel
+│   │   ├── weapon-priority/  # WeaponPriorityModal, WeaponPriorityEditor
+│   │   ├── team/             # TeamSummary
+│   │   ├── static-group/     # StaticSwitcher, TierSelector, GroupSettingsModal
+│   │   ├── auth/             # LoginButton, UserMenu
+│   │   └── ui/               # Modal, Toast, ContextMenu, TabNavigation
+│   ├── pages/                # Home, Dashboard, GroupView, AuthCallback
+│   ├── stores/               # authStore, staticGroupStore, tierStore, lootTrackingStore
+│   ├── gamedata/             # jobs, costs, loot-tables, raid-tiers
+│   ├── utils/                # calculations, priority, lootCoordination, weaponPriority
 │   └── types/
-└── docs/                  # Implementation plans, gearing math
+└── docs/                     # Implementation plans, gearing math
 ```
 
 ---
@@ -72,8 +75,11 @@ ffxiv-raid-planner/
 | `stores/authStore.ts` | Discord OAuth, user state |
 | `stores/staticGroupStore.ts` | Static groups, membership |
 | `stores/tierStore.ts` | Tier snapshots, players |
+| `stores/lootTrackingStore.ts` | Loot log, page ledger, week tracking |
 | `utils/permissions.ts` | Role-based permission checks |
 | `utils/priority.ts` | Loot priority calculations |
+| `utils/lootCoordination.ts` | Cross-store loot/gear sync utilities |
+| `utils/weaponPriority.ts` | Weapon priority scoring |
 | `utils/calculations.ts` | Gear completion, materials needed |
 | `gamedata/costs.ts` | Book costs, tomestone costs |
 | `gamedata/loot-tables.ts` | Floor drop tables |
@@ -89,8 +95,12 @@ ffxiv-raid-planner/
 - **Tier Snapshots** - Per-tier roster (M5S-M8S vs M9S-M12S)
 - **Player Cards** - Inline editing, gear tracking, context menu
 - **BiS Import** - XIVGear/Etro with item icons and hover cards
-- **Loot Priority** - Role + need based priority scoring
+- **Loot Priority** - Role + need based priority scoring with enhanced modifiers
+- **Weapon Priority** - Multi-job weapon tracking with drag-drop reordering
+- **Loot Logging** - Historical loot tracking with week navigation
+- **Book/Page Tracking** - Floor-based book earning and spending ledger
 - **Invitation System** - Invite links with role/expiration/max uses
+- **Tier-Specific Sharing** - Share links include tier selection via URL param
 
 ---
 
@@ -111,8 +121,15 @@ interface SnapshotPlayer {
   sortOrder: number;
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
+  weaponPriorities: WeaponPriority[];
   isSubstitute: boolean;
   bisLink?: string;
+}
+
+interface WeaponPriority {
+  job: string;           // Job code (e.g., 'PLD', 'DRG')
+  received: boolean;     // Whether weapon has been obtained
+  receivedDate?: string; // ISO date when received
 }
 
 interface GearSlotStatus {
@@ -160,7 +177,26 @@ type GearSlot = 'weapon' | 'head' | 'body' | 'hands' | 'legs' | 'feet' |
 
 ```typescript
 const ROLE_PRIORITY_SCORES = { melee: 125, ranged: 100, caster: 75, tank: 50, healer: 25 };
-// Priority = roleScore + (raidItems * 8) + (tomeItems * 4) + (upgrades * 6)
+// Base Priority = roleScore + (raidItems * 8) + (tomeItems * 4) + (upgrades * 6)
+
+// Enhanced Priority (when loot history available):
+// - No Drops Bonus: +10 per week without drops (max +50)
+// - Fair Share Adjustment: -15 per drop above average (max -45)
+// Final = basePriority + droughtBonus - balancePenalty
+```
+
+### Weapon Priority Scoring
+
+Main job always wins via a 2000-point bonus. This ensures:
+- PLD will always get PLD weapon before a DRG who has PLD as an alt weapon
+- Main job is implicitly included even if not explicitly in the priority list
+
+```typescript
+// weaponPriority.ts scoring:
+const roleScore = (5 - roleIndex) * 100;     // 0-400 based on role
+const rankScore = 1000 - (rank * 100);       // 1000 for rank 0, 900 for rank 1, etc.
+const mainJobBonus = isMainJob ? 2000 : 0;   // Main job always wins
+const total = roleScore + rankScore + mainJobBonus;
 ```
 
 ---
@@ -224,6 +260,16 @@ const ROLE_PRIORITY_SCORES = { melee: 125, ranged: 100, caster: 75, tank: 50, he
 - `GET /api/bis/xivgear/{uuid}` - Fetch XIVGear set
 - `GET /api/bis/etro/{uuid}` - Fetch Etro set
 
+### Loot Tracking
+- `GET .../tiers/{tierId}/loot-log?week=N` - Get loot log entries
+- `POST .../tiers/{tierId}/loot-log` - Create loot log entry
+- `DELETE .../tiers/{tierId}/loot-log/{id}` - Delete entry
+- `GET .../tiers/{tierId}/page-balances` - Get player book balances
+- `GET .../tiers/{tierId}/page-ledger?week=N` - Get page ledger entries
+- `POST .../tiers/{tierId}/page-ledger` - Create ledger entry
+- `POST .../tiers/{tierId}/mark-floor-cleared` - Batch add book earnings
+- `GET .../tiers/{tierId}/current-week` - Get current/max week
+
 ---
 
 ## Key Implementation Patterns
@@ -248,6 +294,28 @@ Dragging between G1/G2 auto-swaps position (T1↔T2, H1↔H2, etc.)
 
 ### Modal + DnD
 When modals open, set drag sensor distance to 999999 to disable dragging.
+
+### UI State Persistence
+Several UI states persist to localStorage:
+- `group-view-tab` - Selected main tab (Roster/Loot/Progress/History)
+- `loot-priority-subtab` - Selected sub-tab (Gear Priority/Weapon Priority)
+- `history-week-{groupId}-{tierId}` - Selected week per tier
+- `selected-tier-{groupId}` - Selected tier per group
+- `party-view-mode` - Compact vs expanded player cards
+- `sort-preset-{tierId}` - Sort preset per tier
+
+### Tier-Specific Share Links
+Share links can include tier selection:
+- Shift+Click on share code copies URL with `?tier=` parameter
+- URL format: `/group/{shareCode}?tier={tierId}`
+- On load: URL param > localStorage > active tier > first tier
+- URL param is cleared after use (refreshing uses localStorage)
+
+### Loot Coordination
+`lootCoordination.ts` provides cross-store utilities:
+- `logLootAndUpdateGear()` - Creates loot entry + updates gear checkbox
+- `deleteLootAndRevertGear()` - Deletes entry + reverts gear checkbox
+- Weapon priority auto-updates when weapon logged
 
 ---
 
@@ -294,6 +362,7 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 | 4 | Complete | Discord OAuth, multi-static, tiers, invitations |
 | 5 | Complete | BiS import, presets, item icons, hover cards |
 | 6 | Complete | Permission-aware UI, Reset Gear options |
+| 6.5 | Complete | Loot logging, weapon priority, book tracking, inline logging, UI persistence |
 | 7 | Planned | Lodestone auto-sync |
 | 8 | Planned | FFLogs integration |
 
@@ -319,5 +388,12 @@ cd backend && python scripts/normalize_preset_names.py
 ## Documentation Maintenance
 
 - Update CLAUDE.md when planning features or completing work
-- Keep Phase Roadmap current
+- Update `docs/CONSOLIDATED_STATUS.md` when features are completed or new issues discovered
+- Keep Phase Roadmap current in CONSOLIDATED_STATUS.md
 - Never commit without verifying documentation is current
+
+## Additional Documentation
+
+- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Current project status, roadmap, technical debt tracking
+- **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing mechanics and formulas reference
+- **[archive/](./docs/archive/)** - Historical planning documents and audit reports

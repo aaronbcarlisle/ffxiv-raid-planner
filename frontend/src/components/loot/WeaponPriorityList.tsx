@@ -20,9 +20,15 @@ export function WeaponPriorityList({
   players,
   settings,
 }: WeaponPriorityListProps) {
-  // Get all jobs that appear in weapon priorities
+  // Get all jobs that appear in weapon priorities OR are main jobs
+  // Every player's main job is a default weapon priority
   const allJobs = new Set<string>();
   for (const player of players) {
+    // Add main job by default
+    if (player.job) {
+      allJobs.add(player.job);
+    }
+    // Add explicitly set weapon priorities
     for (const wp of player.weaponPriorities || []) {
       allJobs.add(wp.job);
     }
@@ -44,10 +50,7 @@ export function WeaponPriorityList({
   if (sortedJobs.length === 0) {
     return (
       <div className="text-center py-8 text-text-muted">
-        <p>No weapon priorities set yet.</p>
-        <p className="text-sm mt-1">
-          Players can set weapon priorities from their player card context menu.
-        </p>
+        <p>No configured players yet.</p>
       </div>
     );
   }

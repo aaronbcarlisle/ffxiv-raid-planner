@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.database import get_session
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_optional
 from app.models import (
     LootLogEntry,
     PageLedgerEntry,
@@ -28,6 +28,7 @@ from app.permissions import (
 from app.schemas import (
     LootLogEntryCreate,
     LootLogEntryResponse,
+    LootLogEntryUpdate,
     MarkFloorClearedRequest,
     PageBalanceResponse,
     PageLedgerEntryCreate,
@@ -79,10 +80,10 @@ async def get_loot_log(
     tier_id: str,
     week: int | None = None,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Get loot log entries for a tier (optionally filtered by week)"""
-    # Check permissions
+    # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
     await check_view_permission(db, group, current_user)
 
@@ -191,6 +192,82 @@ async def create_loot_log_entry(
     )
 
 
+@router.put(
+    "/{group_id}/tiers/{tier_id}/loot-log/{entry_id}",
+    response_model=LootLogEntryResponse,
+)
+async def update_loot_log_entry(
+    group_id: str,
+    tier_id: str,
+    entry_id: int,
+    data: LootLogEntryUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a loot log entry (requires lead or owner role)"""
+    # Check permissions
+    group = await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get entry
+    result = await db.execute(
+        select(LootLogEntry).where(
+            LootLogEntry.id == entry_id,
+            LootLogEntry.tier_snapshot_id == tier.id,
+        )
+    )
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Loot log entry not found")
+
+    # If changing recipient, verify new recipient exists in this tier
+    if data.recipient_player_id is not None and data.recipient_player_id != entry.recipient_player_id:
+        result = await db.execute(
+            select(SnapshotPlayer).where(
+                SnapshotPlayer.id == data.recipient_player_id,
+                SnapshotPlayer.tier_snapshot_id == tier.id,
+            )
+        )
+        player = result.scalar_one_or_none()
+        if not player:
+            raise HTTPException(status_code=400, detail="Recipient player not found in this tier")
+
+    # Update fields
+    if data.week_number is not None:
+        entry.week_number = data.week_number
+    if data.floor is not None:
+        entry.floor = data.floor
+    if data.item_slot is not None:
+        entry.item_slot = data.item_slot
+    if data.recipient_player_id is not None:
+        entry.recipient_player_id = data.recipient_player_id
+    if data.method is not None:
+        entry.method = data.method.value
+    if data.notes is not None:
+        entry.notes = data.notes
+
+    await db.commit()
+    await db.refresh(entry, ["recipient_player", "created_by"])
+
+    return LootLogEntryResponse(
+        id=entry.id,
+        tier_snapshot_id=entry.tier_snapshot_id,
+        week_number=entry.week_number,
+        floor=entry.floor,
+        item_slot=entry.item_slot,
+        recipient_player_id=entry.recipient_player_id,
+        recipient_player_name=entry.recipient_player.name,
+        method=entry.method,
+        notes=entry.notes,
+        created_at=entry.created_at,
+        created_by_user_id=entry.created_by_user_id,
+        created_by_username=entry.created_by.discord_username,
+    )
+
+
 @router.delete("/{group_id}/tiers/{tier_id}/loot-log/{entry_id}", status_code=204)
 async def delete_loot_log_entry(
     group_id: str,
@@ -199,10 +276,10 @@ async def delete_loot_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a loot log entry (requires owner role)"""
-    # Check permissions
+    """Delete a loot log entry (requires owner or lead role)"""
+    # Check permissions - leads can also delete loot entries
     group = await get_static_group(db, group_id)
-    await require_owner(db, current_user.id, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier (to verify it exists)
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -233,10 +310,10 @@ async def get_page_balances(
     group_id: str,
     tier_id: str,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Get current page balances for all players in the tier"""
-    # Check permissions
+    # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
     await check_view_permission(db, group, current_user)
 
@@ -288,10 +365,10 @@ async def get_page_ledger(
     tier_id: str,
     week: int | None = None,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
     """Get page ledger entries for a tier (optionally filtered by week)"""
-    # Check permissions
+    # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
     await check_view_permission(db, group, current_user)
 
@@ -481,19 +558,42 @@ async def mark_floor_cleared(
     return {"message": f"Marked {len(entries)} players as having cleared {data.floor}"}
 
 
-@router.get("/{group_id}/tiers/{tier_id}/current-week", response_model=dict[str, int])
+@router.get("/{group_id}/tiers/{tier_id}/current-week")
 async def get_current_week(
     group_id: str,
     tier_id: str,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get the current week number for this tier"""
-    # Check permissions
+    """Get the current week number and max logged week for this tier"""
+    # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
     await check_view_permission(db, group, current_user)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
     week_number = calculate_week_number(tier)
-    return {"currentWeek": week_number}
+
+    # Get max week from loot log entries
+    loot_max_result = await db.execute(
+        select(func.max(LootLogEntry.week_number)).where(
+            LootLogEntry.tier_snapshot_id == tier.id
+        )
+    )
+    loot_max_week = loot_max_result.scalar() or 0
+
+    # Get max week from page ledger entries
+    ledger_max_result = await db.execute(
+        select(func.max(PageLedgerEntry.week_number)).where(
+            PageLedgerEntry.tier_snapshot_id == tier.id
+        )
+    )
+    ledger_max_week = ledger_max_result.scalar() or 0
+
+    # Return current week and max logged week (for week selector range)
+    max_logged_week = max(loot_max_week, ledger_max_week)
+    return {
+        "currentWeek": week_number,
+        "maxLoggedWeek": max_logged_week,
+        "maxWeek": max(week_number, max_logged_week),
+    }

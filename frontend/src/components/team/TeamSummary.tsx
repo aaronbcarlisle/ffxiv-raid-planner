@@ -1,12 +1,15 @@
 import type { TeamSummary as TeamSummaryType } from '../../types';
+import type { RaidTier } from '../../gamedata/raid-tiers';
 import { getCurrentTier } from '../../gamedata';
 
 interface TeamSummaryProps {
   summary: TeamSummaryType;
+  tierInfo?: RaidTier;
 }
 
-export function TeamSummary({ summary }: TeamSummaryProps) {
-  const tier = getCurrentTier();
+export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
+  // Use provided tier or fall back to current tier
+  const tier = tierInfo ?? getCurrentTier();
 
   return (
     <div className="bg-surface-card border border-border-default rounded-lg p-6">

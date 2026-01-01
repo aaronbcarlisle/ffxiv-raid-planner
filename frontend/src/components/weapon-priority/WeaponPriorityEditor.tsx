@@ -5,7 +5,7 @@
  * Allows adding/removing jobs and marking weapons as received.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -46,6 +46,17 @@ export function WeaponPriorityEditor({
 }: WeaponPriorityEditorProps) {
   const [showJobSelector, setShowJobSelector] = useState(false);
   const selectedJobsRef = useRef<string[]>([]);
+  const jobSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to job selector when it's shown
+  useEffect(() => {
+    if (showJobSelector && jobSelectorRef.current) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        jobSelectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  }, [showJobSelector]);
 
   // Create function to add currently selected jobs (always uses latest ref value)
   const addSelectedJobsRef2 = useRef(() => {
@@ -186,16 +197,18 @@ export function WeaponPriorityEditor({
 
       {/* Job Selector */}
       {showJobSelector && (
-        <WeaponJobSelector
-          existingJobs={weaponPriorities.map((wp) => wp.job)}
-          onSelectMultiple={handleAddMultipleJobs}
-          onCancel={() => updateJobSelectorState(false, 0)}
-          onSelectionChange={(count, jobs) => {
-            // Store selected jobs and notify parent
-            selectedJobsRef.current = jobs;
-            updateJobSelectorState(true, count);
-          }}
-        />
+        <div ref={jobSelectorRef}>
+          <WeaponJobSelector
+            existingJobs={weaponPriorities.map((wp) => wp.job)}
+            onSelectMultiple={handleAddMultipleJobs}
+            onCancel={() => updateJobSelectorState(false, 0)}
+            onSelectionChange={(count, jobs) => {
+              // Store selected jobs and notify parent
+              selectedJobsRef.current = jobs;
+              updateJobSelectorState(true, count);
+            }}
+          />
+        </div>
       )}
     </div>
   );

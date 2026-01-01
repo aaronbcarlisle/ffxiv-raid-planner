@@ -55,6 +55,17 @@ class LootLogEntryCreate(CamelModel):
     notes: str | None = None
 
 
+class LootLogEntryUpdate(CamelModel):
+    """Request schema for updating a loot log entry"""
+
+    week_number: int | None = Field(None, ge=1)
+    floor: str | None = None
+    item_slot: str | None = None
+    recipient_player_id: str | None = None
+    method: LootMethodEnum | None = None
+    notes: str | None = None
+
+
 class LootLogEntryResponse(CamelModel):
     """Response schema for a loot log entry"""
 

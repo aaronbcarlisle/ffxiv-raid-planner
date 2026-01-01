@@ -6,11 +6,12 @@
  */
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
+import { useLootTrackingStore } from '../stores/lootTrackingStore';
 import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
@@ -25,26 +26,16 @@ import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
-import { SORT_PRESETS } from '../utils/constants';
+import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
-import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, StaticSettings, GearSlotStatus, ResetMode } from '../types';
+import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
-
-// Default settings for display
-const DEFAULT_SETTINGS: StaticSettings = {
-  displayOrder: ['tank', 'healer', 'melee', 'ranged', 'caster'],
-  lootPriority: ['melee', 'ranged', 'caster', 'tank', 'healer'],
-  sortPreset: 'standard',
-  groupView: false,
-  timezone: 'UTC',
-  autoSync: false,
-  syncFrequency: 'weekly',
-};
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentGroup, isLoading: groupLoading, error: groupError, fetchGroupByShareCode } = useStaticGroupStore();
   const {
     tiers,
@@ -68,7 +59,20 @@ export function GroupView() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
-  const [pageMode, setPageMode] = useState<PageMode>('players');
+  const [pageMode, setPageModeState] = useState<PageMode>(() => {
+    const saved = localStorage.getItem('group-view-tab');
+    return (saved as PageMode) || 'players';
+  });
+
+  // Wrapper to persist pageMode
+  const setPageMode = useCallback((mode: PageMode) => {
+    setPageModeState(mode);
+    try {
+      localStorage.setItem('group-view-tab', mode);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('party-view-mode');
     return saved === 'expanded' ? 'expanded' : 'compact';
@@ -143,7 +147,7 @@ export function GroupView() {
     }
   }, [currentTier?.tierId]);
 
-  // Fetch tiers and load active tier sequentially (avoids race condition)
+  // Fetch tiers and load tier (from URL, localStorage, or active) sequentially
   useEffect(() => {
     if (!currentGroup?.id) return;
 
@@ -158,21 +162,48 @@ export function GroupView() {
       const { tiers: freshTiers } = useTierStore.getState();
       if (freshTiers.length === 0) return;
 
-      // Load the active tier or first tier
-      const activeTier = freshTiers.find(t => t.isActive) || freshTiers[0];
+      // Priority: URL param > localStorage > active tier > first tier
+      const urlTierId = searchParams.get('tier');
+      const urlTier = urlTierId ? freshTiers.find(t => t.tierId === urlTierId) : null;
+
+      const savedTierId = localStorage.getItem(`selected-tier-${currentGroup.id}`);
+      const savedTier = savedTierId ? freshTiers.find(t => t.tierId === savedTierId) : null;
+
+      // Load URL tier, saved tier, active tier, or first tier
+      const activeTier = urlTier || savedTier || freshTiers.find(t => t.isActive) || freshTiers[0];
       if (activeTier) {
         await fetchTier(currentGroup.id, activeTier.tierId);
+        // Always show current tier in URL (so copying URL shares the right tier)
+        setSearchParams({ tier: activeTier.tierId }, { replace: true });
       }
     })();
 
     return () => { cancelled = true; };
-  }, [currentGroup?.id, fetchTiers, fetchTier]);
+  }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
+
+  // Initialize loot tracking store when Loot tab is active
+  const { fetchCurrentWeek, fetchLootLog, lootLog } = useLootTrackingStore();
+  useEffect(() => {
+    if (pageMode === 'loot' && currentGroup?.id && currentTier?.tierId) {
+      fetchCurrentWeek(currentGroup.id, currentTier.tierId);
+      // Fetch all loot log entries (no week filter) for enhanced priority calculation
+      fetchLootLog(currentGroup.id, currentTier.tierId);
+    }
+  }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog]);
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {
+      // Save tier selection to localStorage for persistence
+      try {
+        localStorage.setItem(`selected-tier-${currentGroup.id}`, tierId);
+      } catch {
+        // Ignore localStorage errors
+      }
+      // Update URL to reflect current tier (so copying URL shares the right tier)
+      setSearchParams({ tier: tierId }, { replace: true });
       fetchTier(currentGroup.id, tierId);
     }
-  }, [currentGroup?.id, fetchTier]);
+  }, [currentGroup?.id, fetchTier, setSearchParams]);
 
   // Called when a tier is deleted - load the next available tier
   const handleTierDeleted = async () => {
@@ -698,12 +729,18 @@ export function GroupView() {
               settings={DEFAULT_SETTINGS}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
+              showLogButtons={canEdit}
+              groupId={currentGroup?.id}
+              tierId={currentTier?.tierId}
+              currentWeek={currentTier?.currentWeek ?? 1}
+              lootLog={lootLog}
+              showEnhancedScores={true}
             />
           )}
 
           {/* Stats Tab */}
-          {pageMode === 'stats' && teamSummary && (
-            <TeamSummary summary={teamSummary} />
+          {pageMode === 'stats' && teamSummary && tierInfo && (
+            <TeamSummary summary={teamSummary} tierInfo={tierInfo} />
           )}
 
           {/* History Tab */}
@@ -713,7 +750,7 @@ export function GroupView() {
               tierId={currentTier.tierId}
               players={currentTier.players}
               floors={tierInfo.floors}
-              userRole={userRole!}
+              userRole={userRole || 'viewer'}
             />
           )}
         </>

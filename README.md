@@ -109,17 +109,23 @@ ffxiv-raid-planner/
 │       ├── gamedata/        # FFXIV data (jobs, costs, tiers)
 │       └── types/           # TypeScript types
 ├── docs/                    # Documentation
-│   ├── GEARING_MATH.md      # FFXIV gearing mechanics
-│   ├── ROADMAP.md           # Future features
-│   └── UNIFIED_AUDIT_PLAN.md # Technical debt tracking
-└── CLAUDE.md                # Project guide (detailed)
+│   ├── CONSOLIDATED_STATUS.md  # Current status & roadmap
+│   ├── GEARING_MATH.md         # FFXIV mechanics reference
+│   └── archive/                # Historical planning/audits
+└── CLAUDE.md                # Development guide
+
+_See [CLAUDE.md](./CLAUDE.md) for detailed project structure and key files._
 ```
 
 ## Documentation
 
-- [CLAUDE.md](./CLAUDE.md) - Comprehensive project guide
-- [docs/GEARING_MATH.md](./docs/GEARING_MATH.md) - FFXIV gearing mechanics reference
-- [docs/ROADMAP.md](./docs/ROADMAP.md) - Future feature plans
+- **[CLAUDE.md](./CLAUDE.md)** - Comprehensive development guide
+- **[docs/CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Current status, roadmap, and technical debt
+- **[docs/GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing mechanics reference
+
+**Archived Documentation:**
+- [docs/archive/2025-12-planning/](./docs/archive/2025-12-planning/) - Historical planning documents
+- [docs/archive/2025-12-audits/](./docs/archive/2025-12-audits/) - Historical audit reports
 
 ## Current Raid Tier
 

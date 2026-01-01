@@ -17,13 +17,24 @@ export {
 } from '../gamedata';
 
 export { GEAR_SLOTS, GEAR_SLOT_NAMES } from '../types';
-import type { TemplateRole } from '../types';
+import type { TemplateRole, StaticSettings } from '../types';
 
 // Default display order (party list style: tanks first, then healers, then DPS)
 export const DEFAULT_DISPLAY_ORDER = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
 // Default loot priority (DPS first, as they benefit most from gear)
 export const DEFAULT_LOOT_PRIORITY = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+
+// Default static group settings (single source of truth)
+export const DEFAULT_SETTINGS: StaticSettings = {
+  displayOrder: DEFAULT_DISPLAY_ORDER,
+  lootPriority: DEFAULT_LOOT_PRIORITY,
+  sortPreset: 'standard',
+  groupView: false,
+  timezone: 'UTC',
+  autoSync: false,
+  syncFrequency: 'weekly',
+};
 
 // Sort presets for player ordering
 export const SORT_PRESETS = {

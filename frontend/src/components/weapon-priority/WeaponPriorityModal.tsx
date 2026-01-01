@@ -211,6 +211,7 @@ export function WeaponPriorityModal({
         isOpen={isOpen}
         onClose={onClose}
         title={`${player.name || 'Player'} - Weapon Priorities`}
+        size="lg"
       >
         <div className="flex flex-col h-full max-h-[70vh]">
           {/* Fixed header section */}

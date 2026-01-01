@@ -7,7 +7,10 @@
 import { useState, useEffect } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { AddLootEntryModal } from './AddLootEntryModal';
-import type { SnapshotPlayer } from '../../types';
+import { DeleteLootConfirmModal } from './DeleteLootConfirmModal';
+import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { toast } from '../../stores/toastStore';
+import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface LootLogPanelProps {
@@ -17,6 +20,7 @@ interface LootLogPanelProps {
   floors: string[];
   currentWeek: number;
   canEdit: boolean;
+  onLootLogged?: (weekNumber: number) => void;
 }
 
 export function LootLogPanel({
@@ -26,23 +30,47 @@ export function LootLogPanel({
   floors,
   currentWeek,
   canEdit,
+  onLootLogged,
 }: LootLogPanelProps) {
-  const { lootLog, isLoading, fetchLootLog, createLootEntry, deleteLootEntry } =
-    useLootTrackingStore();
+  const { lootLog, isLoading, fetchLootLog, updateLootEntry } = useLootTrackingStore();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<LootLogEntry | null>(null);
 
   // Fetch loot log for current week on mount
   useEffect(() => {
     fetchLootLog(groupId, tierId, currentWeek);
   }, [groupId, tierId, currentWeek, fetchLootLog]);
 
-  const handleDeleteEntry = async (entryId: number) => {
-    if (!confirm('Delete this loot entry?')) return;
+  const handleAddLoot = async (
+    entry: Parameters<typeof logLootAndUpdateGear>[2],
+    options: { updateGear: boolean }
+  ) => {
+    await logLootAndUpdateGear(groupId, tierId, entry, {
+      updateGear: options.updateGear,
+      updateWeaponPriority: entry.itemSlot === 'weapon' && options.updateGear,
+    });
+    // Switch to the logged week and fetch its entries
+    onLootLogged?.(entry.weekNumber);
+    await fetchLootLog(groupId, tierId, entry.weekNumber);
+    const player = players.find((p) => p.id === entry.recipientPlayerId);
+    const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
+    toast.success(`Logged ${slotName} for ${player?.name || 'player'}`);
+  };
 
+  const handleDeleteConfirm = async (revertGear: boolean) => {
+    if (!entryToDelete) return;
     try {
-      await deleteLootEntry(groupId, tierId, entryId);
-    } catch (error) {
-      // Error handled by store
+      await deleteLootAndRevertGear(groupId, tierId, entryToDelete.id, entryToDelete, {
+        revertGear,
+      });
+      await fetchLootLog(groupId, tierId, currentWeek);
+      const slotName = GEAR_SLOT_NAMES[entryToDelete.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entryToDelete.itemSlot;
+      toast.success(`Deleted ${slotName} entry${revertGear ? ' and reverted gear' : ''}`);
+    } catch {
+      toast.error('Failed to delete entry');
+    } finally {
+      setEntryToDelete(null);
     }
   };
 
@@ -104,34 +132,76 @@ export function LootLogPanel({
                 {entry.notes && (
                   <div className="text-xs text-text-muted mt-1">{entry.notes}</div>
                 )}
+                {entry.createdAt && (
+                  <div className="text-xs text-text-muted mt-1">
+                    {new Date(entry.createdAt).toLocaleString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                )}
               </div>
 
               {canEdit && (
-                <button
-                  onClick={() => handleDeleteEntry(entry.id)}
-                  className="ml-3 px-2 py-1 rounded text-xs text-status-error hover:bg-status-error/20 transition-colors"
-                  title="Delete entry"
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-1 ml-3">
+                  <button
+                    onClick={() => setEntryToEdit(entry)}
+                    className="px-2 py-1 rounded text-xs text-accent hover:bg-accent/20 transition-colors"
+                    title="Edit entry"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setEntryToDelete(entry)}
+                    className="px-2 py-1 rounded text-xs text-status-error hover:bg-status-error/20 transition-colors"
+                    title="Delete entry"
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
           ))
         )}
       </div>
 
-      {/* Add loot modal */}
-      {showAddModal && (
+      {/* Add/Edit loot modal - unified modal for both add and edit */}
+      {(showAddModal || entryToEdit) && (
         <AddLootEntryModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onSubmit={async (entry) => {
-            await createLootEntry(groupId, tierId, entry);
-            await fetchLootLog(groupId, tierId, currentWeek);
+          isOpen={showAddModal || !!entryToEdit}
+          onClose={() => {
+            setShowAddModal(false);
+            setEntryToEdit(null);
           }}
+          onSubmit={handleAddLoot}
+          onUpdate={entryToEdit ? async (updates: LootLogEntryUpdate) => {
+            try {
+              await updateLootEntry(groupId, tierId, entryToEdit.id, updates);
+              const slot = updates.itemSlot || entryToEdit.itemSlot;
+              const slotName = GEAR_SLOT_NAMES[slot as keyof typeof GEAR_SLOT_NAMES] || slot;
+              toast.success(`Updated ${slotName} entry`);
+            } catch {
+              toast.error('Failed to update entry');
+              throw new Error('Failed to update');
+            }
+          } : undefined}
           players={players}
           floors={floors}
           currentWeek={currentWeek}
+          editEntry={entryToEdit || undefined}
+        />
+      )}
+
+      {/* Delete confirmation modal */}
+      {entryToDelete && (
+        <DeleteLootConfirmModal
+          isOpen={!!entryToDelete}
+          onClose={() => setEntryToDelete(null)}
+          onConfirm={handleDeleteConfirm}
+          entry={entryToDelete}
+          playerName={entryToDelete.recipientPlayerName}
         />
       )}
     </div>

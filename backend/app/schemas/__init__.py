@@ -9,6 +9,7 @@ from .invitation import (
 from .loot_tracking import (
     LootLogEntryCreate,
     LootLogEntryResponse,
+    LootLogEntryUpdate,
     LootMethodEnum,
     MarkFloorClearedRequest,
     PageBalanceResponse,
@@ -71,6 +72,7 @@ __all__ = [
     # Loot Tracking
     "LootLogEntryCreate",
     "LootLogEntryResponse",
+    "LootLogEntryUpdate",
     "LootMethodEnum",
     "MarkFloorClearedRequest",
     "PageBalanceResponse",
