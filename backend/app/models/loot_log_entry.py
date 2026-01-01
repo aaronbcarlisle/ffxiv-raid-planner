@@ -7,13 +7,6 @@ Tracks individual loot drops and how they were obtained.
 from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
-import enum
-
-
-class LootMethod(str, enum.Enum):
-    DROP = "drop"  # Direct drop from boss
-    BOOK = "book"  # Purchased with books
-    TOME = "tome"  # Purchased with tomestones
 
 
 class LootLogEntry(Base):
@@ -25,7 +18,11 @@ class LootLogEntry(Base):
     floor: Mapped[str] = mapped_column(String(10), nullable=False)  # "M9S", "M10S", etc.
     item_slot: Mapped[str] = mapped_column(String(20), nullable=False)  # "weapon", "head", etc.
     recipient_player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False)
-    method: Mapped[str] = mapped_column(SQLEnum(LootMethod), nullable=False)
+    # Use explicit string values to match PostgreSQL enum (avoids Python enum name vs value issue)
+    method: Mapped[str] = mapped_column(
+        SQLEnum("drop", "book", "tome", name="lootmethod", create_type=False),
+        nullable=False
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)  # ISO timestamp
     created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
