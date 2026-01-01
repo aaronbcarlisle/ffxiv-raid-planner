@@ -122,12 +122,13 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                     alt=""
                     width={20}
                     height={20}
+                    className={item.disabled ? 'grayscale opacity-50' : ''}
                   />
                 ) : (
-                  <span>{item.icon}</span>
+                  <span className={item.disabled ? 'grayscale opacity-50' : ''}>{item.icon}</span>
                 )
               ) : (
-                <span className="flex items-center justify-center w-5 h-5">{item.icon}</span>
+                <span className={`flex items-center justify-center w-5 h-5 ${item.disabled ? 'grayscale opacity-50' : ''}`}>{item.icon}</span>
               )
             )}
             <span>{item.label}</span>

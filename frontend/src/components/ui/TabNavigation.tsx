@@ -18,7 +18,7 @@ const TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Loot' },
   { id: 'stats', label: 'Progress' },
-  { id: 'history', label: 'History' },
+  { id: 'history', label: 'Log' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {

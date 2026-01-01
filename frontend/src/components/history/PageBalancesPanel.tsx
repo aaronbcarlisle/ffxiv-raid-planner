@@ -2,15 +2,19 @@
  * Page Balances Panel
  *
  * Displays book/page counts for all players with inline editing.
+ * Supports "Week X" vs "All Time" toggle for filtering balances.
  */
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';
 import { EditBookBalanceModal } from './EditBookBalanceModal';
+import { PlayerLedgerModal } from './PlayerLedgerModal';
 import { JobIcon } from '../ui/JobIcon';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, PageBalance } from '../../types';
+
+type ViewMode = 'week' | 'allTime';
 
 interface PageBalancesPanelProps {
   groupId: string;
@@ -48,6 +52,9 @@ export function PageBalancesPanel({
   const [editState, setEditState] = useState<EditState | null>(null);
   const [resetState, setResetState] = useState<ResetState | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('allTime');
+  const [ledgerPlayerId, setLedgerPlayerId] = useState<string | null>(null);
+  const [ledgerPlayerName, setLedgerPlayerName] = useState<string>('');
 
   // Create player job lookup map
   const playerJobMap = useMemo(() => {
@@ -56,10 +63,11 @@ export function PageBalancesPanel({
     return map;
   }, [players]);
 
-  // Fetch page balances on mount
+  // Fetch page balances on mount and when view mode or week changes
   useEffect(() => {
-    fetchPageBalances(groupId, tierId);
-  }, [groupId, tierId, fetchPageBalances]);
+    const weekParam = viewMode === 'week' ? currentWeek : undefined;
+    fetchPageBalances(groupId, tierId, weekParam);
+  }, [groupId, tierId, currentWeek, viewMode, fetchPageBalances]);
 
   // Handle reset confirmation
   const handleResetConfirm = async () => {
@@ -108,11 +116,42 @@ export function PageBalancesPanel({
     }
   };
 
+  // Open player ledger modal
+  const handleViewHistory = (playerId: string, playerName: string) => {
+    setLedgerPlayerId(playerId);
+    setLedgerPlayerName(playerName);
+  };
+
   return (
     <div className="bg-surface-card rounded-lg p-4 border border-border-default">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
+          {/* View mode toggle */}
+          <div className="flex rounded-md overflow-hidden border border-border-default">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-3 py-1 text-sm transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-accent text-white'
+                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Week {currentWeek}
+            </button>
+            <button
+              onClick={() => setViewMode('allTime')}
+              className={`px-3 py-1 text-sm transition-colors ${
+                viewMode === 'allTime'
+                  ? 'bg-accent text-white'
+                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              All Time
+            </button>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {canEdit && pageBalances.length > 0 && (
             <button
@@ -159,6 +198,7 @@ export function PageBalancesPanel({
                     Book {bookType}
                   </th>
                 ))}
+                <th className="px-3 py-2 w-8"></th>
                 {canEdit && <th className="px-3 py-2 w-8"></th>}
               </tr>
             </thead>
@@ -213,6 +253,18 @@ export function PageBalancesPanel({
                       title={canEdit ? 'Click to edit' : undefined}
                     >
                       {balance.bookIV}
+                    </td>
+                    {/* View history button */}
+                    <td className="px-1 py-2">
+                      <button
+                        onClick={() => handleViewHistory(balance.playerId, balance.playerName)}
+                        className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                        title={`View book history for ${balance.playerName}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                      </button>
                     </td>
                     {canEdit && (
                       <td className="px-1 py-2">
@@ -312,6 +364,21 @@ export function PageBalancesPanel({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Player ledger modal */}
+      {ledgerPlayerId && (
+        <PlayerLedgerModal
+          isOpen={!!ledgerPlayerId}
+          onClose={() => {
+            setLedgerPlayerId(null);
+            setLedgerPlayerName('');
+          }}
+          groupId={groupId}
+          tierId={tierId}
+          playerId={ledgerPlayerId}
+          playerName={ledgerPlayerName}
+        />
       )}
     </div>
   );

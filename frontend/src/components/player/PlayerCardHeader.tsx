@@ -227,22 +227,22 @@ export function PlayerCardHeader({
       </div>
 
       {/* Completion count + menu button */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <div className="text-lg font-bold text-text-primary">
           {completedSlots}/{totalSlots}
         </div>
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="p-1 rounded hover:bg-surface-interactive opacity-40 hover:opacity-100 transition-opacity"
+            className="p-0.5 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
             title="Player options"
             aria-label="Player options menu"
           >
-            <svg className="w-4 h-4 text-text-muted" fill="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
-            </svg>
+            <img
+              src="/icons/player-options.png"
+              alt="Player options"
+              className="w-6 h-6"
+            />
           </button>
         )}
       </div>

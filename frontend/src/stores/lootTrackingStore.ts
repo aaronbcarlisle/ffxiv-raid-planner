@@ -19,9 +19,10 @@ import type {
 
 interface LootTrackingState {
   lootLog: LootLogEntry[];
-  weeksWithEntries: Set<number>; // Tracks which weeks have loot entries (for week selector)
+  weeksWithEntries: Set<number>; // Tracks which weeks have loot OR ledger entries (for week selector)
   pageLedger: PageLedgerEntry[];
   pageBalances: PageBalance[];
+  playerLedger: PageLedgerEntry[]; // Ledger entries for a specific player (for modal)
   currentWeek: number;
   maxWeek: number; // max(currentWeek, maxLoggedWeek) for week selector
   isLoading: boolean;
@@ -31,7 +32,8 @@ interface LootTrackingState {
   fetchLootLog: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchWeeksWithEntries: (groupId: string, tierId: string) => Promise<void>;
   fetchPageLedger: (groupId: string, tierId: string, week?: number) => Promise<void>;
-  fetchPageBalances: (groupId: string, tierId: string) => Promise<void>;
+  fetchPageBalances: (groupId: string, tierId: string, week?: number) => Promise<void>;
+  fetchPlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   fetchCurrentWeek: (groupId: string, tierId: string) => Promise<void>;
   createLootEntry: (groupId: string, tierId: string, data: LootLogEntryCreate) => Promise<void>;
   updateLootEntry: (groupId: string, tierId: string, entryId: number, data: LootLogEntryUpdate) => Promise<void>;
@@ -40,6 +42,7 @@ interface LootTrackingState {
   markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
   clearLootTracking: () => void;
+  clearPlayerLedger: () => void;
 }
 
 export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
@@ -47,6 +50,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   weeksWithEntries: new Set<number>(),
   pageLedger: [],
   pageBalances: [],
+  playerLedger: [],
   currentWeek: 1,
   maxWeek: 1,
   isLoading: false,
@@ -67,14 +71,12 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   },
 
   fetchWeeksWithEntries: async (groupId, tierId) => {
-    // Fetch ALL loot log entries (no week filter) to determine which weeks have data
+    // Fetch weeks that have either loot log OR page ledger entries
     try {
-      const response = await api.get<LootLogEntry[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/loot-log`
+      const response = await api.get<{ weeks: number[] }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/weeks-with-entries`
       );
-      const weeks = new Set<number>();
-      response.forEach(entry => weeks.add(entry.weekNumber));
-      set({ weeksWithEntries: weeks });
+      set({ weeksWithEntries: new Set(response.weeks) });
     } catch {
       // Silently fail - week selector will just not show empty indicators
     }
@@ -94,13 +96,27 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     }
   },
 
-  fetchPageBalances: async (groupId, tierId) => {
+  fetchPageBalances: async (groupId, tierId, week) => {
     set({ isLoading: true, error: null });
     try {
+      const params = week !== undefined ? `?week=${week}` : '';
       const response = await api.get<PageBalance[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/page-balances`
+        `/api/static-groups/${groupId}/tiers/${tierId}/page-balances${params}`
       );
       set({ pageBalances: response, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  fetchPlayerLedger: async (groupId, tierId, playerId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.get<PageLedgerEntry[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`
+      );
+      set({ playerLedger: response, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;
@@ -174,6 +190,15 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, data);
+      // Update weeksWithEntries if needed
+      const { weeksWithEntries, maxWeek } = get();
+      const newWeeks = new Set(weeksWithEntries);
+      newWeeks.add(data.weekNumber);
+      if (data.weekNumber > maxWeek) {
+        set({ weeksWithEntries: newWeeks, maxWeek: data.weekNumber });
+      } else {
+        set({ weeksWithEntries: newWeeks });
+      }
       // Refresh ledger and balances
       await Promise.all([
         get().fetchPageLedger(groupId, tierId),
@@ -189,10 +214,14 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/mark-floor-cleared`, data);
-      // Update maxWeek if the new entry's week is higher
-      const { maxWeek } = get();
+      // Update weeksWithEntries and maxWeek
+      const { weeksWithEntries, maxWeek } = get();
+      const newWeeks = new Set(weeksWithEntries);
+      newWeeks.add(data.weekNumber);
       if (data.weekNumber > maxWeek) {
-        set({ maxWeek: data.weekNumber });
+        set({ weeksWithEntries: newWeeks, maxWeek: data.weekNumber });
+      } else {
+        set({ weeksWithEntries: newWeeks });
       }
       // Refresh ledger and balances
       await Promise.all([
@@ -220,6 +249,15 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         quantity: adjustment,
         notes: notes || 'Manual adjustment',
       });
+      // Update weeksWithEntries and maxWeek
+      const { weeksWithEntries, maxWeek } = get();
+      const newWeeks = new Set(weeksWithEntries);
+      newWeeks.add(currentWeek);
+      if (currentWeek > maxWeek) {
+        set({ weeksWithEntries: newWeeks, maxWeek: currentWeek });
+      } else {
+        set({ weeksWithEntries: newWeeks });
+      }
       // Refresh balances
       await get().fetchPageBalances(groupId, tierId);
     } catch (error: any) {
@@ -234,10 +272,15 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       weeksWithEntries: new Set<number>(),
       pageLedger: [],
       pageBalances: [],
+      playerLedger: [],
       currentWeek: 1,
       maxWeek: 1,
       isLoading: false,
       error: null,
     });
+  },
+
+  clearPlayerLedger: () => {
+    set({ playerLedger: [] });
   },
 }));

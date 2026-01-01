@@ -308,10 +308,15 @@ async def delete_loot_log_entry(
 async def get_page_balances(
     group_id: str,
     tier_id: str,
+    week: int | None = None,
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    """Get current page balances for all players in the tier"""
+    """Get current page balances for all players in the tier.
+
+    If week is provided, returns balances for that specific week only.
+    Otherwise, returns cumulative balances across all weeks.
+    """
     # Check permissions (supports anonymous access for public groups)
     group = await get_static_group(db, group_id)
     await check_view_permission(db, group, current_user)
@@ -330,15 +335,19 @@ async def get_page_balances(
     # Calculate balances for each player
     balances = []
     for player in players:
-        # Sum quantities grouped by book type
-        result = await db.execute(
+        # Build query with optional week filter
+        query = (
             select(
                 PageLedgerEntry.book_type,
                 func.sum(PageLedgerEntry.quantity).label("balance"),
             )
             .where(PageLedgerEntry.player_id == player.id)
-            .group_by(PageLedgerEntry.book_type)
         )
+        if week is not None:
+            query = query.where(PageLedgerEntry.week_number == week)
+        query = query.group_by(PageLedgerEntry.book_type)
+
+        result = await db.execute(query)
         book_balances = {row.book_type: row.balance for row in result.all()}
 
         balances.append(
@@ -596,3 +605,104 @@ async def get_current_week(
         "maxLoggedWeek": max_logged_week,
         "maxWeek": max(week_number, max_logged_week),
     }
+
+
+@router.get("/{group_id}/tiers/{tier_id}/players/{player_id}/page-ledger")
+async def get_player_page_ledger(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get all page ledger entries for a specific player"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Verify player exists in this tier
+    result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.id == player_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+        )
+    )
+    player = result.scalar_one_or_none()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found in this tier")
+
+    # Get all ledger entries for this player
+    query = (
+        select(PageLedgerEntry)
+        .where(
+            PageLedgerEntry.tier_snapshot_id == tier.id,
+            PageLedgerEntry.player_id == player_id,
+        )
+        .options(
+            joinedload(PageLedgerEntry.player),
+            joinedload(PageLedgerEntry.created_by),
+        )
+        .order_by(PageLedgerEntry.created_at.desc())
+    )
+
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    # Convert to response schema
+    return [
+        PageLedgerEntryResponse(
+            id=entry.id,
+            tier_snapshot_id=entry.tier_snapshot_id,
+            player_id=entry.player_id,
+            player_name=entry.player.name,
+            week_number=entry.week_number,
+            floor=entry.floor,
+            book_type=entry.book_type,
+            transaction_type=entry.transaction_type,
+            quantity=entry.quantity,
+            notes=entry.notes,
+            created_at=entry.created_at,
+            created_by_user_id=entry.created_by_user_id,
+            created_by_username=entry.created_by.discord_username,
+        )
+        for entry in entries
+    ]
+
+
+@router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")
+async def get_weeks_with_entries(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get all weeks that have loot log OR page ledger entries"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get distinct weeks from loot log
+    loot_weeks_result = await db.execute(
+        select(LootLogEntry.week_number)
+        .where(LootLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    loot_weeks = {row[0] for row in loot_weeks_result.all()}
+
+    # Get distinct weeks from page ledger
+    ledger_weeks_result = await db.execute(
+        select(PageLedgerEntry.week_number)
+        .where(PageLedgerEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    ledger_weeks = {row[0] for row in ledger_weeks_result.all()}
+
+    # Merge and return sorted list
+    all_weeks = sorted(loot_weeks | ledger_weeks)
+    return {"weeks": all_weeks}
