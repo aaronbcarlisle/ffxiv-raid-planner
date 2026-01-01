@@ -327,14 +327,16 @@ export function PlayerCard({
           </p>
 
           {/* Radio option 1: Reset progress only */}
-          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
+            resetMode === 'progress' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
+          }`}>
             <input
               type="radio"
               name="resetMode"
               value="progress"
               checked={resetMode === 'progress'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
@@ -347,14 +349,16 @@ export function PlayerCard({
           </label>
 
           {/* Radio option 2: Unlink BiS */}
-          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
+            resetMode === 'unlink' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
+          }`}>
             <input
               type="radio"
               name="resetMode"
               value="unlink"
               checked={resetMode === 'unlink'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
@@ -367,14 +371,16 @@ export function PlayerCard({
           </label>
 
           {/* Radio option 3: Reset everything */}
-          <label className="flex items-start gap-3 p-3 rounded hover:bg-surface-hover cursor-pointer mb-3">
+          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
+            resetMode === 'all' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
+          }`}>
             <input
               type="radio"
               name="resetMode"
               value="all"
               checked={resetMode === 'all'}
               onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1 w-4 h-4 rounded-full border-2 border-border-default bg-surface-raised text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0 cursor-pointer"
+              className="mt-1 w-4 h-4 text-accent focus:ring-accent cursor-pointer"
             />
             <div className="flex-1">
               <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
