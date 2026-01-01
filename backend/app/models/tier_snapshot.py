@@ -3,12 +3,14 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
 
 if TYPE_CHECKING:
+    from .loot_log_entry import LootLogEntry
+    from .page_ledger_entry import PageLedgerEntry
     from .snapshot_player import SnapshotPlayer
     from .static_group import StaticGroup
 
@@ -39,6 +41,16 @@ class TierSnapshot(Base):
     # Whether this is the currently active tier for the group
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Weapon priority settings
+    weapon_priorities_auto_lock_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+    weapon_priorities_global_lock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    weapon_priorities_global_locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    weapon_priorities_global_locked_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Week tracking for loot log and page tracking
+    current_week: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    week_start_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Timestamps
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
@@ -54,6 +66,16 @@ class TierSnapshot(Base):
         back_populates="tier_snapshot",
         cascade="all, delete-orphan",
         order_by="SnapshotPlayer.sort_order",
+    )
+    loot_log_entries: Mapped[list["LootLogEntry"]] = relationship(
+        "LootLogEntry",
+        back_populates="tier_snapshot",
+        cascade="all, delete-orphan",
+    )
+    page_ledger_entries: Mapped[list["PageLedgerEntry"]] = relationship(
+        "PageLedgerEntry",
+        back_populates="tier_snapshot",
+        cascade="all, delete-orphan",
     )
 
     # Unique constraint: one snapshot per tier per group

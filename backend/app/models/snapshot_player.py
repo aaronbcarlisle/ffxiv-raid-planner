@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..database import Base
 
 if TYPE_CHECKING:
+    from .loot_log_entry import LootLogEntry
+    from .page_ledger_entry import PageLedgerEntry
     from .tier_snapshot import TierSnapshot
     from .user import User
 
@@ -57,6 +59,13 @@ class SnapshotPlayer(Base):
     gear: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     tome_weapon: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
+    # Weapon priority tracking
+    weapon_priorities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Format: [{"job": "DRG", "weaponName": null, "received": false, "receivedDate": null}, ...]
+    weapon_priorities_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    weapon_priorities_locked_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    weapon_priorities_locked_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Timestamps
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
@@ -68,6 +77,16 @@ class SnapshotPlayer(Base):
     # Relationships
     tier_snapshot: Mapped["TierSnapshot"] = relationship("TierSnapshot", back_populates="players")
     user: Mapped["User | None"] = relationship("User", foreign_keys=[user_id])
+    loot_log_entries: Mapped[list["LootLogEntry"]] = relationship(
+        "LootLogEntry",
+        back_populates="recipient_player",
+        cascade="all, delete-orphan",
+    )
+    page_ledger_entries: Mapped[list["PageLedgerEntry"]] = relationship(
+        "PageLedgerEntry",
+        back_populates="player",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<SnapshotPlayer(id={self.id}, name={self.name}, job={self.job})>"

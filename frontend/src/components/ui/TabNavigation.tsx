@@ -11,12 +11,14 @@ const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
+  history: 'history',
 };
 
 const TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Loot' },
   { id: 'stats', label: 'Progress' },
+  { id: 'history', label: 'History' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {

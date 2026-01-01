@@ -60,18 +60,28 @@ export function Header() {
   const configuredPlayerCount = currentTier?.players?.filter(p => p.configured).length ?? 0;
   const totalPlayerCount = currentTier?.players?.length ?? 0;
 
-  // Handle share code copy (hold Shift for full URL)
+  // Handle share code copy (hold Shift for full URL with tier)
   const handleCopyCode = async (e: React.MouseEvent) => {
     if (!currentGroup) return;
     const isFullUrl = e.shiftKey;
-    const textToCopy = isFullUrl
-      ? `${window.location.origin}/group/${currentGroup.shareCode}`
-      : currentGroup.shareCode;
+
+    let textToCopy: string;
+    let message: string;
+
+    if (isFullUrl) {
+      // Include current tier in URL so recipient sees the same tier
+      const tierParam = currentTier?.tierId ? `?tier=${currentTier.tierId}` : '';
+      textToCopy = `${window.location.origin}/group/${currentGroup.shareCode}${tierParam}`;
+      message = currentTier?.tierId ? `Full URL with tier copied!` : 'Full URL copied!';
+    } else {
+      textToCopy = currentGroup.shareCode;
+      message = 'Share code copied!';
+    }
 
     try {
       await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
-      toast.success(isFullUrl ? 'Full URL copied!' : 'Share code copied!');
+      toast.success(message);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers
@@ -82,7 +92,7 @@ export function Header() {
       document.execCommand('copy');
       document.body.removeChild(textArea);
       setCopied(true);
-      toast.success(isFullUrl ? 'Full URL copied!' : 'Share code copied!');
+      toast.success(message);
       setTimeout(() => setCopied(false), 2000);
     }
   };

@@ -11,6 +11,7 @@ import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
+import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
@@ -28,6 +29,8 @@ interface PlayerCardProps {
   currentUserId?: string;
   isGroupOwner?: boolean;
   userRole?: MemberRole | null;
+  groupId: string;
+  tierId: string;
   dragListeners?: DragListeners;
   dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
@@ -51,6 +54,8 @@ export function PlayerCard({
   currentUserId,
   isGroupOwner,
   userRole,
+  groupId,
+  tierId,
   dragListeners,
   dragAttributes,
   onUpdate,
@@ -69,6 +74,7 @@ export function PlayerCard({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
+  const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Get role color for left border
@@ -88,7 +94,7 @@ export function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport || showWeaponPriorityModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -97,14 +103,44 @@ export function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showBiSImport, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showBiSImport, showWeaponPriorityModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
     const newGear = player.gear.map((g) =>
       g.slot === slot ? { ...g, ...updates } : g
     );
+
+    // Check if this is the raid weapon and hasItem changed
+    const isWeaponSlot = slot === 'weapon';
+    const updatingRaidWeapon = isWeaponSlot && player.gear.find(g => g.slot === 'weapon' && g.bisSource === 'raid');
+    const hasItemChanged = 'hasItem' in updates && updatingRaidWeapon;
+
     try {
+      // Sync raid weapon with main job's weapon priority
+      if (hasItemChanged && player.job) {
+        const mainJobPriority = player.weaponPriorities.find((wp) => wp.job === player.job);
+
+        // Only update if the received status is different
+        if (mainJobPriority && mainJobPriority.received !== updates.hasItem) {
+          const updatedPriorities = player.weaponPriorities.map((wp) => {
+            if (wp.job === player.job) {
+              return {
+                ...wp,
+                received: Boolean(updates.hasItem),
+                receivedDate: updates.hasItem ? new Date().toISOString() : undefined,
+              };
+            }
+            return wp;
+          });
+
+          // Batch both updates in single API call
+          await onUpdate({ gear: newGear, weaponPriorities: updatedPriorities });
+          return;
+        }
+      }
+
+      // Just update gear if no weapon priority sync needed
       await onUpdate({ gear: newGear });
     } catch (error) {
       // Error already handled by api.ts (toast shown)
@@ -181,11 +217,7 @@ export function PlayerCard({
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.importBis,
       onClick: () => setShowBiSImport(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -202,6 +234,14 @@ export function PlayerCard({
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
+    { separator: true },
+    {
+      label: 'Weapon Priorities',
+      icon: CONTEXT_MENU_ICONS.weaponPriority,
+      onClick: () => setShowWeaponPriorityModal(true),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
+    },
     { separator: true },
     {
       label: 'Copy Player',
@@ -233,11 +273,7 @@ export function PlayerCard({
     { separator: true },
     ...(canClaim ? [{
       label: 'Take Ownership',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.takeOwnership,
       onClick: onClaimPlayer,
     }] : []),
     ...(canRelease ? [{
@@ -252,11 +288,7 @@ export function PlayerCard({
     { separator: true },
     {
       label: 'Reset Gear',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.resetGear,
       onClick: () => setShowResetConfirm(true),
       disabled: !onResetGear || !resetPermission.allowed,
       tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
@@ -422,6 +454,16 @@ export function PlayerCard({
         player={player}
         contentType={contentType}
         onImport={(updates) => onUpdate(updates)}
+      />
+
+      {/* Weapon Priority Modal */}
+      <WeaponPriorityModal
+        player={player}
+        groupId={groupId}
+        tierId={tierId}
+        userRole={userRole || 'viewer'}
+        isOpen={showWeaponPriorityModal}
+        onClose={() => setShowWeaponPriorityModal(false)}
       />
 
       {/* Header - drag handle area */}

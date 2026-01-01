@@ -1,0 +1,318 @@
+/**
+ * Page Balances Panel
+ *
+ * Displays book/page counts for all players with inline editing.
+ */
+
+import { useState, useEffect, useMemo } from 'react';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { MarkFloorClearedModal } from './MarkFloorClearedModal';
+import { EditBookBalanceModal } from './EditBookBalanceModal';
+import { JobIcon } from '../ui/JobIcon';
+import { toast } from '../../stores/toastStore';
+import type { SnapshotPlayer, PageBalance } from '../../types';
+
+interface PageBalancesPanelProps {
+  groupId: string;
+  tierId: string;
+  players: SnapshotPlayer[];
+  floors: string[];
+  currentWeek: number;
+  canEdit: boolean;
+}
+
+interface EditState {
+  balance: PageBalance;
+  bookType: 'I' | 'II' | 'III' | 'IV';
+  currentValue: number;
+}
+
+interface ResetState {
+  type: 'row' | 'column' | 'all';
+  playerId?: string;
+  playerName?: string;
+  bookType?: 'I' | 'II' | 'III' | 'IV';
+}
+
+export function PageBalancesPanel({
+  groupId,
+  tierId,
+  players,
+  floors,
+  currentWeek,
+  canEdit,
+}: PageBalancesPanelProps) {
+  const { pageBalances, isLoading, fetchPageBalances, markFloorCleared, adjustBookBalance } =
+    useLootTrackingStore();
+  const [showMarkClearedModal, setShowMarkClearedModal] = useState(false);
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [resetState, setResetState] = useState<ResetState | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Create player job lookup map
+  const playerJobMap = useMemo(() => {
+    const map = new Map<string, string>();
+    players.forEach(p => map.set(p.id, p.job));
+    return map;
+  }, [players]);
+
+  // Fetch page balances on mount
+  useEffect(() => {
+    fetchPageBalances(groupId, tierId);
+  }, [groupId, tierId, fetchPageBalances]);
+
+  // Handle reset confirmation
+  const handleResetConfirm = async () => {
+    if (!resetState) return;
+    setIsResetting(true);
+
+    try {
+      const adjustments: { playerId: string; bookType: 'I' | 'II' | 'III' | 'IV'; amount: number }[] = [];
+
+      if (resetState.type === 'all') {
+        // Reset all books for all players
+        pageBalances.forEach(b => {
+          if (b.bookI !== 0) adjustments.push({ playerId: b.playerId, bookType: 'I', amount: -b.bookI });
+          if (b.bookII !== 0) adjustments.push({ playerId: b.playerId, bookType: 'II', amount: -b.bookII });
+          if (b.bookIII !== 0) adjustments.push({ playerId: b.playerId, bookType: 'III', amount: -b.bookIII });
+          if (b.bookIV !== 0) adjustments.push({ playerId: b.playerId, bookType: 'IV', amount: -b.bookIV });
+        });
+      } else if (resetState.type === 'row' && resetState.playerId) {
+        // Reset all books for one player
+        const balance = pageBalances.find(b => b.playerId === resetState.playerId);
+        if (balance) {
+          if (balance.bookI !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'I', amount: -balance.bookI });
+          if (balance.bookII !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'II', amount: -balance.bookII });
+          if (balance.bookIII !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'III', amount: -balance.bookIII });
+          if (balance.bookIV !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'IV', amount: -balance.bookIV });
+        }
+      } else if (resetState.type === 'column' && resetState.bookType) {
+        // Reset one book type for all players
+        const key = `book${resetState.bookType}` as 'bookI' | 'bookII' | 'bookIII' | 'bookIV';
+        pageBalances.forEach(b => {
+          if (b[key] !== 0) adjustments.push({ playerId: b.playerId, bookType: resetState.bookType!, amount: -b[key] });
+        });
+      }
+
+      // Execute adjustments
+      for (const adj of adjustments) {
+        await adjustBookBalance(groupId, tierId, adj.playerId, adj.bookType, adj.amount, currentWeek, 'Reset to zero');
+      }
+
+      toast.success(`Reset ${adjustments.length} book balance(s) to zero`);
+      setResetState(null);
+    } catch {
+      toast.error('Failed to reset book balances');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <div className="bg-surface-card rounded-lg p-4 border border-border-default">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
+        <div className="flex items-center gap-2">
+          {canEdit && pageBalances.length > 0 && (
+            <button
+              onClick={() => setResetState({ type: 'all' })}
+              className="px-3 py-1.5 rounded bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+              title="Reset all book balances to zero"
+            >
+              Reset All
+            </button>
+          )}
+          {canEdit && (
+            <button
+              onClick={() => setShowMarkClearedModal(true)}
+              className="px-3 py-1.5 rounded bg-accent text-white text-sm hover:bg-accent-bright transition-colors"
+            >
+              Mark Floor Cleared
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Balances table */}
+      {isLoading ? (
+        <div className="text-center py-8 text-text-muted">Loading...</div>
+      ) : pageBalances.length === 0 ? (
+        <div className="text-center py-8 text-text-muted">
+          No book tracking data yet
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border-default">
+                <th className="px-3 py-2 text-left text-sm text-text-secondary">Player</th>
+                {(['I', 'II', 'III', 'IV'] as const).map((bookType) => (
+                  <th
+                    key={bookType}
+                    className={`px-3 py-2 text-center text-sm text-text-secondary ${
+                      canEdit ? 'cursor-pointer hover:text-red-400 transition-colors' : ''
+                    }`}
+                    onClick={canEdit ? () => setResetState({ type: 'column', bookType }) : undefined}
+                    title={canEdit ? `Click to reset Book ${bookType} for all players` : undefined}
+                  >
+                    Book {bookType}
+                  </th>
+                ))}
+                {canEdit && <th className="px-3 py-2 w-8"></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {pageBalances.map((balance) => {
+                const handleCellClick = (bookType: 'I' | 'II' | 'III' | 'IV', currentValue: number) => {
+                  if (!canEdit) return;
+                  setEditState({ balance, bookType, currentValue });
+                };
+
+                const cellClass = canEdit
+                  ? 'px-3 py-2 text-center text-sm text-text-primary cursor-pointer hover:bg-accent/10 rounded transition-colors'
+                  : 'px-3 py-2 text-center text-sm text-text-primary';
+
+                return (
+                  <tr
+                    key={balance.playerId}
+                    className="border-b border-border-default last:border-b-0"
+                  >
+                    <td className="px-3 py-2 text-sm text-text-primary">
+                      <div className="flex items-center gap-2">
+                        {playerJobMap.get(balance.playerId) && (
+                          <JobIcon job={playerJobMap.get(balance.playerId)!} size="sm" />
+                        )}
+                        {balance.playerName}
+                      </div>
+                    </td>
+                    <td
+                      className={cellClass}
+                      onClick={() => handleCellClick('I', balance.bookI)}
+                      title={canEdit ? 'Click to edit' : undefined}
+                    >
+                      {balance.bookI}
+                    </td>
+                    <td
+                      className={cellClass}
+                      onClick={() => handleCellClick('II', balance.bookII)}
+                      title={canEdit ? 'Click to edit' : undefined}
+                    >
+                      {balance.bookII}
+                    </td>
+                    <td
+                      className={cellClass}
+                      onClick={() => handleCellClick('III', balance.bookIII)}
+                      title={canEdit ? 'Click to edit' : undefined}
+                    >
+                      {balance.bookIII}
+                    </td>
+                    <td
+                      className={cellClass}
+                      onClick={() => handleCellClick('IV', balance.bookIV)}
+                      title={canEdit ? 'Click to edit' : undefined}
+                    >
+                      {balance.bookIV}
+                    </td>
+                    {canEdit && (
+                      <td className="px-1 py-2">
+                        <button
+                          onClick={() => setResetState({
+                            type: 'row',
+                            playerId: balance.playerId,
+                            playerName: balance.playerName
+                          })}
+                          className="p-1 rounded text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title={`Reset all books for ${balance.playerName}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Mark cleared modal */}
+      {showMarkClearedModal && (
+        <MarkFloorClearedModal
+          isOpen={showMarkClearedModal}
+          onClose={() => setShowMarkClearedModal(false)}
+          onSubmit={async (request) => {
+            await markFloorCleared(groupId, tierId, request);
+            await fetchPageBalances(groupId, tierId);
+          }}
+          players={players}
+          floors={floors}
+          currentWeek={currentWeek}
+        />
+      )}
+
+      {/* Edit book balance modal */}
+      {editState && (
+        <EditBookBalanceModal
+          isOpen={!!editState}
+          onClose={() => setEditState(null)}
+          onSubmit={async (adjustment, notes) => {
+            try {
+              await adjustBookBalance(
+                groupId,
+                tierId,
+                editState.balance.playerId,
+                editState.bookType,
+                adjustment,
+                currentWeek,
+                notes
+              );
+              toast.success(`Updated Book ${editState.bookType} for ${editState.balance.playerName}`);
+            } catch {
+              toast.error('Failed to update book balance');
+              throw new Error('Failed to update');
+            }
+          }}
+          playerName={editState.balance.playerName}
+          bookType={editState.bookType}
+          currentBalance={editState.currentValue}
+        />
+      )}
+
+      {/* Reset confirmation modal */}
+      {resetState && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface-card rounded-lg p-6 max-w-md w-full mx-4 border border-border-default">
+            <h3 className="text-lg font-medium text-text-primary mb-4">
+              Confirm Reset
+            </h3>
+            <p className="text-text-secondary mb-6">
+              {resetState.type === 'all' && 'Are you sure you want to reset ALL book balances for ALL players to zero?'}
+              {resetState.type === 'row' && `Are you sure you want to reset all book balances for ${resetState.playerName} to zero?`}
+              {resetState.type === 'column' && `Are you sure you want to reset Book ${resetState.bookType} for ALL players to zero?`}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setResetState(null)}
+                disabled={isResetting}
+                className="px-4 py-2 rounded bg-surface-interactive text-text-primary hover:bg-surface-raised transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetConfirm}
+                disabled={isResetting}
+                className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isResetting ? 'Resetting...' : 'Reset'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

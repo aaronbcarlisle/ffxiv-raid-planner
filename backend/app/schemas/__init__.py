@@ -6,6 +6,17 @@ from .invitation import (
     InvitationPreview,
     InvitationResponse,
 )
+from .loot_tracking import (
+    LootLogEntryCreate,
+    LootLogEntryResponse,
+    LootLogEntryUpdate,
+    LootMethodEnum,
+    MarkFloorClearedRequest,
+    PageBalanceResponse,
+    PageLedgerEntryCreate,
+    PageLedgerEntryResponse,
+    TransactionTypeEnum,
+)
 from .static_group import (
     GroupSourceEnum,
     MemberInfo,
@@ -34,6 +45,9 @@ from .tier_snapshot import (
     TierSnapshotUpdate,
     TierSnapshotWithPlayers,
     TomeWeaponStatus,
+    WeaponPrioritiesUpdate,
+    WeaponPriority,
+    WeaponPrioritySettingsUpdate,
 )
 from .user import (
     DiscordAuthUrl,
@@ -55,6 +69,16 @@ __all__ = [
     "InvitationCreate",
     "InvitationPreview",
     "InvitationResponse",
+    # Loot Tracking
+    "LootLogEntryCreate",
+    "LootLogEntryResponse",
+    "LootLogEntryUpdate",
+    "LootMethodEnum",
+    "MarkFloorClearedRequest",
+    "PageBalanceResponse",
+    "PageLedgerEntryCreate",
+    "PageLedgerEntryResponse",
+    "TransactionTypeEnum",
     # Static Group
     "GroupSourceEnum",
     "MemberInfo",
@@ -78,6 +102,9 @@ __all__ = [
     "TierSnapshotResponse",
     "TierSnapshotUpdate",
     "TierSnapshotWithPlayers",
+    "WeaponPrioritiesUpdate",
+    "WeaponPriority",
+    "WeaponPrioritySettingsUpdate",
     # User/Auth
     "DiscordAuthUrl",
     "DiscordCallback",

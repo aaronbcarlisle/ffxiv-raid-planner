@@ -44,6 +44,15 @@ class TomeWeaponStatus(CamelModel):
     is_augmented: bool = False
 
 
+class WeaponPriority(CamelModel):
+    """Weapon priority entry"""
+
+    job: str
+    weapon_name: str | None = None
+    received: bool = False
+    received_date: str | None = None
+
+
 # --- Linked User Info ---
 
 
@@ -136,6 +145,10 @@ class SnapshotPlayerResponse(CamelModel):
     last_sync: str | None = None
     gear: list[GearSlotStatus] = Field(default_factory=list)
     tome_weapon: TomeWeaponStatus = Field(default_factory=TomeWeaponStatus)
+    weapon_priorities: list[WeaponPriority] = Field(default_factory=list)
+    weapon_priorities_locked: bool = False
+    weapon_priorities_locked_by: str | None = None
+    weapon_priorities_locked_at: str | None = None
     created_at: str
     updated_at: str
 
@@ -166,6 +179,12 @@ class TierSnapshotResponse(CamelModel):
     content_type: str
     is_active: bool
     player_count: int = 0
+    weapon_priorities_auto_lock_date: str | None = None
+    weapon_priorities_global_lock: bool = False
+    weapon_priorities_global_locked_by: str | None = None
+    weapon_priorities_global_locked_at: str | None = None
+    current_week: int = 1
+    week_start_date: str | None = None
     created_at: str
     updated_at: str
 
@@ -179,8 +198,30 @@ class TierSnapshotWithPlayers(CamelModel):
     content_type: str
     is_active: bool
     players: list[SnapshotPlayerResponse] = Field(default_factory=list)
+    weapon_priorities_auto_lock_date: str | None = None
+    weapon_priorities_global_lock: bool = False
+    weapon_priorities_global_locked_by: str | None = None
+    weapon_priorities_global_locked_at: str | None = None
+    current_week: int = 1
+    week_start_date: str | None = None
     created_at: str
     updated_at: str
+
+
+# --- Weapon Priority Schemas ---
+
+
+class WeaponPrioritiesUpdate(CamelModel):
+    """Schema for updating a player's weapon priorities"""
+
+    weapon_priorities: list[WeaponPriority]
+
+
+class WeaponPrioritySettingsUpdate(CamelModel):
+    """Schema for updating tier-level weapon priority settings"""
+
+    weapon_priorities_auto_lock_date: str | None = None
+    weapon_priorities_global_lock: bool | None = None
 
 
 # --- Rollover Schemas ---

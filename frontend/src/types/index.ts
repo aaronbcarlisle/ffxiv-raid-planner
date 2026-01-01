@@ -26,7 +26,7 @@ export type GearSlot =
 export type GearSource = 'raid' | 'tome';
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats';
+export type PageMode = 'players' | 'loot' | 'stats' | 'history';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -60,6 +60,14 @@ export interface TomeWeaponStatus {
   pursuing: boolean; // "Raid + Tome" selected
   hasItem: boolean; // Got the tome weapon
   isAugmented: boolean; // Augmented it
+}
+
+// Weapon priority entry (for multi-job weapon tracking)
+export interface WeaponPriority {
+  job: string;
+  weaponName?: string;
+  received: boolean;
+  receivedDate?: string;
 }
 
 // Player needs calculation result
@@ -195,6 +203,11 @@ export const CONTEXT_MENU_ICONS = {
   duplicate: '/icons/duplicate-transparent-bg.png',
   remove: '/icons/remove-transparent-bg.png',
   substitute: '/icons/substitute-transparent-bg.png',
+  weaponPriority: '/icons/weapon-priority-transparent-bg.png',
+  resetGear: '/icons/reset-gear-transparent-bg.png',
+  takeOwnership: '/icons/take-ownership-transparent-bg.png',
+  playerOptions: '/icons/player-options-transparent-bg.png',
+  importBis: '/icons/import-bis-transparent-bg.png',
 };
 
 // Tab navigation icons (transparent background versions)
@@ -202,6 +215,7 @@ export const TAB_ICONS = {
   party: '/icons/party-transparent-bg.png',
   loot: '/icons/loot-transparent-bg.png',
   stats: '/icons/stats-transparent-bg.png',
+  history: '/icons/history-transparent-bg.png',
 };
 
 // ==================== User/Auth Types ====================
@@ -334,6 +348,12 @@ export interface TierSnapshot {
   isActive: boolean;
   playerCount?: number;
   players?: SnapshotPlayer[];
+  weaponPrioritiesAutoLockDate?: string;
+  weaponPrioritiesGlobalLock: boolean;
+  weaponPrioritiesGlobalLockedBy?: string;
+  weaponPrioritiesGlobalLockedAt?: string;
+  currentWeek: number;
+  weekStartDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -360,6 +380,10 @@ export interface SnapshotPlayer {
   lastSync?: string;
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
+  weaponPriorities: WeaponPriority[];
+  weaponPrioritiesLocked: boolean;
+  weaponPrioritiesLockedBy?: string;
+  weaponPrioritiesLockedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -462,4 +486,94 @@ export type BiSCategory = 'savage' | 'ultimate' | 'all';
 export interface BiSPresetsResponse {
   job: string;
   presets: BiSPreset[];
+}
+
+// ==================== Loot Tracking Types ====================
+
+// Loot acquisition method
+export type LootMethod = 'drop' | 'book' | 'tome';
+
+// Page ledger transaction type
+export type TransactionType = 'earned' | 'spent' | 'missed' | 'adjustment';
+
+// Loot log entry
+export interface LootLogEntry {
+  id: number;
+  tierSnapshotId: string;
+  weekNumber: number;
+  floor: string;
+  itemSlot: string;
+  recipientPlayerId: string;
+  recipientPlayerName: string;
+  method: LootMethod;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Page ledger entry
+export interface PageLedgerEntry {
+  id: number;
+  tierSnapshotId: string;
+  playerId: string;
+  playerName: string;
+  weekNumber: number;
+  floor: string;
+  bookType: string;
+  transactionType: TransactionType;
+  quantity: number;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Page balance for a player
+export interface PageBalance {
+  playerId: string;
+  playerName: string;
+  bookI: number;
+  bookII: number;
+  bookIII: number;
+  bookIV: number;
+}
+
+// Loot log entry create request
+export interface LootLogEntryCreate {
+  weekNumber: number;
+  floor: string;
+  itemSlot: string;
+  recipientPlayerId: string;
+  method: LootMethod;
+  notes?: string;
+}
+
+// Loot log entry update request
+export interface LootLogEntryUpdate {
+  weekNumber?: number;
+  floor?: string;
+  itemSlot?: string;
+  recipientPlayerId?: string;
+  method?: LootMethod;
+  notes?: string;
+}
+
+// Page ledger entry create request
+export interface PageLedgerEntryCreate {
+  playerId: string;
+  weekNumber: number;
+  floor: string;
+  bookType: string;
+  transactionType: TransactionType;
+  quantity: number;
+  notes?: string;
+}
+
+// Mark floor cleared request
+export interface MarkFloorClearedRequest {
+  weekNumber: number;
+  floor: string;
+  playerIds: string[];
+  notes?: string;
 }
