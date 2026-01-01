@@ -12,9 +12,9 @@ A free, web-based tool for FFXIV static raid groups to:
 
 ## Current Status
 
-**Phase 1-6: Complete** | **Ready for Production**
+**Phase 1-6.1: Complete** | **Ready for Production**
 
-The application is a full auth-first system with Discord OAuth, multi-static membership, per-tier roster snapshots, and comprehensive permission-aware UI.
+The application is a full auth-first system with Discord OAuth, multi-static membership, per-tier roster snapshots, comprehensive permission-aware UI, and configurable Reset Gear options.
 
 ### What Works
 - **Discord OAuth** - Full login/logout with JWT tokens
@@ -529,6 +529,7 @@ interface StaticSettings {
 
 type PageMode = 'players' | 'loot' | 'stats';
 type ViewMode = 'compact' | 'expanded';
+type ResetMode = 'progress' | 'unlink' | 'all';
 type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
 type TankRole = 'MT' | 'OT';
@@ -761,7 +762,7 @@ function calculatePriorityScore(player): number {
 - `SortModeSelector.tsx` - Sort preset dropdown
 - `GroupViewToggle.tsx` - G1/G2 group view toggle
 - `ContextMenu.tsx` - Right-click menu component with tooltip support
-- `Modal.tsx` - Confirmation dialogs
+- `Modal.tsx` - Confirmation dialogs (div-based, not native `<dialog>`)
 - `Toast.tsx` - Notification messages (error/warning/success)
 - `Checkbox.tsx` - Permission-aware checkbox with disabled state styling
 - `JobIcon.tsx` - XIVAPI job icons with fallback
@@ -932,6 +933,53 @@ The application uses a dark theme with teal accents and subtle glow effects.
 | Crafted | `rgba(167, 139, 250, 0.2)` | `#c4b5fd` | `rgba(167, 139, 250, 0.4)` |
 | Augmented | `rgba(251, 191, 36, 0.2)` | `#fcd34d` | `rgba(251, 191, 36, 0.4)` |
 
+### Form Elements
+
+**Checkboxes:**
+```css
+input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  /* SVG checkmark background-image */
+}
+```
+
+**Radio Buttons:**
+```css
+input[type="radio"] {
+  appearance: auto;  /* Preserve native appearance */
+  accent-color: var(--color-accent);  /* Teal fill when checked */
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Critical for <dialog> elements */
+dialog input[type="radio"] {
+  appearance: auto;
+  accent-color: var(--color-accent);
+}
+```
+
+**Important:** Radio buttons use `appearance: auto` to preserve native browser rendering, especially inside `<dialog>` elements where browsers apply aggressive CSS resets. The `accent-color` property sets the teal color for the checked state.
+
+**Modal Component:**
+- Uses plain `<div>` elements, NOT native `<dialog>` element
+- The native `<dialog>` element caused severe pointer event issues (clicks passing through, broken radio buttons)
+- Current implementation matches RolloverDialog pattern: fixed positioning with backdrop div
+- Backdrop blocks events via `stopPropagation()` but allows browser's default context menu
+
 ---
 
 ## What NOT To Do
@@ -984,7 +1032,8 @@ When on a group page, the header includes a static switcher dropdown:
 | 5.2 | Complete | BiS presets by job (dropdown from The Balance), in-game gear slot names |
 | 5.3 | Complete | Item icons from XIVAPI with hover cards (stats, iLvl, source badge) |
 | 5.4 | Complete | BiS preset GCD display, auto-filter by tier contentType (no toggle), all 21 jobs covered |
-| 6 | **Complete** | Permission-aware UI - role-based access control, member card ownership, disabled state styling, graceful error handling |
+| 6 | Complete | Permission-aware UI - role-based access control, member card ownership, disabled state styling, graceful error handling |
+| 6.1 | **Complete** | Reset Gear options (3 presets), Modal component rewrite (div-based), radio button styling fixes, aug column tooltips |
 | 7 | Planned | Lodestone auto-sync |
 | 8 | Planned | FFLogs integration |
 | 9 | Planned | Discord bot, PWA offline mode |
@@ -1303,8 +1352,8 @@ const dnd = useDragAndDrop({ disabled: isAnyModalOpen, ... });
 
 // PlayerCard.tsx - notify parent of modal state changes
 useEffect(() => {
-  const isModalOpen = showRemoveConfirm || showBiSImport;
+  const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport;
   if (isModalOpen) onModalOpen?.();
   return () => { if (isModalOpen) onModalClose?.(); };
-}, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
+}, [showRemoveConfirm, showResetConfirm, showBiSImport, onModalOpen, onModalClose]);
 ```
