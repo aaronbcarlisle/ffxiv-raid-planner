@@ -482,11 +482,19 @@ export const useTierStore = create<TierState>((set, get) => ({
     set({ isSaving: true, error: null });
 
     try {
+      // Normalize weapon priorities to ensure all fields are present
+      const normalized = weaponPriorities.map((wp) => ({
+        job: wp.job,
+        weaponName: wp.weaponName ?? null,
+        received: wp.received,
+        receivedDate: wp.receivedDate ?? null,
+      }));
+
       const updatedPlayer = await authRequest<SnapshotPlayer>(
         `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/weapon-priorities`,
         {
           method: 'PUT',
-          body: JSON.stringify({ weaponPriorities }),
+          body: JSON.stringify({ weaponPriorities: normalized }),
         }
       );
 

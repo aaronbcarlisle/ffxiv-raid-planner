@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -30,6 +30,8 @@ from ..schemas import (
     TierSnapshotResponse,
     TierSnapshotUpdate,
     TierSnapshotWithPlayers,
+    WeaponPrioritiesUpdate,
+    WeaponPrioritySettingsUpdate,
 )
 from ..constants import (
     OPTIMAL_PARTY_COMP,
@@ -844,13 +846,11 @@ async def update_weapon_priorities(
     group_id: str,
     tier_id: str,
     player_id: str,
-    data: "WeaponPrioritiesUpdate",
+    data: WeaponPrioritiesUpdate = Body(...),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> SnapshotPlayerResponse:
     """Update a player's weapon priority list"""
-    from ..schemas import WeaponPrioritiesUpdate
-
     group = await get_static_group(session, group_id)
     membership = await get_user_membership(session, current_user.id, group_id)
 
@@ -1035,13 +1035,11 @@ async def unlock_player_weapon_priorities(
 async def update_weapon_priority_settings(
     group_id: str,
     tier_id: str,
-    data: "WeaponPrioritySettingsUpdate",
+    data: WeaponPrioritySettingsUpdate = Body(...),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> TierSnapshotResponse:
     """Update tier-level weapon priority settings (Owner/Lead only)"""
-    from ..schemas import WeaponPrioritySettingsUpdate
-
     group = await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 

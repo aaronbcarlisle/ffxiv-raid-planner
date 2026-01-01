@@ -110,7 +110,37 @@ export function PlayerCard({
     const newGear = player.gear.map((g) =>
       g.slot === slot ? { ...g, ...updates } : g
     );
+
+    // Check if this is the raid weapon and hasItem changed
+    const isWeaponSlot = slot === 'weapon';
+    const updatingRaidWeapon = isWeaponSlot && player.gear.find(g => g.slot === 'weapon' && g.bisSource === 'raid');
+    const hasItemChanged = 'hasItem' in updates && updatingRaidWeapon;
+
     try {
+      // Sync raid weapon with main job's weapon priority
+      if (hasItemChanged && player.job) {
+        const mainJobPriority = player.weaponPriorities.find((wp) => wp.job === player.job);
+
+        // Only update if the received status is different
+        if (mainJobPriority && mainJobPriority.received !== updates.hasItem) {
+          const updatedPriorities = player.weaponPriorities.map((wp) => {
+            if (wp.job === player.job) {
+              return {
+                ...wp,
+                received: Boolean(updates.hasItem),
+                receivedDate: updates.hasItem ? new Date().toISOString() : undefined,
+              };
+            }
+            return wp;
+          });
+
+          // Batch both updates in single API call
+          await onUpdate({ gear: newGear, weaponPriorities: updatedPriorities });
+          return;
+        }
+      }
+
+      // Just update gear if no weapon priority sync needed
       await onUpdate({ gear: newGear });
     } catch (error) {
       // Error already handled by api.ts (toast shown)
