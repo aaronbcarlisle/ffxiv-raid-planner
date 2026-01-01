@@ -66,6 +66,7 @@ export function PlayerCard({
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -86,7 +87,7 @@ export function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showBiSImport;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -95,7 +96,7 @@ export function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showBiSImport, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showBiSImport, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -255,7 +256,7 @@ export function PlayerCard({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       ),
-      onClick: onResetGear,
+      onClick: () => setShowResetConfirm(true),
       disabled: !onResetGear || !resetPermission.allowed,
       tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
     },
@@ -309,6 +310,35 @@ export function PlayerCard({
             className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
           >
             Remove
+          </button>
+        </div>
+      </Modal>
+
+      {/* Reset Gear Confirmation Modal */}
+      <Modal
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        title="Reset Gear Progress"
+      >
+        <p className="text-text-secondary mb-6">
+          Are you sure you want to reset all gear progress for <span className="text-text-primary font-medium">{player.name}</span>?
+          This will uncheck all gear slots and cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowResetConfirm(false)}
+            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onResetGear?.();
+              setShowResetConfirm(false);
+            }}
+            className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
+          >
+            Reset Gear
           </button>
         </div>
       </Modal>
