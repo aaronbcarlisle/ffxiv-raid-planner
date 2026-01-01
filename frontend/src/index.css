@@ -391,6 +391,22 @@ input[type="checkbox"]:hover {
   border-color: rgba(20, 184, 166, 0.5);
 }
 
+/* Radio button styling - preserve native appearance */
+/* This is especially important inside <dialog> elements where browsers apply aggressive resets */
+input[type="radio"] {
+  appearance: auto; /* Force native appearance (override Tailwind/browser resets) */
+  accent-color: var(--color-accent); /* Set accent color for checked state */
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Ensure radio buttons work inside dialog elements */
+dialog input[type="radio"] {
+  appearance: auto;
+  accent-color: var(--color-accent);
+}
+
 /* Custom 4-column breakpoint for wide screens */
 @media (min-width: 1400px) {
   .grid-4xl {

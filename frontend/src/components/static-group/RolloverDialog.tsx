@@ -94,8 +94,6 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
                 type="radio"
                 checked={resetGear}
                 onChange={() => setResetGear(true)}
-                className="w-4 h-4 cursor-pointer"
-                style={{ accentColor: 'var(--color-accent)' }}
               />
               <div>
                 <span className="text-text-primary">Reset gear (start fresh)</span>
@@ -109,8 +107,6 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
                 type="radio"
                 checked={!resetGear}
                 onChange={() => setResetGear(false)}
-                className="w-4 h-4 cursor-pointer"
-                style={{ accentColor: 'var(--color-accent)' }}
               />
               <div>
                 <span className="text-text-primary">Keep current gear progress</span>
