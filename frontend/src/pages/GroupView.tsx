@@ -464,6 +464,8 @@ export function GroupView() {
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
           userRole={userRole}
+          groupId={currentGroup?.id}
+          tierId={currentTier?.tierId}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => {
