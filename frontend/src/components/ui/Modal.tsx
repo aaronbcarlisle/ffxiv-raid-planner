@@ -8,17 +8,21 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   if (!isOpen) return null;
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    // Only close if clicking the backdrop, not the modal content
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  // Prevent all mouse events from passing through to elements behind the modal
+  const handleBackdropEvent = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={handleBackdropClick}
+      onClick={handleBackdropEvent}
+      onContextMenu={handleContextMenu}
     >
       <div className="bg-surface-card border border-border-default rounded-lg w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-4 border-b border-border-default">
