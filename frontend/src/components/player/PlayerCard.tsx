@@ -217,11 +217,7 @@ export function PlayerCard({
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.importBis,
       onClick: () => setShowBiSImport(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -241,11 +237,7 @@ export function PlayerCard({
     { separator: true },
     {
       label: player.weaponPriorities.length > 0 ? 'Update Weapon Priorities' : 'Set Weapon Priorities',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.weaponPriority,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -281,11 +273,7 @@ export function PlayerCard({
     { separator: true },
     ...(canClaim ? [{
       label: 'Take Ownership',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.takeOwnership,
       onClick: onClaimPlayer,
     }] : []),
     ...(canRelease ? [{
@@ -300,11 +288,7 @@ export function PlayerCard({
     { separator: true },
     {
       label: 'Reset Gear',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.resetGear,
       onClick: () => setShowResetConfirm(true),
       disabled: !onResetGear || !resetPermission.allowed,
       tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,

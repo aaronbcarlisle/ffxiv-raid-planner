@@ -203,6 +203,11 @@ export const CONTEXT_MENU_ICONS = {
   duplicate: '/icons/duplicate-transparent-bg.png',
   remove: '/icons/remove-transparent-bg.png',
   substitute: '/icons/substitute-transparent-bg.png',
+  weaponPriority: '/icons/weapon-priority-transparent-bg.png',
+  resetGear: '/icons/reset-gear-transparent-bg.png',
+  takeOwnership: '/icons/take-ownership-transparent-bg.png',
+  playerOptions: '/icons/player-options-transparent-bg.png',
+  importBis: '/icons/import-bis-transparent-bg.png',
 };
 
 // Tab navigation icons (transparent background versions)
