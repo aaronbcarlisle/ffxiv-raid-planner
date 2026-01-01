@@ -425,13 +425,20 @@ export function GearTable({
                   </div>
                 </td>
                 <td className="py-1">
-                  <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : (!canAugment ? 'Get tome gear first' : undefined)}>
-                    <Checkbox
-                      checked={status.isAugmented}
-                      onChange={(checked) => handleAugmentedChange(slot, checked)}
-                      disabled={!gearPermission.allowed || !canAugment}
-                    />
-                  </div>
+                  {status.bisSource === 'raid' ? (
+                    <div className="flex justify-center text-text-muted">
+                      {/* Raid gear can't be augmented */}
+                      —
+                    </div>
+                  ) : (
+                    <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : (!canAugment ? 'Get tome gear first' : undefined)}>
+                      <Checkbox
+                        checked={status.isAugmented}
+                        onChange={(checked) => handleAugmentedChange(slot, checked)}
+                        disabled={!gearPermission.allowed || !canAugment}
+                      />
+                    </div>
+                  )}
                 </td>
               </tr>
             );
