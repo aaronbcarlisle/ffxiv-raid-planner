@@ -26,7 +26,7 @@ export type GearSlot =
 export type GearSource = 'raid' | 'tome';
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats';
+export type PageMode = 'players' | 'loot' | 'stats' | 'history';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -210,6 +210,7 @@ export const TAB_ICONS = {
   party: '/icons/party-transparent-bg.png',
   loot: '/icons/loot-transparent-bg.png',
   stats: '/icons/stats-transparent-bg.png',
+  history: '/icons/history-transparent-bg.png',
 };
 
 // ==================== User/Auth Types ====================
@@ -480,4 +481,84 @@ export type BiSCategory = 'savage' | 'ultimate' | 'all';
 export interface BiSPresetsResponse {
   job: string;
   presets: BiSPreset[];
+}
+
+// ==================== Loot Tracking Types ====================
+
+// Loot acquisition method
+export type LootMethod = 'drop' | 'book' | 'tome';
+
+// Page ledger transaction type
+export type TransactionType = 'earned' | 'spent' | 'missed' | 'adjustment';
+
+// Loot log entry
+export interface LootLogEntry {
+  id: number;
+  tierSnapshotId: string;
+  weekNumber: number;
+  floor: string;
+  itemSlot: string;
+  recipientPlayerId: string;
+  recipientPlayerName: string;
+  method: LootMethod;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Page ledger entry
+export interface PageLedgerEntry {
+  id: number;
+  tierSnapshotId: string;
+  playerId: string;
+  playerName: string;
+  weekNumber: number;
+  floor: string;
+  bookType: string;
+  transactionType: TransactionType;
+  quantity: number;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Page balance for a player
+export interface PageBalance {
+  playerId: string;
+  playerName: string;
+  bookI: number;
+  bookII: number;
+  bookIII: number;
+  bookIV: number;
+}
+
+// Loot log entry create request
+export interface LootLogEntryCreate {
+  weekNumber: number;
+  floor: string;
+  itemSlot: string;
+  recipientPlayerId: string;
+  method: LootMethod;
+  notes?: string;
+}
+
+// Page ledger entry create request
+export interface PageLedgerEntryCreate {
+  playerId: string;
+  weekNumber: number;
+  floor: string;
+  bookType: string;
+  transactionType: TransactionType;
+  quantity: number;
+  notes?: string;
+}
+
+// Mark floor cleared request
+export interface MarkFloorClearedRequest {
+  weekNumber: number;
+  floor: string;
+  playerIds: string[];
+  notes?: string;
 }

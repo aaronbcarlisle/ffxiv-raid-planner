@@ -4,8 +4,24 @@ Loot Tracking Schemas
 Pydantic schemas for loot log entries and page ledger entries.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
+
+
+def to_camel(string: str) -> str:
+    """Convert snake_case to camelCase (preserves uppercase like Roman numerals)"""
+    components = string.split("_")
+    # Capitalize first letter only, preserve rest (e.g., "II" -> "II", not "Ii")
+    return components[0] + "".join(x[0].upper() + x[1:] if x else "" for x in components[1:])
+
+
+class CamelModel(BaseModel):
+    """Base model with camelCase conversion for API responses"""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
 
 
 class LootMethodEnum(str, Enum):
@@ -28,7 +44,7 @@ class TransactionTypeEnum(str, Enum):
 # Loot Log Schemas
 
 
-class LootLogEntryCreate(BaseModel):
+class LootLogEntryCreate(CamelModel):
     """Request schema for creating a loot log entry"""
 
     week_number: int = Field(..., ge=1)
@@ -39,7 +55,7 @@ class LootLogEntryCreate(BaseModel):
     notes: str | None = None
 
 
-class LootLogEntryResponse(BaseModel):
+class LootLogEntryResponse(CamelModel):
     """Response schema for a loot log entry"""
 
     id: int
@@ -55,13 +71,13 @@ class LootLogEntryResponse(BaseModel):
     created_by_user_id: str
     created_by_username: str  # Populated from join
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 
 
 # Page Ledger Schemas
 
 
-class PageLedgerEntryCreate(BaseModel):
+class PageLedgerEntryCreate(CamelModel):
     """Request schema for creating a page ledger entry"""
 
     player_id: str
@@ -73,7 +89,7 @@ class PageLedgerEntryCreate(BaseModel):
     notes: str | None = None
 
 
-class PageLedgerEntryResponse(BaseModel):
+class PageLedgerEntryResponse(CamelModel):
     """Response schema for a page ledger entry"""
 
     id: int
@@ -90,10 +106,10 @@ class PageLedgerEntryResponse(BaseModel):
     created_by_user_id: str
     created_by_username: str  # Populated from join
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 
 
-class PageBalanceResponse(BaseModel):
+class PageBalanceResponse(CamelModel):
     """Response schema for a player's page balance"""
 
     player_id: str
@@ -104,7 +120,7 @@ class PageBalanceResponse(BaseModel):
     book_IV: int
 
 
-class MarkFloorClearedRequest(BaseModel):
+class MarkFloorClearedRequest(CamelModel):
     """Request schema for batch marking players as having cleared a floor"""
 
     week_number: int = Field(..., ge=1)

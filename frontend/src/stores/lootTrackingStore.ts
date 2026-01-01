@@ -7,46 +7,14 @@
 
 import { create } from 'zustand';
 import { api } from '../services/api';
-
-export interface LootLogEntry {
-  id: number;
-  tierSnapshotId: string;
-  weekNumber: number;
-  floor: string;
-  itemSlot: string;
-  recipientPlayerId: string;
-  recipientPlayerName: string;
-  method: 'drop' | 'book' | 'tome';
-  notes?: string;
-  createdAt: string;
-  createdByUserId: string;
-  createdByUsername: string;
-}
-
-export interface PageLedgerEntry {
-  id: number;
-  tierSnapshotId: string;
-  playerId: string;
-  playerName: string;
-  weekNumber: number;
-  floor: string;
-  bookType: string; // "I", "II", "III", "IV"
-  transactionType: 'earned' | 'spent' | 'missed' | 'adjustment';
-  quantity: number;
-  notes?: string;
-  createdAt: string;
-  createdByUserId: string;
-  createdByUsername: string;
-}
-
-export interface PageBalance {
-  playerId: string;
-  playerName: string;
-  book_I: number;
-  book_II: number;
-  book_III: number;
-  book_IV: number;
-}
+import type {
+  LootLogEntry,
+  LootLogEntryCreate,
+  PageLedgerEntry,
+  PageLedgerEntryCreate,
+  PageBalance,
+  MarkFloorClearedRequest,
+} from '../types';
 
 interface LootTrackingState {
   lootLog: LootLogEntry[];
@@ -61,42 +29,10 @@ interface LootTrackingState {
   fetchPageLedger: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchPageBalances: (groupId: string, tierId: string) => Promise<void>;
   fetchCurrentWeek: (groupId: string, tierId: string) => Promise<void>;
-  createLootEntry: (
-    groupId: string,
-    tierId: string,
-    data: {
-      weekNumber: number;
-      floor: string;
-      itemSlot: string;
-      recipientPlayerId: string;
-      method: 'drop' | 'book' | 'tome';
-      notes?: string;
-    }
-  ) => Promise<void>;
+  createLootEntry: (groupId: string, tierId: string, data: LootLogEntryCreate) => Promise<void>;
   deleteLootEntry: (groupId: string, tierId: string, entryId: number) => Promise<void>;
-  createPageEntry: (
-    groupId: string,
-    tierId: string,
-    data: {
-      playerId: string;
-      weekNumber: number;
-      floor: string;
-      bookType: string;
-      transactionType: 'earned' | 'spent' | 'missed' | 'adjustment';
-      quantity: number;
-      notes?: string;
-    }
-  ) => Promise<void>;
-  markFloorCleared: (
-    groupId: string,
-    tierId: string,
-    data: {
-      weekNumber: number;
-      floor: string;
-      playerIds: string[];
-      notes?: string;
-    }
-  ) => Promise<void>;
+  createPageEntry: (groupId: string, tierId: string, data: PageLedgerEntryCreate) => Promise<void>;
+  markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
   clearLootTracking: () => void;
 }
 
@@ -112,7 +48,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const params = week ? `?week=${week}` : '';
-      const response = await api.get(
+      const response = await api.get<LootLogEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/loot-log${params}`
       );
       set({ lootLog: response, isLoading: false });
@@ -126,7 +62,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const params = week ? `?week=${week}` : '';
-      const response = await api.get(
+      const response = await api.get<PageLedgerEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger${params}`
       );
       set({ pageLedger: response, isLoading: false });
@@ -139,7 +75,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   fetchPageBalances: async (groupId, tierId) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.get(
+      const response = await api.get<PageBalance[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/page-balances`
       );
       set({ pageBalances: response, isLoading: false });
@@ -151,10 +87,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
 
   fetchCurrentWeek: async (groupId, tierId) => {
     try {
-      const response = await api.get(
+      const response = await api.get<{ currentWeek: number }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
       );
-      set({ currentWeek: response.current_week });
+      set({ currentWeek: response.currentWeek });
     } catch (error: any) {
       set({ error: error.message });
       throw error;

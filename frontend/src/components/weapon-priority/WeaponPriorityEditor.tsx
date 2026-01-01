@@ -103,21 +103,6 @@ export function WeaponPriorityEditor({
     }
   };
 
-  const handleAddJob = (job: string) => {
-    // Check if job already exists
-    if (weaponPriorities.some((wp) => wp.job === job)) {
-      return;
-    }
-
-    const newPriority: WeaponPriority = {
-      job,
-      received: false,
-    };
-
-    onChange([...weaponPriorities, newPriority]);
-    setShowJobSelector(false);
-  };
-
   const handleAddMultipleJobs = (jobs: string[]) => {
     const newPriorities = jobs
       .filter((job) => !weaponPriorities.some((wp) => wp.job === job))
@@ -203,7 +188,6 @@ export function WeaponPriorityEditor({
       {showJobSelector && (
         <WeaponJobSelector
           existingJobs={weaponPriorities.map((wp) => wp.job)}
-          onSelect={handleAddJob}
           onSelectMultiple={handleAddMultipleJobs}
           onCancel={() => updateJobSelectorState(false, 0)}
           onSelectionChange={(count, jobs) => {

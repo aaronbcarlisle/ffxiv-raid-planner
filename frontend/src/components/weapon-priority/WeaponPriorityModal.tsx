@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import type { SnapshotPlayer, WeaponPriority } from '../../types';
+import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
 import { WeaponPriorityEditor } from './WeaponPriorityEditor';
 import { useTierStore } from '../../stores/tierStore';
@@ -17,7 +17,7 @@ interface WeaponPriorityModalProps {
   player: SnapshotPlayer;
   groupId: string;
   tierId: string;
-  userRole: string;
+  userRole: MemberRole | null | undefined;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -95,7 +95,7 @@ export function WeaponPriorityModal({
     : false;
 
   const isLocked = isGlobalLocked || isPlayerLocked || isAutoLocked;
-  const canEdit = permission.allowed && (!isLocked || ['owner', 'lead'].includes(userRole));
+  const canEdit = permission.allowed && (!isLocked || (userRole && ['owner', 'lead'].includes(userRole)));
 
   const lockReason = isGlobalLocked
     ? 'Weapon priorities are globally locked'

@@ -11,7 +11,6 @@ import { JobIcon } from '../ui/JobIcon';
 
 interface WeaponJobSelectorProps {
   existingJobs: string[];
-  onSelect: (job: string) => void;
   onSelectMultiple: (jobs: string[]) => void;
   onCancel: () => void;
   onSelectionChange?: (count: number, jobs: string[]) => void;
@@ -19,8 +18,7 @@ interface WeaponJobSelectorProps {
 
 export function WeaponJobSelector({
   existingJobs,
-  onSelect,
-  onSelectMultiple,
+  onSelectMultiple: _onSelectMultiple,
   onCancel,
   onSelectionChange,
 }: WeaponJobSelectorProps) {
@@ -47,14 +45,6 @@ export function WeaponJobSelector({
     }
     setSelectedJobs(newSelected);
     onSelectionChange?.(newSelected.size, Array.from(newSelected));
-  };
-
-  const handleAddSelected = () => {
-    if (selectedJobs.size > 0) {
-      onSelectMultiple(Array.from(selectedJobs));
-      setSelectedJobs(new Set());
-      onSelectionChange?.(0, []);
-    }
   };
 
   const handleSelectAll = () => {

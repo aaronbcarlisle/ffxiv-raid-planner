@@ -20,6 +20,7 @@ import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
 import { TeamSummary } from '../components/team/TeamSummary';
+import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
@@ -464,8 +465,8 @@ export function GroupView() {
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
           userRole={userRole}
-          groupId={currentGroup?.id}
-          tierId={currentTier?.tierId}
+          groupId={currentGroup!.id}
+          tierId={currentTier!.tierId}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => {
@@ -680,6 +681,8 @@ export function GroupView() {
                       settings={DEFAULT_SETTINGS}
                       viewMode={viewMode}
                       contentType={currentTier?.contentType ?? 'savage'}
+                      groupId={currentGroup?.id ?? ''}
+                      tierId={currentTier?.tierId ?? ''}
                     />
                   );
                 })()}
@@ -701,6 +704,17 @@ export function GroupView() {
           {/* Stats Tab */}
           {pageMode === 'stats' && teamSummary && (
             <TeamSummary summary={teamSummary} />
+          )}
+
+          {/* History Tab */}
+          {pageMode === 'history' && currentTier?.players && tierInfo && (
+            <HistoryView
+              groupId={currentGroup!.id}
+              tierId={currentTier.tierId}
+              players={currentTier.players}
+              floors={tierInfo.floors}
+              userRole={userRole!}
+            />
           )}
         </>
       )}

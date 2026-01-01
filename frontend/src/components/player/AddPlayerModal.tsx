@@ -47,6 +47,8 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
       notes: notes.trim() || undefined,
       gear: createDefaultGear(),
       tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
+      weaponPriorities: [],
+      weaponPrioritiesLocked: false,
     });
 
     // Reset form

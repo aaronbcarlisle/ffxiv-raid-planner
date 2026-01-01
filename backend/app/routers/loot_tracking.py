@@ -45,11 +45,11 @@ async def get_tier_snapshot(
     group_id: str,
     tier_id: str,
 ) -> TierSnapshot:
-    """Get tier snapshot by ID (no permission check - caller must check)"""
+    """Get tier snapshot by tier_id (no permission check - caller must check)"""
     result = await db.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.id == tier_id,
+            TierSnapshot.tier_id == tier_id,
         )
     )
     tier = result.scalar_one_or_none()
@@ -91,7 +91,7 @@ async def get_loot_log(
 
     query = (
         select(LootLogEntry)
-        .where(LootLogEntry.tier_snapshot_id == tier_id)
+        .where(LootLogEntry.tier_snapshot_id == tier.id)
         .options(
             joinedload(LootLogEntry.recipient_player),
             joinedload(LootLogEntry.created_by),
@@ -119,7 +119,7 @@ async def get_loot_log(
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.username,
+            created_by_username=entry.created_by.discord_username,
         )
         for entry in entries
     ]
@@ -140,7 +140,7 @@ async def create_loot_log_entry(
     """Create a new loot log entry (requires lead or owner role)"""
     # Check permissions
     group = await get_static_group(db, group_id)
-    await require_can_edit_roster(db, group, current_user)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -149,7 +149,7 @@ async def create_loot_log_entry(
     result = await db.execute(
         select(SnapshotPlayer).where(
             SnapshotPlayer.id == data.recipient_player_id,
-            SnapshotPlayer.tier_snapshot_id == tier_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
         )
     )
     recipient_player = result.scalar_one_or_none()
@@ -158,7 +158,7 @@ async def create_loot_log_entry(
 
     # Create entry
     entry = LootLogEntry(
-        tier_snapshot_id=tier_id,
+        tier_snapshot_id=tier.id,
         week_number=data.week_number,
         floor=data.floor,
         item_slot=data.item_slot,
@@ -187,7 +187,7 @@ async def create_loot_log_entry(
         notes=entry.notes,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
-        created_by_username=entry.created_by.username,
+        created_by_username=entry.created_by.discord_username,
     )
 
 
@@ -202,7 +202,7 @@ async def delete_loot_log_entry(
     """Delete a loot log entry (requires owner role)"""
     # Check permissions
     group = await get_static_group(db, group_id)
-    await require_owner(db, group, current_user)
+    await require_owner(db, current_user.id, group_id)
 
     # Get tier (to verify it exists)
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -211,7 +211,7 @@ async def delete_loot_log_entry(
     result = await db.execute(
         select(LootLogEntry).where(
             LootLogEntry.id == entry_id,
-            LootLogEntry.tier_snapshot_id == tier_id,
+            LootLogEntry.tier_snapshot_id == tier.id,
         )
     )
     entry = result.scalar_one_or_none()
@@ -246,7 +246,7 @@ async def get_page_balances(
     # Get all players in tier
     result = await db.execute(
         select(SnapshotPlayer)
-        .where(SnapshotPlayer.tier_snapshot_id == tier_id, SnapshotPlayer.configured == True)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
         .order_by(SnapshotPlayer.sort_order)
     )
     players = result.scalars().all()
@@ -300,7 +300,7 @@ async def get_page_ledger(
 
     query = (
         select(PageLedgerEntry)
-        .where(PageLedgerEntry.tier_snapshot_id == tier_id)
+        .where(PageLedgerEntry.tier_snapshot_id == tier.id)
         .options(
             joinedload(PageLedgerEntry.player),
             joinedload(PageLedgerEntry.created_by),
@@ -329,7 +329,7 @@ async def get_page_ledger(
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
-            created_by_username=entry.created_by.username,
+            created_by_username=entry.created_by.discord_username,
         )
         for entry in entries
     ]
@@ -350,7 +350,7 @@ async def create_page_ledger_entry(
     """Create a new page ledger entry (requires lead or owner role)"""
     # Check permissions
     group = await get_static_group(db, group_id)
-    await require_can_edit_roster(db, group, current_user)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -359,7 +359,7 @@ async def create_page_ledger_entry(
     result = await db.execute(
         select(SnapshotPlayer).where(
             SnapshotPlayer.id == data.player_id,
-            SnapshotPlayer.tier_snapshot_id == tier_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
         )
     )
     player = result.scalar_one_or_none()
@@ -368,7 +368,7 @@ async def create_page_ledger_entry(
 
     # Create entry
     entry = PageLedgerEntry(
-        tier_snapshot_id=tier_id,
+        tier_snapshot_id=tier.id,
         player_id=data.player_id,
         week_number=data.week_number,
         floor=data.floor,
@@ -399,7 +399,7 @@ async def create_page_ledger_entry(
         notes=entry.notes,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
-        created_by_username=entry.created_by.username,
+        created_by_username=entry.created_by.discord_username,
     )
 
 
@@ -414,28 +414,45 @@ async def mark_floor_cleared(
     """Batch create 'earned' entries for players who cleared a floor (requires lead or owner)"""
     # Check permissions
     group = await get_static_group(db, group_id)
-    await require_can_edit_roster(db, group, current_user)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
 
     # Determine book type from floor
-    # M9S -> I, M10S -> II, M11S -> III, M12S -> IV
+    # Floor 1 -> I, Floor 2 -> II, Floor 3 -> III, Floor 4 -> IV
+    # Supports all tiers: M1S-M4S, M5S-M8S, M9S-M12S, P9S-P12S
     floor_to_book = {
+        # Dawntrail Heavyweight (7.4)
         "M9S": "I",
         "M10S": "II",
         "M11S": "III",
         "M12S": "IV",
+        # Dawntrail Cruiserweight (7.2)
+        "M5S": "I",
+        "M6S": "II",
+        "M7S": "III",
+        "M8S": "IV",
+        # Dawntrail Light-heavyweight (7.0)
+        "M1S": "I",
+        "M2S": "II",
+        "M3S": "III",
+        "M4S": "IV",
+        # Endwalker Anabaseios (6.4)
+        "P9S": "I",
+        "P10S": "II",
+        "P11S": "III",
+        "P12S": "IV",
     }
     book_type = floor_to_book.get(data.floor)
     if not book_type:
-        raise HTTPException(status_code=400, detail="Invalid floor name")
+        raise HTTPException(status_code=400, detail=f"Invalid floor name: {data.floor}")
 
     # Verify all players exist
     result = await db.execute(
         select(SnapshotPlayer).where(
             SnapshotPlayer.id.in_(data.player_ids),
-            SnapshotPlayer.tier_snapshot_id == tier_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
         )
     )
     players = result.scalars().all()
@@ -446,7 +463,7 @@ async def mark_floor_cleared(
     entries = []
     for player_id in data.player_ids:
         entry = PageLedgerEntry(
-            tier_snapshot_id=tier_id,
+            tier_snapshot_id=tier.id,
             player_id=player_id,
             week_number=data.week_number,
             floor=data.floor,
@@ -479,4 +496,4 @@ async def get_current_week(
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
     week_number = calculate_week_number(tier)
-    return {"current_week": week_number}
+    return {"currentWeek": week_number}
