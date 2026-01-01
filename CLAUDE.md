@@ -55,7 +55,7 @@ The application is a full auth-first system with Discord OAuth, multi-static mem
 - Responsive 4-column grid layout
 - View mode toggle (compact/expanded)
 - Raid position system (T1/T2/H1/H2/M1/M2/R1/R2)
-- Context menu (Copy/Paste/Duplicate/Mark as Sub/Remove)
+- Context menu (Copy/Paste/Duplicate/Mark as Sub/Reset Gear/Remove)
 - Sort presets and drag-and-drop reordering (optimistic updates)
 - Group view (G1/G2) light party split with cross-group position swap
 - FastAPI backend with SQLite (dev) / PostgreSQL (prod)
@@ -310,10 +310,48 @@ Right-click on PlayerCard shows menu with FFXIV-style icons:
 | **Release Ownership** | - | Unlink yourself from this player card |
 | **Unlink User** | - | Owner-only: remove another user's link |
 | **Mark as Sub** | - | Toggle substitute player status |
-| **Reset Gear** | - | Reset all gear to unchecked state |
+| **Reset Gear** | - | Opens modal with 3 preset options (see below) |
 | **Remove Player** | Remove icon | Shows confirmation modal before removing |
 
 Icons are stored locally with transparent backgrounds for better theme integration.
+
+### Reset Gear Options
+
+The Reset Gear action presents three presets to handle different scenarios while respecting field dependencies:
+
+**Preset 1: Reset progress only (keep BiS configuration)** - DEFAULT
+- ✅ Unchecks all `hasItem` checkboxes
+- ✅ Unchecks all `isAugmented` checkboxes
+- ✅ Resets `tomeWeapon` to default
+- ❌ Keeps `bisLink` intact
+- ❌ Keeps `bisSource` for all slots
+- ❌ Keeps item metadata (names, icons, stats)
+- **Use case:** "I want to track my progress from scratch, but keep my BiS setup"
+
+**Preset 2: Unlink BiS (keep progress)**
+- ✅ Clears `bisLink` (removes reference to XIVGear/Etro)
+- ✅ Clears all item metadata: `itemName`, `itemIcon`, `itemLevel`, `itemStats`
+- ❌ Keeps `hasItem` and `isAugmented` (progress tracking)
+- ❌ Keeps `bisSource` for all slots (stays as-is)
+- ❌ Keeps `tomeWeapon` tracking
+- **Use case:** "I want to manage gear manually without a BiS link"
+
+**Preset 3: Reset everything (complete wipe)**
+- ✅ Unchecks all `hasItem` checkboxes
+- ✅ Unchecks all `isAugmented` checkboxes
+- ✅ Resets `bisSource` to defaults (raid for most, tome for ring2)
+- ✅ Clears `bisLink`
+- ✅ Clears all item metadata
+- ✅ Resets `tomeWeapon` to default
+- **Use case:** "Start completely fresh with this player slot"
+
+**Dependency Rules:**
+- **Rule 1:** BiS Link controls Source - can't reset `bisSource` without unlinking BiS
+- **Rule 2:** Item metadata belongs to BiS - clearing `bisLink` also clears item metadata
+- **Rule 3:** Progress is independent - can reset checkboxes without affecting BiS config
+- **Rule 4:** Tome weapon is independent - can reset separately
+
+This fixes the previous broken state where Reset Gear would reset `bisSource` but keep `bisLink` intact, creating a mismatch.
 
 ### 8. Aug Column Behavior (GearTable)
 

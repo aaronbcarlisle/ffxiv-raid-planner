@@ -256,7 +256,7 @@ export function GroupView() {
 
   // Reset gear handler - handles three reset modes
   const handleResetGear = useCallback(async (playerId: string, mode: ResetMode) => {
-    if (!currentGroup?.id || !currentTier?.tierId) return;
+    if (!currentGroup?.id || !currentTier?.tierId || !currentTier.players) return;
 
     const player = currentTier.players.find(p => p.id === playerId);
     if (!player) return;
@@ -485,7 +485,7 @@ export function GroupView() {
             }
           }}
           onDuplicate={() => handleDuplicatePlayer(player)}
-          onResetGear={resetPermission.allowed ? (mode) => handleResetGear(player.id, mode) : undefined}
+          onResetGear={resetPermission.allowed ? (mode: ResetMode) => { handleResetGear(player.id, mode); } : undefined}
           onClaimPlayer={() => handleClaimPlayer(player.id)}
           onReleasePlayer={() => handleReleasePlayer(player.id)}
           onModalOpen={handlePlayerModalOpen}
