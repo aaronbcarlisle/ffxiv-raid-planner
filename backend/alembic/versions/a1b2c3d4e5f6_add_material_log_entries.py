@@ -20,66 +20,43 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Create material_log_entries table and materialtype enum."""
+    """Create material_log_entries table."""
     bind = op.get_bind()
+    inspector = sa.inspect(bind)
 
-    # Use DO block to safely create enum only if it doesn't exist
-    # This is atomic and works correctly with asyncpg
+    # Check if table already exists - if so, nothing to do
+    if "material_log_entries" in inspector.get_table_names():
+        return
+
+    # Create enum type if it doesn't exist (using raw SQL for reliability)
     bind.execute(sa.text("""
         DO $$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'materialtype') THEN
                 CREATE TYPE materialtype AS ENUM ('twine', 'glaze', 'solvent');
             END IF;
-        END
-        $$;
+        END $$;
     """))
 
-    # Check if table already exists before creating
-    inspector = sa.inspect(bind)
-    if "material_log_entries" in inspector.get_table_names():
-        return  # Table already exists, nothing to do
+    # Create table using raw SQL to avoid any SQLAlchemy enum creation issues
+    bind.execute(sa.text("""
+        CREATE TABLE material_log_entries (
+            id SERIAL PRIMARY KEY,
+            tier_snapshot_id VARCHAR(36) NOT NULL REFERENCES tier_snapshots(id) ON DELETE CASCADE,
+            week_number INTEGER NOT NULL,
+            floor VARCHAR(10) NOT NULL,
+            material_type materialtype NOT NULL,
+            recipient_player_id VARCHAR(36) NOT NULL REFERENCES snapshot_players(id) ON DELETE CASCADE,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            created_by_user_id VARCHAR(36) NOT NULL REFERENCES users(id)
+        );
+    """))
 
-    # Create the table
-    op.create_table(
-        "material_log_entries",
-        sa.Column("id", sa.Integer(), nullable=False, autoincrement=True),
-        sa.Column("tier_snapshot_id", sa.String(36), nullable=False),
-        sa.Column("week_number", sa.Integer(), nullable=False),
-        sa.Column("floor", sa.String(10), nullable=False),
-        sa.Column(
-            "material_type",
-            sa.Enum("twine", "glaze", "solvent", name="materialtype", create_type=False),
-            nullable=False,
-        ),
-        sa.Column("recipient_player_id", sa.String(36), nullable=False),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.Text(), nullable=False),
-        sa.Column("created_by_user_id", sa.String(36), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-        sa.ForeignKeyConstraint(
-            ["tier_snapshot_id"],
-            ["tier_snapshots.id"],
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["recipient_player_id"],
-            ["snapshot_players.id"],
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["created_by_user_id"],
-            ["users.id"],
-        ),
-    )
-    op.create_index("ix_material_log_entries_tier_snapshot_id", "material_log_entries", ["tier_snapshot_id"])
-    op.create_index("ix_material_log_entries_week_number", "material_log_entries", ["week_number"])
-    # Composite index for common query pattern (tier + week filtering)
-    op.create_index(
-        "ix_material_log_entries_tier_week",
-        "material_log_entries",
-        ["tier_snapshot_id", "week_number"],
-    )
+    # Create indexes
+    bind.execute(sa.text("CREATE INDEX ix_material_log_entries_tier_snapshot_id ON material_log_entries(tier_snapshot_id);"))
+    bind.execute(sa.text("CREATE INDEX ix_material_log_entries_week_number ON material_log_entries(week_number);"))
+    bind.execute(sa.text("CREATE INDEX ix_material_log_entries_tier_week ON material_log_entries(tier_snapshot_id, week_number);"))
 
 
 def downgrade() -> None:
