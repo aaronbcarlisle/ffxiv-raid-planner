@@ -5,7 +5,7 @@
  * Supports drag-and-drop, context menu, and inline editing.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerCardGear } from './PlayerCardGear';
@@ -29,6 +29,7 @@ interface PlayerCardProps {
   currentUserId?: string;
   isGroupOwner?: boolean;
   userRole?: MemberRole | null;
+  userHasClaimedPlayer?: boolean;
   groupId: string;
   tierId: string;
   dragListeners?: DragListeners;
@@ -45,7 +46,7 @@ interface PlayerCardProps {
   onModalClose?: () => void;
 }
 
-export function PlayerCard({
+export const PlayerCard = memo(function PlayerCard({
   player,
   settings: _settings,
   viewMode,
@@ -54,6 +55,7 @@ export function PlayerCard({
   currentUserId,
   isGroupOwner,
   userRole,
+  userHasClaimedPlayer,
   groupId,
   tierId,
   dragListeners,
@@ -205,7 +207,8 @@ export function PlayerCard({
 
   // Ownership status
   const isLinkedToMe = player.userId === currentUserId;
-  const canClaim = !player.userId && currentUserId && onClaimPlayer;
+  // Can claim if: card not claimed, user is logged in, handler exists, and user hasn't claimed another card
+  const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
   // Permission checks
@@ -278,11 +281,7 @@ export function PlayerCard({
     }] : []),
     ...(canRelease ? [{
       label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
-        </svg>
-      ),
+      icon: CONTEXT_MENU_ICONS.releaseOwnership,
       onClick: onReleasePlayer,
     }] : []),
     { separator: true },
@@ -527,4 +526,4 @@ export function PlayerCard({
       {!isExpanded && <NeedsFooter needs={needs} />}
     </div>
   );
-}
+});

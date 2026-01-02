@@ -2,17 +2,82 @@
  * Static Settings Modal
  *
  * Allows owners to rename, toggle public/private, manage invitations, and delete their static.
+ * Also allows leads/owners to customize loot priority order.
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
 import { MembersPanel } from './MembersPanel';
+import { DEFAULT_LOOT_PRIORITY } from '../../utils/constants';
 import type { StaticGroup } from '../../types';
 
-type SettingsTab = 'general' | 'members' | 'invitations';
+type SettingsTab = 'general' | 'priority' | 'members' | 'invitations';
+
+// Role display names for the priority list
+const ROLE_DISPLAY_NAMES: Record<string, string> = {
+  melee: 'Melee DPS',
+  ranged: 'Physical Ranged',
+  caster: 'Magical Ranged',
+  tank: 'Tank',
+  healer: 'Healer',
+};
+
+// Sortable role item component
+function SortableRoleItem({ role, index }: { role: string; index: number }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: role });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 px-4 py-3 bg-surface-elevated border border-border-default rounded-lg cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-50 shadow-lg' : ''
+      }`}
+      {...attributes}
+      {...listeners}
+    >
+      <span className="text-text-muted">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+        </svg>
+      </span>
+      <span className="text-text-secondary font-medium w-6">{index + 1}.</span>
+      <span className="text-text-primary">{ROLE_DISPLAY_NAMES[role] || role}</span>
+    </div>
+  );
+}
 
 interface GroupSettingsModalProps {
   group: StaticGroup;
@@ -26,6 +91,9 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [name, setName] = useState(group.name);
   const [isPublic, setIsPublic] = useState(group.isPublic);
+  const [lootPriority, setLootPriority] = useState<string[]>(
+    group.settings?.lootPriority || DEFAULT_LOOT_PRIORITY
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -34,8 +102,34 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
   const [copied, setCopied] = useState(false);
 
   const isOwner = group.userRole === 'owner';
+  const canEditPriority = group.userRole === 'owner' || group.userRole === 'lead';
   const canManageInvitations = group.userRole === 'owner' || group.userRole === 'lead';
-  const hasChanges = name !== group.name || isPublic !== group.isPublic;
+
+  // Check if priority has changed
+  const originalPriority = group.settings?.lootPriority || DEFAULT_LOOT_PRIORITY;
+  const priorityChanged = JSON.stringify(lootPriority) !== JSON.stringify(originalPriority);
+  const hasChanges = name !== group.name || isPublic !== group.isPublic || priorityChanged;
+
+  // DnD sensors for priority reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = lootPriority.indexOf(active.id as string);
+      const newIndex = lootPriority.indexOf(over.id as string);
+      setLootPriority(arrayMove(lootPriority, oldIndex, newIndex));
+    }
+  };
+
+  const handleResetPriority = () => {
+    setLootPriority([...DEFAULT_LOOT_PRIORITY]);
+  };
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -47,7 +141,19 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
     setError(null);
 
     try {
-      await updateGroup(group.id, { name, isPublic });
+      const updateData: { name?: string; isPublic?: boolean; settings?: { lootPriority: string[] } } = {};
+
+      if (name !== group.name) {
+        updateData.name = name;
+      }
+      if (isPublic !== group.isPublic) {
+        updateData.isPublic = isPublic;
+      }
+      if (priorityChanged) {
+        updateData.settings = { lootPriority };
+      }
+
+      await updateGroup(group.id, updateData);
       toast.success('Settings saved!');
       onClose();
     } catch (err) {
@@ -109,6 +215,16 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
             }`}
           >
             General
+          </button>
+          <button
+            onClick={() => setActiveTab('priority')}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'priority'
+                ? 'text-accent border-b-2 border-accent -mb-[1px]'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Priority
           </button>
           <button
             onClick={() => setActiveTab('members')}
@@ -266,6 +382,59 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
               </button>
             </div>
           </div>
+          )}
+
+          {activeTab === 'priority' && (
+            <div>
+              <p className="text-text-secondary text-sm mb-4">
+                Drag to reorder role priority for loot distribution. Higher priority roles appear first in priority lists.
+              </p>
+
+              {!canEditPriority && (
+                <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 text-sm">
+                  Only owners and leads can modify priority settings.
+                </div>
+              )}
+
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={lootPriority} strategy={verticalListSortingStrategy}>
+                  <div className={`space-y-2 mb-6 ${!canEditPriority ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {lootPriority.map((role, index) => (
+                      <SortableRoleItem key={role} role={role} index={index} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+
+              <div className="flex justify-between">
+                <button
+                  onClick={handleResetPriority}
+                  disabled={!canEditPriority}
+                  className="text-text-secondary hover:text-text-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reset to Default
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 text-text-secondary hover:text-text-primary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={!priorityChanged || isSaving || !canEditPriority}
+                    className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {activeTab === 'members' && (

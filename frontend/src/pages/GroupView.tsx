@@ -20,12 +20,12 @@ import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
-import { TeamSummary } from '../components/team/TeamSummary';
+import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
+import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
@@ -182,14 +182,16 @@ export function GroupView() {
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
   // Initialize loot tracking store when Loot tab is active
-  const { fetchCurrentWeek, fetchLootLog, lootLog } = useLootTrackingStore();
+  const { currentWeek: storeCurrentWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
   useEffect(() => {
     if (pageMode === 'loot' && currentGroup?.id && currentTier?.tierId) {
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
       // Fetch all loot log entries (no week filter) for enhanced priority calculation
       fetchLootLog(currentGroup.id, currentTier.tierId);
+      // Fetch all material log entries for material priority calculation
+      fetchMaterialLog(currentGroup.id, currentTier.tierId);
     }
-  }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog]);
+  }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {
@@ -397,6 +399,12 @@ export function GroupView() {
     return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
 
+  // Check if current user has already claimed a player in this tier
+  const userHasClaimedPlayer = useMemo(() => {
+    if (!user?.id || !currentTier?.players) return false;
+    return currentTier.players.some(p => p.userId === user.id);
+  }, [user?.id, currentTier?.players]);
+
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
     if (!groupView) return null;
@@ -410,11 +418,6 @@ export function GroupView() {
   const configuredPlayers = useMemo(() => {
     return sortedPlayers.filter(p => p.configured);
   }, [sortedPlayers]);
-
-  const teamSummary = useMemo(() => {
-    if (configuredPlayers.length === 0) return null;
-    return calculateTeamSummary(configuredPlayers);
-  }, [configuredPlayers]);
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
@@ -496,6 +499,7 @@ export function GroupView() {
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
           userRole={userRole}
+          userHasClaimedPlayer={userHasClaimedPlayer}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
@@ -726,21 +730,30 @@ export function GroupView() {
           {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
             <LootPriorityPanel
               players={configuredPlayers}
-              settings={DEFAULT_SETTINGS}
+              settings={{
+                ...DEFAULT_SETTINGS,
+                ...(currentGroup?.settings && { lootPriority: currentGroup.settings.lootPriority }),
+              }}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
               showLogButtons={canEdit}
               groupId={currentGroup?.id}
               tierId={currentTier?.tierId}
-              currentWeek={currentTier?.currentWeek ?? 1}
+              currentWeek={storeCurrentWeek}
               lootLog={lootLog}
+              materialLog={materialLog}
               showEnhancedScores={true}
             />
           )}
 
-          {/* Stats Tab */}
-          {pageMode === 'stats' && teamSummary && tierInfo && (
-            <TeamSummary summary={teamSummary} tierInfo={tierInfo} />
+          {/* Summary Tab */}
+          {pageMode === 'stats' && tierInfo && currentTier?.players && (
+            <TeamSummaryEnhanced
+              groupId={currentGroup!.id}
+              tierId={currentTier.tierId}
+              players={currentTier.players}
+              tierInfo={tierInfo}
+            />
           )}
 
           {/* History Tab */}
@@ -787,6 +800,7 @@ export function GroupView() {
       {showDeleteTierConfirm && currentGroup && currentTier && (
         <DeleteTierModal
           groupId={currentGroup.id}
+          tierSnapshotId={currentTier.id}
           tierId={currentTier.tierId}
           onClose={() => setShowDeleteTierConfirm(false)}
           onDeleted={handleTierDeleted}

@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
+import { toast } from '../stores/toastStore';
 import { ContextMenu } from '../components/ui';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
@@ -211,14 +212,16 @@ export function Dashboard() {
   const handleConfirmDelete = async () => {
     if (!selectedGroup || deleteConfirmText !== selectedGroup.name) return;
 
+    const groupName = selectedGroup.name;
     setIsDeleting(true);
     try {
       await deleteGroup(selectedGroup.id);
+      toast.success(`${groupName} deleted successfully`);
       setShowDeleteConfirm(false);
       setDeleteConfirmText('');
       setSelectedGroup(null);
     } catch {
-      // Error handled in store
+      toast.error(`Failed to delete ${groupName}`);
     } finally {
       setIsDeleting(false);
     }

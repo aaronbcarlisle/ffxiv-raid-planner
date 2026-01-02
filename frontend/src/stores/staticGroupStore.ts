@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { StaticGroup, StaticGroupListItem, MemberRole, Membership, TierSnapshot, SnapshotPlayer } from '../types';
+import type { StaticGroup, StaticGroupListItem, StaticGroupSettings, MemberRole, Membership, TierSnapshot, SnapshotPlayer } from '../types';
 import { authRequest } from '../services/api';
 
 interface StaticGroupState {
@@ -28,7 +28,7 @@ interface StaticGroupState {
   fetchGroupByShareCode: (shareCode: string) => Promise<void>;
   createGroup: (name: string, isPublic?: boolean) => Promise<StaticGroup>;
   duplicateGroup: (sourceGroupId: string, newName: string) => Promise<StaticGroup>;
-  updateGroup: (groupId: string, data: { name?: string; isPublic?: boolean }) => Promise<void>;
+  updateGroup: (groupId: string, data: { name?: string; isPublic?: boolean; settings?: StaticGroupSettings }) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
   setCurrentGroup: (group: StaticGroup | null) => void;
   clearError: () => void;
@@ -124,6 +124,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
             memberCount: group.memberCount,
             userRole: 'owner' as MemberRole,
             source: 'membership' as const,
+            settings: group.settings,
             createdAt: group.createdAt,
             updatedAt: group.updatedAt,
           },
@@ -244,6 +245,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
             memberCount: newGroup.memberCount,
             userRole: 'owner' as MemberRole,
             source: 'membership' as const,
+            settings: newGroup.settings,
             createdAt: newGroup.createdAt,
             updatedAt: newGroup.updatedAt,
           },
@@ -262,9 +264,9 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
   },
 
   /**
-   * Update a static group
+   * Update a static group (name, visibility, and/or settings)
    */
-  updateGroup: async (groupId: string, data: { name?: string; isPublic?: boolean }) => {
+  updateGroup: async (groupId: string, data: { name?: string; isPublic?: boolean; settings?: StaticGroupSettings }) => {
     set({ error: null });
 
     try {
@@ -273,7 +275,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
         body: JSON.stringify(data),
       });
 
-      // Update in groups list
+      // Update in groups list and currentGroup
       set((state) => ({
         groups: state.groups.map((g) =>
           g.id === groupId
@@ -281,6 +283,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
                 ...g,
                 name: updatedGroup.name,
                 isPublic: updatedGroup.isPublic,
+                settings: updatedGroup.settings,
                 updatedAt: updatedGroup.updatedAt,
               }
             : g

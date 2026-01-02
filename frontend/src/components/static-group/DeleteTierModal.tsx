@@ -6,25 +6,29 @@
 
 import { useTierStore } from '../../stores/tierStore';
 import { getTierById } from '../../gamedata';
+import { toast } from '../../stores/toastStore';
 
 interface DeleteTierModalProps {
   groupId: string;
-  tierId: string;
+  tierSnapshotId: string; // UUID for API call
+  tierId: string; // Tier slug for display (e.g., 'aac-heavyweight')
   onClose: () => void;
   onDeleted: () => void;
 }
 
-export function DeleteTierModal({ groupId, tierId, onClose, onDeleted }: DeleteTierModalProps) {
+export function DeleteTierModal({ groupId, tierSnapshotId, tierId, onClose, onDeleted }: DeleteTierModalProps) {
   const { deleteTier, isSaving } = useTierStore();
   const tierInfo = getTierById(tierId);
+  const tierName = tierInfo?.name || tierId;
 
   const handleDelete = async () => {
     try {
-      await deleteTier(groupId, tierId);
+      await deleteTier(groupId, tierSnapshotId);
+      toast.success(`${tierName} deleted successfully`);
       onDeleted();
       onClose();
     } catch {
-      // Error handled in store
+      toast.error(`Failed to delete ${tierName}`);
     }
   };
 

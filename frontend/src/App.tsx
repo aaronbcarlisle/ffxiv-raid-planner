@@ -1,13 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
-import { Home } from './pages/Home';
-import { Dashboard } from './pages/Dashboard';
-import { GroupView } from './pages/GroupView';
-import { AuthCallback } from './pages/AuthCallback';
-import { InviteAccept } from './pages/InviteAccept';
 import { initializeAuth } from './stores/authStore';
+
+// Lazy-loaded pages for code splitting
+const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
+const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
+const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  return (
+    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+      <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
+        <h2 className="text-xl font-display text-status-error mb-2">Something went wrong</h2>
+        <p className="text-text-secondary text-sm mb-4">{error.message}</p>
+        <button
+          onClick={resetErrorBoundary}
+          className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
+    </div>
+  );
+}
 
 function App() {
   // Initialize auth on app load (check for existing session)
@@ -16,20 +44,22 @@ function App() {
   }, []);
 
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="group/:shareCode" element={<GroupView />} />
-        </Route>
-        {/* Auth callback route (outside Layout for cleaner UX) */}
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        {/* Invite accept route (outside Layout for focused experience) */}
-        <Route path="/invite/:inviteCode" element={<InviteAccept />} />
-      </Routes>
-      <ToastContainer />
-    </>
+    <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="group/:shareCode" element={<GroupView />} />
+          </Route>
+          {/* Auth callback route (outside Layout for cleaner UX) */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          {/* Invite accept route (outside Layout for focused experience) */}
+          <Route path="/invite/:inviteCode" element={<InviteAccept />} />
+        </Routes>
+        <ToastContainer />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

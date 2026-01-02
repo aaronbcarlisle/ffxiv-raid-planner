@@ -5,47 +5,73 @@
  * Shows which players should receive weapons in what order.
  */
 
+import { useState, useMemo } from 'react';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
 
+type RoleFilter = 'all' | 'tank' | 'healer' | 'dps';
+
 interface WeaponPriorityListProps {
   players: SnapshotPlayer[];
   settings: StaticSettings;
+  // Optional props for inline logging
+  showLogButtons?: boolean;
+  onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
 }
 
 export function WeaponPriorityList({
   players,
   settings,
+  showLogButtons = false,
+  onLogClick,
 }: WeaponPriorityListProps) {
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
-  const allJobs = new Set<string>();
-  for (const player of players) {
-    // Add main job by default
-    if (player.job) {
-      allJobs.add(player.job);
+  const sortedJobs = useMemo(() => {
+    const allJobs = new Set<string>();
+    for (const player of players) {
+      // Add main job by default
+      if (player.job) {
+        allJobs.add(player.job);
+      }
+      // Add explicitly set weapon priorities
+      for (const wp of player.weaponPriorities || []) {
+        allJobs.add(wp.job);
+      }
     }
-    // Add explicitly set weapon priorities
-    for (const wp of player.weaponPriorities || []) {
-      allJobs.add(wp.job);
-    }
-  }
 
-  // Sort jobs by role (tank > healer > melee > ranged > caster)
-  const sortedJobs = Array.from(allJobs).sort((a, b) => {
-    const jobA = RAID_JOBS.find((j) => j.abbreviation === a);
-    const jobB = RAID_JOBS.find((j) => j.abbreviation === b);
-    if (!jobA || !jobB) return 0;
+    // Sort jobs by role (tank > healer > melee > ranged > caster)
+    return Array.from(allJobs).sort((a, b) => {
+      const jobA = RAID_JOBS.find((j) => j.abbreviation === a);
+      const jobB = RAID_JOBS.find((j) => j.abbreviation === b);
+      if (!jobA || !jobB) return 0;
 
-    const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-    const indexA = roleOrder.indexOf(jobA.role);
-    const indexB = roleOrder.indexOf(jobB.role);
+      const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+      const indexA = roleOrder.indexOf(jobA.role);
+      const indexB = roleOrder.indexOf(jobB.role);
 
-    return indexA - indexB;
-  });
+      return indexA - indexB;
+    });
+  }, [players]);
+
+  // Filter jobs by selected role
+  const filteredJobs = useMemo(() => {
+    if (roleFilter === 'all') return sortedJobs;
+
+    return sortedJobs.filter((job) => {
+      const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
+      if (!jobInfo) return false;
+
+      if (roleFilter === 'tank') return jobInfo.role === 'tank';
+      if (roleFilter === 'healer') return jobInfo.role === 'healer';
+      if (roleFilter === 'dps') return ['melee', 'ranged', 'caster'].includes(jobInfo.role);
+      return true;
+    });
+  }, [sortedJobs, roleFilter]);
 
   if (sortedJobs.length === 0) {
     return (
@@ -55,9 +81,47 @@ export function WeaponPriorityList({
     );
   }
 
+  const filterButtonClass = (filter: RoleFilter) =>
+    `px-3 py-1 text-sm rounded transition-colors ${
+      roleFilter === filter
+        ? 'bg-accent text-white'
+        : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+    }`;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {sortedJobs.map((job) => {
+    <div className="space-y-4">
+      {/* Role filter buttons */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-sm text-text-muted mr-1">Filter:</span>
+        <button
+          onClick={() => setRoleFilter('all')}
+          className={filterButtonClass('all')}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setRoleFilter('tank')}
+          className={filterButtonClass('tank')}
+        >
+          Tank
+        </button>
+        <button
+          onClick={() => setRoleFilter('healer')}
+          className={filterButtonClass('healer')}
+        >
+          Healer
+        </button>
+        <button
+          onClick={() => setRoleFilter('dps')}
+          className={filterButtonClass('dps')}
+        >
+          DPS
+        </button>
+      </div>
+
+      {/* Weapon cards grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filteredJobs.map((job) => {
         const priority = getWeaponPriorityForJob(players, job, settings);
         const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
         const jobName = jobInfo?.name || job;
@@ -85,7 +149,7 @@ export function WeaponPriorityList({
                   return (
                     <div
                       key={entry.player.id}
-                      className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
+                      className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
                         isFirst ? 'bg-accent/20' : ''
                       }`}
                     >
@@ -110,12 +174,23 @@ export function WeaponPriorityList({
                           </span>
                         )}
                       </div>
-                      <span
-                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-                      >
-                        {entry.score}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {/* Log button - only show on first entry */}
+                        {showLogButtons && isFirst && onLogClick && (
+                          <button
+                            onClick={() => onLogClick(job, entry.player)}
+                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent/80 text-white hover:bg-accent transition-all"
+                          >
+                            Log
+                          </button>
+                        )}
+                        <span
+                          className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                        >
+                          {entry.score}
+                        </span>
+                      </div>
                     </div>
                   );
                 })}
@@ -129,6 +204,7 @@ export function WeaponPriorityList({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

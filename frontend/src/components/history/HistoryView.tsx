@@ -1,15 +1,14 @@
 /**
  * History View
  *
- * Main container for the History tab.
- * Shows loot log and page balances side-by-side with week navigation.
+ * Main container for the History tab (now called "Log" tab).
+ * Shows sectioned view with Loot, Materials, and Books sections.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { WeekSelector } from './WeekSelector';
-import { LootLogPanel } from './LootLogPanel';
-import { PageBalancesPanel } from './PageBalancesPanel';
+import { SectionedLogView } from './SectionedLogView';
 import type { SnapshotPlayer } from '../../types';
 
 interface HistoryViewProps {
@@ -27,7 +26,14 @@ export function HistoryView({
   floors,
   userRole,
 }: HistoryViewProps) {
-  const { currentWeek, maxWeek, weeksWithEntries, fetchCurrentWeek, fetchWeeksWithEntries } = useLootTrackingStore();
+  const {
+    currentWeek,
+    maxWeek,
+    weeksWithEntries,
+    weekDataTypes,
+    fetchCurrentWeek,
+    fetchWeekDataTypes,
+  } = useLootTrackingStore();
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -52,11 +58,11 @@ export function HistoryView({
     }
   }, [weekStorageKey]);
 
-  // Fetch current week and weeks with entries on mount
+  // Fetch current week and week data types on mount
   useEffect(() => {
     fetchCurrentWeek(groupId, tierId);
-    fetchWeeksWithEntries(groupId, tierId);
-  }, [groupId, tierId, fetchCurrentWeek, fetchWeeksWithEntries]);
+    fetchWeekDataTypes(groupId, tierId);
+  }, [groupId, tierId, fetchCurrentWeek, fetchWeekDataTypes]);
 
   // Sync selected week with store's current week only on first load (when no saved value)
   useEffect(() => {
@@ -84,34 +90,23 @@ export function HistoryView({
         <WeekSelector
           currentWeek={selectedWeek}
           maxWeek={maxWeek}
+          calculatedCurrentWeek={currentWeek}
           onWeekChange={handleWeekChange}
           weeksWithEntries={weeksWithEntries}
+          weekDataTypes={weekDataTypes}
         />
       </div>
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Loot Log (left) */}
-        <LootLogPanel
-          groupId={groupId}
-          tierId={tierId}
-          players={players}
-          floors={floors}
-          currentWeek={selectedWeek}
-          canEdit={canEdit}
-          onLootLogged={(weekNumber) => setSelectedWeek(weekNumber)}
-        />
-
-        {/* Page Balances (right) */}
-        <PageBalancesPanel
-          groupId={groupId}
-          tierId={tierId}
-          players={players}
-          floors={floors}
-          currentWeek={selectedWeek}
-          canEdit={canEdit}
-        />
-      </div>
+      {/* Sectioned log view */}
+      <SectionedLogView
+        groupId={groupId}
+        tierId={tierId}
+        players={players}
+        floors={floors}
+        currentWeek={selectedWeek}
+        canEdit={canEdit}
+        onWeekChange={handleWeekChange}
+      />
     </div>
   );
 }

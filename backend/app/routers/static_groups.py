@@ -36,10 +36,18 @@ from ..schemas import (
     StaticGroupResponse,
     StaticGroupUpdate,
     StaticGroupWithMembers,
+    StaticSettingsSchema,
 )
 from ..services import generate_share_code
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
+
+
+def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
+    """Convert settings dict from DB to schema. Returns None if no custom settings."""
+    if not settings:
+        return None
+    return StaticSettingsSchema(**settings)
 
 
 def membership_to_response(membership: Membership, include_user: bool = True) -> MembershipResponse:
@@ -76,6 +84,7 @@ def group_to_response(
         share_code=group.share_code,
         is_public=group.is_public,
         owner_id=group.owner_id,
+        settings=settings_to_schema(group.settings),
         created_at=group.created_at,
         updated_at=group.updated_at,
         member_count=group.member_count,
@@ -111,6 +120,7 @@ def group_to_response_with_members(
         owner_id=group.owner_id,
         owner=owner_info,
         members=members,
+        settings=settings_to_schema(group.settings),
         created_at=group.created_at,
         updated_at=group.updated_at,
         user_role=MemberRoleEnum(user_role.value) if user_role else None,
@@ -122,10 +132,21 @@ def group_to_response_with_members(
 
 @router.get("", response_model=list[StaticGroupListItem])
 async def list_user_static_groups(
+    limit: int = 50,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[StaticGroupListItem]:
-    """List all static groups the current user is a member of or linked to"""
+    """List all static groups the current user is a member of or linked to.
+
+    Args:
+        limit: Maximum number of groups to return (default 50, max 100)
+        offset: Number of groups to skip for pagination
+    """
+    # Clamp limit to prevent unbounded queries
+    limit = min(max(1, limit), 100)
+    offset = max(0, offset)
+
     # Get groups via membership
     groups_with_memberships = await get_user_static_groups(session, current_user.id)
     member_group_ids = {group.id for group, _ in groups_with_memberships}
@@ -140,6 +161,7 @@ async def list_user_static_groups(
             member_count=group.member_count,
             user_role=MemberRoleEnum(membership.role),
             source=GroupSourceEnum.MEMBERSHIP,
+            settings=settings_to_schema(group.settings),
             created_at=group.created_at,
             updated_at=group.updated_at,
         )
@@ -160,14 +182,15 @@ async def list_user_static_groups(
                     member_count=group.member_count,
                     user_role=None,  # No membership role for linked groups
                     source=GroupSourceEnum.LINKED,
+                    settings=settings_to_schema(group.settings),
                     created_at=group.created_at,
                     updated_at=group.updated_at,
                 )
             )
 
-    # Sort by name
+    # Sort by name and apply pagination
     result.sort(key=lambda x: x.name)
-    return result
+    return result[offset:offset + limit]
 
 
 @router.post("", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
@@ -188,6 +211,7 @@ async def create_static_group(
         owner_id=current_user.id,
         share_code=share_code,
         is_public=data.is_public,
+        settings=data.settings.model_dump(by_alias=True) if data.settings else None,
         created_at=now,
         updated_at=now,
     )
@@ -286,7 +310,7 @@ async def update_static_group(
     """Update a static group (owner or lead only)"""
     group = await get_static_group(session, group_id, load_memberships=True)
 
-    # Check permission - name requires lead, visibility requires owner
+    # Check permission - name/settings require lead, visibility requires owner
     if data.is_public is not None:
         await require_owner(session, current_user.id, group_id)
     else:
@@ -297,6 +321,8 @@ async def update_static_group(
         group.name = data.name
     if data.is_public is not None:
         group.is_public = data.is_public
+    if data.settings is not None:
+        group.settings = data.settings.model_dump(by_alias=True)
 
     group.updated_at = datetime.now(timezone.utc).isoformat()
 

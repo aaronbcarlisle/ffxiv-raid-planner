@@ -290,15 +290,19 @@ async def get_tier_snapshot(
     session: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> TierSnapshotWithPlayers:
-    """Get a tier snapshot by tier ID"""
+    """Get a tier snapshot by tier ID.
+
+    tier_id can be either the UUID (id) or the tier slug (tier_id).
+    """
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
+    # Try to find by UUID first, then by tier slug
     result = await session.execute(
         select(TierSnapshot)
         .where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
@@ -360,14 +364,18 @@ async def delete_tier_snapshot(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Delete a tier snapshot and all its players"""
+    """Delete a tier snapshot and all its players.
+
+    tier_id can be either the UUID (id) or the tier slug (tier_id).
+    """
     group = await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
+    # Try to find by UUID first, then by tier slug
     result = await session.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
     )
     snapshot = result.scalar_one_or_none()

@@ -206,6 +206,7 @@ export const CONTEXT_MENU_ICONS = {
   weaponPriority: '/icons/weapon-priority-transparent-bg.png',
   resetGear: '/icons/reset-gear-transparent-bg.png',
   takeOwnership: '/icons/take-ownership-transparent-bg.png',
+  releaseOwnership: '/icons/release-ownership-transparent-bg.png',
   playerOptions: '/icons/player-options-transparent-bg.png',
   importBis: '/icons/import-bis-transparent-bg.png',
 };
@@ -286,6 +287,11 @@ export interface OwnerInfo {
   displayName?: string;
 }
 
+// Static group settings (loot priority, etc.)
+export interface StaticGroupSettings {
+  lootPriority: string[];
+}
+
 // Static group (persistent team identity)
 export interface StaticGroup {
   id: string;
@@ -297,6 +303,7 @@ export interface StaticGroup {
   members?: Membership[];
   memberCount: number;
   userRole?: MemberRole;
+  settings?: StaticGroupSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -311,6 +318,7 @@ export interface StaticGroupListItem {
   memberCount: number;
   userRole?: MemberRole;
   source: GroupSource;
+  settings?: StaticGroupSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -537,6 +545,42 @@ export interface PageBalance {
   bookII: number;
   bookIII: number;
   bookIV: number;
+}
+
+// Material types for upgrade materials
+export type MaterialType = 'twine' | 'glaze' | 'solvent';
+
+// Material log entry
+export interface MaterialLogEntry {
+  id: number;
+  tierSnapshotId: string;
+  weekNumber: number;
+  floor: string;
+  materialType: MaterialType;
+  recipientPlayerId: string;
+  recipientPlayerName: string;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Material balance for a player
+export interface MaterialBalance {
+  playerId: string;
+  playerName: string;
+  twine: number;
+  glaze: number;
+  solvent: number;
+}
+
+// Material log entry create request
+export interface MaterialLogEntryCreate {
+  weekNumber: number;
+  floor: string;
+  materialType: MaterialType;
+  recipientPlayerId: string;
+  notes?: string;
 }
 
 // Loot log entry create request

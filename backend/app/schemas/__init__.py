@@ -12,6 +12,10 @@ from .loot_tracking import (
     LootLogEntryUpdate,
     LootMethodEnum,
     MarkFloorClearedRequest,
+    MaterialBalanceResponse,
+    MaterialLogEntryCreate,
+    MaterialLogEntryResponse,
+    MaterialTypeEnum,
     PageBalanceResponse,
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
@@ -30,6 +34,7 @@ from .static_group import (
     StaticGroupResponse,
     StaticGroupUpdate,
     StaticGroupWithMembers,
+    StaticSettingsSchema,
 )
 from .tier_snapshot import (
     GearSlotStatus,
@@ -75,6 +80,10 @@ __all__ = [
     "LootLogEntryUpdate",
     "LootMethodEnum",
     "MarkFloorClearedRequest",
+    "MaterialBalanceResponse",
+    "MaterialLogEntryCreate",
+    "MaterialLogEntryResponse",
+    "MaterialTypeEnum",
     "PageBalanceResponse",
     "PageLedgerEntryCreate",
     "PageLedgerEntryResponse",
@@ -92,6 +101,7 @@ __all__ = [
     "StaticGroupResponse",
     "StaticGroupUpdate",
     "StaticGroupWithMembers",
+    "StaticSettingsSchema",
     # Tier Snapshot
     "RolloverRequest",
     "RolloverResponse",

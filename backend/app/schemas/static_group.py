@@ -1,6 +1,7 @@
 """Pydantic schemas for Static Groups and Memberships"""
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,6 +35,22 @@ class GroupSourceEnum(str, Enum):
 
     MEMBERSHIP = "membership"
     LINKED = "linked"
+
+
+# Role type for loot priority
+RoleType = Literal["tank", "healer", "melee", "ranged", "caster"]
+
+
+# --- Static Settings Schema ---
+
+
+class StaticSettingsSchema(CamelModel):
+    """Settings for a static group (loot priority, etc.)"""
+
+    loot_priority: list[RoleType] = Field(
+        default=["melee", "ranged", "caster", "tank", "healer"],
+        description="Role priority order for loot distribution",
+    )
 
 
 # --- Membership Schemas ---
@@ -87,6 +104,7 @@ class StaticGroupCreate(CamelModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="Group name")
     is_public: bool = Field(default=False, description="Whether group is publicly viewable")
+    settings: StaticSettingsSchema | None = Field(default=None, description="Group settings")
 
 
 class StaticGroupUpdate(CamelModel):
@@ -94,6 +112,7 @@ class StaticGroupUpdate(CamelModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     is_public: bool | None = Field(default=None)
+    settings: StaticSettingsSchema | None = Field(default=None, description="Group settings")
 
 
 class OwnerInfo(CamelModel):
@@ -114,6 +133,7 @@ class StaticGroupResponse(CamelModel):
     share_code: str
     is_public: bool
     owner_id: str
+    settings: StaticSettingsSchema | None = None
     created_at: str
     updated_at: str
     member_count: int = 0
@@ -131,6 +151,7 @@ class StaticGroupWithMembers(CamelModel):
     owner_id: str
     owner: OwnerInfo | None = None
     members: list[MembershipResponse] = Field(default_factory=list)
+    settings: StaticSettingsSchema | None = None
     created_at: str
     updated_at: str
     # User's role in this group (if authenticated)
@@ -148,5 +169,6 @@ class StaticGroupListItem(CamelModel):
     member_count: int = 0
     user_role: MemberRoleEnum | None = None
     source: GroupSourceEnum = GroupSourceEnum.MEMBERSHIP
+    settings: StaticSettingsSchema | None = None
     created_at: str
     updated_at: str

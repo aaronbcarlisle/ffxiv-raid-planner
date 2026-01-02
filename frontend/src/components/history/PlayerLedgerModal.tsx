@@ -5,9 +5,10 @@
  * Shows date/time, week, floor, book type, transaction type, quantity, and notes.
  */
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
 
 interface PlayerLedgerModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ interface PlayerLedgerModalProps {
   tierId: string;
   playerId: string;
   playerName: string;
+  canEdit?: boolean;
+  onHistoryCleared?: () => void;
 }
 
 // Transaction type styling
@@ -41,8 +44,11 @@ export function PlayerLedgerModal({
   tierId,
   playerId,
   playerName,
+  canEdit = false,
+  onHistoryCleared,
 }: PlayerLedgerModalProps) {
-  const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger } = useLootTrackingStore();
+  const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
+  const [isClearing, setIsClearing] = useState(false);
 
   // Fetch ledger entries when modal opens
   useEffect(() => {
@@ -54,6 +60,22 @@ export function PlayerLedgerModal({
       clearPlayerLedger();
     };
   }, [isOpen, groupId, tierId, playerId, fetchPlayerLedger, clearPlayerLedger]);
+
+  const handleClearHistory = async () => {
+    if (!confirm(`Clear all book history for ${playerName}? This cannot be undone.`)) return;
+
+    setIsClearing(true);
+    try {
+      await deletePlayerLedger(groupId, tierId, playerId);
+      toast.success(`Cleared history for ${playerName}`);
+      onHistoryCleared?.();
+      onClose();
+    } catch {
+      toast.error('Failed to clear history');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   return (
     <Modal
@@ -139,8 +161,19 @@ export function PlayerLedgerModal({
           </div>
         )}
 
-        {/* Close button */}
-        <div className="flex justify-end pt-4 border-t border-border-default">
+        {/* Actions */}
+        <div className="flex justify-between pt-4 border-t border-border-default">
+          <div>
+            {canEdit && playerLedger.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                disabled={isClearing}
+                className="px-3 py-2 rounded text-sm bg-status-error/20 text-status-error hover:bg-status-error/30 transition-colors disabled:opacity-50"
+              >
+                {isClearing ? 'Clearing...' : 'Clear History'}
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"

@@ -14,6 +14,7 @@ from app.database import get_session
 from app.dependencies import get_current_user, get_current_user_optional
 from app.models import (
     LootLogEntry,
+    MaterialLogEntry,
     PageLedgerEntry,
     SnapshotPlayer,
     TierSnapshot,
@@ -29,6 +30,9 @@ from app.schemas import (
     LootLogEntryResponse,
     LootLogEntryUpdate,
     MarkFloorClearedRequest,
+    MaterialBalanceResponse,
+    MaterialLogEntryCreate,
+    MaterialLogEntryResponse,
     PageBalanceResponse,
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
@@ -672,6 +676,46 @@ async def get_player_page_ledger(
     ]
 
 
+@router.delete(
+    "/{group_id}/tiers/{tier_id}/players/{player_id}/page-ledger",
+    status_code=204,
+)
+async def clear_player_page_ledger(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Clear all page ledger entries for a specific player"""
+    # Check edit permissions (Owner/Lead only)
+    group = await get_static_group(db, group_id)
+    await check_edit_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Verify player exists in this tier
+    result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.id == player_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+        )
+    )
+    player = result.scalar_one_or_none()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found in this tier")
+
+    # Delete all ledger entries for this player
+    await db.execute(
+        PageLedgerEntry.__table__.delete().where(
+            PageLedgerEntry.tier_snapshot_id == tier.id,
+            PageLedgerEntry.player_id == player_id,
+        )
+    )
+    await db.commit()
+
+
 @router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")
 async def get_weeks_with_entries(
     group_id: str,
@@ -703,6 +747,283 @@ async def get_weeks_with_entries(
     )
     ledger_weeks = {row[0] for row in ledger_weeks_result.all()}
 
+    # Get distinct weeks from material log
+    material_weeks_result = await db.execute(
+        select(MaterialLogEntry.week_number)
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    material_weeks = {row[0] for row in material_weeks_result.all()}
+
     # Merge and return sorted list
-    all_weeks = sorted(loot_weeks | ledger_weeks)
+    all_weeks = sorted(loot_weeks | ledger_weeks | material_weeks)
     return {"weeks": all_weeks}
+
+
+@router.get("/{group_id}/tiers/{tier_id}/weeks-data-types")
+async def get_weeks_data_types(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get weeks with their entry types (loot/books/mats)"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get distinct weeks from each source
+    loot_weeks_result = await db.execute(
+        select(LootLogEntry.week_number)
+        .where(LootLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    loot_weeks = {row[0] for row in loot_weeks_result.all()}
+
+    ledger_weeks_result = await db.execute(
+        select(PageLedgerEntry.week_number)
+        .where(PageLedgerEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    ledger_weeks = {row[0] for row in ledger_weeks_result.all()}
+
+    material_weeks_result = await db.execute(
+        select(MaterialLogEntry.week_number)
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    material_weeks = {row[0] for row in material_weeks_result.all()}
+
+    # Build week info list
+    all_weeks = sorted(loot_weeks | ledger_weeks | material_weeks)
+    weeks_data = []
+    for week in all_weeks:
+        types = []
+        if week in loot_weeks:
+            types.append("loot")
+        if week in ledger_weeks:
+            types.append("books")
+        if week in material_weeks:
+            types.append("mats")
+        weeks_data.append({
+            "week": week,
+            "types": types,
+        })
+
+    return {"weeks": weeks_data}
+
+
+# Material Log Endpoints
+
+
+@router.get(
+    "/{group_id}/tiers/{tier_id}/material-log",
+    response_model=list[MaterialLogEntryResponse],
+)
+async def get_material_log(
+    group_id: str,
+    tier_id: str,
+    week: int | None = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get material log entries for a tier (optionally filtered by week)"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    query = (
+        select(MaterialLogEntry)
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .options(
+            joinedload(MaterialLogEntry.recipient_player),
+            joinedload(MaterialLogEntry.created_by),
+        )
+        .order_by(MaterialLogEntry.week_number.desc(), MaterialLogEntry.created_at.desc())
+    )
+
+    if week is not None:
+        query = query.where(MaterialLogEntry.week_number == week)
+
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    # Convert to response schema
+    return [
+        MaterialLogEntryResponse(
+            id=entry.id,
+            tier_snapshot_id=entry.tier_snapshot_id,
+            week_number=entry.week_number,
+            floor=entry.floor,
+            material_type=entry.material_type,
+            recipient_player_id=entry.recipient_player_id,
+            recipient_player_name=entry.recipient_player.name,
+            notes=entry.notes,
+            created_at=entry.created_at,
+            created_by_user_id=entry.created_by_user_id,
+            created_by_username=entry.created_by.discord_username,
+        )
+        for entry in entries
+    ]
+
+
+@router.post(
+    "/{group_id}/tiers/{tier_id}/material-log",
+    response_model=MaterialLogEntryResponse,
+    status_code=201,
+)
+async def create_material_log_entry(
+    group_id: str,
+    tier_id: str,
+    data: MaterialLogEntryCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new material log entry (requires lead or owner role)"""
+    # Check permissions
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Verify recipient player exists in this tier
+    result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.id == data.recipient_player_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+        )
+    )
+    recipient_player = result.scalar_one_or_none()
+    if not recipient_player:
+        raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
+
+    # Create entry
+    entry = MaterialLogEntry(
+        tier_snapshot_id=tier.id,
+        week_number=data.week_number,
+        floor=data.floor,
+        material_type=data.material_type.value,  # Use .value to get lowercase string
+        recipient_player_id=data.recipient_player_id,
+        notes=data.notes,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        created_by_user_id=current_user.id,
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+
+    # Load relationships for response
+    await db.refresh(entry, ["recipient_player", "created_by"])
+
+    return MaterialLogEntryResponse(
+        id=entry.id,
+        tier_snapshot_id=entry.tier_snapshot_id,
+        week_number=entry.week_number,
+        floor=entry.floor,
+        material_type=entry.material_type,
+        recipient_player_id=entry.recipient_player_id,
+        recipient_player_name=entry.recipient_player.name,
+        notes=entry.notes,
+        created_at=entry.created_at,
+        created_by_user_id=entry.created_by_user_id,
+        created_by_username=entry.created_by.discord_username,
+    )
+
+
+@router.delete("/{group_id}/tiers/{tier_id}/material-log/{entry_id}", status_code=204)
+async def delete_material_log_entry(
+    group_id: str,
+    tier_id: str,
+    entry_id: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a material log entry (requires owner or lead role)"""
+    # Check permissions
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get entry
+    result = await db.execute(
+        select(MaterialLogEntry).where(
+            MaterialLogEntry.id == entry_id,
+            MaterialLogEntry.tier_snapshot_id == tier.id,
+        )
+    )
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Material log entry not found")
+
+    await db.delete(entry)
+    await db.commit()
+
+
+@router.get(
+    "/{group_id}/tiers/{tier_id}/material-balances",
+    response_model=list[MaterialBalanceResponse],
+)
+async def get_material_balances(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get cumulative material counts for all players in the tier"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get all players in tier
+    players_result = await db.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
+        .order_by(SnapshotPlayer.sort_order)
+    )
+    players = players_result.scalars().all()
+
+    # Single aggregated query for all material counts (avoids N+1)
+    material_counts_result = await db.execute(
+        select(
+            MaterialLogEntry.recipient_player_id,
+            MaterialLogEntry.material_type,
+            func.count(MaterialLogEntry.id).label("count"),
+        )
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .group_by(MaterialLogEntry.recipient_player_id, MaterialLogEntry.material_type)
+    )
+
+    # Build lookup map: player_id -> {material_type: count}
+    material_map: dict[str, dict[str, int]] = {}
+    for row in material_counts_result.all():
+        if row.recipient_player_id not in material_map:
+            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0}
+        material_map[row.recipient_player_id][row.material_type] = row.count
+
+    # Build response using the lookup map
+    balances = []
+    for player in players:
+        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0})
+        balances.append(
+            MaterialBalanceResponse(
+                player_id=player.id,
+                player_name=player.name,
+                twine=counts.get("twine", 0),
+                glaze=counts.get("glaze", 0),
+                solvent=counts.get("solvent", 0),
+            )
+        )
+
+    return balances
