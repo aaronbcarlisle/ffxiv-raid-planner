@@ -726,7 +726,10 @@ export function GroupView() {
           {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
             <LootPriorityPanel
               players={configuredPlayers}
-              settings={DEFAULT_SETTINGS}
+              settings={{
+                ...DEFAULT_SETTINGS,
+                ...(currentGroup?.settings && { lootPriority: currentGroup.settings.lootPriority }),
+              }}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
               showLogButtons={canEdit}

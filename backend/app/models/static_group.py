@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -40,6 +41,10 @@ class StaticGroup(Base):
 
     # Visibility: private (members only) or public (anyone with link can view)
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Custom settings (loot priority order, etc.)
+    # Stores: { lootPriority: ['melee', 'ranged', 'caster', 'tank', 'healer'] }
+    settings: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
 
     # Timestamps
     created_at: Mapped[str] = mapped_column(

@@ -30,6 +30,7 @@ from .static_group import (
     StaticGroupResponse,
     StaticGroupUpdate,
     StaticGroupWithMembers,
+    StaticSettingsSchema,
 )
 from .tier_snapshot import (
     GearSlotStatus,
@@ -92,6 +93,7 @@ __all__ = [
     "StaticGroupResponse",
     "StaticGroupUpdate",
     "StaticGroupWithMembers",
+    "StaticSettingsSchema",
     # Tier Snapshot
     "RolloverRequest",
     "RolloverResponse",

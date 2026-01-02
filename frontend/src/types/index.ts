@@ -286,6 +286,11 @@ export interface OwnerInfo {
   displayName?: string;
 }
 
+// Static group settings (loot priority, etc.)
+export interface StaticGroupSettings {
+  lootPriority: string[];
+}
+
 // Static group (persistent team identity)
 export interface StaticGroup {
   id: string;
@@ -297,6 +302,7 @@ export interface StaticGroup {
   members?: Membership[];
   memberCount: number;
   userRole?: MemberRole;
+  settings?: StaticGroupSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -311,6 +317,7 @@ export interface StaticGroupListItem {
   memberCount: number;
   userRole?: MemberRole;
   source: GroupSource;
+  settings?: StaticGroupSettings;
   createdAt: string;
   updatedAt: string;
 }
