@@ -220,13 +220,14 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       const effectiveHasItem = shouldResetProgress ? false : currentSlot.hasItem;
       const effectiveIsAugmented = shouldResetProgress ? false : currentSlot.isAugmented;
 
-      // Infer currentSource based on new state
-      // If player has the BiS item, infer from the new bisSource
-      // Otherwise default to 'crafted' (reasonable tier-start assumption)
+      // Infer currentSource based on current state
+      // If player has gear, infer from the OLD bisSource (what they actually acquired)
+      // not the new import target. Otherwise default to 'crafted'.
       let currentSource = currentSlot.currentSource;
       if (!currentSource || currentSource === 'unknown' || shouldResetProgress) {
         if (effectiveHasItem) {
-          if (importedSlot.source === 'raid') {
+          // Use currentSlot.bisSource - the gear they have was acquired for the old BiS
+          if (currentSlot.bisSource === 'raid') {
             currentSource = 'savage';
           } else {
             currentSource = effectiveIsAugmented ? 'tome_up' : 'tome';
