@@ -23,15 +23,17 @@ def upgrade() -> None:
     """Create material_log_entries table and materialtype enum."""
     bind = op.get_bind()
 
-    # Check if enum type already exists (PostgreSQL) - checkfirst doesn't work reliably
-    # with asyncpg, so we manually check using pg_type catalog
-    result = bind.execute(sa.text(
-        "SELECT 1 FROM pg_type WHERE typname = 'materialtype'"
-    ))
-    if not result.fetchone():
-        # Create the enum type only if it doesn't exist
-        materialtype_enum = sa.Enum("twine", "glaze", "solvent", name="materialtype")
-        materialtype_enum.create(bind, checkfirst=False)
+    # Use DO block to safely create enum only if it doesn't exist
+    # This is atomic and works correctly with asyncpg
+    bind.execute(sa.text("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'materialtype') THEN
+                CREATE TYPE materialtype AS ENUM ('twine', 'glaze', 'solvent');
+            END IF;
+        END
+        $$;
+    """))
 
     # Check if table already exists before creating
     inspector = sa.inspect(bind)
