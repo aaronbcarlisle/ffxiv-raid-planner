@@ -224,7 +224,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       // If player has the BiS item, infer from the new bisSource
       // Otherwise default to 'crafted' (reasonable tier-start assumption)
       let currentSource = currentSlot.currentSource;
-      if (!currentSource || shouldResetProgress) {
+      if (!currentSource || currentSource === 'unknown' || shouldResetProgress) {
         if (effectiveHasItem) {
           if (importedSlot.source === 'raid') {
             currentSource = 'savage';

@@ -4,6 +4,10 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
+
+from ..logging_config import get_logger
+
+logger = get_logger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -78,6 +82,7 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
         GearSlotStatus(
             slot=g["slot"],
             bis_source=g.get("bisSource", "raid"),
+            current_source=g.get("currentSource", "unknown"),
             has_item=g.get("hasItem", False),
             is_augmented=g.get("isAugmented", False),
             item_name=g.get("itemName"),
