@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** Phase 1-6.5 + Parity Complete | **Next:** Phase 7 (Lodestone sync)
+**Status:** Phase 1-6.5 + Parity Complete | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
