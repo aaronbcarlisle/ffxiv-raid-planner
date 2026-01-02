@@ -270,14 +270,15 @@ export function calculateAverageItemLevel(
   let validSlots = 0;
 
   for (const slot of gear) {
-    // Use itemLevel from BiS import if available and valid
-    if (slot.itemLevel && slot.itemLevel > 0) {
+    // Only use itemLevel from BiS import if player actually has the item
+    // (itemLevel is set for BiS target, not current gear)
+    if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
       totalILv += slot.itemLevel;
       validSlots++;
       continue;
     }
 
-    // Fall back to calculating from currentSource
+    // Calculate from currentSource for unacquired gear or when itemLevel unavailable
     const currentSource = getEffectiveCurrentSource(slot);
     if (currentSource === 'unknown') {
       // Skip unknown slots in average calculation

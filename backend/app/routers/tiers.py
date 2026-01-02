@@ -149,6 +149,8 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
         weapon_priorities_locked=player.weapon_priorities_locked,
         weapon_priorities_locked_by=player.weapon_priorities_locked_by,
         weapon_priorities_locked_at=player.weapon_priorities_locked_at,
+        loot_adjustment=player.loot_adjustment,
+        page_adjustments=player.page_adjustments,
         created_at=player.created_at,
         updated_at=player.updated_at,
     )
@@ -687,6 +689,10 @@ async def update_snapshot_player(
         player.gear = [g.model_dump(by_alias=True) for g in data.gear]
     if "tome_weapon" in sent_fields and data.tome_weapon is not None:
         player.tome_weapon = data.tome_weapon.model_dump(by_alias=True)
+    if "loot_adjustment" in sent_fields and data.loot_adjustment is not None:
+        player.loot_adjustment = data.loot_adjustment
+    if "page_adjustments" in sent_fields and data.page_adjustments is not None:
+        player.page_adjustments = data.page_adjustments
 
     player.updated_at = datetime.now(timezone.utc).isoformat()
 

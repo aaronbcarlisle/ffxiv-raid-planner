@@ -88,14 +88,23 @@ describe('calculateAverageItemLevel', () => {
     expect(calculateAverageItemLevel([], 'aac-heavyweight')).toBe(0);
   });
 
-  it('uses itemLevel directly when available', () => {
+  it('uses itemLevel directly when hasItem is true', () => {
     const gear = [
-      createGearSlot({ slot: 'weapon', itemLevel: 795 }),
-      createGearSlot({ slot: 'body', itemLevel: 790 }),
-      createGearSlot({ slot: 'legs', itemLevel: 790 }),
+      createGearSlot({ slot: 'weapon', itemLevel: 795, hasItem: true }),
+      createGearSlot({ slot: 'body', itemLevel: 790, hasItem: true }),
+      createGearSlot({ slot: 'legs', itemLevel: 790, hasItem: true }),
     ];
     // Average of 795, 790, 790 = 791.67 -> rounds to 792
     expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(792);
+  });
+
+  it('ignores itemLevel when hasItem is false (BiS target, not current gear)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', itemLevel: 790, hasItem: false, currentSource: 'crafted' }),
+      createGearSlot({ slot: 'legs', itemLevel: 790, hasItem: false, currentSource: 'crafted' }),
+    ];
+    // Should use currentSource 'crafted' (770) instead of itemLevel (790)
+    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(770);
   });
 
   it('calculates iLv from currentSource when itemLevel is not available', () => {
@@ -118,7 +127,7 @@ describe('calculateAverageItemLevel', () => {
 
   it('skips slots with "unknown" currentSource', () => {
     const gear = [
-      createGearSlot({ slot: 'body', currentSource: 'savage', itemLevel: 790 }),
+      createGearSlot({ slot: 'body', currentSource: 'savage', itemLevel: 790, hasItem: true }),
       createGearSlot({ slot: 'legs', currentSource: 'unknown' }),
     ];
     // Only body slot counts, so average = 790
@@ -145,15 +154,15 @@ describe('calculateTeamAverageItemLevel', () => {
       createPlayer({
         id: 'player1',
         gear: [
-          createGearSlot({ slot: 'body', itemLevel: 790 }),
-          createGearSlot({ slot: 'legs', itemLevel: 790 }),
+          createGearSlot({ slot: 'body', itemLevel: 790, hasItem: true }),
+          createGearSlot({ slot: 'legs', itemLevel: 790, hasItem: true }),
         ],
       }),
       createPlayer({
         id: 'player2',
         gear: [
-          createGearSlot({ slot: 'body', itemLevel: 770 }),
-          createGearSlot({ slot: 'legs', itemLevel: 770 }),
+          createGearSlot({ slot: 'body', itemLevel: 770, hasItem: true }),
+          createGearSlot({ slot: 'legs', itemLevel: 770, hasItem: true }),
         ],
       }),
     ];
@@ -165,7 +174,7 @@ describe('calculateTeamAverageItemLevel', () => {
     const players = [
       createPlayer({
         id: 'player1',
-        gear: [createGearSlot({ slot: 'body', itemLevel: 790 })],
+        gear: [createGearSlot({ slot: 'body', itemLevel: 790, hasItem: true })],
       }),
       createPlayer({
         id: 'player2',
