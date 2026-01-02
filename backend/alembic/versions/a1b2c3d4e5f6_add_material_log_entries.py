@@ -21,9 +21,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create material_log_entries table and materialtype enum."""
-    # Create the enum type (for PostgreSQL)
-    materialtype_enum = sa.Enum("twine", "glaze", "solvent", name="materialtype")
-    materialtype_enum.create(op.get_bind(), checkfirst=True)
+    bind = op.get_bind()
+
+    # Check if enum type already exists (PostgreSQL) - checkfirst doesn't work reliably
+    # with asyncpg, so we manually check using pg_type catalog
+    result = bind.execute(sa.text(
+        "SELECT 1 FROM pg_type WHERE typname = 'materialtype'"
+    ))
+    if not result.fetchone():
+        # Create the enum type only if it doesn't exist
+        materialtype_enum = sa.Enum("twine", "glaze", "solvent", name="materialtype")
+        materialtype_enum.create(bind, checkfirst=False)
+
+    # Check if table already exists before creating
+    inspector = sa.inspect(bind)
+    if "material_log_entries" in inspector.get_table_names():
+        return  # Table already exists, nothing to do
 
     # Create the table
     op.create_table(

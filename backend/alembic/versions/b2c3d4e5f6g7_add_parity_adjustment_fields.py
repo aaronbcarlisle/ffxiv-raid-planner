@@ -20,21 +20,28 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = [col["name"] for col in inspector.get_columns("snapshot_players")]
+
     # Add loot_adjustment column (integer, default 0)
-    op.add_column(
-        "snapshot_players",
-        sa.Column("loot_adjustment", sa.Integer(), nullable=False, server_default="0"),
-    )
+    if "loot_adjustment" not in existing_columns:
+        op.add_column(
+            "snapshot_players",
+            sa.Column("loot_adjustment", sa.Integer(), nullable=False, server_default="0"),
+        )
+
     # Add page_adjustments column (JSON, default {"I": 0, "II": 0, "III": 0, "IV": 0})
-    op.add_column(
-        "snapshot_players",
-        sa.Column(
-            "page_adjustments",
-            sa.JSON(),
-            nullable=False,
-            server_default='{"I": 0, "II": 0, "III": 0, "IV": 0}',
-        ),
-    )
+    if "page_adjustments" not in existing_columns:
+        op.add_column(
+            "snapshot_players",
+            sa.Column(
+                "page_adjustments",
+                sa.JSON(),
+                nullable=False,
+                server_default='{"I": 0, "II": 0, "III": 0, "IV": 0}',
+            ),
+        )
 
 
 def downgrade() -> None:
