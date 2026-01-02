@@ -14,11 +14,16 @@ import { getRoleColor } from '../../gamedata';
 interface WeaponPriorityListProps {
   players: SnapshotPlayer[];
   settings: StaticSettings;
+  // Optional props for inline logging
+  showLogButtons?: boolean;
+  onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
 }
 
 export function WeaponPriorityList({
   players,
   settings,
+  showLogButtons = false,
+  onLogClick,
 }: WeaponPriorityListProps) {
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
@@ -85,7 +90,7 @@ export function WeaponPriorityList({
                   return (
                     <div
                       key={entry.player.id}
-                      className={`flex items-center justify-between px-2 py-1 rounded text-sm ${
+                      className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
                         isFirst ? 'bg-accent/20' : ''
                       }`}
                     >
@@ -110,12 +115,23 @@ export function WeaponPriorityList({
                           </span>
                         )}
                       </div>
-                      <span
-                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
-                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-                      >
-                        {entry.score}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {/* Log button - only show on first entry */}
+                        {showLogButtons && isFirst && onLogClick && (
+                          <button
+                            onClick={() => onLogClick(job, entry.player)}
+                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent/80 text-white hover:bg-accent transition-all"
+                          >
+                            Log
+                          </button>
+                        )}
+                        <span
+                          className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                        >
+                          {entry.score}
+                        </span>
+                      </div>
                     </div>
                   );
                 })}

@@ -17,6 +17,7 @@ import {
 import { getRoleColor } from '../../gamedata';
 import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogDropModal } from './QuickLogDropModal';
+import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
@@ -164,6 +165,17 @@ export function LootPriorityPanel({
     player: null,
   });
 
+  // Weapon modal state
+  const [weaponModalState, setWeaponModalState] = useState<{
+    isOpen: boolean;
+    weaponJob: string;
+    player: SnapshotPlayer | null;
+  }>({
+    isOpen: false,
+    weaponJob: '',
+    player: null,
+  });
+
   // Calculate average drops for balance penalty
   const averageDrops = useMemo(() => {
     if (!showEnhancedScores || lootLog.length === 0) return 0;
@@ -234,6 +246,18 @@ export function LootPriorityPanel({
 
   const handleModalClose = () => {
     setModalState({ isOpen: false, slot: '', player: null });
+  };
+
+  const handleWeaponLogClick = (weaponJob: string, player: SnapshotPlayer) => {
+    setWeaponModalState({
+      isOpen: true,
+      weaponJob,
+      player,
+    });
+  };
+
+  const handleWeaponModalClose = () => {
+    setWeaponModalState({ isOpen: false, weaponJob: '', player: null });
   };
 
   const handleLogSuccess = () => {
@@ -357,7 +381,12 @@ export function LootPriorityPanel({
               Weapons drop from this floor (Floor 4)
             </div>
           )}
-          <WeaponPriorityList players={players} settings={settings} />
+          <WeaponPriorityList
+            players={players}
+            settings={settings}
+            showLogButtons={!!canShowLogButtons}
+            onLogClick={handleWeaponLogClick}
+          />
         </div>
       )}
 
@@ -373,6 +402,23 @@ export function LootPriorityPanel({
           currentWeek={currentWeek}
           suggestedPlayer={modalState.player}
           allPlayers={players}
+          onSuccess={handleLogSuccess}
+        />
+      )}
+
+      {/* Quick Log Weapon Modal */}
+      {canShowLogButtons && weaponModalState.player && (
+        <QuickLogWeaponModal
+          isOpen={weaponModalState.isOpen}
+          onClose={handleWeaponModalClose}
+          groupId={groupId!}
+          tierId={tierId!}
+          floor={floorName}
+          weaponJob={weaponModalState.weaponJob}
+          currentWeek={currentWeek}
+          suggestedPlayer={weaponModalState.player}
+          allPlayers={players}
+          settings={settings}
           onSuccess={handleLogSuccess}
         />
       )}
