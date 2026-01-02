@@ -5,7 +5,7 @@
  * Supports drag-and-drop, context menu, and inline editing.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerCardGear } from './PlayerCardGear';
@@ -46,7 +46,7 @@ interface PlayerCardProps {
   onModalClose?: () => void;
 }
 
-export function PlayerCard({
+export const PlayerCard = memo(function PlayerCard({
   player,
   settings: _settings,
   viewMode,
@@ -526,4 +526,4 @@ export function PlayerCard({
       {!isExpanded && <NeedsFooter needs={needs} />}
     </div>
   );
-}
+});

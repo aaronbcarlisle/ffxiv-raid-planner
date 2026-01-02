@@ -65,15 +65,7 @@ cd backend && python scripts/normalize_preset_names.py
 
 See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
 
-### Quick Wins
-| ID | Issue | Location | Effort |
-|----|-------|----------|--------|
-| P-004 | No code splitting | App.tsx | 5 min |
-| P-007 | PlayerCard re-renders | PlayerCard.tsx | 2 min |
-| R-003 | Missing error boundaries | App.tsx | 10 min |
-| P-003 | Unbounded queries | static_groups.py | 15 min |
-
-### Other Open Items
+### Open Items
 - **P-001:** N+1 in duplicateGroup (needs bulk API)
 - **P-005:** GroupView.tsx is 811 lines
 - **T-001:** Low test coverage (3 test files)

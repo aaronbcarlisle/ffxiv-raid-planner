@@ -2,6 +2,7 @@
 
 **Date:** 2026-01-01
 **Last Verified:** 2026-01-02
+**Quick Wins Fixed:** 2026-01-02
 **Auditor:** Principal Architect
 **Repository:** ffxiv-raid-planner
 **Status:** Phase 6.5 Complete
@@ -48,8 +49,8 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 
 | Priority | Total | Open | Fixed | Invalid |
 |----------|-------|------|-------|---------|
-| High | 8 | 5 | 2 | 1 |
-| Medium | 6 | 5 | 1 | 0 |
+| High | 8 | 2 | 5 | 1 |
+| Medium | 6 | 4 | 2 | 0 |
 | Low | 5 | 3 | 2 | 0 |
 
 ---
@@ -74,9 +75,9 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 |----|-------|--------|-------|
 | P-001 | N+1 in duplicateGroup | **OPEN** | Backend bulk endpoint needed |
 | P-002 | Missing DB indexes | **FIXED** | All FK columns indexed |
-| P-004 | No code splitting | **OPEN** | React.lazy() not used |
-| P-007 | PlayerCard re-renders | **OPEN** | React.memo missing |
-| R-003 | Missing error boundaries | **OPEN** | No ErrorBoundary in App.tsx |
+| P-004 | No code splitting | **FIXED** | React.lazy() for all pages |
+| P-007 | PlayerCard re-renders | **FIXED** | Wrapped with React.memo |
+| R-003 | Missing error boundaries | **FIXED** | ErrorBoundary wraps Routes |
 | T-001 | Low test coverage | **OPEN** | Only 3 test files |
 | U-007 | Missing ARIA labels | **FIXED** | IconButton requires aria-label |
 | U-009 | Keyboard nav in Select | **INVALID** | Uses native `<select>` |
@@ -85,7 +86,7 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 
 | ID | Issue | Status | Notes |
 |----|-------|--------|-------|
-| P-003 | Unbounded queries | **OPEN** | No pagination |
+| P-003 | Unbounded queries | **FIXED** | Pagination with limit=50, max=100 |
 | P-005 | Large GroupView | **OPEN** | 811 lines |
 | P-006 | Missing useMemo | **FIXED** | LootPriorityPanel uses useMemo |
 | U-001 | Missing skeletons | **OPEN** | Dashboard uses spinner |
@@ -114,37 +115,6 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 - **Impact:** A static with 4 tiers and 8 players each = 36+ API calls.
 - **Recommendation:** Implement a backend bulk duplication endpoint: `POST /api/static-groups/{id}/duplicate`
 
-#### P-004: No Code Splitting
-- **Location:** `frontend/src/App.tsx`
-- **Issue:** All pages are imported synchronously.
-- **Impact:** Initial bundle includes all pages.
-- **Fix:**
-```tsx
-const GroupView = React.lazy(() => import('./pages/GroupView'));
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
-```
-
-#### P-007: PlayerCard Re-renders
-- **Location:** `frontend/src/components/player/PlayerCard.tsx`
-- **Issue:** PlayerCard lacks React.memo, re-renders when parent state changes.
-- **Impact:** 8 cards re-rendering on any tier change.
-- **Fix:**
-```tsx
-export const PlayerCard = React.memo(function PlayerCard(props) {...});
-```
-
-#### R-003: Missing Error Boundaries
-- **Location:** `frontend/src/App.tsx`
-- **Issue:** No error boundaries around major page components.
-- **Impact:** One component crash takes down entire app.
-- **Fix:**
-```tsx
-import { ErrorBoundary } from 'react-error-boundary';
-<ErrorBoundary fallback={<ErrorFallback />}>
-  <Routes>...</Routes>
-</ErrorBoundary>
-```
-
 #### T-001: Low Test Coverage
 - **Location:** `backend/tests/`
 - **Issue:** Only 3 test files (test_health.py, test_permissions.py, test_static_groups.py)
@@ -156,12 +126,6 @@ import { ErrorBoundary } from 'react-error-boundary';
   - Loot tracking endpoints
 
 ### Medium Priority
-
-#### P-003: Unbounded Query Results
-- **Location:** `backend/app/routers/static_groups.py:134`
-- **Issue:** `list_user_static_groups` returns all groups without pagination.
-- **Impact:** Memory issues for users with many statics.
-- **Fix:** Add pagination with default limit of 50.
 
 #### P-005: Large Component File
 - **Location:** `frontend/src/pages/GroupView.tsx` (811 lines)
@@ -210,6 +174,20 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 ## Resolved Issues
 
+### P-003: Unbounded Query Results ✅
+- **Resolution:** Added `limit` (default 50, max 100) and `offset` parameters to `list_user_static_groups` endpoint.
+
+### P-004: No Code Splitting ✅
+- **Resolution:** All page components now use `React.lazy()` with dynamic imports in `App.tsx`.
+
+### P-007: PlayerCard Re-renders ✅
+- **Resolution:** `PlayerCard` component wrapped with `React.memo()` to prevent unnecessary re-renders.
+
+### R-003: Missing Error Boundaries ✅
+- **Resolution:** Added `react-error-boundary` package and wrapped Routes with `ErrorBoundary` component including:
+  - Custom `ErrorFallback` component with retry button
+  - `Suspense` wrapper with `PageLoader` for lazy-loaded components
+
 ### P-002: Missing Database Indexes ✅
 - **Resolution:** All FK columns now have `index=True`:
   - `snapshot_player.tier_snapshot_id`
@@ -235,13 +213,8 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 ## Quick Wins
 
-Remaining low-effort, high-value improvements:
-
-1. **Add React.lazy() to App.tsx** (P-004) - 5 min
-2. **Wrap PlayerCard with React.memo** (P-007) - 2 min
-3. **Add Error Boundary** (R-003) - 10 min
-4. **Add pagination to list_user_static_groups** (P-003) - 15 min
+All quick wins have been implemented ✅
 
 ---
 
-*Report generated 2026-01-01, verified 2026-01-02*
+*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02*

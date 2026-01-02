@@ -132,10 +132,21 @@ def group_to_response_with_members(
 
 @router.get("", response_model=list[StaticGroupListItem])
 async def list_user_static_groups(
+    limit: int = 50,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[StaticGroupListItem]:
-    """List all static groups the current user is a member of or linked to"""
+    """List all static groups the current user is a member of or linked to.
+
+    Args:
+        limit: Maximum number of groups to return (default 50, max 100)
+        offset: Number of groups to skip for pagination
+    """
+    # Clamp limit to prevent unbounded queries
+    limit = min(max(1, limit), 100)
+    offset = max(0, offset)
+
     # Get groups via membership
     groups_with_memberships = await get_user_static_groups(session, current_user.id)
     member_group_ids = {group.id for group, _ in groups_with_memberships}
@@ -177,9 +188,9 @@ async def list_user_static_groups(
                 )
             )
 
-    # Sort by name
+    # Sort by name and apply pagination
     result.sort(key=lambda x: x.name)
-    return result
+    return result[offset:offset + limit]
 
 
 @router.post("", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
