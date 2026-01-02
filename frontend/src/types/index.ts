@@ -206,6 +206,7 @@ export const CONTEXT_MENU_ICONS = {
   weaponPriority: '/icons/weapon-priority-transparent-bg.png',
   resetGear: '/icons/reset-gear-transparent-bg.png',
   takeOwnership: '/icons/take-ownership-transparent-bg.png',
+  releaseOwnership: '/icons/release-ownership-transparent-bg.png',
   playerOptions: '/icons/player-options-transparent-bg.png',
   importBis: '/icons/import-bis-transparent-bg.png',
 };

@@ -397,6 +397,12 @@ export function GroupView() {
     return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
 
+  // Check if current user has already claimed a player in this tier
+  const userHasClaimedPlayer = useMemo(() => {
+    if (!user?.id || !currentTier?.players) return false;
+    return currentTier.players.some(p => p.userId === user.id);
+  }, [user?.id, currentTier?.players]);
+
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
     if (!groupView) return null;
@@ -491,6 +497,7 @@ export function GroupView() {
           currentUserId={user?.id}
           isGroupOwner={currentGroup?.userRole === 'owner'}
           userRole={userRole}
+          userHasClaimedPlayer={userHasClaimedPlayer}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}

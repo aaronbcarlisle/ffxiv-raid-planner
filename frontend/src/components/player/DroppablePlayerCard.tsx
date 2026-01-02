@@ -21,6 +21,7 @@ interface DroppablePlayerCardProps {
   currentUserId?: string;
   isGroupOwner?: boolean;
   userRole?: MemberRole | null;
+  userHasClaimedPlayer?: boolean;
   groupId: string;
   tierId: string;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
