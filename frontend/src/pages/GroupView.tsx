@@ -790,6 +790,7 @@ export function GroupView() {
       {showDeleteTierConfirm && currentGroup && currentTier && (
         <DeleteTierModal
           groupId={currentGroup.id}
+          tierSnapshotId={currentTier.id}
           tierId={currentTier.tierId}
           onClose={() => setShowDeleteTierConfirm(false)}
           onDeleted={handleTierDeleted}

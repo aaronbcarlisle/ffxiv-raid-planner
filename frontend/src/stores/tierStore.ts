@@ -162,8 +162,9 @@ export const useTierStore = create<TierState>((set, get) => ({
       });
 
       set((state) => ({
-        tiers: state.tiers.filter(t => t.tierId !== tierId),
-        currentTier: state.currentTier?.tierId === tierId ? null : state.currentTier,
+        // Filter by both id (UUID) and tierId (slug) since either can be passed
+        tiers: state.tiers.filter(t => t.id !== tierId && t.tierId !== tierId),
+        currentTier: (state.currentTier?.id === tierId || state.currentTier?.tierId === tierId) ? null : state.currentTier,
         isSaving: false,
       }));
     } catch (error) {
