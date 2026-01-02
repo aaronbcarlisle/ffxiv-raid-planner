@@ -34,17 +34,21 @@ interface UnifiedWeekOverviewProps {
 const WeekSummaryRow = memo(function WeekSummaryRow({
   summary,
   canEdit,
+  onEditLoot,
   onDeleteLoot,
+  onDeleteMaterial,
   onEditBook,
   onViewHistory,
 }: {
   summary: ReturnType<typeof useWeekSummary>[number];
   canEdit: boolean;
+  onEditLoot: (entryId: number) => void;
   onDeleteLoot: (entryId: number) => void;
+  onDeleteMaterial: (entryId: number) => void;
   onEditBook: (playerId: string, playerName: string, bookType: 'I' | 'II' | 'III' | 'IV', currentValue: number) => void;
   onViewHistory: (playerId: string, playerName: string) => void;
 }) {
-  const { player, lootReceived, materialsReceived, bookChanges, floorsCleared } = summary;
+  const { player, lootReceived, materialEntries, materialsReceived, bookChanges, floorsCleared } = summary;
 
   // Format materials as compact string
   const materialsText = useMemo(() => {
@@ -95,15 +99,26 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
                   {loot.method}
                 </span>
                 {canEdit && (
-                  <button
-                    onClick={() => onDeleteLoot(loot.entryId)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:bg-status-error/20 rounded transition-all"
-                    title="Delete entry"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onEditLoot(loot.entryId)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded transition-all"
+                      title="Edit entry"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => onDeleteLoot(loot.entryId)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:bg-status-error/20 rounded transition-all"
+                      title="Delete entry"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </>
                 )}
                 {index < lootReceived.length - 1 && (
                   <span className="text-text-muted mx-0.5">•</span>
@@ -116,26 +131,36 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
 
       {/* Materials */}
       <td className="px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          {materialsReceived.twine > 0 && (
-            <span className={`text-sm ${MATERIAL_INFO.twine.color}`}>
-              T:{materialsReceived.twine}
-            </span>
-          )}
-          {materialsReceived.glaze > 0 && (
-            <span className={`text-sm ${MATERIAL_INFO.glaze.color}`}>
-              G:{materialsReceived.glaze}
-            </span>
-          )}
-          {materialsReceived.solvent > 0 && (
-            <span className={`text-sm ${MATERIAL_INFO.solvent.color}`}>
-              S:{materialsReceived.solvent}
-            </span>
-          )}
-          {materialsText === '-' && (
-            <span className="text-sm text-text-muted">-</span>
-          )}
-        </div>
+        {materialEntries.length === 0 ? (
+          <span className="text-sm text-text-muted">-</span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            {materialEntries.map((entry, index) => {
+              const info = MATERIAL_INFO[entry.materialType];
+              return (
+                <span key={entry.entryId} className="inline-flex items-center gap-1 group">
+                  <span className={`text-sm ${info.color}`}>
+                    {info.shortLabel}
+                  </span>
+                  {canEdit && (
+                    <button
+                      onClick={() => onDeleteMaterial(entry.entryId)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:bg-status-error/20 rounded transition-all"
+                      title="Delete material entry"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                  {index < materialEntries.length - 1 && (
+                    <span className="text-text-muted mx-0.5">•</span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </td>
 
       {/* Book I */}
@@ -186,12 +211,14 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
       <td className="px-1 py-2">
         <button
           onClick={() => onViewHistory(player.id, player.name)}
-          className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+          className="p-1 rounded hover:bg-accent/10 transition-colors"
           title={`View history for ${player.name}`}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
+          <img
+            src="/icons/history-transparent-bg.png"
+            alt="View history"
+            className="w-4 h-4"
+          />
         </button>
       </td>
     </tr>
@@ -219,6 +246,8 @@ export function UnifiedWeekOverview({
     markFloorCleared,
     adjustBookBalance,
     createMaterialEntry,
+    deleteMaterialEntry,
+    updateLootEntry,
   } = useLootTrackingStore();
 
   // Modal states
@@ -226,6 +255,7 @@ export function UnifiedWeekOverview({
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showMarkClearedModal, setShowMarkClearedModal] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<LootLogEntry | null>(null);
+  const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | null>(null);
   const [editBookState, setEditBookState] = useState<{
     playerId: string;
     playerName: string;
@@ -291,6 +321,28 @@ export function UnifiedWeekOverview({
     }
   }, [entryToDelete, groupId, tierId, currentWeek, fetchLootLog]);
 
+  // Handle edit loot
+  const handleEditLoot = useCallback((entryId: number) => {
+    const entry = lootLog.find(e => e.id === entryId);
+    if (entry) {
+      setEntryToEdit(entry);
+    }
+  }, [lootLog]);
+
+  const handleUpdateLoot = useCallback(async (updates: import('../../types').LootLogEntryUpdate) => {
+    if (!entryToEdit) return;
+    try {
+      await updateLootEntry(groupId, tierId, entryToEdit.id, updates);
+      await fetchLootLog(groupId, tierId, currentWeek);
+      toast.success('Loot entry updated');
+    } catch {
+      toast.error('Failed to update entry');
+      throw new Error('Failed to update');
+    } finally {
+      setEntryToEdit(null);
+    }
+  }, [entryToEdit, groupId, tierId, currentWeek, updateLootEntry, fetchLootLog]);
+
   // Handle material logging
   const handleLogMaterial = useCallback(async (data: {
     weekNumber: number;
@@ -304,6 +356,17 @@ export function UnifiedWeekOverview({
     const player = players.find(p => p.id === data.recipientPlayerId);
     toast.success(`Logged ${MATERIAL_INFO[data.materialType].label} for ${player?.name || 'player'}`);
   }, [groupId, tierId, currentWeek, players, createMaterialEntry, fetchMaterialLog]);
+
+  // Handle delete material
+  const handleDeleteMaterial = useCallback(async (entryId: number) => {
+    try {
+      await deleteMaterialEntry(groupId, tierId, entryId);
+      await fetchMaterialLog(groupId, tierId, currentWeek);
+      toast.success('Deleted material entry');
+    } catch {
+      toast.error('Failed to delete material entry');
+    }
+  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog]);
 
   // Handle mark floor cleared
   const handleMarkFloorCleared = useCallback(async (request: Parameters<typeof markFloorCleared>[2]) => {
@@ -425,7 +488,9 @@ export function UnifiedWeekOverview({
                   key={summary.player.id}
                   summary={summary}
                   canEdit={canEdit}
+                  onEditLoot={handleEditLoot}
                   onDeleteLoot={handleDeleteLoot}
+                  onDeleteMaterial={handleDeleteMaterial}
                   onEditBook={handleEditBook}
                   onViewHistory={handleViewHistory}
                 />
@@ -476,6 +541,19 @@ export function UnifiedWeekOverview({
           onConfirm={handleDeleteConfirm}
           entry={entryToDelete}
           playerName={entryToDelete.recipientPlayerName}
+        />
+      )}
+
+      {entryToEdit && (
+        <AddLootEntryModal
+          isOpen={!!entryToEdit}
+          onClose={() => setEntryToEdit(null)}
+          onSubmit={handleAddLoot}
+          onUpdate={handleUpdateLoot}
+          players={players}
+          floors={floors}
+          currentWeek={currentWeek}
+          editEntry={entryToEdit}
         />
       )}
 

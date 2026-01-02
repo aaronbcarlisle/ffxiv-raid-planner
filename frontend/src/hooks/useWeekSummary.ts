@@ -15,6 +15,12 @@ import type {
 } from '../types';
 import { GEAR_SLOT_NAMES } from '../types';
 
+export interface MaterialEntry {
+  entryId: number;
+  floor: string;
+  materialType: MaterialType;
+}
+
 export interface PlayerWeekSummary {
   player: SnapshotPlayer;
   // Loot received this week
@@ -25,7 +31,9 @@ export interface PlayerWeekSummary {
     method: string;
     entryId: number;
   }>;
-  // Materials received this week
+  // Materials received this week (individual entries)
+  materialEntries: MaterialEntry[];
+  // Materials received this week (aggregated counts - for display)
   materialsReceived: {
     twine: number;
     glaze: number;
@@ -85,6 +93,11 @@ export function useWeekSummary({
         const playerMaterials = weekMaterials.filter(
           (e) => e.recipientPlayerId === player.id
         );
+        const materialEntries: MaterialEntry[] = playerMaterials.map((e) => ({
+          entryId: e.id,
+          floor: e.floor,
+          materialType: e.materialType as MaterialType,
+        }));
         const materialsReceived = {
           twine: playerMaterials.filter((e) => e.materialType === 'twine')
             .length,
@@ -125,6 +138,7 @@ export function useWeekSummary({
         return {
           player,
           lootReceived,
+          materialEntries,
           materialsReceived,
           bookChanges,
           floorsCleared,

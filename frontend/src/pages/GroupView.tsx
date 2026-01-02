@@ -182,14 +182,16 @@ export function GroupView() {
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
   // Initialize loot tracking store when Loot tab is active
-  const { fetchCurrentWeek, fetchLootLog, lootLog } = useLootTrackingStore();
+  const { currentWeek: storeCurrentWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
   useEffect(() => {
     if (pageMode === 'loot' && currentGroup?.id && currentTier?.tierId) {
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
       // Fetch all loot log entries (no week filter) for enhanced priority calculation
       fetchLootLog(currentGroup.id, currentTier.tierId);
+      // Fetch all material log entries for material priority calculation
+      fetchMaterialLog(currentGroup.id, currentTier.tierId);
     }
-  }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog]);
+  }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {
@@ -737,8 +739,9 @@ export function GroupView() {
               showLogButtons={canEdit}
               groupId={currentGroup?.id}
               tierId={currentTier?.tierId}
-              currentWeek={currentTier?.currentWeek ?? 1}
+              currentWeek={storeCurrentWeek}
               lootLog={lootLog}
+              materialLog={materialLog}
               showEnhancedScores={true}
             />
           )}

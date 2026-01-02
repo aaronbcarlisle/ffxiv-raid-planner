@@ -7,7 +7,7 @@
  * - Items needed (more items needed = higher priority)
  */
 
-import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole } from '../types';
+import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete } from './calculations';
@@ -90,13 +90,30 @@ export function getPriorityForRing(
  * Returns players who have unaugmented tome gear for that material type
  *
  * For solvent, also includes players pursuing tome weapon who have it but need augmentation
+ *
+ * If materialLog is provided, subtracts already-received materials from need count.
+ * This allows the priority list to update as materials are distributed.
  */
 export function getPriorityForUpgradeMaterial(
   players: SnapshotPlayer[],
   material: 'twine' | 'glaze' | 'solvent',
-  settings: StaticSettings
+  settings: StaticSettings,
+  materialLog?: MaterialLogEntry[]
 ): PriorityEntry[] {
   const applicableSlots = UPGRADE_MATERIAL_SLOTS[material];
+
+  // Count how many of this material each player has already received
+  const receivedCounts = new Map<string, number>();
+  if (materialLog) {
+    for (const entry of materialLog) {
+      if (entry.materialType === material) {
+        receivedCounts.set(
+          entry.recipientPlayerId,
+          (receivedCounts.get(entry.recipientPlayerId) || 0) + 1
+        );
+      }
+    }
+  }
 
   return players
     .filter((p) => {
@@ -109,14 +126,20 @@ export function getPriorityForUpgradeMaterial(
           !g.isAugmented
       );
 
+      let totalNeed = unaugmented.length;
+
       // For solvent, also check if player needs to augment tome weapon
       if (material === 'solvent') {
         const needsTomeWeaponAugment =
           p.tomeWeapon?.pursuing && p.tomeWeapon?.hasItem && !p.tomeWeapon?.isAugmented;
-        return unaugmented.length > 0 || needsTomeWeaponAugment;
+        if (needsTomeWeaponAugment) {
+          totalNeed++;
+        }
       }
 
-      return unaugmented.length > 0;
+      // Subtract materials already received
+      const received = receivedCounts.get(p.id) || 0;
+      return totalNeed - received > 0;
     })
     .map((player) => {
       // Boost score by number of pieces that need this material
@@ -137,9 +160,13 @@ export function getPriorityForUpgradeMaterial(
         }
       }
 
+      // Subtract materials already received from the count
+      const received = receivedCounts.get(player.id) || 0;
+      const effectiveNeed = Math.max(0, unaugmentedCount - received);
+
       return {
         player,
-        score: calculatePriorityScore(player, settings) + unaugmentedCount * 15,
+        score: calculatePriorityScore(player, settings) + effectiveNeed * 15,
       };
     })
     .sort((a, b) => b.score - a.score);

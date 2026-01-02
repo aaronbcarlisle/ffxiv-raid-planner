@@ -199,7 +199,7 @@ export function AddLootEntryModal({
             method,
             notes: notes || undefined,
           },
-          { updateGear: method === 'drop' && updateGear }
+          { updateGear: (method === 'drop' || method === 'book') && updateGear }
         );
 
         // Reset form only in add mode
@@ -336,21 +336,11 @@ export function AddLootEntryModal({
               />
               <span className="text-sm text-text-primary">Book</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="tome"
-                checked={method === 'tome'}
-                onChange={() => setMethod('tome')}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-text-primary">Tome</span>
-            </label>
           </div>
         </div>
 
-        {/* Update gear checkbox - only for drops in add mode */}
-        {!isEditMode && method === 'drop' && (
+        {/* Update gear checkbox - for drops and books in add mode */}
+        {!isEditMode && (method === 'drop' || method === 'book') && (
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"

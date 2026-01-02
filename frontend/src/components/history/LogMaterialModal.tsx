@@ -4,9 +4,13 @@
  * Modal for logging upgrade material distribution (Twine, Glaze, Solvent).
  */
 
-import { useState } from 'react';
-import type { SnapshotPlayer, MaterialType } from '../../types';
+import { useState, useMemo, useEffect } from 'react';
+import type { SnapshotPlayer, MaterialType, StaticSettings } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
+import { getPriorityForUpgradeMaterial } from '../../utils/priority';
+import { DEFAULT_SETTINGS } from '../../utils/constants';
+import { UPGRADE_MATERIAL_SLOTS } from '../../gamedata/loot-tables';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 
 interface LogMaterialModalProps {
   isOpen: boolean;
@@ -21,21 +25,23 @@ interface LogMaterialModalProps {
   players: SnapshotPlayer[];
   floors: string[];
   currentWeek: number;
+  settings?: StaticSettings;
   suggestedPlayer?: SnapshotPlayer;
   suggestedMaterial?: MaterialType;
 }
 
 // Floor to material mapping based on current tier (AAC Heavyweight)
+// Floor 1 (M9S/M5S) and Floor 4 (M12S/M8S) don't drop upgrade materials
 const FLOOR_MATERIALS: Record<string, MaterialType[]> = {
-  M9S: ['glaze'],
+  M9S: [],   // Accessories only - no materials
   M10S: ['glaze'],
   M11S: ['twine', 'solvent'],
-  M12S: [],
+  M12S: [],  // Weapon only - no materials
   // Legacy tiers
-  M5S: ['glaze'],
+  M5S: [],   // Accessories only - no materials
   M6S: ['glaze'],
   M7S: ['twine', 'solvent'],
-  M8S: [],
+  M8S: [],   // Weapon only - no materials
 };
 
 export function LogMaterialModal({
@@ -45,6 +51,7 @@ export function LogMaterialModal({
   players,
   floors,
   currentWeek,
+  settings = DEFAULT_SETTINGS,
   suggestedPlayer,
   suggestedMaterial,
 }: LogMaterialModalProps) {
@@ -60,6 +67,10 @@ export function LogMaterialModal({
   const [weekNumber, setWeekNumber] = useState(currentWeek);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
+
+  // Get material log from store for priority calculation
+  const { materialLog } = useLootTrackingStore();
 
   // Get available materials for selected floor
   const availableMaterials = FLOOR_MATERIALS[selectedFloor] || [];
@@ -92,9 +103,73 @@ export function LogMaterialModal({
     }
   };
 
-  if (!isOpen) return null;
+  // Get priority-sorted players using the same logic as loot priority
+  // This respects role priority (melee > ranged > caster > tank > healer)
+  // and boosts score by number of unaugmented pieces needing this material
+  const sortedPlayersWithPriority = useMemo(() => {
+    const configuredPlayers = players.filter((p) => p.configured);
 
-  const configuredPlayers = players.filter((p) => p.configured);
+    // Get players who need this material (have unaugmented tome pieces)
+    // Pass materialLog to account for materials already received
+    const priorityList = getPriorityForUpgradeMaterial(
+      configuredPlayers,
+      selectedMaterial,
+      settings,
+      materialLog
+    );
+
+    // Also include players who don't need the material (at the bottom)
+    const playersWithPriority = priorityList.map(({ player, score }, index) => ({
+      player,
+      score,
+      rank: index + 1,
+      needsMaterial: true,
+    }));
+
+    // Add players who don't need this material at the bottom
+    const playersWithPriorityIds = new Set(priorityList.map(p => p.player.id));
+    const playersWithoutNeed = configuredPlayers
+      .filter(p => !playersWithPriorityIds.has(p.id))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(player => ({
+        player,
+        score: 0,
+        rank: 999,
+        needsMaterial: false,
+      }));
+
+    return [...playersWithPriority, ...playersWithoutNeed];
+  }, [players, selectedMaterial, settings, materialLog]);
+
+  // Filter to only show players who need the material (unless showAllRecipients)
+  const visibleRecipients = useMemo(() => {
+    if (showAllRecipients) return sortedPlayersWithPriority;
+    return sortedPlayersWithPriority.filter(r => r.needsMaterial);
+  }, [sortedPlayersWithPriority, showAllRecipients]);
+
+  // Auto-select top priority recipient when material changes
+  useEffect(() => {
+    if (sortedPlayersWithPriority.length > 0) {
+      const topPriority = sortedPlayersWithPriority.find(r => r.needsMaterial);
+      if (topPriority) {
+        setSelectedPlayer(topPriority.player.id);
+      } else if (sortedPlayersWithPriority.length > 0) {
+        // Fall back to first player if no one needs the material
+        setSelectedPlayer(sortedPlayersWithPriority[0].player.id);
+      }
+    }
+  }, [selectedMaterial, sortedPlayersWithPriority]);
+
+  // Get priority label for a player
+  const getPriorityLabel = (rank: number, needsMaterial: boolean): string => {
+    if (!needsMaterial) return '';
+    if (rank === 1) return ' - Top Priority';
+    if (rank === 2) return ' - 2nd Priority';
+    if (rank === 3) return ' - 3rd Priority';
+    return '';
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -158,21 +233,35 @@ export function LogMaterialModal({
 
           {/* Player select */}
           <div>
-            <label className="block text-sm text-text-secondary mb-1">
-              Recipient
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm text-text-secondary">Recipient</label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAllRecipients}
+                  onChange={(e) => setShowAllRecipients(e.target.checked)}
+                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+                />
+                <span className="text-xs text-text-muted">Show all players</span>
+              </label>
+            </div>
             <select
               value={selectedPlayer}
               onChange={(e) => setSelectedPlayer(e.target.value)}
               className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
               <option value="">Select player...</option>
-              {configuredPlayers.map((player) => (
+              {visibleRecipients.map(({ player, rank, needsMaterial }) => (
                 <option key={player.id} value={player.id}>
-                  {player.name} ({player.job})
+                  {player.name} ({player.job}){getPriorityLabel(rank, needsMaterial)}
                 </option>
               ))}
             </select>
+            {visibleRecipients.length === 0 && !showAllRecipients && (
+              <div className="text-xs text-status-success mt-1">
+                No one needs this material! Enable "Show all players" to assign anyway.
+              </div>
+            )}
           </div>
 
           {/* Week number */}

@@ -52,7 +52,7 @@ export interface PrioritySuggestion {
  *
  * Coordinates multiple store actions:
  * 1. Creates the loot log entry
- * 2. If updateGear=true and method='drop': marks gear slot as acquired
+ * 2. If updateGear=true and method='drop' or 'book': marks gear slot as acquired
  * 3. If updateWeaponPriority=true and slot='weapon': marks weapon as received
  */
 export async function logLootAndUpdateGear(
@@ -67,8 +67,8 @@ export async function logLootAndUpdateGear(
   // 1. Create the loot entry
   await lootStore.createLootEntry(groupId, tierId, data);
 
-  // 2. Update gear if requested and method is 'drop'
-  if (options.updateGear && data.method === 'drop') {
+  // 2. Update gear if requested and method is 'drop' or 'book'
+  if (options.updateGear && (data.method === 'drop' || data.method === 'book')) {
     // Ensure tier is loaded before trying to find the player
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
@@ -108,8 +108,8 @@ export async function logLootAndUpdateGear(
     }
   }
 
-  // 3. Update weapon priority if it's a weapon drop
-  if (options.updateWeaponPriority && data.itemSlot === 'weapon' && data.method === 'drop') {
+  // 3. Update weapon priority if it's a weapon drop or book
+  if (options.updateWeaponPriority && data.itemSlot === 'weapon' && (data.method === 'drop' || data.method === 'book')) {
     const player = useTierStore.getState().currentTier?.players?.find(
       (p) => p.id === data.recipientPlayerId
     );
@@ -158,8 +158,8 @@ export async function updateLootAndSyncGear(
   // 1. Update the loot entry
   await lootStore.updateLootEntry(groupId, tierId, entryId, updates);
 
-  // 2. Sync gear if requested and the original was a drop
-  if (options.syncGear && originalEntry.method === 'drop') {
+  // 2. Sync gear if requested and the original was a drop or book
+  if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book')) {
     // Ensure tier is loaded
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
@@ -240,7 +240,7 @@ export async function updateLootAndSyncGear(
  *
  * Coordinates multiple store actions:
  * 1. Deletes the loot log entry
- * 2. If revertGear=true and was a drop: unchecks gear slot
+ * 2. If revertGear=true and was a drop or book: unchecks gear slot
  */
 export async function deleteLootAndRevertGear(
   groupId: string,
@@ -255,8 +255,8 @@ export async function deleteLootAndRevertGear(
   // 1. Delete the entry
   await lootStore.deleteLootEntry(groupId, tierId, entryId);
 
-  // 2. Revert gear if requested and was a drop
-  if (options.revertGear && entry.method === 'drop') {
+  // 2. Revert gear if requested and was a drop or book
+  if (options.revertGear && (entry.method === 'drop' || entry.method === 'book')) {
     // Ensure tier is loaded before trying to find the player
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);

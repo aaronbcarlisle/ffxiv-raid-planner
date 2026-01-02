@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry } from '../../types';
+import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -18,6 +18,7 @@ import { getRoleColor } from '../../gamedata';
 import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
+import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
@@ -32,6 +33,7 @@ interface LootPriorityPanelProps {
   onLogSuccess?: () => void;
   // Optional props for enhanced priority display
   lootLog?: LootLogEntry[];
+  materialLog?: MaterialLogEntry[];
   showEnhancedScores?: boolean;
 }
 
@@ -131,6 +133,7 @@ export function LootPriorityPanel({
   currentWeek = 1,
   onLogSuccess,
   lootLog = [],
+  materialLog = [],
   showEnhancedScores = false,
 }: LootPriorityPanelProps) {
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
@@ -173,6 +176,17 @@ export function LootPriorityPanel({
   }>({
     isOpen: false,
     weaponJob: '',
+    player: null,
+  });
+
+  // Material modal state
+  const [materialModalState, setMaterialModalState] = useState<{
+    isOpen: boolean;
+    material: MaterialType;
+    player: SnapshotPlayer | null;
+  }>({
+    isOpen: false,
+    material: 'twine',
     player: null,
   });
 
@@ -225,10 +239,11 @@ export function LootPriorityPanel({
   });
 
   // Get upgrade materials for this floor (with enhancement)
+  // Pass materialLog so priority accounts for materials already received
   const materialPriorities = lootTable.upgradeMaterials.map((material) => ({
     material,
     label: material.charAt(0).toUpperCase() + material.slice(1),
-    entries: enhanceEntries(getPriorityForUpgradeMaterial(players, material, settings)),
+    entries: enhanceEntries(getPriorityForUpgradeMaterial(players, material, settings, materialLog)),
   }));
 
   // Can show log buttons if we have the required context
@@ -258,6 +273,18 @@ export function LootPriorityPanel({
 
   const handleWeaponModalClose = () => {
     setWeaponModalState({ isOpen: false, weaponJob: '', player: null });
+  };
+
+  const handleMaterialLogClick = (material: MaterialType, player: SnapshotPlayer) => {
+    setMaterialModalState({
+      isOpen: true,
+      material,
+      player,
+    });
+  };
+
+  const handleMaterialModalClose = () => {
+    setMaterialModalState({ isOpen: false, material: 'twine', player: null });
   };
 
   const handleLogSuccess = () => {
@@ -346,6 +373,8 @@ export function LootPriorityPanel({
                     </div>
                     <PriorityList
                       entries={entries}
+                      showLogButton={!!canShowLogButtons}
+                      onLogClick={(player) => handleMaterialLogClick(material, player)}
                       showEnhanced={showEnhancedScores && lootLog.length > 0}
                     />
                   </div>
@@ -417,6 +446,23 @@ export function LootPriorityPanel({
           weaponJob={weaponModalState.weaponJob}
           currentWeek={currentWeek}
           suggestedPlayer={weaponModalState.player}
+          allPlayers={players}
+          settings={settings}
+          onSuccess={handleLogSuccess}
+        />
+      )}
+
+      {/* Quick Log Material Modal */}
+      {canShowLogButtons && materialModalState.player && (
+        <QuickLogMaterialModal
+          isOpen={materialModalState.isOpen}
+          onClose={handleMaterialModalClose}
+          groupId={groupId!}
+          tierId={tierId!}
+          floor={floorName}
+          material={materialModalState.material}
+          currentWeek={currentWeek}
+          suggestedPlayer={materialModalState.player}
           allPlayers={players}
           settings={settings}
           onSuccess={handleLogSuccess}
