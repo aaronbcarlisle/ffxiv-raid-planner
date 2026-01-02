@@ -79,15 +79,12 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
         {lootReceived.length === 0 ? (
           <span className="text-sm text-text-muted">-</span>
         ) : (
-          <div className="space-y-1">
-            {lootReceived.map((loot) => (
-              <div key={loot.entryId} className="flex items-center gap-2 group">
-                <span className="text-sm text-text-primary">
-                  {loot.slotName}
-                </span>
-                <span className="text-xs text-text-muted">({loot.floor})</span>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            {lootReceived.map((loot, index) => (
+              <span key={loot.entryId} className="inline-flex items-center gap-1 group">
+                <span className="text-sm text-text-primary">{loot.slotName}</span>
                 <span
-                  className={`text-xs px-1.5 py-0.5 rounded ${
+                  className={`text-xs px-1 py-0.5 rounded ${
                     loot.method === 'drop'
                       ? 'bg-status-success/20 text-status-success'
                       : loot.method === 'book'
@@ -100,15 +97,18 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
                 {canEdit && (
                   <button
                     onClick={() => onDeleteLoot(loot.entryId)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-status-error hover:bg-status-error/20 rounded transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:bg-status-error/20 rounded transition-all"
                     title="Delete entry"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 )}
-              </div>
+                {index < lootReceived.length - 1 && (
+                  <span className="text-text-muted mx-0.5">•</span>
+                )}
+              </span>
             ))}
           </div>
         )}
