@@ -1,15 +1,14 @@
 /**
  * History View
  *
- * Main container for the History tab.
- * Shows loot log and page balances side-by-side with week navigation.
+ * Main container for the History tab (now called "Log" tab).
+ * Shows unified week overview with loot, materials, and book changes per player.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { WeekSelector } from './WeekSelector';
-import { LootLogPanel } from './LootLogPanel';
-import { PageBalancesPanel } from './PageBalancesPanel';
+import { UnifiedWeekOverview } from './UnifiedWeekOverview';
 import type { SnapshotPlayer } from '../../types';
 
 interface HistoryViewProps {
@@ -89,29 +88,16 @@ export function HistoryView({
         />
       </div>
 
-      {/* Two-panel layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Loot Log (left) */}
-        <LootLogPanel
-          groupId={groupId}
-          tierId={tierId}
-          players={players}
-          floors={floors}
-          currentWeek={selectedWeek}
-          canEdit={canEdit}
-          onLootLogged={(weekNumber) => setSelectedWeek(weekNumber)}
-        />
-
-        {/* Page Balances (right) */}
-        <PageBalancesPanel
-          groupId={groupId}
-          tierId={tierId}
-          players={players}
-          floors={floors}
-          currentWeek={selectedWeek}
-          canEdit={canEdit}
-        />
-      </div>
+      {/* Unified week overview */}
+      <UnifiedWeekOverview
+        groupId={groupId}
+        tierId={tierId}
+        players={players}
+        floors={floors}
+        currentWeek={selectedWeek}
+        canEdit={canEdit}
+        onWeekChange={handleWeekChange}
+      />
     </div>
   );
 }
