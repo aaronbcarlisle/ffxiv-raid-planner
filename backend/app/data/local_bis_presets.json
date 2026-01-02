@@ -1316,10 +1316,10 @@
     "job": "MNK",
     "presets": [
       {
-        "uuid": "f9bcd4a7-ddfc-49bf-be48-b1caf4e0fa8b",
-        "setIndex": 1,
+        "uuid": "dc7a7e55-bc78-420d-94d9-4e19d90cf54c",
+        "setIndex": 0,
         "displayName": "1.94 Savage BiS",
-        "originalName": "1.94 Savage BiS",
+        "originalName": "1.94 Savage bis",
         "category": "savage",
         "gcd": "1.94"
       }
