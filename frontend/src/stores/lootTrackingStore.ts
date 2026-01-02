@@ -120,8 +120,11 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         weekDataTypes: dataTypesMap,
         weeksWithEntries: new Set(response.weeks.map((w) => w.week)),
       });
-    } catch {
+    } catch (error) {
       // Silently fail - week selector will fall back to basic display
+      // Log error for debugging week selector enhancement issues
+      // eslint-disable-next-line no-console
+      console.error('Failed to fetch week data types:', { groupId, tierId, error });
     }
   },
 

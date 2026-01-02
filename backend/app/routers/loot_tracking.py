@@ -947,35 +947,42 @@ async def get_material_balances(
     tier = await get_tier_snapshot(db, group_id, tier_id)
 
     # Get all players in tier
-    result = await db.execute(
+    players_result = await db.execute(
         select(SnapshotPlayer)
         .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
         .order_by(SnapshotPlayer.sort_order)
     )
-    players = result.scalars().all()
+    players = players_result.scalars().all()
 
-    # Calculate material counts for each player
+    # Single aggregated query for all material counts (avoids N+1)
+    material_counts_result = await db.execute(
+        select(
+            MaterialLogEntry.recipient_player_id,
+            MaterialLogEntry.material_type,
+            func.count(MaterialLogEntry.id).label("count"),
+        )
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .group_by(MaterialLogEntry.recipient_player_id, MaterialLogEntry.material_type)
+    )
+
+    # Build lookup map: player_id -> {material_type: count}
+    material_map: dict[str, dict[str, int]] = {}
+    for row in material_counts_result.all():
+        if row.recipient_player_id not in material_map:
+            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0}
+        material_map[row.recipient_player_id][row.material_type] = row.count
+
+    # Build response using the lookup map
     balances = []
     for player in players:
-        query = (
-            select(
-                MaterialLogEntry.material_type,
-                func.count(MaterialLogEntry.id).label("count"),
-            )
-            .where(MaterialLogEntry.recipient_player_id == player.id)
-            .group_by(MaterialLogEntry.material_type)
-        )
-
-        result = await db.execute(query)
-        material_counts = {row.material_type: row.count for row in result.all()}
-
+        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0})
         balances.append(
             MaterialBalanceResponse(
                 player_id=player.id,
                 player_name=player.name,
-                twine=material_counts.get("twine", 0),
-                glaze=material_counts.get("glaze", 0),
-                solvent=material_counts.get("solvent", 0),
+                twine=counts.get("twine", 0),
+                glaze=counts.get("glaze", 0),
+                solvent=counts.get("solvent", 0),
             )
         )
 

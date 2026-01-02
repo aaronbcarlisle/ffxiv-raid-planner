@@ -12,7 +12,7 @@ from app.database import Base
 class MaterialLogEntry(Base):
     __tablename__ = "material_log_entries"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False)
     week_number: Mapped[int] = mapped_column(Integer, nullable=False)
     floor: Mapped[str] = mapped_column(String(10), nullable=False)  # "M9S", "M10S", "M11S"

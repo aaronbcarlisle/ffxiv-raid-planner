@@ -59,13 +59,25 @@ def upgrade() -> None:
     )
     op.create_index("ix_material_log_entries_tier_snapshot_id", "material_log_entries", ["tier_snapshot_id"])
     op.create_index("ix_material_log_entries_week_number", "material_log_entries", ["week_number"])
+    # Composite index for common query pattern (tier + week filtering)
+    op.create_index(
+        "ix_material_log_entries_tier_week",
+        "material_log_entries",
+        ["tier_snapshot_id", "week_number"],
+    )
 
 
 def downgrade() -> None:
     """Drop material_log_entries table and materialtype enum."""
-    op.drop_index("ix_material_log_entries_week_number", table_name="material_log_entries")
-    op.drop_index("ix_material_log_entries_tier_snapshot_id", table_name="material_log_entries")
-    op.drop_table("material_log_entries")
+    # Check if table exists before dropping indexes
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    if "material_log_entries" in inspector.get_table_names():
+        op.drop_index("ix_material_log_entries_tier_week", table_name="material_log_entries")
+        op.drop_index("ix_material_log_entries_week_number", table_name="material_log_entries")
+        op.drop_index("ix_material_log_entries_tier_snapshot_id", table_name="material_log_entries")
+        op.drop_table("material_log_entries")
 
     # Drop the enum type (PostgreSQL only)
     materialtype_enum = sa.Enum("twine", "glaze", "solvent", name="materialtype")
