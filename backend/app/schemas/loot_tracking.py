@@ -138,3 +138,52 @@ class MarkFloorClearedRequest(CamelModel):
     floor: str  # "M9S", "M10S", etc.
     player_ids: list[str]  # Players who cleared
     notes: str | None = None
+
+
+# Material Log Schemas
+
+
+class MaterialTypeEnum(str, Enum):
+    """Type of upgrade material"""
+
+    TWINE = "twine"  # Left-side armor augmentation
+    GLAZE = "glaze"  # Accessory augmentation
+    SOLVENT = "solvent"  # Weapon augmentation
+
+
+class MaterialLogEntryCreate(CamelModel):
+    """Request schema for creating a material log entry"""
+
+    week_number: int = Field(..., ge=1)
+    floor: str  # "M9S", "M10S", "M11S" (floors that drop materials)
+    material_type: MaterialTypeEnum
+    recipient_player_id: str
+    notes: str | None = None
+
+
+class MaterialLogEntryResponse(CamelModel):
+    """Response schema for a material log entry"""
+
+    id: int
+    tier_snapshot_id: str
+    week_number: int
+    floor: str
+    material_type: str
+    recipient_player_id: str
+    recipient_player_name: str  # Populated from join
+    notes: str | None
+    created_at: str
+    created_by_user_id: str
+    created_by_username: str  # Populated from join
+
+    model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
+
+
+class MaterialBalanceResponse(CamelModel):
+    """Response schema for a player's material received count"""
+
+    player_id: str
+    player_name: str
+    twine: int  # Total twine received
+    glaze: int  # Total glaze received
+    solvent: int  # Total solvent received

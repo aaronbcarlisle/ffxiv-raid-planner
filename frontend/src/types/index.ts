@@ -546,6 +546,42 @@ export interface PageBalance {
   bookIV: number;
 }
 
+// Material types for upgrade materials
+export type MaterialType = 'twine' | 'glaze' | 'solvent';
+
+// Material log entry
+export interface MaterialLogEntry {
+  id: number;
+  tierSnapshotId: string;
+  weekNumber: number;
+  floor: string;
+  materialType: MaterialType;
+  recipientPlayerId: string;
+  recipientPlayerName: string;
+  notes?: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+// Material balance for a player
+export interface MaterialBalance {
+  playerId: string;
+  playerName: string;
+  twine: number;
+  glaze: number;
+  solvent: number;
+}
+
+// Material log entry create request
+export interface MaterialLogEntryCreate {
+  weekNumber: number;
+  floor: string;
+  materialType: MaterialType;
+  recipientPlayerId: string;
+  notes?: string;
+}
+
 // Loot log entry create request
 export interface LootLogEntryCreate {
   weekNumber: number;

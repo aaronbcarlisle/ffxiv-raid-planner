@@ -10,6 +10,7 @@ from ..database import Base
 
 if TYPE_CHECKING:
     from .loot_log_entry import LootLogEntry
+    from .material_log_entry import MaterialLogEntry
     from .page_ledger_entry import PageLedgerEntry
     from .tier_snapshot import TierSnapshot
     from .user import User
@@ -85,6 +86,11 @@ class SnapshotPlayer(Base):
     page_ledger_entries: Mapped[list["PageLedgerEntry"]] = relationship(
         "PageLedgerEntry",
         back_populates="player",
+        cascade="all, delete-orphan",
+    )
+    material_log_entries: Mapped[list["MaterialLogEntry"]] = relationship(
+        "MaterialLogEntry",
+        back_populates="recipient_player",
         cascade="all, delete-orphan",
     )
 

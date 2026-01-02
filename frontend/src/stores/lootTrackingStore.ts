@@ -11,6 +11,9 @@ import type {
   LootLogEntry,
   LootLogEntryCreate,
   LootLogEntryUpdate,
+  MaterialLogEntry,
+  MaterialLogEntryCreate,
+  MaterialBalance,
   PageLedgerEntry,
   PageLedgerEntryCreate,
   PageBalance,
@@ -23,6 +26,8 @@ interface LootTrackingState {
   pageLedger: PageLedgerEntry[];
   pageBalances: PageBalance[];
   playerLedger: PageLedgerEntry[]; // Ledger entries for a specific player (for modal)
+  materialLog: MaterialLogEntry[];
+  materialBalances: MaterialBalance[];
   currentWeek: number;
   maxWeek: number; // max(currentWeek, maxLoggedWeek) for week selector
   isLoading: boolean;
@@ -34,10 +39,14 @@ interface LootTrackingState {
   fetchPageLedger: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchPageBalances: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchPlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
+  fetchMaterialLog: (groupId: string, tierId: string, week?: number) => Promise<void>;
+  fetchMaterialBalances: (groupId: string, tierId: string) => Promise<void>;
   fetchCurrentWeek: (groupId: string, tierId: string) => Promise<void>;
   createLootEntry: (groupId: string, tierId: string, data: LootLogEntryCreate) => Promise<void>;
   updateLootEntry: (groupId: string, tierId: string, entryId: number, data: LootLogEntryUpdate) => Promise<void>;
   deleteLootEntry: (groupId: string, tierId: string, entryId: number) => Promise<void>;
+  createMaterialEntry: (groupId: string, tierId: string, data: MaterialLogEntryCreate) => Promise<void>;
+  deleteMaterialEntry: (groupId: string, tierId: string, entryId: number) => Promise<void>;
   createPageEntry: (groupId: string, tierId: string, data: PageLedgerEntryCreate) => Promise<void>;
   markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
@@ -51,6 +60,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   pageLedger: [],
   pageBalances: [],
   playerLedger: [],
+  materialLog: [],
+  materialBalances: [],
   currentWeek: 1,
   maxWeek: 1,
   isLoading: false,
@@ -123,6 +134,33 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     }
   },
 
+  fetchMaterialLog: async (groupId, tierId, week) => {
+    set({ isLoading: true, error: null });
+    try {
+      const params = week ? `?week=${week}` : '';
+      const response = await api.get<MaterialLogEntry[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/material-log${params}`
+      );
+      set({ materialLog: response, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  fetchMaterialBalances: async (groupId, tierId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.get<MaterialBalance[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/material-balances`
+      );
+      set({ materialBalances: response, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
   fetchCurrentWeek: async (groupId, tierId) => {
     try {
       const response = await api.get<{ currentWeek: number; maxWeek: number }>(
@@ -178,6 +216,46 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       // Refresh loot log and weeks with entries (week may now be empty)
       await Promise.all([
         get().fetchLootLog(groupId, tierId),
+        get().fetchWeeksWithEntries(groupId, tierId),
+      ]);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  createMaterialEntry: async (groupId, tierId, data) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/material-log`, data);
+      // Update maxWeek if the new entry's week is higher
+      const { maxWeek, weeksWithEntries } = get();
+      if (data.weekNumber > maxWeek) {
+        set({ maxWeek: data.weekNumber });
+      }
+      // Add week to weeksWithEntries
+      const newWeeks = new Set(weeksWithEntries);
+      newWeeks.add(data.weekNumber);
+      set({ weeksWithEntries: newWeeks });
+      // Refresh material log and balances
+      await Promise.all([
+        get().fetchMaterialLog(groupId, tierId),
+        get().fetchMaterialBalances(groupId, tierId),
+      ]);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  deleteMaterialEntry: async (groupId, tierId, entryId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/material-log/${entryId}`);
+      // Refresh material log, balances, and weeks with entries (week may now be empty)
+      await Promise.all([
+        get().fetchMaterialLog(groupId, tierId),
+        get().fetchMaterialBalances(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
     } catch (error: any) {
@@ -273,6 +351,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       pageLedger: [],
       pageBalances: [],
       playerLedger: [],
+      materialLog: [],
+      materialBalances: [],
       currentWeek: 1,
       maxWeek: 1,
       isLoading: false,
