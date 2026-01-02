@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** Phase 1-6.5 Complete | **Current:** Parity Phases 1-4 Complete | **Next:** Parity Phase 5 (Testing), Phase 7 (Lodestone sync)
+**Status:** Phase 1-6.5 + Parity Complete | **Next:** Phase 7 (Lodestone sync)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -111,9 +111,13 @@ interface SnapshotPlayer {
 }
 ```
 
-### Remaining (Phase 5)
-- Add currentSource dropdown to GearTable (optional)
-- Unit tests for calculation functions
+### Tests (Phase 5 Complete)
+- `pnpm test` runs 24 unit tests for calculations and priority functions
+- Tests verify: iLv calculation, currentSource inference, loot adjustments
+
+### Optional Future Enhancements
+- Add currentSource dropdown to GearTable (manual override per slot)
+- Add UI for editing lootAdjustment and pageAdjustments per player
 
 ---
 
