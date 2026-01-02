@@ -26,7 +26,14 @@ export function HistoryView({
   floors,
   userRole,
 }: HistoryViewProps) {
-  const { currentWeek, maxWeek, weeksWithEntries, fetchCurrentWeek, fetchWeeksWithEntries } = useLootTrackingStore();
+  const {
+    currentWeek,
+    maxWeek,
+    weeksWithEntries,
+    weekDataTypes,
+    fetchCurrentWeek,
+    fetchWeekDataTypes,
+  } = useLootTrackingStore();
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -51,11 +58,11 @@ export function HistoryView({
     }
   }, [weekStorageKey]);
 
-  // Fetch current week and weeks with entries on mount
+  // Fetch current week and week data types on mount
   useEffect(() => {
     fetchCurrentWeek(groupId, tierId);
-    fetchWeeksWithEntries(groupId, tierId);
-  }, [groupId, tierId, fetchCurrentWeek, fetchWeeksWithEntries]);
+    fetchWeekDataTypes(groupId, tierId);
+  }, [groupId, tierId, fetchCurrentWeek, fetchWeekDataTypes]);
 
   // Sync selected week with store's current week only on first load (when no saved value)
   useEffect(() => {
@@ -83,8 +90,10 @@ export function HistoryView({
         <WeekSelector
           currentWeek={selectedWeek}
           maxWeek={maxWeek}
+          calculatedCurrentWeek={currentWeek}
           onWeekChange={handleWeekChange}
           weeksWithEntries={weeksWithEntries}
+          weekDataTypes={weekDataTypes}
         />
       </div>
 

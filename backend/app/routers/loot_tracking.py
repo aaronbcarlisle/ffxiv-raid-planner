@@ -720,6 +720,62 @@ async def get_weeks_with_entries(
     return {"weeks": all_weeks}
 
 
+@router.get("/{group_id}/tiers/{tier_id}/weeks-data-types")
+async def get_weeks_data_types(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get weeks with their entry types (loot/books/mats)"""
+    # Check permissions (supports anonymous access for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get distinct weeks from each source
+    loot_weeks_result = await db.execute(
+        select(LootLogEntry.week_number)
+        .where(LootLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    loot_weeks = {row[0] for row in loot_weeks_result.all()}
+
+    ledger_weeks_result = await db.execute(
+        select(PageLedgerEntry.week_number)
+        .where(PageLedgerEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    ledger_weeks = {row[0] for row in ledger_weeks_result.all()}
+
+    material_weeks_result = await db.execute(
+        select(MaterialLogEntry.week_number)
+        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
+        .distinct()
+    )
+    material_weeks = {row[0] for row in material_weeks_result.all()}
+
+    # Build week info list
+    all_weeks = sorted(loot_weeks | ledger_weeks | material_weeks)
+    weeks_data = []
+    for week in all_weeks:
+        types = []
+        if week in loot_weeks:
+            types.append("loot")
+        if week in ledger_weeks:
+            types.append("books")
+        if week in material_weeks:
+            types.append("mats")
+        weeks_data.append({
+            "week": week,
+            "types": types,
+        })
+
+    return {"weeks": weeks_data}
+
+
 # Material Log Endpoints
 
 

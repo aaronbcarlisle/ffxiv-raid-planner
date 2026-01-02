@@ -20,9 +20,19 @@ import type {
   MarkFloorClearedRequest,
 } from '../types';
 
+/** Types of entries that can exist in a week */
+export type WeekEntryType = 'loot' | 'books' | 'mats';
+
+/** Week data with entry types */
+export interface WeekDataInfo {
+  week: number;
+  types: WeekEntryType[];
+}
+
 interface LootTrackingState {
   lootLog: LootLogEntry[];
   weeksWithEntries: Set<number>; // Tracks which weeks have loot OR ledger entries (for week selector)
+  weekDataTypes: Map<number, WeekEntryType[]>; // Week -> entry types for enhanced display
   pageLedger: PageLedgerEntry[];
   pageBalances: PageBalance[];
   playerLedger: PageLedgerEntry[]; // Ledger entries for a specific player (for modal)
@@ -36,6 +46,7 @@ interface LootTrackingState {
   // Actions
   fetchLootLog: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchWeeksWithEntries: (groupId: string, tierId: string) => Promise<void>;
+  fetchWeekDataTypes: (groupId: string, tierId: string) => Promise<void>;
   fetchPageLedger: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchPageBalances: (groupId: string, tierId: string, week?: number) => Promise<void>;
   fetchPlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
@@ -57,6 +68,7 @@ interface LootTrackingState {
 export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   lootLog: [],
   weeksWithEntries: new Set<number>(),
+  weekDataTypes: new Map<number, WeekEntryType[]>(),
   pageLedger: [],
   pageBalances: [],
   playerLedger: [],
@@ -90,6 +102,26 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       set({ weeksWithEntries: new Set(response.weeks) });
     } catch {
       // Silently fail - week selector will just not show empty indicators
+    }
+  },
+
+  fetchWeekDataTypes: async (groupId, tierId) => {
+    // Fetch weeks with their entry types (loot/books/mats) for enhanced week selector
+    try {
+      const response = await api.get<{ weeks: WeekDataInfo[] }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/weeks-data-types`
+      );
+      const dataTypesMap = new Map<number, WeekEntryType[]>();
+      for (const weekInfo of response.weeks) {
+        dataTypesMap.set(weekInfo.week, weekInfo.types as WeekEntryType[]);
+      }
+      // Also update weeksWithEntries from this data
+      set({
+        weekDataTypes: dataTypesMap,
+        weeksWithEntries: new Set(response.weeks.map((w) => w.week)),
+      });
+    } catch {
+      // Silently fail - week selector will fall back to basic display
     }
   },
 
@@ -348,6 +380,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({
       lootLog: [],
       weeksWithEntries: new Set<number>(),
+      weekDataTypes: new Map<number, WeekEntryType[]>(),
       pageLedger: [],
       pageBalances: [],
       playerLedger: [],
