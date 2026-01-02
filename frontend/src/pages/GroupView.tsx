@@ -20,12 +20,12 @@ import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { FloorSelector, LootPriorityPanel } from '../components/loot';
-import { TeamSummary } from '../components/team/TeamSummary';
+import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { calculateTeamSummary, sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
+import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
@@ -411,11 +411,6 @@ export function GroupView() {
     return sortedPlayers.filter(p => p.configured);
   }, [sortedPlayers]);
 
-  const teamSummary = useMemo(() => {
-    if (configuredPlayers.length === 0) return null;
-    return calculateTeamSummary(configuredPlayers);
-  }, [configuredPlayers]);
-
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
   const userRole = currentGroup?.userRole;
@@ -741,9 +736,14 @@ export function GroupView() {
             />
           )}
 
-          {/* Stats Tab */}
-          {pageMode === 'stats' && teamSummary && tierInfo && (
-            <TeamSummary summary={teamSummary} tierInfo={tierInfo} />
+          {/* Summary Tab */}
+          {pageMode === 'stats' && tierInfo && currentTier?.players && (
+            <TeamSummaryEnhanced
+              groupId={currentGroup!.id}
+              tierId={currentTier.tierId}
+              players={currentTier.players}
+              tierInfo={tierInfo}
+            />
           )}
 
           {/* History Tab */}

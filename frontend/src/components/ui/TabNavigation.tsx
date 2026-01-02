@@ -17,7 +17,7 @@ const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
 const TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Loot' },
-  { id: 'stats', label: 'Progress' },
+  { id: 'stats', label: 'Summary' },
   { id: 'history', label: 'Log' },
 ];
 
