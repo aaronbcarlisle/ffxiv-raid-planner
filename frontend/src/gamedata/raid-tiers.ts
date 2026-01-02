@@ -233,7 +233,7 @@ export function getItemLevelForCategory(
   const iLvMap: Record<import('../types').GearSourceCategory, number> = {
     savage: isWeapon ? savageWeapon : savage,        // Raid drops
     tome_up: tomeAugmented,                           // Augmented tomestone (same iLv as savage armor)
-    catchup: tome + weaponBonus,                      // Alliance/catch-up (same as unaugmented tome)
+    catchup: tome,                                    // Alliance/catch-up (same iLv as unaugmented tome)
     tome: tome + weaponBonus,                         // Unaugmented tomestone
     relic: crafted + 5 + weaponBonus,                 // Relic is usually +5 above crafted
     crafted: crafted + weaponBonus,                   // Crafted pentamelded

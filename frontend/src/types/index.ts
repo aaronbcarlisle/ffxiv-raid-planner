@@ -28,8 +28,8 @@ export type GearSource = 'raid' | 'tome';
 // Current gear source category (9 options for tracking actual equipped gear)
 export type GearSourceCategory =
   | 'savage'   // iLv 790/795 - Raid drop gear
-  | 'tome_up'  // iLv 790 - Augmented tomestone
-  | 'catchup'  // iLv 780/785 - Catch-up gear (alliance raid)
+  | 'tome_up'  // iLv 790 (armor & weapon) - Augmented tomestone
+  | 'catchup'  // iLv 780 - Catch-up gear (alliance raid)
   | 'tome'     // iLv 780 - Unaugmented tomestone
   | 'relic'    // iLv 770/775 - Relic weapon
   | 'crafted'  // iLv 770 - Crafted pentamelded
