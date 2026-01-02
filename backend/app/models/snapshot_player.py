@@ -60,6 +60,12 @@ class SnapshotPlayer(Base):
     gear: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     tome_weapon: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
+    # Adjustment fields for mid-tier roster changes
+    loot_adjustment: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    page_adjustments: Mapped[dict] = mapped_column(
+        JSON, nullable=False, default=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
+    )
+
     # Weapon priority tracking
     weapon_priorities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     # Format: [{"job": "DRG", "weaponName": null, "received": false, "receivedDate": null}, ...]

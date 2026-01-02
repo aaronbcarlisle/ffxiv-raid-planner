@@ -20,6 +20,20 @@ class CamelModel(BaseModel):
     )
 
 
+# --- Gear Source Categories ---
+
+GearSourceCategory = Literal[
+    "savage",    # iLv 790/795 - Raid drop gear
+    "tome_up",   # iLv 790 - Augmented tomestone
+    "catchup",   # iLv 780/785 - Catch-up gear (alliance raid)
+    "tome",      # iLv 780 - Unaugmented tomestone
+    "relic",     # iLv 770/775 - Relic weapon
+    "crafted",   # iLv 770 - Crafted pentamelded
+    "prep",      # iLv 770/775 - Previous tier BiS
+    "normal",    # iLv 760/765 - Normal raid
+    "unknown",   # Unset state
+]
+
 # --- Gear Status Schemas (reused from player) ---
 
 
@@ -28,6 +42,7 @@ class GearSlotStatus(CamelModel):
 
     slot: str
     bis_source: Literal["raid", "tome"] = "raid"
+    current_source: GearSourceCategory = "unknown"  # What's actually equipped
     has_item: bool = False
     is_augmented: bool = False
     item_name: str | None = None
@@ -99,6 +114,10 @@ class SnapshotPlayerCreate(CamelModel):
     fflogs_id: int | None = None
     gear: list[GearSlotStatus] | None = None
     tome_weapon: TomeWeaponStatus | None = None
+    loot_adjustment: int = 0
+    page_adjustments: dict[str, int] = Field(
+        default_factory=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
+    )
 
 
 class SnapshotPlayerUpdate(CamelModel):
@@ -120,6 +139,8 @@ class SnapshotPlayerUpdate(CamelModel):
     fflogs_id: int | None = None
     gear: list[GearSlotStatus] | None = None
     tome_weapon: TomeWeaponStatus | None = None
+    loot_adjustment: int | None = None
+    page_adjustments: dict[str, int] | None = None
 
 
 class SnapshotPlayerResponse(CamelModel):
@@ -149,6 +170,10 @@ class SnapshotPlayerResponse(CamelModel):
     weapon_priorities_locked: bool = False
     weapon_priorities_locked_by: str | None = None
     weapon_priorities_locked_at: str | None = None
+    loot_adjustment: int = 0
+    page_adjustments: dict[str, int] = Field(
+        default_factory=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
+    )
     created_at: str
     updated_at: str
 

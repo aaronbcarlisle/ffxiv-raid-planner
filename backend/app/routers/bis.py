@@ -195,8 +195,21 @@ def extract_item_stats(fields: dict) -> dict[str, int]:
     return stats
 
 
-async def fetch_item_from_xivapi(item_id: int) -> dict:
-    """Fetch item details from XIVAPI beta with caching."""
+def build_icon_url_from_id(icon_id: int | str) -> str | None:
+    """Build XIVAPI icon URL from icon ID (e.g., 31676 -> /i/031000/031676.png)."""
+    if not icon_id:
+        return None
+    try:
+        icon_num = int(str(icon_id).lstrip("t/"))
+        # Calculate folder (floor to nearest 1000)
+        folder = (icon_num // 1000) * 1000
+        return f"https://xivapi.com/i/{folder:06d}/{icon_num:06d}.png"
+    except (ValueError, TypeError):
+        return None
+
+
+async def fetch_item_from_garland(item_id: int) -> dict:
+    """Fetch item details from Garland Tools API with caching."""
     cache_key = str(item_id)
 
     # Check cache first
@@ -206,38 +219,46 @@ async def fetch_item_from_xivapi(item_id: int) -> dict:
 
     async with httpx.AsyncClient() as client:
         try:
-            # Use XIVAPI beta which has current patch data
+            # Use Garland Tools API which has current patch data
             response = await client.get(
-                f"https://beta.xivapi.com/api/1/sheet/Item/{item_id}",
+                f"https://www.garlandtools.org/db/doc/item/en/3/{item_id}.json",
                 timeout=10.0
             )
             if response.status_code == 200:
                 data = response.json()
-                fields = data.get("fields", {})
+                item = data.get("item", {})
 
                 # Extract item level
-                level_item = fields.get("LevelItem", {})
-                level = level_item.get("value", 0) if isinstance(level_item, dict) else 0
+                level = item.get("ilvl", 0)
 
-                # Extract icon URL
-                icon_data = fields.get("Icon", {})
-                icon_url = build_icon_url(icon_data)
+                # Extract icon URL from icon path (e.g., "t/31676")
+                icon_path = item.get("icon", "")
+                icon_url = build_icon_url_from_id(icon_path)
 
-                # Extract base stats
-                stats = extract_item_stats(fields)
+                # Extract base stats from attr dict
+                attr = item.get("attr", {})
+                stats = {}
+                relevant_stats = {
+                    "Strength", "Dexterity", "Vitality", "Intelligence", "Mind",
+                    "Critical Hit", "Determination", "Direct Hit Rate",
+                    "Skill Speed", "Spell Speed", "Tenacity", "Piety"
+                }
+                for stat_name, value in attr.items():
+                    if stat_name in relevant_stats and isinstance(value, (int, float)) and value > 0:
+                        stats[stat_name] = int(value)
 
                 result = {
                     "id": item_id,
-                    "name": fields.get("Name", "Unknown"),
+                    "name": item.get("name", "Unknown"),
                     "level": level,
                     "icon": icon_url,
                     "stats": stats,
                 }
                 await xivapi_item_cache.set(cache_key, result)
-                logger.debug("xivapi_item_cached", item_id=item_id, name=result["name"])
+                logger.debug("garland_item_cached", item_id=item_id, name=result["name"])
                 return result
         except Exception as e:
-            logger.warning("xivapi_fetch_error", item_id=item_id, error=str(e))
+            logger.warning("garland_fetch_error", item_id=item_id, error=str(e))
 
     return {"id": item_id, "name": "Unknown", "level": 0, "icon": None, "stats": {}}
 
@@ -553,7 +574,7 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
         if item_data and "id" in item_data:
             item_id = item_data["id"]
             # Fetch item details from XIVAPI
-            item_info = await fetch_item_from_xivapi(item_id)
+            item_info = await fetch_item_from_garland(item_id)
 
             source = determine_source(item_info["name"], item_info["level"], our_slot)
 
@@ -609,7 +630,7 @@ async def fetch_etro_bis(request: Request, uuid_or_url: str):
 
         if item_id:
             # Fetch item details from XIVAPI
-            item_info = await fetch_item_from_xivapi(item_id)
+            item_info = await fetch_item_from_garland(item_id)
 
             source = determine_source(item_info["name"], item_info["level"], our_slot)
 

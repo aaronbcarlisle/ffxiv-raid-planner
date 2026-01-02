@@ -18,16 +18,26 @@ export interface PriorityEntry {
 }
 
 /**
+ * Options for priority score calculation
+ */
+export interface PriorityScoreOptions {
+  /** Include lootAdjustment in score (for mid-tier roster changes) */
+  includeLootAdjustment?: boolean;
+}
+
+/**
  * Calculate overall priority score for a player
  * Higher score = higher priority for loot
  *
  * Formula:
  * - Role priority: (5 - roleIndex) * 25 (melee=125, ranged=100, caster=75, tank=50, healer=25)
  * - Weighted need: sum of slot weights for incomplete slots * 10
+ * - Loot adjustment: -15 per adjustment point (positive adjustment = lower priority)
  */
 export function calculatePriorityScore(
   player: SnapshotPlayer,
-  settings: StaticSettings
+  settings: StaticSettings,
+  options?: PriorityScoreOptions
 ): number {
   const roleIndex = settings.lootPriority.indexOf(player.role);
   const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
@@ -36,7 +46,16 @@ export function calculatePriorityScore(
     .filter((g) => !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
-  return Math.round(rolePriority + weightedNeed * 10);
+  let score = Math.round(rolePriority + weightedNeed * 10);
+
+  // Apply loot adjustment for mid-tier roster changes
+  // Positive adjustment = player has received extra loot, lower their priority
+  // Negative adjustment = player missed loot, increase their priority
+  if (options?.includeLootAdjustment && player.lootAdjustment) {
+    score -= player.lootAdjustment * 15;
+  }
+
+  return score;
 }
 
 /**

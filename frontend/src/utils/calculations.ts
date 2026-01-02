@@ -220,3 +220,101 @@ export function swapPositionGroup(position: string): string {
   const newNum = currentNum === '1' ? '2' : '1';
   return `${role}${newNum}`;
 }
+
+// ==================== iLv Calculation Functions ====================
+
+import type { GearSourceCategory } from '../types';
+import { getItemLevelForCategory } from '../gamedata/raid-tiers';
+
+/**
+ * Infer currentSource from existing gear state for backward compatibility.
+ * Used when currentSource is missing (null/undefined) from existing data.
+ */
+export function inferCurrentSource(status: GearSlotStatus): GearSourceCategory {
+  // If player has the BiS item, infer source from bisSource
+  if (status.hasItem) {
+    if (status.bisSource === 'raid') {
+      return 'savage';
+    }
+    // Tome BiS: augmented or not
+    return status.isAugmented ? 'tome_up' : 'tome';
+  }
+  // No item yet - default to crafted (reasonable tier-start assumption)
+  return 'crafted';
+}
+
+/**
+ * Get the effective currentSource for a gear slot, inferring if missing.
+ */
+export function getEffectiveCurrentSource(status: GearSlotStatus): GearSourceCategory {
+  return status.currentSource ?? inferCurrentSource(status);
+}
+
+/**
+ * Calculate average item level for a player based on their gear.
+ *
+ * Uses itemLevel from BiS import if available, otherwise calculates
+ * from currentSource category and tier iLv mappings.
+ *
+ * @param gear - Player's gear array
+ * @param tierId - Current tier ID for iLv lookups
+ * @returns Average iLv rounded to nearest integer, or 0 if no gear
+ */
+export function calculateAverageItemLevel(
+  gear: GearSlotStatus[],
+  tierId: string
+): number {
+  if (gear.length === 0) return 0;
+
+  let totalILv = 0;
+  let validSlots = 0;
+
+  for (const slot of gear) {
+    // Only use itemLevel from BiS import if player actually has the item
+    // (itemLevel is set for BiS target, not current gear)
+    if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
+      totalILv += slot.itemLevel;
+      validSlots++;
+      continue;
+    }
+
+    // Calculate from currentSource for unacquired gear or when itemLevel unavailable
+    const currentSource = getEffectiveCurrentSource(slot);
+    if (currentSource === 'unknown') {
+      // Skip unknown slots in average calculation
+      continue;
+    }
+
+    const isWeapon = slot.slot === 'weapon';
+    const iLv = getItemLevelForCategory(tierId, currentSource, isWeapon);
+    if (iLv > 0) {
+      totalILv += iLv;
+      validSlots++;
+    }
+  }
+
+  return validSlots > 0 ? Math.round(totalILv / validSlots) : 0;
+}
+
+/**
+ * Calculate team average item level.
+ *
+ * @param players - Array of players
+ * @param tierId - Current tier ID for iLv lookups
+ * @returns Average iLv across all players, or 0 if no players
+ */
+export function calculateTeamAverageItemLevel(
+  players: SnapshotPlayer[],
+  tierId: string
+): number {
+  if (players.length === 0) return 0;
+
+  const playerILvs = players
+    .map((p) => calculateAverageItemLevel(p.gear, tierId))
+    .filter((iLv) => iLv > 0);
+
+  if (playerILvs.length === 0) return 0;
+
+  const total = playerILvs.reduce((sum, iLv) => sum + iLv, 0);
+  return Math.round(total / playerILvs.length);
+}
