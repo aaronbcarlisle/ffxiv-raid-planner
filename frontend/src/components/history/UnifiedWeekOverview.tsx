@@ -5,7 +5,7 @@
  * Replaces the previous two-panel layout (LootLogPanel + PageBalancesPanel).
  */
 
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useWeekSummary, formatBookChange, MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { LogMaterialModal } from './LogMaterialModal';
@@ -48,16 +48,7 @@ const WeekSummaryRow = memo(function WeekSummaryRow({
   onEditBook: (playerId: string, playerName: string, bookType: 'I' | 'II' | 'III' | 'IV', currentValue: number) => void;
   onViewHistory: (playerId: string, playerName: string) => void;
 }) {
-  const { player, lootReceived, materialEntries, materialsReceived, bookChanges, floorsCleared } = summary;
-
-  // Format materials as compact string
-  const materialsText = useMemo(() => {
-    const parts: string[] = [];
-    if (materialsReceived.twine > 0) parts.push(`T:${materialsReceived.twine}`);
-    if (materialsReceived.glaze > 0) parts.push(`G:${materialsReceived.glaze}`);
-    if (materialsReceived.solvent > 0) parts.push(`S:${materialsReceived.solvent}`);
-    return parts.length > 0 ? parts.join(' ') : '-';
-  }, [materialsReceived]);
+  const { player, lootReceived, materialEntries, bookChanges, floorsCleared } = summary;
 
   const bookCellClass = canEdit
     ? 'px-2 py-2 text-center text-sm cursor-pointer hover:bg-accent/10 rounded transition-colors'

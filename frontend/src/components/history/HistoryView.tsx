@@ -2,13 +2,13 @@
  * History View
  *
  * Main container for the History tab (now called "Log" tab).
- * Shows unified week overview with loot, materials, and book changes per player.
+ * Shows sectioned view with Loot, Materials, and Books sections.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { WeekSelector } from './WeekSelector';
-import { UnifiedWeekOverview } from './UnifiedWeekOverview';
+import { SectionedLogView } from './SectionedLogView';
 import type { SnapshotPlayer } from '../../types';
 
 interface HistoryViewProps {
@@ -97,8 +97,8 @@ export function HistoryView({
         />
       </div>
 
-      {/* Unified week overview */}
-      <UnifiedWeekOverview
+      {/* Sectioned log view */}
+      <SectionedLogView
         groupId={groupId}
         tierId={tierId}
         players={players}

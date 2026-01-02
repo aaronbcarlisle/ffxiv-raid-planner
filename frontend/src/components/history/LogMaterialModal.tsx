@@ -9,7 +9,6 @@ import type { SnapshotPlayer, MaterialType, StaticSettings } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import { UPGRADE_MATERIAL_SLOTS } from '../../gamedata/loot-tables';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 
 interface LogMaterialModalProps {
