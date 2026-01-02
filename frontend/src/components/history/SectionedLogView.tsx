@@ -63,6 +63,7 @@ export function SectionedLogView({
     fetchLootLog,
     fetchMaterialLog,
     fetchPageBalances,
+    fetchWeekDataTypes,
     deleteMaterialEntry,
   } = useLootTrackingStore();
 
@@ -117,22 +118,28 @@ export function SectionedLogView({
     });
     onWeekChange?.(entry.weekNumber);
     await fetchLootLog(groupId, tierId, entry.weekNumber);
+    // Refresh week data types to update week selector (may add new weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Loot entry logged');
-  }, [groupId, tierId, onWeekChange, fetchLootLog]);
+  }, [groupId, tierId, onWeekChange, fetchLootLog, fetchWeekDataTypes]);
 
   const handleDeleteLoot = useCallback(async (entry: LootLogEntry) => {
     if (!confirm('Delete this loot entry?')) return;
     await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
     await fetchLootLog(groupId, tierId, currentWeek);
+    // Refresh week data types to update week selector (may remove empty weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Loot entry deleted');
-  }, [groupId, tierId, currentWeek, fetchLootLog]);
+  }, [groupId, tierId, currentWeek, fetchLootLog, fetchWeekDataTypes]);
 
   const handleDeleteMaterial = useCallback(async (entryId: number) => {
     if (!confirm('Delete this material entry?')) return;
     await deleteMaterialEntry(groupId, tierId, entryId);
     await fetchMaterialLog(groupId, tierId, currentWeek);
+    // Refresh week data types to update week selector (may remove empty weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry deleted');
-  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog]);
+  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
 
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
@@ -145,8 +152,10 @@ export function SectionedLogView({
     await createMaterialEntry(groupId, tierId, data);
     onWeekChange?.(data.weekNumber);
     await fetchMaterialLog(groupId, tierId, data.weekNumber);
+    // Refresh week data types to update week selector (may add new weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry logged');
-  }, [groupId, tierId, onWeekChange, fetchMaterialLog]);
+  }, [groupId, tierId, onWeekChange, fetchMaterialLog, fetchWeekDataTypes]);
 
   // Get the week parameter for fetching page balances based on view mode
   const getBalanceWeekParam = useCallback(() => {
@@ -169,8 +178,10 @@ export function SectionedLogView({
       }
     }
     await fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+    // Refresh week data types to update week selector (may remove empty weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success(`Reset books for ${playerName}`);
-  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam]);
+  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
   // Reset a specific book type for all players (column)
   const handleResetColumn = useCallback(async (bookType: 'I' | 'II' | 'III' | 'IV') => {
@@ -184,8 +195,10 @@ export function SectionedLogView({
       }
     }
     await fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+    // Refresh week data types to update week selector (may remove empty weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success(`Reset Book ${bookType} for all players`);
-  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam]);
+  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
   // Reset all books for all players
   const handleResetAll = useCallback(async () => {
@@ -202,8 +215,10 @@ export function SectionedLogView({
       }
     }
     await fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+    // Refresh week data types to update week selector (may remove empty weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Reset all book balances');
-  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam]);
+  }, [groupId, tierId, currentWeek, pageBalances, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
   const getPlayerName = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
@@ -215,8 +230,10 @@ export function SectionedLogView({
     const { markFloorCleared } = useLootTrackingStore.getState();
     await markFloorCleared(groupId, tierId, request);
     await fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+    // Refresh week data types to update week selector (may add new weeks)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Floor marked as cleared');
-  }, [groupId, tierId, fetchPageBalances, getBalanceWeekParam]);
+  }, [groupId, tierId, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
   // Handler for EditBookBalanceModal
   const handleEditBookBalance = useCallback(async (adjustment: number, notes?: string) => {
@@ -232,8 +249,10 @@ export function SectionedLogView({
       notes
     );
     await fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+    // Refresh week data types to update week selector (may affect week indicators)
+    await fetchWeekDataTypes(groupId, tierId);
     toast.success('Book balance updated');
-  }, [groupId, tierId, currentWeek, editBookState, fetchPageBalances, getBalanceWeekParam]);
+  }, [groupId, tierId, currentWeek, editBookState, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
   // Combine loot and material entries, sorted by creation time (newest first)
   const combinedEntries = useMemo(() => {
