@@ -25,6 +25,44 @@ export type GearSlot =
 // Where the BiS gear comes from
 export type GearSource = 'raid' | 'tome';
 
+// Current gear source category (9 options for tracking actual equipped gear)
+export type GearSourceCategory =
+  | 'savage'   // iLv 790/795 - Raid drop gear
+  | 'tome_up'  // iLv 790 - Augmented tomestone
+  | 'catchup'  // iLv 780/785 - Catch-up gear (alliance raid)
+  | 'tome'     // iLv 780 - Unaugmented tomestone
+  | 'relic'    // iLv 770/775 - Relic weapon
+  | 'crafted'  // iLv 770 - Crafted pentamelded
+  | 'prep'     // iLv 770/775 - Previous tier BiS
+  | 'normal'   // iLv 760/765 - Normal raid
+  | 'unknown'; // Unset state
+
+// Display names for gear source categories
+export const GEAR_SOURCE_NAMES: Record<GearSourceCategory, string> = {
+  savage: 'Savage',
+  tome_up: 'Aug. Tome',
+  catchup: 'Catch-up',
+  tome: 'Tomestone',
+  relic: 'Relic',
+  crafted: 'Crafted',
+  prep: 'Prev. BiS',
+  normal: 'Normal',
+  unknown: 'Unknown',
+};
+
+// Color classes for gear source categories
+export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
+  savage: 'text-amber-400',     // Gold for raid drops
+  tome_up: 'text-teal-400',     // Teal for augmented tome
+  catchup: 'text-blue-400',     // Blue for catch-up
+  tome: 'text-teal-400/70',     // Dimmer teal for unaugmented tome
+  relic: 'text-yellow-300',     // Yellow for relic
+  crafted: 'text-orange-400',   // Orange for crafted
+  prep: 'text-purple-300',      // Purple for previous tier
+  normal: 'text-gray-400',      // Gray for normal raid
+  unknown: 'text-gray-500',     // Muted for unknown
+};
+
 // Page navigation modes
 export type PageMode = 'players' | 'loot' | 'stats' | 'history';
 
@@ -97,7 +135,8 @@ export interface ItemStats {
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
-  bisSource: GearSource;
+  bisSource: GearSource;         // BiS target (raid or tome)
+  currentSource?: GearSourceCategory; // What's actually equipped (9 categories)
   hasItem: boolean;
   isAugmented: boolean;
   itemName?: string;
@@ -392,8 +431,19 @@ export interface SnapshotPlayer {
   weaponPrioritiesLocked: boolean;
   weaponPrioritiesLockedBy?: string;
   weaponPrioritiesLockedAt?: string;
+  // Adjustment fields for mid-tier roster changes
+  lootAdjustment?: number;
+  pageAdjustments?: { I: number; II: number; III: number; IV: number };
   createdAt: string;
   updatedAt: string;
+}
+
+// Page adjustment type for type-safe floor access
+export interface PageAdjustments {
+  I: number;
+  II: number;
+  III: number;
+  IV: number;
 }
 
 // Rollover request

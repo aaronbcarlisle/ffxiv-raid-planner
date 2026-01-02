@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** Phase 1-6.5 Complete | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** Phase 1-6.5 Complete | **Current:** Parity Phases 1-4 Complete | **Next:** Parity Phase 5 (Testing), Phase 7 (Lodestone sync)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -69,6 +69,51 @@ See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-a
 - **P-001:** N+1 in duplicateGroup (needs bulk API)
 - **P-005:** GroupView.tsx is 811 lines
 - **T-001:** Low test coverage (3 test files)
+
+---
+
+## Parity Implementation (Phases 1-4 Complete)
+
+**Plan:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+**Audit:** `docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md`
+
+### Completed Features
+
+| Feature | Description | Files |
+|---------|-------------|-------|
+| **Gear Categories** | 9-category `currentSource` tracking | `types/index.ts`, `schemas/tier_snapshot.py` |
+| **iLv Tracking** | Average iLv calculated and displayed | `utils/calculations.ts`, `PlayerCardHeader.tsx` |
+| **Adjustments** | `lootAdjustment` + `pageAdjustments` for mid-tier joins | `models/snapshot_player.py`, `priority.ts` |
+
+### Parity Types
+
+```typescript
+// 9 gear source categories for current equipment state
+type GearSourceCategory = 'savage' | 'tome_up' | 'catchup' | 'tome' |
+                          'relic' | 'crafted' | 'prep' | 'normal' | 'unknown';
+
+// GearSlotStatus with currentSource
+interface GearSlotStatus {
+  slot: GearSlot;
+  bisSource: 'raid' | 'tome';         // BiS target
+  currentSource?: GearSourceCategory; // What's actually equipped
+  hasItem: boolean;
+  isAugmented: boolean;
+  itemLevel?: number;                 // Used for iLv calculation
+  // ... rest unchanged
+}
+
+// SnapshotPlayer with adjustments
+interface SnapshotPlayer {
+  // ... existing fields ...
+  lootAdjustment?: number;                              // For mid-tier roster changes
+  pageAdjustments?: { I: number; II: number; III: number; IV: number };
+}
+```
+
+### Remaining (Phase 5)
+- Add currentSource dropdown to GearTable (optional)
+- Unit tests for calculation functions
 
 ---
 
@@ -170,9 +215,11 @@ interface SnapshotPlayer {
 
 interface GearSlotStatus {
   slot: GearSlot;
-  bisSource: 'raid' | 'tome';
+  bisSource: 'raid' | 'tome';       // BiS target
+  currentSource: GearSourceCategory; // Actual equipped gear (9 options)
   hasItem: boolean;
   isAugmented: boolean;
+  itemLevel?: number;               // For iLv calculation
   itemName?: string;
   itemIcon?: string;
 }
@@ -225,6 +272,21 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 ### Loot Coordination
 `lootCoordination.ts` syncs loot log entries with gear checkboxes and weapon priorities.
 
+### Current vs BiS Gear
+- `bisSource` = BiS target (raid or tome) - what you're working toward
+- `currentSource` = what you actually have equipped (9 categories)
+- Average iLv calculated from `currentSource` when `itemLevel` not available
+
+### iLv Calculation
+- Uses `itemLevel` from BiS import if available
+- Falls back to `getItemLevelForCategory()` using `currentSource` and tier config
+- Displayed next to completion count in PlayerCard header
+
+### Mid-Tier Roster Changes
+- `lootAdjustment` - positive = extra drops counted, negative = drops to ignore
+- `pageAdjustments` - per-floor book adjustments for players joining mid-tier
+- Both affect priority calculations for fairness
+
 ---
 
 ## Styling
@@ -269,5 +331,9 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 
 - **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, roadmap
 - **[2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md)** - Codebase audit
+- **[2026-01-02-ffxiv-raid-planner-parity-audit.md](./docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md)** - Spreadsheet parity audit
 - **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data (floor drops, tome costs)
 - **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - Gearing mechanics and formulas
+
+### Implementation Plans
+- **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`

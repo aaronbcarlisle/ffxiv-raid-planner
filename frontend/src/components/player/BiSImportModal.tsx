@@ -216,17 +216,38 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       const sourceChanged = currentSlot.bisSource !== importedSlot.source;
       const shouldResetProgress = resetHaveStatus && sourceChanged;
 
+      // Determine effective hasItem and isAugmented after import
+      const effectiveHasItem = shouldResetProgress ? false : currentSlot.hasItem;
+      const effectiveIsAugmented = shouldResetProgress ? false : currentSlot.isAugmented;
+
+      // Infer currentSource based on new state
+      // If player has the BiS item, infer from the new bisSource
+      // Otherwise default to 'crafted' (reasonable tier-start assumption)
+      let currentSource = currentSlot.currentSource;
+      if (!currentSource || shouldResetProgress) {
+        if (effectiveHasItem) {
+          if (importedSlot.source === 'raid') {
+            currentSource = 'savage';
+          } else {
+            currentSource = effectiveIsAugmented ? 'tome_up' : 'tome';
+          }
+        } else {
+          currentSource = 'crafted';
+        }
+      }
+
       return {
         ...currentSlot,
         bisSource: importedSlot.source,
+        currentSource,
         // Include item metadata from import
         itemName: importedSlot.itemName,
         itemLevel: importedSlot.itemLevel,
         itemIcon: importedSlot.itemIcon,
         itemStats: importedSlot.itemStats,
         // Reset progress if checkbox is checked and source changed
-        hasItem: shouldResetProgress ? false : currentSlot.hasItem,
-        isAugmented: shouldResetProgress ? false : currentSlot.isAugmented,
+        hasItem: effectiveHasItem,
+        isAugmented: effectiveIsAugmented,
       };
     });
 

@@ -15,6 +15,7 @@ import {
 } from '../../gamedata';
 import type { RaidPosition, SnapshotPlayer } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { calculateAverageItemLevel } from '../../utils/calculations';
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -24,6 +25,7 @@ interface PlayerCardHeaderProps {
   completedSlots: number;
   totalSlots: number;
   player: SnapshotPlayer;
+  tierId: string;
   userRole?: MemberRole | null;
   currentUserId?: string;
   onJobChange: (job: string) => void;
@@ -40,6 +42,7 @@ export function PlayerCardHeader({
   completedSlots,
   totalSlots,
   player,
+  tierId,
   userRole,
   currentUserId,
   onJobChange,
@@ -47,6 +50,8 @@ export function PlayerCardHeader({
   onPositionChange,
   onMenuClick,
 }: PlayerCardHeaderProps) {
+  // Calculate average iLv for display
+  const averageILv = calculateAverageItemLevel(player.gear, tierId);
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(name);
@@ -226,10 +231,22 @@ export function PlayerCardHeader({
         </div>
       </div>
 
-      {/* Completion count + menu button */}
+      {/* Completion count, iLv, + menu button */}
       <div className="flex items-center gap-2">
-        <div className="text-lg font-bold text-text-primary">
-          {completedSlots}/{totalSlots}
+        <div className="flex items-center gap-3">
+          {/* Completion count */}
+          <div className="text-lg font-bold text-text-primary">
+            {completedSlots}/{totalSlots}
+          </div>
+          {/* Average iLv */}
+          {averageILv > 0 && (
+            <div
+              className="text-sm text-text-muted"
+              title="Average Item Level"
+            >
+              i{averageILv}
+            </div>
+          )}
         </div>
         {onMenuClick && (
           <button

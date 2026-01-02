@@ -479,6 +479,7 @@ export const PlayerCard = memo(function PlayerCard({
           completedSlots={completedSlots}
           totalSlots={totalSlots}
           player={player}
+          tierId={tierId}
           userRole={userRole}
           currentUserId={currentUserId}
           onJobChange={handleJobChange}

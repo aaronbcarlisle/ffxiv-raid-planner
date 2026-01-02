@@ -209,3 +209,38 @@ export function getTierById(id: string): RaidTier | undefined {
 export function getTierOptions(): Array<{ id: string; name: string }> {
   return RAID_TIERS.map((t) => ({ id: t.id, name: t.name }));
 }
+
+/**
+ * Get item level for a gear source category
+ *
+ * Maps the 9 gear source categories to their iLv for a specific tier.
+ * Used for calculating average iLv when itemLevel is not available from BiS import.
+ */
+export function getItemLevelForCategory(
+  tierId: string,
+  category: import('../types').GearSourceCategory,
+  isWeapon: boolean = false
+): number {
+  const tier = getTierById(tierId);
+  if (!tier) return 0;
+
+  // Base iLv by category (using tier's item level definitions)
+  const { savage, savageWeapon, tome, tomeAugmented, crafted, minimum } = tier.itemLevels;
+
+  // Weapon bonus is typically +5 iLv for non-savage gear
+  const weaponBonus = isWeapon ? 5 : 0;
+
+  const iLvMap: Record<import('../types').GearSourceCategory, number> = {
+    savage: isWeapon ? savageWeapon : savage,        // Raid drops
+    tome_up: tomeAugmented + weaponBonus,            // Augmented tomestone
+    catchup: tome + weaponBonus,                      // Alliance/catch-up (same as unaugmented tome)
+    tome: tome + weaponBonus,                         // Unaugmented tomestone
+    relic: crafted + 5 + weaponBonus,                 // Relic is usually +5 above crafted
+    crafted: crafted + weaponBonus,                   // Crafted pentamelded
+    prep: crafted + weaponBonus,                      // Previous BiS (treated as crafted tier)
+    normal: minimum + 5 + weaponBonus,               // Normal raid is ~5 above minimum
+    unknown: 0,                                       // Unknown - can't calculate
+  };
+
+  return iLvMap[category];
+}

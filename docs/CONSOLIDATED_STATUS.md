@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 1, 2026 (Phase 6.5 Complete)
+**Last Updated:** January 2, 2026 (Parity Implementation In Progress)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 This document consolidates:
@@ -43,6 +43,18 @@ This document consolidates:
 | **Enhanced Priority Display** | 6.5 | ✅ Complete | Drought bonus, fair share adjustment shown in tooltips |
 | **UI State Persistence** | 6.5 | ✅ Complete | Tab, week, tier selections persist on refresh |
 | **Tier-Specific Share Links** | 6.5 | ✅ Complete | Shift+click copies URL with tier param |
+
+### 🔨 In Progress: Parity Implementation
+
+**Audit:** `docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md`
+**Plan:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Gear Category Tracking** | 🔨 In Progress | 9 categories for current gear (vs 2 for BiS) |
+| **iLv Calculation** | 🔨 Planned | Per-slot iLv, average iLv display |
+| **Roster Adjustments** | 🔨 Planned | lootAdjustment + pageAdjustments for mid-tier joins |
+| **Alt Job Linking** | ⏳ Future | Multi-job players with shared page pools |
 
 ### 🚧 Partially Complete / Needs Work
 
@@ -276,10 +288,23 @@ This document consolidates:
 4. ~~UI state persistence (tabs, weeks, tiers)~~ ✅
 5. ~~Tier-specific share links~~ ✅
 
-### This Week
-6. Archive old planning/audit files to docs/archive/
-7. Add error boundaries
-8. Set up database migrations (Alembic)
+### ✅ Completed (January 2, 2026)
+6. ~~Parity audit comparing web-app to spreadsheets~~ ✅
+7. ~~Create implementation plan for parity gaps~~ ✅
+
+### 🔨 Current Priority: Parity Implementation
+See plan: `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+
+**Phase 1:** Backend schema changes (GearSourceCategory, adjustments, migration)
+**Phase 2:** Frontend type definitions
+**Phase 3:** Business logic (iLv calculation, priority adjustments)
+**Phase 4:** UI updates (currentSource selector, iLv display, adjustments)
+**Phase 5:** Testing and documentation
+
+### After Parity
+8. Archive old planning/audit files to docs/archive/
+9. Add error boundaries
+10. Set up database migrations (Alembic)
 
 ### This Month
 9. Add basic test suite (vitest + pytest)

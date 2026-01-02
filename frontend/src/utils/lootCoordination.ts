@@ -331,11 +331,19 @@ export function getPrioritySuggestionsForSlot(
 
 /**
  * Calculate loot stats for a player based on loot history
+ *
+ * @param playerId - Player ID to calculate stats for
+ * @param lootLog - Full loot log
+ * @param currentWeek - Current raid week number
+ * @param lootAdjustment - Optional adjustment for mid-tier roster changes
+ *                         Positive = player brought in loot from outside,
+ *                         Negative = player should be credited for missed weeks
  */
 export function calculatePlayerLootStats(
   playerId: string,
   lootLog: LootLogEntry[],
-  currentWeek: number
+  currentWeek: number,
+  lootAdjustment: number = 0
 ): PlayerLootStats {
   // Filter to drops only (not book/tome acquisitions)
   const playerDrops = lootLog.filter(
@@ -354,8 +362,10 @@ export function calculatePlayerLootStats(
   const weeksSinceLastDrop =
     lastDropWeek > 0 ? currentWeek - lastDropWeek : currentWeek;
 
+  // Include loot adjustment in total drops count
+  // This affects priority calculations for mid-tier roster changes
   return {
-    totalDrops: playerDrops.length,
+    totalDrops: playerDrops.length + lootAdjustment,
     dropsThisWeek,
     weeksSinceLastDrop,
   };
