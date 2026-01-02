@@ -676,6 +676,46 @@ async def get_player_page_ledger(
     ]
 
 
+@router.delete(
+    "/{group_id}/tiers/{tier_id}/players/{player_id}/page-ledger",
+    status_code=204,
+)
+async def clear_player_page_ledger(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Clear all page ledger entries for a specific player"""
+    # Check edit permissions (Owner/Lead only)
+    group = await get_static_group(db, group_id)
+    await check_edit_permission(db, group, current_user)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Verify player exists in this tier
+    result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.id == player_id,
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+        )
+    )
+    player = result.scalar_one_or_none()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found in this tier")
+
+    # Delete all ledger entries for this player
+    await db.execute(
+        PageLedgerEntry.__table__.delete().where(
+            PageLedgerEntry.tier_snapshot_id == tier.id,
+            PageLedgerEntry.player_id == player_id,
+        )
+    )
+    await db.commit()
+
+
 @router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")
 async def get_weeks_with_entries(
     group_id: str,

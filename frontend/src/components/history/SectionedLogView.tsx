@@ -573,6 +573,12 @@ export function SectionedLogView({
           tierId={tierId}
           playerId={ledgerState.playerId}
           playerName={ledgerState.playerName}
+          canEdit={canEdit}
+          onHistoryCleared={() => {
+            // Refresh page balances and week data after clearing history
+            fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+            fetchWeekDataTypes(groupId, tierId);
+          }}
         />
       )}
     </div>

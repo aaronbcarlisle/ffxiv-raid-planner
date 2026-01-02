@@ -61,6 +61,7 @@ interface LootTrackingState {
   createPageEntry: (groupId: string, tierId: string, data: PageLedgerEntryCreate) => Promise<void>;
   markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
+  deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   clearLootTracking: () => void;
   clearPlayerLedger: () => void;
 }
@@ -373,6 +374,18 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       }
       // Refresh balances
       await get().fetchPageBalances(groupId, tierId);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  deletePlayerLedger: async (groupId, tierId, playerId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`);
+      // Clear local state
+      set({ playerLedger: [], isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;
