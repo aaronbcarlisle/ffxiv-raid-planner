@@ -20,7 +20,7 @@ import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootC
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import type { FloorNumber } from '../../gamedata/loot-tables';
+import { parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -272,19 +272,12 @@ export function SectionedLogView({
   // Group entries by floor for floor view mode
   type CombinedEntry = (LootLogEntry & { entryType: 'loot' }) | (MaterialLogEntry & { entryType: 'material' });
   const entriesByFloor = useMemo(() => {
-    // Map floor names like "M9S" to floor numbers
-    const floorNameToNumber: Record<string, FloorNumber> = {
-      'M9S': 1, 'M10S': 2, 'M11S': 3, 'M12S': 4,
-      // Also support older tier naming
-      'M5S': 1, 'M6S': 2, 'M7S': 3, 'M8S': 4,
-    };
-
     const grouped = new Map<FloorNumber, CombinedEntry[]>();
     // Initialize all floors
     ([1, 2, 3, 4] as FloorNumber[]).forEach(f => grouped.set(f, []));
 
     combinedEntries.forEach(entry => {
-      const floorNum = floorNameToNumber[entry.floor] || 1;
+      const floorNum = parseFloorName(entry.floor);
       const arr = grouped.get(floorNum) || [];
       arr.push(entry);
       grouped.set(floorNum, arr);
@@ -440,7 +433,8 @@ export function SectionedLogView({
             ([4, 3, 2, 1] as FloorNumber[]).map(floorNum => {
               const floorEntries = entriesByFloor.get(floorNum) || [];
               if (floorEntries.length === 0) return null;
-              const floorName = floors.find(f => f.includes(String(floorNum + 8))) || `Floor ${floorNum}`;
+              // Use the first entry's floor name directly, or fallback to floors prop
+              const floorName = floorEntries[0]?.floor || floors[floorNum - 1] || `Floor ${floorNum}`;
 
               return (
                 <FloorSection

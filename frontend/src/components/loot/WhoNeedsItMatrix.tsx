@@ -12,12 +12,13 @@
 import { useMemo, useState } from 'react';
 import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 
 interface WhoNeedsItMatrixProps {
   players: SnapshotPlayer[];
-  onLogClick?: (slot: GearSlot, player: SnapshotPlayer) => void;
+  floors: string[];  // e.g., ["M9S", "M10S", "M11S", "M12S"]
+  onLogClick?: (slot: GearSlot, player: SnapshotPlayer, floor: string) => void;
   showLogButtons?: boolean;
 }
 
@@ -28,6 +29,7 @@ const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1'
 
 export function WhoNeedsItMatrix({
   players,
+  floors,
   onLogClick,
   showLogButtons = true,
 }: WhoNeedsItMatrixProps) {
@@ -104,7 +106,7 @@ export function WhoNeedsItMatrix({
                 }
               `}
             >
-              {floor === 'all' ? 'All' : `M${floor + 8}S`}
+              {floor === 'all' ? 'All' : floors[floor - 1] || `Floor ${floor}`}
             </button>
           );
         })}
@@ -152,7 +154,15 @@ export function WhoNeedsItMatrix({
                     <td key={player.id} className="text-center py-2 px-2">
                       {needs ? (
                         <button
-                          onClick={() => showLogButtons && onLogClick?.(slot as GearSlot, player)}
+                          onClick={() => {
+                            if (showLogButtons && onLogClick) {
+                              // Get the correct floor for this slot
+                              const slotForFloor = slot === 'ring1' ? 'ring1' : slot as GearSlot;
+                              const floorNum = getFloorForSlot(slotForFloor);
+                              const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
+                              onLogClick(slotForFloor, player, floorName);
+                            }
+                          }}
                           disabled={!showLogButtons}
                           className={`
                             w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all

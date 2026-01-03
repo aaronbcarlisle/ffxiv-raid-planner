@@ -736,6 +736,7 @@ export function GroupView() {
               }}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
+              floors={tierInfo.floors}
               showLogButtons={canEdit}
               groupId={currentGroup?.id}
               tierId={currentTier?.tierId}

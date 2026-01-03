@@ -26,6 +26,7 @@ interface LootPriorityPanelProps {
   settings: StaticSettings;
   selectedFloor: FloorNumber;
   floorName: string; // e.g., "M5S"
+  floors: string[]; // All floor names e.g., ["M9S", "M10S", "M11S", "M12S"]
   // Optional props for inline logging
   showLogButtons?: boolean;
   groupId?: string;
@@ -128,6 +129,7 @@ export function LootPriorityPanel({
   settings,
   selectedFloor,
   floorName,
+  floors,
   showLogButtons = false,
   groupId,
   tierId,
@@ -162,10 +164,12 @@ export function LootPriorityPanel({
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     slot: string;
+    floor: string;
     player: SnapshotPlayer | null;
   }>({
     isOpen: false,
     slot: '',
+    floor: '',
     player: null,
   });
 
@@ -250,18 +254,19 @@ export function LootPriorityPanel({
   // Can show log buttons if we have the required context
   const canShowLogButtons = showLogButtons && groupId && tierId;
 
-  const handleLogClick = (slot: string, player: SnapshotPlayer) => {
+  const handleLogClick = (slot: string, player: SnapshotPlayer, floor?: string) => {
     // For ring, use ring1 as the actual slot
     const actualSlot = slot === 'ring' ? 'ring1' : slot;
     setModalState({
       isOpen: true,
       slot: actualSlot,
+      floor: floor || floorName, // Use provided floor or fallback to current floorName
       player,
     });
   };
 
   const handleModalClose = () => {
-    setModalState({ isOpen: false, slot: '', player: null });
+    setModalState({ isOpen: false, slot: '', floor: '', player: null });
   };
 
   const handleWeaponLogClick = (weaponJob: string, player: SnapshotPlayer) => {
@@ -434,8 +439,9 @@ export function LootPriorityPanel({
       {activeSubTab === 'matrix' && (
         <WhoNeedsItMatrix
           players={players}
+          floors={floors}
           showLogButtons={!!canShowLogButtons}
-          onLogClick={(slot, player) => handleLogClick(slot, player)}
+          onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
         />
       )}
 
@@ -446,7 +452,7 @@ export function LootPriorityPanel({
           onClose={handleModalClose}
           groupId={groupId!}
           tierId={tierId!}
-          floor={floorName}
+          floor={modalState.floor || floorName}
           slot={modalState.slot}
           currentWeek={currentWeek}
           suggestedPlayer={modalState.player}

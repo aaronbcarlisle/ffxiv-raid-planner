@@ -47,7 +47,7 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
     if (count > average + 1) {
       // Above average - blue
       return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
-    } else if (count < average - 1 && count < average) {
+    } else if (count < average - 1) {
       // Below average - yellow
       return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
     }
