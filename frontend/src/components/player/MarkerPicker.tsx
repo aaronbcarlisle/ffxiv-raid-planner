@@ -112,7 +112,7 @@ export function MarkerPicker({ markers, onChange, disabled }: MarkerPickerProps)
             })}
           </div>
 
-          {/* Legend on hover */}
+          {/* Legend / marker descriptions */}
           <div className="mt-2 pt-2 border-t border-border-subtle">
             <div className="text-[10px] text-text-muted space-y-0.5">
               {(Object.keys(PLANNING_MARKERS) as PlanningMarker[]).map(marker => (
