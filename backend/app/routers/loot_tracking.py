@@ -690,7 +690,7 @@ async def clear_player_page_ledger(
     """Clear all page ledger entries for a specific player"""
     # Check edit permissions (Owner/Lead only)
     group = await get_static_group(db, group_id)
-    await check_edit_permission(db, group, current_user)
+    await require_can_edit_roster(db, current_user.id, group.id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)

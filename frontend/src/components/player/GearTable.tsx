@@ -11,10 +11,13 @@
 import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider } from '../primitives';
-import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
+import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer, PlanningMarker } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
+import { GearSourceBadge } from './GearSourceBadge';
+import { MarkerPicker } from './MarkerPicker';
+import { getEffectiveCurrentSource } from '../../utils/calculations';
 
 // Helper function to get upgrade material tooltip based on gear slot
 function getUpgradeMaterialTooltip(slot: GearSlot): string {
@@ -124,6 +127,7 @@ interface WeaponSlotRowProps {
   tomeWeapon: TomeWeaponStatus;
   onGearChange: (updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
+  onMarkersChange: (markers: PlanningMarker[]) => void;
   disabled?: boolean;
   disabledTooltip?: string;
 }
@@ -133,29 +137,44 @@ function WeaponSlotRow({
   tomeWeapon,
   onGearChange,
   onTomeWeaponChange,
+  onMarkersChange,
   disabled = false,
   disabledTooltip,
 }: WeaponSlotRowProps) {
+  const currentSource = getEffectiveCurrentSource(status);
+
   return (
     <>
       {/* Main weapon row */}
       <tr className="border-t border-border-default/50">
+        {/* Slot */}
         <td className="py-1 text-text-secondary">
-          <div className="flex items-center gap-3">
-            <SlotIcon slot="weapon" status={status} size={24} showHover />
-            <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
+          <div className="flex items-center gap-2">
+            <SlotIcon slot="weapon" status={status} size={20} showHover />
+            <span className="font-medium text-xs">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
+        {/* iLv */}
+        <td className="py-1 text-center">
+          <span className="text-[10px] text-text-muted">
+            {status.itemLevel || '—'}
+          </span>
+        </td>
+        {/* Current */}
+        <td className="py-1 text-center">
+          <GearSourceBadge source={currentSource} compact />
+        </td>
+        {/* BiS Source */}
         <td className="py-1 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium ${disabled ? 'opacity-50' : ''}`}>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gear-raid/20 text-gear-raid font-medium ${disabled ? 'opacity-50' : ''}`}>
               Raid
             </span>
             {/* +Tome is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
                 tomeWeapon.pursuing
                   ? 'bg-gear-tome/20 text-gear-tome'
                   : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
@@ -167,6 +186,7 @@ function WeaponSlotRow({
             </button>
           </div>
         </td>
+        {/* Have */}
         <td className="py-1">
           <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
             <Checkbox
@@ -176,10 +196,21 @@ function WeaponSlotRow({
             />
           </div>
         </td>
+        {/* Aug */}
         <td className="py-1">
-          <div className="flex justify-center text-text-muted">
+          <div className="flex justify-center text-text-muted text-xs">
             {/* Show + when tome weapon tracking enabled, otherwise — */}
             {tomeWeapon.pursuing ? '+' : '—'}
+          </div>
+        </td>
+        {/* Plan */}
+        <td className="py-1">
+          <div className="flex justify-center">
+            <MarkerPicker
+              markers={status.markers || []}
+              onChange={onMarkersChange}
+              disabled={disabled}
+            />
           </div>
         </td>
       </tr>
@@ -187,8 +218,9 @@ function WeaponSlotRow({
       {/* Tome weapon sub-row (only shown when pursuing) */}
       {tomeWeapon.pursuing && (
         <tr className="border-t border-border-default/30 bg-surface-elevated/30">
+          {/* Slot (indented) */}
           <td
-            className={`py-1 pl-6 text-sm ${
+            className={`py-1 pl-6 text-xs ${
               tomeWeapon.hasItem
                 ? tomeWeapon.isAugmented
                   ? 'text-text-primary'
@@ -196,11 +228,17 @@ function WeaponSlotRow({
                 : 'text-text-muted'
             }`}
           >
-            └ Tome Weapon
+            └ Tome
           </td>
+          {/* iLv - empty */}
+          <td className="py-1" />
+          {/* Current - empty */}
+          <td className="py-1" />
+          {/* BiS Source */}
           <td className="py-1 text-center">
-            <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
+            <span className={`inline-flex items-center text-[10px] text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
           </td>
+          {/* Have */}
           <td className="py-1">
             <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
               <Checkbox
@@ -217,6 +255,7 @@ function WeaponSlotRow({
               />
             </div>
           </td>
+          {/* Aug */}
           <td className="py-1">
             <div
               className="flex justify-center"
@@ -235,6 +274,8 @@ function WeaponSlotRow({
               />
             </div>
           </td>
+          {/* Plan - empty */}
+          <td className="py-1" />
         </tr>
       )}
     </>
@@ -300,6 +341,14 @@ export function GearTable({
       return;
     }
     onGearChange(slot, { isAugmented });
+  };
+
+  const handleMarkersChange = (slot: string, markers: PlanningMarker[]) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
+    onGearChange(slot, { markers });
   };
 
   const handleTomeWeaponUpdate = (updates: Partial<TomeWeaponStatus>) => {
@@ -381,9 +430,12 @@ export function GearTable({
         <thead>
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
-            <th className="text-center py-1 font-medium w-24">BiS Source</th>
-            <th className="text-center py-1 font-medium w-16">Have</th>
-            <th className="text-center py-1 font-medium w-16">Aug</th>
+            <th className="text-center py-1 font-medium w-10">iLv</th>
+            <th className="text-center py-1 font-medium w-16">Current</th>
+            <th className="text-center py-1 font-medium w-24">BiS</th>
+            <th className="text-center py-1 font-medium w-12">Have</th>
+            <th className="text-center py-1 font-medium w-12">Aug</th>
+            <th className="text-center py-1 font-medium w-10" title="Planning Markers">Plan</th>
           </tr>
         </thead>
         <tbody>
@@ -400,6 +452,7 @@ export function GearTable({
                   tomeWeapon={tomeWeapon}
                   onGearChange={(updates) => onGearChange(slot, updates)}
                   onTomeWeaponChange={handleTomeWeaponUpdate}
+                  onMarkersChange={(markers) => handleMarkersChange(slot, markers)}
                   disabled={!gearPermission.allowed}
                   disabledTooltip={gearPermission.reason}
                 />
@@ -408,19 +461,33 @@ export function GearTable({
 
             const canAugment = status.bisSource === 'tome' && status.hasItem;
 
+            const currentSource = getEffectiveCurrentSource(status);
+
             return (
               <tr key={slot} className="border-t border-border-default/50">
+                {/* Slot name with icon */}
                 <td className="py-1 text-text-secondary">
-                  <div className="flex items-center gap-3">
-                    <SlotIcon slot={slot} status={status} size={24} showHover />
-                    <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
+                  <div className="flex items-center gap-2">
+                    <SlotIcon slot={slot} status={status} size={20} showHover />
+                    <span className="font-medium text-xs">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
                 </td>
+                {/* Item Level */}
+                <td className="py-1 text-center">
+                  <span className="text-[10px] text-text-muted">
+                    {status.itemLevel || '—'}
+                  </span>
+                </td>
+                {/* Current Source Badge */}
+                <td className="py-1 text-center">
+                  <GearSourceBadge source={currentSource} compact />
+                </td>
+                {/* BiS Source buttons */}
                 <td className="py-1 text-center">
                   <div className="flex justify-center gap-1">
                     <button
                       onClick={() => handleSourceChange(slot, 'raid')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
                         status.bisSource === 'raid'
                           ? 'bg-gear-raid/20 text-gear-raid'
                           : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
@@ -432,7 +499,7 @@ export function GearTable({
                     </button>
                     <button
                       onClick={() => handleSourceChange(slot, 'tome')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
                         status.bisSource === 'tome'
                           ? 'bg-gear-tome/20 text-gear-tome'
                           : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
@@ -444,6 +511,7 @@ export function GearTable({
                     </button>
                   </div>
                 </td>
+                {/* Have checkbox */}
                 <td className="py-1">
                   <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : undefined}>
                     <Checkbox
@@ -453,11 +521,10 @@ export function GearTable({
                     />
                   </div>
                 </td>
+                {/* Augmented checkbox */}
                 <td className="py-1">
                   {status.bisSource === 'raid' ? (
-                    <div className="flex justify-center">
-                      {/* Raid gear can't be augmented - empty cell */}
-                    </div>
+                    <div className="flex justify-center text-text-muted text-xs">—</div>
                   ) : (
                     <div
                       className="flex justify-center"
@@ -478,6 +545,16 @@ export function GearTable({
                       />
                     </div>
                   )}
+                </td>
+                {/* Planning Markers */}
+                <td className="py-1">
+                  <div className="flex justify-center">
+                    <MarkerPicker
+                      markers={status.markers || []}
+                      onChange={(markers) => handleMarkersChange(slot, markers)}
+                      disabled={!gearPermission.allowed}
+                    />
+                  </div>
                 </td>
               </tr>
             );

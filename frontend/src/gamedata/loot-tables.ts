@@ -61,6 +61,17 @@ export const FLOOR_LOOT_TABLES: Record<FloorNumber, FloorLootTable> = {
 };
 
 /**
+ * Floor color coding for UI.
+ * Each floor has a distinct color for visual identification.
+ */
+export const FLOOR_COLORS: Record<FloorNumber, { bg: string; text: string; border: string }> = {
+  1: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' },   // M9S  - Green
+  2: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },      // M10S - Blue
+  3: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' }, // M11S - Purple
+  4: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },   // M12S - Amber
+};
+
+/**
  * Get which floor drops a specific gear slot
  */
 export function getFloorForSlot(slot: GearSlot): FloorNumber {

@@ -14,10 +14,13 @@ import { LogMaterialModal } from './LogMaterialModal';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';
 import { EditBookBalanceModal } from './EditBookBalanceModal';
 import { PlayerLedgerModal } from './PlayerLedgerModal';
+import { LootCountBar } from './LootCountBar';
+import { FloorSection } from './FloorSection';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
+import type { FloorNumber } from '../../gamedata/loot-tables';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -254,6 +257,9 @@ export function SectionedLogView({
     toast.success('Book balance updated');
   }, [groupId, tierId, currentWeek, editBookState, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
+  // View mode for loot log: 'chronological' or 'byFloor'
+  const [lootViewMode, setLootViewMode] = useState<'chronological' | 'byFloor'>('byFloor');
+
   // Combine loot and material entries, sorted by creation time (newest first)
   const combinedEntries = useMemo(() => {
     const lootWithType = weekLootEntries.map(e => ({ ...e, entryType: 'loot' as const }));
@@ -263,12 +269,146 @@ export function SectionedLogView({
     );
   }, [weekLootEntries, weekMaterialEntries]);
 
+  // Group entries by floor for floor view mode
+  type CombinedEntry = (LootLogEntry & { entryType: 'loot' }) | (MaterialLogEntry & { entryType: 'material' });
+  const entriesByFloor = useMemo(() => {
+    // Map floor names like "M9S" to floor numbers
+    const floorNameToNumber: Record<string, FloorNumber> = {
+      'M9S': 1, 'M10S': 2, 'M11S': 3, 'M12S': 4,
+      // Also support older tier naming
+      'M5S': 1, 'M6S': 2, 'M7S': 3, 'M8S': 4,
+    };
+
+    const grouped = new Map<FloorNumber, CombinedEntry[]>();
+    // Initialize all floors
+    ([1, 2, 3, 4] as FloorNumber[]).forEach(f => grouped.set(f, []));
+
+    combinedEntries.forEach(entry => {
+      const floorNum = floorNameToNumber[entry.floor] || 1;
+      const arr = grouped.get(floorNum) || [];
+      arr.push(entry);
+      grouped.set(floorNum, arr);
+    });
+
+    return grouped;
+  }, [combinedEntries]);
+
+  // Helper to render a single loot or material entry
+  const renderEntry = (entry: CombinedEntry) => {
+    if (entry.entryType === 'loot') {
+      const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
+      return (
+        <div
+          key={`loot-${entry.id}`}
+          className="bg-[#121218] border-l-2 border-l-accent rounded-lg p-3"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-text-primary font-medium">{slotName}</span>
+                <span className="text-text-muted">→</span>
+                <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded ${
+                    entry.method === 'drop'
+                      ? 'bg-status-success/20 text-status-success'
+                      : 'bg-status-warning/20 text-status-warning'
+                  }`}
+                >
+                  {entry.method}
+                </span>
+              </div>
+              <div className="text-xs text-text-muted mt-1">
+                {formatDate(entry.createdAt)}
+              </div>
+            </div>
+            {canEdit && (
+              <div className="flex items-center gap-3 ml-4">
+                <button
+                  onClick={() => { setEntryToEdit(entry); setShowLootModal(true); }}
+                  className="text-text-muted hover:text-accent text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteLoot(entry)}
+                  className="text-status-error hover:text-status-error/80 text-sm"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div
+          key={`mat-${entry.id}`}
+          className="bg-[#121218] border-l-2 border-l-accent rounded-lg p-3"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`font-medium ${
+                  entry.materialType === 'twine' ? 'text-blue-400' :
+                  entry.materialType === 'glaze' ? 'text-green-400' :
+                  'text-purple-400'
+                }`}>
+                  {MATERIAL_LABELS[entry.materialType]}
+                </span>
+                <span className="text-text-muted">→</span>
+                <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
+              </div>
+              <div className="text-xs text-text-muted mt-1">
+                {formatDate(entry.createdAt)}
+              </div>
+            </div>
+            {canEdit && (
+              <button
+                onClick={() => handleDeleteMaterial(entry.id)}
+                className="text-status-error hover:text-status-error/80 text-sm ml-4"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Loot & Materials Section */}
       <section className="bg-surface-card border border-border-default rounded-lg">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-          <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
+            {/* View mode toggle */}
+            <div className="flex bg-surface-base rounded-lg p-0.5">
+              <button
+                onClick={() => setLootViewMode('byFloor')}
+                className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                  lootViewMode === 'byFloor'
+                    ? 'bg-accent text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                By Floor
+              </button>
+              <button
+                onClick={() => setLootViewMode('chronological')}
+                className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                  lootViewMode === 'chronological'
+                    ? 'bg-accent text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Timeline
+              </button>
+            </div>
+          </div>
           {canEdit && (
             <div className="flex items-center gap-2">
               <button
@@ -287,96 +427,35 @@ export function SectionedLogView({
           )}
         </div>
         <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+          {/* Loot Count Summary Bar */}
+          <LootCountBar
+            players={players}
+            lootLog={lootLog}
+            currentWeek={currentWeek}
+          />
           {combinedEntries.length === 0 ? (
             <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
-          ) : (
-            combinedEntries.map((entry) => {
-              if (entry.entryType === 'loot') {
-                const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
-                return (
-                  <div
-                    key={`loot-${entry.id}`}
-                    className="bg-[#121218] border-l-2 border-l-accent rounded-lg p-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-text-primary">{entry.floor}</span>
-                          <span className="text-text-muted">→</span>
-                          <span className="text-text-primary font-medium">{slotName}</span>
-                          <span className="text-text-muted">→</span>
-                          <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
-                          <span
-                            className={`text-xs px-1.5 py-0.5 rounded ${
-                              entry.method === 'drop'
-                                ? 'bg-status-success/20 text-status-success'
-                                : 'bg-status-warning/20 text-status-warning'
-                            }`}
-                          >
-                            {entry.method}
-                          </span>
-                        </div>
-                        <div className="text-xs text-text-muted mt-1">
-                          {formatDate(entry.createdAt)}
-                        </div>
-                      </div>
-                      {canEdit && (
-                        <div className="flex items-center gap-3 ml-4">
-                          <button
-                            onClick={() => { setEntryToEdit(entry); setShowLootModal(true); }}
-                            className="text-text-muted hover:text-accent text-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteLoot(entry)}
-                            className="text-status-error hover:text-status-error/80 text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              } else {
-                return (
-                  <div
-                    key={`mat-${entry.id}`}
-                    className="bg-[#121218] border-l-2 border-l-accent rounded-lg p-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-text-primary">{entry.floor}</span>
-                          <span className="text-text-muted">→</span>
-                          <span className={`font-medium ${
-                            entry.materialType === 'twine' ? 'text-blue-400' :
-                            entry.materialType === 'glaze' ? 'text-green-400' :
-                            'text-purple-400'
-                          }`}>
-                            {MATERIAL_LABELS[entry.materialType]}
-                          </span>
-                          <span className="text-text-muted">→</span>
-                          <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
-                        </div>
-                        <div className="text-xs text-text-muted mt-1">
-                          {formatDate(entry.createdAt)}
-                        </div>
-                      </div>
-                      {canEdit && (
-                        <button
-                          onClick={() => handleDeleteMaterial(entry.id)}
-                          className="text-status-error hover:text-status-error/80 text-sm ml-4"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
+          ) : lootViewMode === 'byFloor' ? (
+            /* Floor-grouped view */
+            ([4, 3, 2, 1] as FloorNumber[]).map(floorNum => {
+              const floorEntries = entriesByFloor.get(floorNum) || [];
+              if (floorEntries.length === 0) return null;
+              const floorName = floors.find(f => f.includes(String(floorNum + 8))) || `Floor ${floorNum}`;
+
+              return (
+                <FloorSection
+                  key={floorNum}
+                  floor={floorNum}
+                  floorName={floorName}
+                  entryCount={floorEntries.length}
+                >
+                  {floorEntries.map(entry => renderEntry(entry))}
+                </FloorSection>
+              );
             })
+          ) : (
+            /* Chronological view */
+            combinedEntries.map(entry => renderEntry(entry))
           )}
         </div>
       </section>

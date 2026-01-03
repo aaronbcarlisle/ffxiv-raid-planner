@@ -63,6 +63,25 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
   unknown: 'text-gray-500',     // Muted for unknown
 };
 
+// Planning markers for gear acquisition strategy
+export type PlanningMarker =
+  | 'craft'     // 🔨 Plan to craft
+  | 'pages'     // 📃 Buy with pages
+  | 'floor4'    // ♻️ Floor 4 pages
+  | 'alliance'  // 💰 Alliance/Hunts
+  | 'improve'   // ◀️ Improve next
+  | 'token';    // 💾 Have token
+
+// Planning marker metadata (icons, labels, colors)
+export const PLANNING_MARKERS: Record<PlanningMarker, { icon: string; label: string; color: string }> = {
+  craft:    { icon: '🔨', label: 'Plan to craft',    color: 'orange' },
+  pages:    { icon: '📃', label: 'Buy with pages',   color: 'blue' },
+  floor4:   { icon: '♻️', label: 'Floor 4 pages',   color: 'green' },
+  alliance: { icon: '💰', label: 'Alliance/Hunts',  color: 'yellow' },
+  improve:  { icon: '◀️', label: 'Improve next',    color: 'teal' },
+  token:    { icon: '💾', label: 'Have token',      color: 'purple' },
+};
+
 // Page navigation modes
 export type PageMode = 'players' | 'loot' | 'stats' | 'history';
 
@@ -143,6 +162,7 @@ export interface GearSlotStatus {
   itemLevel?: number;
   itemIcon?: string;
   itemStats?: ItemStats;
+  markers?: PlanningMarker[];    // Planning markers for gear acquisition
 }
 
 // Static (raid group) settings

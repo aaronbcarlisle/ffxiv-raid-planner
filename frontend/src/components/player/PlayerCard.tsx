@@ -14,7 +14,7 @@ import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
-import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
+import { getRoleForJob } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
 import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
@@ -79,11 +79,6 @@ export const PlayerCard = memo(function PlayerCard({
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  // Get role color for left border
-  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-  const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
-  const roleColor = getRoleColor(displayRole);
-
   // Calculate completion count
   const completedSlots = player.gear.filter((g) => {
     if (g.bisSource === 'raid') return g.hasItem;
@@ -93,6 +88,25 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Calculate needs for footer
   const needs = calculatePlayerNeeds(player);
+
+  // Calculate status-based border color
+  const getStatusColor = (): string => {
+    // Green = BiS complete (no raid needs, no tome needs, no upgrades)
+    if (needs.raidNeed === 0 && needs.tomeNeed === 0 && needs.upgrades === 0) {
+      return '#22c55e'; // green-500
+    }
+    // Red = needs raid drops
+    if (needs.raidNeed > 0) {
+      return '#ef4444'; // red-500
+    }
+    // Yellow = needs augments only
+    if (needs.upgrades > 0) {
+      return '#eab308'; // yellow-500
+    }
+    // Teal = only tome gear left (or complete)
+    return '#14b8a6'; // teal-500
+  };
+  const statusColor = getStatusColor();
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
@@ -305,7 +319,7 @@ export const PlayerCard = memo(function PlayerCard({
   return (
     <div
       className="bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px]"
-      style={{ borderLeftColor: roleColor }}
+      style={{ borderLeftColor: statusColor }}
       onContextMenu={handleContextMenu}
     >
       {/* Context Menu */}

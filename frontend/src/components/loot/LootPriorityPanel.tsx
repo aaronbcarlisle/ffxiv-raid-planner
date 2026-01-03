@@ -19,6 +19,7 @@ import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
+import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
@@ -120,7 +121,7 @@ function PriorityList({
   );
 }
 
-type LootSubTab = 'gear' | 'weapon';
+type LootSubTab = 'gear' | 'weapon' | 'matrix';
 
 export function LootPriorityPanel({
   players,
@@ -326,6 +327,16 @@ export function LootPriorityPanel({
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveSubTab('matrix')}
+              className={`px-3 py-1 text-sm rounded transition-colors ${
+                activeSubTab === 'matrix'
+                  ? 'bg-accent text-white'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Who Needs It
+            </button>
           </div>
         </div>
         {showEnhancedScores && lootLog.length > 0 && (
@@ -417,6 +428,15 @@ export function LootPriorityPanel({
             onLogClick={handleWeaponLogClick}
           />
         </div>
+      )}
+
+      {/* Who Needs It Matrix Tab Content */}
+      {activeSubTab === 'matrix' && (
+        <WhoNeedsItMatrix
+          players={players}
+          showLogButtons={!!canShowLogButtons}
+          onLogClick={(slot, player) => handleLogClick(slot, player)}
+        />
       )}
 
       {/* Quick Log Modal */}

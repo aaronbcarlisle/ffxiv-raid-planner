@@ -37,6 +37,17 @@ GearSourceCategory = Literal[
 # --- Gear Status Schemas (reused from player) ---
 
 
+# Planning markers for gear acquisition strategy
+PlanningMarker = Literal[
+    "craft",     # 🔨 Plan to craft
+    "pages",     # 📃 Buy with pages
+    "floor4",    # ♻️ Floor 4 pages
+    "alliance",  # 💰 Alliance/Hunts
+    "improve",   # ◀️ Improve next
+    "token",     # 💾 Have token
+]
+
+
 class GearSlotStatus(CamelModel):
     """Gear slot status"""
 
@@ -49,6 +60,7 @@ class GearSlotStatus(CamelModel):
     item_level: int | None = None
     item_icon: str | None = None
     item_stats: dict[str, int] | None = None
+    markers: list[PlanningMarker] = Field(default_factory=list)  # Planning markers
 
 
 class TomeWeaponStatus(CamelModel):
