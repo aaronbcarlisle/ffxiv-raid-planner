@@ -105,6 +105,8 @@ export function MarkerPicker({ markers, onChange, disabled }: MarkerPickerProps)
                     ${isActive ? MARKER_ACTIVE_COLORS[marker] : MARKER_COLORS[marker]}
                   `}
                   title={label}
+                  aria-label={`${isActive ? 'Remove' : 'Add'} ${label} marker`}
+                  aria-pressed={isActive}
                 >
                   {icon}
                 </button>

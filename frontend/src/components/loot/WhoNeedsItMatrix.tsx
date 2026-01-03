@@ -29,16 +29,18 @@ const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1'
 
 // Helper to determine which ring slot a player actually needs
 // Returns ring1 if they need ring1, ring2 if they only need ring2, or ring1 if both
+// Note: This is only called when a player IS shown in the "Ring" row (i.e., they need at least one ring).
+// The fallback to ring1 should never trigger in practice since the matrix already filters for players who need a ring.
 function getNeededRingSlot(player: SnapshotPlayer): GearSlot {
   const ring1 = player.gear.find(g => g.slot === 'ring1');
   const ring2 = player.gear.find(g => g.slot === 'ring2');
   const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
   const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
 
-  // If needs ring1 (or both), return ring1. Otherwise return ring2.
+  // Prioritize ring1 if needed (or both), otherwise ring2
   if (needsRing1) return 'ring1';
   if (needsRing2) return 'ring2';
-  return 'ring1'; // Default fallback
+  return 'ring1'; // Fallback (shouldn't trigger - player must need a ring to appear in this row)
 }
 
 export function WhoNeedsItMatrix({
