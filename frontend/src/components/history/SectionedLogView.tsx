@@ -298,6 +298,9 @@ export function SectionedLogView({
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
+                  {entry.floor}
+                </span>
                 <span className="text-text-primary font-medium">{slotName}</span>
                 <span className="text-text-muted">→</span>
                 <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
@@ -343,6 +346,9 @@ export function SectionedLogView({
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
+                  {entry.floor}
+                </span>
                 <span className={`font-medium ${
                   entry.materialType === 'twine' ? 'text-blue-400' :
                   entry.materialType === 'glaze' ? 'text-green-400' :

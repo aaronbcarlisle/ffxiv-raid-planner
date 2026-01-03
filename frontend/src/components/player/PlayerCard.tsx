@@ -99,8 +99,8 @@ export const PlayerCard = memo(function PlayerCard({
     if (needs.raidNeed > 0) {
       return '#ef4444'; // red-500
     }
-    // Yellow = needs augments only
-    if (needs.upgrades > 0) {
+    // Yellow = needs augments only (no tome items left, just upgrades)
+    if (needs.upgrades > 0 && needs.tomeNeed === 0) {
       return '#eab308'; // yellow-500
     }
     // Teal = only tome gear left (or complete)
