@@ -27,6 +27,20 @@ type FloorFilter = FloorNumber | 'all';
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
+// Helper to determine which ring slot a player actually needs
+// Returns ring1 if they need ring1, ring2 if they only need ring2, or ring1 if both
+function getNeededRingSlot(player: SnapshotPlayer): GearSlot {
+  const ring1 = player.gear.find(g => g.slot === 'ring1');
+  const ring2 = player.gear.find(g => g.slot === 'ring2');
+  const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
+  const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
+
+  // If needs ring1 (or both), return ring1. Otherwise return ring2.
+  if (needsRing1) return 'ring1';
+  if (needsRing2) return 'ring2';
+  return 'ring1'; // Default fallback
+}
+
 export function WhoNeedsItMatrix({
   players,
   floors,
@@ -156,11 +170,13 @@ export function WhoNeedsItMatrix({
                         <button
                           onClick={() => {
                             if (showLogButtons && onLogClick) {
-                              // Get the correct floor for this slot
-                              const slotForFloor = slot === 'ring1' ? 'ring1' : slot as GearSlot;
-                              const floorNum = getFloorForSlot(slotForFloor);
+                              // For ring row, determine which ring slot this player actually needs
+                              const actualSlot = slot === 'ring1'
+                                ? getNeededRingSlot(player)
+                                : slot as GearSlot;
+                              const floorNum = getFloorForSlot(actualSlot);
                               const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
-                              onLogClick(slotForFloor, player, floorName);
+                              onLogClick(actualSlot, player, floorName);
                             }
                           }}
                           disabled={!showLogButtons}
