@@ -82,9 +82,9 @@ export function WeaponPriorityList({
   }
 
   const filterButtonClass = (filter: RoleFilter) =>
-    `px-3 py-1 text-sm rounded transition-colors ${
+    `px-3 py-1 text-sm rounded transition-colors font-bold ${
       roleFilter === filter
-        ? 'bg-accent text-white'
+        ? 'bg-accent text-accent-contrast'
         : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
     }`;
 
@@ -179,7 +179,7 @@ export function WeaponPriorityList({
                         {showLogButtons && isFirst && onLogClick && (
                           <button
                             onClick={() => onLogClick(job, entry.player)}
-                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent/80 text-white hover:bg-accent transition-all"
+                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
                           >
                             Log
                           </button>

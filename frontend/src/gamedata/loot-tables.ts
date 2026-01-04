@@ -61,6 +61,17 @@ export const FLOOR_LOOT_TABLES: Record<FloorNumber, FloorLootTable> = {
 };
 
 /**
+ * Floor color coding for UI.
+ * Each floor has a distinct color for visual identification.
+ */
+export const FLOOR_COLORS: Record<FloorNumber, { bg: string; text: string; border: string }> = {
+  1: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' },   // M9S  - Green
+  2: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },      // M10S - Blue
+  3: { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' }, // M11S - Purple
+  4: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },   // M12S - Amber
+};
+
+/**
  * Get which floor drops a specific gear slot
  */
 export function getFloorForSlot(slot: GearSlot): FloorNumber {
@@ -114,4 +125,29 @@ export function getUpgradeMaterialForSlot(slot: GearSlot): 'twine' | 'glaze' | '
   if (UPGRADE_MATERIAL_SLOTS.glaze.includes(slot)) return 'glaze';
   if (UPGRADE_MATERIAL_SLOTS.solvent.includes(slot)) return 'solvent';
   throw new Error(`Unknown slot for upgrade material: ${slot}`);
+}
+
+/**
+ * Parse a floor name (e.g., "M9S", "M10S") to a floor number (1-4).
+ * Works with any savage tier naming convention (M5S-M8S, M9S-M12S, etc.)
+ * by extracting the number and using modulo to get floor 1-4.
+ */
+export function parseFloorName(floorName: string): FloorNumber {
+  // Extract the number from the floor name (e.g., "M9S" -> 9, "M10S" -> 10)
+  const match = floorName.match(/M(\d+)S/i);
+  if (!match) return 1; // Default to floor 1 if parsing fails
+
+  const floorNum = parseInt(match[1], 10);
+  // Use modulo to map to 1-4 (9->1, 10->2, 11->3, 12->4, 5->1, 6->2, etc.)
+  return ((floorNum - 1) % 4 + 1) as FloorNumber;
+}
+
+/**
+ * Get the floor name for a slot based on the tier's floor names.
+ * Returns the floor name from the provided list that matches the slot's floor.
+ */
+export function getFloorNameForSlot(slot: GearSlot, tierFloors: string[]): string {
+  const floorNum = getFloorForSlot(slot);
+  // tierFloors is expected to be in order [floor1, floor2, floor3, floor4]
+  return tierFloors[floorNum - 1] || `Floor ${floorNum}`;
 }

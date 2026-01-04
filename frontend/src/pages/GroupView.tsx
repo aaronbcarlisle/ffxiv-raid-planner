@@ -19,8 +19,8 @@ import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
-import { FloorSelector, LootPriorityPanel } from '../components/loot';
-import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
+import { LootPriorityPanel } from '../components/loot';
+// TeamSummaryEnhanced removed - Summary tab disabled until /material-balances endpoint exists
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
@@ -52,7 +52,7 @@ export function GroupView() {
     releasePlayer,
     clearTiers,
   } = useTierStore();
-  const { user } = useAuthStore();
+  const { user, login } = useAuthStore();
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
@@ -61,6 +61,8 @@ export function GroupView() {
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
     const saved = localStorage.getItem('group-view-tab');
+    // Handle legacy 'stats' tab - redirect to 'players'
+    if (saved === 'stats') return 'players';
     return (saved as PageMode) || 'players';
   });
 
@@ -463,8 +465,8 @@ export function GroupView() {
     onReorder: handleReorder,
   });
 
-  // Grid classes
-  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+  // Grid classes - responsive from 1 column (mobile) to 6 columns (ultrawide)
+  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl grid-5xl grid-6xl';
 
   // Helper function to render a player card
   const renderPlayerCard = (player: SnapshotPlayer) => {
@@ -553,17 +555,37 @@ export function GroupView() {
   }
 
   if (error) {
+    // Check if this is a private group error (user needs to log in)
+    const isPrivateGroupError = error.toLowerCase().includes('private');
+
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-display text-red-400 mb-2">Error</h2>
-          <p className="text-text-secondary mb-4">{error}</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-accent hover:bg-accent/80 text-bg-primary font-medium rounded"
-          >
-            Go to Dashboard
-          </button>
+        <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-6 text-center`}>
+          <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-red-400'}`}>
+            {isPrivateGroupError ? 'Private Group' : 'Error'}
+          </h2>
+          <p className="text-text-secondary mb-4">
+            {isPrivateGroupError
+              ? 'This static group is private. Please log in to view it.'
+              : error
+            }
+          </p>
+          <div className="flex gap-3 justify-center">
+            {isPrivateGroupError && !user && (
+              <button
+                onClick={() => login()}
+                className="px-4 py-2 bg-accent hover:bg-accent/80 text-bg-primary font-medium rounded"
+              >
+                Log In with Discord
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/dashboard')}
+              className={`px-4 py-2 font-medium rounded ${isPrivateGroupError && !user ? 'bg-surface-elevated hover:bg-surface-card text-text-primary border border-border-default' : 'bg-accent hover:bg-accent/80 text-bg-primary'}`}
+            >
+              Go to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -607,17 +629,7 @@ export function GroupView() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
-              {/* Floor selector - visible in Loot tab */}
-              <div className={pageMode !== 'loot' ? 'invisible' : ''}>
-                {tierInfo && (
-                  <FloorSelector
-                    floors={tierInfo.floors}
-                    dutyNames={tierInfo.dutyNames}
-                    selectedFloor={selectedFloor}
-                    onFloorChange={setSelectedFloor}
-                  />
-                )}
-              </div>
+              {/* Floor selector moved into Loot tab's Gear Priority sub-tab */}
               {/* Sort mode + Group view + View mode toggle - visible in Players tab */}
               <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
                 <SortModeSelector
@@ -736,6 +748,9 @@ export function GroupView() {
               }}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
+              floors={tierInfo.floors}
+              dutyNames={tierInfo.dutyNames}
+              onFloorChange={setSelectedFloor}
               showLogButtons={canEdit}
               groupId={currentGroup?.id}
               tierId={currentTier?.tierId}
@@ -743,16 +758,6 @@ export function GroupView() {
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
-            />
-          )}
-
-          {/* Summary Tab */}
-          {pageMode === 'stats' && tierInfo && currentTier?.players && (
-            <TeamSummaryEnhanced
-              groupId={currentGroup!.id}
-              tierId={currentTier.tierId}
-              players={currentTier.players}
-              tierInfo={tierInfo}
             />
           )}
 
