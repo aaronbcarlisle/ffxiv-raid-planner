@@ -2,11 +2,12 @@ import { getJobIconUrl } from '../../gamedata';
 
 interface JobIconProps {
   job: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
 const sizeClasses = {
+  xs: 'w-4 h-4',
   sm: 'w-5 h-5',
   md: 'w-6 h-6',
   lg: 'w-8 h-8',

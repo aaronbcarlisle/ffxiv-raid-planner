@@ -12,6 +12,10 @@ const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
 
+// Documentation pages
+const DocsIndex = lazy(() => import('./pages/DocsIndex').then(m => ({ default: m.DocsIndex })));
+const DesignSystemPage = lazy(() => import('./pages/DesignSystem').then(m => ({ default: m.DesignSystem })));
+
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
     <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
@@ -51,6 +55,11 @@ function App() {
             <Route index element={<Home />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="group/:shareCode" element={<GroupView />} />
+            {/* Documentation routes */}
+            <Route path="docs" element={<DocsIndex />} />
+            <Route path="docs/design-system" element={<DesignSystemPage />} />
+            {/* Legacy redirect for old /design-system URL */}
+            <Route path="design-system" element={<DesignSystemPage />} />
           </Route>
           {/* Auth callback route (outside Layout for cleaner UX) */}
           <Route path="/auth/callback" element={<AuthCallback />} />
