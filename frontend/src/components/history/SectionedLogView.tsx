@@ -895,11 +895,13 @@ export function SectionedLogView({
       {showMaterialModal && (
         <LogMaterialModal
           isOpen={showMaterialModal}
-          onClose={() => setShowMaterialModal(false)}
+          onClose={() => { setShowMaterialModal(false); setGridModalState(null); }}
           onSubmit={handleMaterialSubmit}
           players={players}
           floors={floors}
           currentWeek={currentWeek}
+          presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
+          suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
         />
       )}
 

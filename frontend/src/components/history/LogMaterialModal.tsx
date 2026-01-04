@@ -28,6 +28,7 @@ interface LogMaterialModalProps {
   settings?: StaticSettings;
   suggestedPlayer?: SnapshotPlayer;
   suggestedMaterial?: MaterialType;
+  presetFloor?: string;
 }
 
 /**
@@ -51,13 +52,28 @@ export function LogMaterialModal({
   settings = DEFAULT_SETTINGS,
   suggestedPlayer,
   suggestedMaterial,
+  presetFloor,
 }: LogMaterialModalProps) {
-  const [selectedFloor, setSelectedFloor] = useState(
-    floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0]
-  );
-  const [selectedMaterial, setSelectedMaterial] = useState<MaterialType>(
-    suggestedMaterial || getMaterialsForFloor(selectedFloor)[0] || 'twine'
-  );
+  // Determine initial floor: use preset if valid, otherwise find first floor with materials
+  const getInitialFloor = () => {
+    if (presetFloor && getMaterialsForFloor(presetFloor).length > 0) {
+      return presetFloor;
+    }
+    return floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
+  };
+
+  const [selectedFloor, setSelectedFloor] = useState(getInitialFloor);
+
+  // Determine initial material: use suggested if valid for floor, otherwise first material for floor
+  const getInitialMaterial = (): MaterialType => {
+    const floorMaterials = getMaterialsForFloor(selectedFloor);
+    if (suggestedMaterial && floorMaterials.includes(suggestedMaterial)) {
+      return suggestedMaterial;
+    }
+    return floorMaterials[0] || 'twine';
+  };
+
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialType>(getInitialMaterial);
   const [selectedPlayer, setSelectedPlayer] = useState(
     suggestedPlayer?.id || ''
   );
