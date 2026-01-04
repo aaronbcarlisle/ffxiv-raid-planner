@@ -77,6 +77,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
+  const [showBiSReimportPrompt, setShowBiSReimportPrompt] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Get role color for left border
@@ -96,7 +97,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport || showWeaponPriorityModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport || showWeaponPriorityModal || showBiSReimportPrompt;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -105,7 +106,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showBiSImport, showWeaponPriorityModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showBiSImport, showWeaponPriorityModal, showBiSReimportPrompt, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -162,6 +163,8 @@ export const PlayerCard = memo(function PlayerCard({
     if (newRole) {
       try {
         await onUpdate({ job: newJob, role: newRole });
+        // Prompt to reimport BiS after successful job change
+        setShowBiSReimportPrompt(true);
       } catch (error) {
         // Error already handled by api.ts (toast shown)
         // Just prevent unhandled promise rejection
@@ -464,6 +467,37 @@ export const PlayerCard = memo(function PlayerCard({
         isOpen={showWeaponPriorityModal}
         onClose={() => setShowWeaponPriorityModal(false)}
       />
+
+      {/* BiS Reimport Prompt */}
+      <Modal
+        isOpen={showBiSReimportPrompt}
+        onClose={() => setShowBiSReimportPrompt(false)}
+        title="Import BiS for New Job?"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-text-secondary">
+            You've changed {player.name}'s job. Would you like to import a new BiS set for this job?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowBiSReimportPrompt(false)}
+              className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
+            >
+              No, Keep Current
+            </button>
+            <button
+              onClick={() => {
+                setShowBiSReimportPrompt(false);
+                setShowBiSImport(true);
+              }}
+              className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+            >
+              Yes, Import BiS
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Header - drag handle area */}
       <div

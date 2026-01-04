@@ -360,13 +360,14 @@ export function SectionedLogView({
   }, [resetModalType, groupId, tierId, currentWeek, pageBalances, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
 
-  // Layout mode: 'split' (traditional 2-column) or 'grid' (weekly loot grid)
+  // Layout mode: 'grid' (weekly loot grid) or 'split' (traditional list view)
+  // Default to 'grid' for first-time users
   const [layoutMode, setLayoutMode] = useState<'split' | 'grid'>(() => {
     try {
       const saved = localStorage.getItem('log-layout-mode');
-      return saved === 'grid' ? 'grid' : 'split';
+      return saved === 'split' ? 'split' : 'grid';
     } catch {
-      return 'split';
+      return 'grid';
     }
   });
 
