@@ -1,0 +1,96 @@
+Team,(team name),,,,,Raid,Arcadion Heavyweight Savage,,,,,,,Created by:,Wyssberk Kajitani @ Behemoth,,
+,,,,,,,,,,,,,,License:,MIT,Ver:,7.4
+,Team Members,(Tank 1),(Tank 2),(Healer 1),(Healer 2),(Melee 1),(Melee 2),(Ranged),(Caster),,,,,,,,(Other)
+,💰 Loot Count,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+🗡️,🗡️ Weapons,,,,,,,,,,,,,,,,
+,,Enter your team members' names above to use them below. It will show the members with the most loot in blue and the least in yellow.,,,,,,,,,,,,,,,
+1,Adjust 💰,,,,,,,,,,,,,,,,
+1,Adjust 🗡️,,,,,,,,,,,,,,,,
+,,"Enter numbers into the Adjust boxes if you want to track loot that members got from outside the raid team, or from before they joined your team.",,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,Loot Lists by Floor,,,,,,,,,,,,,,,,
+Week Start # - 1,Floor 1,Earring,Necklace,Bracelet,Ring,,,,-,Floor 2,Head,Gloves,Boots,,-,Glaze,Token
+0,Floor 3,Chestpiece,Pants,,,,-,Twine,Solvent,Floor 4,Weapon,Coffer,Chestpiece,Pants,Music,-,Mount
+,,,,,,,,,,,,,,,,,
+Weights,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,0
+Week,To add more weeks: Copy any week table (4 rows) and paste it immediately below the last week table.,,,,,,,,,,,,,,,,"If Recipient is (Other), specify further details in Notes. (e.g., PUG won it, dropped to floor, 0-1 coffer, etc.)"
+1,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+2,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+3,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+4,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+5,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+6,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+7,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+8,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+9,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+10,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+11,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+12,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+13,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+14,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+15,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+16,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+17,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+18,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+19,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,
+20,Floor 1,,,,Floor 2,,,,,Floor 3,,,,Floor 4,,,
+Loot,Earring,Necklace,Bracelet,Ring,Head,Gloves,Boots,Glaze,Token,Chestpiece,Pants,Twine,Solvent,Weapon,Coffer,Music,Mount
+Recipient,,,,,,,,,,,,,,,,,
+Notes,,,,,,,,,,,,,,,,,

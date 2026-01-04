@@ -1,0 +1,36 @@
+Weapon Priority System,,,,,,,,,,Weapon Tracker,,,,,,,,,,
+Udra,Tank2,Healer1,Healer2,DPS1,DPS2,DPS3,DPS4,,,Udra,Tank2,Healer1,Healer2,DPS1,DPS2,DPS3,DPS4,,,
+VPR,,,,,,,PCT,,Drops,0,0,0,0,0,0,0,0,,,
+,VPR,,,,,PCT,,,Coffers,0,0,0,0,0,0,0,0,,,
+,,VPR,,,PCT,,,,Total,0,0,0,0,0,0,0,0,,,
+,,,VPR,PCT,,,,,,,,,,,,,,,,
+,,,PCT,VPR,,,,,,,,,,,,,,,,
+,,PCT,,,VPR,,,,,Mount Tracker,,,,,,,,,,
+,PCT,,,,,VPR,,,,Udra,Tank2,Healer1,Healer2,DPS1,DPS2,DPS3,DPS4,,,
+PCT,,,,,,,VPR,,Mount,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+DRK,,,,,,,,,,,,,,,,,,,,
+,DRK,,,,,,,,,,,,,,,,,,,
+,,DRK,,,,,,,,,,,,,,,,,,
+,,,DRK,,,,,,,,,,,,,,,,,
+,,,,DRK,,,,,,,,,,,,,,,,
+,,,,,DRK,,,,,,,,,,,,,,,
+,,,,,,DRK,,,,,,,,,,,,,,
+,,,,,,,DRK,,,,,,,,,,,,,
+,,,,,,,RDM,,,,,,,,,,,,,
+,,,,,,RDM,,,,,,,,,,,,,,
+,,,,,RDM,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
+Auto Priority Table,,,,,,,,,,,,,,,,,,,,
+Tanks,,,,Healers,,,,Melee,,,,,,Ranged,,,Caster,,,
+PLD,WAR,DRK,GNB,WHM,SCH,AST,SGE,MNK,DRG,NIN,SAM,RPR,VPR,BRD,MCH,DNC,RDM,SMN,BLM,PCT
+"n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a",Udra,"n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a",Udra,"n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a",DPS4,"n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a","n/a, n/a, n/a, n/a, n/a, n/a, n/a, n/a",DPS4
+,,Tank2,,,,,,,,,,,Tank2,,,,DPS3,,,DPS3
+,,Healer1,,,,,,,,,,,Healer1,,,,DPS2,,,DPS2
+,,Healer2,,,,,,,,,,,Healer2,,,,"n/a, n/a, n/a, n/a, n/a",,,DPS1
+,,DPS1,,,,,,,,,,,DPS1,,,,,,,Healer2
+,,DPS2,,,,,,,,,,,DPS2,,,,,,,Healer1
+,,DPS3,,,,,,,,,,,DPS3,,,,,,,Tank2
+,,DPS4,,,,,,,,,,,DPS4,,,,,,,Udra
