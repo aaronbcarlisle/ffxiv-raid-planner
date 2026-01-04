@@ -175,8 +175,8 @@ export function WeaponPriorityList({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Log button - only show on first entry */}
-                        {showLogButtons && isFirst && onLogClick && (
+                        {/* Log button - shows on hover for any entry */}
+                        {showLogButtons && onLogClick && (
                           <button
                             onClick={() => onLogClick(job, entry.player)}
                             className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"

@@ -20,7 +20,7 @@ import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
-// TeamSummaryEnhanced removed - Summary tab disabled until /material-balances endpoint exists
+import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
@@ -758,6 +758,16 @@ export function GroupView() {
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
+            />
+          )}
+
+          {/* Summary Tab */}
+          {pageMode === 'stats' && tierInfo && currentTier?.players && (
+            <TeamSummaryEnhanced
+              groupId={currentGroup!.id}
+              tierId={currentTier.tierId}
+              players={currentTier.players}
+              tierInfo={tierInfo}
             />
           )}
 
