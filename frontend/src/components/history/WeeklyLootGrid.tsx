@@ -351,21 +351,29 @@ export function WeeklyLootGrid({
         ))}
       </div>
 
-      {/* Fairness Legend */}
-      <div className="flex items-center gap-6 text-xs text-text-muted px-1">
-        <span className="text-text-secondary">Loot fairness:</span>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#3b82f6' }} />
-          <span>Most (&gt;avg+1)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#a1a1aa' }} />
-          <span>Average</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#eab308' }} />
-          <span>Least (&lt;avg-1)</span>
-        </div>
+    </div>
+  );
+}
+
+/**
+ * Loot fairness legend - displayed below the grid
+ * Extracted as separate component so it can be rendered outside the grid+sidebar flex container
+ */
+export function LootFairnessLegend() {
+  return (
+    <div className="flex items-center gap-6 text-xs text-text-muted px-1">
+      <span className="text-text-secondary">Loot fairness:</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#3b82f6' }} />
+        <span>Most (&gt;avg+1)</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#a1a1aa' }} />
+        <span>Average</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#eab308' }} />
+        <span>Least (&lt;avg-1)</span>
       </div>
     </div>
   );

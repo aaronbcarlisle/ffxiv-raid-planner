@@ -16,9 +16,16 @@ import { EditBookBalanceModal } from './EditBookBalanceModal';
 import { PlayerLedgerModal } from './PlayerLedgerModal';
 import { LootCountBar } from './LootCountBar';
 import { FloorSection } from './FloorSection';
-import { WeeklyLootGrid } from './WeeklyLootGrid';
+import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
 import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownContent,
+  DropdownItem,
+  DropdownSeparator,
+} from '../primitives/Dropdown';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry } from '../../types';
@@ -311,7 +318,7 @@ export function SectionedLogView({
   const handleResetConfirm = useCallback(async () => {
     if (!resetModalType) return;
 
-    const { deleteLootEntry, deleteMaterialEntry, adjustBookBalance } = useLootTrackingStore.getState();
+    const { deleteMaterialEntry, adjustBookBalance } = useLootTrackingStore.getState();
 
     try {
       // Reset loot log (all entries for this tier)
@@ -319,7 +326,8 @@ export function SectionedLogView({
         // Get all loot entries (not just current week)
         const allLootLog = useLootTrackingStore.getState().lootLog;
         for (const entry of allLootLog) {
-          await deleteLootEntry(groupId, tierId, entry.id);
+          // Use deleteLootAndRevertGear to sync gear state (uncheck items)
+          await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
         // Also delete all material entries
         const allMaterialLog = useLootTrackingStore.getState().materialLog;
@@ -605,41 +613,35 @@ export function SectionedLogView({
 
           {/* Reset dropdown */}
           {canEdit && (
-            <div className="relative">
-              <details className="group">
-                <summary className="px-3 py-1.5 text-sm text-status-error border border-status-error/30 rounded cursor-pointer
-                                    hover:bg-status-error/10 transition-colors flex items-center gap-1.5 list-none">
+            <Dropdown>
+              <DropdownTrigger asChild>
+                <button className="px-3 py-1.5 text-sm text-status-error border border-status-error/30 rounded cursor-pointer
+                                    hover:bg-status-error/10 transition-colors flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Reset
-                  <svg className="w-3 h-3 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                </summary>
-                <div className="absolute left-0 top-full mt-1 bg-surface-card border border-border-default rounded-lg shadow-lg z-20 min-w-[160px]">
-                  <button
-                    onClick={() => setResetModalType('loot')}
-                    className="w-full px-4 py-2 text-sm text-left text-text-primary hover:bg-surface-elevated transition-colors first:rounded-t-lg"
-                  >
-                    Reset Loot Log
-                  </button>
-                  <button
-                    onClick={() => setResetModalType('books')}
-                    className="w-full px-4 py-2 text-sm text-left text-text-primary hover:bg-surface-elevated transition-colors"
-                  >
-                    Reset Book Balances
-                  </button>
-                  <div className="border-t border-border-default" />
-                  <button
-                    onClick={() => setResetModalType('all')}
-                    className="w-full px-4 py-2 text-sm text-left text-status-error font-medium hover:bg-status-error/10 transition-colors last:rounded-b-lg"
-                  >
-                    Reset All Data
-                  </button>
-                </div>
-              </details>
-            </div>
+                </button>
+              </DropdownTrigger>
+              <DropdownContent align="start">
+                <DropdownItem onSelect={() => setResetModalType('loot')}>
+                  Reset Loot Log
+                </DropdownItem>
+                <DropdownItem onSelect={() => setResetModalType('books')}>
+                  Reset Book Balances
+                </DropdownItem>
+                <DropdownSeparator />
+                <DropdownItem
+                  onSelect={() => setResetModalType('all')}
+                  className="text-status-error focus:text-status-error"
+                >
+                  Reset All Data
+                </DropdownItem>
+              </DropdownContent>
+            </Dropdown>
           )}
         </div>
 
@@ -669,7 +671,7 @@ export function SectionedLogView({
       </div>
 
       {/* Main Content - Side by Side Layout */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-stretch">
         {/* Loot Log - Main Area */}
         <div className="flex-1 min-w-0">
           {/* Grid Layout */}
@@ -876,6 +878,9 @@ export function SectionedLogView({
           </section>
         </div>
       </div>
+
+      {/* Loot Fairness Legend - rendered outside flex container so sidebar aligns with grid */}
+      {layoutMode === 'grid' && <LootFairnessLegend />}
 
       {/* Modals */}
       {showLootModal && (
