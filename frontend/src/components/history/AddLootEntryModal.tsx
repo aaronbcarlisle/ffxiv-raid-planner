@@ -27,6 +27,10 @@ interface AddLootEntryModalProps {
   currentWeek: number;
   /** If provided, modal operates in edit mode */
   editEntry?: LootLogEntry;
+  /** Pre-select floor when opening from grid view (add mode only) */
+  presetFloor?: string;
+  /** Pre-select slot when opening from grid view (add mode only) */
+  presetSlot?: string;
 }
 
 // Map floor name to floor number (1-4)
@@ -57,13 +61,15 @@ export function AddLootEntryModal({
   floors,
   currentWeek,
   editEntry,
+  presetFloor,
+  presetSlot,
 }: AddLootEntryModalProps) {
   const isEditMode = !!editEntry;
 
-  // Initialize state - use editEntry values in edit mode
+  // Initialize state - use editEntry values in edit mode, presets in add mode
   const [weekNumber, setWeekNumber] = useState(editEntry?.weekNumber || currentWeek || 1);
-  const [floor, setFloor] = useState(editEntry?.floor || floors[0] || '');
-  const [itemSlot, setItemSlot] = useState<string>(editEntry?.itemSlot || '');
+  const [floor, setFloor] = useState(editEntry?.floor || presetFloor || floors[0] || '');
+  const [itemSlot, setItemSlot] = useState<string>(editEntry?.itemSlot || presetSlot || '');
   const [recipientPlayerId, setRecipientPlayerId] = useState(editEntry?.recipientPlayerId || '');
   const [method, setMethod] = useState<LootMethod>((editEntry?.method as LootMethod) || 'drop');
   const [updateGear, setUpdateGear] = useState(true);
@@ -71,9 +77,10 @@ export function AddLootEntryModal({
   const [isSaving, setIsSaving] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
 
-  // Reset form when editEntry changes (e.g., opening edit for different entry)
+  // Reset form when editEntry or presets change
   useEffect(() => {
     if (editEntry) {
+      // Edit mode: use existing entry values
       setWeekNumber(editEntry.weekNumber);
       setFloor(editEntry.floor);
       setItemSlot(editEntry.itemSlot);
@@ -82,11 +89,17 @@ export function AddLootEntryModal({
       setNotes(editEntry.notes || '');
       setShowAllRecipients(false);
     } else {
+      // Add mode: use presets if provided, otherwise defaults
       setWeekNumber(currentWeek || 1);
-      setFloor(floors[0] || '');
+      setFloor(presetFloor || floors[0] || '');
+      if (presetSlot) {
+        setItemSlot(presetSlot);
+      }
+      setMethod('drop');
+      setNotes('');
       setShowAllRecipients(false);
     }
-  }, [editEntry, currentWeek, floors]);
+  }, [editEntry, currentWeek, floors, presetFloor, presetSlot]);
 
   // Get available slots for selected floor
   const availableSlots = useMemo(() => {
@@ -378,7 +391,7 @@ export function AddLootEntryModal({
           <button
             type="submit"
             disabled={!recipientPlayerId || isSaving}
-            className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (isEditMode ? 'Saving...' : 'Logging...') : (isEditMode ? 'Save Changes' : 'Log Loot')}
           </button>

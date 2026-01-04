@@ -132,9 +132,9 @@ export function PageBalancesPanel({
           <div className="flex rounded-md overflow-hidden border border-border-default">
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-1 text-sm transition-colors ${
+              className={`px-3 py-1 text-sm font-bold transition-colors ${
                 viewMode === 'week'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -142,9 +142,9 @@ export function PageBalancesPanel({
             </button>
             <button
               onClick={() => setViewMode('allTime')}
-              className={`px-3 py-1 text-sm transition-colors ${
+              className={`px-3 py-1 text-sm font-bold transition-colors ${
                 viewMode === 'allTime'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -165,7 +165,7 @@ export function PageBalancesPanel({
           {canEdit && (
             <button
               onClick={() => setShowMarkClearedModal(true)}
-              className="px-3 py-1.5 rounded bg-accent text-white text-sm hover:bg-accent-bright transition-colors"
+              className="px-3 py-1.5 rounded bg-accent text-accent-contrast text-sm font-bold hover:bg-accent-hover transition-colors"
             >
               Mark Floor Cleared
             </button>

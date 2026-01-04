@@ -309,7 +309,7 @@ export function LogMaterialModal({
               !selectedMaterial ||
               availableMaterials.length === 0
             }
-            className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-bright transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {isSubmitting ? 'Logging...' : 'Log Material'}
           </button>
