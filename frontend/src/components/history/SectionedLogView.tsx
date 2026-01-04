@@ -1,9 +1,9 @@
 /**
  * Sectioned Log View
  *
- * Sub-tab layout for the Log tab:
- * - Loot: Combined Loot & Materials section with Grid or Split view
- * - Books: Book Balances table with full-width display
+ * Layout for the Log tab with Loot Log (main) and Book Balances (sidebar).
+ * - Loot Log takes majority of space (left side)
+ * - Book Balances shown as compact sidebar (right side)
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -380,24 +380,26 @@ export function SectionedLogView({
     }
   }, []);
 
-  // Sub-tab state: 'loot' or 'books'
-  const [subTab, setSubTab] = useState<'loot' | 'books'>(() => {
+  // Book balances sidebar collapsed state
+  const [booksSidebarCollapsed, setBooksSidebarCollapsed] = useState(() => {
     try {
-      const saved = localStorage.getItem('log-subtab');
-      return saved === 'books' ? 'books' : 'loot';
+      return localStorage.getItem('books-sidebar-collapsed') === 'true';
     } catch {
-      return 'loot';
+      return false;
     }
   });
 
-  // Persist sub-tab selection
-  const handleSubTabChange = useCallback((tab: 'loot' | 'books') => {
-    setSubTab(tab);
-    try {
-      localStorage.setItem('log-subtab', tab);
-    } catch {
-      // Ignore localStorage errors
-    }
+  // Persist sidebar collapsed state
+  const toggleBooksSidebar = useCallback(() => {
+    setBooksSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('books-sidebar-collapsed', String(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
   }, []);
 
   // View mode for loot log: 'chronological' or 'byFloor'
@@ -567,33 +569,42 @@ export function SectionedLogView({
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab Navigation */}
+      {/* Header Controls */}
       <div className="flex items-center justify-between border-b border-border-default pb-3">
-        <div className="flex gap-1">
-          <button
-            onClick={() => handleSubTabChange('loot')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              subTab === 'loot'
-                ? 'bg-surface-card text-accent border-b-2 border-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
-            }`}
-          >
-            Loot Log
-          </button>
-          <button
-            onClick={() => handleSubTabChange('books')}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              subTab === 'books'
-                ? 'bg-surface-card text-accent border-b-2 border-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
-            }`}
-          >
-            Book Balances
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Layout Mode Toggle */}
+          <div className="flex bg-surface-base rounded-lg p-0.5">
+            <button
+              onClick={() => handleLayoutModeChange('grid')}
+              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+                layoutMode === 'grid'
+                  ? 'bg-accent text-accent-contrast'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Grid
+            </button>
+            <button
+              onClick={() => handleLayoutModeChange('split')}
+              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+                layoutMode === 'split'
+                  ? 'bg-accent text-accent-contrast'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+              </svg>
+              List
+            </button>
+          </div>
 
           {/* Reset dropdown */}
           {canEdit && (
-            <div className="relative ml-4">
+            <div className="relative">
               <details className="group">
                 <summary className="px-3 py-1.5 text-sm text-status-error border border-status-error/30 rounded cursor-pointer
                                     hover:bg-status-error/10 transition-colors flex items-center gap-1.5 list-none">
@@ -631,302 +642,239 @@ export function SectionedLogView({
           )}
         </div>
 
-        {/* Loot-specific controls (only show on loot tab) */}
-        {subTab === 'loot' && (
-          <div className="flex items-center gap-3">
-            {/* Layout Mode Toggle */}
-            <div className="flex bg-surface-base rounded-lg p-0.5">
-              <button
-                onClick={() => handleLayoutModeChange('grid')}
-                className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
-                  layoutMode === 'grid'
-                    ? 'bg-accent text-accent-contrast'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-                Grid
-              </button>
-              <button
-                onClick={() => handleLayoutModeChange('split')}
-                className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
-                  layoutMode === 'split'
-                    ? 'bg-accent text-accent-contrast'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
-                </svg>
-                List
-              </button>
-            </div>
-            {canEdit && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
-                  className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
-                >
-                  + Log Loot
-                </button>
-                <button
-                  onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
-                  className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
-                >
-                  + Log Material
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Books-specific controls (only show on books tab) */}
-        {subTab === 'books' && canEdit && (
+        {/* Action buttons */}
+        {canEdit && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFloorClearedModal(true)}
-              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+              className="px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
             >
               Mark Floor Cleared
+            </button>
+            <button
+              onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
+              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+            >
+              + Log Loot
+            </button>
+            <button
+              onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
+              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+            >
+              + Log Material
             </button>
           </div>
         )}
       </div>
 
-      {/* Loot Tab - Grid Layout */}
-      {subTab === 'loot' && layoutMode === 'grid' && (
-        <WeeklyLootGrid
-          players={players}
-          lootLog={lootLog}
-          materialLog={materialLog}
-          floors={floors}
-          currentWeek={currentWeek}
-          canEdit={canEdit}
-          onLogLoot={handleGridLogLoot}
-          onLogMaterial={handleGridLogMaterial}
-          onDeleteLoot={handleGridDeleteLoot}
-          onDeleteMaterial={handleDeleteMaterial}
-        />
-      )}
-
-      {/* Loot Tab - List Layout */}
-      {subTab === 'loot' && layoutMode === 'split' && (
-        <section className="bg-surface-card border border-border-default rounded-lg">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-            <div className="flex items-center gap-3">
-              <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
-              {/* View mode toggle */}
-              <div className="flex bg-surface-base rounded-lg p-0.5">
-                <button
-                  onClick={() => setLootViewMode('byFloor')}
-                  className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
-                    lootViewMode === 'byFloor'
-                      ? 'bg-accent text-accent-contrast'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  By Floor
-                </button>
-                <button
-                  onClick={() => setLootViewMode('chronological')}
-                  className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
-                    lootViewMode === 'chronological'
-                      ? 'bg-accent text-accent-contrast'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  Timeline
-                </button>
-              </div>
-            </div>
-            {/* Floor filter - only shown in By Floor mode */}
-            {lootViewMode === 'byFloor' && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-text-muted mr-1">Floors:</span>
-                {([1, 2, 3, 4] as FloorNumber[]).map(floor => (
-                  <button
-                    key={floor}
-                    onClick={() => toggleFloorVisibility(floor)}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
-                      visibleFloors.has(floor)
-                        ? 'bg-accent text-accent-contrast'
-                        : 'bg-surface-base text-text-muted hover:text-text-secondary'
-                    }`}
-                  >
-                    {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="p-4 space-y-3 max-h-[700px] overflow-y-auto">
-            {/* Loot Count Summary Bar */}
-            <LootCountBar
+      {/* Main Content - Side by Side Layout */}
+      <div className="flex gap-4">
+        {/* Loot Log - Main Area */}
+        <div className="flex-1 min-w-0">
+          {/* Grid Layout */}
+          {layoutMode === 'grid' && (
+            <WeeklyLootGrid
               players={players}
               lootLog={lootLog}
+              materialLog={materialLog}
+              floors={floors}
               currentWeek={currentWeek}
+              canEdit={canEdit}
+              onLogLoot={handleGridLogLoot}
+              onLogMaterial={handleGridLogMaterial}
+              onDeleteLoot={handleGridDeleteLoot}
+              onDeleteMaterial={handleDeleteMaterial}
             />
-            {combinedEntries.length === 0 ? (
-              <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
-            ) : lootViewMode === 'byFloor' ? (
-              /* Floor-grouped view with filter */
-              ([4, 3, 2, 1] as FloorNumber[]).filter(f => visibleFloors.has(f)).map(floorNum => {
-                const floorEntries = entriesByFloor.get(floorNum) || [];
-                if (floorEntries.length === 0) return null;
-                const floorName = floorEntries[0]?.floor || floors[floorNum - 1] || `Floor ${floorNum}`;
+          )}
 
-                return (
-                  <FloorSection
-                    key={floorNum}
-                    floor={floorNum}
-                    floorName={floorName}
-                    entryCount={floorEntries.length}
-                  >
-                    {floorEntries.map(entry => renderEntry(entry))}
-                  </FloorSection>
-                );
-              })
-            ) : (
-              /* Chronological view */
-              combinedEntries.map(entry => renderEntry(entry))
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Books Tab - Full Width */}
-      {subTab === 'books' && (
-        <section className="bg-surface-card border border-border-default rounded-lg">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-            <div className="flex items-center gap-3">
-              <h3 className="font-display text-lg text-text-primary">Book Balances</h3>
-              {/* Week / All Time toggle */}
-              <div className="flex bg-surface-base rounded-lg p-0.5">
-                <button
-                  onClick={() => setBookViewMode('week')}
-                  className={`px-2.5 py-1 text-sm rounded transition-colors font-bold ${
-                    bookViewMode === 'week'
-                      ? 'bg-accent text-accent-contrast'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  Week {currentWeek}
-                </button>
-                <button
-                  onClick={() => setBookViewMode('allTime')}
-                  className={`px-2.5 py-1 text-sm rounded transition-colors font-bold ${
-                    bookViewMode === 'allTime'
-                      ? 'bg-accent text-accent-contrast'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  All Time
-                </button>
+          {/* List Layout */}
+          {layoutMode === 'split' && (
+            <section className="bg-surface-card border border-border-default rounded-lg">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
+                  {/* View mode toggle */}
+                  <div className="flex bg-surface-base rounded-lg p-0.5">
+                    <button
+                      onClick={() => setLootViewMode('byFloor')}
+                      className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                        lootViewMode === 'byFloor'
+                          ? 'bg-accent text-accent-contrast'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      By Floor
+                    </button>
+                    <button
+                      onClick={() => setLootViewMode('chronological')}
+                      className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                        lootViewMode === 'chronological'
+                          ? 'bg-accent text-accent-contrast'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      Timeline
+                    </button>
+                  </div>
+                </div>
+                {/* Floor filter - only shown in By Floor mode */}
+                {lootViewMode === 'byFloor' && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-text-muted mr-1">Floors:</span>
+                    {([1, 2, 3, 4] as FloorNumber[]).map(floor => (
+                      <button
+                        key={floor}
+                        onClick={() => toggleFloorVisibility(floor)}
+                        className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                          visibleFloors.has(floor)
+                            ? 'bg-accent text-accent-contrast'
+                            : 'bg-surface-base text-text-muted hover:text-text-secondary'
+                        }`}
+                      >
+                        {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-            {canEdit && (
+              <div className="p-4 space-y-3 max-h-[700px] overflow-y-auto">
+                {/* Loot Count Summary Bar */}
+                <LootCountBar
+                  players={players}
+                  lootLog={lootLog}
+                  currentWeek={currentWeek}
+                />
+                {combinedEntries.length === 0 ? (
+                  <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
+                ) : lootViewMode === 'byFloor' ? (
+                  /* Floor-grouped view with filter */
+                  ([4, 3, 2, 1] as FloorNumber[]).filter(f => visibleFloors.has(f)).map(floorNum => {
+                    const floorEntries = entriesByFloor.get(floorNum) || [];
+                    if (floorEntries.length === 0) return null;
+                    const floorName = floorEntries[0]?.floor || floors[floorNum - 1] || `Floor ${floorNum}`;
+
+                    return (
+                      <FloorSection
+                        key={floorNum}
+                        floor={floorNum}
+                        floorName={floorName}
+                        entryCount={floorEntries.length}
+                      >
+                        {floorEntries.map(entry => renderEntry(entry))}
+                      </FloorSection>
+                    );
+                  })
+                ) : (
+                  /* Chronological view */
+                  combinedEntries.map(entry => renderEntry(entry))
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Book Balances - Sidebar */}
+        <div className={`transition-all duration-200 ${booksSidebarCollapsed ? 'w-10' : 'w-72'} flex-shrink-0`}>
+          <section className="bg-surface-card border border-border-default rounded-lg h-full">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+              {!booksSidebarCollapsed && (
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium text-sm text-text-primary">Books</h3>
+                  {/* Week / All Time toggle */}
+                  <div className="flex bg-surface-base rounded p-0.5">
+                    <button
+                      onClick={() => setBookViewMode('week')}
+                      className={`px-1.5 py-0.5 text-[10px] rounded transition-colors font-bold ${
+                        bookViewMode === 'week'
+                          ? 'bg-accent text-accent-contrast'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      W{currentWeek}
+                    </button>
+                    <button
+                      onClick={() => setBookViewMode('allTime')}
+                      className={`px-1.5 py-0.5 text-[10px] rounded transition-colors font-bold ${
+                        bookViewMode === 'allTime'
+                          ? 'bg-accent text-accent-contrast'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      All
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
-                onClick={handleResetAll}
-                className="px-3 py-1.5 text-sm rounded bg-status-error/20 text-status-error hover:bg-status-error/30 transition-colors"
+                onClick={toggleBooksSidebar}
+                className="p-1 text-text-muted hover:text-text-primary transition-colors"
+                title={booksSidebarCollapsed ? 'Expand' : 'Collapse'}
               >
-                Reset All
+                <svg className={`w-4 h-4 transition-transform ${booksSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
-            )}
-          </div>
-          <div className="p-4">
-            {pageBalances.length === 0 ? (
-              <p className="text-text-muted text-sm">No book data available.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table-auto">
-                  <thead>
-                    <tr className="text-text-secondary text-sm">
-                      <th className="text-left py-2 px-2 whitespace-nowrap">Player</th>
-                      {(['I', 'II', 'III', 'IV'] as const).map((book) => (
-                        <th key={book} className="text-center py-2 px-2 w-16">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-xs">{book}</span>
-                            {canEdit && (
-                              <button
-                                onClick={() => handleResetColumn(book)}
-                                className="text-[10px] text-text-muted hover:text-status-error transition-colors"
-                                title={`Reset Book ${book} for all`}
-                              >
-                                reset
-                              </button>
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                      <th className="w-16"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageBalances.map((balance) => {
-                      const player = players.find(p => p.id === balance.playerId);
-                      if (!player) return null;
+            </div>
 
-                      return (
-                        <tr key={balance.playerId} className="border-t border-border-default">
-                          <td className="py-2 px-2">
-                            <div className="flex items-center gap-2">
-                              <JobIcon job={player.job} size="sm" />
-                              <span className="text-text-primary text-sm">{player.name}</span>
-                            </div>
-                          </td>
-                          {(['I', 'II', 'III', 'IV'] as const).map((book) => {
-                            const value = balance[`book${book}` as keyof typeof balance] as number;
-                            return (
-                              <td
-                                key={book}
-                                className={`text-center py-2 px-2 ${canEdit ? 'cursor-pointer hover:bg-accent/10 rounded transition-colors' : ''}`}
-                                onClick={canEdit ? () => setEditBookState({
-                                  playerId: balance.playerId,
-                                  playerName: player.name,
-                                  bookType: book,
-                                  currentValue: value,
-                                }) : undefined}
-                              >
-                                <span className={`text-base font-medium ${value > 0 ? 'text-text-primary' : 'text-text-muted'}`}>
-                                  {value}
-                                </span>
-                              </td>
-                            );
-                          })}
-                          <td className="py-2 px-2">
-                            <div className="flex items-center gap-1 justify-end">
-                              {canEdit && (
-                                <button
-                                  onClick={() => handleResetRow(balance.playerId, player.name)}
-                                  className="p-1 text-text-muted hover:text-status-error transition-colors"
-                                  title="Reset all books for this player"
+            {/* Sidebar Content */}
+            {!booksSidebarCollapsed && (
+              <div className="p-2 max-h-[600px] overflow-y-auto">
+                {pageBalances.length === 0 ? (
+                  <p className="text-text-muted text-xs p-2">No book data.</p>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-text-muted">
+                        <th className="text-left py-1 px-1">Player</th>
+                        {(['I', 'II', 'III', 'IV'] as const).map((book) => (
+                          <th key={book} className="text-center py-1 px-0.5 w-7">{book}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageBalances.map((balance) => {
+                        const player = players.find(p => p.id === balance.playerId);
+                        if (!player) return null;
+
+                        return (
+                          <tr key={balance.playerId} className="border-t border-border-subtle hover:bg-surface-elevated/50">
+                            <td className="py-1.5 px-1">
+                              <div className="flex items-center gap-1.5">
+                                <JobIcon job={player.job} size="xs" />
+                                <span className="text-text-primary truncate max-w-[80px]">{player.name}</span>
+                              </div>
+                            </td>
+                            {(['I', 'II', 'III', 'IV'] as const).map((book) => {
+                              const value = balance[`book${book}` as keyof typeof balance] as number;
+                              return (
+                                <td
+                                  key={book}
+                                  className={`text-center py-1.5 px-0.5 ${canEdit ? 'cursor-pointer hover:bg-accent/20 rounded transition-colors' : ''}`}
+                                  onClick={canEdit ? () => setEditBookState({
+                                    playerId: balance.playerId,
+                                    playerName: player.name,
+                                    bookType: book,
+                                    currentValue: value,
+                                  }) : undefined}
                                 >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
-                                className="p-1 text-text-muted hover:text-accent transition-colors"
-                                title="View history"
-                              >
-                                <img src="/icons/history-transparent-bg.png" alt="View history" className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                  <span className={`font-medium ${value > 0 ? 'text-text-primary' : 'text-text-muted'}`}>
+                                    {value}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
-          </div>
-        </section>
-      )}
+          </section>
+        </div>
+      </div>
 
       {/* Modals */}
       {showLootModal && (

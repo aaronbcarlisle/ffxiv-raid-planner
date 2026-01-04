@@ -133,16 +133,9 @@ export function WeeklyLootGrid({
   };
 
   // Render recipient badge
-  const renderRecipientBadge = (entry: LootLogEntry | MaterialLogEntry | undefined, onClick?: () => void) => {
+  const renderRecipientBadge = (entry: LootLogEntry | MaterialLogEntry | undefined) => {
     if (!entry) {
-      return canEdit ? (
-        <button
-          onClick={onClick}
-          className="text-xs text-text-muted italic hover:text-accent transition-colors"
-        >
-          —
-        </button>
-      ) : (
+      return (
         <span className="text-xs text-text-muted italic">—</span>
       );
     }
@@ -153,13 +146,12 @@ export function WeeklyLootGrid({
     return (
       <div className="group flex items-center gap-1">
         <div
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded cursor-pointer hover:brightness-110 transition-all"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all"
           style={{
             color: roleColor,
             backgroundColor: `${roleColor}15`,
             border: `1px solid ${roleColor}30`,
           }}
-          onClick={onClick}
         >
           {player && <JobIcon job={player.job} size="xs" />}
           <span>{player?.name || 'Unknown'}</span>
@@ -214,7 +206,7 @@ export function WeeklyLootGrid({
         { slot: 'bracelet', name: 'Wrists' },
         { slot: 'ring1', name: 'Ring' },
       ],
-      materials: [{ type: 'glaze', name: 'Glaze' }],
+      materials: [], // Floor 1 has no upgrade materials
     },
     {
       number: 2,
@@ -318,17 +310,16 @@ export function WeeklyLootGrid({
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
+                  const canClick = canEdit && onLogLoot && !lootEntry;
 
                   return (
                     <div
                       key={item.slot}
-                      className="min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors"
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${canClick ? 'cursor-pointer' : ''}`}
+                      onClick={canClick ? () => onLogLoot(floor.number, item.slot) : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
-                      {renderRecipientBadge(
-                        lootEntry,
-                        canEdit && onLogLoot ? () => onLogLoot(floor.number, item.slot) : undefined
-                      )}
+                      {renderRecipientBadge(lootEntry)}
                     </div>
                   );
                 })}
@@ -336,11 +327,13 @@ export function WeeklyLootGrid({
                 {/* Material columns */}
                 {floor.materials.map(mat => {
                   const matEntry = getMaterialForFloor(floor.number, mat.type);
+                  const canClickMat = canEdit && onLogMaterial && !matEntry;
 
                   return (
                     <div
                       key={mat.type}
-                      className="min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors"
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''}`}
+                      onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"
@@ -348,10 +341,7 @@ export function WeeklyLootGrid({
                       >
                         {mat.name}
                       </div>
-                      {renderRecipientBadge(
-                        matEntry,
-                        canEdit && onLogMaterial ? () => onLogMaterial(floor.number, mat.type) : undefined
-                      )}
+                      {renderRecipientBadge(matEntry)}
                     </div>
                   );
                 })}

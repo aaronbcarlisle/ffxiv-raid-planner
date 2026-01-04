@@ -1521,6 +1521,33 @@ export function DesignSystem() {
           <p className="text-text-secondary mt-2">
             FFXIV Raid Planner visual reference guide - v2.7.0
           </p>
+
+          {/* UX Regression Notice */}
+          <div className="mt-4 p-4 bg-status-warning/10 border border-status-warning/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h3 className="font-medium text-status-warning mb-1">Design Language in Transition</h3>
+                <p className="text-sm text-text-secondary mb-2">
+                  The current application UI has regressed from its original design language through iterative changes,
+                  resulting in inconsistent styling, mixed patterns, and visual debt. This is common in rapidly evolving
+                  applications where features are prioritized over design consistency.
+                </p>
+                <p className="text-sm text-text-secondary mb-2">
+                  <strong className="text-text-primary">This Design System page serves as the canonical UI Storybook</strong> —
+                  a complete reference of how every component <em>should</em> look and behave. It defines the target state
+                  that the application will be migrated to.
+                </p>
+                <p className="text-sm text-text-muted">
+                  <strong>Why this matters:</strong> A unified design language improves usability, reduces cognitive load,
+                  and creates a professional, trustworthy experience. Every component documented here will replace its
+                  inconsistent counterpart in the application.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
