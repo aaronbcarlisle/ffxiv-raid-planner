@@ -18,9 +18,9 @@ interface ResetConfirmModalProps {
 }
 
 const RESET_DESCRIPTIONS: Record<ResetType, string> = {
-  loot: 'all loot log entries',
-  books: 'all book balances',
-  all: 'all loot log entries AND book balances',
+  loot: 'loot log entries for the current week',
+  books: 'book balances for all players',
+  all: 'loot log entries (current week) AND all book balances',
 };
 
 export function ResetConfirmModal({

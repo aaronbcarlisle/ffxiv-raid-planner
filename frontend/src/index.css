@@ -67,6 +67,13 @@
   --color-status-info: #14b8a6;
 
   /* ================================
+     BRAND COLORS
+     Third-party service branding
+     ================================ */
+  --color-discord: #5865F2;              /* Discord blurple */
+  --color-discord-hover: #4752C4;        /* Darker blurple for hover */
+
+  /* ================================
      TEXT COLORS
      Softer contrast hierarchy
      ================================ */

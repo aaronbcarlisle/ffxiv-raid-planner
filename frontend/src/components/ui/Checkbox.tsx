@@ -28,14 +28,14 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
   return (
     <label
       className={`flex items-center gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
-      onClick={(e) => e.preventDefault()}
+      onClick={handleClick}
     >
       {/* Hidden native checkbox for form compatibility */}
       <input
         id={id}
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={() => {}} // Handled by label onClick
         disabled={disabled}
         className="sr-only"
         aria-hidden="true"
@@ -47,7 +47,10 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
         aria-checked={checked}
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
-        onClick={handleClick}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent double-toggle from label
+          handleClick();
+        }}
         onKeyDown={handleKeyDown}
         className={`
           w-4 h-4 rounded flex items-center justify-center
