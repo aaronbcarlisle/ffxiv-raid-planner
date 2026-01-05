@@ -82,6 +82,27 @@ export function LogMaterialModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
 
+  // Reset state when modal opens with new preset values
+  useEffect(() => {
+    if (isOpen) {
+      const initialFloor = presetFloor && getMaterialsForFloor(presetFloor).length > 0
+        ? presetFloor
+        : floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
+      setSelectedFloor(initialFloor);
+
+      const floorMaterials = getMaterialsForFloor(initialFloor);
+      const initialMaterial = suggestedMaterial && floorMaterials.includes(suggestedMaterial)
+        ? suggestedMaterial
+        : floorMaterials[0] || 'twine';
+      setSelectedMaterial(initialMaterial);
+
+      setSelectedPlayer(suggestedPlayer?.id || '');
+      setWeekNumber(currentWeek);
+      setNotes('');
+      setShowAllRecipients(false);
+    }
+  }, [isOpen, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors]);
+
   // Get material log from store for priority calculation
   const { materialLog } = useLootTrackingStore();
 

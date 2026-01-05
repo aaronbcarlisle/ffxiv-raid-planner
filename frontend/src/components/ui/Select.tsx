@@ -20,9 +20,6 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
 import { forwardRef, useState, useEffect } from 'react';
 
-// DEBUG: Set to true to keep dropdown open for DevTools inspection
-const DEBUG_KEEP_OPEN = false;
-
 // Counteract Radix's scroll-lock which breaks sticky positioning
 function usePreventScrollLock(isOpen: boolean) {
   useEffect(() => {
@@ -90,7 +87,6 @@ export function Select({
       value={value}
       onValueChange={onChange}
       disabled={disabled}
-      open={DEBUG_KEEP_OPEN ? true : undefined}
       onOpenChange={setOpen}
     >
       <SelectPrimitive.Trigger

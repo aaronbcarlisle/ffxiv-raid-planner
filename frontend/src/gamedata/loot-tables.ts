@@ -128,13 +128,14 @@ export function getUpgradeMaterialForSlot(slot: GearSlot): 'twine' | 'glaze' | '
 }
 
 /**
- * Parse a floor name (e.g., "M9S", "M10S") to a floor number (1-4).
- * Works with any savage tier naming convention (M5S-M8S, M9S-M12S, etc.)
- * by extracting the number and using modulo to get floor 1-4.
+ * Parse a floor name (e.g., "M9S", "P10S", "E9S") to a floor number (1-4).
+ * Works with any savage tier naming convention by extracting the number
+ * and using modulo to get floor 1-4.
  */
 export function parseFloorName(floorName: string): FloorNumber {
-  // Extract the number from the floor name (e.g., "M9S" -> 9, "M10S" -> 10)
-  const match = floorName.match(/M(\d+)S/i);
+  // Extract the number from the floor name (e.g., "M9S" -> 9, "P10S" -> 10, "E9S" -> 9)
+  // Supports any single-letter prefix (M, P, E, etc.)
+  const match = floorName.match(/[A-Z](\d+)S/i);
   if (!match) return 1; // Default to floor 1 if parsing fails
 
   const floorNum = parseInt(match[1], 10);
