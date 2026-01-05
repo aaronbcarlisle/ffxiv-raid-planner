@@ -23,7 +23,8 @@ export function JobSelectorPanel({
   onCancel,
   disabled = false,
 }: JobSelectorPanelProps) {
-  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
+  // Use array to preserve selection order
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
 
   // Group jobs by role
   const jobsByRole = RAID_JOBS.reduce((acc, job) => {
@@ -37,35 +38,40 @@ export function JobSelectorPanel({
   const roleOrder: Array<keyof typeof jobsByRole> = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
   const availableJobs = RAID_JOBS.filter((job) => !existingJobs.includes(job.abbreviation));
-  const allSelected = availableJobs.length > 0 && selectedJobs.size === availableJobs.length;
+  const allSelected = availableJobs.length > 0 && selectedJobs.length === availableJobs.length;
 
   const handleToggleJob = (job: string) => {
     if (disabled) return;
-    const newSelected = new Set(selectedJobs);
-    if (newSelected.has(job)) {
-      newSelected.delete(job);
+    const index = selectedJobs.indexOf(job);
+    if (index >= 0) {
+      // Remove from array
+      setSelectedJobs(selectedJobs.filter((j) => j !== job));
     } else {
-      newSelected.add(job);
+      // Add to end of array (preserves selection order)
+      setSelectedJobs([...selectedJobs, job]);
     }
-    setSelectedJobs(newSelected);
   };
 
   const handleSelectAllToggle = () => {
     if (disabled) return;
     if (allSelected) {
       // Unselect all
-      setSelectedJobs(new Set());
+      setSelectedJobs([]);
     } else {
-      // Select all
-      const allAvailableJobs = new Set(availableJobs.map((job) => job.abbreviation));
-      setSelectedJobs(allAvailableJobs);
+      // Select all (in role order: tank, healer, melee, ranged, caster)
+      const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+      const orderedJobs = roleOrder.flatMap((role) =>
+        availableJobs.filter((job) => job.role === role).map((job) => job.abbreviation)
+      );
+      setSelectedJobs(orderedJobs);
     }
   };
 
   const handleAddSelected = () => {
-    if (selectedJobs.size === 0 || disabled) return;
-    onAddJobs(Array.from(selectedJobs));
-    setSelectedJobs(new Set());
+    if (selectedJobs.length === 0 || disabled) return;
+    // Pass jobs in selection order
+    onAddJobs(selectedJobs);
+    setSelectedJobs([]);
   };
 
   return (
@@ -73,7 +79,7 @@ export function JobSelectorPanel({
       {/* Header with Select All on right */}
       <div className="flex items-center justify-between p-4 pb-3 flex-shrink-0">
         <h4 className="text-sm font-medium text-text-primary">
-          Select Jobs {selectedJobs.size > 0 && `(${selectedJobs.size} selected)`}
+          Select Jobs {selectedJobs.length > 0 && `(${selectedJobs.length} selected)`}
         </h4>
         <button
           onClick={handleSelectAllToggle}
@@ -97,8 +103,16 @@ export function JobSelectorPanel({
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {jobs.map((job) => {
-                  const isAdded = existingJobs.includes(job.abbreviation);
-                  const isSelected = selectedJobs.has(job.abbreviation);
+                  const existingIndex = existingJobs.indexOf(job.abbreviation);
+                  const isAdded = existingIndex >= 0;
+                  const selectionIndex = selectedJobs.indexOf(job.abbreviation);
+                  const isSelected = selectionIndex >= 0;
+                  // Badge number: existing jobs show their position, new selections continue from there
+                  const badgeNumber = isAdded
+                    ? existingIndex + 1
+                    : isSelected
+                    ? existingJobs.length + selectionIndex + 1
+                    : null;
                   return (
                     <button
                       key={job.abbreviation}
@@ -107,7 +121,7 @@ export function JobSelectorPanel({
                         handleToggleJob(job.abbreviation);
                       }}
                       disabled={isAdded || disabled}
-                      className={`flex flex-col items-center gap-1 p-2 rounded transition-colors ${
+                      className={`relative flex flex-col items-center gap-1 p-2 rounded transition-colors ${
                         isAdded
                           ? 'opacity-30 cursor-not-allowed bg-surface-interactive'
                           : isSelected
@@ -116,6 +130,16 @@ export function JobSelectorPanel({
                       }`}
                       title={isAdded ? 'Already added' : job.name}
                     >
+                      {/* Order badge - shows position for existing jobs, continues numbering for new selections */}
+                      {badgeNumber !== null && (
+                        <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${
+                          isAdded
+                            ? 'bg-text-muted text-surface-base'
+                            : 'bg-accent text-accent-contrast'
+                        }`}>
+                          {badgeNumber}
+                        </span>
+                      )}
                       <JobIcon job={job.abbreviation} size="md" />
                       <span className="text-xs text-text-secondary">
                         {job.abbreviation}
@@ -141,10 +165,10 @@ export function JobSelectorPanel({
         )}
         <button
           onClick={handleAddSelected}
-          disabled={disabled || selectedJobs.size === 0}
+          disabled={disabled || selectedJobs.length === 0}
           className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {selectedJobs.size > 0 ? `Add Selected (${selectedJobs.size})` : 'Add Selected'}
+          {selectedJobs.length > 0 ? `Add Selected (${selectedJobs.length})` : 'Add Selected'}
         </button>
       </div>
     </div>
