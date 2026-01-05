@@ -22,13 +22,15 @@
 
   /* ================================
      ACCENT COLORS
-     Teal gradient theme
+     Teal - Primary action color
      ================================ */
-  --color-accent: #14b8a6;
-  --color-accent-dim: rgba(20, 184, 166, 0.15);
-  --color-accent-bright: #2dd4bf;
-  --color-accent-muted: #0d7377;
-  --color-accent-deep: #0891b2;
+  --color-accent: #14b8a6;             /* Primary teal - CTAs, links */
+  --color-accent-hover: #2dd4bf;       /* Hover state */
+  --color-accent-dim: rgba(20, 184, 166, 0.15); /* Backgrounds */
+  --color-accent-bright: #2dd4bf;      /* Legacy alias for hover */
+  --color-accent-muted: #0d7377;       /* Subdued variant */
+  --color-accent-deep: #0891b2;        /* Gradient end */
+  --color-accent-contrast: #052e2b;    /* Dark text on accent backgrounds */
 
   /* ================================
      ROLE COLORS
@@ -127,6 +129,7 @@ html {
   scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
   scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
   scrollbar-width: thin;
+  overflow-y: scroll !important; /* Always show scrollbar - !important prevents Radix scroll-lock from hiding it */
 }
 
 /* Webkit (Chrome, Safari) scrollbar styling */
@@ -149,8 +152,42 @@ html {
 }
 
 body {
-  margin: 0;
+  margin: 0 !important;
   min-height: 100vh;
+  /* Prevent Radix scroll-lock from causing layout shift */
+  overflow: visible !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  position: static !important; /* Prevent Radix from setting position: fixed which breaks sticky nav */
+}
+
+/* Prevent Radix focus guards from affecting layout */
+[data-radix-focus-guard] {
+  position: fixed !important;
+  width: 1px !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Prevent Radix scroll-lock from affecting body positioning */
+html[data-scroll-locked] body,
+body[data-scroll-locked] {
+  position: static !important;
+  overflow: visible !important;
+  margin-right: 0 !important;
+}
+
+/* Prevent Radix from visually hiding sibling elements when dropdowns open */
+[data-aria-hidden="true"],
+[aria-hidden="true"]:not([role="presentation"]):not(.sr-only) {
+  visibility: visible !important;
+  display: revert !important;
 }
 
 #root {

@@ -1323,7 +1323,7 @@ function NavSidebar({
   };
 
   return (
-    <nav className="sticky top-6 w-56 shrink-0 hidden lg:block self-start h-fit">
+    <nav className="sticky top-6 w-56 shrink-0 hidden lg:block self-start h-fit z-40">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         {/* Top fade indicator */}
         <div
@@ -1976,10 +1976,15 @@ export function DesignSystem() {
 
         {/* Tooltips */}
         <Section id="tooltips" title="Tooltips">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col gap-3 items-start">
             <Tooltip content="Top tooltip" side="top">
               <button className="px-4 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30">
                 Hover (Top)
+              </button>
+            </Tooltip>
+            <Tooltip content="Left tooltip" side="left">
+              <button className="px-4 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30">
+                Hover (Left)
               </button>
             </Tooltip>
             <Tooltip content="Right tooltip" side="right">
@@ -1990,11 +1995,6 @@ export function DesignSystem() {
             <Tooltip content="Bottom tooltip" side="bottom">
               <button className="px-4 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30">
                 Hover (Bottom)
-              </button>
-            </Tooltip>
-            <Tooltip content="Left tooltip" side="left">
-              <button className="px-4 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30">
-                Hover (Left)
               </button>
             </Tooltip>
           </div>
