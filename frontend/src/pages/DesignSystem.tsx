@@ -1741,14 +1741,14 @@ export function DesignSystem() {
             Equipment origin tracking badges.
           </p>
           <div className="flex flex-wrap gap-2">
-            {(['savage', 'tome_up', 'catchup', 'tome', 'relic', 'crafted', 'prep', 'normal', 'unknown'] as GearSourceCategory[]).map(
+            {(['savage', 'tome_up', 'tome', 'crafted'] as GearSourceCategory[]).map(
               (source) => (
                 <GearSourceBadge key={source} source={source} />
               )
             )}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(['savage', 'tome_up', 'catchup', 'tome', 'relic', 'crafted', 'prep', 'normal', 'unknown'] as GearSourceCategory[]).map(
+            {(['savage', 'tome_up', 'tome', 'crafted'] as GearSourceCategory[]).map(
               (source) => (
                 <GearSourceBadge key={source} source={source} compact />
               )

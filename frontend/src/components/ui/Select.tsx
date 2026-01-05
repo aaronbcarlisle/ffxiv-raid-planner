@@ -18,7 +18,43 @@
 
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
-import { forwardRef } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
+
+// DEBUG: Set to true to keep dropdown open for DevTools inspection
+const DEBUG_KEEP_OPEN = false;
+
+// Counteract Radix's scroll-lock which breaks sticky positioning
+function usePreventScrollLock(isOpen: boolean) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Override Radix's scroll-lock styles on body
+    const body = document.body;
+    const originalStyle = body.getAttribute('style') || '';
+
+    const override = () => {
+      body.style.setProperty('position', 'static', 'important');
+      body.style.setProperty('overflow', 'visible', 'important');
+      body.style.setProperty('pointer-events', 'auto', 'important');
+
+      // Also remove aria-hidden from siblings
+      document.querySelectorAll('[data-aria-hidden="true"]').forEach(el => {
+        el.removeAttribute('data-aria-hidden');
+        el.removeAttribute('aria-hidden');
+      });
+    };
+
+    // Apply immediately and on any DOM changes
+    override();
+    const observer = new MutationObserver(override);
+    observer.observe(body, { attributes: true, attributeFilter: ['style', 'data-scroll-locked'] });
+
+    return () => {
+      observer.disconnect();
+      body.setAttribute('style', originalStyle);
+    };
+  }, [isOpen]);
+}
 
 export interface SelectOption {
   value: string;
@@ -44,8 +80,20 @@ export function Select({
   disabled,
   className = '',
 }: SelectProps) {
+  const [open, setOpen] = useState(false);
+
+  // Prevent Radix scroll-lock from breaking sticky nav
+  usePreventScrollLock(open);
+
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onChange} disabled={disabled} modal={false}>
+    <SelectPrimitive.Root
+      value={value}
+      onValueChange={onChange}
+      disabled={disabled}
+      modal={false}
+      open={DEBUG_KEEP_OPEN ? open : undefined}
+      onOpenChange={DEBUG_KEEP_OPEN ? (isOpen) => { if (isOpen) setOpen(true); } : undefined}
+    >
       <SelectPrimitive.Trigger
         id={id}
         className={`

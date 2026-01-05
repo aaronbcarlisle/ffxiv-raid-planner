@@ -176,11 +176,15 @@ body {
 }
 
 /* Prevent Radix scroll-lock from affecting body positioning */
+/* Uses attribute selectors for higher specificity than Radix's injected styles */
 html[data-scroll-locked] body,
-body[data-scroll-locked] {
+body[data-scroll-locked],
+body[data-scroll-locked="1"],
+body[data-scroll-locked][style] {
   position: static !important;
   overflow: visible !important;
   margin-right: 0 !important;
+  pointer-events: auto !important;
 }
 
 /* Prevent Radix from visually hiding sibling elements when dropdowns open */
