@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
-import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForUpgradeMaterial } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import {
   getPriorityForItem,
@@ -15,16 +15,21 @@ import {
   calculateAverageDrops,
 } from '../../utils/lootCoordination';
 import { getRoleColor } from '../../gamedata';
+import { JobIcon } from '../ui/JobIcon';
 import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
+import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
   settings: StaticSettings;
   selectedFloor: FloorNumber;
   floorName: string; // e.g., "M5S"
+  floors: string[]; // All floor names e.g., ["M9S", "M10S", "M11S", "M12S"]
+  dutyNames?: string[]; // Optional duty names for floor selector tooltip
+  onFloorChange?: (floor: FloorNumber) => void; // Floor change callback
   // Optional props for inline logging
   showLogButtons?: boolean;
   groupId?: string;
@@ -58,15 +63,20 @@ function PriorityList({
   onLogClick,
   showEnhanced = false,
 }: PriorityListProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (entries.length === 0) {
     return (
       <div className="text-status-success text-sm py-1">No one needs</div>
     );
   }
 
+  const visibleEntries = expanded ? entries : entries.slice(0, maxShown);
+  const hasMore = entries.length > maxShown;
+
   return (
     <div className="space-y-1">
-      {entries.slice(0, maxShown).map((entry, index) => {
+      {visibleEntries.map((entry, index) => {
         const roleColor = getRoleColor(entry.player.role as any);
         const isFirst = index === 0;
         const displayScore = showEnhanced && entry.enhancedScore !== undefined
@@ -85,17 +95,21 @@ function PriorityList({
               isFirst ? 'bg-accent/20' : ''
             }`}
           >
-            <span
-              className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}
-            >
-              {index + 1}. {entry.player.name}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+                {index + 1}.
+              </span>
+              <JobIcon job={entry.player.job} size="xs" />
+              <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+                {entry.player.name}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
-              {/* Log button - only show on first entry */}
-              {showLogButton && isFirst && onLogClick && (
+              {/* Log button - shows on hover for any entry */}
+              {showLogButton && onLogClick && (
                 <button
                   onClick={() => onLogClick(entry.player)}
-                  className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent/80 text-white hover:bg-accent transition-all"
+                  className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
                 >
                   Log
                 </button>
@@ -111,22 +125,28 @@ function PriorityList({
           </div>
         );
       })}
-      {entries.length > maxShown && (
-        <div className="text-text-muted text-xs px-2">
-          +{entries.length - maxShown} more
-        </div>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-text-muted hover:text-accent text-xs px-2 py-0.5 transition-colors"
+        >
+          {expanded ? 'Show less' : `+${entries.length - maxShown} more`}
+        </button>
       )}
     </div>
   );
 }
 
-type LootSubTab = 'gear' | 'weapon';
+type LootSubTab = 'matrix' | 'gear' | 'weapon';
 
 export function LootPriorityPanel({
   players,
   settings,
   selectedFloor,
   floorName,
+  floors,
+  dutyNames,
+  onFloorChange,
   showLogButtons = false,
   groupId,
   tierId,
@@ -142,9 +162,9 @@ export function LootPriorityPanel({
   const [activeSubTab, setActiveSubTabState] = useState<LootSubTab>(() => {
     try {
       const saved = localStorage.getItem('loot-priority-subtab');
-      return (saved as LootSubTab) || 'gear';
+      return (saved as LootSubTab) || 'matrix';
     } catch {
-      return 'gear';
+      return 'matrix';
     }
   });
 
@@ -161,10 +181,12 @@ export function LootPriorityPanel({
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     slot: string;
+    floor: string;
     player: SnapshotPlayer | null;
   }>({
     isOpen: false,
     slot: '',
+    floor: '',
     player: null,
   });
 
@@ -249,18 +271,19 @@ export function LootPriorityPanel({
   // Can show log buttons if we have the required context
   const canShowLogButtons = showLogButtons && groupId && tierId;
 
-  const handleLogClick = (slot: string, player: SnapshotPlayer) => {
+  const handleLogClick = (slot: string, player: SnapshotPlayer, floor?: string) => {
     // For ring, use ring1 as the actual slot
     const actualSlot = slot === 'ring' ? 'ring1' : slot;
     setModalState({
       isOpen: true,
       slot: actualSlot,
+      floor: floor || floorName, // Use provided floor or fallback to current floorName
       player,
     });
   };
 
   const handleModalClose = () => {
-    setModalState({ isOpen: false, slot: '', player: null });
+    setModalState({ isOpen: false, slot: '', floor: '', player: null });
   };
 
   const handleWeaponLogClick = (weaponJob: string, player: SnapshotPlayer) => {
@@ -297,15 +320,25 @@ export function LootPriorityPanel({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <h3 className="font-display text-lg text-accent">
-            {floorName} Loot Priority
+            Loot Priority
           </h3>
           {/* Sub-tab navigation */}
           <div className="flex bg-surface-base rounded-lg p-1">
             <button
+              onClick={() => setActiveSubTab('matrix')}
+              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                activeSubTab === 'matrix'
+                  ? 'bg-accent text-accent-contrast'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Who Needs It
+            </button>
+            <button
               onClick={() => setActiveSubTab('gear')}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
+              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
                 activeSubTab === 'gear'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
@@ -313,18 +346,13 @@ export function LootPriorityPanel({
             </button>
             <button
               onClick={() => setActiveSubTab('weapon')}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
+              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
                 activeSubTab === 'weapon'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Weapon Priority
-              {selectedFloor === 4 && (
-                <span className="ml-1.5 text-xs px-1 py-0.5 rounded bg-white/20">
-                  !
-                </span>
-              )}
             </button>
           </div>
         </div>
@@ -338,6 +366,32 @@ export function LootPriorityPanel({
       {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
         <>
+          {/* Floor selector for Gear Priority - button style tabs */}
+          {onFloorChange && (
+            <div className="flex items-center gap-2 mb-4 bg-surface-elevated/50 p-2 rounded-lg border border-border-default">
+              <span className="text-xs text-text-muted mr-1">Floor:</span>
+              {([1, 2, 3, 4] as FloorNumber[]).map((floor) => {
+                const isSelected = selectedFloor === floor;
+                const floorColors = FLOOR_COLORS[floor];
+                return (
+                  <button
+                    key={floor}
+                    onClick={() => onFloorChange(floor)}
+                    className={`
+                      px-3 py-1.5 rounded text-xs font-medium transition-colors
+                      ${isSelected
+                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border} border`
+                        : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                      }
+                    `}
+                    title={dutyNames?.[floor - 1]}
+                  >
+                    {floors[floor - 1] || `Floor ${floor}`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {/* Gear drops grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {itemPriorities.map(({ slot, label, entries }) => (
@@ -405,11 +459,6 @@ export function LootPriorityPanel({
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
         <div>
-          {selectedFloor === 4 && (
-            <div className="mb-4 px-3 py-2 rounded bg-accent/10 border border-accent/30 text-sm text-accent">
-              Weapons drop from this floor (Floor 4)
-            </div>
-          )}
           <WeaponPriorityList
             players={players}
             settings={settings}
@@ -419,6 +468,16 @@ export function LootPriorityPanel({
         </div>
       )}
 
+      {/* Who Needs It Matrix Tab Content */}
+      {activeSubTab === 'matrix' && (
+        <WhoNeedsItMatrix
+          players={players}
+          floors={floors}
+          showLogButtons={!!canShowLogButtons}
+          onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+        />
+      )}
+
       {/* Quick Log Modal */}
       {canShowLogButtons && modalState.player && (
         <QuickLogDropModal
@@ -426,7 +485,7 @@ export function LootPriorityPanel({
           onClose={handleModalClose}
           groupId={groupId!}
           tierId={tierId!}
-          floor={floorName}
+          floor={modalState.floor || floorName}
           slot={modalState.slot}
           currentWeek={currentWeek}
           suggestedPlayer={modalState.player}
@@ -442,7 +501,7 @@ export function LootPriorityPanel({
           onClose={handleWeaponModalClose}
           groupId={groupId!}
           tierId={tierId!}
-          floor={floorName}
+          floor={floors[3] || 'Floor 4'} // Weapons always drop from floor 4
           weaponJob={weaponModalState.weaponJob}
           currentWeek={currentWeek}
           suggestedPlayer={weaponModalState.player}
@@ -453,21 +512,26 @@ export function LootPriorityPanel({
       )}
 
       {/* Quick Log Material Modal */}
-      {canShowLogButtons && materialModalState.player && (
-        <QuickLogMaterialModal
-          isOpen={materialModalState.isOpen}
-          onClose={handleMaterialModalClose}
-          groupId={groupId!}
-          tierId={tierId!}
-          floor={floorName}
-          material={materialModalState.material}
-          currentWeek={currentWeek}
-          suggestedPlayer={materialModalState.player}
-          allPlayers={players}
-          settings={settings}
-          onSuccess={handleLogSuccess}
-        />
-      )}
+      {canShowLogButtons && materialModalState.player && (() => {
+        // Get correct floor for this material type (glaze=2, twine/solvent=3)
+        const materialFloorNum = getFloorForUpgradeMaterial(materialModalState.material)[0];
+        const materialFloor = floors[materialFloorNum - 1] || `Floor ${materialFloorNum}`;
+        return (
+          <QuickLogMaterialModal
+            isOpen={materialModalState.isOpen}
+            onClose={handleMaterialModalClose}
+            groupId={groupId!}
+            tierId={tierId!}
+            floor={materialFloor}
+            material={materialModalState.material}
+            currentWeek={currentWeek}
+            suggestedPlayer={materialModalState.player}
+            allPlayers={players}
+            settings={settings}
+            onSuccess={handleLogSuccess}
+          />
+        );
+      })()}
     </div>
   );
 }

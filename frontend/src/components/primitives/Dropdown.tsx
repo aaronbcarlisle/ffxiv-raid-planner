@@ -197,6 +197,7 @@ export const DropdownCheckboxItem = forwardRef<HTMLDivElement, DropdownCheckboxI
         ref={ref}
         checked={checked}
         onCheckedChange={onCheckedChange}
+        onSelect={(e) => e.preventDefault()} // Prevent menu from closing on checkbox toggle
         disabled={disabled}
         className={`
           flex items-center gap-2 px-3 py-2 text-sm cursor-pointer

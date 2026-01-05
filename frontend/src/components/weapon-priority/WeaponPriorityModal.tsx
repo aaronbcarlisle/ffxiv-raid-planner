@@ -2,16 +2,20 @@
  * Weapon Priority Modal
  *
  * Modal for setting a player's weapon priority list.
- * Players can reorder jobs to indicate which weapons they want first.
+ * Fixed 3-column grid layout with inline job selector that replaces the grid view.
+ * Players can drag to reorder jobs to indicate which weapons they want first.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
-import { WeaponPriorityEditor } from './WeaponPriorityEditor';
+import { WeaponPriorityGrid } from './WeaponPriorityGrid';
+import { JobSelectorPanel } from './JobSelectorPanel';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canEditPlayer } from '../../utils/permissions';
+
+const ITEMS_PER_COLUMN = 8;
 
 interface WeaponPriorityModalProps {
   player: SnapshotPlayer;
@@ -36,13 +40,10 @@ export function WeaponPriorityModal({
 
   const [weaponPriorities, setWeaponPriorities] = useState<WeaponPriority[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [showJobSelector, setShowJobSelector] = useState(false);
-  const [selectedJobsCount, setSelectedJobsCount] = useState(0);
-  const addSelectedJobsRef = useRef<(() => void) | null>(null);
   const [showMainJobWarning, setShowMainJobWarning] = useState(false);
-  const [mainJobAction, setMainJobAction] = useState<'move' | 'remove' | null>(null);
-  const pendingActionRef = useRef<(() => void) | null>(null);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showJobSelector, setShowJobSelector] = useState(false);
 
   // Initialize weapon priorities from player
   useEffect(() => {
@@ -81,6 +82,9 @@ export function WeaponPriorityModal({
         });
         setWeaponPriorities(backfilled);
       }
+
+      // Reset job selector view when modal opens
+      setShowJobSelector(false);
     }
   }, [isOpen, player.weaponPriorities, player.job, player.gear]);
 
@@ -105,16 +109,42 @@ export function WeaponPriorityModal({
     ? 'Weapon priorities have been auto-locked'
     : undefined;
 
-  const handleSaveOrAddSelected = async () => {
+  // Calculate modal size based on number of columns needed
+  const modalSize = useMemo(() => {
+    const numColumns = Math.ceil(weaponPriorities.length / ITEMS_PER_COLUMN) || 1;
+    // When showing job selector, use lg for the 5-column job grid
+    if (showJobSelector) return 'lg';
+    // Size based on columns: 1 col = 2xl, 2 cols = 3xl, 3+ cols = 5xl
+    if (numColumns <= 1) return '2xl';
+    if (numColumns <= 2) return '3xl';
+    return '5xl';
+  }, [weaponPriorities.length, showJobSelector]) as 'lg' | '2xl' | '3xl' | '5xl';
+
+  // Add jobs from the selector
+  const handleAddJobs = useCallback((jobs: string[]) => {
+    const newPriorities = jobs
+      .filter((job) => !weaponPriorities.some((wp) => wp.job === job))
+      .map((job) => ({
+        job,
+        received: false,
+      } as WeaponPriority));
+
+    if (newPriorities.length > 0) {
+      setWeaponPriorities([...weaponPriorities, ...newPriorities]);
+    }
+    setShowJobSelector(false);
+  }, [weaponPriorities]);
+
+  // Handle main job move attempt
+  const handleMainJobMoveAttempt = useCallback((action: () => void) => {
+    setPendingAction(() => action);
+    setShowMainJobWarning(true);
+  }, []);
+
+  // Save handler
+  const handleSave = async () => {
     if (!canEdit) return;
 
-    // If job selector is open with jobs selected, add them instead of saving
-    if (showJobSelector && selectedJobsCount > 0 && addSelectedJobsRef.current) {
-      addSelectedJobsRef.current();
-      return;
-    }
-
-    // Otherwise, save weapon priorities
     setIsSaving(true);
     try {
       // Check if main job's received status differs from current raid weapon
@@ -151,11 +181,13 @@ export function WeaponPriorityModal({
       }
 
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Extract actual error message
       let errorMessage = 'Failed to save weapon priorities';
-      if (typeof error === 'object' && error !== null) {
-        errorMessage = error.message || error.detail || errorMessage;
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = (error as { message?: string; detail?: string }).message ||
+                       (error as { detail?: string }).detail ||
+                       errorMessage;
       }
 
       // Show error to user via toast
@@ -165,13 +197,6 @@ export function WeaponPriorityModal({
       setIsSaving(false);
     }
   };
-
-  // Determine button label
-  const saveButtonLabel = isSaving
-    ? 'Saving...'
-    : showJobSelector && selectedJobsCount > 0
-    ? `Add Selected (${selectedJobsCount})`
-    : 'Save';
 
   // Reset to main job only
   const handleResetClick = () => {
@@ -191,18 +216,16 @@ export function WeaponPriorityModal({
 
   // Confirm main job action
   const handleConfirmMainJobAction = () => {
-    if (pendingActionRef.current) {
-      pendingActionRef.current();
-      pendingActionRef.current = null;
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
     }
     setShowMainJobWarning(false);
-    setMainJobAction(null);
   };
 
   const handleCancelMainJobAction = () => {
-    pendingActionRef.current = null;
+    setPendingAction(null);
     setShowMainJobWarning(false);
-    setMainJobAction(null);
   };
 
   return (
@@ -211,92 +234,87 @@ export function WeaponPriorityModal({
         isOpen={isOpen}
         onClose={onClose}
         title={`${player.name || 'Player'} - Weapon Priorities`}
-        size="lg"
+        size={modalSize}
       >
-        <div className="flex flex-col h-full max-h-[70vh]">
-          {/* Fixed header section */}
-          <div className="flex-shrink-0 space-y-4 pb-4">
-            {/* Lock warning */}
-            {isLocked && (
-              <div className="bg-status-warning/10 border border-status-warning/30 rounded p-3 text-sm text-status-warning">
-                {lockReason}
-                {!canEdit && (
-                  <div className="mt-1 text-xs opacity-80">
-                    Only Owner/Lead can edit when locked
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Permission denied */}
-            {!permission.allowed && (
-              <div className="bg-status-error/10 border border-status-error/30 rounded p-3 text-sm text-status-error">
-                {permission.reason}
-              </div>
-            )}
-
-            {/* Description */}
-            <p className="text-sm text-text-secondary">
-              Drag and drop to reorder. Jobs at the top will receive weapons first.
-              {player.weaponPriorities.length === 0 && (
-                <span className="block mt-1 text-text-muted">
-                  Click "Add Job(s)" to start building your weapon priority list.
-                </span>
+        <div className="flex flex-col max-h-[70vh] overflow-hidden">
+          {/* Header warnings - only show in priority view */}
+          {!showJobSelector && (
+            <div className="flex-shrink-0 space-y-3 pb-4">
+              {/* Lock warning */}
+              {isLocked && (
+                <div className="bg-status-warning/10 border border-status-warning/30 rounded p-3 text-sm text-status-warning">
+                  {lockReason}
+                  {!canEdit && (
+                    <div className="mt-1 text-xs opacity-80">
+                      Only Owner/Lead can edit when locked
+                    </div>
+                  )}
+                </div>
               )}
-            </p>
-          </div>
 
-          {/* Scrollable editor section */}
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <WeaponPriorityEditor
-              weaponPriorities={weaponPriorities}
-              onChange={setWeaponPriorities}
-              disabled={!canEdit}
-              mainJob={player.job}
-              onShowJobSelectorChange={(show, count, addFn) => {
-                setShowJobSelector(show);
-                setSelectedJobsCount(count);
-                addSelectedJobsRef.current = addFn;
-              }}
-              onMainJobMoveAttempt={(action) => {
-                pendingActionRef.current = action;
-                setMainJobAction('move');
-                setShowMainJobWarning(true);
-              }}
-              onMainJobRemoveAttempt={(action) => {
-                pendingActionRef.current = action;
-                setMainJobAction('remove');
-                setShowMainJobWarning(true);
-              }}
-            />
-          </div>
+              {/* Permission denied */}
+              {!permission.allowed && (
+                <div className="bg-status-error/10 border border-status-error/30 rounded p-3 text-sm text-status-error">
+                  {permission.reason}
+                </div>
+              )}
 
-          {/* Fixed footer section */}
-          <div className="flex-shrink-0 flex justify-between gap-3 pt-4 border-t border-border-default">
-            <button
-              onClick={handleResetClick}
-              disabled={!canEdit || weaponPriorities.length <= 1}
-              className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Reset to main job only"
-            >
-              Reset
-            </button>
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveOrAddSelected}
-                disabled={!canEdit || isSaving}
-                className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saveButtonLabel}
-              </button>
+              {/* Description */}
+              <div className="text-sm text-text-secondary">
+                <p>Drag and drop to reorder. Jobs at the top will receive weapons first.</p>
+              </div>
             </div>
+          )}
+
+          {/* Main content area - either Priority Grid or Job Selector */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+            {showJobSelector ? (
+              <JobSelectorPanel
+                existingJobs={weaponPriorities.map((wp) => wp.job)}
+                onAddJobs={handleAddJobs}
+                onCancel={() => setShowJobSelector(false)}
+                disabled={!canEdit}
+              />
+            ) : (
+              <WeaponPriorityGrid
+                weaponPriorities={weaponPriorities}
+                onChange={setWeaponPriorities}
+                disabled={!canEdit}
+                mainJob={player.job}
+                onMainJobMoveAttempt={handleMainJobMoveAttempt}
+                onAddJobsClick={() => setShowJobSelector(true)}
+              />
+            )}
           </div>
+
+          {/* Footer - only show in priority view */}
+          {!showJobSelector && (
+            <div className="flex-shrink-0 flex justify-between gap-3 pt-4 border-t border-border-default mt-4">
+              <button
+                onClick={handleResetClick}
+                disabled={!canEdit || weaponPriorities.length <= 1}
+                className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Reset to main job only"
+              >
+                Reset
+              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!canEdit || isSaving}
+                  className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -309,9 +327,8 @@ export function WeaponPriorityModal({
         >
           <div className="space-y-4">
             <p className="text-sm text-text-secondary">
-              {mainJobAction === 'move'
-                ? `You're about to move your main job (${player.job}) out of the #1 priority position. This means you may receive a different weapon first.`
-                : `You're about to remove your main job (${player.job}) from your weapon priorities. Are you sure?`}
+              You're about to move your main job ({player.job}) out of the #1 priority position.
+              This means you may receive a different weapon first.
             </p>
             <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
               <button
@@ -322,7 +339,7 @@ export function WeaponPriorityModal({
               </button>
               <button
                 onClick={handleConfirmMainJobAction}
-                className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
+                className="px-4 py-2 rounded bg-status-warning text-status-warning-contrast font-bold hover:brightness-110 transition-colors"
               >
                 Confirm
               </button>
@@ -351,7 +368,7 @@ export function WeaponPriorityModal({
               </button>
               <button
                 onClick={handleConfirmReset}
-                className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
+                className="px-4 py-2 rounded bg-status-warning text-status-warning-contrast font-bold hover:brightness-110 transition-colors"
               >
                 Reset
               </button>

@@ -3,7 +3,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'; // sm=24rem, md=28rem (default), lg=32rem, xl=36rem, 2xl=42rem, 3xl=48rem
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'; // sm=24rem, md=28rem (default), lg=32rem, xl=36rem, 2xl=42rem, 3xl=48rem, 4xl=56rem, 5xl=64rem
 }
 
 const SIZE_CLASSES = {
@@ -13,6 +13,8 @@ const SIZE_CLASSES = {
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
   '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {

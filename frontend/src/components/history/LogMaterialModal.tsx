@@ -10,6 +10,7 @@ import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { parseFloorName, FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 
 interface LogMaterialModalProps {
   isOpen: boolean;
@@ -27,21 +28,19 @@ interface LogMaterialModalProps {
   settings?: StaticSettings;
   suggestedPlayer?: SnapshotPlayer;
   suggestedMaterial?: MaterialType;
+  presetFloor?: string;
 }
 
-// Floor to material mapping based on current tier (AAC Heavyweight)
-// Floor 1 (M9S/M5S) and Floor 4 (M12S/M8S) don't drop upgrade materials
-const FLOOR_MATERIALS: Record<string, MaterialType[]> = {
-  M9S: [],   // Accessories only - no materials
-  M10S: ['glaze'],
-  M11S: ['twine', 'solvent'],
-  M12S: [],  // Weapon only - no materials
-  // Legacy tiers
-  M5S: [],   // Accessories only - no materials
-  M6S: ['glaze'],
-  M7S: ['twine', 'solvent'],
-  M8S: [],   // Weapon only - no materials
-};
+/**
+ * Get materials that drop from a floor by parsing the floor name
+ * and looking up in the standard loot tables.
+ * Works with any tier naming convention (M9S, P9S, etc.)
+ */
+function getMaterialsForFloor(floorName: string): MaterialType[] {
+  const floorNum = parseFloorName(floorName);
+  const lootTable = FLOOR_LOOT_TABLES[floorNum];
+  return lootTable?.upgradeMaterials as MaterialType[] || [];
+}
 
 export function LogMaterialModal({
   isOpen,
@@ -53,13 +52,28 @@ export function LogMaterialModal({
   settings = DEFAULT_SETTINGS,
   suggestedPlayer,
   suggestedMaterial,
+  presetFloor,
 }: LogMaterialModalProps) {
-  const [selectedFloor, setSelectedFloor] = useState(
-    floors.find((f) => FLOOR_MATERIALS[f]?.length > 0) || floors[0]
-  );
-  const [selectedMaterial, setSelectedMaterial] = useState<MaterialType>(
-    suggestedMaterial || FLOOR_MATERIALS[selectedFloor]?.[0] || 'twine'
-  );
+  // Determine initial floor: use preset if valid, otherwise find first floor with materials
+  const getInitialFloor = () => {
+    if (presetFloor && getMaterialsForFloor(presetFloor).length > 0) {
+      return presetFloor;
+    }
+    return floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
+  };
+
+  const [selectedFloor, setSelectedFloor] = useState(getInitialFloor);
+
+  // Determine initial material: use suggested if valid for floor, otherwise first material for floor
+  const getInitialMaterial = (): MaterialType => {
+    const floorMaterials = getMaterialsForFloor(selectedFloor);
+    if (suggestedMaterial && floorMaterials.includes(suggestedMaterial)) {
+      return suggestedMaterial;
+    }
+    return floorMaterials[0] || 'twine';
+  };
+
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialType>(getInitialMaterial);
   const [selectedPlayer, setSelectedPlayer] = useState(
     suggestedPlayer?.id || ''
   );
@@ -68,15 +82,36 @@ export function LogMaterialModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
 
+  // Reset state when modal opens with new preset values
+  useEffect(() => {
+    if (isOpen) {
+      const initialFloor = presetFloor && getMaterialsForFloor(presetFloor).length > 0
+        ? presetFloor
+        : floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
+      setSelectedFloor(initialFloor);
+
+      const floorMaterials = getMaterialsForFloor(initialFloor);
+      const initialMaterial = suggestedMaterial && floorMaterials.includes(suggestedMaterial)
+        ? suggestedMaterial
+        : floorMaterials[0] || 'twine';
+      setSelectedMaterial(initialMaterial);
+
+      setSelectedPlayer(suggestedPlayer?.id || '');
+      setWeekNumber(currentWeek);
+      setNotes('');
+      setShowAllRecipients(false);
+    }
+  }, [isOpen, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors]);
+
   // Get material log from store for priority calculation
   const { materialLog } = useLootTrackingStore();
 
   // Get available materials for selected floor
-  const availableMaterials = FLOOR_MATERIALS[selectedFloor] || [];
+  const availableMaterials = getMaterialsForFloor(selectedFloor);
 
   const handleFloorChange = (floor: string) => {
     setSelectedFloor(floor);
-    const materials = FLOOR_MATERIALS[floor] || [];
+    const materials = getMaterialsForFloor(floor);
     if (materials.length > 0 && !materials.includes(selectedMaterial)) {
       setSelectedMaterial(materials[0]);
     }
@@ -189,7 +224,7 @@ export function LogMaterialModal({
               className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
               {floors.map((floor) => {
-                const materials = FLOOR_MATERIALS[floor] || [];
+                const materials = getMaterialsForFloor(floor);
                 return (
                   <option key={floor} value={floor} disabled={materials.length === 0}>
                     {floor} {materials.length === 0 ? '(no materials)' : ''}
@@ -309,7 +344,7 @@ export function LogMaterialModal({
               !selectedMaterial ||
               availableMaterials.length === 0
             }
-            className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-bright transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {isSubmitting ? 'Logging...' : 'Log Material'}
           </button>

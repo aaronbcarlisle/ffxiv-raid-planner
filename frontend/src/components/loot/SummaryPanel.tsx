@@ -11,6 +11,7 @@ interface SummaryPanelProps {
   settings: StaticSettings;
   selectedFloor: FloorNumber;
   floorName: string;
+  floors: string[];
   teamSummary: TeamSummaryType;
   initialTab?: Tab;
 }
@@ -20,6 +21,7 @@ export function SummaryPanel({
   settings,
   selectedFloor,
   floorName,
+  floors,
   teamSummary,
   initialTab = 'loot',
 }: SummaryPanelProps) {
@@ -60,6 +62,7 @@ export function SummaryPanel({
           settings={settings}
           selectedFloor={selectedFloor}
           floorName={floorName}
+          floors={floors}
         />
       ) : (
         <TeamSummary summary={teamSummary} />

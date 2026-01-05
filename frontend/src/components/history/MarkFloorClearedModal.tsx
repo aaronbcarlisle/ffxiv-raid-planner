@@ -25,13 +25,16 @@ export function MarkFloorClearedModal({
   floors,
   currentWeek,
 }: MarkFloorClearedModalProps) {
+  const configuredPlayers = players.filter((p) => p.configured);
+
   const [weekNumber, setWeekNumber] = useState(currentWeek || 1);
   const [floor, setFloor] = useState(floors[0] || '');
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
+  // Default to all configured players selected
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(
+    () => new Set(configuredPlayers.map((p) => p.id))
+  );
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  const configuredPlayers = players.filter((p) => p.configured);
 
   const handleTogglePlayer = (playerId: string) => {
     const newSelected = new Set(selectedPlayerIds);
@@ -180,7 +183,7 @@ export function MarkFloorClearedModal({
           <button
             type="submit"
             disabled={selectedPlayerIds.size === 0 || isSaving}
-            className="px-4 py-2 rounded bg-accent text-white hover:bg-accent-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Marking...' : `Mark ${selectedPlayerIds.size} Player${selectedPlayerIds.size === 1 ? '' : 's'}`}
           </button>

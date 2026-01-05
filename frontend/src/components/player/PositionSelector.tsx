@@ -38,9 +38,10 @@ function getSuggestedPositions(role: string): RaidPosition[] {
 
 function getPositionBgClasses(pos: RaidPosition, isSelected: boolean, isSuggested: boolean): string {
   if (isSelected) {
-    if (pos.startsWith('T')) return 'bg-role-tank text-white';
-    if (pos.startsWith('H')) return 'bg-role-healer text-white';
-    return 'bg-role-melee text-white';
+    // Use dark text for better contrast on bright role colors
+    if (pos.startsWith('T')) return 'bg-role-tank text-surface-base font-bold';
+    if (pos.startsWith('H')) return 'bg-role-healer text-surface-base font-bold';
+    return 'bg-role-melee text-surface-base font-bold';
   }
   if (isSuggested) {
     if (pos.startsWith('T')) return 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30';

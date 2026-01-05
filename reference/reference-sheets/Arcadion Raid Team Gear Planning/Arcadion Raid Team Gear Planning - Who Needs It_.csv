@@ -1,0 +1,31 @@
+Team,(team name),,,,Raid,Arcadion Heavyweight Savage,,,,27,6
+Savage Gear Needed,,(Tank ,(Tank ,(Heale,(Heale,(Melee,(Melee,(Range,(Caste,4,31
+Floor 4,Weapon,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,7,34
+Floor 4,Offhand, , , , , , , , ,8,35
+Floor 2,Head, , , , , , , , ,9,36
+Floor 3,Chest, , , , , , , , ,10,37
+Floor 2,Gloves, , , , , , , , ,11,38
+Floor 3,Pants, , , , , , , , ,12,39
+Floor 2,Boots, , , , , , , , ,13,40
+,,,,,,,,,,,
+Floor 1,Earring, , , , , , , , ,15,42
+Floor 1,Necklace, , , , , , , , ,16,43
+Floor 1,Bracelet, , , , , , , , ,17,44
+Floor 1,Ring,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,19,46
+,,,,,,,,,,,
+,Pages Needed,(Tank ,(Tank ,(Heale,(Heale,(Melee,(Melee,(Range,(Caste,,
+,Floor 1,3,3,3,3,3,3,3,3,27,54
+,Floor 2,3,3,3,3,3,3,3,3,27,54
+,Floor 3,0,0,0,0,0,0,0,0,27,54
+,Floor 4,8,8,8,8,8,8,8,8,27,54
+,Glaze,💍,💍,💍,💍,💍,💍,💍,💍,28,55
+,Twine,,,,,,,,,28,55
+,,,,,,,,,,,
+Gear Sheet Name,,Created by:,,/u/Reckle_,,,,License:,MIT,,
+Heavyweight Gear,,Modified by/based on:,,Wyssberk Kajitani @ Behemoth,,,,Ver:,7.4,,
+,,B,G,L,Q,B,G,L,Q,,
+TRUE,Savage,C,H,M,R,C,H,M,R,,
+,,D,I,N,S,D,I,N,S,,
+,,E,J,O,T,E,J,O,T,,
+,,B,G,L,Q,B,G,L,Q,,
+,,D,I,N,S,D,I,N,S,,
