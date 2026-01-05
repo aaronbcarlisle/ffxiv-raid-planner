@@ -90,9 +90,8 @@ export function Select({
       value={value}
       onValueChange={onChange}
       disabled={disabled}
-      modal={false}
-      open={DEBUG_KEEP_OPEN ? open : undefined}
-      onOpenChange={DEBUG_KEEP_OPEN ? (isOpen) => { if (isOpen) setOpen(true); } : undefined}
+      open={DEBUG_KEEP_OPEN ? true : undefined}
+      onOpenChange={setOpen}
     >
       <SelectPrimitive.Trigger
         id={id}
