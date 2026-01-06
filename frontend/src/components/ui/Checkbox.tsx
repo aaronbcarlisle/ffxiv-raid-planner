@@ -10,7 +10,9 @@ interface CheckboxProps {
 }
 
 export function Checkbox({ id, checked, onChange, label, disabled, className = '' }: CheckboxProps) {
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent native checkbox behavior
+    e.stopPropagation();
     if (!disabled) {
       onChange(!checked);
     }
@@ -35,7 +37,7 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
         id={id}
         type="checkbox"
         checked={checked}
-        onChange={() => {}} // Handled by label onClick
+        onChange={() => {}} // Controlled by parent state
         disabled={disabled}
         className="sr-only"
         aria-hidden="true"
@@ -47,10 +49,6 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
         aria-checked={checked}
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent double-toggle from label
-          handleClick();
-        }}
         onKeyDown={handleKeyDown}
         className={`
           w-4 h-4 rounded flex items-center justify-center

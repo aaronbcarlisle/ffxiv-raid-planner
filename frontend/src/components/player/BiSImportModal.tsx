@@ -77,7 +77,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState<BiSImportData | null>(null);
   const [changes, setChanges] = useState<GearChange[]>([]);
-  const [resetHaveStatus, setResetHaveStatus] = useState(false);
+  const [resetHaveStatus, setResetHaveStatus] = useState(true);
   const [jobMismatch, setJobMismatch] = useState(false);
 
   // Preset state
@@ -118,7 +118,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     setError('');
     setPreviewData(null);
     setChanges([]);
-    setResetHaveStatus(false);
+    setResetHaveStatus(true);
     setJobMismatch(false);
     setSelectedPresetIndex(null);
   }, [player.bisLink]);

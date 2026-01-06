@@ -112,7 +112,7 @@ interface SnapshotPlayer {
 ```
 
 ### Tests (Phase 5 Complete)
-- `pnpm test` runs 24 unit tests for calculations and priority functions
+- `pnpm test` runs 25 unit tests for calculations and priority functions
 - Tests verify: iLv calculation, currentSource inference, loot adjustments
 
 ### Optional Future Enhancements
@@ -282,8 +282,10 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Average iLv calculated from `currentSource` when `itemLevel` not available
 
 ### iLv Calculation
-- Uses `itemLevel` from BiS import if available
+- For tome BiS with `hasItem` but NOT `isAugmented`: uses base tome iLv (not augmented)
+- Otherwise uses `itemLevel` from BiS import if `hasItem` is true
 - Falls back to `getItemLevelForCategory()` using `currentSource` and tier config
+- `currentSource` is auto-updated when `hasItem`/`isAugmented` checkboxes change
 - Displayed next to completion count in PlayerCard header
 
 ### Mid-Tier Roster Changes

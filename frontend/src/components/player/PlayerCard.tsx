@@ -110,9 +110,29 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
-    const newGear = player.gear.map((g) =>
-      g.slot === slot ? { ...g, ...updates } : g
-    );
+    const newGear = player.gear.map((g) => {
+      if (g.slot !== slot) return g;
+
+      const merged = { ...g, ...updates };
+
+      // Recalculate currentSource when hasItem or isAugmented changes
+      // to keep iLv calculation accurate
+      if ('hasItem' in updates || 'isAugmented' in updates) {
+        if (merged.hasItem) {
+          // Has the BiS item - set source based on what they acquired
+          if (merged.bisSource === 'raid') {
+            merged.currentSource = 'savage';
+          } else {
+            merged.currentSource = merged.isAugmented ? 'tome_up' : 'tome';
+          }
+        } else {
+          // Doesn't have item - revert to crafted
+          merged.currentSource = 'crafted';
+        }
+      }
+
+      return merged;
+    });
 
     // Check if this is the raid weapon and hasItem changed
     const isWeaponSlot = slot === 'weapon';

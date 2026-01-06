@@ -306,6 +306,7 @@ export function GroupView() {
           ...slot,
           hasItem: false,
           isAugmented: false,
+          currentSource: 'crafted' as const, // Reset to crafted since no item
           // Keep: bisSource, itemName, itemIcon, itemLevel, itemStats
         }));
         updates = {
@@ -316,13 +317,25 @@ export function GroupView() {
 
       case 'unlink':
         // Unlink BiS (keep progress and sources)
-        const unlinkGear = player.gear.map(slot => ({
-          slot: slot.slot,
-          bisSource: slot.bisSource,
-          hasItem: slot.hasItem,
-          isAugmented: slot.isAugmented,
-          // Clear: itemName, itemIcon, itemLevel, itemStats
-        }));
+        // Recalculate currentSource based on current hasItem/isAugmented state
+        const unlinkGear = player.gear.map(slot => {
+          let currentSource: 'savage' | 'tome' | 'tome_up' | 'crafted' = 'crafted';
+          if (slot.hasItem) {
+            if (slot.bisSource === 'raid') {
+              currentSource = 'savage';
+            } else {
+              currentSource = slot.isAugmented ? 'tome_up' : 'tome';
+            }
+          }
+          return {
+            slot: slot.slot,
+            bisSource: slot.bisSource,
+            hasItem: slot.hasItem,
+            isAugmented: slot.isAugmented,
+            currentSource,
+            // Clear: itemName, itemIcon, itemLevel, itemStats
+          };
+        });
         updates = {
           gear: unlinkGear,
           bisLink: '',
@@ -336,6 +349,7 @@ export function GroupView() {
           bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
           hasItem: false,
           isAugmented: false,
+          currentSource: 'crafted' as const, // Reset to crafted since no item
         }));
         updates = {
           gear: defaultGear,

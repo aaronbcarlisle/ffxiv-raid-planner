@@ -270,7 +270,19 @@ export function calculateAverageItemLevel(
   let validSlots = 0;
 
   for (const slot of gear) {
-    // Only use itemLevel from BiS import if player actually has the item
+    // Special case: tome BiS with item but NOT augmented
+    // itemLevel from BiS is augmented iLv, but player only has base tome
+    if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
+      const isWeapon = slot.slot === 'weapon';
+      const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
+      if (iLv > 0) {
+        totalILv += iLv;
+        validSlots++;
+      }
+      continue;
+    }
+
+    // Use itemLevel from BiS import if player has the item
     // (itemLevel is set for BiS target, not current gear)
     if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
       totalILv += slot.itemLevel;
