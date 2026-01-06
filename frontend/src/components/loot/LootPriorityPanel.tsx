@@ -35,6 +35,7 @@ interface LootPriorityPanelProps {
   groupId?: string;
   tierId?: string;
   currentWeek?: number;
+  maxWeek?: number; // Max week for week selector (defaults to currentWeek)
   onLogSuccess?: () => void;
   // Optional props for enhanced priority display
   lootLog?: LootLogEntry[];
@@ -151,11 +152,14 @@ export function LootPriorityPanel({
   groupId,
   tierId,
   currentWeek = 1,
+  maxWeek,
   onLogSuccess,
   lootLog = [],
   materialLog = [],
   showEnhancedScores = false,
 }: LootPriorityPanelProps) {
+  // Default maxWeek to currentWeek if not provided, minimum of 1
+  const effectiveMaxWeek = Math.max(maxWeek ?? currentWeek, 1);
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
 
   // Sub-tab state with localStorage persistence
@@ -487,7 +491,7 @@ export function LootPriorityPanel({
           tierId={tierId!}
           floor={modalState.floor || floorName}
           slot={modalState.slot}
-          currentWeek={currentWeek}
+          maxWeek={effectiveMaxWeek}
           suggestedPlayer={modalState.player}
           allPlayers={players}
           onSuccess={handleLogSuccess}
@@ -503,7 +507,7 @@ export function LootPriorityPanel({
           tierId={tierId!}
           floor={floors[3] || 'Floor 4'} // Weapons always drop from floor 4
           weaponJob={weaponModalState.weaponJob}
-          currentWeek={currentWeek}
+          maxWeek={effectiveMaxWeek}
           suggestedPlayer={weaponModalState.player}
           allPlayers={players}
           settings={settings}
@@ -524,7 +528,7 @@ export function LootPriorityPanel({
             tierId={tierId!}
             floor={materialFloor}
             material={materialModalState.material}
-            currentWeek={currentWeek}
+            maxWeek={effectiveMaxWeek}
             suggestedPlayer={materialModalState.player}
             allPlayers={players}
             settings={settings}

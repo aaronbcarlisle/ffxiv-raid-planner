@@ -20,7 +20,7 @@ interface QuickLogMaterialModalProps {
   tierId: string;
   floor: string;
   material: MaterialType;
-  currentWeek: number;
+  maxWeek: number; // Max week available for selection (defaults week selector to this)
   suggestedPlayer: SnapshotPlayer;
   allPlayers: SnapshotPlayer[];
   settings?: StaticSettings;
@@ -40,22 +40,24 @@ export function QuickLogMaterialModal({
   tierId,
   floor,
   material,
-  currentWeek,
+  maxWeek,
   suggestedPlayer,
   allPlayers,
   settings = DEFAULT_SETTINGS,
   onSuccess,
 }: QuickLogMaterialModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
+  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [isSaving, setIsSaving] = useState(false);
   const { createMaterialEntry, materialLog } = useLootTrackingStore();
 
-  // Reset recipient when suggested player changes or modal opens
+  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
+      setSelectedWeek(maxWeek);
     }
-  }, [isOpen, suggestedPlayer.id]);
+  }, [isOpen, suggestedPlayer.id, maxWeek]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +66,7 @@ export function QuickLogMaterialModal({
     setIsSaving(true);
     try {
       await createMaterialEntry(groupId, tierId, {
-        weekNumber: currentWeek,
+        weekNumber: selectedWeek,
         floor,
         materialType: material,
         recipientPlayerId,
@@ -128,18 +130,28 @@ export function QuickLogMaterialModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}
-        <div className="bg-surface-base rounded-lg p-3 space-y-1">
-          <div className="flex justify-between text-sm">
+        <div className="bg-surface-base rounded-lg p-3 space-y-2">
+          <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Floor:</span>
             <span className="text-text-primary font-medium">{floor}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Material:</span>
             <span className="text-text-primary font-medium">{MATERIAL_LABELS[material]}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <span className="text-text-primary font-medium">{currentWeek}</span>
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              className="px-2 py-1 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none text-sm"
+            >
+              {Array.from({ length: maxWeek }, (_, i) => i + 1).map((week) => (
+                <option key={week} value={week}>
+                  Week {week}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -163,7 +175,7 @@ export function QuickLogMaterialModal({
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">
           <div className="text-accent font-medium mb-1">This will:</div>
           <ul className="text-text-secondary space-y-1">
-            <li>+ Add {MATERIAL_LABELS[material]} to Week {currentWeek} log for {selectedPlayer?.name}</li>
+            <li>+ Add {MATERIAL_LABELS[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
           </ul>
         </div>
 

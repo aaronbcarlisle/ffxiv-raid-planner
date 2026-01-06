@@ -21,7 +21,7 @@ interface QuickLogWeaponModalProps {
   tierId: string;
   floor: string;
   weaponJob: string;
-  currentWeek: number;
+  maxWeek: number; // Max week available for selection (defaults week selector to this)
   suggestedPlayer: SnapshotPlayer;
   allPlayers: SnapshotPlayer[];
   settings: StaticSettings;
@@ -35,23 +35,25 @@ export function QuickLogWeaponModal({
   tierId,
   floor,
   weaponJob,
-  currentWeek,
+  maxWeek,
   suggestedPlayer,
   allPlayers,
   settings,
   onSuccess,
 }: QuickLogWeaponModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
+  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Reset recipient when suggested player changes or modal opens
+  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
+      setSelectedWeek(maxWeek);
       setUpdateGear(true);
     }
-  }, [isOpen, suggestedPlayer.id]);
+  }, [isOpen, suggestedPlayer.id, maxWeek]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +65,7 @@ export function QuickLogWeaponModal({
         groupId,
         tierId,
         {
-          weekNumber: currentWeek,
+          weekNumber: selectedWeek,
           floor,
           itemSlot: 'weapon',
           recipientPlayerId,
@@ -137,7 +139,7 @@ export function QuickLogWeaponModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}
-        <div className="bg-surface-base rounded-lg p-3 space-y-1">
+        <div className="bg-surface-base rounded-lg p-3 space-y-2">
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Weapon:</span>
             <div className="flex items-center gap-2">
@@ -145,13 +147,23 @@ export function QuickLogWeaponModal({
               <span className="text-text-primary font-medium">{jobName}</span>
             </div>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Floor:</span>
             <span className="text-text-primary font-medium">{floor}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <span className="text-text-primary font-medium">{currentWeek}</span>
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+              className="px-2 py-1 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none text-sm"
+            >
+              {Array.from({ length: maxWeek }, (_, i) => i + 1).map((week) => (
+                <option key={week} value={week}>
+                  Week {week}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -188,7 +200,7 @@ export function QuickLogWeaponModal({
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">
           <div className="text-accent font-medium mb-1">This will:</div>
           <ul className="text-text-secondary space-y-1">
-            <li>+ Add Weapon to Week {currentWeek} loot log</li>
+            <li>+ Add Weapon to Week {selectedWeek} loot log</li>
             {updateGear && (
               <>
                 <li>+ Mark Weapon as acquired on {selectedPlayer?.name}</li>

@@ -184,7 +184,7 @@ export function GroupView() {
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
   // Initialize loot tracking store when Loot tab is active
-  const { currentWeek: storeCurrentWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
+  const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
   useEffect(() => {
     if (pageMode === 'loot' && currentGroup?.id && currentTier?.tierId) {
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
@@ -755,6 +755,7 @@ export function GroupView() {
               groupId={currentGroup?.id}
               tierId={currentTier?.tierId}
               currentWeek={storeCurrentWeek}
+              maxWeek={storeMaxWeek}
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
