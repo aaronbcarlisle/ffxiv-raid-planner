@@ -71,6 +71,17 @@ def calculate_week_number(tier: TierSnapshot) -> int:
     return weeks_since_start + 1
 
 
+async def ensure_week_start_date(session: AsyncSession, tier: TierSnapshot) -> None:
+    """Set week_start_date on first entry if not already set.
+
+    This makes "Week 1" mean "our first week raiding" rather than
+    "when the tier was created in the app."
+    """
+    if tier.week_start_date is None:
+        tier.week_start_date = datetime.now(timezone.utc).isoformat()
+        await session.flush()
+
+
 # Loot Log Endpoints
 
 
@@ -148,6 +159,9 @@ async def create_loot_log_entry(
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Set week_start_date on first entry if not already set
+    await ensure_week_start_date(db, tier)
 
     # Verify recipient player exists in this tier
     result = await db.execute(
@@ -444,6 +458,9 @@ async def create_page_ledger_entry(
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
 
+    # Set week_start_date on first entry if not already set
+    await ensure_week_start_date(db, tier)
+
     # Verify player exists in this tier
     result = await db.execute(
         select(SnapshotPlayer).where(
@@ -507,6 +524,9 @@ async def mark_floor_cleared(
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Set week_start_date on first entry if not already set
+    await ensure_week_start_date(db, tier)
 
     # Determine book type from floor
     # Floor 1 -> I, Floor 2 -> II, Floor 3 -> III, Floor 4 -> IV
@@ -892,6 +912,9 @@ async def create_material_log_entry(
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Set week_start_date on first entry if not already set
+    await ensure_week_start_date(db, tier)
 
     # Verify recipient player exists in this tier
     result = await db.execute(
