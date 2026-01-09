@@ -5,7 +5,7 @@
  * Only accessible to users with isAdmin=true.
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
@@ -83,7 +83,7 @@ export function AdminDashboard() {
     setViewAsGroup(null);
   }, [viewAsGroup, navigate]);
 
-  // Handle column sort
+  // Handle column sort - resets to first page and triggers server-side sort
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
       setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -91,49 +91,8 @@ export function AdminDashboard() {
       setSortField(field);
       setSortDirection('asc');
     }
+    setPage(0); // Reset to first page on sort change
   }, [sortField]);
-
-  // Sort groups client-side
-  const sortedGroups = useMemo(() => {
-    const sorted = [...groups].sort((a, b) => {
-      let aVal: string | number | boolean;
-      let bVal: string | number | boolean;
-
-      switch (sortField) {
-        case 'name':
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-          break;
-        case 'owner':
-          aVal = (a.owner?.displayName || a.owner?.discordUsername || '').toLowerCase();
-          bVal = (b.owner?.displayName || b.owner?.discordUsername || '').toLowerCase();
-          break;
-        case 'memberCount':
-          aVal = a.memberCount;
-          bVal = b.memberCount;
-          break;
-        case 'tierCount':
-          aVal = a.tierCount;
-          bVal = b.tierCount;
-          break;
-        case 'isPublic':
-          aVal = a.isPublic ? 1 : 0;
-          bVal = b.isPublic ? 1 : 0;
-          break;
-        case 'createdAt':
-          aVal = new Date(a.createdAt).getTime();
-          bVal = new Date(b.createdAt).getTime();
-          break;
-        default:
-          return 0;
-      }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [groups, sortField, sortDirection]);
 
   // Debounce search input
   useEffect(() => {
@@ -155,6 +114,8 @@ export function AdminDashboard() {
       const params = new URLSearchParams({
         limit: String(limit),
         offset: String(page * limit),
+        sort_by: sortField,
+        sort_order: sortDirection,
       });
       if (debouncedSearch) {
         params.set('search', debouncedSearch);
@@ -186,7 +147,7 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, page, debouncedSearch]);
+  }, [accessToken, page, debouncedSearch, sortField, sortDirection]);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -377,7 +338,7 @@ export function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {sortedGroups.map((group) => (
+                {groups.map((group) => (
                   <tr
                     key={group.id}
                     onClick={() => navigate(`/group/${group.shareCode}`)}
