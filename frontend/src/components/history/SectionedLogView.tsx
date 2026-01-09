@@ -578,10 +578,12 @@ export function SectionedLogView({
         </div>
       );
     } else {
+      const isMatHighlighted = highlightedEntryId === String(entry.id) && highlightedEntryType === 'material';
       return (
         <div
           key={`mat-${entry.id}`}
-          className="bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3"
+          id={`material-entry-${entry.id}`}
+          className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isMatHighlighted ? 'highlight-pulse' : ''}`}
           onContextMenu={(e) => handleListContextMenu(e, entry, 'material')}
         >
           <div className="flex items-start justify-between">
