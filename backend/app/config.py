@@ -64,10 +64,17 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     @model_validator(mode='after')
-    def validate_jwt_secret(self) -> Self:
-        """Ensure JWT secret is set in production, auto-generate for local dev."""
+    def validate_production_config(self) -> Self:
+        """Validate configuration for production environment.
+
+        Ensures proper security settings are in place for production deployments.
+        Auto-generates JWT secret for local development only.
+        """
+        is_production = self.environment == "production"
+
+        # JWT Secret validation
         if not self.jwt_secret_key:
-            if self.environment == "production":
+            if is_production:
                 raise ValueError(
                     "JWT_SECRET_KEY environment variable must be set in production. "
                     "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
@@ -75,6 +82,42 @@ class Settings(BaseSettings):
             # Auto-generate for local development only
             object.__setattr__(self, 'jwt_secret_key', secrets.token_urlsafe(32))
             print("⚠️  Using auto-generated JWT secret (development mode)")
+
+        if is_production:
+            # Validate JWT secret strength
+            if len(self.jwt_secret_key) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be at least 32 characters in production"
+                )
+
+            forbidden_patterns = ['changeme', 'secret', 'dev-', 'test', 'placeholder', 'example']
+            if any(p in self.jwt_secret_key.lower() for p in forbidden_patterns):
+                raise ValueError(
+                    "JWT_SECRET_KEY appears to contain a placeholder value - "
+                    "please use a secure random key"
+                )
+
+            # Validate debug mode is off
+            if self.debug:
+                raise ValueError(
+                    "DEBUG must be False in production for security"
+                )
+
+            # Validate database is not SQLite
+            if 'sqlite' in self.database_url.lower():
+                raise ValueError(
+                    "SQLite is not recommended for production - use PostgreSQL"
+                )
+
+            # Warn (but don't fail) if CORS production origins not set
+            if not self.cors_origins_production:
+                import warnings
+                warnings.warn(
+                    "CORS_ORIGINS_PRODUCTION is not set - using development CORS origins. "
+                    "This may be a security risk in production.",
+                    UserWarning,
+                )
+
         return self
 
     @property

@@ -7,9 +7,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, AuthTokens, DiscordAuthUrl } from '../types';
-
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../services/api';
 
 // Production detection and misconfiguration warning
 const isBrowser = typeof window !== 'undefined';

@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { StaticGroup, StaticGroupListItem, StaticGroupSettings, MemberRole, Membership, TierSnapshot, SnapshotPlayer } from '../types';
+import type { StaticGroup, StaticGroupListItem, StaticGroupSettings, MemberRole, Membership } from '../types';
 import { authRequest } from '../services/api';
 
 interface StaticGroupState {
@@ -144,93 +144,26 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
   },
 
   /**
-   * Duplicate a static group with all tiers and players
+   * Duplicate a static group with all tiers and players.
+   * Uses the bulk duplication endpoint for efficiency (single API call).
    */
   duplicateGroup: async (sourceGroupId: string, newName: string) => {
     set({ isCreating: true, error: null });
 
     try {
-      // 1. Fetch source group's tiers
-      const sourceTiers = await authRequest<TierSnapshot[]>(`/api/static-groups/${sourceGroupId}/tiers`);
-
-      // 2. Create the new group
-      const newGroup = await authRequest<StaticGroup>('/api/static-groups', {
-        method: 'POST',
-        body: JSON.stringify({ name: newName, isPublic: false }),
-      });
-
-      // 3. For each tier, create it in the new group and copy players
-      for (const sourceTier of sourceTiers) {
-        // Fetch full tier data with players
-        const fullTier = await authRequest<TierSnapshot>(
-          `/api/static-groups/${sourceGroupId}/tiers/${sourceTier.tierId}`
-        );
-
-        // Create the tier in the new group (this auto-creates 8 template slots)
-        const newTier = await authRequest<TierSnapshot>(
-          `/api/static-groups/${newGroup.id}/tiers`,
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              tierId: fullTier.tierId,
-              contentType: fullTier.contentType,
-            }),
-          }
-        );
-
-        // Get configured players from source
-        const configuredPlayers = fullTier.players?.filter(p => p.configured) || [];
-
-        // If there are configured players to copy, delete the auto-created template slots first
-        if (configuredPlayers.length > 0 && newTier.players) {
-          // Delete all template slots (unconfigured players)
-          await Promise.all(
-            newTier.players
-              .filter(p => !p.configured)
-              .map(p =>
-                authRequest<void>(
-                  `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players/${p.id}`,
-                  { method: 'DELETE' }
-                )
-              )
-          );
-
-          // Copy each configured player from source
-          for (const sourcePlayer of configuredPlayers) {
-            // Create player slot
-            const newPlayer = await authRequest<SnapshotPlayer>(
-              `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players`,
-              {
-                method: 'POST',
-                body: JSON.stringify({ sortOrder: sourcePlayer.sortOrder }),
-              }
-            );
-
-            // Update with source player's data
-            await authRequest<SnapshotPlayer>(
-              `/api/static-groups/${newGroup.id}/tiers/${newTier.tierId}/players/${newPlayer.id}`,
-              {
-                method: 'PUT',
-                body: JSON.stringify({
-                  name: sourcePlayer.name,
-                  job: sourcePlayer.job,
-                  role: sourcePlayer.role,
-                  position: sourcePlayer.position,
-                  tankRole: sourcePlayer.tankRole,
-                  templateRole: sourcePlayer.templateRole,
-                  configured: true,
-                  gear: sourcePlayer.gear,
-                  tomeWeapon: sourcePlayer.tomeWeapon,
-                  isSubstitute: sourcePlayer.isSubstitute,
-                  notes: sourcePlayer.notes,
-                  bisLink: sourcePlayer.bisLink,
-                }),
-              }
-            );
-          }
+      // Single API call to duplicate entire group with tiers and players
+      const newGroup = await authRequest<StaticGroup>(
+        `/api/static-groups/${sourceGroupId}/duplicate`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            newName,
+            copyTiers: true,
+            copyPlayers: true,
+            copyLootHistory: false,
+          }),
         }
-        // If no configured players, keep the template slots as-is
-      }
+      );
 
       // Add to groups list
       set((state) => ({

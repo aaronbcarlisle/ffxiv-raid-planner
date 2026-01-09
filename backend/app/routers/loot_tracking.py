@@ -4,11 +4,14 @@ Loot Tracking Router
 API endpoints for loot log and page tracking.
 """
 
+import structlog
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
+logger = structlog.get_logger(__name__)
 
 from app.database import get_session
 from app.dependencies import get_current_user, get_current_user_optional
@@ -194,6 +197,23 @@ async def create_loot_log_entry(
     db.add(entry)
     await db.commit()
     await db.refresh(entry)
+
+    # Log the loot assignment
+    logger.info(
+        "loot_assigned",
+        group_id=group_id,
+        tier_id=tier_id,
+        entry_id=entry.id,
+        floor=data.floor,
+        item_slot=data.item_slot,
+        player_id=data.recipient_player_id,
+        player_name=recipient_player.name,
+        method=data.method.value,
+        weapon_job=data.weapon_job,
+        is_extra=data.is_extra,
+        week_number=data.week_number,
+        user_id=current_user.id,
+    )
 
     # Load relationships for response
     await db.refresh(entry, ["recipient_player", "created_by"])

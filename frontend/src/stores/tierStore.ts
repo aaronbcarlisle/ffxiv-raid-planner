@@ -629,3 +629,82 @@ export const useTierStore = create<TierState>((set, get) => ({
     }
   },
 }));
+
+// ==================== Selectors ====================
+// Use these to subscribe to specific slices of state and prevent unnecessary re-renders
+
+/**
+ * Select the current tier (or null)
+ */
+export const useCurrentTier = () => useTierStore((state) => state.currentTier);
+
+/**
+ * Select the current tier ID
+ */
+export const useCurrentTierId = () => useTierStore((state) => state.currentTier?.id);
+
+/**
+ * Select all tiers
+ */
+export const useTiers = () => useTierStore((state) => state.tiers);
+
+/**
+ * Select players from current tier
+ */
+export const useTierPlayers = () => useTierStore((state) => state.currentTier?.players ?? []);
+
+/**
+ * Select loading state
+ */
+export const useTierIsLoading = () => useTierStore((state) => state.isLoading);
+
+/**
+ * Select saving state
+ */
+export const useTierIsSaving = () => useTierStore((state) => state.isSaving);
+
+/**
+ * Select error state
+ */
+export const useTierError = () => useTierStore((state) => state.error);
+
+/**
+ * Select a specific player by ID
+ */
+export const usePlayer = (playerId: string) =>
+  useTierStore((state) => state.currentTier?.players?.find((p) => p.id === playerId));
+
+/**
+ * Select a player by position
+ */
+export const usePlayerByPosition = (position: string) =>
+  useTierStore((state) => state.currentTier?.players?.find((p) => p.position === position));
+
+/**
+ * Select configured players only
+ */
+export const useConfiguredPlayers = () =>
+  useTierStore((state) => state.currentTier?.players?.filter((p) => p.configured) ?? []);
+
+/**
+ * Select players grouped by party (G1/G2)
+ */
+export const usePlayersByGroup = () =>
+  useTierStore((state) => {
+    const players = state.currentTier?.players ?? [];
+    return {
+      group1: players.filter((p) => ['T1', 'H1', 'M1', 'R1'].includes(p.position || '')),
+      group2: players.filter((p) => ['T2', 'H2', 'M2', 'R2'].includes(p.position || '')),
+    };
+  });
+
+/**
+ * Select tier-level weapon priority settings
+ */
+export const useWeaponPrioritySettings = () =>
+  useTierStore((state) => ({
+    autoLockDate: state.currentTier?.weaponPrioritiesAutoLockDate,
+    globalLock: state.currentTier?.weaponPrioritiesGlobalLock ?? false,
+    globalLockedBy: state.currentTier?.weaponPrioritiesGlobalLockedBy,
+    globalLockedAt: state.currentTier?.weaponPrioritiesGlobalLockedAt,
+  }));

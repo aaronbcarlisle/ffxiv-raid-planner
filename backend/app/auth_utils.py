@@ -2,11 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import structlog
+from jose import ExpiredSignatureError, JWTError, jwt
 
 from .config import get_settings
 
 settings = get_settings()
+logger = structlog.get_logger(__name__)
 
 
 def create_access_token(user_id: str) -> str:
@@ -39,8 +41,26 @@ def verify_token(token: str, token_type: str = "access") -> str | None:
         payload = jwt.decode(
             token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
         )
-        if payload.get("type") != token_type:
+
+        actual_type = payload.get("type")
+        if actual_type != token_type:
+            logger.debug(
+                "token_type_mismatch",
+                expected=token_type,
+                got=actual_type,
+            )
             return None
-        return payload.get("sub")
-    except JWTError:
+
+        user_id = payload.get("sub")
+        return user_id
+
+    except ExpiredSignatureError:
+        logger.debug("token_expired", token_type=token_type)
+        return None
+    except JWTError as e:
+        logger.debug(
+            "token_verification_failed",
+            token_type=token_type,
+            error=str(e),
+        )
         return None
