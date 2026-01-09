@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
 import { Eye } from 'lucide-react';
+import { toast } from '../stores/toastStore';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
 
 export function AdminDashboard() {
@@ -49,9 +50,12 @@ export function AdminDashboard() {
       if (response.ok) {
         const data = await response.json();
         setViewAsMembers(data.map((m: { user: MemberInfo }) => m.user).filter(Boolean));
+      } else {
+        setViewAsMembers([]);
       }
     } catch (error) {
       console.error('Failed to fetch members:', error);
+      setViewAsMembers([]);
     } finally {
       setViewAsMembersLoading(false);
     }
@@ -154,15 +158,7 @@ export function AdminDashboard() {
       setCopiedCode(shareCode);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch {
-      // Fallback
-      const textArea = document.createElement('textarea');
-      textArea.value = textToCopy;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopiedCode(shareCode);
-      setTimeout(() => setCopiedCode(null), 2000);
+      toast.error('Failed to copy to clipboard');
     }
   }, []);
 
