@@ -310,6 +310,111 @@ class TestDatabaseSchema:
         assert group.id is not None
 
 
+class TestGearDataPreservation:
+    """Test that gear data is properly preserved and copied during duplication."""
+
+    async def test_source_player_gear_preserved_after_duplication(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user,
+        auth_headers: dict,
+    ):
+        """Source player's gear should NOT be modified during duplication."""
+        group = await create_static_group(session, test_user, name="Gear Source")
+        tier = await create_tier_snapshot(session, group)
+
+        # Create player with gear data
+        player = await create_snapshot_player(session, tier, name="Geared Player")
+        test_gear = [
+            {"slot": "weapon", "bisSource": "raid", "hasItem": True, "isAugmented": False},
+            {"slot": "head", "bisSource": "tome", "hasItem": True, "isAugmented": True},
+            {"slot": "body", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+        ]
+        player.gear = test_gear
+        await session.flush()
+
+        # Get the player ID for later verification
+        source_player_id = player.id
+
+        # Duplicate the group
+        response = await client.post(
+            f"/api/static-groups/{group.id}/duplicate",
+            json={"newName": "Gear Copy", "copyTiers": True, "copyPlayers": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+
+        # Clear the session to force a fresh load from database
+        session.expire_all()
+
+        # Reload the SOURCE player from database
+        result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == source_player_id)
+        )
+        reloaded_source = result.scalar_one()
+
+        # Verify source player's gear is STILL intact
+        assert reloaded_source.gear is not None, "Source player gear should not be None"
+        assert len(reloaded_source.gear) == 3, f"Source player should have 3 gear slots, got {len(reloaded_source.gear)}"
+        assert reloaded_source.gear[0]["slot"] == "weapon"
+        assert reloaded_source.gear[0]["hasItem"] is True
+        assert reloaded_source.gear[1]["slot"] == "head"
+        assert reloaded_source.gear[1]["isAugmented"] is True
+
+    async def test_copied_player_gear_matches_source(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user,
+        auth_headers: dict,
+    ):
+        """Copied player's gear should match the source."""
+        group = await create_static_group(session, test_user, name="Gear Source 2")
+        tier = await create_tier_snapshot(session, group)
+
+        # Create player with gear data
+        player = await create_snapshot_player(session, tier, name="Geared Player 2")
+        test_gear = [
+            {"slot": "weapon", "bisSource": "raid", "hasItem": True, "isAugmented": False, "itemName": "Test Sword"},
+            {"slot": "head", "bisSource": "tome", "hasItem": True, "isAugmented": True, "itemLevel": 730},
+        ]
+        player.gear = test_gear
+        await session.flush()
+
+        # Duplicate the group
+        response = await client.post(
+            f"/api/static-groups/{group.id}/duplicate",
+            json={"newName": "Gear Copy 2", "copyTiers": True, "copyPlayers": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        new_group_id = response.json()["id"]
+
+        # Get the new tier and player
+        result = await session.execute(
+            select(TierSnapshot).where(TierSnapshot.static_group_id == new_group_id)
+        )
+        new_tier = result.scalar_one()
+
+        result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.tier_snapshot_id == new_tier.id)
+        )
+        new_player = result.scalar_one()
+
+        # Verify copied player's gear matches source
+        assert new_player.gear is not None, "Copied player gear should not be None"
+        assert len(new_player.gear) == 2, f"Copied player should have 2 gear slots, got {len(new_player.gear)}"
+        assert new_player.gear[0]["slot"] == "weapon"
+        assert new_player.gear[0]["hasItem"] is True
+        assert new_player.gear[0]["itemName"] == "Test Sword"
+        assert new_player.gear[1]["slot"] == "head"
+        assert new_player.gear[1]["isAugmented"] is True
+        assert new_player.gear[1]["itemLevel"] == 730
+
+
 class TestPlayerOwnershipReset:
     """Test that player ownership is reset during duplication."""
 

@@ -477,6 +477,21 @@ async def duplicate_group(
                     new_player_id = str(uuid.uuid4())
                     player_id_map[source_player.id] = new_player_id
 
+                    # Deep copy gear data
+                    copied_gear = safe_copy_json(source_player.gear, [], "gear")
+                    copied_tome_weapon = safe_copy_json(source_player.tome_weapon, {}, "tome_weapon")
+                    copied_weapon_priorities = safe_copy_json(source_player.weapon_priorities, [], "weapon_priorities")
+
+                    # Log gear data for debugging
+                    logger.debug(
+                        "player_gear_copy",
+                        player_name=source_player.name,
+                        source_gear_len=len(source_player.gear) if source_player.gear else 0,
+                        copied_gear_len=len(copied_gear) if copied_gear else 0,
+                        source_gear_type=type(source_player.gear).__name__,
+                        source_gear_sample=str(source_player.gear)[:200] if source_player.gear else "None",
+                    )
+
                     new_player = SnapshotPlayer(
                         id=new_player_id,
                         tier_snapshot_id=new_tier_id,
@@ -493,9 +508,9 @@ async def duplicate_group(
                         is_substitute=source_player.is_substitute,
                         notes=source_player.notes,
                         bis_link=source_player.bis_link,
-                        gear=safe_copy_json(source_player.gear, [], "gear"),
-                        tome_weapon=safe_copy_json(source_player.tome_weapon, {}, "tome_weapon"),
-                        weapon_priorities=safe_copy_json(source_player.weapon_priorities, [], "weapon_priorities"),
+                        gear=copied_gear,
+                        tome_weapon=copied_tome_weapon,
+                        weapon_priorities=copied_weapon_priorities,
                         weapon_priorities_locked=False,  # Reset lock state
                         weapon_priorities_locked_by=None,
                         weapon_priorities_locked_at=None,
@@ -507,6 +522,16 @@ async def duplicate_group(
                     session.add(new_player)
 
     await session.flush()
+
+    # Verify source data wasn't corrupted
+    for source_tier in source_group.tier_snapshots:
+        for source_player in source_tier.players:
+            logger.debug(
+                "source_player_after_flush",
+                player_name=source_player.name,
+                gear_len=len(source_player.gear) if source_player.gear else 0,
+                gear_sample=str(source_player.gear)[:200] if source_player.gear else "None",
+            )
 
     logger.info(
         "static_group_duplicated",
