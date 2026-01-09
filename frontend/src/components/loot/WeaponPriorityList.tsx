@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
@@ -308,7 +309,32 @@ export function WeaponPriorityList({
   showLogButtons = false,
   onLogClick,
 }: WeaponPriorityListProps) {
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  // URL params for deep linking
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Role filter: URL param > default
+  const [roleFilter, setRoleFilterState] = useState<RoleFilter>(() => {
+    const urlFilter = searchParams.get('weaponFilter');
+    if (urlFilter === 'all' || urlFilter === 'tank' || urlFilter === 'healer' || urlFilter === 'dps') {
+      return urlFilter;
+    }
+    return 'all';
+  });
+
+  // Wrapper to update roleFilter and URL
+  const setRoleFilter = useCallback((filter: RoleFilter) => {
+    setRoleFilterState(filter);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (filter === 'all') {
+        params.delete('weaponFilter');
+      } else {
+        params.set('weaponFilter', filter);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
   const sortedJobs = useMemo(() => {

@@ -14,7 +14,6 @@ import type {
   BiSPreset,
   ContentType,
   GearSlotStatus,
-  GearSource,
   SnapshotPlayer,
 } from '../../types';
 
@@ -67,8 +66,9 @@ type ModalState = 'input' | 'loading' | 'preview' | 'error';
 interface GearChange {
   slot: string;
   slotName: string;
-  from: GearSource;
-  to: GearSource;
+  fromItem: string;  // Item name or source label
+  toItem: string;    // Item name or source label
+  sourceChanged: boolean;  // True if raid<->tome change
 }
 
 export function BiSImportModal({ isOpen, onClose, player, contentType, onImport }: BiSImportModalProps) {
@@ -170,16 +170,27 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         setJobMismatch(false);
       }
 
-      // Calculate changes
+      // Calculate changes - detect both source changes AND item changes
       const changedSlots: GearChange[] = [];
       for (const slot of data.slots) {
         const currentGear = player.gear.find((g) => g.slot === slot.slot);
-        if (currentGear && currentGear.bisSource !== slot.source) {
+        if (!currentGear) continue;
+
+        // Check for source change (raid <-> tome)
+        const sourceChanged = currentGear.bisSource !== slot.source;
+
+        // Check for item change (different item name)
+        const itemChanged =
+          (slot.itemName !== undefined && currentGear.itemName !== undefined && slot.itemName !== currentGear.itemName);
+
+        // Only add to changes if source OR item changed
+        if (sourceChanged || itemChanged) {
           changedSlots.push({
             slot: slot.slot,
             slotName: GEAR_SLOT_NAMES[slot.slot] || slot.slot,
-            from: currentGear.bisSource,
-            to: slot.source,
+            fromItem: currentGear.itemName || (currentGear.bisSource === 'raid' ? 'Raid' : 'Tome'),
+            toItem: slot.itemName || (slot.source === 'raid' ? 'Raid' : 'Tome'),
+            sourceChanged,
           });
         }
       }
@@ -213,8 +224,9 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       const importedSlot = previewData.slots.find((s) => s.slot === currentSlot.slot);
       if (!importedSlot) return currentSlot;
 
-      const sourceChanged = currentSlot.bisSource !== importedSlot.source;
-      const shouldResetProgress = resetHaveStatus && sourceChanged;
+      // Check if this slot has any change (source OR item) using the changes list
+      const hasChange = changes.some((c) => c.slot === currentSlot.slot);
+      const shouldResetProgress = resetHaveStatus && hasChange;
 
       // Determine effective hasItem and isAugmented after import
       const effectiveHasItem = shouldResetProgress ? false : currentSlot.hasItem;
@@ -470,21 +482,21 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           {/* Changes */}
           {changes.length > 0 ? (
             <div>
-              <h3 className="text-text-secondary text-sm mb-2">Source Changes:</h3>
+              <h3 className="text-text-secondary text-sm mb-2">Items Changed:</h3>
               <div className="space-y-1">
                 {changes.map((change) => (
                   <div
                     key={change.slot}
-                    className="flex items-center justify-between p-2 bg-surface-base rounded border border-border-default"
+                    className="flex items-center justify-between p-2 bg-surface-base rounded border border-border-default gap-2"
                   >
-                    <span className="text-text-primary">{change.slotName}</span>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className={change.from === 'raid' ? 'text-source-raid' : 'text-accent'}>
-                        {change.from === 'raid' ? 'Raid' : 'Tome'}
+                    <span className="text-text-primary font-medium shrink-0">{change.slotName}</span>
+                    <div className="flex items-center gap-2 text-sm min-w-0">
+                      <span className="text-text-muted truncate" title={change.fromItem}>
+                        {change.fromItem}
                       </span>
-                      <span className="text-text-muted">→</span>
-                      <span className={change.to === 'raid' ? 'text-source-raid' : 'text-accent'}>
-                        {change.to === 'raid' ? 'Raid' : 'Tome'}
+                      <span className="text-text-muted shrink-0">→</span>
+                      <span className="text-text-secondary truncate" title={change.toItem}>
+                        {change.toItem}
                       </span>
                     </div>
                   </div>
@@ -494,7 +506,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           ) : (
             <div className="p-3 bg-surface-base rounded-lg border border-border-default">
               <p className="text-text-secondary text-sm text-center">
-                No source changes - all slots already match!
+                No changes - all slots already match!
               </p>
             </div>
           )}
