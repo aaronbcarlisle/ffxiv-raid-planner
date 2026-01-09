@@ -568,6 +568,109 @@ import { Settings, Trash2, Plus } from 'lucide-react';
   );
 }
 
+// Sortable Table Demo with interactive sorting
+function SortableTableDemo() {
+  type SortField = 'name' | 'status' | 'count';
+  type SortDirection = 'asc' | 'desc';
+
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const data = [
+    { name: 'Alpha Team', status: 'Active', count: 8 },
+    { name: 'Beta Squad', status: 'Inactive', count: 4 },
+    { name: 'Gamma Unit', status: 'Active', count: 6 },
+    { name: 'Delta Force', status: 'Pending', count: 3 },
+  ];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    const aVal = a[sortField];
+    const bVal = b[sortField];
+    const modifier = sortDirection === 'asc' ? 1 : -1;
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return aVal.localeCompare(bVal) * modifier;
+    }
+    return ((aVal as number) - (bVal as number)) * modifier;
+  });
+
+  const renderHeader = (field: SortField, label: string, align: 'left' | 'center' = 'left') => {
+    const isActive = sortField === field;
+    const justifyClass = align === 'center' ? 'justify-center' : '';
+
+    return (
+      <th
+        className="group text-left px-4 py-3 font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none transition-colors"
+        onClick={() => handleSort(field)}
+        aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+      >
+        <span className={`flex items-center gap-1 ${justifyClass}`}>
+          {label}
+          {isActive ? (
+            <span className="text-accent">
+              {sortDirection === 'asc' ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </span>
+          ) : (
+            <span className="opacity-0 group-hover:opacity-50 transition-opacity">
+              <ChevronsUpDown className="w-4 h-4" />
+            </span>
+          )}
+        </span>
+      </th>
+    );
+  };
+
+  return (
+    <div className="bg-surface-elevated rounded-lg p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-medium text-text-primary">Interactive Example</div>
+        <div className="text-xs text-text-muted">
+          Sorting by: <span className="text-accent">{sortField}</span> ({sortDirection})
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border-default bg-surface-card">
+              {renderHeader('name', 'Name')}
+              {renderHeader('status', 'Status')}
+              {renderHeader('count', 'Count', 'center')}
+              <th className="text-left px-4 py-3 font-medium text-text-secondary">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-subtle">
+            {sortedData.map((row) => (
+              <tr key={row.name} className="hover:bg-surface-interactive transition-colors">
+                <td className="px-4 py-3 text-accent">{row.name}</td>
+                <td className="px-4 py-3 text-text-secondary">{row.status}</td>
+                <td className="px-4 py-3 text-center text-text-secondary">{row.count}</td>
+                <td className="px-4 py-3 text-text-muted">View</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-text-muted mt-3">
+        Click column headers to sort. Click again to reverse direction.
+      </p>
+    </div>
+  );
+}
+
 // Forms & Inputs Section with interactive examples
 function FormsSection() {
   // State for form demos
@@ -2622,61 +2725,7 @@ export function DesignSystem() {
               </div>
             </div>
 
-            <div className="bg-surface-elevated rounded-lg p-4 mb-6">
-              <div className="text-sm font-medium text-text-primary mb-3">Live Example</div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border-default bg-surface-card">
-                      <th className="group text-left px-4 py-3 font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none">
-                        <span className="flex items-center gap-1">
-                          Name
-                          <span className="text-accent">
-                            <ChevronUp className="w-4 h-4" />
-                          </span>
-                        </span>
-                      </th>
-                      <th className="group text-left px-4 py-3 font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none">
-                        <span className="flex items-center gap-1">
-                          Status
-                          <span className="opacity-0 group-hover:opacity-50 transition-opacity">
-                            <ChevronsUpDown className="w-4 h-4" />
-                          </span>
-                        </span>
-                      </th>
-                      <th className="group text-center px-4 py-3 font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none">
-                        <span className="flex items-center justify-center gap-1">
-                          Count
-                          <span className="opacity-0 group-hover:opacity-50 transition-opacity">
-                            <ChevronsUpDown className="w-4 h-4" />
-                          </span>
-                        </span>
-                      </th>
-                      <th className="text-left px-4 py-3 font-medium text-text-secondary">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-subtle">
-                    <tr className="hover:bg-surface-interactive transition-colors">
-                      <td className="px-4 py-3 text-accent">Alpha Team</td>
-                      <td className="px-4 py-3 text-text-secondary">Active</td>
-                      <td className="px-4 py-3 text-center text-text-secondary">8</td>
-                      <td className="px-4 py-3 text-text-muted">View</td>
-                    </tr>
-                    <tr className="hover:bg-surface-interactive transition-colors">
-                      <td className="px-4 py-3 text-accent">Beta Squad</td>
-                      <td className="px-4 py-3 text-text-secondary">Inactive</td>
-                      <td className="px-4 py-3 text-center text-text-secondary">4</td>
-                      <td className="px-4 py-3 text-text-muted">View</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-text-muted mt-3">
-                Hover over column headers to see inactive state behavior. "Name" column shows active ascending sort.
-              </p>
-            </div>
+            <SortableTableDemo />
           </Subsection>
 
           <Subsection title="Icon Usage">
