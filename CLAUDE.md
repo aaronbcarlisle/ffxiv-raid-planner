@@ -470,6 +470,12 @@ Super-user access for app owners to troubleshoot any static group.
 - `frontend/src/pages/AdminDashboard.tsx` - Admin dashboard page
 - `frontend/src/utils/permissions.ts` - `getEffectiveRole()` helper
 
+**Admin System Helpers (when to use which):**
+- `get_user_role_for_response()` - Use in API endpoints to get `(role, is_admin_access)` tuple for responses
+- `is_user_admin()` - Use for permission checks in service layer (returns bool)
+- `check_view_permission()` - Use for view access validation (handles admins automatically)
+- `create_admin_membership()` - Creates virtual membership object for admins accessing non-member groups
+
 ### Frontend Utilities (v1.0.1)
 
 **Error Handler (`lib/errorHandler.ts`):**
