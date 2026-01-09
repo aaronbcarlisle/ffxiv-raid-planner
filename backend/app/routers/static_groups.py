@@ -439,16 +439,24 @@ async def duplicate_group(
         return default
 
     if data.copy_tiers and source_group.tier_snapshots:
+        # Track if we've already set an active tier to ensure only one is active
+        active_tier_set = False
+
         for source_tier in source_group.tier_snapshots:
             new_tier_id = str(uuid.uuid4())
             tier_id_map[source_tier.id] = new_tier_id
+
+            # Only allow one active tier in the duplicated group
+            should_be_active = source_tier.is_active and not active_tier_set
+            if should_be_active:
+                active_tier_set = True
 
             new_tier = TierSnapshot(
                 id=new_tier_id,
                 static_group_id=new_group_id,
                 tier_id=source_tier.tier_id,
                 content_type=source_tier.content_type,
-                is_active=source_tier.is_active,
+                is_active=should_be_active,
                 current_week=1,  # Reset week tracking for new group
                 week_start_date=None,  # Clear week start date
                 weapon_priorities_auto_lock_date=source_tier.weapon_priorities_auto_lock_date,

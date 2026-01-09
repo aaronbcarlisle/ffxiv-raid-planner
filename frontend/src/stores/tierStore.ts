@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import { useShallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/react/shallow';
 import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
 import { authRequest } from '../services/api';
 
