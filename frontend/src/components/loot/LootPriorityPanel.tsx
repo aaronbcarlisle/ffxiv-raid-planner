@@ -404,10 +404,10 @@ export function LootPriorityPanel({
                     key={floor}
                     onClick={() => onFloorChange(floor)}
                     className={`
-                      px-3 py-1.5 rounded text-xs font-medium transition-colors
+                      px-3 py-1.5 rounded text-xs font-medium transition-colors border
                       ${isSelected
-                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border} border`
-                        : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
+                        : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
                       }
                     `}
                     title={dutyNames?.[floor - 1]}

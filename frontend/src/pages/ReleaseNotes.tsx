@@ -430,11 +430,11 @@ export default function ReleaseNotes() {
     }
   }, [location.hash]);
 
-  // Handle sidebar version click
+  // Handle sidebar version click - collapse others, expand only clicked
   const handleVersionClick = useCallback((version: string) => {
     setActiveVersion(version);
-    // Expand this version if not already expanded
-    setExpandedVersions(prev => new Set([...prev, version]));
+    // Collapse all others, expand only the clicked version
+    setExpandedVersions(new Set([version]));
     isScrollingRef.current = true;
   }, []);
 

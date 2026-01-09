@@ -35,6 +35,7 @@ const MATERIAL_COLORS: Record<string, string> = {
   twine: '#c4b5fd',   // (--color-gear-crafted)
   glaze: '#fcd34d',   // (--color-gear-augmented)
   solvent: '#f87171', // (--color-progress-priority)
+  universal_tomestone: '#14b8a6', // Teal (accent color)
 };
 
 interface WeeklyLootGridProps {
@@ -217,7 +218,10 @@ export function WeeklyLootGrid({
         { slot: 'hands', name: 'Hands' },
         { slot: 'feet', name: 'Feet' },
       ],
-      materials: [{ type: 'glaze', name: 'Glaze' }],
+      materials: [
+        { type: 'glaze', name: 'Glaze' },
+        { type: 'universal_tomestone', name: 'Tome' },
+      ],
     },
     {
       number: 3,

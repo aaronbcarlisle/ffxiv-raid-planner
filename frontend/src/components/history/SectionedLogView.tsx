@@ -673,12 +673,6 @@ export function SectionedLogView({
         {canEdit && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowFloorClearedModal(true)}
-              className="px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
-            >
-              Mark Floor Cleared
-            </button>
-            <button
               onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
               className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
             >
@@ -756,10 +750,10 @@ export function SectionedLogView({
                           key={floor}
                           onClick={() => toggleFloorVisibility(floor)}
                           className={`
-                            px-3 py-1.5 rounded text-xs font-bold transition-colors
+                            px-3 py-1.5 rounded text-xs font-bold transition-colors border
                             ${isSelected
-                              ? `${floorColors.bg} ${floorColors.text} ${floorColors.border} border`
-                              : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                              ? `${floorColors.bg} ${floorColors.text} ${floorColors.border}`
+                              : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
                             }
                           `}
                         >
@@ -914,6 +908,18 @@ export function SectionedLogView({
                       })}
                     </tbody>
                   </table>
+                )}
+
+                {/* Mark Floor Cleared - at bottom of Books section */}
+                {canEdit && (
+                  <div className="p-2 border-t border-border-subtle">
+                    <button
+                      onClick={() => setShowFloorClearedModal(true)}
+                      className="w-full px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
+                    >
+                      Mark Floor Cleared
+                    </button>
+                  </div>
                 )}
               </div>
             )}

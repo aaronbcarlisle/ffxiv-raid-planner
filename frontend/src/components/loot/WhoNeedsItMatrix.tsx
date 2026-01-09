@@ -114,12 +114,12 @@ export function WhoNeedsItMatrix({
               key={floor}
               onClick={() => setSelectedFloor(floor)}
               className={`
-                px-3 py-1.5 rounded text-xs font-bold transition-colors
+                px-3 py-1.5 rounded text-xs font-bold transition-colors border
                 ${isSelected
                   ? floor === 'all'
-                    ? 'bg-accent text-accent-contrast'
-                    : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border} border`
-                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                    ? 'bg-accent text-accent-contrast border-accent'
+                    : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
+                  : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
                 }
               `}
             >

@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FolderOpen, Copy, Settings, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
@@ -236,18 +237,22 @@ export function Dashboard() {
     return [
       {
         label: 'Open Static',
+        icon: <FolderOpen className="w-4 h-4" />,
         onClick: handleEditStatic,
       },
       {
         label: 'Duplicate Static',
+        icon: <Copy className="w-4 h-4" />,
         onClick: handleDuplicateStatic,
       },
       ...(isOwner ? [{
         label: 'Settings',
+        icon: <Settings className="w-4 h-4" />,
         onClick: handleOpenSettings,
       }] : []),
       ...(isOwner ? [{
         label: 'Delete Static',
+        icon: <Trash2 className="w-4 h-4" />,
         onClick: handleDeleteStatic,
         danger: true,
       }] : []),
