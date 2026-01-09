@@ -372,23 +372,41 @@ export function SectionedLogView({
 
   // Highlighted entry for deep-link scroll animation
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+  const [highlightedEntryType, setHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
 
   // Handle entry deep link - scroll to and highlight entry
   useEffect(() => {
     const entryParam = searchParams.get('entry');
-    if (!entryParam || !lootLog) return;
+    const entryTypeParam = searchParams.get('entryType') as 'loot' | 'material' | null;
+    if (!entryParam) return;
 
     // Find the entry (entry.id is a number, URL param is string)
     const entryId = parseInt(entryParam, 10);
-    const entry = lootLog.find(e => e.id === entryId);
-    if (!entry) return;
+
+    // Determine entry type and find the entry
+    let entryType: 'loot' | 'material' = entryTypeParam || 'loot';
+    let elementId: string;
+
+    if (entryType === 'material' && materialLog) {
+      const entry = materialLog.find(e => e.id === entryId);
+      if (!entry) return;
+      elementId = `material-entry-${entryParam}`;
+    } else if (lootLog) {
+      const entry = lootLog.find(e => e.id === entryId);
+      if (!entry) return;
+      elementId = `loot-entry-${entryParam}`;
+      entryType = 'loot';
+    } else {
+      return;
+    }
 
     // Set highlighted entry (store as string for consistency)
     setHighlightedEntryId(entryParam);
+    setHighlightedEntryType(entryType);
 
     // Scroll to the entry after a short delay
     setTimeout(() => {
-      const element = document.getElementById(`loot-entry-${entryParam}`);
+      const element = document.getElementById(elementId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -397,16 +415,18 @@ export function SectionedLogView({
     // Clear highlight after animation
     const timer = setTimeout(() => {
       setHighlightedEntryId(null);
-      // Clear entry param from URL
+      setHighlightedEntryType(null);
+      // Clear entry params from URL
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
         params.delete('entry');
+        params.delete('entryType');
         return params;
       }, { replace: true });
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [searchParams, lootLog, setSearchParams]);
+  }, [searchParams, lootLog, materialLog, setSearchParams]);
 
   // Floor filter for By Floor view (which floors to show)
   const [visibleFloors, setVisibleFloors] = useState<Set<FloorNumber>>(new Set([1, 2, 3, 4]));
@@ -469,10 +489,15 @@ export function SectionedLogView({
   }, [combinedEntries]);
 
   // Helper to copy entry URL
-  const handleCopyEntryUrl = useCallback((entryId: string) => {
+  const handleCopyEntryUrl = useCallback((entryId: string, entryType: 'loot' | 'material' = 'loot') => {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'log');
     url.searchParams.set('entry', entryId);
+    if (entryType === 'material') {
+      url.searchParams.set('entryType', 'material');
+    } else {
+      url.searchParams.delete('entryType'); // Default is loot, no need to include
+    }
     navigator.clipboard.writeText(url.toString());
     toast.success('Link copied to clipboard');
   }, []);
@@ -620,8 +645,8 @@ export function SectionedLogView({
   }, []);
 
   // Handler for copying entry URL (used by both list and grid)
-  const handleCopyEntryUrlById = useCallback((entryId: number) => {
-    handleCopyEntryUrl(String(entryId));
+  const handleCopyEntryUrlById = useCallback((entryId: number, entryType: 'loot' | 'material' = 'loot') => {
+    handleCopyEntryUrl(String(entryId), entryType);
   }, [handleCopyEntryUrl]);
 
   // Handle right-click on list view entries
@@ -654,7 +679,7 @@ export function SectionedLogView({
     items.push({
       label: 'Copy URL',
       icon: <Link className="w-4 h-4" />,
-      onClick: () => handleCopyEntryUrl(String(entry.id)),
+      onClick: () => handleCopyEntryUrl(String(entry.id), type),
     });
 
     if (canEdit) {
@@ -782,6 +807,7 @@ export function SectionedLogView({
               currentWeek={currentWeek}
               canEdit={canEdit}
               highlightedEntryId={highlightedEntryId}
+              highlightedEntryType={highlightedEntryType}
               onLogLoot={handleGridLogLoot}
               onLogMaterial={handleGridLogMaterial}
               onDeleteLoot={handleGridDeleteLoot}

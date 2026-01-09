@@ -48,13 +48,14 @@ interface WeeklyLootGridProps {
   currentWeek: number;
   canEdit: boolean;
   highlightedEntryId?: string | null;
+  highlightedEntryType?: 'loot' | 'material' | null;
   onLogLoot?: (floor: FloorNumber, slot: string) => void;
   onLogMaterial?: (floor: FloorNumber, material: string) => void;
   onDeleteLoot?: (entryId: number) => void;
   onDeleteMaterial?: (entryId: number) => void;
   onEditLoot?: (entry: LootLogEntry) => void;
   onEditMaterial?: (entry: MaterialLogEntry) => void;
-  onCopyEntryUrl?: (entryId: number) => void;
+  onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
 }
 
@@ -66,6 +67,7 @@ export function WeeklyLootGrid({
   currentWeek,
   canEdit,
   highlightedEntryId,
+  highlightedEntryType,
   onLogLoot,
   onLogMaterial,
   onDeleteLoot,
@@ -113,7 +115,7 @@ export function WeeklyLootGrid({
       items.push({
         label: 'Copy URL',
         icon: <Link className="w-4 h-4" />,
-        onClick: () => onCopyEntryUrl(entry.id),
+        onClick: () => onCopyEntryUrl(entry.id, type),
       });
     }
 
@@ -397,7 +399,7 @@ export function WeeklyLootGrid({
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
                   const canClickToLog = canEdit && onLogLoot && !lootEntry;
                   const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
-                  const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id);
+                  const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id) && (!highlightedEntryType || highlightedEntryType === 'loot');
 
                   const isClickable = canClickToLog || canClickToEdit;
                   return (
@@ -430,11 +432,13 @@ export function WeeklyLootGrid({
                 {floor.materials.map(mat => {
                   const matEntry = getMaterialForFloor(floor.number, mat.type);
                   const canClickMat = canEdit && onLogMaterial && !matEntry;
+                  const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
 
                   return (
                     <div
                       key={mat.type}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''}`}
+                      id={matEntry ? `material-entry-${matEntry.id}` : undefined}
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
                       onKeyDown={canClickMat ? (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
