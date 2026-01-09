@@ -73,7 +73,7 @@ def migrate_postgresql(database_url: str) -> None:
         cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE")
         conn.commit()
         print("Migration complete!")
-    except Exception:
+    except psycopg2.Error:
         if conn is not None:
             conn.rollback()
         raise

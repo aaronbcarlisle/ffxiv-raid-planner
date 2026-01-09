@@ -15,6 +15,7 @@ interface TankRoleSelectorProps {
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export function TankRoleSelector({
@@ -23,12 +24,13 @@ export function TankRoleSelector({
   player,
   userRole,
   currentUserId,
+  isAdmin,
 }: TankRoleSelectorProps) {
   const [open, setOpen] = useState(false);
   const roles: TankRole[] = ['MT', 'OT'];
 
   // Check edit permission
-  const editPermission = canEditPlayer(userRole, player, currentUserId);
+  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
 
   const handleSelect = (role: TankRole | undefined) => {
     onSelect(role);

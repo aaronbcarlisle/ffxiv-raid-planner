@@ -317,6 +317,8 @@ async def get_static_group_by_code(
 @router.get("/admin/all", response_model=AdminStaticGroupListResponse)
 async def list_all_static_groups_admin(
     search: str | None = None,
+    sort_by: str = "name",
+    sort_order: str = "asc",
     limit: int = 50,
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
@@ -329,6 +331,8 @@ async def list_all_static_groups_admin(
 
     Args:
         search: Optional search term to filter by group name or owner username
+        sort_by: Column to sort by (name, owner, memberCount, tierCount, isPublic, createdAt)
+        sort_order: Sort direction (asc or desc)
         limit: Maximum number of groups to return (default 50, max 100)
         offset: Number of groups to skip for pagination
     """
@@ -340,7 +344,7 @@ async def list_all_static_groups_admin(
     limit = min(max(1, limit), 100)
     offset = max(0, offset)
 
-    # Build query
+    # Build base query with eager loading
     query = (
         select(StaticGroup)
         .options(
@@ -348,12 +352,25 @@ async def list_all_static_groups_admin(
             selectinload(StaticGroup.tier_snapshots),
             selectinload(StaticGroup.memberships),
         )
-        .order_by(StaticGroup.name)
     )
 
+    # Determine sort column and direction
+    sort_columns = {
+        "name": StaticGroup.name,
+        "createdAt": StaticGroup.created_at,
+        "isPublic": StaticGroup.is_public,
+    }
+    sort_column = sort_columns.get(sort_by, StaticGroup.name)
+    if sort_order == "desc":
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+
+    # Compute search term once if provided
+    search_term = f"%{search.lower()}%" if search else None
+
     # Apply search filter if provided
-    if search:
-        search_term = f"%{search.lower()}%"
+    if search_term:
         query = query.join(User, StaticGroup.owner_id == User.id).where(
             (StaticGroup.name.ilike(search_term)) |
             (User.discord_username.ilike(search_term))
@@ -361,8 +378,7 @@ async def list_all_static_groups_admin(
 
     # Get total count (before pagination) using func.count() for efficiency
     count_query = select(func.count(StaticGroup.id))
-    if search:
-        search_term = f"%{search.lower()}%"
+    if search_term:
         count_query = count_query.join(User, StaticGroup.owner_id == User.id).where(
             (StaticGroup.name.ilike(search_term)) |
             (User.discord_username.ilike(search_term))

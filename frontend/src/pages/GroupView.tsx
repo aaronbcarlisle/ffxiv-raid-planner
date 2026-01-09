@@ -33,6 +33,7 @@ import { logger } from '../lib/logger';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
+import { ShieldAlert } from 'lucide-react';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -665,7 +666,9 @@ export function GroupView() {
   // When viewing as another user, use their role instead of actual role
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
-  const canEdit = userRole === 'owner' || userRole === 'lead';
+  // Admins (not using View As) have owner-level edit permissions
+  const isAdminAccess = !!(user?.isAdmin && !viewAsUser);
+  const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
 
   // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
@@ -698,7 +701,7 @@ export function GroupView() {
   }, []);
 
   // Check roster management permission for DnD
-  const rosterPermission = canManageRoster(userRole);
+  const rosterPermission = canManageRoster(userRole, isAdminAccess);
 
   // DnD hook - encapsulates all drag and drop logic
   const dnd = useDragAndDrop({
@@ -730,7 +733,7 @@ export function GroupView() {
     // If player is configured, show droppable player card
     if (player.configured) {
       // Check if user can reset this player's gear
-      const resetPermission = canResetGear(userRole, player, effectiveUserId, user?.isAdmin && !viewAsUser);
+      const resetPermission = canResetGear(userRole, player, effectiveUserId, isAdminAccess);
 
       return (
         <DroppablePlayerCard
@@ -746,6 +749,7 @@ export function GroupView() {
           isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
+          isAdmin={isAdminAccess}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           isHighlighted={highlightedPlayerId === player.id}
@@ -871,6 +875,19 @@ export function GroupView() {
               Create First Tier
             </button>
           )}
+        </div>
+      )}
+
+      {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
+      {isAdminAccess && !actualUserRole && (
+        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+            <span className="text-sm text-amber-200">
+              <span className="font-medium">Admin Access:</span>{' '}
+              You're viewing this static as an administrator. You have owner-level permissions but are not a member.
+            </span>
+          </div>
         </div>
       )}
 

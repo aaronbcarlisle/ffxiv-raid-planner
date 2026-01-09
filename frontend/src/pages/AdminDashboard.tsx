@@ -9,9 +9,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
-import { Eye } from 'lucide-react';
+import { Eye, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
+
+// Sortable columns
+type SortField = 'name' | 'owner' | 'memberCount' | 'tierCount' | 'isPublic' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -30,6 +34,10 @@ export function AdminDashboard() {
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // View As modal state
   const [viewAsGroup, setViewAsGroup] = useState<AdminStaticGroupListItem | null>(null);
@@ -75,6 +83,17 @@ export function AdminDashboard() {
     setViewAsGroup(null);
   }, [viewAsGroup, navigate]);
 
+  // Handle column sort - resets to first page and triggers server-side sort
+  const handleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setPage(0); // Reset to first page on sort change
+  }, [sortField]);
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -95,6 +114,8 @@ export function AdminDashboard() {
       const params = new URLSearchParams({
         limit: String(limit),
         offset: String(page * limit),
+        sort_by: sortField,
+        sort_order: sortDirection,
       });
       if (debouncedSearch) {
         params.set('search', debouncedSearch);
@@ -126,7 +147,7 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, page, debouncedSearch]);
+  }, [accessToken, page, debouncedSearch, sortField, sortDirection]);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -258,13 +279,61 @@ export function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Name</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Owner</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Members</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Tiers</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Visibility</th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Name
+                      {sortField === 'name' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('owner')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Owner
+                      {sortField === 'owner' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('memberCount')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Members
+                      {sortField === 'memberCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('tierCount')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Tiers
+                      {sortField === 'tierCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('isPublic')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Visibility
+                      {sortField === 'isPublic' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Created</th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('createdAt')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Created
+                      {sortField === 'createdAt' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>
