@@ -100,6 +100,17 @@ function VersionNav({
     };
   }, []);
 
+  // Scroll nav to show active version when it changes
+  useEffect(() => {
+    const navItem = document.getElementById(`nav-v${activeVersion}`);
+    const container = scrollContainerNodeRef.current;
+    if (navItem && container) {
+      // Scroll the nav item to the top of the container
+      const itemTop = navItem.offsetTop;
+      container.scrollTo({ top: itemTop - 8, behavior: 'smooth' });
+    }
+  }, [activeVersion]);
+
   const handleClick = (version: string) => {
     onVersionClick(version);
     const element = document.getElementById(`v${version}`);
@@ -133,7 +144,7 @@ function VersionNav({
               const isLatest = idx === 0;
 
               return (
-                <li key={release.version}>
+                <li key={release.version} id={`nav-v${release.version}`}>
                   <button
                     onClick={() => handleClick(release.version)}
                     className={`
