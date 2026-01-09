@@ -67,9 +67,11 @@ const CATEGORY_CONFIG: Record<
 function VersionNav({
   activeVersion,
   onVersionClick,
+  shouldScrollToActive,
 }: {
   activeVersion: string;
   onVersionClick: (version: string) => void;
+  shouldScrollToActive: boolean;
 }) {
   const [scrollState, setScrollState] = useState({ top: true, bottom: false });
   const scrollContainerNodeRef = useRef<HTMLDivElement | null>(null);
@@ -100,8 +102,10 @@ function VersionNav({
     };
   }, []);
 
-  // Scroll nav to show active version when it changes
+  // Scroll nav to show active version when it changes (only when triggered by main content scroll)
   useEffect(() => {
+    if (!shouldScrollToActive) return;
+
     const navItem = document.getElementById(`nav-v${activeVersion}`);
     const container = scrollContainerNodeRef.current;
     if (navItem && container) {
@@ -109,7 +113,7 @@ function VersionNav({
       const itemTop = navItem.offsetTop;
       container.scrollTo({ top: itemTop - 8, behavior: 'smooth' });
     }
-  }, [activeVersion]);
+  }, [activeVersion, shouldScrollToActive]);
 
   const handleClick = (version: string) => {
     onVersionClick(version);
@@ -431,6 +435,7 @@ function ReleaseCard({
 export default function ReleaseNotes() {
   const location = useLocation();
   const [activeVersion, setActiveVersion] = useState(RELEASES[0]?.version || '');
+  const [shouldScrollNav, setShouldScrollNav] = useState(false);
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -459,6 +464,7 @@ export default function ReleaseNotes() {
 
   // Handle sidebar version click - collapse others, expand only clicked
   const handleVersionClick = useCallback((version: string) => {
+    setShouldScrollNav(false); // Don't scroll nav when user clicked on it
     setActiveVersion(version);
     // Collapse all others, expand only the clicked version
     setExpandedVersions(new Set([version]));
@@ -521,6 +527,7 @@ export default function ReleaseNotes() {
       }
 
       if (bestVersion) {
+        setShouldScrollNav(true); // Scroll nav when active version changes from scrolling
         setActiveVersion(bestVersion);
       }
     };
@@ -589,6 +596,7 @@ export default function ReleaseNotes() {
         <VersionNav
           activeVersion={activeVersion}
           onVersionClick={handleVersionClick}
+          shouldScrollToActive={shouldScrollNav}
         />
 
         <main className="flex-1 min-w-0">
