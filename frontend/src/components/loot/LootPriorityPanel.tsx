@@ -23,6 +23,8 @@ import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 
+type LootSubTabType = 'matrix' | 'gear' | 'weapon';
+
 interface LootPriorityPanelProps {
   players: SnapshotPlayer[];
   settings: StaticSettings;
@@ -42,6 +44,9 @@ interface LootPriorityPanelProps {
   lootLog?: LootLogEntry[];
   materialLog?: MaterialLogEntry[];
   showEnhancedScores?: boolean;
+  // Optional props for URL-controlled subtab (for deep linking)
+  activeSubTab?: LootSubTabType;
+  onSubTabChange?: (tab: LootSubTabType) => void;
 }
 
 interface EnhancedPriorityEntry extends PriorityEntry {
@@ -139,8 +144,6 @@ function PriorityList({
   );
 }
 
-type LootSubTab = 'matrix' | 'gear' | 'weapon';
-
 export function LootPriorityPanel({
   players,
   settings,
@@ -158,29 +161,40 @@ export function LootPriorityPanel({
   lootLog = [],
   materialLog = [],
   showEnhancedScores = false,
+  activeSubTab: controlledSubTab,
+  onSubTabChange,
 }: LootPriorityPanelProps) {
   // Default maxWeek to currentWeek if not provided, minimum of 1
   const effectiveMaxWeek = Math.max(maxWeek ?? currentWeek, 1);
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
 
-  // Sub-tab state with localStorage persistence
-  const [activeSubTab, setActiveSubTabState] = useState<LootSubTab>(() => {
+  // Sub-tab state - controlled by parent if props provided, otherwise local with localStorage
+  const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() => {
     try {
       const saved = localStorage.getItem('loot-priority-subtab');
-      return (saved as LootSubTab) || 'matrix';
+      return (saved as LootSubTabType) || 'matrix';
     } catch {
       return 'matrix';
     }
   });
 
-  const setActiveSubTab = useCallback((tab: LootSubTab) => {
-    setActiveSubTabState(tab);
-    try {
-      localStorage.setItem('loot-priority-subtab', tab);
-    } catch {
-      // Ignore localStorage errors
+  // Use controlled value if provided, otherwise local
+  const activeSubTab = controlledSubTab ?? localSubTab;
+
+  const setActiveSubTab = useCallback((tab: LootSubTabType) => {
+    // If parent controls subtab, call their handler
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    } else {
+      // Otherwise manage locally with localStorage
+      setLocalSubTab(tab);
+      try {
+        localStorage.setItem('loot-priority-subtab', tab);
+      } catch {
+        // Ignore localStorage errors
+      }
     }
-  }, []);
+  }, [onSubTabChange]);
 
   // Modal state for quick log
   const [modalState, setModalState] = useState<{

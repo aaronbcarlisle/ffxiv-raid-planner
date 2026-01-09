@@ -59,14 +59,35 @@ export function GroupView() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
+
+  // Tab state: URL param > localStorage > default
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab === 'players' || urlTab === 'loot' || urlTab === 'log' || urlTab === 'summary') {
+      return urlTab;
+    }
     const saved = localStorage.getItem('group-view-tab');
     // Handle legacy 'stats' tab - redirect to 'players'
     if (saved === 'stats') return 'players';
     return (saved as PageMode) || 'players';
   });
 
-  // Wrapper to persist pageMode
+  // Subtab state for loot panel: URL param > localStorage > default
+  const [lootSubTab, setLootSubTabState] = useState<'matrix' | 'gear' | 'weapon'>(() => {
+    const urlSubtab = searchParams.get('subtab');
+    if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') {
+      return urlSubtab;
+    }
+    try {
+      const saved = localStorage.getItem('loot-priority-subtab');
+      if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
+    } catch {
+      // Ignore
+    }
+    return 'matrix';
+  });
+
+  // Wrapper to persist pageMode and update URL
   const setPageMode = useCallback((mode: PageMode) => {
     setPageModeState(mode);
     try {
@@ -74,7 +95,36 @@ export function GroupView() {
     } catch {
       // Ignore localStorage errors
     }
-  }, []);
+    // Update URL params
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', mode);
+      // Remove subtab if not on loot tab
+      if (mode !== 'loot') {
+        params.delete('subtab');
+      } else {
+        // Add current subtab when switching to loot
+        params.set('subtab', lootSubTab);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams, lootSubTab]);
+
+  // Wrapper to persist lootSubTab and update URL
+  const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
+    setLootSubTabState(tab);
+    try {
+      localStorage.setItem('loot-priority-subtab', tab);
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL params
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set('subtab', tab);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('party-view-mode');
     return saved === 'expanded' ? 'expanded' : 'compact';
@@ -176,7 +226,12 @@ export function GroupView() {
       if (activeTier) {
         await fetchTier(currentGroup.id, activeTier.tierId);
         // Always show current tier in URL (so copying URL shares the right tier)
-        setSearchParams({ tier: activeTier.tierId }, { replace: true });
+        // Preserve existing tab/subtab params
+        setSearchParams(prev => {
+          const params = new URLSearchParams(prev);
+          params.set('tier', activeTier.tierId);
+          return params;
+        }, { replace: true });
       }
     })();
 
@@ -203,8 +258,12 @@ export function GroupView() {
       } catch {
         // Ignore localStorage errors
       }
-      // Update URL to reflect current tier (so copying URL shares the right tier)
-      setSearchParams({ tier: tierId }, { replace: true });
+      // Update URL to reflect current tier, preserving tab/subtab params
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.set('tier', tierId);
+        return params;
+      }, { replace: true });
       fetchTier(currentGroup.id, tierId);
     }
   }, [currentGroup?.id, fetchTier, setSearchParams]);
@@ -773,6 +832,8 @@ export function GroupView() {
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
+              activeSubTab={lootSubTab}
+              onSubTabChange={setLootSubTab}
               onLogSuccess={() => {
                 // Refresh tier data so weapon priority list updates
                 if (currentGroup?.id && currentTier?.tierId) {

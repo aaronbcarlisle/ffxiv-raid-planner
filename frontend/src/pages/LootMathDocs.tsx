@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
 // Navigation items grouped by category
@@ -272,9 +273,25 @@ function NavSidebar({
 }
 
 export default function LootMathDocs() {
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState('overview');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
+
+  // Handle URL hash anchor on mount/change
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1); // Remove #
+      const element = document.getElementById(id);
+      if (element) {
+        setActiveSection(id);
+        // Small delay to ensure page is rendered
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
 
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);

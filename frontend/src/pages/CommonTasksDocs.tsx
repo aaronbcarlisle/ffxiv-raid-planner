@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ExternalLink, Check } from 'lucide-react';
 
 // Navigation items
@@ -222,9 +222,24 @@ function NavSidebar({ activeSection, onSectionClick }: { activeSection: string; 
 }
 
 export default function CommonTasksDocs() {
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState('bis-import');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
+
+  // Handle URL hash anchor on mount/change
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1); // Remove #
+      const element = document.getElementById(id);
+      if (element) {
+        setActiveSection(id);
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
 
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);

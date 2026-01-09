@@ -26,6 +26,17 @@ Game-specific data for the current raid tier. Update when new patches release.
 | Head/Hands/Feet | 495 | 1-2 |
 | Accessories | 375 | 1 |
 
+## Universal Tomestone
+
+**Purpose:** Required to augment tome weapons to raid iLv (790)
+
+**Drop:** Floor 2 (M10S) - One per clear per group
+
+**Priority Tracking:**
+- Only counts once per player for priority (additional drops are "extra")
+- Players who have received one are lower priority
+- Tracked as `universal_tomestone` material type in loot log
+
 ## Priority Orders
 
 **Display Order:** Tank > Healer > Melee > Ranged > Caster

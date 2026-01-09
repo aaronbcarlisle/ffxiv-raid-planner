@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** Phase 1-6.5 + Parity Complete | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.0 Released (Phase 1-6.5 + Parity Complete) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -58,6 +58,9 @@ cd backend && python scripts/normalize_preset_names.py
 | `utils/weaponPriority.ts` | Weapon priority scoring |
 | `gamedata/loot-tables.ts` | Floor drop tables |
 | `gamedata/raid-tiers.ts` | Tier configuration |
+| `data/releaseNotes.ts` | Version history data |
+| `pages/ReleaseNotes.tsx` | Release notes page |
+| `components/layout/ReleaseBanner.tsx` | New version notification |
 
 ---
 
@@ -232,6 +235,25 @@ type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
 type TankRole = 'MT' | 'OT';
 type GearSlot = 'weapon' | 'head' | 'body' | 'hands' | 'legs' | 'feet' |
                 'earring' | 'necklace' | 'bracelet' | 'ring1' | 'ring2';
+
+interface LootLogEntry {
+  id: number;
+  tierSnapshotId: string;
+  weekNumber: number;
+  floor: string;
+  itemSlot: string;
+  recipientPlayerId: string;
+  recipientPlayerName: string;
+  method: 'drop' | 'book' | 'tome';
+  notes?: string;
+  weaponJob?: string;    // Which job's weapon (e.g., 'DRG', 'WHM')
+  isExtra: boolean;      // True if off-job/extra loot (not BiS priority)
+  createdAt: string;
+  createdByUserId: string;
+  createdByUsername: string;
+}
+
+type MaterialType = 'twine' | 'glaze' | 'solvent' | 'universal_tomestone';
 ```
 
 ---
@@ -292,6 +314,32 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - `lootAdjustment` - positive = extra drops counted, negative = drops to ignore
 - `pageAdjustments` - per-floor book adjustments for players joining mid-tier
 - Both affect priority calculations for fairness
+
+### Weapon Job Tracking (v1.0.0)
+- `weaponJob` field on loot entries identifies which job's weapon was received
+- Displayed in loot log with job icon (e.g., "Weapon (DRG)")
+- Used to correctly update weapon priority when logging
+
+### Extra Loot Tagging (v1.0.0)
+- `isExtra` boolean marks off-job/extra loot (not BiS priority)
+- Auto-detected when recipient's main job doesn't match weapon job
+- Displayed with "Extra" badge in loot log
+
+### Universal Tomestone (v1.0.0)
+- Fourth material type for weapon augmentation (floor 2 drop)
+- Tracked separately with priority calculation
+- Only one per player counted for priority
+
+### Weapon Priority Ties (v1.0.0)
+- Players with same score grouped as tie
+- Roll button generates random 1-100 for each tied player
+- Auto-expands list if tie extends beyond visible entries
+- Winner highlighted in green
+
+### Auth Persistence (v1.0.0)
+- Proactive token refresh on app load (60-second buffer)
+- Production misconfiguration detection with console warnings
+- JWT expiration check prevents unnecessary 401 errors
 
 ---
 
