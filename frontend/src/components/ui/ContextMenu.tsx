@@ -2,10 +2,12 @@
  * Context Menu - Right-click menu component
  *
  * Fixed-position menu that appears at cursor location.
+ * Uses React Portal to render at document body level, preventing layout shift.
  * Uses design tokens for consistent styling.
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ContextMenuItem = {
   label: string;
@@ -75,7 +77,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     }
   }, [x, y]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="fixed z-50 bg-surface-overlay border border-border-default rounded-lg shadow-xl py-1 min-w-40
@@ -135,6 +137,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           </button>
         );
       })}
-    </div>
+    </div>,
+    document.body
   );
 }
