@@ -124,6 +124,18 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             <p className="text-sm text-text-secondary mb-4">{item.details}</p>
           )}
 
+          {item.link && (
+            <div className="mb-4">
+              <Link
+                to={item.link.href}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent text-sm font-medium rounded-lg transition-colors"
+              >
+                {item.link.label}
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+
           {item.commits && item.commits.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
