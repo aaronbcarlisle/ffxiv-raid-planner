@@ -421,7 +421,7 @@ export default function ReleaseNotes() {
   const location = useLocation();
   const [activeVersion, setActiveVersion] = useState(RELEASES[0]?.version || '');
   const isScrollingRef = useRef(false);
-  const scrollEndTimeoutRef = useRef<number | null>(null);
+  const scrollEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track expanded versions - Set allows multiple to be expanded
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(() => {
