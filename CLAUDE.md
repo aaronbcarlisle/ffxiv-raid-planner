@@ -382,6 +382,12 @@ Super-user access for app owners to troubleshoot any static group.
 - Admin users get owner-level access to ALL static groups (view, edit, manage)
 - No API endpoint to grant admin - only via env var or direct DB edit
 
+**Admin Dashboard (`/admin/statics`):**
+- Shows ALL statics in the system with search/filter
+- Displays owner info (avatar, username), member/tier counts
+- Click any row to view/edit that static
+- Only visible to users with `isAdmin=true`
+
 **Security:**
 - Admin can only be granted via direct database access or env var whitelist
 - The env var only grants admin, never revokes (manual DB edit to revoke)
@@ -391,7 +397,9 @@ Super-user access for app owners to troubleshoot any static group.
 - `backend/app/models/user.py` - `is_admin` column
 - `backend/app/config.py` - `admin_discord_ids` setting
 - `backend/app/permissions.py` - `is_user_admin()`, `create_admin_membership()`
+- `backend/app/routers/static_groups.py` - `GET /api/static-groups/admin/all`
 - `backend/scripts/migrate_add_is_admin.py` - Migration script
+- `frontend/src/pages/AdminDashboard.tsx` - Admin dashboard page
 - `frontend/src/utils/permissions.ts` - `getEffectiveRole()` helper
 
 ### Frontend Utilities (v1.0.1)
