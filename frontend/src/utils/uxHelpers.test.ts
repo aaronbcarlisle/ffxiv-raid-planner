@@ -17,11 +17,12 @@ describe('FLOOR_COLORS', () => {
     expect(FLOOR_COLORS[4]).toBeDefined();
   });
 
-  it('each floor has bg, text, and border properties', () => {
+  it('each floor has bg, text, border, and hex properties', () => {
     ([1, 2, 3, 4] as FloorNumber[]).forEach((floor) => {
       expect(FLOOR_COLORS[floor].bg).toBeDefined();
       expect(FLOOR_COLORS[floor].text).toBeDefined();
       expect(FLOOR_COLORS[floor].border).toBeDefined();
+      expect(FLOOR_COLORS[floor].hex).toBeDefined();
     });
   });
 
@@ -32,6 +33,8 @@ describe('FLOOR_COLORS', () => {
       expect(colors.bg).toMatch(/^bg-/);
       expect(colors.text).toMatch(/^text-/);
       expect(colors.border).toMatch(/^border-/);
+      // hex should be a valid hex color
+      expect(colors.hex).toMatch(/^#[0-9a-fA-F]{6}$/);
     });
   });
 

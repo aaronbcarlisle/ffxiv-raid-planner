@@ -13,21 +13,10 @@ import { useMemo, useState, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { getRoleColor, type Role } from '../../gamedata';
-import { type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { Pencil, Link, Trash2 } from 'lucide-react';
-
-/**
- * Floor colors - MUST match CSS tokens in index.css
- * @see --color-floor-1, --color-floor-2, --color-floor-3, --color-floor-4
- */
-const FLOOR_COLORS: Record<FloorNumber, string> = {
-  1: '#22c55e', // Green (--color-floor-1)
-  2: '#3b82f6', // Blue (--color-floor-2)
-  3: '#a855f7', // Purple (--color-floor-3)
-  4: '#f59e0b', // Amber (--color-floor-4)
-};
 
 /**
  * Material colors - MUST match CSS tokens in index.css
@@ -369,15 +358,15 @@ export function WeeklyLootGrid({
             <div
               className="flex items-center px-4 py-2.5"
               style={{
-                backgroundColor: `${FLOOR_COLORS[floor.number]}10`,
+                backgroundColor: `${FLOOR_COLORS[floor.number].hex}10`,
                 borderTop: floorIdx > 0 ? '1px solid var(--border-default)' : 'none',
               }}
             >
               <div
                 className="w-1 h-5 rounded mr-3"
-                style={{ backgroundColor: FLOOR_COLORS[floor.number] }}
+                style={{ backgroundColor: FLOOR_COLORS[floor.number].hex }}
               />
-              <div className="font-bold" style={{ color: FLOOR_COLORS[floor.number] }}>
+              <div className="font-bold" style={{ color: FLOOR_COLORS[floor.number].hex }}>
                 {floor.id}
               </div>
               <div className="ml-3 text-xs text-text-muted">
