@@ -13,14 +13,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Uses word boundaries (\b) to reduce false positives with randomly generated secrets
 # that might contain letter sequences like "test" as part of a larger random string.
 FORBIDDEN_SECRET_PATTERNS: list[str] = [
-    r"\bchangeme\b",    # Common placeholder value
-    r"\bsecret\b",      # Generic "secret" placeholder
-    r"\bdev[-_]",       # Development prefix (dev-, dev_)
-    r"\btest[-_]",      # Test prefix (test-, test_)
-    r"\bplaceholder\b", # Explicit placeholder marker
-    r"\bexample\b",     # Example/documentation value
-    r"^password",       # Starts with "password"
-    r"_key$",           # Ends with "_key" (like "my_api_key")
+    r"\bchangeme\b",       # Common placeholder value
+    r"\bsecret\b",         # Generic "secret" placeholder
+    r"\b(?:dev-|dev_)",    # Development prefix (dev-, dev_)
+    r"\b(?:test-|test_)",  # Test prefix (test-, test_)
+    r"\bplaceholder\b",    # Explicit placeholder marker
+    r"\bexample\b",        # Example/documentation value
+    r"^password",          # Starts with "password"
+    r"_key$",              # Ends with "_key" (like "my_api_key")
 ]
 
 

@@ -48,8 +48,33 @@ from ..services import generate_share_code
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
 logger = structlog.get_logger(__name__)
 
-# TypeVar for generic type preservation in safe_copy_json
-T = TypeVar("T")
+# TypeVar for generic JSON field types in safe_copy_json
+JSONValue = TypeVar("JSONValue")
+
+
+def safe_copy_json(value: Any, default: JSONValue, field_name: str = "unknown") -> JSONValue:
+    """Copy JSON field, handling both Python objects and JSON strings.
+
+    Used during group duplication to deep copy JSON fields like gear, weapon_priorities, etc.
+    Handles both parsed Python objects and raw JSON strings from the database.
+    """
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return copy.deepcopy(parsed)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(
+                "Failed to parse JSON field during group duplication",
+                field=field_name,
+                error=str(e),
+                value_preview=value[:100] if len(value) > 100 else value,
+            )
+            return default
+    if isinstance(value, (list, dict)):
+        return copy.deepcopy(value)
+    return default
 
 
 def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
@@ -421,26 +446,6 @@ async def duplicate_group(
     # Track ID mappings for any future loot history duplication
     tier_id_map: dict[str, str] = {}
     player_id_map: dict[str, str] = {}
-
-    def safe_copy_json(value: Any, default: T, field_name: str = "unknown") -> T:
-        """Copy JSON field, handling both Python objects and JSON strings."""
-        if value is None:
-            return default
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-                return copy.deepcopy(parsed)
-            except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(
-                    "Failed to parse JSON field during group duplication",
-                    field=field_name,
-                    error=str(e),
-                    value_preview=value[:100] if len(value) > 100 else value,
-                )
-                return default
-        if isinstance(value, (list, dict)):
-            return copy.deepcopy(value)
-        return default
 
     if data.copy_tiers and source_group.tier_snapshots:
         # Find which tier_id is currently active in the source group

@@ -9,7 +9,7 @@ Tests the key features and fixes introduced in this PR:
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, inspect
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import StaticGroup, TierSnapshot, SnapshotPlayer
@@ -38,9 +38,9 @@ class TestGroupDuplicationActiveTiers:
         # Create a group with multiple tiers, both marked as active (edge case)
         group = await create_static_group(session, test_user, name="Multi-Active Source")
 
-        tier1 = await create_tier_snapshot(session, group, tier_id="tier-1", is_active=True)
-        tier2 = await create_tier_snapshot(session, group, tier_id="tier-2", is_active=True)
-        tier3 = await create_tier_snapshot(session, group, tier_id="tier-3", is_active=True)
+        await create_tier_snapshot(session, group, tier_id="tier-1", is_active=True)
+        await create_tier_snapshot(session, group, tier_id="tier-2", is_active=True)
+        await create_tier_snapshot(session, group, tier_id="tier-3", is_active=True)
 
         # Duplicate the group
         response = await client.post(
