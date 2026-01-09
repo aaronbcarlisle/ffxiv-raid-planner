@@ -9,13 +9,54 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
-import { Eye, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
 
 // Sortable columns
 type SortField = 'name' | 'owner' | 'memberCount' | 'tierCount' | 'isPublic' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
+
+interface SortableHeaderProps {
+  field: SortField;
+  label: string;
+  currentField: SortField;
+  currentDirection: SortDirection;
+  onSort: (field: SortField) => void;
+  align?: 'left' | 'center';
+}
+
+function SortableHeader({ field, label, currentField, currentDirection, onSort, align = 'left' }: SortableHeaderProps) {
+  const isActive = currentField === field;
+  const justifyClass = align === 'center' ? 'justify-center' : '';
+
+  return (
+    <th
+      className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+      onClick={() => onSort(field)}
+      aria-sort={isActive ? (currentDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      <span className={`flex items-center gap-1 ${justifyClass}`}>
+        {label}
+        {isActive ? (
+          // Active column: always show direction indicator
+          <span className="text-accent">
+            {currentDirection === 'asc' ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </span>
+        ) : (
+          // Inactive column: show neutral icon on hover
+          <span className="opacity-0 group-hover:opacity-50 transition-opacity">
+            <ChevronsUpDown className="w-4 h-4" />
+          </span>
+        )}
+      </span>
+    </th>
+  );
+}
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -279,73 +320,13 @@ export function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th
-                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('name')}
-                  >
-                    <span className="flex items-center gap-1">
-                      Name
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'name' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('owner')}
-                  >
-                    <span className="flex items-center gap-1">
-                      Owner
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'owner' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('memberCount')}
-                  >
-                    <span className="flex items-center justify-center gap-1">
-                      Members
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'memberCount' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('tierCount')}
-                  >
-                    <span className="flex items-center justify-center gap-1">
-                      Tiers
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'tierCount' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
-                  <th
-                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('isPublic')}
-                  >
-                    <span className="flex items-center justify-center gap-1">
-                      Visibility
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'isPublic' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
+                  <SortableHeader field="name" label="Name" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
+                  <SortableHeader field="owner" label="Owner" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
+                  <SortableHeader field="memberCount" label="Members" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
+                  <SortableHeader field="tierCount" label="Tiers" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
+                  <SortableHeader field="isPublic" label="Visibility" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
-                  <th
-                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                    onClick={() => handleSort('createdAt')}
-                  >
-                    <span className="flex items-center gap-1">
-                      Created
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        {sortField === 'createdAt' && sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </span>
-                  </th>
+                  <SortableHeader field="createdAt" label="Created" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>

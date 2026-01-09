@@ -333,7 +333,7 @@ export default function CommonTasksDocs() {
                 </p>
               </Step>
               <Step number={2} title="Open the import modal">
-                <p>Click the import icon on your player card, or right-click and select "Import BiS".</p>
+                <p>Click the 3-dot menu (⋮) on your player card and select "Import BiS", or right-click the card to access the context menu.</p>
               </Step>
               <Step number={3} title="Paste and import">
                 <p>Paste your XIVGear URL in the input field and click <strong>Import</strong>.</p>
@@ -361,7 +361,7 @@ export default function CommonTasksDocs() {
                 Don't have a custom gearset? Choose from curated community BiS presets.
               </p>
               <Step number={1} title="Open the import modal">
-                <p>Click the import icon on your player card.</p>
+                <p>Click the 3-dot menu (⋮) on your player card and select "Import BiS".</p>
               </Step>
               <Step number={2} title="Select the Presets tab">
                 <p>Switch from "URL" to "Presets" tab.</p>
