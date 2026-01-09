@@ -344,7 +344,8 @@ export interface StaticGroup {
   memberCount: number;
   userRole?: MemberRole;
   // True if userRole is granted via admin privileges (not actual membership)
-  isAdminAccess?: boolean;
+  // Always returned by API (defaults to false), non-optional for type safety
+  isAdminAccess: boolean;
   settings?: StaticGroupSettings;
   createdAt: string;
   updatedAt: string;

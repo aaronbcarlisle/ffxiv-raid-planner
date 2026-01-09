@@ -952,9 +952,9 @@ export function GroupView() {
               <span className="text-sm text-purple-200">
                 <span className="font-medium">Viewing as:</span>{' '}
                 {viewAsUser.displayName || viewAsUser.discordUsername}
-                {viewAsUser.role && (
-                  <span className="ml-1 text-purple-300/70">({viewAsUser.role})</span>
-                )}
+                <span className="ml-1 text-purple-300/70">
+                  ({viewAsUser.role || 'no membership'})
+                </span>
               </span>
             </div>
             <button
