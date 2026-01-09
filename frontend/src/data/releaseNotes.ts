@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.0';
+export const CURRENT_VERSION = '1.0.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,116 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.1',
+    date: '2026-01-09',
+    title: 'Performance & Reliability',
+    highlights: ['Bulk group duplication', '228 automated tests'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Bulk group duplication',
+        description: 'Duplicate static groups with a single API call',
+        details:
+          'New bulk duplication endpoint replaces 40+ individual API calls with a single transaction. Includes options to copy tiers and players, with proper reset of tracking data and ownership.',
+        commits: [
+          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Frontend utilities',
+        description: 'New error handler, logger, and event bus utilities',
+        details:
+          'Centralized error parsing with HTTP status messages, development-aware logging with scoping and timing, and pub/sub event bus for cross-component communication.',
+        commits: [
+          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Skeleton loading components',
+        description: 'Loading placeholder components for better perceived performance',
+        details:
+          'New skeleton components show loading states while data is being fetched, improving user experience during slow network conditions.',
+      },
+      {
+        category: 'improvement',
+        title: 'Database performance',
+        description: 'Added 6 database indexes for faster queries',
+        details:
+          'New indexes on snapshot_players.position, loot entries, material entries, and page ledger entries. Improves query performance especially for large groups with extensive loot history.',
+        commits: [
+          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Zustand selector hooks',
+        description: '11 new selector hooks for optimized component re-renders',
+        details:
+          'Specialized selector hooks like useTierPlayers, usePlayersByGroup, and useCurrentTierMeta prevent unnecessary re-renders by only subscribing to relevant state slices.',
+        commits: [
+          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Bundle optimization',
+        description: 'Vite manual chunks for faster loading',
+        details:
+          'Split vendor bundles into react-vendor, state management, drag-and-drop, Radix UI, and icons. Improves caching and reduces initial load time.',
+      },
+      {
+        category: 'improvement',
+        title: 'Production config validation',
+        description: 'Automatic validation of production environment settings',
+        details:
+          'Backend now validates JWT secret strength, debug mode, SQLite rejection for production, and warns about missing CORS configuration. Prevents common deployment mistakes.',
+      },
+      {
+        category: 'improvement',
+        title: 'Comprehensive test suite',
+        description: '228 automated tests across backend and frontend',
+        details:
+          'Backend: 95 tests covering auth, config validation, group duplication, tier activation, and integration scenarios. Frontend: 142 tests for error handling, logging, event bus, and Zustand selectors.',
+        commits: [
+          { hash: '0df6fa9', message: 'Add comprehensive integration tests for PR #9' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Tier activation logic',
+        description: 'Fixed bug where re-activating an active tier could cause issues',
+        details:
+          'Changed tier deactivation from SELECT+loop to bulk UPDATE statement. Now properly handles edge cases like re-activating already active tiers and ensures only one tier is active per group.',
+        commits: [
+          { hash: '037caba', message: 'Fix tier activation bug and update test dates' },
+          { hash: '050dfb4', message: 'Fix useShallow import and tier duplication is_active handling' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Auth store circular dependency',
+        description: 'Fixed initialization error on app load',
+        details:
+          'Resolved circular dependency between authStore and api modules by extracting API_BASE_URL to a separate config module. Prevents "Cannot access before initialization" errors.',
+        commits: [
+          { hash: 'b1b8b39', message: 'Fix circular dependency between authStore and api' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Group duplication improvements',
+        description: 'Fixed settings deep copy and active tier handling',
+        details:
+          'Group settings are now properly deep copied to prevent shared references. Only one tier remains active after duplication, even if source had multiple active tiers.',
+        commits: [
+          { hash: '360ecf2', message: 'Address final PR feedback' },
+        ],
+      },
+    ],
+  },
   {
     version: '1.0.0',
     date: '2026-01-09',

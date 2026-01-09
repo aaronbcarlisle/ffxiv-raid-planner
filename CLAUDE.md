@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.0 Released (Phase 1-6.5 + Parity Complete) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.1 Released (Phase 1-6.5 + Parity + Audit Improvements) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -61,6 +61,10 @@ cd backend && python scripts/normalize_preset_names.py
 | `data/releaseNotes.ts` | Version history data |
 | `pages/ReleaseNotes.tsx` | Release notes page |
 | `components/layout/ReleaseBanner.tsx` | New version notification |
+| `lib/errorHandler.ts` | Centralized error parsing with HTTP messages |
+| `lib/logger.ts` | Development-aware logging with scoping |
+| `lib/eventBus.ts` | Pub/sub for cross-component communication |
+| `config.ts` | API URL and environment configuration |
 
 ---
 
@@ -69,9 +73,11 @@ cd backend && python scripts/normalize_preset_names.py
 See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
 
 ### Open Items
-- **P-001:** N+1 in duplicateGroup (needs bulk API)
-- **P-005:** GroupView.tsx is 811 lines
-- **T-001:** Low test coverage (3 test files)
+- **P-005:** GroupView.tsx is 811 lines (consider splitting)
+
+### Resolved in v1.0.1
+- ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
+- ~~**T-001:** Low test coverage~~ - Now 237 tests (95 backend + 142 frontend)
 
 ---
 
@@ -114,9 +120,28 @@ interface SnapshotPlayer {
 }
 ```
 
-### Tests (Phase 5 Complete)
-- `pnpm test` runs 25 unit tests for calculations and priority functions
-- Tests verify: iLv calculation, currentSource inference, loot adjustments
+### Tests (237 Total)
+
+**Backend (95 tests):**
+```bash
+cd backend && source venv/bin/activate && pytest tests/ -q
+```
+- `test_auth.py` - Authentication endpoints
+- `test_auth_utils.py` - JWT token creation/verification
+- `test_config_validation.py` - Production config validation
+- `test_duplicate_group.py` - Bulk duplication endpoint
+- `test_tier_deactivation.py` - Tier activation logic
+- `test_pr_integration.py` - Integration tests for PR features
+
+**Frontend (142 tests):**
+```bash
+pnpm test
+```
+- `errorHandler.test.ts` - Error parsing utilities
+- `logger.test.ts` - Logging utility
+- `eventBus.test.ts` - Event bus pub/sub
+- `tierStore.selectors.test.ts` - Zustand selector hooks
+- `calculations.test.ts` - iLv and priority calculations
 
 ### Optional Future Enhancements
 - Add currentSource dropdown to GearTable (manual override per slot)
@@ -168,6 +193,7 @@ ffxiv-raid-planner/
 - `GET/POST /api/static-groups` - List/Create
 - `GET /api/static-groups/by-code/{code}` - By share code
 - `PUT/DELETE /api/static-groups/{id}` - Update/Delete
+- `POST /api/static-groups/{id}/duplicate` - Bulk duplicate group with tiers/players
 
 ### Tiers
 - `GET/POST /api/static-groups/{id}/tiers` - List/Create
@@ -340,6 +366,73 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Proactive token refresh on app load (60-second buffer)
 - Production misconfiguration detection with console warnings
 - JWT expiration check prevents unnecessary 401 errors
+
+### Frontend Utilities (v1.0.1)
+
+**Error Handler (`lib/errorHandler.ts`):**
+```typescript
+import { parseApiError, handleApiError } from '../lib/errorHandler';
+
+// Parse error to standardized format
+const error = parseApiError(response); // { message, code, status }
+
+// Handle with logging and optional toast
+handleApiError(error, 'save player', true);
+```
+
+**Logger (`lib/logger.ts`):**
+```typescript
+import { logger } from '../lib/logger';
+
+// Basic logging (dev only for debug/info)
+logger.debug('Value:', value);
+logger.info('Loading...');
+logger.warn('Deprecation warning');
+logger.error('Failed to save');
+
+// Scoped logger
+const log = logger.scope('TierStore');
+log.debug('Fetching tiers...'); // [HH:MM:SS.mmm] [DEBUG] [TierStore] Fetching tiers...
+
+// Performance timing
+const end = logger.time('fetchTiers');
+await fetchTiers();
+end(); // Logs: fetchTiers took 123ms
+```
+
+**Event Bus (`lib/eventBus.ts`):**
+```typescript
+import { eventBus, useEventBus } from '../lib/eventBus';
+
+// Emit events
+eventBus.emit('player:updated', { playerId: '123' });
+
+// Subscribe in components
+useEventBus('player:updated', (data) => {
+  console.log('Player updated:', data.playerId);
+});
+```
+
+### Zustand Selector Hooks (v1.0.1)
+Use specialized selector hooks to prevent unnecessary re-renders:
+```typescript
+// Instead of: useTierStore((s) => s.currentTier?.players)
+import { useTierPlayers } from '../stores/tierStore';
+const players = useTierPlayers();
+
+// Available selectors:
+useTierPlayers()         // Current tier players
+usePlayersByGroup()      // { group1: Player[], group2: Player[] }
+useCurrentTierMeta()     // { tierId, tierName, isActive }
+useGroupTiers()          // All tiers for current group
+```
+
+### Group Duplication (v1.0.1)
+- Single API call replaces 40+ individual requests
+- Resets tracking data (current_week, week_start_date, loot history)
+- Resets player ownership (user_id cleared)
+- Deep copies settings to prevent shared references
+- Ensures only one tier is active in duplicated group
 
 ---
 

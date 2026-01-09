@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 9, 2026 (v1.0.0 Released)
+**Last Updated:** January 9, 2026 (v1.0.1 Released)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 This document consolidates:
@@ -60,6 +60,19 @@ This document consolidates:
 | **Weapon Priority Ties** | ✅ Complete | Roll button for tied players, auto-expand on roll |
 | **Release Notes System** | ✅ Complete | In-app release notes with version notification |
 | **Auth Persistence** | ✅ Complete | Proactive token refresh, production detection |
+
+### ✅ Completed: v1.0.1 Audit Improvements (January 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Bulk Group Duplication** | ✅ Complete | Single endpoint replaces 40+ API calls |
+| **Database Indexes** | ✅ Complete | 6 indexes for query performance |
+| **Frontend Utilities** | ✅ Complete | errorHandler, logger, eventBus libraries |
+| **Zustand Selectors** | ✅ Complete | 11 selector hooks for optimized re-renders |
+| **Bundle Optimization** | ✅ Complete | Vite manual chunks for vendor splitting |
+| **Production Config Validation** | ✅ Complete | JWT strength, debug mode, SQLite rejection |
+| **Comprehensive Test Suite** | ✅ Complete | 237 tests (95 backend + 142 frontend) |
+| **Skeleton Components** | ✅ Complete | Loading placeholder components |
 | **Alt Job Linking** | ⏳ Future | Multi-job players with shared page pools |
 
 ### 🚧 Partially Complete / Needs Work
@@ -90,7 +103,7 @@ This document consolidates:
 |-------|----------|--------|-----|--------|
 | **No database migrations** | Backend | Data loss risk on schema changes | Add Alembic migrations | ✅ Done |
 | **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter | ⏳ Pending |
-| **No test coverage** | Frontend + Backend | Regressions, bugs | Add pytest (backend) + vitest (frontend) | 🟡 Partial (25 tests) |
+| **Test coverage** | Frontend + Backend | Regressions, bugs | pytest + vitest | ✅ Done (237 tests) |
 
 ### 🟠 P1 - High Priority
 
@@ -126,10 +139,10 @@ This document consolidates:
 
 #### ❌ Outstanding Items
 - [x] **Database Migrations** - Critical: Add Alembic ✅ Done
-- [ ] **Database Indexes** - High: Add indexes on common queries
+- [x] **Database Indexes** - High: Add indexes on common queries ✅ Done (v1.0.1)
 - [ ] **Rate Limiting** - Critical: Add slowapi
 - [ ] **Redis Caching** - High: Replace in-memory cache for XIVAPI
-- [ ] **Structured Logging** - High: Add structlog
+- [x] **Structured Logging** - High: Add structlog ✅ Done (v1.0.1)
 - [ ] **Security Headers** - High: Add CSP, X-Frame-Options, etc.
 - [ ] **API Versioning** - Low: Prepare for v2 API
 
@@ -282,6 +295,10 @@ This document consolidates:
 | backend/app/models/loot_log_entry.py | ✅ Working | Loot log model |
 | backend/app/models/page_ledger_entry.py | ✅ Working | Book ledger model |
 | backend/app/routers/loot_tracking.py | ✅ Working | Loot/book API endpoints |
+| frontend/src/lib/errorHandler.ts | ✅ Working | Centralized error parsing |
+| frontend/src/lib/logger.ts | ✅ Working | Development-aware logging |
+| frontend/src/lib/eventBus.ts | ✅ Working | Cross-component pub/sub |
+| frontend/src/config.ts | ✅ Working | API URL configuration |
 
 ---
 
@@ -305,6 +322,15 @@ This document consolidates:
 13. ~~Set up database migrations (Alembic)~~ ✅
 14. ~~Archive old planning/audit files to docs/archive/~~ ✅
 
+### ✅ Completed (January 9, 2026 - v1.0.1)
+15. ~~Combined audit improvements (performance, testing, utilities)~~ ✅
+16. ~~Bulk group duplication endpoint~~ ✅
+17. ~~Database indexes for query performance~~ ✅
+18. ~~Frontend utilities (errorHandler, logger, eventBus)~~ ✅
+19. ~~Zustand selector hooks for optimized re-renders~~ ✅
+20. ~~Comprehensive test suite (237 tests)~~ ✅
+21. ~~Production config validation~~ ✅
+
 ### 🔨 Current Priority: Phase 7 Planning
 - Design Lodestone auto-sync architecture
 - Evaluate XIVAPI character endpoints
@@ -312,7 +338,7 @@ This document consolidates:
 
 ### Up Next
 - Add error boundaries
-- Expand test coverage (target: 50+ tests)
+- Add rate limiting (slowapi)
 - Complete accessibility improvements (ARIA labels, keyboard navigation)
 - Clean up design system (replace raw Tailwind with CSS tokens)
 
