@@ -47,6 +47,7 @@ interface WeeklyLootGridProps {
   floors: string[];
   currentWeek: number;
   canEdit: boolean;
+  highlightedEntryId?: string | null;
   onLogLoot?: (floor: FloorNumber, slot: string) => void;
   onLogMaterial?: (floor: FloorNumber, material: string) => void;
   onDeleteLoot?: (entryId: number) => void;
@@ -64,6 +65,7 @@ export function WeeklyLootGrid({
   floors,
   currentWeek,
   canEdit,
+  highlightedEntryId,
   onLogLoot,
   onLogMaterial,
   onDeleteLoot,
@@ -389,12 +391,14 @@ export function WeeklyLootGrid({
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
                   const canClickToLog = canEdit && onLogLoot && !lootEntry;
                   const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
+                  const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id);
 
                   const isClickable = canClickToLog || canClickToEdit;
                   return (
                     <div
                       key={item.slot}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''}`}
+                      id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={() => {
                         if (canClickToLog) onLogLoot(floor.number, item.slot);
                         if (canClickToEdit && lootEntry) onEditLoot(lootEntry);

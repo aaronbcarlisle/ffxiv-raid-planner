@@ -28,7 +28,7 @@ import {
   DropdownItem,
   DropdownSeparator,
 } from '../primitives/Dropdown';
-import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -152,10 +152,11 @@ export function SectionedLogView({
 
   const handleUpdateLoot = useCallback(async (updates: LootLogEntryUpdate) => {
     if (!entryToEdit) return;
-    await updateLootEntry(groupId, tierId, entryToEdit.id, updates);
+    // Use updateLootAndSyncGear to properly update player gear when recipient changes
+    await updateLootAndSyncGear(groupId, tierId, entryToEdit.id, entryToEdit, updates, { syncGear: true });
     await fetchLootLog(groupId, tierId, currentWeek);
     toast.success('Loot entry updated');
-  }, [groupId, tierId, currentWeek, entryToEdit, updateLootEntry, fetchLootLog]);
+  }, [groupId, tierId, currentWeek, entryToEdit, fetchLootLog]);
 
   const handleDeleteLoot = useCallback((entry: LootLogEntry) => {
     setConfirmState({
@@ -781,6 +782,7 @@ export function SectionedLogView({
               floors={floors}
               currentWeek={currentWeek}
               canEdit={canEdit}
+              highlightedEntryId={highlightedEntryId}
               onLogLoot={handleGridLogLoot}
               onLogMaterial={handleGridLogMaterial}
               onDeleteLoot={handleGridDeleteLoot}
@@ -820,31 +822,29 @@ export function SectionedLogView({
                     </button>
                   </div>
                 </div>
-                {/* Floor filter - only shown in By Floor mode */}
-                {lootViewMode === 'byFloor' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted mr-1">Floor:</span>
-                    {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
-                      const isSelected = visibleFloors.has(floor);
-                      const floorColors = FLOOR_COLORS[floor];
-                      return (
-                        <button
-                          key={floor}
-                          onClick={() => toggleFloorVisibility(floor)}
-                          className={`
-                            px-3 py-1.5 rounded text-xs font-bold transition-colors border
-                            ${isSelected
-                              ? `${floorColors.bg} ${floorColors.text} ${floorColors.border}`
-                              : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
-                            }
-                          `}
-                        >
-                          {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {/* Floor filter - hidden in Timeline mode but still rendered to prevent layout shift */}
+                <div className={`flex items-center gap-2 ${lootViewMode !== 'byFloor' ? 'invisible' : ''}`}>
+                  <span className="text-xs text-text-muted mr-1">Floor:</span>
+                  {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
+                    const isSelected = visibleFloors.has(floor);
+                    const floorColors = FLOOR_COLORS[floor];
+                    return (
+                      <button
+                        key={floor}
+                        onClick={() => toggleFloorVisibility(floor)}
+                        className={`
+                          px-3 py-1.5 rounded text-xs font-bold transition-colors border
+                          ${isSelected
+                            ? `${floorColors.bg} ${floorColors.text} ${floorColors.border}`
+                            : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
+                          }
+                        `}
+                      >
+                        {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="p-4 space-y-3 max-h-[700px] overflow-y-auto">
                 {/* Loot Count Summary Bar */}

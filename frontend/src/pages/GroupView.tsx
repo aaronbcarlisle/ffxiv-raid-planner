@@ -960,16 +960,19 @@ export function GroupView() {
                 {hasSubstitutes && (
                   <button
                     onClick={() => setSubsView(!subsView)}
-                    className={`px-3 py-1.5 text-sm rounded transition-colors font-bold ${
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                       subsView
-                        ? 'bg-accent text-accent-contrast'
-                        : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                        ? 'bg-accent/20 text-accent border border-accent/50'
+                        : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
                     }`}
                     title={subsView ? 'Show subs with main roster' : 'Separate substitutes'}
                     aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
                     aria-pressed={subsView}
                   >
-                    Subs
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>Subs</span>
                   </button>
                 )}
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
@@ -1000,7 +1003,7 @@ export function GroupView() {
                 onDragEnd={dnd.handleDragEnd}
                 onDragCancel={dnd.handleDragCancel}
               >
-              {/* Grouped View */}
+              {/* Grouped View (G1/G2) */}
               {groupView && groupedPlayers ? (
                 <div className="space-y-8 mb-8">
                   {/* Group 1 */}
@@ -1055,9 +1058,26 @@ export function GroupView() {
                   )}
                 </div>
               ) : (
-                /* Standard View */
-                <div className={`${gridClasses} mb-8`}>
-                  {sortedPlayers.map((player) => renderPlayerCard(player))}
+                /* Standard View - with optional subs section */
+                <div className="space-y-8 mb-8">
+                  <div className={gridClasses}>
+                    {subsView
+                      ? sortedPlayers.filter(p => !p.isSubstitute).map((player) => renderPlayerCard(player))
+                      : sortedPlayers.map((player) => renderPlayerCard(player))
+                    }
+                  </div>
+                  {/* Substitutes section - shown in standard view when subsView is enabled */}
+                  {subsView && sortedPlayers.some(p => p.isSubstitute) && (
+                    <div className="opacity-75">
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+                        Substitutes
+                      </h3>
+                      <div className={gridClasses}>
+                        {sortedPlayers.filter(p => p.isSubstitute).map((player) => renderPlayerCard(player))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

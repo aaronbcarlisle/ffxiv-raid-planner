@@ -285,7 +285,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Name
-                      {sortField === 'name' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'name' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th
@@ -294,7 +296,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Owner
-                      {sortField === 'owner' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'owner' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th
@@ -303,7 +307,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Members
-                      {sortField === 'memberCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'memberCount' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th
@@ -312,7 +318,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Tiers
-                      {sortField === 'tierCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'tierCount' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th
@@ -321,7 +329,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Visibility
-                      {sortField === 'isPublic' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'isPublic' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
@@ -331,7 +341,9 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Created
-                      {sortField === 'createdAt' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                      <span className={sortField === 'createdAt' ? '' : 'invisible'}>
+                        {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </span>
                     </span>
                   </th>
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>

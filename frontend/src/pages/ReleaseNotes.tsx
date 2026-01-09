@@ -104,7 +104,7 @@ function VersionNav({
     onVersionClick(version);
     const element = document.getElementById(`v${version}`);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -328,7 +328,7 @@ function ReleaseCard({
   const totalItems = release.items.length;
 
   return (
-    <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-6">
+    <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-20">
       {/* Header - Always visible, clickable */}
       <button
         onClick={handleToggle}
