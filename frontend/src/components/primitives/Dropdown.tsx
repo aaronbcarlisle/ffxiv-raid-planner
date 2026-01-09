@@ -132,6 +132,8 @@ interface DropdownItemProps {
   disabled?: boolean;
   /** Click handler */
   onSelect?: () => void;
+  /** URL for link items - renders as <a> tag, supports middle-click to open in new tab */
+  href?: string;
   className?: string;
 }
 
@@ -144,33 +146,58 @@ export const DropdownItem = forwardRef<HTMLDivElement, DropdownItemProps>(
       danger = false,
       disabled = false,
       onSelect,
+      href,
       className = '',
     },
     ref
   ) => {
-    return (
-      <DropdownMenuPrimitive.Item
-        ref={ref}
-        disabled={disabled}
-        onSelect={onSelect}
-        className={`
-          flex items-center gap-2 px-3 py-2 text-sm cursor-pointer
-          outline-none select-none
-          transition-colors duration-fast
-          ${
-            danger
-              ? 'text-status-error hover:bg-status-error/10 focus:bg-status-error/10'
-              : 'text-text-primary hover:bg-surface-interactive focus:bg-surface-interactive'
-          }
-          ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
-          ${className}
-        `}
-      >
+    const itemClasses = `
+      flex items-center gap-2 px-3 py-2 text-sm cursor-pointer
+      outline-none select-none
+      transition-colors duration-fast
+      ${
+        danger
+          ? 'text-status-error hover:bg-status-error/10 focus:bg-status-error/10'
+          : 'text-text-primary hover:bg-surface-interactive focus:bg-surface-interactive'
+      }
+      ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
+      ${className}
+    `;
+
+    const content = (
+      <>
         {icon && <span className="w-4 h-4 flex items-center justify-center">{icon}</span>}
         <span className="flex-1">{children}</span>
         {shortcut && (
           <span className="ml-auto text-xs text-text-muted">{shortcut}</span>
         )}
+      </>
+    );
+
+    // If href is provided, render as a link for proper middle-click support
+    if (href) {
+      return (
+        <DropdownMenuPrimitive.Item
+          ref={ref}
+          disabled={disabled}
+          asChild
+          onSelect={onSelect}
+        >
+          <a href={href} className={itemClasses}>
+            {content}
+          </a>
+        </DropdownMenuPrimitive.Item>
+      );
+    }
+
+    return (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        disabled={disabled}
+        onSelect={onSelect}
+        className={itemClasses}
+      >
+        {content}
       </DropdownMenuPrimitive.Item>
     );
   }
