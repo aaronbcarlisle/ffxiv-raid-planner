@@ -270,6 +270,7 @@ export interface User {
   avatarUrl?: string;
   displayName?: string;
   email?: string;
+  isAdmin: boolean;  // Super-user access to all statics
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

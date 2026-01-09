@@ -79,6 +79,19 @@ class Settings(BaseSettings):
     # Frontend URL (for redirects)
     frontend_url: str = "http://localhost:5173"
 
+    # Admin Discord IDs (comma-separated) - users with these Discord IDs
+    # automatically get admin privileges on login. This is the only way to
+    # grant admin access besides direct database modification.
+    # Example: "123456789012345678,987654321098765432"
+    admin_discord_ids: str = ""
+
+    @property
+    def admin_discord_ids_list(self) -> list[str]:
+        """Parse comma-separated admin Discord IDs into a list."""
+        if not self.admin_discord_ids:
+            return []
+        return [id.strip() for id in self.admin_discord_ids.split(",") if id.strip()]
+
     @model_validator(mode='after')
     def validate_production_config(self) -> Self:
         """Validate configuration for production environment.

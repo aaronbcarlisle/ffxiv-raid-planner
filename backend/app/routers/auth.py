@@ -129,6 +129,9 @@ async def discord_callback(
 
     now = datetime.now(timezone.utc).isoformat()
 
+    # Check if user should be admin (based on ADMIN_DISCORD_IDS env var)
+    should_be_admin = discord_id in settings.admin_discord_ids_list
+
     if user is None:
         # Create new user
         user = User(
@@ -139,11 +142,14 @@ async def discord_callback(
             discord_avatar=discord_user.get("avatar"),
             email=discord_user.get("email"),
             display_name=discord_user.get("global_name"),
+            is_admin=should_be_admin,
             created_at=now,
             updated_at=now,
             last_login_at=now,
         )
         session.add(user)
+        if should_be_admin:
+            logger.info("admin_user_created", discord_id=discord_id)
     else:
         # Update existing user
         user.discord_username = discord_user.get("username", user.discord_username)
@@ -153,6 +159,11 @@ async def discord_callback(
         user.display_name = discord_user.get("global_name") or user.display_name
         user.updated_at = now
         user.last_login_at = now
+        # Update admin status if in whitelist (only grants, never revokes via env var)
+        # To revoke admin, must be done via direct DB access
+        if should_be_admin and not user.is_admin:
+            user.is_admin = True
+            logger.info("admin_status_granted", discord_id=discord_id)
 
     await session.flush()
 
@@ -222,6 +233,7 @@ async def get_current_user_info(
         avatar_url=user.avatar_url,
         display_name=user.display_name,
         email=user.email,
+        is_admin=user.is_admin,
         created_at=user.created_at,
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,

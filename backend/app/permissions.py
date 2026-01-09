@@ -1,5 +1,6 @@
 """Permission utilities for static group access control"""
 
+from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,33 @@ class PermissionDenied(HTTPException):
 
     def __init__(self, detail: str = "Permission denied"):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+def create_admin_membership(user_id: str, group_id: str) -> Membership:
+    """
+    Create a virtual owner membership for admin users.
+
+    This allows admins to bypass normal permission checks by having
+    owner-level access to any group without being an actual member.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    return Membership(
+        id="admin-virtual-membership",
+        user_id=user_id,
+        static_group_id=group_id,
+        role=MemberRole.OWNER.value,
+        joined_at=now,
+        updated_at=now,
+    )
+
+
+async def is_user_admin(session: AsyncSession, user_id: str) -> bool:
+    """Check if a user has admin privileges."""
+    result = await session.execute(
+        select(User.is_admin).where(User.id == user_id)
+    )
+    is_admin = result.scalar_one_or_none()
+    return is_admin is True
 
 
 class NotFound(HTTPException):
@@ -84,6 +112,8 @@ async def require_membership(
     """
     Require that a user is a member of a static group.
 
+    Admins automatically get owner-level access to all groups.
+
     Args:
         session: Database session
         user_id: User ID to check
@@ -91,11 +121,15 @@ async def require_membership(
         min_role: Minimum required role (optional)
 
     Returns:
-        The user's membership
+        The user's membership (or virtual admin membership)
 
     Raises:
         PermissionDenied: If user is not a member or doesn't have required role
     """
+    # Check if user is an admin - admins get owner access to all groups
+    if await is_user_admin(session, user_id):
+        return create_admin_membership(user_id, group_id)
+
     membership = await get_user_membership(session, user_id, group_id)
 
     if not membership:
@@ -123,17 +157,26 @@ async def check_view_permission(
     """
     Check if a user can view a static group.
 
+    Admins can view all groups (public and private).
+
     Args:
         session: Database session
         group: The static group to check
         user: The user (or None for anonymous)
 
     Returns:
-        The user's membership if they are a member, None for public access
+        The user's membership if they are a member, None for public access,
+        or virtual admin membership for admins
 
     Raises:
         PermissionDenied: If the group is private and user is not a member
     """
+    # Check if user is an admin - admins can view all groups
+    if user and await is_user_admin(session, user.id):
+        # Return real membership if exists, otherwise virtual admin membership
+        membership = await get_user_membership(session, user.id, group.id)
+        return membership or create_admin_membership(user.id, group.id)
+
     # Public groups can be viewed by anyone
     if group.is_public:
         if user:
