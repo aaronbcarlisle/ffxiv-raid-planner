@@ -505,6 +505,30 @@ export interface InvitationAcceptResponse {
   role?: MemberRole;
 }
 
+// ==================== Admin Types ====================
+
+// Admin static group list item (includes owner info)
+export interface AdminStaticGroupListItem {
+  id: string;
+  name: string;
+  shareCode: string;
+  isPublic: boolean;
+  ownerId: string;
+  owner?: OwnerInfo;
+  memberCount: number;
+  tierCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Admin static group list response (paginated)
+export interface AdminStaticGroupListResponse {
+  items: AdminStaticGroupListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ==================== BiS Import Types ====================
 
 // Gear slot data from BiS import

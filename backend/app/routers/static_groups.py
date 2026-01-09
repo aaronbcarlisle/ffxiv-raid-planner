@@ -17,16 +17,20 @@ from ..dependencies import get_current_user, get_current_user_optional
 from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from ..permissions import (
     NotFound,
+    PermissionDenied,
     check_view_permission,
     get_static_group,
     get_static_group_by_share_code,
     get_user_linked_static_groups,
     get_user_membership,
     get_user_static_groups,
+    is_user_admin,
     require_can_manage_members,
     require_owner,
 )
 from ..schemas import (
+    AdminStaticGroupListItem,
+    AdminStaticGroupListResponse,
     DuplicateGroupRequest,
     GroupSourceEnum,
     LinkedPlayerInfo,
@@ -810,3 +814,97 @@ async def transfer_ownership(
     await session.flush()
 
     return group_to_response(group, MemberRole.LEAD)
+
+
+# --- Admin Endpoints ---
+
+
+@router.get("/admin/all", response_model=AdminStaticGroupListResponse)
+async def list_all_static_groups_admin(
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AdminStaticGroupListResponse:
+    """List all static groups (admin only).
+
+    This endpoint is restricted to admin users and returns all static groups
+    in the system with owner information for troubleshooting purposes.
+
+    Args:
+        search: Optional search term to filter by group name or owner username
+        limit: Maximum number of groups to return (default 50, max 100)
+        offset: Number of groups to skip for pagination
+    """
+    # Check admin permission
+    if not await is_user_admin(session, current_user.id):
+        raise PermissionDenied("Admin access required")
+
+    # Clamp limit to prevent unbounded queries
+    limit = min(max(1, limit), 100)
+    offset = max(0, offset)
+
+    # Build query
+    query = (
+        select(StaticGroup)
+        .options(
+            selectinload(StaticGroup.owner),
+            selectinload(StaticGroup.tier_snapshots),
+        )
+        .order_by(StaticGroup.name)
+    )
+
+    # Apply search filter if provided
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.join(User, StaticGroup.owner_id == User.id).where(
+            (StaticGroup.name.ilike(search_term)) |
+            (User.discord_username.ilike(search_term))
+        )
+
+    # Get total count (before pagination)
+    count_query = select(StaticGroup)
+    if search:
+        search_term = f"%{search.lower()}%"
+        count_query = count_query.join(User, StaticGroup.owner_id == User.id).where(
+            (StaticGroup.name.ilike(search_term)) |
+            (User.discord_username.ilike(search_term))
+        )
+    count_result = await session.execute(count_query)
+    total = len(count_result.scalars().all())
+
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+
+    result = await session.execute(query)
+    groups = result.unique().scalars().all()
+
+    items = [
+        AdminStaticGroupListItem(
+            id=group.id,
+            name=group.name,
+            share_code=group.share_code,
+            is_public=group.is_public,
+            owner_id=group.owner_id,
+            owner=OwnerInfo(
+                id=group.owner.id,
+                discord_username=group.owner.discord_username,
+                discord_avatar=group.owner.discord_avatar,
+                avatar_url=group.owner.avatar_url,
+                display_name=group.owner.display_name,
+            ) if group.owner else None,
+            member_count=group.member_count,
+            tier_count=len(group.tier_snapshots) if group.tier_snapshots else 0,
+            created_at=group.created_at,
+            updated_at=group.updated_at,
+        )
+        for group in groups
+    ]
+
+    return AdminStaticGroupListResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
