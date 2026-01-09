@@ -14,6 +14,18 @@ A web-based tool for FFXIV static raid groups to track gear progress toward BiS,
 
 ---
 
+## IMPORTANT: Git Commit & PR Rules
+
+**NEVER add AI attribution to commits or PRs.** This includes:
+- No "Co-Authored-By: Claude" or similar in commit messages
+- No "Generated with Claude Code" in PR descriptions
+- No "Written by AI" or contributor credits for AI assistance
+- No AI tool attribution of any kind in any commit or PR content
+
+This rule is **absolute and non-negotiable**.
+
+---
+
 ## Quick Start
 
 ```bash
