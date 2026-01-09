@@ -851,6 +851,7 @@ async def list_all_static_groups_admin(
         .options(
             selectinload(StaticGroup.owner),
             selectinload(StaticGroup.tier_snapshots),
+            selectinload(StaticGroup.memberships),
         )
         .order_by(StaticGroup.name)
     )
@@ -908,3 +909,57 @@ async def list_all_static_groups_admin(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/admin/user-role/{group_id}/{user_id}")
+async def get_user_role_in_group_admin(
+    group_id: str,
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Get a user's role in a specific group (admin only).
+
+    Used for the "View As" feature to show the UI from another user's perspective.
+    Returns the user's membership info including role, or indicates they're not a member.
+    """
+    # Check admin permission
+    if not await is_user_admin(session, current_user.id):
+        raise PermissionDenied("Admin access required")
+
+    # Verify group exists
+    group = await get_static_group(session, group_id)
+
+    # Get target user info
+    result = await session.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+
+    if not target_user:
+        raise NotFound("User not found")
+
+    # Get their membership in this group
+    membership = await get_user_membership(session, user_id, group_id)
+
+    # Check if user is linked to any player in this group (via player.user_id)
+    linked_player_result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(TierSnapshot.static_group_id == group_id)
+        .where(SnapshotPlayer.user_id == user_id)
+        .limit(1)
+    )
+    linked_player = linked_player_result.scalar_one_or_none()
+
+    return {
+        "userId": target_user.id,
+        "discordUsername": target_user.discord_username,
+        "displayName": target_user.display_name,
+        "avatarUrl": target_user.avatar_url,
+        "groupId": group_id,
+        "groupName": group.name,
+        "isMember": membership is not None,
+        "role": membership.role if membership else None,
+        "isLinkedPlayer": linked_player is not None,
+        "linkedPlayerId": linked_player.id if linked_player else None,
+        "linkedPlayerName": linked_player.name if linked_player else None,
+    }

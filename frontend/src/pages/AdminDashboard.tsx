@@ -9,7 +9,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
-import type { AdminStaticGroupListItem, AdminStaticGroupListResponse } from '../types';
+import { Eye } from 'lucide-react';
+import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -28,6 +29,47 @@ export function AdminDashboard() {
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // View As modal state
+  const [viewAsGroup, setViewAsGroup] = useState<AdminStaticGroupListItem | null>(null);
+  const [viewAsMembers, setViewAsMembers] = useState<MemberInfo[]>([]);
+  const [viewAsMembersLoading, setViewAsMembersLoading] = useState(false);
+
+  // Fetch members for View As modal
+  const fetchMembers = useCallback(async (groupId: string) => {
+    if (!accessToken) return;
+    setViewAsMembersLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/static-groups/${groupId}/members`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setViewAsMembers(data.map((m: { user: MemberInfo }) => m.user).filter(Boolean));
+      }
+    } catch {
+      // Ignore errors
+    } finally {
+      setViewAsMembersLoading(false);
+    }
+  }, [accessToken]);
+
+  // Open View As modal for a group
+  const handleOpenViewAs = useCallback((group: AdminStaticGroupListItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setViewAsGroup(group);
+    fetchMembers(group.id);
+  }, [fetchMembers]);
+
+  // Handle View As selection
+  const handleViewAs = useCallback((userId: string) => {
+    if (!viewAsGroup) return;
+    navigate(`/group/${viewAsGroup.shareCode}?viewAs=${userId}`);
+    setViewAsGroup(null);
+  }, [viewAsGroup, navigate]);
 
   // Debounce search input
   useEffect(() => {
@@ -227,6 +269,7 @@ export function AdminDashboard() {
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Visibility</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Created</th>
+                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -295,6 +338,15 @@ export function AdminDashboard() {
                     <td className="px-4 py-3 text-text-muted text-sm">
                       {new Date(group.createdAt).toLocaleDateString()}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={(e) => handleOpenViewAs(group, e)}
+                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-amber-400"
+                        title="View as member"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -326,6 +378,79 @@ export function AdminDashboard() {
             </div>
           )}
         </>
+      )}
+
+      {/* View As Modal */}
+      {viewAsGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setViewAsGroup(null)}
+          />
+          <div className="relative bg-surface-card border border-border-default rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-4 border-b border-border-subtle">
+              <h3 className="text-lg font-semibold text-text-primary">
+                View As Member
+              </h3>
+              <p className="text-sm text-text-muted mt-1">
+                Select a member to view "{viewAsGroup.name}" from their perspective
+              </p>
+            </div>
+
+            <div className="p-4 max-h-80 overflow-y-auto">
+              {viewAsMembersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : viewAsMembers.length === 0 ? (
+                <p className="text-text-muted text-center py-8">
+                  No members found
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {viewAsMembers.map((member) => (
+                    <button
+                      key={member.id}
+                      onClick={() => handleViewAs(member.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-surface-interactive transition-colors text-left"
+                    >
+                      {member.avatarUrl ? (
+                        <img
+                          src={member.avatarUrl}
+                          alt=""
+                          className="w-8 h-8 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center text-sm text-text-muted">
+                          ?
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-text-primary truncate">
+                          {member.displayName || member.discordUsername}
+                        </p>
+                        {member.displayName && (
+                          <p className="text-xs text-text-muted truncate">
+                            @{member.discordUsername}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-border-subtle flex justify-end">
+              <button
+                onClick={() => setViewAsGroup(null)}
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
