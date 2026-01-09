@@ -192,6 +192,54 @@ export function getPriorityForUpgradeMaterial(
 }
 
 /**
+ * Get priority list for Universal Tomestone
+ * Returns players who need to upgrade their tome weapon
+ *
+ * A player needs Universal Tomestone if:
+ * - They are pursuing a tome weapon (tomeWeapon.pursuing)
+ * - They have the tome weapon (tomeWeapon.hasItem)
+ * - It's not yet augmented (tomeWeapon.isAugmented === false)
+ *
+ * If materialLog is provided, filters out players who already received one.
+ */
+export function getPriorityForUniversalTomestone(
+  players: SnapshotPlayer[],
+  settings: StaticSettings,
+  materialLog?: MaterialLogEntry[]
+): PriorityEntry[] {
+  // Count how many universal tomestones each player has received
+  const receivedCounts = new Map<string, number>();
+  if (materialLog) {
+    for (const entry of materialLog) {
+      if (entry.materialType === 'universal_tomestone') {
+        receivedCounts.set(
+          entry.recipientPlayerId,
+          (receivedCounts.get(entry.recipientPlayerId) || 0) + 1
+        );
+      }
+    }
+  }
+
+  return players
+    .filter((p) => {
+      // Player needs Universal Tomestone if pursuing tome weapon, has it, but not augmented
+      const needsTomeWeaponUpgrade =
+        p.tomeWeapon?.pursuing && p.tomeWeapon?.hasItem && !p.tomeWeapon?.isAugmented;
+
+      if (!needsTomeWeaponUpgrade) return false;
+
+      // Only need 1 Universal Tomestone per player
+      const received = receivedCounts.get(p.id) || 0;
+      return received === 0; // Haven't received one yet
+    })
+    .map((player) => ({
+      player,
+      score: calculatePriorityScore(player, settings),
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
+/**
  * Calculate what a player still needs
  * Returns raidNeed, tomeNeed, upgrades, and tomeWeeks
  *

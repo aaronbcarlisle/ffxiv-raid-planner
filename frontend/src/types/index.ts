@@ -598,7 +598,7 @@ export interface PageBalance {
 }
 
 // Material types for upgrade materials
-export type MaterialType = 'twine' | 'glaze' | 'solvent';
+export type MaterialType = 'twine' | 'glaze' | 'solvent' | 'universal_tomestone';
 
 // Material log entry
 export interface MaterialLogEntry {
@@ -622,6 +622,7 @@ export interface MaterialBalance {
   twine: number;
   glaze: number;
   solvent: number;
+  universalTomestone: number;
 }
 
 // Material log entry create request

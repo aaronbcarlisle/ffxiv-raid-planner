@@ -1032,13 +1032,13 @@ async def get_material_balances(
     material_map: dict[str, dict[str, int]] = {}
     for row in material_counts_result.all():
         if row.recipient_player_id not in material_map:
-            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0}
+            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0, "universal_tomestone": 0}
         material_map[row.recipient_player_id][row.material_type] = row.count
 
     # Build response using the lookup map
     balances = []
     for player in players:
-        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0})
+        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0, "universal_tomestone": 0})
         balances.append(
             MaterialBalanceResponse(
                 player_id=player.id,
@@ -1046,6 +1046,7 @@ async def get_material_balances(
                 twine=counts.get("twine", 0),
                 glaze=counts.get("glaze", 0),
                 solvent=counts.get("solvent", 0),
+                universal_tomestone=counts.get("universal_tomestone", 0),
             )
         )
 

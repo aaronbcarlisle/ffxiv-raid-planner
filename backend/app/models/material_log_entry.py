@@ -16,9 +16,9 @@ class MaterialLogEntry(Base):
     tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False)
     week_number: Mapped[int] = mapped_column(Integer, nullable=False)
     floor: Mapped[str] = mapped_column(String(10), nullable=False)  # "M9S", "M10S", "M11S"
-    # Material type: twine (left-side armor), glaze (accessories), solvent (weapon)
+    # Material type: twine (left-side armor), glaze (accessories), solvent (weapon), universal_tomestone (weapon upgrade)
     material_type: Mapped[str] = mapped_column(
-        SQLEnum("twine", "glaze", "solvent", name="materialtype", create_type=False),
+        SQLEnum("twine", "glaze", "solvent", "universal_tomestone", name="materialtype", create_type=False),
         nullable=False
     )
     recipient_player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False)

@@ -9,7 +9,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
-import { getPriorityForUpgradeMaterial } from '../../utils/priority';
+import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone, type PriorityEntry } from '../../utils/priority';
+import { isSlotAugmentationMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata/loot-tables';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, MaterialType, StaticSettings } from '../../types';
 
@@ -26,12 +27,6 @@ interface QuickLogMaterialModalProps {
   settings?: StaticSettings;
   onSuccess?: () => void;
 }
-
-const MATERIAL_LABELS: Record<MaterialType, string> = {
-  twine: 'Twine',
-  glaze: 'Glaze',
-  solvent: 'Solvent',
-};
 
 export function QuickLogMaterialModal({
   isOpen,
@@ -73,7 +68,7 @@ export function QuickLogMaterialModal({
       });
 
       const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
-      toast.success(`Logged ${MATERIAL_LABELS[material]} for ${recipient?.name || 'player'}`);
+      toast.success(`Logged ${UPGRADE_MATERIAL_DISPLAY_NAMES[material]} for ${recipient?.name || 'player'}`);
 
       onSuccess?.();
       onClose();
@@ -90,7 +85,10 @@ export function QuickLogMaterialModal({
   // Sort players by priority and add labels
   const sortedRecipients = useMemo(() => {
     // Get priority entries for this material (pass materialLog to account for received materials)
-    const priorityEntries = getPriorityForUpgradeMaterial(configuredPlayers, material, settings, materialLog);
+    // Use different priority calculation for Universal Tomestone vs slot-based materials
+    const priorityEntries: PriorityEntry[] = isSlotAugmentationMaterial(material)
+      ? getPriorityForUpgradeMaterial(configuredPlayers, material, settings, materialLog)
+      : getPriorityForUniversalTomestone(configuredPlayers, settings, materialLog);
 
     // Create a map of player ID to priority rank
     const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
@@ -126,7 +124,7 @@ export function QuickLogMaterialModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Log ${MATERIAL_LABELS[material]}`}
+      title={`Log ${UPGRADE_MATERIAL_DISPLAY_NAMES[material]}`}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}
@@ -137,7 +135,7 @@ export function QuickLogMaterialModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Material:</span>
-            <span className="text-text-primary font-medium">{MATERIAL_LABELS[material]}</span>
+            <span className="text-text-primary font-medium">{UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
@@ -175,7 +173,7 @@ export function QuickLogMaterialModal({
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">
           <div className="text-accent font-medium mb-1">This will:</div>
           <ul className="text-text-secondary space-y-1">
-            <li>+ Add {MATERIAL_LABELS[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
+            <li>+ Add {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
           </ul>
         </div>
 

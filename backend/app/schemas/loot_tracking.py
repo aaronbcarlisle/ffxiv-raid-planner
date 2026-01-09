@@ -149,6 +149,7 @@ class MaterialTypeEnum(str, Enum):
     TWINE = "twine"  # Left-side armor augmentation
     GLAZE = "glaze"  # Accessory augmentation
     SOLVENT = "solvent"  # Weapon augmentation
+    UNIVERSAL_TOMESTONE = "universal_tomestone"  # Tome weapon upgrade
 
 
 class MaterialLogEntryCreate(CamelModel):
@@ -187,3 +188,4 @@ class MaterialBalanceResponse(CamelModel):
     twine: int  # Total twine received
     glaze: int  # Total glaze received
     solvent: int  # Total solvent received
+    universal_tomestone: int  # Total universal tomestones received

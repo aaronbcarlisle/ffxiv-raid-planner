@@ -16,6 +16,8 @@ export interface WeaponPriorityEntry {
   isMainJob: boolean;
   received: boolean;
   score: number; // Overall priority score (higher = higher priority)
+  isTied: boolean; // True if this player is tied with adjacent entries
+  tieGroup?: number; // Groups tied players together (same number = same tie group)
 }
 
 /**
@@ -60,8 +62,12 @@ export function getWeaponPriorityForJob(
     }
 
     // Calculate role score (from loot priority settings)
+    // Only apply role priority to main job weapons
+    // For extra/off-job weapons, priority is purely based on weapon list order
     const roleIndex = settings.lootPriority.indexOf(player.role);
-    const roleScore = roleIndex === -1 ? 0 : (5 - roleIndex) * 100;
+    const roleScore = isMainJob
+      ? (roleIndex === -1 ? 0 : (5 - roleIndex) * 100)
+      : 0;
 
     // Calculate rank score (lower rank = higher score)
     // For main job without explicit priority, treat as rank 0 (top priority)
@@ -84,11 +90,39 @@ export function getWeaponPriorityForJob(
       isMainJob,
       received: false,
       score,
+      isTied: false,
+      tieGroup: undefined,
     });
   }
 
   // Sort by score (descending)
-  return entries.sort((a, b) => b.score - a.score);
+  const sorted = entries.sort((a, b) => b.score - a.score);
+
+  // Detect ties and assign tie groups
+  let currentTieGroup = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const entry = sorted[i];
+    const prev = sorted[i - 1];
+    const next = sorted[i + 1];
+
+    const tiedWithPrev = prev && prev.score === entry.score;
+    const tiedWithNext = next && next.score === entry.score;
+
+    if (tiedWithPrev || tiedWithNext) {
+      entry.isTied = true;
+
+      // Assign tie group
+      if (tiedWithPrev && prev.tieGroup !== undefined) {
+        // Continue the same tie group
+        entry.tieGroup = prev.tieGroup;
+      } else {
+        // Start a new tie group
+        entry.tieGroup = currentTieGroup++;
+      }
+    }
+  }
+
+  return sorted;
 }
 
 /**

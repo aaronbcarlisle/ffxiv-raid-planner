@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
-import type { FloorNumber } from '../../gamedata/loot-tables';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForUpgradeMaterial } from '../../gamedata/loot-tables';
+import type { FloorNumber, UpgradeMaterialType } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import {
   getPriorityForItem,
   getPriorityForRing,
   getPriorityForUpgradeMaterial,
+  getPriorityForUniversalTomestone,
   type PriorityEntry,
 } from '../../utils/priority';
 import {
@@ -266,11 +267,18 @@ export function LootPriorityPanel({
 
   // Get upgrade materials for this floor (with enhancement)
   // Pass materialLog so priority accounts for materials already received
-  const materialPriorities = lootTable.upgradeMaterials.map((material) => ({
-    material,
-    label: material.charAt(0).toUpperCase() + material.slice(1),
-    entries: enhanceEntries(getPriorityForUpgradeMaterial(players, material, settings, materialLog)),
-  }));
+  const materialPriorities = lootTable.upgradeMaterials.map((material) => {
+    // Use different priority calculation for Universal Tomestone vs slot-based materials
+    const baseEntries = isSlotAugmentationMaterial(material)
+      ? getPriorityForUpgradeMaterial(players, material, settings, materialLog)
+      : getPriorityForUniversalTomestone(players, settings, materialLog);
+
+    return {
+      material,
+      label: UPGRADE_MATERIAL_DISPLAY_NAMES[material],
+      entries: enhanceEntries(baseEntries),
+    };
+  });
 
   // Can show log buttons if we have the required context
   const canShowLogButtons = showLogButtons && groupId && tierId;
@@ -441,22 +449,6 @@ export function LootPriorityPanel({
             </div>
           )}
 
-          {/* Special materials (informational only) */}
-          {lootTable.specialMaterials && lootTable.specialMaterials.length > 0 && (
-            <div className="border-t border-border-default pt-4 mt-4">
-              <h4 className="text-text-secondary text-sm mb-3">Special Materials</h4>
-              <div className="flex flex-wrap gap-2">
-                {lootTable.specialMaterials.map((material) => (
-                  <div
-                    key={material}
-                    className="bg-surface-base border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary"
-                  >
-                    {material}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
 

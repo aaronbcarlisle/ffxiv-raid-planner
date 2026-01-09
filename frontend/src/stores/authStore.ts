@@ -11,6 +11,50 @@ import type { User, AuthTokens, DiscordAuthUrl } from '../types';
 // Get API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Production detection and misconfiguration warning
+const isProduction = typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
+const isLocalhostApi = API_BASE_URL.includes('localhost');
+
+if (isProduction && isLocalhostApi) {
+  console.error(
+    '[Auth Error] Production environment detected but API URL points to localhost!',
+    '\nCurrent API URL:', API_BASE_URL,
+    '\nThis will cause authentication to fail.',
+    '\nEnsure VITE_API_URL is set correctly during build.'
+  );
+}
+
+/**
+ * Decode JWT payload (without verification - just for expiration check)
+ * Returns null if token is invalid/malformed
+ */
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if JWT token is expired or expiring soon
+ * @param token JWT token string
+ * @param bufferSeconds Seconds before actual expiry to consider it "expired" (default: 60)
+ */
+function isTokenExpired(token: string, bufferSeconds = 60): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return true; // Invalid token = treat as expired
+
+  const expiresAt = payload.exp * 1000; // Convert to milliseconds
+  const now = Date.now();
+  const bufferMs = bufferSeconds * 1000;
+
+  return now >= expiresAt - bufferMs;
+}
+
 interface AuthState {
   // User state
   user: User | null;
@@ -280,10 +324,49 @@ export function getAccessToken(): string | null {
 /**
  * Initialize auth on app load
  * Call this once when the app starts to check for existing session
+ *
+ * This function proactively refreshes the access token if it's expired,
+ * preventing unnecessary 401 errors on first API call.
  */
 export async function initializeAuth(): Promise<void> {
-  const { accessToken, fetchUser } = useAuthStore.getState();
-  if (accessToken) {
-    await fetchUser();
+  const state = useAuthStore.getState();
+  const { accessToken, refreshToken, refreshAccessToken, fetchUser } = state;
+
+  // Warn in console if in production with localhost API
+  if (isProduction && isLocalhostApi) {
+    console.warn(
+      '[Auth] Session may not persist - API URL misconfiguration detected.',
+      '\nCheck browser console for details.'
+    );
   }
+
+  if (!accessToken && !refreshToken) {
+    // No tokens at all - user needs to login
+    return;
+  }
+
+  if (accessToken && !isTokenExpired(accessToken)) {
+    // Access token exists and is still valid - fetch user
+    await fetchUser();
+    return;
+  }
+
+  // Access token is missing or expired - try to refresh first
+  if (refreshToken && !isTokenExpired(refreshToken, 0)) {
+    // Refresh token exists and is valid - refresh access token
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Successfully refreshed - now fetch user
+      await fetchUser();
+      return;
+    }
+  }
+
+  // Refresh failed or refresh token expired - clear state and require re-login
+  useAuthStore.setState({
+    user: null,
+    isAuthenticated: false,
+    accessToken: null,
+    refreshToken: null,
+  });
 }

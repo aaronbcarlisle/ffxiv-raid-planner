@@ -9,15 +9,16 @@ import type { GearSlot } from '../types';
 
 export type FloorNumber = 1 | 2 | 3 | 4;
 
+// All trackable upgrade materials
+export type UpgradeMaterialType = 'twine' | 'glaze' | 'solvent' | 'universal_tomestone';
+
 export interface FloorLootTable {
   /** Floor number (1-4) */
   floor: FloorNumber;
   /** Gear slots that can drop from this floor */
   gearDrops: GearSlot[];
   /** Upgrade materials that drop from this floor */
-  upgradeMaterials: ('twine' | 'glaze' | 'solvent')[];
-  /** Special materials like Universal Tomestone (informational only, no priority calc) */
-  specialMaterials?: string[];
+  upgradeMaterials: UpgradeMaterialType[];
   /** Book type earned from this floor */
   bookType: string;
   /** Number of coffers that drop (typically 2) */
@@ -39,8 +40,7 @@ export const FLOOR_LOOT_TABLES: Record<FloorNumber, FloorLootTable> = {
   2: {
     floor: 2,
     gearDrops: ['head', 'hands', 'feet'],
-    upgradeMaterials: ['glaze'],
-    specialMaterials: ['Universal Tomestone'],
+    upgradeMaterials: ['glaze', 'universal_tomestone'],
     bookType: 'II',
     cofferCount: 2,
   },
@@ -97,9 +97,11 @@ export function getFloorForSlot(slot: GearSlot): FloorNumber {
 /**
  * Get which floor drops a specific upgrade material
  */
-export function getFloorForUpgradeMaterial(material: 'twine' | 'glaze' | 'solvent'): FloorNumber[] {
+export function getFloorForUpgradeMaterial(material: UpgradeMaterialType): FloorNumber[] {
   switch (material) {
     case 'glaze':
+      return [2]; // Floor 2 only
+    case 'universal_tomestone':
       return [2]; // Floor 2 only
     case 'twine':
       return [3]; // Floor 3 only
@@ -110,12 +112,30 @@ export function getFloorForUpgradeMaterial(material: 'twine' | 'glaze' | 'solven
 
 /**
  * Upgrade material to slot type mapping
+ * Universal Tomestone is not tied to specific slots - it upgrades the tome weapon
  */
 export const UPGRADE_MATERIAL_SLOTS: Record<'twine' | 'glaze' | 'solvent', GearSlot[]> = {
   twine: ['head', 'body', 'hands', 'legs', 'feet'], // Left-side armor
   glaze: ['earring', 'necklace', 'bracelet', 'ring1', 'ring2'], // Accessories
   solvent: ['weapon'], // Weapon only
 };
+
+/**
+ * Display names for upgrade materials
+ */
+export const UPGRADE_MATERIAL_DISPLAY_NAMES: Record<UpgradeMaterialType, string> = {
+  twine: 'Twine',
+  glaze: 'Glaze',
+  solvent: 'Solvent',
+  universal_tomestone: 'Universal Tomestone',
+};
+
+/**
+ * Check if a material type is for gear slot augmentation vs special upgrade
+ */
+export function isSlotAugmentationMaterial(material: UpgradeMaterialType): material is 'twine' | 'glaze' | 'solvent' {
+  return material === 'twine' || material === 'glaze' || material === 'solvent';
+}
 
 /**
  * Get which upgrade material is needed for a slot
