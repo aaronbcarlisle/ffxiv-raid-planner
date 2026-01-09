@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
 import { authRequest } from '../services/api';
+import { logger } from '../lib/logger';
 
 // Stable empty array reference to avoid re-renders when players is undefined
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
@@ -66,10 +67,12 @@ export const useTierStore = create<TierState>((set, get) => ({
    * Fetch all tier snapshots for a group
    */
   fetchTiers: async (groupId: string) => {
+    const log = logger.scope('TierStore');
     set({ isLoading: true, error: null });
 
     try {
       const tiers = await authRequest<TierSnapshot[]>(`/api/static-groups/${groupId}/tiers`);
+      log.debug('Fetched tiers:', tiers.map(t => `${t.tierId}(active:${t.isActive})`).join(', '));
       set({ tiers, isLoading: false });
     } catch (error) {
       set({
@@ -654,7 +657,14 @@ export const useTiers = () => useTierStore((state) => state.tiers);
 
 /**
  * Select players from current tier
- * Uses stable empty array reference to avoid re-renders
+ *
+ * Returns the players array directly from state, which provides stable
+ * references when the array hasn't changed. Uses EMPTY_PLAYERS constant
+ * for the null case to avoid creating new empty arrays on each call.
+ *
+ * Note: This selector returns the players array reference directly,
+ * not a new array, so Zustand's default strict equality check is sufficient.
+ * Only re-renders when the players array reference actually changes.
  */
 export const useTierPlayers = () =>
   useTierStore((state) => state.currentTier?.players ?? EMPTY_PLAYERS);

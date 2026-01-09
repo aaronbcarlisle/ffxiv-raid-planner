@@ -105,9 +105,9 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Comprehensive test suite',
-        description: '228 automated tests across backend and frontend',
+        description: '238 automated tests across backend and frontend',
         details:
-          'Backend: 95 tests covering auth, config validation, group duplication, tier activation, and integration scenarios. Frontend: 142 tests for error handling, logging, event bus, and Zustand selectors.',
+          'Backend: 96 tests covering auth, config validation, group duplication, tier activation, and API response validation. Frontend: 142 tests for error handling, logging, event bus, and Zustand selectors.',
         commits: [
           { hash: '0df6fa9', message: 'Add comprehensive integration tests for PR #9' },
         ],

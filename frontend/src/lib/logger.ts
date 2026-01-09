@@ -42,20 +42,20 @@ function formatArgs(level: LogLevel, context: string | null, args: LogArgs): Log
 export const logger = {
   /**
    * Debug level - only in development
+   * Early return to avoid unnecessary string formatting in production
    */
   debug: (...args: LogArgs) => {
-    if (isDev) {
-      console.log(...formatArgs('debug', null, args));
-    }
+    if (!isDev) return;
+    console.log(...formatArgs('debug', null, args));
   },
 
   /**
    * Info level - only in development
+   * Early return to avoid unnecessary string formatting in production
    */
   info: (...args: LogArgs) => {
-    if (isDev) {
-      console.info(...formatArgs('info', null, args));
-    }
+    if (!isDev) return;
+    console.info(...formatArgs('info', null, args));
   },
 
   /**
@@ -81,14 +81,12 @@ export const logger = {
    */
   scope: (context: string) => ({
     debug: (...args: LogArgs) => {
-      if (isDev) {
-        console.log(...formatArgs('debug', context, args));
-      }
+      if (!isDev) return;
+      console.log(...formatArgs('debug', context, args));
     },
     info: (...args: LogArgs) => {
-      if (isDev) {
-        console.info(...formatArgs('info', context, args));
-      }
+      if (!isDev) return;
+      console.info(...formatArgs('info', context, args));
     },
     warn: (...args: LogArgs) => {
       console.warn(...formatArgs('warn', context, args));

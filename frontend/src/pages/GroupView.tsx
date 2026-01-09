@@ -28,6 +28,7 @@ import { HEADER_EVENTS } from '../components/layout/Header';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
+import { logger } from '../lib/logger';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -330,6 +331,7 @@ export function GroupView() {
     if (!currentGroup?.id) return;
 
     let cancelled = false;
+    const log = logger.scope('TierSelection');
 
     (async () => {
       // First fetch the list of tiers
@@ -349,6 +351,11 @@ export function GroupView() {
 
       // Load URL tier, saved tier, active tier, or first tier
       const activeTier = urlTier || savedTier || freshTiers.find(t => t.isActive) || freshTiers[0];
+
+      // Debug: Log tier selection for troubleshooting
+      const selectionSource = urlTier ? 'URL' : savedTier ? 'localStorage' : freshTiers.find(t => t.isActive) ? 'isActive' : 'fallback';
+      log.debug(`Selected tier: ${activeTier?.tierId} (source: ${selectionSource})`);
+
       if (activeTier) {
         await fetchTier(currentGroup.id, activeTier.tierId);
         // Always show current tier in URL (so copying URL shares the right tier)

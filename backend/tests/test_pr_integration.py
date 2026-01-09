@@ -17,7 +17,6 @@ from tests.factories import (
     create_snapshot_player,
     create_static_group,
     create_tier_snapshot,
-    create_user,
 )
 
 
@@ -38,6 +37,7 @@ class TestGroupDuplicationActiveTiers:
         # Create a group with multiple tiers, both marked as active (edge case)
         group = await create_static_group(session, test_user, name="Multi-Active Source")
 
+        # Create tiers - return values unused, we verify via API response
         await create_tier_snapshot(session, group, tier_id="tier-1", is_active=True)
         await create_tier_snapshot(session, group, tier_id="tier-2", is_active=True)
         await create_tier_snapshot(session, group, tier_id="tier-3", is_active=True)
@@ -91,6 +91,52 @@ class TestGroupDuplicationActiveTiers:
 
         active_count = sum(1 for t in new_tiers if t.is_active)
         assert active_count == 0, f"Expected 0 active tiers, got {active_count}"
+
+    async def test_duplicate_preserves_correct_active_tier_via_api(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user,
+        auth_headers: dict,
+    ):
+        """After duplication, API should return the same tier as active."""
+        # Create a group with 2 tiers - "heavyweight" is active, "cruiserweight" is not
+        group = await create_static_group(session, test_user, name="Active Tier Source")
+
+        await create_tier_snapshot(session, group, tier_id="aac-heavyweight", is_active=True)
+        await create_tier_snapshot(session, group, tier_id="aac-cruiserweight", is_active=False)
+
+        # Duplicate the group
+        response = await client.post(
+            f"/api/static-groups/{group.id}/duplicate",
+            json={"newName": "Duplicated With Active", "copyTiers": True, "copyPlayers": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        new_group_id = response.json()["id"]
+
+        # Fetch tiers via API (as the frontend would)
+        tiers_response = await client.get(
+            f"/api/static-groups/{new_group_id}/tiers",
+            headers=auth_headers,
+        )
+
+        assert tiers_response.status_code == 200
+        tiers_json = tiers_response.json()
+
+        # Verify API returns camelCase keys
+        assert len(tiers_json) == 2
+        assert "isActive" in tiers_json[0], f"Expected camelCase 'isActive', got keys: {tiers_json[0].keys()}"
+
+        # Find the active tier in API response
+        active_tiers = [t for t in tiers_json if t["isActive"]]
+        assert len(active_tiers) == 1, f"Expected 1 active tier, got {len(active_tiers)}"
+
+        # Verify the CORRECT tier is active (should be "aac-heavyweight")
+        assert active_tiers[0]["tierId"] == "aac-heavyweight", (
+            f"Expected 'aac-heavyweight' to be active, but got '{active_tiers[0]['tierId']}'"
+        )
 
 
 class TestGroupSettingsDeepCopy:

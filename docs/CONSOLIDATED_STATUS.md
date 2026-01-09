@@ -71,7 +71,7 @@ This document consolidates:
 | **Zustand Selectors** | ✅ Complete | 11 selector hooks for optimized re-renders |
 | **Bundle Optimization** | ✅ Complete | Vite manual chunks for vendor splitting |
 | **Production Config Validation** | ✅ Complete | JWT strength, debug mode, SQLite rejection |
-| **Comprehensive Test Suite** | ✅ Complete | 237 tests (95 backend + 142 frontend) |
+| **Comprehensive Test Suite** | ✅ Complete | 238 tests (96 backend + 142 frontend) |
 | **Skeleton Components** | ✅ Complete | Loading placeholder components |
 | **Alt Job Linking** | ⏳ Future | Multi-job players with shared page pools |
 
@@ -103,7 +103,7 @@ This document consolidates:
 |-------|----------|--------|-----|--------|
 | **No database migrations** | Backend | Data loss risk on schema changes | Add Alembic migrations | ✅ Done |
 | **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter | ⏳ Pending |
-| **Test coverage** | Frontend + Backend | Regressions, bugs | pytest + vitest | ✅ Done (237 tests) |
+| **Test coverage** | Frontend + Backend | Regressions, bugs | pytest + vitest | ✅ Done (238 tests) |
 
 ### 🟠 P1 - High Priority
 
