@@ -33,7 +33,7 @@ import { logger } from '../lib/logger';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Eye } from 'lucide-react';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -717,8 +717,9 @@ export function GroupView() {
   // When viewing as another user, use their role instead of actual role
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
-  // Admins (not using View As) have owner-level edit permissions
-  const isAdminAccess = !!(user?.isAdmin && !viewAsUser);
+  // Admin access is determined by the API - true if user has admin privileges (not actual membership)
+  // When using View As, we want to simulate the viewed user's permissions, so disable admin access
+  const isAdminAccess = !viewAsUser && (currentGroup?.isAdminAccess ?? false);
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
 
   // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
@@ -930,7 +931,7 @@ export function GroupView() {
       )}
 
       {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
-      {isAdminAccess && !actualUserRole && (
+      {isAdminAccess && (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-400" />
@@ -938,6 +939,38 @@ export function GroupView() {
               <span className="font-medium">Admin Access:</span>{' '}
               You're viewing this static as an administrator. You have owner-level permissions but are not a member.
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* View As indicator - shows when admin is viewing as another user */}
+      {viewAsUser && (
+        <div className="mb-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-purple-400" />
+              <span className="text-sm text-purple-200">
+                <span className="font-medium">Viewing as:</span>{' '}
+                {viewAsUser.displayName || viewAsUser.discordUsername}
+                {viewAsUser.role && (
+                  <span className="ml-1 text-purple-300/70">({viewAsUser.role})</span>
+                )}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                stopViewAs();
+                // Clear viewAs URL param
+                setSearchParams(prev => {
+                  const params = new URLSearchParams(prev);
+                  params.delete('viewAs');
+                  return params;
+                }, { replace: true });
+              }}
+              className="text-sm text-purple-300 hover:text-purple-100 px-3 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 transition-colors"
+            >
+              Exit View As
+            </button>
           </div>
         </div>
       )}
@@ -1157,6 +1190,7 @@ export function GroupView() {
               players={currentTier.players}
               floors={tierInfo.floors}
               userRole={userRole || 'viewer'}
+              isAdmin={isAdminAccess}
             />
           )}
         </>

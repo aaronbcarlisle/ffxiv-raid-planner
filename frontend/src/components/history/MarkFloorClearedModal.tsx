@@ -4,7 +4,7 @@
  * Modal for batch marking players as having cleared a floor (earned books).
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import type { MarkFloorClearedRequest, SnapshotPlayer } from '../../types';
 
@@ -25,8 +25,12 @@ export function MarkFloorClearedModal({
   floors,
   currentWeek,
 }: MarkFloorClearedModalProps) {
-  // Only show main roster players (configured and not substitutes)
-  const mainRosterPlayers = players.filter((p) => p.configured && !p.isSubstitute);
+  // Memoize main roster players to prevent unnecessary re-renders and effect triggers
+  // Only recalculate when the players array reference or content actually changes
+  const mainRosterPlayers = useMemo(
+    () => players.filter((p) => p.configured && !p.isSubstitute),
+    [players]
+  );
 
   const [weekNumber, setWeekNumber] = useState(currentWeek || 1);
   const [floor, setFloor] = useState(floors[0] || '');
