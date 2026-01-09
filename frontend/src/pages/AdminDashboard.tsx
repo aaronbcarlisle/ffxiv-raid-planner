@@ -5,13 +5,17 @@
  * Only accessible to users with isAdmin=true.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
-import { Eye } from 'lucide-react';
+import { Eye, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
+
+// Sortable columns
+type SortField = 'name' | 'owner' | 'memberCount' | 'tierCount' | 'isPublic' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
@@ -30,6 +34,10 @@ export function AdminDashboard() {
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   // View As modal state
   const [viewAsGroup, setViewAsGroup] = useState<AdminStaticGroupListItem | null>(null);
@@ -74,6 +82,58 @@ export function AdminDashboard() {
     navigate(`/group/${viewAsGroup.shareCode}?viewAs=${userId}`);
     setViewAsGroup(null);
   }, [viewAsGroup, navigate]);
+
+  // Handle column sort
+  const handleSort = useCallback((field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField]);
+
+  // Sort groups client-side
+  const sortedGroups = useMemo(() => {
+    const sorted = [...groups].sort((a, b) => {
+      let aVal: string | number | boolean;
+      let bVal: string | number | boolean;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'owner':
+          aVal = (a.owner?.displayName || a.owner?.discordUsername || '').toLowerCase();
+          bVal = (b.owner?.displayName || b.owner?.discordUsername || '').toLowerCase();
+          break;
+        case 'memberCount':
+          aVal = a.memberCount;
+          bVal = b.memberCount;
+          break;
+        case 'tierCount':
+          aVal = a.tierCount;
+          bVal = b.tierCount;
+          break;
+        case 'isPublic':
+          aVal = a.isPublic ? 1 : 0;
+          bVal = b.isPublic ? 1 : 0;
+          break;
+        case 'createdAt':
+          aVal = new Date(a.createdAt).getTime();
+          bVal = new Date(b.createdAt).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [groups, sortField, sortDirection]);
 
   // Debounce search input
   useEffect(() => {
@@ -258,18 +318,66 @@ export function AdminDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Name</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Owner</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Members</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Tiers</th>
-                  <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Visibility</th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Name
+                      {sortField === 'name' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('owner')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Owner
+                      {sortField === 'owner' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('memberCount')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Members
+                      {sortField === 'memberCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('tierCount')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Tiers
+                      {sortField === 'tierCount' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
+                  <th
+                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('isPublic')}
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      Visibility
+                      {sortField === 'isPublic' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Created</th>
+                  <th
+                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    onClick={() => handleSort('createdAt')}
+                  >
+                    <span className="flex items-center gap-1">
+                      Created
+                      {sortField === 'createdAt' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />)}
+                    </span>
+                  </th>
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {groups.map((group) => (
+                {sortedGroups.map((group) => (
                   <tr
                     key={group.id}
                     onClick={() => navigate(`/group/${group.shareCode}`)}

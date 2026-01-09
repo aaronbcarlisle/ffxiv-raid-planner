@@ -33,6 +33,7 @@ import { logger } from '../lib/logger';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
+import { ShieldAlert } from 'lucide-react';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -872,6 +873,19 @@ export function GroupView() {
               Create First Tier
             </button>
           )}
+        </div>
+      )}
+
+      {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
+      {user?.isAdmin && !viewAsUser && !actualUserRole && (
+        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+            <span className="text-sm text-amber-200">
+              <span className="font-medium">Admin Access:</span>{' '}
+              You're viewing this static as an administrator. You have owner-level permissions but are not a member.
+            </span>
+          </div>
         </div>
       )}
 
