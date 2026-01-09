@@ -76,8 +76,17 @@ function WeaponPriorityCard({
   }, [visibleEntries]);
 
   // Roll for a tie group
-  const handleRoll = useCallback((tieGroup: number, entries: WeaponPriorityEntry[]) => {
-    const results: RollResult[] = entries.map((e) => ({
+  const handleRoll = useCallback((tieGroup: number, visibleEntries: WeaponPriorityEntry[]) => {
+    // Check if there are more tied players in the full list than what's visible
+    const allTiedEntries = priority.filter((e) => e.tieGroup === tieGroup);
+
+    // If tie group extends beyond visible entries, auto-expand
+    if (allTiedEntries.length > visibleEntries.length) {
+      setExpanded(true);
+    }
+
+    // Roll for ALL tied entries (not just visible ones)
+    const results: RollResult[] = allTiedEntries.map((e) => ({
       playerId: e.player.id,
       roll: Math.floor(Math.random() * 100) + 1, // 1-100
     }));
@@ -86,7 +95,7 @@ function WeaponPriorityCard({
     results.sort((a, b) => b.roll - a.roll);
 
     setRollResults((prev) => new Map(prev).set(tieGroup, results));
-  }, []);
+  }, [priority]);
 
   // Get winner from roll results
   const getWinnerId = useCallback((tieGroup: number): string | null => {
