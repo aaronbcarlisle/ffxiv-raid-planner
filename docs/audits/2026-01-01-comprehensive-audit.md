@@ -1,11 +1,12 @@
 # FFXIV Raid Planner - Comprehensive Codebase Audit
 
 **Date:** 2026-01-01
-**Last Verified:** 2026-01-02
+**Last Verified:** 2026-01-09
 **Quick Wins Fixed:** 2026-01-02
+**v1.0.1 Fixes:** 2026-01-09
 **Auditor:** Principal Architect
 **Repository:** ffxiv-raid-planner
-**Status:** Phase 6.5 Complete
+**Status:** v1.0.1 Released
 
 ---
 
@@ -40,16 +41,15 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 - Accessible IconButton component with required aria-label
 
 **Areas for Improvement:**
-- Performance optimizations needed (memoization, code splitting)
-- Some components are too large and could be decomposed
-- Test coverage is minimal (only 3 test files)
+- Some components are too large and could be decomposed (GroupView.tsx)
 - Missing loading skeletons in Dashboard
+- Rate limiting not yet implemented
 
 ### Issue Summary
 
 | Priority | Total | Open | Fixed | Invalid |
 |----------|-------|------|-------|---------|
-| High | 8 | 2 | 5 | 1 |
+| High | 8 | 0 | 7 | 1 |
 | Medium | 6 | 4 | 2 | 0 |
 | Low | 5 | 3 | 2 | 0 |
 
@@ -59,11 +59,12 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 
 | Metric | Count |
 |--------|-------|
-| Frontend TypeScript/TSX Files | ~85 |
-| Backend Python Files | ~48 |
-| Test Files | 3 |
-| Lines of Code (Frontend) | ~12,500 |
-| Lines of Code (Backend) | ~4,800 |
+| Frontend TypeScript/TSX Files | ~90 |
+| Backend Python Files | ~55 |
+| Test Files | 12 (6 backend + 6 frontend) |
+| Total Tests | 237 (95 backend + 142 frontend) |
+| Lines of Code (Frontend) | ~14,000 |
+| Lines of Code (Backend) | ~5,500 |
 
 ---
 
@@ -73,12 +74,12 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 
 | ID | Issue | Status | Notes |
 |----|-------|--------|-------|
-| P-001 | N+1 in duplicateGroup | **OPEN** | Backend bulk endpoint needed |
-| P-002 | Missing DB indexes | **FIXED** | All FK columns indexed |
+| P-001 | N+1 in duplicateGroup | **FIXED** | Bulk `/duplicate` endpoint (v1.0.1) |
+| P-002 | Missing DB indexes | **FIXED** | All FK columns indexed + 6 new indexes (v1.0.1) |
 | P-004 | No code splitting | **FIXED** | React.lazy() for all pages |
 | P-007 | PlayerCard re-renders | **FIXED** | Wrapped with React.memo |
 | R-003 | Missing error boundaries | **FIXED** | ErrorBoundary wraps Routes |
-| T-001 | Low test coverage | **OPEN** | Only 3 test files |
+| T-001 | Low test coverage | **FIXED** | 237 tests (v1.0.1) |
 | U-007 | Missing ARIA labels | **FIXED** | IconButton requires aria-label |
 | U-009 | Keyboard nav in Select | **INVALID** | Uses native `<select>` |
 
@@ -106,24 +107,6 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 ---
 
 ## Open Issues
-
-### High Priority
-
-#### P-001: N+1 Query Pattern in duplicateGroup
-- **Location:** `frontend/src/stores/staticGroupStore.ts:163-231`
-- **Issue:** The `duplicateGroup` function fetches each tier individually in a loop, then creates players one at a time.
-- **Impact:** A static with 4 tiers and 8 players each = 36+ API calls.
-- **Recommendation:** Implement a backend bulk duplication endpoint: `POST /api/static-groups/{id}/duplicate`
-
-#### T-001: Low Test Coverage
-- **Location:** `backend/tests/`
-- **Issue:** Only 3 test files (test_health.py, test_permissions.py, test_static_groups.py)
-- **Missing tests for:**
-  - BiS import endpoints
-  - Tier operations
-  - Invitation flows
-  - Player CRUD
-  - Loot tracking endpoints
 
 ### Medium Priority
 
@@ -174,6 +157,26 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 
 ## Resolved Issues
 
+### P-001: N+1 Query Pattern in duplicateGroup ✅ (v1.0.1)
+- **Resolution:** Implemented bulk `POST /api/static-groups/{id}/duplicate` endpoint that:
+  - Creates entire group, tiers, and players in a single database transaction
+  - Resets tracking data (current_week, week_start_date, loot history)
+  - Resets player ownership (user_id cleared)
+  - Deep copies settings to prevent shared references
+  - Ensures only one tier is active in duplicated group
+
+### T-001: Low Test Coverage ✅ (v1.0.1)
+- **Resolution:** Comprehensive test suite with 237 total tests:
+  - **Backend (95 tests):** auth, config validation, group duplication, tier activation, integration tests
+  - **Frontend (142 tests):** error handling, logging, event bus, Zustand selectors, calculations
+
+### P-002: Missing Database Indexes ✅ (v1.0.1 Enhanced)
+- **Resolution:** Original FK indexes plus 6 additional indexes added:
+  - `snapshot_players.position` for player queries
+  - Composite indexes on loot_log_entries (tier_id + week)
+  - Composite indexes on material_log_entries (tier_id + week)
+  - Composite indexes on page_ledger_entries (tier_id + player_id)
+
 ### P-003: Unbounded Query Results ✅
 - **Resolution:** Added `limit` (default 50, max 100) and `offset` parameters to `list_user_static_groups` endpoint.
 
@@ -217,4 +220,4 @@ All quick wins have been implemented ✅
 
 ---
 
-*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02*
+*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02, v1.0.1 updates 2026-01-09*

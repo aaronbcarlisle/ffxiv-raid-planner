@@ -1,8 +1,12 @@
 """API router for static group operations"""
 
+import copy
+import json
 import uuid
 from datetime import datetime, timezone
+from typing import Any, TypeVar
 
+import structlog
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +27,7 @@ from ..permissions import (
     require_owner,
 )
 from ..schemas import (
+    DuplicateGroupRequest,
     GroupSourceEnum,
     LinkedPlayerInfo,
     LinkedUserInfo,
@@ -41,6 +46,35 @@ from ..schemas import (
 from ..services import generate_share_code
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
+logger = structlog.get_logger(__name__)
+
+# TypeVar for generic JSON field types in safe_copy_json
+JSONValue = TypeVar("JSONValue")
+
+
+def safe_copy_json(value: Any, default: JSONValue, field_name: str = "unknown") -> JSONValue:
+    """Copy JSON field, handling both Python objects and JSON strings.
+
+    Used during group duplication to deep copy JSON fields like gear, weapon_priorities, etc.
+    Handles both parsed Python objects and raw JSON strings from the database.
+    """
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return copy.deepcopy(parsed)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(
+                "Failed to parse JSON field during group duplication",
+                field=field_name,
+                error=str(e),
+                value_preview=value[:100] if len(value) > 100 else value,
+            )
+            return default
+    if isinstance(value, (list, dict)):
+        return copy.deepcopy(value)
+    return default
 
 
 def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
@@ -348,6 +382,165 @@ async def delete_static_group(
     await require_owner(session, current_user.id, group_id)
 
     await session.delete(group)
+
+
+@router.post("/{group_id}/duplicate", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
+async def duplicate_group(
+    group_id: str,
+    data: DuplicateGroupRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> StaticGroupWithMembers:
+    """Duplicate a static group with all tiers and players in a single transaction.
+
+    This endpoint efficiently copies a group, its tiers, and player configurations
+    in a single database transaction, avoiding the N+1 query problem of multiple
+    sequential API calls.
+    """
+    # Verify permission - must be member of source group
+    membership = await get_user_membership(session, current_user.id, group_id)
+    if not membership:
+        raise NotFound("Group not found or you don't have access")
+
+    # Load source group with all tiers and players
+    result = await session.execute(
+        select(StaticGroup)
+        .where(StaticGroup.id == group_id)
+        .options(
+            selectinload(StaticGroup.tier_snapshots).selectinload(TierSnapshot.players),
+        )
+    )
+    source_group = result.scalar_one_or_none()
+
+    if not source_group:
+        raise NotFound("Source group not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    new_group_id = str(uuid.uuid4())
+    new_share_code = await generate_share_code(session)
+
+    # Create new group (current user becomes owner)
+    new_group = StaticGroup(
+        id=new_group_id,
+        name=data.new_name,
+        owner_id=current_user.id,
+        share_code=new_share_code,
+        is_public=False,  # Duplicated groups start private
+        settings=copy.deepcopy(source_group.settings) if source_group.settings else None,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(new_group)
+
+    # Create owner membership for current user
+    owner_membership = Membership(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        static_group_id=new_group_id,
+        role=MemberRole.OWNER.value,
+        joined_at=now,
+        updated_at=now,
+    )
+    session.add(owner_membership)
+
+    # Track ID mappings for any future loot history duplication
+    tier_id_map: dict[str, str] = {}
+    player_id_map: dict[str, str] = {}
+
+    if data.copy_tiers and source_group.tier_snapshots:
+        # Find which tier_id is currently active in the source group
+        # This ensures the same tier (by tier_id like "aac-heavyweight") stays active
+        source_active_tier_id = next(
+            (t.tier_id for t in source_group.tier_snapshots if t.is_active),
+            None
+        )
+
+        for source_tier in source_group.tier_snapshots:
+            new_tier_id = str(uuid.uuid4())
+            tier_id_map[source_tier.id] = new_tier_id
+
+            # Set the tier with matching tier_id as active (preserves user's selection)
+            should_be_active = source_tier.tier_id == source_active_tier_id
+
+            new_tier = TierSnapshot(
+                id=new_tier_id,
+                static_group_id=new_group_id,
+                tier_id=source_tier.tier_id,
+                content_type=source_tier.content_type,
+                is_active=should_be_active,
+                current_week=1,  # Reset week tracking for new group
+                week_start_date=None,  # Clear week start date
+                weapon_priorities_auto_lock_date=source_tier.weapon_priorities_auto_lock_date,
+                weapon_priorities_global_lock=False,  # Reset lock state
+                weapon_priorities_global_locked_by=None,
+                weapon_priorities_global_locked_at=None,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(new_tier)
+
+            if data.copy_players and source_tier.players:
+                for source_player in source_tier.players:
+                    new_player_id = str(uuid.uuid4())
+                    player_id_map[source_player.id] = new_player_id
+
+                    # Deep copy gear data
+                    copied_gear = safe_copy_json(source_player.gear, [], "gear")
+                    copied_tome_weapon = safe_copy_json(source_player.tome_weapon, {}, "tome_weapon")
+                    copied_weapon_priorities = safe_copy_json(source_player.weapon_priorities, [], "weapon_priorities")
+
+                    new_player = SnapshotPlayer(
+                        id=new_player_id,
+                        tier_snapshot_id=new_tier_id,
+                        # Don't copy user_id - new group has independent ownership
+                        user_id=None,
+                        name=source_player.name,
+                        job=source_player.job,
+                        role=source_player.role,
+                        position=source_player.position,
+                        tank_role=source_player.tank_role,
+                        template_role=source_player.template_role,
+                        configured=source_player.configured,
+                        sort_order=source_player.sort_order,
+                        is_substitute=source_player.is_substitute,
+                        notes=source_player.notes,
+                        bis_link=source_player.bis_link,
+                        gear=copied_gear,
+                        tome_weapon=copied_tome_weapon,
+                        weapon_priorities=copied_weapon_priorities,
+                        weapon_priorities_locked=False,  # Reset lock state
+                        weapon_priorities_locked_by=None,
+                        weapon_priorities_locked_at=None,
+                        loot_adjustment=0,  # Reset adjustments for new group
+                        page_adjustments={"I": 0, "II": 0, "III": 0, "IV": 0},
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    session.add(new_player)
+
+    await session.flush()
+
+    logger.info(
+        "static_group_duplicated",
+        source_id=group_id,
+        new_id=new_group_id,
+        user_id=current_user.id,
+        tiers_copied=len(tier_id_map),
+        players_copied=len(player_id_map),
+    )
+
+    # Reload with relationships for response
+    result = await session.execute(
+        select(StaticGroup)
+        .where(StaticGroup.id == new_group_id)
+        .options(
+            selectinload(StaticGroup.owner),
+            selectinload(StaticGroup.memberships).selectinload(Membership.user),
+        )
+    )
+    new_group = result.scalar_one()
+
+    return group_to_response_with_members(new_group, MemberRole.OWNER)
 
 
 # --- Membership Management ---

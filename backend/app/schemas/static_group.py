@@ -172,3 +172,11 @@ class StaticGroupListItem(CamelModel):
     settings: StaticSettingsSchema | None = None
     created_at: str
     updated_at: str
+
+
+class DuplicateGroupRequest(CamelModel):
+    """Schema for duplicating a static group with all tiers/players"""
+
+    new_name: str = Field(..., min_length=1, max_length=100, description="Name for the duplicated group")
+    copy_tiers: bool = Field(default=True, description="Whether to copy tier snapshots")
+    copy_players: bool = Field(default=True, description="Whether to copy players (requires copy_tiers)")

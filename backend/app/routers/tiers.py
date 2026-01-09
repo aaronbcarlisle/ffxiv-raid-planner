@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -249,17 +249,13 @@ async def create_tier_snapshot(
     now = datetime.now(timezone.utc).isoformat()
     snapshot_id = str(uuid.uuid4())
 
-    # If this is set as active, deactivate other snapshots
+    # If this is set as active, deactivate other snapshots with bulk update
     if data.is_active:
         await session.execute(
-            select(TierSnapshot)
+            update(TierSnapshot)
             .where(TierSnapshot.static_group_id == group_id)
+            .values(is_active=False)
         )
-        result = await session.execute(
-            select(TierSnapshot).where(TierSnapshot.static_group_id == group_id)
-        )
-        for s in result.scalars():
-            s.is_active = False
 
     snapshot = TierSnapshot(
         id=snapshot_id,
@@ -278,6 +274,17 @@ async def create_tier_snapshot(
         session.add(player)
 
     await session.flush()
+
+    # Log tier creation
+    logger.info(
+        "tier_snapshot_created",
+        group_id=group_id,
+        tier_id=data.tier_id,
+        snapshot_id=snapshot_id,
+        content_type=data.content_type,
+        is_active=data.is_active,
+        user_id=current_user.id,
+    )
 
     # Reload with relationships
     result = await session.execute(
@@ -346,13 +353,16 @@ async def update_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    # If setting as active, deactivate others
+    # If setting as active, deactivate other tiers (exclude current to avoid SQLAlchemy change tracking issues)
     if data.is_active is True:
-        all_result = await session.execute(
-            select(TierSnapshot).where(TierSnapshot.static_group_id == group_id)
+        await session.execute(
+            update(TierSnapshot)
+            .where(
+                TierSnapshot.static_group_id == group_id,
+                TierSnapshot.id != snapshot.id,
+            )
+            .values(is_active=False)
         )
-        for s in all_result.scalars():
-            s.is_active = False
 
     if data.is_active is not None:
         snapshot.is_active = data.is_active

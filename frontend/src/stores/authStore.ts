@@ -7,15 +7,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, AuthTokens, DiscordAuthUrl } from '../types';
-
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-// Production detection and misconfiguration warning
-const isBrowser = typeof window !== 'undefined';
-const hostname = isBrowser ? window.location.hostname : '';
-const isProduction = isBrowser && hostname !== 'localhost' && hostname !== '127.0.0.1';
-const isLocalhostApi = API_BASE_URL.includes('localhost');
+import { API_BASE_URL, isProduction, isLocalhostApi } from '../config';
 
 if (isProduction && isLocalhostApi) {
   console.error(

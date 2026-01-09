@@ -1,11 +1,27 @@
 """Application configuration using pydantic-settings"""
 
+import re
 import secrets
 from functools import lru_cache
 from typing import Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Forbidden patterns for JWT secret validation
+# Uses word boundaries (\b) to reduce false positives with randomly generated secrets
+# that might contain letter sequences like "test" as part of a larger random string.
+FORBIDDEN_SECRET_PATTERNS: list[str] = [
+    r"\bchangeme\b",       # Common placeholder value
+    r"\bsecret\b",         # Generic "secret" placeholder
+    r"\b(?:dev-|dev_)",    # Development prefix (dev-, dev_)
+    r"\b(?:test-|test_)",  # Test prefix (test-, test_)
+    r"\bplaceholder\b",    # Explicit placeholder marker
+    r"\bexample\b",        # Example/documentation value
+    r"^password",          # Starts with "password"
+    r"_key$",              # Ends with "_key" (like "my_api_key")
+]
 
 
 class Settings(BaseSettings):
@@ -64,10 +80,17 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     @model_validator(mode='after')
-    def validate_jwt_secret(self) -> Self:
-        """Ensure JWT secret is set in production, auto-generate for local dev."""
+    def validate_production_config(self) -> Self:
+        """Validate configuration for production environment.
+
+        Ensures proper security settings are in place for production deployments.
+        Auto-generates JWT secret for local development only.
+        """
+        is_production = self.environment == "production"
+
+        # JWT Secret validation
         if not self.jwt_secret_key:
-            if self.environment == "production":
+            if is_production:
                 raise ValueError(
                     "JWT_SECRET_KEY environment variable must be set in production. "
                     "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
@@ -75,6 +98,43 @@ class Settings(BaseSettings):
             # Auto-generate for local development only
             object.__setattr__(self, 'jwt_secret_key', secrets.token_urlsafe(32))
             print("⚠️  Using auto-generated JWT secret (development mode)")
+
+        if is_production:
+            # Validate JWT secret strength
+            if len(self.jwt_secret_key) < 32:
+                raise ValueError(
+                    "JWT_SECRET_KEY must be at least 32 characters in production"
+                )
+
+            # Check for placeholder patterns
+            secret_lower = self.jwt_secret_key.lower()
+            if any(re.search(p, secret_lower) for p in FORBIDDEN_SECRET_PATTERNS):
+                raise ValueError(
+                    "JWT_SECRET_KEY appears to contain a placeholder value - "
+                    "please use a secure random key"
+                )
+
+            # Validate debug mode is off
+            if self.debug:
+                raise ValueError(
+                    "DEBUG must be False in production for security"
+                )
+
+            # Validate database is not SQLite
+            if 'sqlite' in self.database_url.lower():
+                raise ValueError(
+                    "SQLite is not recommended for production - use PostgreSQL"
+                )
+
+            # Warn (but don't fail) if CORS production origins not set
+            if not self.cors_origins_production:
+                import warnings
+                warnings.warn(
+                    "CORS_ORIGINS_PRODUCTION is not set - using development CORS origins. "
+                    "This may be a security risk in production.",
+                    UserWarning,
+                )
+
         return self
 
     @property

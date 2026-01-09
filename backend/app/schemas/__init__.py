@@ -22,6 +22,7 @@ from .loot_tracking import (
     TransactionTypeEnum,
 )
 from .static_group import (
+    DuplicateGroupRequest,
     GroupSourceEnum,
     MemberInfo,
     MemberRoleEnum,
@@ -89,6 +90,7 @@ __all__ = [
     "PageLedgerEntryResponse",
     "TransactionTypeEnum",
     # Static Group
+    "DuplicateGroupRequest",
     "GroupSourceEnum",
     "MemberInfo",
     "MemberRoleEnum",
