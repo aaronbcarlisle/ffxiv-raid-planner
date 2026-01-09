@@ -36,6 +36,7 @@ from app.schemas import (
     MaterialBalanceResponse,
     MaterialLogEntryCreate,
     MaterialLogEntryResponse,
+    MaterialLogEntryUpdate,
     PageBalanceResponse,
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
@@ -1022,6 +1023,79 @@ async def delete_material_log_entry(
 
     await db.delete(entry)
     await db.commit()
+
+
+@router.put(
+    "/{group_id}/tiers/{tier_id}/material-log/{entry_id}",
+    response_model=MaterialLogEntryResponse,
+)
+async def update_material_log_entry(
+    group_id: str,
+    tier_id: str,
+    entry_id: int,
+    data: MaterialLogEntryUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a material log entry (requires lead or owner role)"""
+    # Check permissions
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get entry
+    result = await db.execute(
+        select(MaterialLogEntry).where(
+            MaterialLogEntry.id == entry_id,
+            MaterialLogEntry.tier_snapshot_id == tier.id,
+        )
+    )
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Material log entry not found")
+
+    # If changing recipient, verify new recipient exists in this tier
+    if data.recipient_player_id is not None and data.recipient_player_id != entry.recipient_player_id:
+        result = await db.execute(
+            select(SnapshotPlayer).where(
+                SnapshotPlayer.id == data.recipient_player_id,
+                SnapshotPlayer.tier_snapshot_id == tier.id,
+            )
+        )
+        player = result.scalar_one_or_none()
+        if not player:
+            raise HTTPException(status_code=400, detail="Recipient player not found in this tier")
+
+    # Update fields
+    if data.week_number is not None:
+        entry.week_number = data.week_number
+    if data.floor is not None:
+        entry.floor = data.floor
+    if data.material_type is not None:
+        entry.material_type = data.material_type.value
+    if data.recipient_player_id is not None:
+        entry.recipient_player_id = data.recipient_player_id
+    if data.notes is not None:
+        entry.notes = data.notes
+
+    await db.commit()
+    await db.refresh(entry, ["recipient_player", "created_by"])
+
+    return MaterialLogEntryResponse(
+        id=entry.id,
+        tier_snapshot_id=entry.tier_snapshot_id,
+        week_number=entry.week_number,
+        floor=entry.floor,
+        material_type=entry.material_type,
+        recipient_player_id=entry.recipient_player_id,
+        recipient_player_name=entry.recipient_player.name,
+        notes=entry.notes,
+        created_at=entry.created_at,
+        created_by_user_id=entry.created_by_user_id,
+        created_by_username=entry.created_by.discord_username,
+    )
 
 
 @router.get(

@@ -412,7 +412,7 @@ export default function LootMathDocs() {
             </div>
 
             <InfoBox type="tip" title="Customizable">
-              Static owners can customize the role priority order in group settings to match
+              Static owners can customize the role priority order in Static Settings to match
               their static's loot council philosophy.
             </InfoBox>
           </Section>

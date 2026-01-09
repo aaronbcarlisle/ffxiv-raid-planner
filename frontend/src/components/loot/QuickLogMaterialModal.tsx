@@ -79,7 +79,11 @@ export function QuickLogMaterialModal({
     }
   };
 
-  const configuredPlayers = allPlayers.filter((p) => p.configured);
+  // Filter to configured main roster players (subs can only be logged via Log tab)
+  const eligiblePlayers = useMemo(() =>
+    allPlayers.filter((p) => p.configured && !p.isSubstitute),
+    [allPlayers]
+  );
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
   // Sort players by priority and add labels
@@ -87,14 +91,14 @@ export function QuickLogMaterialModal({
     // Get priority entries for this material (pass materialLog to account for received materials)
     // Use different priority calculation for Universal Tomestone vs slot-based materials
     const priorityEntries: PriorityEntry[] = isSlotAugmentationMaterial(material)
-      ? getPriorityForUpgradeMaterial(configuredPlayers, material, settings, materialLog)
-      : getPriorityForUniversalTomestone(configuredPlayers, settings, materialLog);
+      ? getPriorityForUpgradeMaterial(eligiblePlayers, material, settings, materialLog)
+      : getPriorityForUniversalTomestone(eligiblePlayers, settings, materialLog);
 
     // Create a map of player ID to priority rank
     const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
 
     // Sort all players: those with priority first (by rank), then others alphabetically
-    return configuredPlayers
+    return eligiblePlayers
       .map(player => {
         const priority = priorityMap.get(player.id);
         return {
@@ -109,7 +113,7 @@ export function QuickLogMaterialModal({
         if (a.needsMaterial && b.needsMaterial) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [configuredPlayers, material, settings, materialLog]);
+  }, [eligiblePlayers, material, settings, materialLog]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsMaterial: boolean): string => {

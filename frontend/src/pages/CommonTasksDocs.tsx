@@ -333,7 +333,7 @@ export default function CommonTasksDocs() {
                 </p>
               </Step>
               <Step number={2} title="Open the import modal">
-                <p>Click the import icon on your player card, or right-click and select "Import BiS".</p>
+                <p>Click the 3-dot menu (⋮) on your player card and select "Import BiS", or right-click the card to access the context menu.</p>
               </Step>
               <Step number={3} title="Paste and import">
                 <p>Paste your XIVGear URL in the input field and click <strong>Import</strong>.</p>
@@ -361,7 +361,7 @@ export default function CommonTasksDocs() {
                 Don't have a custom gearset? Choose from curated community BiS presets.
               </p>
               <Step number={1} title="Open the import modal">
-                <p>Click the import icon on your player card.</p>
+                <p>Click the 3-dot menu (⋮) on your player card and select "Import BiS".</p>
               </Step>
               <Step number={2} title="Select the Presets tab">
                 <p>Switch from "URL" to "Presets" tab.</p>
@@ -449,7 +449,7 @@ export default function CommonTasksDocs() {
                   <strong>Checked slots</strong>: Uses the item level from BiS import
                 </li>
                 <li>
-                  <strong>Tome BiS, not augmented</strong>: Uses base tome iLv (e.g., 720 instead of 730)
+                  <strong>Tome BiS, not augmented</strong>: Uses base tome iLv (e.g., i780 instead of i790)
                 </li>
                 <li>
                   <strong>No BiS import</strong>: Falls back to tier-based estimates based on current source
@@ -468,12 +468,12 @@ export default function CommonTasksDocs() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
-                    <tr><td className="py-2 text-accent font-medium">savage</td><td className="py-2 text-text-secondary">Raid drop</td><td className="py-2 text-text-secondary text-right">735</td></tr>
-                    <tr><td className="py-2 text-accent font-medium">tome_up</td><td className="py-2 text-text-secondary">Augmented tomestone</td><td className="py-2 text-text-secondary text-right">730</td></tr>
-                    <tr><td className="py-2 text-accent font-medium">tome</td><td className="py-2 text-text-secondary">Unaugmented tomestone</td><td className="py-2 text-text-secondary text-right">720</td></tr>
-                    <tr><td className="py-2 text-accent font-medium">catchup</td><td className="py-2 text-text-secondary">Catchup gear (alliance raid, etc.)</td><td className="py-2 text-text-secondary text-right">720</td></tr>
-                    <tr><td className="py-2 text-accent font-medium">crafted</td><td className="py-2 text-text-secondary">Crafted/pentamelded</td><td className="py-2 text-text-secondary text-right">710</td></tr>
-                    <tr><td className="py-2 text-accent font-medium">normal</td><td className="py-2 text-text-secondary">Normal raid</td><td className="py-2 text-text-secondary text-right">710</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">savage</td><td className="py-2 text-text-secondary">Raid drop</td><td className="py-2 text-text-secondary text-right">i790</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">tome_up</td><td className="py-2 text-text-secondary">Augmented tomestone</td><td className="py-2 text-text-secondary text-right">i790</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">tome</td><td className="py-2 text-text-secondary">Unaugmented tomestone</td><td className="py-2 text-text-secondary text-right">i780</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">catchup</td><td className="py-2 text-text-secondary">Catchup gear (alliance raid, etc.)</td><td className="py-2 text-text-secondary text-right">i780</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">crafted</td><td className="py-2 text-text-secondary">Crafted/pentamelded</td><td className="py-2 text-text-secondary text-right">i770</td></tr>
+                    <tr><td className="py-2 text-accent font-medium">normal</td><td className="py-2 text-text-secondary">Normal raid</td><td className="py-2 text-text-secondary text-right">i770</td></tr>
                   </tbody>
                 </table>
               </div>

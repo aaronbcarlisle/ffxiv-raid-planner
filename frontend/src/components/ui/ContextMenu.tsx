@@ -2,10 +2,12 @@
  * Context Menu - Right-click menu component
  *
  * Fixed-position menu that appears at cursor location.
+ * Uses React Portal to render at document body level, preventing layout shift.
  * Uses design tokens for consistent styling.
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ContextMenuItem = {
   label: string;
@@ -37,7 +39,7 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside or escape
+  // Close on click outside, escape, scroll, or resize
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -51,11 +53,20 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       }
     }
 
+    function handleScrollOrResize() {
+      onClose();
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
+    window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true });
+    window.addEventListener('resize', handleScrollOrResize);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+      window.removeEventListener('resize', handleScrollOrResize);
     };
   }, [onClose]);
 
@@ -75,7 +86,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     }
   }, [x, y]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="fixed z-50 bg-surface-overlay border border-border-default rounded-lg shadow-xl py-1 min-w-40
@@ -135,6 +146,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           </button>
         );
       })}
-    </div>
+    </div>,
+    document.body
   );
 }

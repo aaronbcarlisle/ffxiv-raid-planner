@@ -370,17 +370,20 @@ export default function MembersGuideDocs() {
               If your lead hasn't already imported your BiS, you can do it yourself.
             </p>
 
-            <Step number={1} title="Click the import icon on your card">
-              <p>Or right-click and select "Import BiS" from the context menu.</p>
+            <Step number={1} title="Open the player options menu">
+              <p>Click the 3-dot menu (⋮) on your player card, or right-click the card to open the context menu.</p>
             </Step>
-            <Step number={2} title="Choose import method">
+            <Step number={2} title="Select 'Import BiS'">
+              <p>Choose "Import BiS" from the menu options.</p>
+            </Step>
+            <Step number={3} title="Choose import method">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>XIVGear URL</strong>: Paste your xivgear.app link</li>
                 <li><strong>Etro URL</strong>: Paste your etro.gg link</li>
                 <li><strong>Presets</strong>: Choose from curated BiS sets for your job</li>
               </ul>
             </Step>
-            <Step number={3} title="Click Import">
+            <Step number={4} title="Click Import">
               <p>Your gear slots will populate with item names, icons, and sources.</p>
             </Step>
 
@@ -474,7 +477,7 @@ export default function MembersGuideDocs() {
                   <tr><td className="py-2 text-text-secondary">Edit other players' cards</td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Add/remove players</td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Log loot or floor clears</td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
-                  <tr><td className="py-2 text-text-secondary">Change group settings</td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
+                  <tr><td className="py-2 text-text-secondary">Change static settings</td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                 </tbody>
               </table>
             </div>

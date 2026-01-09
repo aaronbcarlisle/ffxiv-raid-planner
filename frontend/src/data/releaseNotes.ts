@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.1';
+export const CURRENT_VERSION = '1.0.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,120 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.2',
+    date: '2026-01-09',
+    title: 'UX Improvements',
+    highlights: ['Grid view for loot logging', 'Smart tab navigation'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Weekly Loot Grid view',
+        description: 'Spreadsheet-style grid for viewing and logging weekly loot',
+        details:
+          'New grid view in the Log tab shows loot distribution across players by floor. Click cells to log items, right-click for context menus. Includes loot count summary bar with fairness indicators and floor-colored headers.',
+        commits: [
+          { hash: '99b8fb8', message: 'Add context menus, subs toggle, and floor selector alignment' },
+          { hash: '4222d36', message: 'UX improvements phase 2 - quick wins' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Unified floor selectors',
+        description: 'Consistent colored floor tabs across all panels',
+        details:
+          'Floor selectors in Gear Priorities, Who Needs It, and Log By Floor views now all use the same floor-colored button tab style. Improved visual consistency and accessibility with aria-pressed attributes.',
+        commits: [{ hash: '1944057', message: 'Implement four UX improvements' }],
+      },
+      {
+        category: 'feature',
+        title: 'Smart tab navigation',
+        description: 'Automatic tab selection when switching statics',
+        details:
+          'When switching to a static with no players, automatically shows the Players tab. When switching to a static with players, preserves your current tab selection. Prevents confusion when navigating between statics.',
+        commits: [{ hash: '1944057', message: 'Implement four UX improvements' }],
+      },
+      {
+        category: 'feature',
+        title: 'Dashboard context menus',
+        description: 'Right-click static cards for quick actions',
+        details:
+          'Static group cards on the Dashboard now have context menus with quick access to Open, Rename, Copy Share Code, and Delete (for owners). Streamlines common management tasks.',
+        commits: [{ hash: '1944057', message: 'Implement four UX improvements' }],
+      },
+      {
+        category: 'feature',
+        title: 'Release Notes navigation',
+        description: 'Collapsible version sections with scroll-synced nav',
+        details:
+          'Release Notes page redesigned with collapsible version sections and a sticky navigation panel. Click version numbers to jump to that release. Auto-expands sections when scrolling or navigating via URL hash.',
+        commits: [{ hash: '1944057', message: 'Implement four UX improvements' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Subs toggle styling',
+        description: 'Substitute players toggle matches G1/G2 style',
+        details:
+          'The Subs toggle button now has the same icon and accent color style as G1/G2 toggles. Works independently from group view toggles - you can show subs without enabling G1/G2 split.',
+        commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Admin Dashboard improvements',
+        description: 'Better column headers and view-as functionality',
+        details:
+          'Column sort icons now always rendered to prevent layout shift when sorting. Added reserved space for action icons in the Actions column.',
+        commits: [
+          { hash: '4dee7da', message: 'Address PR #11 feedback and add admin UX improvements' },
+          { hash: '15a7d36', message: 'Fix UX issues from manual testing' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Accessibility enhancements',
+        description: 'Keyboard navigation and screen reader support',
+        details:
+          'Grid cells now have proper keyboard navigation with role="button", tabIndex, and Enter/Space handlers. Floor selector buttons have aria-pressed. Version navigation has aria-labels. Subs toggle has aria-label.',
+        commits: [
+          { hash: '24e00c1', message: 'Address PR feedback: accessibility attrs for grid cells, event listener cleanup' },
+          { hash: '6bcaf91', message: 'Address PR feedback: consistent setPageMode, aria-labels for toggles and nav' },
+          { hash: 'd565ee9', message: 'Address PR feedback: canEdit check, aria-pressed, status updates' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Grid context menu permissions',
+        description: 'Edit/Delete options now respect canEdit permission',
+        details:
+          'Fixed security bug where grid context menu showed Edit/Delete options to users without edit permission. Now properly checks canEdit before displaying these options.',
+        commits: [{ hash: 'd565ee9', message: 'Address PR feedback: canEdit check, aria-pressed, status updates' }],
+      },
+      {
+        category: 'fix',
+        title: 'Loot edit gear sync',
+        description: 'Editing loot recipient now updates both player cards',
+        details:
+          'When editing a loot entry and changing the recipient, the old recipient\'s gear checkbox is now properly unchecked and the new recipient\'s is checked. Previously only worked for new entries.',
+        commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
+      },
+      {
+        category: 'fix',
+        title: 'Grid URL highlight',
+        description: 'Deep links to loot entries now highlight in grid view',
+        details:
+          'URLs with ?entry=123 parameter now properly highlight the corresponding cell in grid view with a pulse animation. Previously only worked in list view.',
+        commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
+      },
+      {
+        category: 'fix',
+        title: 'Layout shift fixes',
+        description: 'Prevented UI jumping when switching views',
+        details:
+          'Fixed layout shift when switching between By Floor and Timeline views in Log tab. Floor filter now uses invisible class instead of conditional rendering.',
+        commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
+      },
+    ],
+  },
   {
     version: '1.0.1',
     date: '2026-01-09',

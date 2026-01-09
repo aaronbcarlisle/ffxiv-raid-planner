@@ -383,16 +383,19 @@ export default function LeadsGuideDocs() {
               Import BiS sets to automatically populate gear slots with item data.
             </p>
 
-            <Step number={1} title="Click the import icon on a player card">
-              <p>Or right-click and select "Import BiS" from the context menu.</p>
+            <Step number={1} title="Open the player options menu">
+              <p>Click the 3-dot menu (⋮) on a player card, or right-click the card to open the context menu.</p>
             </Step>
-            <Step number={2} title="Choose import method">
+            <Step number={2} title="Select 'Import BiS'">
+              <p>Choose "Import BiS" from the menu options.</p>
+            </Step>
+            <Step number={3} title="Choose import method">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>XIVGear/Etro URL</strong>: Paste a link to their gearset</li>
                 <li><strong>Presets</strong>: Choose from curated community BiS sets by job</li>
               </ul>
             </Step>
-            <Step number={3} title="Click Import">
+            <Step number={4} title="Click Import">
               <p>The gear slots will populate with item names, icons, and sources (raid vs tome).</p>
             </Step>
 
@@ -405,7 +408,7 @@ export default function LeadsGuideDocs() {
 
           {/* Step 6: Invite Members */}
           <Section id="invite-members" title="6. Invite Members">
-            <Step number={1} title="Open Group Settings">
+            <Step number={1} title="Open Static Settings">
               <p>Click the gear icon next to your static name.</p>
             </Step>
             <Step number={2} title="Go to Invitations">
@@ -435,7 +438,7 @@ export default function LeadsGuideDocs() {
               The loot priority system calculates who should get each drop based on role and need.
             </p>
 
-            <Step number={1} title="Open Group Settings">
+            <Step number={1} title="Open Static Settings">
               <p>Click the gear icon next to your static name.</p>
             </Step>
             <Step number={2} title="Go to Loot Priority">
@@ -517,7 +520,7 @@ export default function LeadsGuideDocs() {
                   <tr><td className="py-2 text-text-secondary">Edit any player card</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Log loot and floor clears</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Create invite links</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed /></td></tr>
-                  <tr><td className="py-2 text-text-secondary">Change group settings</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
+                  <tr><td className="py-2 text-text-secondary">Change static settings</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Delete the static</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                   <tr><td className="py-2 text-text-secondary">Transfer ownership</td><td className="text-center"><PermissionBadge allowed /></td><td className="text-center"><PermissionBadge allowed={false} /></td></tr>
                 </tbody>

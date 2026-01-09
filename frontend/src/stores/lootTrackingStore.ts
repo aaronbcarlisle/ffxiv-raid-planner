@@ -13,6 +13,7 @@ import type {
   LootLogEntryUpdate,
   MaterialLogEntry,
   MaterialLogEntryCreate,
+  MaterialLogEntryUpdate,
   MaterialBalance,
   PageLedgerEntry,
   PageLedgerEntryCreate,
@@ -57,6 +58,7 @@ interface LootTrackingState {
   updateLootEntry: (groupId: string, tierId: string, entryId: number, data: LootLogEntryUpdate) => Promise<void>;
   deleteLootEntry: (groupId: string, tierId: string, entryId: number) => Promise<void>;
   createMaterialEntry: (groupId: string, tierId: string, data: MaterialLogEntryCreate) => Promise<void>;
+  updateMaterialEntry: (groupId: string, tierId: string, entryId: number, data: MaterialLogEntryUpdate) => Promise<void>;
   deleteMaterialEntry: (groupId: string, tierId: string, entryId: number) => Promise<void>;
   createPageEntry: (groupId: string, tierId: string, data: PageLedgerEntryCreate) => Promise<void>;
   markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
@@ -294,6 +296,21 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialLog(groupId, tierId),
         get().fetchMaterialBalances(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
+      ]);
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateMaterialEntry: async (groupId, tierId, entryId, data) => {
+    set({ isLoading: true, error: null });
+    try {
+      await api.put(`/api/static-groups/${groupId}/tiers/${tierId}/material-log/${entryId}`, data);
+      // Refresh material log and balances
+      await Promise.all([
+        get().fetchMaterialLog(groupId, tierId),
+        get().fetchMaterialBalances(groupId, tierId),
       ]);
     } catch (error: any) {
       set({ error: error.message, isLoading: false });

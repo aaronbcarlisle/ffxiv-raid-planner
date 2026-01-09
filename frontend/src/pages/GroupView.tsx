@@ -196,6 +196,11 @@ export function GroupView() {
   const [groupView, setGroupViewState] = useState(() => {
     return searchParams.get('groups') === 'true';
   });
+
+  // Subs view (separate substitutes): URL param > default (false)
+  const [subsView, setSubsViewState] = useState(() => {
+    return searchParams.get('subs') === 'true';
+  });
   const [playerModalCount, setPlayerModalCount] = useState(0); // Track open modals in PlayerCards
 
   // Highlighted player for deep-link scroll animation
@@ -273,6 +278,21 @@ export function GroupView() {
     }, { replace: true });
   }, [setSearchParams]);
 
+  // Wrapper to update subsView and URL
+  const setSubsView = useCallback((enabled: boolean) => {
+    setSubsViewState(enabled);
+    // Update URL - only include if enabled
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (enabled) {
+        params.set('subs', 'true');
+      } else {
+        params.delete('subs');
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   // Clear tiers when shareCode changes (switching groups)
   useEffect(() => {
     clearTiers();
@@ -303,6 +323,31 @@ export function GroupView() {
       // Ignore localStorage errors
     }
   }, [shareCode]);
+
+  // Smart tab defaulting: reset to Roster when switching statics
+  // Note: We only depend on currentGroup.id, not searchParams, to avoid
+  // re-running when other URL params change (tier, viewAs, etc.)
+  useEffect(() => {
+    if (!currentGroup?.id) return;
+
+    try {
+      const lastStaticId = localStorage.getItem('last-static-id');
+      // Read URL tab directly from window.location to avoid searchParams dependency
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTab = urlParams.get('tab');
+
+      // If switching to a different static (not just refreshing the same one)
+      // AND there's no explicit tab in the URL, reset to 'players' tab
+      if (lastStaticId && lastStaticId !== currentGroup.id && !urlTab) {
+        setPageMode('players');
+      }
+
+      // Always update last-static-id to current
+      localStorage.setItem('last-static-id', currentGroup.id);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [currentGroup?.id, setPageMode]);
 
   // Load sortPreset from localStorage when tier changes (only if not specified in URL)
   useEffect(() => {
@@ -649,15 +694,21 @@ export function GroupView() {
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
     if (!groupView) return null;
-    return groupPlayersByLightParty(sortedPlayers);
-  }, [groupView, sortedPlayers]);
+    return groupPlayersByLightParty(sortedPlayers, subsView);
+  }, [groupView, sortedPlayers, subsView]);
 
   // Check if we have enough position data to enable group view
   const hasPositionData = sortedPlayers.filter(p => p.configured && p.position).length >= 2;
 
-  // Only count configured players for team summary
-  const configuredPlayers = useMemo(() => {
-    return sortedPlayers.filter(p => p.configured);
+  // Check if any substitutes exist
+  const hasSubstitutes = useMemo(() => {
+    return sortedPlayers.some(p => p.isSubstitute);
+  }, [sortedPlayers]);
+
+  // Main roster players: configured and not substitutes
+  // Used for Loot Priority, Summary, and other features that should exclude subs
+  const mainRosterPlayers = useMemo(() => {
+    return sortedPlayers.filter(p => p.configured && !p.isSubstitute);
   }, [sortedPlayers]);
 
   const isLoading = groupLoading || tierLoading;
@@ -899,7 +950,7 @@ export function GroupView() {
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
               {/* Floor selector moved into Loot tab's Gear Priority sub-tab */}
-              {/* Sort mode + Group view + View mode toggle - visible in Players tab */}
+              {/* Sort mode + Group view + Subs + View mode toggle - visible in Players tab */}
               <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
                 <SortModeSelector
                   sortPreset={sortPreset}
@@ -910,6 +961,25 @@ export function GroupView() {
                   onToggle={setGroupView}
                   disabled={!hasPositionData}
                 />
+                {/* Subs toggle - only show when substitutes exist */}
+                {hasSubstitutes && (
+                  <button
+                    onClick={() => setSubsView(!subsView)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                      subsView
+                        ? 'bg-accent/20 text-accent border border-accent/50'
+                        : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                    }`}
+                    title={subsView ? 'Show subs with main roster' : 'Separate substitutes'}
+                    aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                    aria-pressed={subsView}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>Subs</span>
+                  </button>
+                )}
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
               </div>
             </div>
@@ -938,7 +1008,7 @@ export function GroupView() {
                 onDragEnd={dnd.handleDragEnd}
                 onDragCancel={dnd.handleDragCancel}
               >
-              {/* Grouped View */}
+              {/* Grouped View (G1/G2) */}
               {groupView && groupedPlayers ? (
                 <div className="space-y-8 mb-8">
                   {/* Group 1 */}
@@ -978,11 +1048,41 @@ export function GroupView() {
                       </div>
                     </div>
                   )}
+
+                  {/* Substitutes - shown when subsView is enabled */}
+                  {subsView && groupedPlayers.substitutes.length > 0 && (
+                    <div className="opacity-75">
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+                        Substitutes
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.substitutes.map((player) => renderPlayerCard(player))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                /* Standard View */
-                <div className={`${gridClasses} mb-8`}>
-                  {sortedPlayers.map((player) => renderPlayerCard(player))}
+                /* Standard View - with optional subs section */
+                <div className="space-y-8 mb-8">
+                  <div className={gridClasses}>
+                    {subsView
+                      ? sortedPlayers.filter(p => !p.isSubstitute).map((player) => renderPlayerCard(player))
+                      : sortedPlayers.map((player) => renderPlayerCard(player))
+                    }
+                  </div>
+                  {/* Substitutes section - shown in standard view when subsView is enabled */}
+                  {subsView && sortedPlayers.some(p => p.isSubstitute) && (
+                    <div className="opacity-75">
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+                        Substitutes
+                      </h3>
+                      <div className={gridClasses}>
+                        {sortedPlayers.filter(p => p.isSubstitute).map((player) => renderPlayerCard(player))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1008,9 +1108,9 @@ export function GroupView() {
           )}
 
           {/* Loot Tab */}
-          {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
+          {pageMode === 'loot' && tierInfo && mainRosterPlayers.length > 0 && (
             <LootPriorityPanel
-              players={configuredPlayers}
+              players={mainRosterPlayers}
               settings={{
                 ...DEFAULT_SETTINGS,
                 ...(currentGroup?.settings && { lootPriority: currentGroup.settings.lootPriority }),
@@ -1040,11 +1140,11 @@ export function GroupView() {
           )}
 
           {/* Summary Tab */}
-          {pageMode === 'stats' && tierInfo && currentTier?.players && (
+          {pageMode === 'stats' && tierInfo && mainRosterPlayers.length > 0 && (
             <TeamSummaryEnhanced
               groupId={currentGroup!.id}
               tierId={currentTier.tierId}
-              players={currentTier.players}
+              players={mainRosterPlayers}
               tierInfo={tierInfo}
             />
           )}
@@ -1068,6 +1168,7 @@ export function GroupView() {
           groupId={currentGroup.id}
           existingTierIds={existingTierIds}
           onClose={() => setShowCreateTierModal(false)}
+          onCreate={() => setPageMode('players')}
         />
       )}
 

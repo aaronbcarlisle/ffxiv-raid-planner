@@ -125,13 +125,26 @@ describe('calculateAverageItemLevel', () => {
     expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(780);
   });
 
-  it('skips slots with "unknown" currentSource', () => {
+  it('treats "unknown" currentSource as crafted gear (baseline)', () => {
     const gear = [
       createGearSlot({ slot: 'body', currentSource: 'savage', itemLevel: 790, hasItem: true }),
       createGearSlot({ slot: 'legs', currentSource: 'unknown' }),
     ];
-    // Only body slot counts, so average = 790
-    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(790);
+    // body=790, legs=770 (unknown → crafted) → average = 780
+    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(780);
+  });
+
+  it('prevents inflated averages when only few items are checked', () => {
+    // Alexander's case: 1 tome piece checked, rest unconfigured
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'tome', hasItem: true, isAugmented: false }), // 780
+      createGearSlot({ slot: 'legs', currentSource: 'unknown' }),    // 770 (crafted baseline)
+      createGearSlot({ slot: 'head', currentSource: 'unknown' }),    // 770
+      createGearSlot({ slot: 'hands', currentSource: 'unknown' }),   // 770
+      createGearSlot({ slot: 'feet', currentSource: 'unknown' }),    // 770
+    ];
+    // Average of 780 + 4×770 = 3860 / 5 = 772
+    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(772);
   });
 
   it('handles weapon slot with higher iLv correctly', () => {
@@ -141,6 +154,43 @@ describe('calculateAverageItemLevel', () => {
     ];
     // Average of 795, 790 = 792.5 -> rounds to 793
     expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(793);
+  });
+
+  it('uses base tome iLv (not stored augmented itemLevel) when hasItem but not augmented', () => {
+    // This tests the fix for the bug where tome gear showed augmented iLv even when not augmented
+    // BiS import sets itemLevel to augmented value (790), but player only has base tome (780)
+    const gear = [
+      createGearSlot({
+        slot: 'body',
+        bisSource: 'tome',
+        hasItem: true,
+        isAugmented: false,
+        itemLevel: 790, // This is the augmented iLv from BiS import - should be ignored
+      }),
+      createGearSlot({
+        slot: 'legs',
+        bisSource: 'tome',
+        hasItem: true,
+        isAugmented: false,
+        itemLevel: 790, // This is the augmented iLv from BiS import - should be ignored
+      }),
+    ];
+    // Should use base tome iLv (780) not stored itemLevel (790)
+    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(780);
+  });
+
+  it('uses stored itemLevel when tome gear IS augmented', () => {
+    const gear = [
+      createGearSlot({
+        slot: 'body',
+        bisSource: 'tome',
+        hasItem: true,
+        isAugmented: true,
+        itemLevel: 790, // Augmented tome iLv - should be used
+      }),
+    ];
+    // Should use stored itemLevel (790) since gear is augmented
+    expect(calculateAverageItemLevel(gear, 'aac-heavyweight')).toBe(790);
   });
 });
 

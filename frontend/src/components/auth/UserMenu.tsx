@@ -25,7 +25,6 @@ import {
   Calculator,
   Code,
   Palette,
-  ExternalLink,
   Sparkles,
   Wrench,
   Shield,
@@ -109,88 +108,34 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             Documentation
           </DropdownSubTrigger>
           <DropdownSubContent>
-            <DropdownItem
-              icon={<BookOpen className="w-4 h-4" />}
-              onSelect={() => window.open('/docs', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                All Docs
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<BookOpen className="w-4 h-4" />} href="/docs">
+              All Docs
             </DropdownItem>
-            <DropdownItem
-              icon={<Sparkles className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/release-notes', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Release Notes
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Sparkles className="w-4 h-4" />} href="/docs/release-notes">
+              Release Notes
             </DropdownItem>
-            <DropdownItem
-              icon={<Wrench className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/roadmap', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Roadmap
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">
+              Roadmap
             </DropdownItem>
             <DropdownSeparator />
-            <DropdownItem
-              icon={<Users className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/guides/leads', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Guide for Leads
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Users className="w-4 h-4" />} href="/docs/guides/leads">
+              Guide for Leads
             </DropdownItem>
-            <DropdownItem
-              icon={<UserPlus className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/guides/members', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Guide for Members
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<UserPlus className="w-4 h-4" />} href="/docs/guides/members">
+              Guide for Members
             </DropdownItem>
-            <DropdownItem
-              icon={<ListChecks className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/guides/common-tasks', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Common Tasks
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<ListChecks className="w-4 h-4" />} href="/docs/guides/common-tasks">
+              Common Tasks
             </DropdownItem>
             <DropdownSeparator />
-            <DropdownItem
-              icon={<Calculator className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/loot-math', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Loot & Priority Math
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Calculator className="w-4 h-4" />} href="/docs/loot-math">
+              Loot & Priority Math
             </DropdownItem>
-            <DropdownItem
-              icon={<Code className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/api', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                API Reference
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Code className="w-4 h-4" />} href="/docs/api">
+              API Reference
             </DropdownItem>
-            <DropdownItem
-              icon={<Palette className="w-4 h-4" />}
-              onSelect={() => window.open('/docs/design-system', '_blank')}
-            >
-              <span className="flex items-center gap-1">
-                Design System
-                <ExternalLink className="w-3 h-3 text-text-muted" />
-              </span>
+            <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
+              Design System
             </DropdownItem>
           </DropdownSubContent>
         </DropdownSub>

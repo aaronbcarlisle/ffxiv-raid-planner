@@ -391,10 +391,10 @@ export function LootPriorityPanel({
 
       {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
-        <>
-          {/* Floor selector for Gear Priority - button style tabs */}
+        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
+          {/* Floor selector for Gear Priority - matches WhoNeedsItMatrix layout */}
           {onFloorChange && (
-            <div className="flex items-center gap-2 mb-4 bg-surface-elevated/50 p-2 rounded-lg border border-border-default">
+            <div className="flex items-center gap-2 p-3 border-b border-border-default bg-surface-elevated/50">
               <span className="text-xs text-text-muted mr-1">Floor:</span>
               {([1, 2, 3, 4] as FloorNumber[]).map((floor) => {
                 const isSelected = selectedFloor === floor;
@@ -403,11 +403,13 @@ export function LootPriorityPanel({
                   <button
                     key={floor}
                     onClick={() => onFloorChange(floor)}
+                    aria-label={`Select Floor ${floor}`}
+                    aria-pressed={isSelected}
                     className={`
-                      px-3 py-1.5 rounded text-xs font-medium transition-colors
+                      px-3 py-1.5 rounded text-xs font-bold transition-colors border
                       ${isSelected
-                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border} border`
-                        : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
+                        : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
                       }
                     `}
                     title={dutyNames?.[floor - 1]}
@@ -418,52 +420,54 @@ export function LootPriorityPanel({
               })}
             </div>
           )}
-          {/* Gear drops grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            {itemPriorities.map(({ slot, label, entries }) => (
-              <div
-                key={slot}
-                className="bg-surface-base rounded-lg p-3"
-              >
-                <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
-                  {label}
-                </div>
-                <PriorityList
-                  entries={entries}
-                  showLogButton={!!canShowLogButtons}
-                  onLogClick={(player) => handleLogClick(slot, player)}
-                  showEnhanced={showEnhancedScores && lootLog.length > 0}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Upgrade materials (if any for this floor) */}
-          {materialPriorities.length > 0 && (
-            <div className="border-t border-border-default pt-4 mt-4">
-              <h4 className="text-text-secondary text-sm mb-3">Upgrade Materials</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {materialPriorities.map(({ material, label, entries }) => (
-                  <div
-                    key={material}
-                    className="bg-surface-base rounded-lg p-3"
-                  >
-                    <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
-                      {label}
-                    </div>
-                    <PriorityList
-                      entries={entries}
-                      showLogButton={!!canShowLogButtons}
-                      onLogClick={(player) => handleMaterialLogClick(material, player)}
-                      showEnhanced={showEnhancedScores && lootLog.length > 0}
-                    />
+          {/* Content area with padding */}
+          <div className="p-4">
+            {/* Gear drops grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {itemPriorities.map(({ slot, label, entries }) => (
+                <div
+                  key={slot}
+                  className="bg-surface-base rounded-lg p-3"
+                >
+                  <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
+                    {label}
                   </div>
-                ))}
-              </div>
+                  <PriorityList
+                    entries={entries}
+                    showLogButton={!!canShowLogButtons}
+                    onLogClick={(player) => handleLogClick(slot, player)}
+                    showEnhanced={showEnhancedScores && lootLog.length > 0}
+                  />
+                </div>
+              ))}
             </div>
-          )}
 
-        </>
+            {/* Upgrade materials (if any for this floor) */}
+            {materialPriorities.length > 0 && (
+              <div className="border-t border-border-default pt-4 mt-4">
+                <h4 className="text-text-secondary text-sm mb-3">Upgrade Materials</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {materialPriorities.map(({ material, label, entries }) => (
+                    <div
+                      key={material}
+                      className="bg-surface-base rounded-lg p-3"
+                    >
+                      <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
+                        {label}
+                      </div>
+                      <PriorityList
+                        entries={entries}
+                        showLogButton={!!canShowLogButtons}
+                        onLogClick={(player) => handleMaterialLogClick(material, player)}
+                        showEnhanced={showEnhancedScores && lootLog.length > 0}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Weapon Priority Tab Content */}

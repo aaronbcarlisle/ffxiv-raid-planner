@@ -41,7 +41,7 @@ import type { GearSourceCategory } from '../types';
 import {
   // Navigation & UI
   Settings, Settings2, Menu, MoreVertical, MoreHorizontal,
-  ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ChevronsUpDown,
   ArrowLeft, ArrowRight, ExternalLink,
   // Actions
   Plus, PlusCircle, Minus, X, XCircle,
@@ -342,6 +342,7 @@ const NAV_GROUPS = [
       { id: 'icon-library', label: 'Icon Library' },
       { id: 'job-icons', label: 'Job Icons' },
       { id: 'tooltips', label: 'Tooltips' },
+      { id: 'tables', label: 'Tables' },
     ],
   },
   {
@@ -564,6 +565,109 @@ import { Settings, Trash2, Plus } from 'lucide-react';
         </div>
       </Subsection>
     </Section>
+  );
+}
+
+// Sortable Table Demo with interactive sorting
+function SortableTableDemo() {
+  type SortField = 'name' | 'status' | 'count';
+  type SortDirection = 'asc' | 'desc';
+
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const data = [
+    { name: 'Alpha Team', status: 'Active', count: 8 },
+    { name: 'Beta Squad', status: 'Inactive', count: 4 },
+    { name: 'Gamma Unit', status: 'Active', count: 6 },
+    { name: 'Delta Force', status: 'Pending', count: 3 },
+  ];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    const aVal = a[sortField];
+    const bVal = b[sortField];
+    const modifier = sortDirection === 'asc' ? 1 : -1;
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return aVal.localeCompare(bVal) * modifier;
+    }
+    return ((aVal as number) - (bVal as number)) * modifier;
+  });
+
+  const renderHeader = (field: SortField, label: string, align: 'left' | 'center' = 'left') => {
+    const isActive = sortField === field;
+    const justifyClass = align === 'center' ? 'justify-center' : '';
+
+    return (
+      <th
+        className="group text-left px-4 py-3 font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none transition-colors"
+        onClick={() => handleSort(field)}
+        aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+      >
+        <span className={`flex items-center gap-1 ${justifyClass}`}>
+          {label}
+          {isActive ? (
+            <span className="text-accent">
+              {sortDirection === 'asc' ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </span>
+          ) : (
+            <span className="opacity-0 group-hover:opacity-50 transition-opacity">
+              <ChevronsUpDown className="w-4 h-4" />
+            </span>
+          )}
+        </span>
+      </th>
+    );
+  };
+
+  return (
+    <div className="bg-surface-elevated rounded-lg p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-medium text-text-primary">Interactive Example</div>
+        <div className="text-xs text-text-muted">
+          Sorting by: <span className="text-accent">{sortField}</span> ({sortDirection})
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border-default bg-surface-card">
+              {renderHeader('name', 'Name')}
+              {renderHeader('status', 'Status')}
+              {renderHeader('count', 'Count', 'center')}
+              <th className="text-left px-4 py-3 font-medium text-text-secondary">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border-subtle">
+            {sortedData.map((row) => (
+              <tr key={row.name} className="hover:bg-surface-interactive transition-colors">
+                <td className="px-4 py-3 text-accent">{row.name}</td>
+                <td className="px-4 py-3 text-text-secondary">{row.status}</td>
+                <td className="px-4 py-3 text-center text-text-secondary">{row.count}</td>
+                <td className="px-4 py-3 text-text-muted">View</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-text-muted mt-3">
+        Click column headers to sort. Click again to reverse direction.
+      </p>
+    </div>
   );
 }
 
@@ -2573,6 +2677,156 @@ export function DesignSystem() {
 </div>`}</code>
                 </pre>
               </div>
+            </div>
+          </Subsection>
+        </Section>
+
+        {/* Tables */}
+        <Section id="tables" title="Tables">
+          <p className="text-text-secondary mb-6">
+            Data tables with sortable columns. Clear visual hierarchy distinguishes active sort state from interactive hover states.
+          </p>
+
+          <Subsection title="Sortable Column Headers">
+            <p className="text-sm text-text-muted mb-4">
+              Column headers use distinct visual treatments for active vs inactive states.
+              Active columns always display their sort direction; inactive columns show a neutral icon on hover.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <div className="font-medium text-text-primary mb-2">Inactive (Default)</div>
+                <div className="flex items-center gap-2 text-text-secondary text-sm mb-2">
+                  <span>Column Name</span>
+                  <span className="opacity-0">
+                    <ChevronsUpDown className="w-4 h-4" />
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted">Sort icon hidden until hover</p>
+              </div>
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <div className="font-medium text-text-primary mb-2">Inactive (Hover)</div>
+                <div className="flex items-center gap-2 text-text-primary text-sm mb-2">
+                  <span>Column Name</span>
+                  <span className="opacity-50">
+                    <ChevronsUpDown className="w-4 h-4" />
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted">Neutral icon at 50% opacity signals sortability</p>
+              </div>
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <div className="font-medium text-text-primary mb-2">Active (Always Visible)</div>
+                <div className="flex items-center gap-2 text-text-primary text-sm mb-2">
+                  <span>Column Name</span>
+                  <span className="text-accent">
+                    <ChevronUp className="w-4 h-4" />
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted">Direction icon in accent color, always visible</p>
+              </div>
+            </div>
+
+            <SortableTableDemo />
+          </Subsection>
+
+          <Subsection title="Icon Usage">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex items-center gap-3">
+                <ChevronUp className="w-5 h-5 text-accent" />
+                <div>
+                  <div className="font-medium text-text-primary text-sm">ChevronUp</div>
+                  <div className="text-xs text-text-muted">Active ascending</div>
+                </div>
+              </div>
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex items-center gap-3">
+                <ChevronDown className="w-5 h-5 text-accent" />
+                <div>
+                  <div className="font-medium text-text-primary text-sm">ChevronDown</div>
+                  <div className="text-xs text-text-muted">Active descending</div>
+                </div>
+              </div>
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex items-center gap-3">
+                <ChevronsUpDown className="w-5 h-5 text-text-muted" />
+                <div>
+                  <div className="font-medium text-text-primary text-sm">ChevronsUpDown</div>
+                  <div className="text-xs text-text-muted">Inactive (hover only)</div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
+              <div className="text-text-muted mb-2">// Import from lucide-react</div>
+              <div>import {'{'} ChevronUp, ChevronDown, ChevronsUpDown {'}'} from 'lucide-react';</div>
+            </div>
+          </Subsection>
+
+          <Subsection title="Accessibility">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <div className="font-medium text-text-primary mb-2">aria-sort Attribute</div>
+                <p className="text-sm text-text-secondary mb-3">
+                  Active sort column must include <code className="text-accent">aria-sort</code> for screen readers.
+                </p>
+                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
+                  <div className="text-text-muted">// Active column</div>
+                  <div>{'<th aria-sort="ascending">Name</th>'}</div>
+                  <div>{'<th aria-sort="descending">Date</th>'}</div>
+                  <div className="mt-2 text-text-muted">// Inactive column (omit attribute)</div>
+                  <div>{'<th>Status</th>'}</div>
+                </div>
+              </div>
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <div className="font-medium text-text-primary mb-2">Keyboard Support</div>
+                <p className="text-sm text-text-secondary mb-3">
+                  Sortable headers should be focusable and activated with Enter/Space.
+                </p>
+                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
+                  <div className="text-text-muted">// Use button or role="button"</div>
+                  <div>{'<th onClick={handleSort} tabIndex={0}>'}</div>
+                  <div className="mt-2 text-text-muted">// Or wrap in button</div>
+                  <div>{'<th><button onClick={...}>Name</button></th>'}</div>
+                </div>
+              </div>
+            </div>
+          </Subsection>
+
+          <Subsection title="Implementation Pattern">
+            <p className="text-sm text-text-muted mb-4">
+              Extract sortable header logic into a reusable component to avoid code duplication and ensure consistency.
+            </p>
+            <div className="bg-surface-elevated rounded-lg p-4 text-xs font-mono text-text-secondary overflow-x-auto">
+              <pre className="whitespace-pre">{`interface SortableHeaderProps {
+  field: string;
+  label: string;
+  currentField: string;
+  currentDirection: 'asc' | 'desc';
+  onSort: (field: string) => void;
+  align?: 'left' | 'center';
+}
+
+function SortableHeader({ field, label, currentField, currentDirection, onSort, align = 'left' }: SortableHeaderProps) {
+  const isActive = currentField === field;
+  const justifyClass = align === 'center' ? 'justify-center' : '';
+
+  return (
+    <th
+      className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+      onClick={() => onSort(field)}
+      aria-sort={isActive ? (currentDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      <span className={\`flex items-center gap-1 \${justifyClass}\`}>
+        {label}
+        {isActive ? (
+          <span className="text-accent">
+            {currentDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </span>
+        ) : (
+          <span className="opacity-0 group-hover:opacity-50 transition-opacity">
+            <ChevronsUpDown className="w-4 h-4" />
+          </span>
+        )}
+      </span>
+    </th>
+  );
+}`}</pre>
             </div>
           </Subsection>
         </Section>

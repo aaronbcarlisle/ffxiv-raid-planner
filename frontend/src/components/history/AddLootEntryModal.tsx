@@ -76,6 +76,7 @@ export function AddLootEntryModal({
   const [notes, setNotes] = useState(editEntry?.notes || '');
   const [isSaving, setIsSaving] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const [includeSubs, setIncludeSubs] = useState(false);
 
   // Reset form when editEntry or presets change
   useEffect(() => {
@@ -88,6 +89,9 @@ export function AddLootEntryModal({
       setMethod(editEntry.method as LootMethod);
       setNotes(editEntry.notes || '');
       setShowAllRecipients(false);
+      // If the recipient is a substitute, enable includeSubs so they appear in dropdown
+      const recipient = players.find(p => p.id === editEntry.recipientPlayerId);
+      setIncludeSubs(recipient?.isSubstitute ?? false);
     } else {
       // Add mode: use presets if provided, otherwise defaults
       setWeekNumber(currentWeek || 1);
@@ -98,8 +102,9 @@ export function AddLootEntryModal({
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
+      setIncludeSubs(false);
     }
-  }, [editEntry, currentWeek, floors, presetFloor, presetSlot]);
+  }, [editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
   // Get available slots for selected floor
   const availableSlots = useMemo(() => {
@@ -117,20 +122,21 @@ export function AddLootEntryModal({
 
   // Get priority-sorted recipients for selected slot
   const sortedRecipients = useMemo(() => {
-    const configuredPlayers = players.filter((p) => p.configured);
+    // Filter to configured players, excluding subs unless includeSubs is checked
+    const eligiblePlayers = players.filter((p) => p.configured && (includeSubs || !p.isSubstitute));
 
-    if (!itemSlot) return configuredPlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
+    if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
 
     // Get priority entries for this slot
     const priorityEntries = itemSlot === 'ring1' || itemSlot === 'ring2'
-      ? getPriorityForRing(configuredPlayers, DEFAULT_SETTINGS)
-      : getPriorityForItem(configuredPlayers, itemSlot as GearSlot, DEFAULT_SETTINGS);
+      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+      : getPriorityForItem(eligiblePlayers, itemSlot as GearSlot, DEFAULT_SETTINGS);
 
     // Create a map of player ID to priority rank
     const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
 
     // Sort all players: those with priority first (by rank), then others alphabetically
-    return configuredPlayers
+    return eligiblePlayers
       .map(player => {
         const priority = priorityMap.get(player.id);
         return {
@@ -146,7 +152,7 @@ export function AddLootEntryModal({
         if (a.needsItem && b.needsItem) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [players, itemSlot]);
+  }, [players, itemSlot, includeSubs]);
 
   // Filter to only show players who need the item (unless showAllRecipients)
   const visibleRecipients = useMemo(() => {
@@ -295,15 +301,26 @@ export function AddLootEntryModal({
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm text-text-secondary">Recipient</label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showAllRecipients}
-                onChange={(e) => setShowAllRecipients(e.target.checked)}
-                className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-              />
-              <span className="text-xs text-text-muted">Show all players</span>
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeSubs}
+                  onChange={(e) => setIncludeSubs(e.target.checked)}
+                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+                />
+                <span className="text-xs text-text-muted">Include Subs</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAllRecipients}
+                  onChange={(e) => setShowAllRecipients(e.target.checked)}
+                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+                />
+                <span className="text-xs text-text-muted">Show all players</span>
+              </label>
+            </div>
           </div>
           <select
             value={recipientPlayerId}

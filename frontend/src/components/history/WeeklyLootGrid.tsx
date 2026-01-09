@@ -9,23 +9,14 @@
  * - Grid-based item layout
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { getRoleColor, type Role } from '../../gamedata';
-import { type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-
-/**
- * Floor colors - MUST match CSS tokens in index.css
- * @see --color-floor-1, --color-floor-2, --color-floor-3, --color-floor-4
- */
-const FLOOR_COLORS: Record<FloorNumber, string> = {
-  1: '#22c55e', // Green (--color-floor-1)
-  2: '#3b82f6', // Blue (--color-floor-2)
-  3: '#a855f7', // Purple (--color-floor-3)
-  4: '#f59e0b', // Amber (--color-floor-4)
-};
+import { Pencil, Link, Trash2 } from 'lucide-react';
 
 /**
  * Material colors - MUST match CSS tokens in index.css
@@ -35,6 +26,7 @@ const MATERIAL_COLORS: Record<string, string> = {
   twine: '#c4b5fd',   // (--color-gear-crafted)
   glaze: '#fcd34d',   // (--color-gear-augmented)
   solvent: '#f87171', // (--color-progress-priority)
+  universal_tomestone: '#14b8a6', // Teal (accent color)
 };
 
 interface WeeklyLootGridProps {
@@ -44,10 +36,15 @@ interface WeeklyLootGridProps {
   floors: string[];
   currentWeek: number;
   canEdit: boolean;
+  highlightedEntryId?: string | null;
+  highlightedEntryType?: 'loot' | 'material' | null;
   onLogLoot?: (floor: FloorNumber, slot: string) => void;
   onLogMaterial?: (floor: FloorNumber, material: string) => void;
   onDeleteLoot?: (entryId: number) => void;
   onDeleteMaterial?: (entryId: number) => void;
+  onEditLoot?: (entry: LootLogEntry) => void;
+  onEditMaterial?: (entry: MaterialLogEntry) => void;
+  onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
 }
 
@@ -58,11 +55,108 @@ export function WeeklyLootGrid({
   floors,
   currentWeek,
   canEdit,
+  highlightedEntryId,
+  highlightedEntryType,
   onLogLoot,
   onLogMaterial,
   onDeleteLoot,
   onDeleteMaterial,
+  onEditLoot,
+  onEditMaterial,
+  onCopyEntryUrl,
 }: WeeklyLootGridProps) {
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: LootLogEntry | MaterialLogEntry;
+    type: 'loot' | 'material';
+  } | null>(null);
+
+  // Filter out substitute players from display
+  const mainRosterPlayers = useMemo(() =>
+    players.filter(p => !p.isSubstitute),
+    [players]
+  );
+
+  // Handle context menu for entries
+  const handleContextMenu = useCallback((
+    e: React.MouseEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Get context menu items for an entry
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!contextMenu) return [];
+    const { entry, type } = contextMenu;
+    const items: ContextMenuItem[] = [];
+
+    // Edit option - only show if user has edit permission
+    if (type === 'loot' && onEditLoot && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditLoot(entry as LootLogEntry),
+      });
+    }
+
+    if (type === 'material' && onEditMaterial && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditMaterial(entry as MaterialLogEntry),
+      });
+    }
+
+    // Copy URL is always available (read-only action)
+    if (onCopyEntryUrl) {
+      items.push({
+        label: 'Copy URL',
+        icon: <Link className="w-4 h-4" />,
+        onClick: () => onCopyEntryUrl(entry.id, type),
+      });
+    }
+
+    // Separator before delete if there are other items and delete is available
+    const canDeleteLoot = type === 'loot' && onDeleteLoot && canEdit;
+    const canDeleteMaterial = type === 'material' && onDeleteMaterial && canEdit;
+    if (items.length > 0 && (canDeleteLoot || canDeleteMaterial)) {
+      items.push({ separator: true });
+    }
+
+    // Delete options - only show if user has edit permission
+    // Note: Close context menu before delete to prevent stale state
+    if (canDeleteLoot) {
+      items.push({
+        label: 'Delete',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => {
+          setContextMenu(null);
+          onDeleteLoot(entry.id);
+        },
+        danger: true,
+      });
+    }
+
+    if (canDeleteMaterial) {
+      items.push({
+        label: 'Delete',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => {
+          setContextMenu(null);
+          onDeleteMaterial(entry.id);
+        },
+        danger: true,
+      });
+    }
+
+    return items;
+  }, [contextMenu, onEditLoot, onEditMaterial, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),
@@ -74,17 +168,17 @@ export function WeeklyLootGrid({
     [materialLog, currentWeek]
   );
 
-  // Calculate loot counts per player
+  // Calculate loot counts per player (main roster only)
   const playerLootCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    players.forEach(p => { counts[p.id] = 0; });
+    mainRosterPlayers.forEach(p => { counts[p.id] = 0; });
     weekLootEntries.forEach(e => {
       if (counts[e.recipientPlayerId] !== undefined) {
         counts[e.recipientPlayerId]++;
       }
     });
     return counts;
-  }, [players, weekLootEntries]);
+  }, [mainRosterPlayers, weekLootEntries]);
 
   // Calculate average for fairness coloring
   const avgLoot = useMemo(() => {
@@ -217,7 +311,10 @@ export function WeeklyLootGrid({
         { slot: 'hands', name: 'Hands' },
         { slot: 'feet', name: 'Feet' },
       ],
-      materials: [{ type: 'glaze', name: 'Glaze' }],
+      materials: [
+        { type: 'glaze', name: 'Glaze' },
+        { type: 'universal_tomestone', name: 'Tome' },
+      ],
     },
     {
       number: 3,
@@ -247,7 +344,7 @@ export function WeeklyLootGrid({
     <div className="space-y-4">
       {/* Loot Count Summary Bar */}
       <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-auto">
-        {players.map(player => {
+        {mainRosterPlayers.map(player => {
           const count = playerLootCounts[player.id] || 0;
           const style = getLootCountStyle(count);
           const roleColor = getRoleColor(getValidRole(player.role));
@@ -282,15 +379,15 @@ export function WeeklyLootGrid({
             <div
               className="flex items-center px-4 py-2.5"
               style={{
-                backgroundColor: `${FLOOR_COLORS[floor.number]}10`,
+                backgroundColor: `${FLOOR_COLORS[floor.number].hex}10`,
                 borderTop: floorIdx > 0 ? '1px solid var(--border-default)' : 'none',
               }}
             >
               <div
                 className="w-1 h-5 rounded mr-3"
-                style={{ backgroundColor: FLOOR_COLORS[floor.number] }}
+                style={{ backgroundColor: FLOOR_COLORS[floor.number].hex }}
               />
-              <div className="font-bold" style={{ color: FLOOR_COLORS[floor.number] }}>
+              <div className="font-bold" style={{ color: FLOOR_COLORS[floor.number].hex }}>
                 {floor.id}
               </div>
               <div className="ml-3 text-xs text-text-muted">
@@ -310,13 +407,38 @@ export function WeeklyLootGrid({
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
-                  const canClick = canEdit && onLogLoot && !lootEntry;
+                  const canClickToLog = canEdit && onLogLoot && !lootEntry;
+                  const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
+                  const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id) && (!highlightedEntryType || highlightedEntryType === 'loot');
 
+                  const isClickable = canClickToLog || canClickToEdit;
                   return (
                     <div
                       key={item.slot}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${canClick ? 'cursor-pointer' : ''}`}
-                      onClick={canClick ? () => onLogLoot(floor.number, item.slot) : undefined}
+                      id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      onClick={() => {
+                        // Edit takes priority over log (mutually exclusive but use else for clarity)
+                        if (canClickToEdit && lootEntry) {
+                          onEditLoot(lootEntry);
+                        } else if (canClickToLog) {
+                          onLogLoot(floor.number, item.slot);
+                        }
+                      }}
+                      onKeyDown={isClickable ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          // Edit takes priority over log
+                          if (canClickToEdit && lootEntry) {
+                            onEditLoot(lootEntry);
+                          } else if (canClickToLog) {
+                            onLogLoot(floor.number, item.slot);
+                          }
+                        }
+                      } : undefined}
+                      onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
+                      role={isClickable ? 'button' : undefined}
+                      tabIndex={isClickable ? 0 : -1}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -327,13 +449,38 @@ export function WeeklyLootGrid({
                 {/* Material columns */}
                 {floor.materials.map(mat => {
                   const matEntry = getMaterialForFloor(floor.number, mat.type);
-                  const canClickMat = canEdit && onLogMaterial && !matEntry;
+                  const canClickToLogMat = canEdit && onLogMaterial && !matEntry;
+                  const canClickToEditMat = canEdit && onEditMaterial && !!matEntry;
+                  const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
 
+                  const isClickable = canClickToLogMat || canClickToEditMat;
                   return (
                     <div
                       key={mat.type}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''}`}
-                      onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
+                      id={matEntry ? `material-entry-${matEntry.id}` : undefined}
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      onClick={() => {
+                        // Edit takes priority over log (mutually exclusive but use else for clarity)
+                        if (canClickToEditMat && matEntry) {
+                          onEditMaterial(matEntry);
+                        } else if (canClickToLogMat) {
+                          onLogMaterial(floor.number, mat.type);
+                        }
+                      }}
+                      onKeyDown={isClickable ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          // Edit takes priority over log
+                          if (canClickToEditMat && matEntry) {
+                            onEditMaterial(matEntry);
+                          } else if (canClickToLogMat) {
+                            onLogMaterial(floor.number, mat.type);
+                          }
+                        }
+                      } : undefined}
+                      onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
+                      role={isClickable ? 'button' : undefined}
+                      tabIndex={isClickable ? 0 : -1}
                     >
                       <div
                         className="text-[10px] mb-1"
@@ -351,6 +498,15 @@ export function WeeklyLootGrid({
         ))}
       </div>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

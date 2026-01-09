@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,7 +29,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   const sizeClass = SIZE_CLASSES[size];
 
-  return (
+  // Use portal to render at document body level, preventing inherited styles (opacity, transforms)
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={handleBackdropEvent}
@@ -45,6 +48,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         </div>
         <div className="p-4 overflow-y-auto flex-1">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

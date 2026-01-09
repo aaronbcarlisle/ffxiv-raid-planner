@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.1 Released (Phase 1-6.5 + Parity + Audit Improvements) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.2 Released (Phase 1-6.5 + Parity + Audit + UX Improvements) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -57,11 +57,16 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `utils/priority.ts` | Loot priority calculations |
 | `utils/lootCoordination.ts` | Cross-store loot/gear sync |
 | `utils/weaponPriority.ts` | Weapon priority scoring |
-| `gamedata/loot-tables.ts` | Floor drop tables |
+| `gamedata/loot-tables.ts` | Floor drop tables, FLOOR_COLORS |
 | `gamedata/raid-tiers.ts` | Tier configuration |
 | `data/releaseNotes.ts` | Version history data |
-| `pages/ReleaseNotes.tsx` | Release notes page |
+| `pages/ReleaseNotes.tsx` | Release notes page with collapsible nav |
+| `pages/GroupView.tsx` | Main group view with tab navigation |
+| `pages/AdminDashboard.tsx` | Admin-only static browser |
 | `components/layout/ReleaseBanner.tsx` | New version notification |
+| `components/history/WeeklyLootGrid.tsx` | Spreadsheet-style loot grid |
+| `components/history/SectionedLogView.tsx` | Log tab with floor filters |
+| `components/ui/ContextMenu.tsx` | Reusable context menu |
 | `lib/errorHandler.ts` | Centralized error parsing with HTTP messages |
 | `lib/logger.ts` | Development-aware logging with scoping |
 | `lib/eventBus.ts` | Pub/sub for cross-component communication |
@@ -78,7 +83,7 @@ See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-a
 
 ### Resolved in v1.0.1
 - ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
-- ~~**T-001:** Low test coverage~~ - Now 240 tests (98 backend + 142 frontend)
+- ~~**T-001:** Low test coverage~~ - Now 321 tests (95 backend + 226 frontend)
 
 ---
 
@@ -121,7 +126,7 @@ interface SnapshotPlayer {
 }
 ```
 
-### Tests (237 Total)
+### Tests (321 Total)
 
 **Backend (95 tests):**
 ```bash
@@ -134,7 +139,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests for PR features
 
-**Frontend (142 tests):**
+**Frontend (226 tests):**
 ```bash
 pnpm test
 ```
@@ -143,6 +148,10 @@ pnpm test
 - `eventBus.test.ts` - Event bus pub/sub
 - `tierStore.selectors.test.ts` - Zustand selector hooks
 - `calculations.test.ts` - iLv and priority calculations
+- `priority.test.ts` - Loot priority scoring
+- `releaseNotes.test.ts` - Release notes data validation (v1.0.2)
+- `uxHelpers.test.ts` - UX patterns and accessibility (v1.0.2)
+- `lootCoordination.test.ts` - Loot stats and gear sync (v1.0.2)
 
 ### Optional Future Enhancements
 - Add currentSource dropdown to GearTable (manual override per slot)
@@ -367,6 +376,43 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Proactive token refresh on app load (60-second buffer)
 - Production misconfiguration detection with console warnings
 - JWT expiration check prevents unnecessary 401 errors
+
+### Weekly Loot Grid (v1.0.2)
+- Spreadsheet-style view in Log tab for viewing/logging weekly loot
+- Floor-colored section headers matching floor selector colors
+- Click cells to log loot, right-click for context menu
+- Context menu respects `canEdit` permission - Edit/Delete hidden for read-only users
+- Loot count summary bar shows distribution fairness indicators
+- `highlightedEntryId` prop supports deep linking with pulse animation
+
+### Floor Selectors (v1.0.2)
+- Unified colored button tabs across Gear Priorities, Who Needs It, and Log By Floor
+- `FLOOR_COLORS` from `loot-tables.ts` provides consistent colors
+- Use `aria-pressed={isSelected}` for accessibility
+- Floor filter uses `invisible` class instead of conditional render to prevent layout shift
+
+### Smart Tab Navigation (v1.0.2)
+- When switching statics via StaticSwitcher, check if new group has players
+- If no players, auto-switch to "players" tab to prevent empty state confusion
+- Uses `setPageMode()` wrapper (not direct state setter) to sync URL and localStorage
+
+### Dashboard Context Menus (v1.0.2)
+- Right-click static cards for quick actions: Open, Rename, Copy Share Code, Delete
+- Delete option only shown to owners (`role === 'owner'`)
+- Uses `ContextMenu` component from `components/ui/ContextMenu.tsx`
+
+### Release Notes Navigation (v1.0.2)
+- Collapsible version sections using expandedVersions Set state
+- Sticky navigation panel with scroll-synced active version tracking
+- `scrollEndTimeoutRef` prevents scroll jitter with 150ms debounce
+- `isScrollingRef` prevents recursive updates during programmatic scrolls
+- URL hash navigation auto-expands target version section
+- Uses `ReturnType<typeof setTimeout>` for cross-environment type safety
+
+### Subs Toggle (v1.0.2)
+- Independent from G1/G2 view - can show subs without group split
+- Matches G1/G2 toggle styling with user-add icon and accent colors
+- Uses `aria-label` for accessibility
 
 ### Admin System (v1.0.2)
 Super-user access for app owners to troubleshoot any static group.

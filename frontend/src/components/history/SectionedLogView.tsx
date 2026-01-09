@@ -20,6 +20,7 @@ import { FloorSection } from './FloorSection';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
 import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import {
   Dropdown,
   DropdownTrigger,
@@ -27,11 +28,12 @@ import {
   DropdownItem,
   DropdownSeparator,
 } from '../primitives/Dropdown';
-import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
+import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
+import { Pencil, Link, Trash2 } from 'lucide-react';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -80,7 +82,6 @@ export function SectionedLogView({
     fetchPageBalances,
     fetchWeekDataTypes,
     deleteMaterialEntry,
-    updateLootEntry,
   } = useLootTrackingStore();
 
   // Modal states
@@ -99,6 +100,7 @@ export function SectionedLogView({
     playerName: string;
   } | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | undefined>(undefined);
+  const [materialEntryToEdit, setMaterialEntryToEdit] = useState<MaterialLogEntry | undefined>(undefined);
   const [resetModalType, setResetModalType] = useState<ResetType | null>(null);
 
   // Confirmation modal state
@@ -150,10 +152,11 @@ export function SectionedLogView({
 
   const handleUpdateLoot = useCallback(async (updates: LootLogEntryUpdate) => {
     if (!entryToEdit) return;
-    await updateLootEntry(groupId, tierId, entryToEdit.id, updates);
+    // Use updateLootAndSyncGear to properly update player gear when recipient changes
+    await updateLootAndSyncGear(groupId, tierId, entryToEdit.id, entryToEdit, updates, { syncGear: true });
     await fetchLootLog(groupId, tierId, currentWeek);
     toast.success('Loot entry updated');
-  }, [groupId, tierId, currentWeek, entryToEdit, updateLootEntry, fetchLootLog]);
+  }, [groupId, tierId, currentWeek, entryToEdit, fetchLootLog]);
 
   const handleDeleteLoot = useCallback((entry: LootLogEntry) => {
     setConfirmState({
@@ -200,6 +203,14 @@ export function SectionedLogView({
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry logged');
   }, [groupId, tierId, onWeekChange, fetchMaterialLog, fetchWeekDataTypes]);
+
+  const handleUpdateMaterial = useCallback(async (updates: MaterialLogEntryUpdate) => {
+    if (!materialEntryToEdit) return;
+    const { updateMaterialEntry } = useLootTrackingStore.getState();
+    await updateMaterialEntry(groupId, tierId, materialEntryToEdit.id, updates);
+    await fetchMaterialLog(groupId, tierId, currentWeek);
+    toast.success('Material entry updated');
+  }, [groupId, tierId, currentWeek, materialEntryToEdit, fetchMaterialLog]);
 
   // Get the week parameter for fetching page balances based on view mode
   const getBalanceWeekParam = useCallback(() => {
@@ -370,23 +381,41 @@ export function SectionedLogView({
 
   // Highlighted entry for deep-link scroll animation
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+  const [highlightedEntryType, setHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
 
   // Handle entry deep link - scroll to and highlight entry
   useEffect(() => {
     const entryParam = searchParams.get('entry');
-    if (!entryParam || !lootLog) return;
+    const entryTypeParam = searchParams.get('entryType') as 'loot' | 'material' | null;
+    if (!entryParam) return;
 
     // Find the entry (entry.id is a number, URL param is string)
     const entryId = parseInt(entryParam, 10);
-    const entry = lootLog.find(e => e.id === entryId);
-    if (!entry) return;
+
+    // Determine entry type and find the entry
+    let entryType: 'loot' | 'material' = entryTypeParam || 'loot';
+    let elementId: string;
+
+    if (entryType === 'material' && materialLog) {
+      const entry = materialLog.find(e => e.id === entryId);
+      if (!entry) return;
+      elementId = `material-entry-${entryParam}`;
+    } else if (lootLog) {
+      const entry = lootLog.find(e => e.id === entryId);
+      if (!entry) return;
+      elementId = `loot-entry-${entryParam}`;
+      entryType = 'loot';
+    } else {
+      return;
+    }
 
     // Set highlighted entry (store as string for consistency)
     setHighlightedEntryId(entryParam);
+    setHighlightedEntryType(entryType);
 
     // Scroll to the entry after a short delay
     setTimeout(() => {
-      const element = document.getElementById(`loot-entry-${entryParam}`);
+      const element = document.getElementById(elementId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -395,16 +424,18 @@ export function SectionedLogView({
     // Clear highlight after animation
     const timer = setTimeout(() => {
       setHighlightedEntryId(null);
-      // Clear entry param from URL
+      setHighlightedEntryType(null);
+      // Clear entry params from URL
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
         params.delete('entry');
+        params.delete('entryType');
         return params;
       }, { replace: true });
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [searchParams, lootLog, setSearchParams]);
+  }, [searchParams, lootLog, materialLog, setSearchParams]);
 
   // Floor filter for By Floor view (which floors to show)
   const [visibleFloors, setVisibleFloors] = useState<Set<FloorNumber>>(new Set([1, 2, 3, 4]));
@@ -430,6 +461,14 @@ export function SectionedLogView({
     floor: FloorNumber;
     slot?: string;
     materialType?: string;
+  } | null>(null);
+
+  // Context menu state for list view entries
+  const [listContextMenu, setListContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: LootLogEntry | MaterialLogEntry;
+    type: 'loot' | 'material';
   } | null>(null);
 
   // Combine loot and material entries, sorted by creation time (newest first)
@@ -459,10 +498,15 @@ export function SectionedLogView({
   }, [combinedEntries]);
 
   // Helper to copy entry URL
-  const handleCopyEntryUrl = useCallback((entryId: string) => {
+  const handleCopyEntryUrl = useCallback((entryId: string, entryType: 'loot' | 'material' = 'loot') => {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'log');
     url.searchParams.set('entry', entryId);
+    if (entryType === 'material') {
+      url.searchParams.set('entryType', 'material');
+    } else {
+      url.searchParams.delete('entryType'); // Default is loot, no need to include
+    }
     navigator.clipboard.writeText(url.toString());
     toast.success('Link copied to clipboard');
   }, []);
@@ -479,6 +523,7 @@ export function SectionedLogView({
           key={`loot-${entry.id}`}
           id={`loot-entry-${entry.id}`}
           className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isHighlighted ? 'highlight-pulse' : ''}`}
+          onContextMenu={(e) => handleListContextMenu(e, entry, 'loot')}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -542,10 +587,13 @@ export function SectionedLogView({
         </div>
       );
     } else {
+      const isMatHighlighted = highlightedEntryId === String(entry.id) && highlightedEntryType === 'material';
       return (
         <div
           key={`mat-${entry.id}`}
-          className="bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3"
+          id={`material-entry-${entry.id}`}
+          className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+          onContextMenu={(e) => handleListContextMenu(e, entry, 'material')}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -599,6 +647,92 @@ export function SectionedLogView({
       await handleDeleteLoot(entry);
     }
   }, [weekLootEntries, handleDeleteLoot]);
+
+  // Handler for editing loot from grid
+  const handleGridEditLoot = useCallback((entry: LootLogEntry) => {
+    setEntryToEdit(entry);
+    setGridModalState(null);
+    setShowLootModal(true);
+  }, []);
+
+  // Handler for editing material from grid
+  const handleGridEditMaterial = useCallback((entry: MaterialLogEntry) => {
+    setMaterialEntryToEdit(entry);
+    setGridModalState(null);
+    setShowMaterialModal(true);
+  }, []);
+
+  // Handler for copying entry URL (used by both list and grid)
+  const handleCopyEntryUrlById = useCallback((entryId: number, entryType: 'loot' | 'material' = 'loot') => {
+    handleCopyEntryUrl(String(entryId), entryType);
+  }, [handleCopyEntryUrl]);
+
+  // Handle right-click on list view entries
+  const handleListContextMenu = useCallback((
+    e: React.MouseEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    e.preventDefault();
+    setListContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Get context menu items for list view entries
+  const getListContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!listContextMenu) return [];
+    const { entry, type } = listContextMenu;
+    const items: ContextMenuItem[] = [];
+
+    if (type === 'loot' && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => {
+          setEntryToEdit(entry as LootLogEntry);
+          setShowLootModal(true);
+        },
+      });
+    }
+
+    if (type === 'material' && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => {
+          setMaterialEntryToEdit(entry as MaterialLogEntry);
+          setShowMaterialModal(true);
+        },
+      });
+    }
+
+    items.push({
+      label: 'Copy URL',
+      icon: <Link className="w-4 h-4" />,
+      onClick: () => handleCopyEntryUrl(String(entry.id), type),
+    });
+
+    if (canEdit) {
+      items.push({ separator: true });
+
+      if (type === 'loot') {
+        items.push({
+          label: 'Delete',
+          icon: <Trash2 className="w-4 h-4" />,
+          onClick: () => handleDeleteLoot(entry as LootLogEntry),
+          danger: true,
+        });
+      } else {
+        items.push({
+          label: 'Delete',
+          icon: <Trash2 className="w-4 h-4" />,
+          onClick: () => handleDeleteMaterial(entry.id),
+          danger: true,
+        });
+      }
+    }
+
+    return items;
+  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial]);
 
   return (
     <div className="space-y-4">
@@ -673,12 +807,6 @@ export function SectionedLogView({
         {canEdit && (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowFloorClearedModal(true)}
-              className="px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
-            >
-              Mark Floor Cleared
-            </button>
-            <button
               onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
               className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
             >
@@ -707,10 +835,15 @@ export function SectionedLogView({
               floors={floors}
               currentWeek={currentWeek}
               canEdit={canEdit}
+              highlightedEntryId={highlightedEntryId}
+              highlightedEntryType={highlightedEntryType}
               onLogLoot={handleGridLogLoot}
               onLogMaterial={handleGridLogMaterial}
               onDeleteLoot={handleGridDeleteLoot}
               onDeleteMaterial={handleDeleteMaterial}
+              onEditLoot={handleGridEditLoot}
+              onEditMaterial={handleGridEditMaterial}
+              onCopyEntryUrl={handleCopyEntryUrlById}
             />
           )}
 
@@ -744,25 +877,31 @@ export function SectionedLogView({
                     </button>
                   </div>
                 </div>
-                {/* Floor filter - only shown in By Floor mode */}
-                {lootViewMode === 'byFloor' && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-text-muted mr-1">Floors:</span>
-                    {([1, 2, 3, 4] as FloorNumber[]).map(floor => (
+                {/* Floor filter - hidden in Timeline mode but still rendered to prevent layout shift */}
+                <div className={`flex items-center gap-2 ${lootViewMode !== 'byFloor' ? 'invisible' : ''}`}>
+                  <span className="text-xs text-text-muted mr-1">Floor:</span>
+                  {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
+                    const isSelected = visibleFloors.has(floor);
+                    const floorColors = FLOOR_COLORS[floor];
+                    return (
                       <button
                         key={floor}
                         onClick={() => toggleFloorVisibility(floor)}
-                        className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
-                          visibleFloors.has(floor)
-                            ? 'bg-accent text-accent-contrast'
-                            : 'bg-surface-base text-text-muted hover:text-text-secondary'
-                        }`}
+                        aria-label={`Filter by Floor ${floor}`}
+                        aria-pressed={isSelected}
+                        className={`
+                          px-3 py-1.5 rounded text-xs font-bold transition-colors border
+                          ${isSelected
+                            ? `${floorColors.bg} ${floorColors.text} ${floorColors.border}`
+                            : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
+                          }
+                        `}
                       >
                         {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
                       </button>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
               <div className="p-4 space-y-3 max-h-[700px] overflow-y-auto">
                 {/* Loot Count Summary Bar */}
@@ -863,7 +1002,8 @@ export function SectionedLogView({
                     <tbody>
                       {pageBalances.map((balance) => {
                         const player = players.find(p => p.id === balance.playerId);
-                        if (!player) return null;
+                        // Skip substitute players
+                        if (!player || player.isSubstitute) return null;
 
                         return (
                           <tr key={balance.playerId} className="border-t border-border-subtle hover:bg-surface-elevated/50">
@@ -909,6 +1049,18 @@ export function SectionedLogView({
                     </tbody>
                   </table>
                 )}
+
+                {/* Mark Floor Cleared - at bottom of Books section */}
+                {canEdit && (
+                  <div className="p-2 border-t border-border-subtle">
+                    <button
+                      onClick={() => setShowFloorClearedModal(true)}
+                      className="w-full px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
+                    >
+                      Mark Floor Cleared
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -937,13 +1089,15 @@ export function SectionedLogView({
       {showMaterialModal && (
         <LogMaterialModal
           isOpen={showMaterialModal}
-          onClose={() => { setShowMaterialModal(false); setGridModalState(null); }}
+          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); }}
           onSubmit={handleMaterialSubmit}
+          onUpdate={handleUpdateMaterial}
           players={players}
           floors={floors}
           currentWeek={currentWeek}
           presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
           suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
+          editEntry={materialEntryToEdit}
         />
       )}
 
@@ -1006,6 +1160,16 @@ export function SectionedLogView({
           variant="danger"
           onConfirm={confirmState.onConfirm}
           onCancel={() => setConfirmState(null)}
+        />
+      )}
+
+      {/* List View Context Menu */}
+      {listContextMenu && (
+        <ContextMenu
+          x={listContextMenu.x}
+          y={listContextMenu.y}
+          items={getListContextMenuItems()}
+          onClose={() => setListContextMenu(null)}
         />
       )}
     </div>

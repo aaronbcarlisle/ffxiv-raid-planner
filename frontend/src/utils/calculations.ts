@@ -181,21 +181,29 @@ export function sortPlayersByRole(
 
 /**
  * Group players by light party based on raid position
+ * @param players - List of players to group
+ * @param separateSubs - If true, substitutes are returned in a separate array instead of in their groups
  */
-export function groupPlayersByLightParty(players: SnapshotPlayer[]): {
+export function groupPlayersByLightParty(players: SnapshotPlayer[], separateSubs = false): {
   group1: SnapshotPlayer[]; // T1, H1, M1, R1
   group2: SnapshotPlayer[]; // T2, H2, M2, R2
   unassigned: SnapshotPlayer[];
+  substitutes: SnapshotPlayer[];
 } {
   const g1Positions = ['T1', 'H1', 'M1', 'R1'];
   const g2Positions = ['T2', 'H2', 'M2', 'R2'];
 
+  // If separating subs, filter them out first
+  const mainPlayers = separateSubs ? players.filter((p) => !p.isSubstitute) : players;
+  const subs = separateSubs ? players.filter((p) => p.isSubstitute) : [];
+
   return {
-    group1: players.filter((p) => p.position && g1Positions.includes(p.position)),
-    group2: players.filter((p) => p.position && g2Positions.includes(p.position)),
-    unassigned: players.filter(
+    group1: mainPlayers.filter((p) => p.position && g1Positions.includes(p.position)),
+    group2: mainPlayers.filter((p) => p.position && g2Positions.includes(p.position)),
+    unassigned: mainPlayers.filter(
       (p) => !p.position || (!g1Positions.includes(p.position) && !g2Positions.includes(p.position))
     ),
+    substitutes: subs,
   };
 }
 
@@ -292,13 +300,12 @@ export function calculateAverageItemLevel(
 
     // Calculate from currentSource for unacquired gear or when itemLevel unavailable
     const currentSource = getEffectiveCurrentSource(slot);
-    if (currentSource === 'unknown') {
-      // Skip unknown slots in average calculation
-      continue;
-    }
-
     const isWeapon = slot.slot === 'weapon';
-    const iLv = getItemLevelForCategory(tierId, currentSource, isWeapon);
+
+    // For 'unknown' slots, assume crafted gear as baseline (most common starting point)
+    // This prevents inflated averages when only a few items are checked
+    const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
+    const iLv = getItemLevelForCategory(tierId, effectiveSource, isWeapon);
     if (iLv > 0) {
       totalILv += iLv;
       validSlots++;

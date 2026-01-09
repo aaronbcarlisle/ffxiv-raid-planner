@@ -179,6 +179,7 @@ function WeaponPriorityCard({
                           >
                             -
                           </span>
+                          <JobIcon job={tieEntry.player.job} size="xs" />
                           <span
                             className={`truncate ${
                               isWinner ? 'text-green-400 font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
@@ -246,6 +247,7 @@ function WeaponPriorityCard({
                   >
                     {displayRank}.
                   </span>
+                  <JobIcon job={entry.player.job} size="xs" />
                   <span
                     className={`truncate ${
                       isFirst ? 'text-accent font-medium' : 'text-text-secondary'

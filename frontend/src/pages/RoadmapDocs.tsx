@@ -193,17 +193,12 @@ const KNOWN_ISSUES: Issue[] = [
   {
     title: 'No database migrations',
     description: 'Schema changes require manual database updates. Alembic migrations planned.',
-    priority: 'critical',
-  },
-  {
-    title: 'Limited test coverage',
-    description: 'Core functionality works but automated tests are minimal.',
     priority: 'high',
   },
   {
-    title: 'No rate limiting',
-    description: 'API endpoints lack rate limiting. Will add before public launch.',
-    priority: 'high',
+    title: 'Large component files',
+    description: 'Some view components exceed 500 lines. Refactoring into smaller components planned.',
+    priority: 'medium',
   },
 ];
 
