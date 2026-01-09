@@ -76,7 +76,7 @@ function CategoryBadge({ category }: { category: ReleaseCategory }) {
 
 function ReleaseItemRow({ item }: { item: ReleaseItem }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0) || item.image;
+  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0) || item.image || item.link;
 
   return (
     <li className="group">

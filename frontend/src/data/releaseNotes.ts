@@ -22,6 +22,7 @@ export interface ReleaseItem {
   details?: string; // Extended description shown when expanded
   commits?: CommitInfo[]; // Related commits
   image?: string; // Path to image/gif shown when expanded
+  link?: { href: string; label: string }; // Link to related page
 }
 
 export interface Release {
@@ -46,6 +47,7 @@ export const RELEASES: Release[] = [
         description: 'New /docs section with guides for leads and members',
         details:
           'Complete documentation system with role-based guides (Leads vs Members), common tasks reference, and technical documentation. Includes Getting Started guides, API reference, loot math explanations, and design system documentation.',
+        link: { href: '/docs', label: 'View Documentation' },
         commits: [
           { hash: 'c9f1672', message: 'Add comprehensive documentation system' },
           { hash: '899eec2', message: 'Comment out unused ImagePlaceholder function' },
@@ -57,6 +59,7 @@ export const RELEASES: Release[] = [
         description: 'Full API documentation with Python and curl examples',
         details:
           'Interactive API documentation covering all endpoints: authentication, static groups, tier snapshots, players, loot logging, and BiS import. Includes a cookbook with copy-paste Python and curl examples for common workflows.',
+        link: { href: '/docs/api', label: 'View API Docs' },
       },
       {
         category: 'feature',
@@ -64,6 +67,7 @@ export const RELEASES: Release[] = [
         description: 'Detailed explanations of priority calculations and formulas',
         details:
           'Deep dive into how priority scores are calculated, including role-based weighting, slot value weights, weapon priority system, and the book/page economy. Includes actual formulas and code references.',
+        link: { href: '/docs/loot-math', label: 'View Loot Math' },
       },
       {
         category: 'feature',
@@ -71,6 +75,7 @@ export const RELEASES: Release[] = [
         description: 'Track updates with version history and new release notifications',
         details:
           'New release banner appears when updates are deployed. Dismissible by clicking X or viewing release notes. Version history page shows all releases with categorized changes.',
+        link: { href: '/docs/release-notes', label: 'View Release Notes' },
       },
       {
         category: 'improvement',
@@ -85,6 +90,7 @@ export const RELEASES: Release[] = [
         description: 'Fixed weapon logging to properly track job assignments',
         details:
           'Weapon drops now correctly record which job the weapon was assigned to. This affects both the loot log history and weapon priority calculations.',
+        image: '/images/release-notes/weapon-type.png',
         commits: [
           { hash: 'a3c454b', message: 'Fix weapon job tracking in loot log and priority updates' },
           { hash: '24acf84', message: 'Improve weapon logging with job tracking and extra loot tagging' },
