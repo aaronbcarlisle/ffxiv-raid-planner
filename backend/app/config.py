@@ -1,5 +1,6 @@
 """Application configuration using pydantic-settings"""
 
+import re
 import secrets
 from functools import lru_cache
 from typing import Self
@@ -90,8 +91,14 @@ class Settings(BaseSettings):
                     "JWT_SECRET_KEY must be at least 32 characters in production"
                 )
 
-            forbidden_patterns = ['changeme', 'secret', 'dev-', 'test', 'placeholder', 'example']
-            if any(p in self.jwt_secret_key.lower() for p in forbidden_patterns):
+            # Check for placeholder patterns using word boundaries to reduce false positives
+            # with randomly generated secrets that might contain letter sequences like "test"
+            forbidden_patterns = [
+                r'\bchangeme\b', r'\bsecret\b', r'\bdev[-_]', r'\btest[-_]',
+                r'\bplaceholder\b', r'\bexample\b', r'^password', r'_key$'
+            ]
+            secret_lower = self.jwt_secret_key.lower()
+            if any(re.search(p, secret_lower) for p in forbidden_patterns):
                 raise ValueError(
                     "JWT_SECRET_KEY appears to contain a placeholder value - "
                     "please use a secure random key"

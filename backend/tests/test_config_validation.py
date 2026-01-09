@@ -52,12 +52,15 @@ class TestProductionConfigValidation:
         from app.config import Settings
 
         # All secrets must be 32+ chars to pass length check and hit pattern check
+        # Patterns use word boundaries to reduce false positives
         placeholder_secrets = [
-            ("changeme_please_this_is_32_chars!", "changeme"),  # 33 chars
-            ("my_secret_key_for_testing_1234567", "secret"),    # 34 chars, contains "secret"
-            ("dev-secret-key-for-development-!!!", "secret"),   # 35 chars, contains "dev-" and "secret"
-            ("test_jwt_secret_key_placeholder!!", "test"),      # 33 chars, contains "test"
-            ("placeholder_value_for_jwt_tokens!", "placeholder"),  # 34 chars
+            ("changeme please this is 32 chars!", "changeme"),  # word boundary match
+            ("my secret key for production use!!", "secret"),   # word boundary match
+            ("dev-production-key-for-my-server!", "dev-"),      # dev- at word boundary
+            ("test_production_jwt_secret_key!!", "test_"),      # test_ at word boundary
+            ("placeholder value for jwt tokens!", "placeholder"),  # word boundary match
+            ("password_for_production_server!!!", "password"),  # ^password pattern
+            ("supersecure_production_secret_key", "_key"),      # _key$ pattern
         ]
 
         for secret, expected_pattern in placeholder_secrets:
@@ -70,7 +73,7 @@ class TestProductionConfigValidation:
                 )
 
             error_msg = str(exc_info.value).lower()
-            assert "placeholder" in error_msg or expected_pattern in error_msg, \
+            assert "placeholder" in error_msg or expected_pattern.replace("_", "").replace("-", "") in error_msg, \
                 f"Expected error about placeholder patterns for '{secret}', got: {exc_info.value}"
 
     def test_production_accepts_valid_secret(self):

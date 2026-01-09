@@ -76,9 +76,28 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_material_log_entries_tier_week", table_name="material_log_entries")
-    op.drop_index("ix_page_ledger_entries_player_week", table_name="page_ledger_entries")
-    op.drop_index("ix_page_ledger_entries_player_id", table_name="page_ledger_entries")
-    op.drop_index("ix_loot_log_entries_floor", table_name="loot_log_entries")
-    op.drop_index("ix_loot_log_entries_tier_week", table_name="loot_log_entries")
-    op.drop_index("ix_snapshot_players_position", table_name="snapshot_players")
+    # Check for existing indexes before dropping to make migration idempotent
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    def index_exists(table_name: str, index_name: str) -> bool:
+        indexes = inspector.get_indexes(table_name)
+        return any(idx["name"] == index_name for idx in indexes)
+
+    if index_exists("material_log_entries", "ix_material_log_entries_tier_week"):
+        op.drop_index("ix_material_log_entries_tier_week", table_name="material_log_entries")
+
+    if index_exists("page_ledger_entries", "ix_page_ledger_entries_player_week"):
+        op.drop_index("ix_page_ledger_entries_player_week", table_name="page_ledger_entries")
+
+    if index_exists("page_ledger_entries", "ix_page_ledger_entries_player_id"):
+        op.drop_index("ix_page_ledger_entries_player_id", table_name="page_ledger_entries")
+
+    if index_exists("loot_log_entries", "ix_loot_log_entries_floor"):
+        op.drop_index("ix_loot_log_entries_floor", table_name="loot_log_entries")
+
+    if index_exists("loot_log_entries", "ix_loot_log_entries_tier_week"):
+        op.drop_index("ix_loot_log_entries_tier_week", table_name="loot_log_entries")
+
+    if index_exists("snapshot_players", "ix_snapshot_players_position"):
+        op.drop_index("ix_snapshot_players_position", table_name="snapshot_players")
