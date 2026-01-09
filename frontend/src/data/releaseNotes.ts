@@ -39,7 +39,7 @@ export const RELEASES: Release[] = [
     version: '1.0.2',
     date: '2026-01-09',
     title: 'UX Improvements',
-    highlights: ['Grid view for loot logging', 'Smart tab navigation'],
+    highlights: ['Grid view for loot logging', 'Material editing & sub filtering'],
     items: [
       {
         category: 'feature',
@@ -146,6 +146,54 @@ export const RELEASES: Release[] = [
         details:
           'Fixed layout shift when switching between By Floor and Timeline views in Log tab. Floor filter now uses invisible class instead of conditional rendering.',
         commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
+      },
+      {
+        category: 'feature',
+        title: 'Material log editing',
+        description: 'Edit existing material entries from Log tab',
+        details:
+          'Click existing material cells in grid view or use context menu in list view to edit material log entries. Supports changing recipient, week, and notes.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+      },
+      {
+        category: 'feature',
+        title: 'Substitute player filtering',
+        description: 'Subs excluded from priority calculations by default',
+        details:
+          'Substitute players are now excluded from Loot Priority tab, Summary tab, and Mark Floor Cleared modal. Loot logging modals have an "Include Subs" checkbox to optionally include substitutes in recipient lists.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+      },
+      {
+        category: 'fix',
+        title: 'Admin banner display',
+        description: 'Fixed admin access banner not appearing',
+        details:
+          'Admin users now correctly see the amber "Admin Access" banner when viewing statics they don\'t belong to. The isAdminAccess flag is now properly returned from all API endpoints.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+      },
+      {
+        category: 'fix',
+        title: 'Admin dashboard sorting',
+        description: 'Fixed sorting by member count, tier count, and owner',
+        details:
+          'Sorting in Admin Dashboard now works correctly for computed columns (member count, tier count) and owner information using optimized subqueries.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+      },
+      {
+        category: 'fix',
+        title: 'iLv calculation accuracy',
+        description: 'Fixed inflated averages for unconfigured gear',
+        details:
+          'Players with few gear slots configured no longer show inflated iLv. Unknown/unconfigured slots now use crafted gear baseline (770) instead of being excluded from the average.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+      },
+      {
+        category: 'fix',
+        title: 'Mark Floor Cleared state reset',
+        description: 'Modal now resets properly when reopened',
+        details:
+          'Fixed bug where Mark Floor Cleared modal retained previous selections. Modal state now properly resets when opened.',
+        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
       },
     ],
   },
