@@ -44,9 +44,9 @@ After investigation, most items listed in CONSOLIDATED_STATUS.md were **already 
 | Item | Priority | Notes |
 |------|----------|-------|
 | Raw Tailwind values | Low | Ongoing design system improvement |
-| Large component files | Low | GroupView is 1239 lines - could split but functional |
-| Badge overflow UI | Low | PlayerCard badges - cosmetic issue |
-| Keyboard shortcuts | Future | Nice to have, not blocking |
+| Large component files | Low | GroupView is 1267 lines - could split but functional |
+| Badge overflow UI | Done | Already handled with flex-wrap |
+| Keyboard shortcuts | Done | Added in this PR (press ? to see) |
 | Onboarding tooltips | Future | First-run experience |
 
 ---
@@ -56,6 +56,8 @@ After investigation, most items listed in CONSOLIDATED_STATUS.md were **already 
 1. Updated `docs/CONSOLIDATED_STATUS.md` to reflect actual completion status
 2. Marked P0/P1 items as complete
 3. Updated "Up Next" section
+4. Added keyboard shortcuts (useKeyboardShortcuts hook + KeyboardShortcutsHelp modal)
+5. Verified badge overflow already handled with flex-wrap
 
 ---
 
