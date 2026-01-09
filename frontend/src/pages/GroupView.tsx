@@ -667,7 +667,7 @@ export function GroupView() {
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   // Admins (not using View As) have owner-level edit permissions
-  const isAdminAccess = user?.isAdmin && !viewAsUser;
+  const isAdminAccess = !!(user?.isAdmin && !viewAsUser);
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
 
   // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
