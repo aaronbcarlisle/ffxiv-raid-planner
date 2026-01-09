@@ -99,7 +99,8 @@ export function WeeklyLootGrid({
     const { entry, type } = contextMenu;
     const items: ContextMenuItem[] = [];
 
-    if (type === 'loot' && onEditLoot) {
+    // Edit option - only show if user has edit permission
+    if (type === 'loot' && onEditLoot && canEdit) {
       items.push({
         label: 'Edit',
         icon: <Pencil className="w-4 h-4" />,
@@ -107,6 +108,7 @@ export function WeeklyLootGrid({
       });
     }
 
+    // Copy URL is always available (read-only action)
     if (onCopyEntryUrl) {
       items.push({
         label: 'Copy URL',
@@ -115,11 +117,15 @@ export function WeeklyLootGrid({
       });
     }
 
-    if (items.length > 0 && ((type === 'loot' && onDeleteLoot) || (type === 'material' && onDeleteMaterial))) {
+    // Separator before delete if there are other items and delete is available
+    const canDeleteLoot = type === 'loot' && onDeleteLoot && canEdit;
+    const canDeleteMaterial = type === 'material' && onDeleteMaterial && canEdit;
+    if (items.length > 0 && (canDeleteLoot || canDeleteMaterial)) {
       items.push({ separator: true });
     }
 
-    if (type === 'loot' && onDeleteLoot) {
+    // Delete options - only show if user has edit permission
+    if (canDeleteLoot) {
       items.push({
         label: 'Delete',
         icon: <Trash2 className="w-4 h-4" />,
@@ -128,7 +134,7 @@ export function WeeklyLootGrid({
       });
     }
 
-    if (type === 'material' && onDeleteMaterial) {
+    if (canDeleteMaterial) {
       items.push({
         label: 'Delete',
         icon: <Trash2 className="w-4 h-4" />,
@@ -138,7 +144,7 @@ export function WeeklyLootGrid({
     }
 
     return items;
-  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial]);
+  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),

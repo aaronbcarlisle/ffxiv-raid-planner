@@ -831,6 +831,7 @@ export function SectionedLogView({
                       <button
                         key={floor}
                         onClick={() => toggleFloorVisibility(floor)}
+                        aria-pressed={isSelected}
                         className={`
                           px-3 py-1.5 rounded text-xs font-bold transition-colors border
                           ${isSelected
