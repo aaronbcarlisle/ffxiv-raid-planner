@@ -4,7 +4,7 @@
  * Modal for batch marking players as having cleared a floor (earned books).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import type { MarkFloorClearedRequest, SnapshotPlayer } from '../../types';
 
@@ -36,6 +36,16 @@ export function MarkFloorClearedModal({
   );
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Reset state when modal opens to ensure fresh state with current players
+  useEffect(() => {
+    if (isOpen) {
+      setWeekNumber(currentWeek || 1);
+      setFloor(floors[0] || '');
+      setSelectedPlayerIds(new Set(mainRosterPlayers.map((p) => p.id)));
+      setNotes('');
+    }
+  }, [isOpen, currentWeek, floors, mainRosterPlayers]);
 
   const handleTogglePlayer = (playerId: string) => {
     const newSelected = new Set(selectedPlayerIds);
