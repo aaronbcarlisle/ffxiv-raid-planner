@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Sparkles,
   Bug,
@@ -163,8 +163,31 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
   );
 }
 
-function ReleaseCard({ release, isLatest, defaultExpanded = false }: { release: Release; isLatest: boolean; defaultExpanded?: boolean }) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+function ReleaseCard({
+  release,
+  isLatest,
+  defaultExpanded = false,
+  forceExpanded,
+  onToggle,
+}: {
+  release: Release;
+  isLatest: boolean;
+  defaultExpanded?: boolean;
+  forceExpanded?: boolean;
+  onToggle?: (version: string) => void;
+}) {
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+
+  // Use forceExpanded if provided (for URL hash), otherwise local state
+  const isExpanded = forceExpanded ?? localExpanded;
+
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle(release.version);
+    } else {
+      setLocalExpanded(!localExpanded);
+    }
+  };
 
   // Group items by category
   const groupedItems = useMemo(() => {
@@ -184,10 +207,10 @@ function ReleaseCard({ release, isLatest, defaultExpanded = false }: { release: 
   const totalItems = release.items.length;
 
   return (
-    <article className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden">
+    <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-6">
       {/* Header - Always visible, clickable */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
         className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors"
       >
         <header className="flex items-start justify-between gap-4">
@@ -262,6 +285,43 @@ function ReleaseCard({ release, isLatest, defaultExpanded = false }: { release: 
 }
 
 export default function ReleaseNotes() {
+  const location = useLocation();
+
+  // Track expanded versions - Set allows multiple to be expanded
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(() => {
+    // Start with latest expanded by default
+    return new Set([RELEASES[0]?.version].filter(Boolean));
+  });
+
+  // Handle URL hash anchor on mount/change
+  useEffect(() => {
+    if (location.hash && location.hash.startsWith('#v')) {
+      const version = location.hash.slice(2); // Remove #v
+      // Expand this version
+      setExpandedVersions(prev => new Set([...prev, version]));
+      // Scroll to it after a small delay
+      setTimeout(() => {
+        const element = document.getElementById(location.hash.slice(1));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, [location.hash]);
+
+  // Toggle a version's expanded state
+  const handleToggle = (version: string) => {
+    setExpandedVersions(prev => {
+      const next = new Set(prev);
+      if (next.has(version)) {
+        next.delete(version);
+      } else {
+        next.add(version);
+      }
+      return next;
+    });
+  };
+
   // Mark version as seen when visiting this page
   useEffect(() => {
     try {
@@ -313,7 +373,8 @@ export default function ReleaseNotes() {
               key={release.version}
               release={release}
               isLatest={idx === 0}
-              defaultExpanded={idx === 0}
+              forceExpanded={expandedVersions.has(release.version)}
+              onToggle={handleToggle}
             />
           ))}
         </div>
