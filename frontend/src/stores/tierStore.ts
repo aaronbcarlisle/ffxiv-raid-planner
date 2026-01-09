@@ -5,8 +5,12 @@
  */
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/shallow';
 import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
 import { authRequest } from '../services/api';
+
+// Stable empty array reference to avoid re-renders when players is undefined
+const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 
 interface TierState {
   // List of tier snapshots for current group
@@ -650,8 +654,10 @@ export const useTiers = () => useTierStore((state) => state.tiers);
 
 /**
  * Select players from current tier
+ * Uses stable empty array reference to avoid re-renders
  */
-export const useTierPlayers = () => useTierStore((state) => state.currentTier?.players ?? []);
+export const useTierPlayers = () =>
+  useTierStore((state) => state.currentTier?.players ?? EMPTY_PLAYERS);
 
 /**
  * Select loading state
@@ -682,29 +688,36 @@ export const usePlayerByPosition = (position: string) =>
 
 /**
  * Select configured players only
+ * Uses stable empty array reference to avoid re-renders
  */
 export const useConfiguredPlayers = () =>
-  useTierStore((state) => state.currentTier?.players?.filter((p) => p.configured) ?? []);
+  useTierStore((state) => state.currentTier?.players?.filter((p) => p.configured) ?? EMPTY_PLAYERS);
 
 /**
  * Select players grouped by party (G1/G2)
+ * Uses useShallow for stable object reference when values haven't changed
  */
 export const usePlayersByGroup = () =>
-  useTierStore((state) => {
-    const players = state.currentTier?.players ?? [];
-    return {
-      group1: players.filter((p) => ['T1', 'H1', 'M1', 'R1'].includes(p.position || '')),
-      group2: players.filter((p) => ['T2', 'H2', 'M2', 'R2'].includes(p.position || '')),
-    };
-  });
+  useTierStore(
+    useShallow((state) => {
+      const players = state.currentTier?.players ?? EMPTY_PLAYERS;
+      return {
+        group1: players.filter((p) => ['T1', 'H1', 'M1', 'R1'].includes(p.position || '')),
+        group2: players.filter((p) => ['T2', 'H2', 'M2', 'R2'].includes(p.position || '')),
+      };
+    })
+  );
 
 /**
  * Select tier-level weapon priority settings
+ * Uses useShallow for stable object reference when values haven't changed
  */
 export const useWeaponPrioritySettings = () =>
-  useTierStore((state) => ({
-    autoLockDate: state.currentTier?.weaponPrioritiesAutoLockDate,
-    globalLock: state.currentTier?.weaponPrioritiesGlobalLock ?? false,
-    globalLockedBy: state.currentTier?.weaponPrioritiesGlobalLockedBy,
-    globalLockedAt: state.currentTier?.weaponPrioritiesGlobalLockedAt,
-  }));
+  useTierStore(
+    useShallow((state) => ({
+      autoLockDate: state.currentTier?.weaponPrioritiesAutoLockDate,
+      globalLock: state.currentTier?.weaponPrioritiesGlobalLock ?? false,
+      globalLockedBy: state.currentTier?.weaponPrioritiesGlobalLockedBy,
+      globalLockedAt: state.currentTier?.weaponPrioritiesGlobalLockedAt,
+    }))
+  );

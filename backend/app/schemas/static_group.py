@@ -180,4 +180,3 @@ class DuplicateGroupRequest(CamelModel):
     new_name: str = Field(..., min_length=1, max_length=100, description="Name for the duplicated group")
     copy_tiers: bool = Field(default=True, description="Whether to copy tier snapshots")
     copy_players: bool = Field(default=True, description="Whether to copy players (requires copy_tiers)")
-    copy_loot_history: bool = Field(default=False, description="Whether to copy loot history (not yet implemented)")

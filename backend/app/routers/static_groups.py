@@ -397,7 +397,7 @@ async def duplicate_group(
         owner_id=current_user.id,
         share_code=new_share_code,
         is_public=False,  # Duplicated groups start private
-        settings=source_group.settings,
+        settings=copy.deepcopy(source_group.settings) if source_group.settings else None,
         created_at=now,
         updated_at=now,
     )
