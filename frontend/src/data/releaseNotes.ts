@@ -37,7 +37,7 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.0.0',
-    date: '2026-01-08',
+    date: '2026-01-09',
     title: 'Documentation & Polish',
     highlights: ['Comprehensive documentation', 'Release notes system'],
     items: [
@@ -48,17 +48,23 @@ export const RELEASES: Release[] = [
         details:
           'Complete documentation system with role-based guides (Leads vs Members), common tasks reference, and technical documentation. Includes Getting Started guides, API reference, loot math explanations, and design system documentation.',
         link: { href: '/docs', label: 'View Documentation' },
-        commits: [
-          { hash: 'c9f1672', message: 'Add comprehensive documentation system' },
-          { hash: '899eec2', message: 'Comment out unused ImagePlaceholder function' },
-        ],
+        commits: [{ hash: 'c9f1672', message: 'Add comprehensive documentation system' }],
+      },
+      {
+        category: 'feature',
+        title: 'Roadmap & Status page',
+        description: 'Development plan and current state visibility',
+        details:
+          'New page showing completed phases, planned features, and known issues. Helps users understand what features exist and what\'s coming next.',
+        link: { href: '/docs/roadmap', label: 'View Roadmap' },
+        commits: [{ hash: '0bda88a', message: 'Add Roadmap & Status documentation page' }],
       },
       {
         category: 'feature',
         title: 'API reference & cookbook',
         description: 'Full API documentation with Python and curl examples',
         details:
-          'Interactive API documentation covering all endpoints: authentication, static groups, tier snapshots, players, loot logging, and BiS import. Includes a cookbook with copy-paste Python and curl examples for common workflows.',
+          'Interactive API documentation covering all endpoints: authentication, static groups, tier snapshots, players, loot logging, and BiS import. Includes a cookbook with copy-paste examples for common workflows.',
         link: { href: '/docs/api', label: 'View API Docs' },
       },
       {
@@ -66,7 +72,7 @@ export const RELEASES: Release[] = [
         title: 'Loot math documentation',
         description: 'Detailed explanations of priority calculations and formulas',
         details:
-          'Deep dive into how priority scores are calculated, including role-based weighting, slot value weights, weapon priority system, and the book/page economy. Includes actual formulas and code references.',
+          'Deep dive into how priority scores are calculated, including role-based weighting, slot value weights, weapon priority system, and the book/page economy.',
         link: { href: '/docs/loot-math', label: 'View Loot Math' },
       },
       {
@@ -79,10 +85,12 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
-        title: 'Syntax-highlighted code blocks',
-        description: 'Documentation code examples now have proper syntax highlighting',
+        title: 'Auto-expand weapon priority on ties',
+        description: 'Weapon priority section now auto-expands when there are rolling ties',
         details:
-          'Added prism-react-renderer for syntax highlighting in documentation. Supports Python, bash/curl, JSON, TypeScript, and JavaScript with a custom dark theme matching the app design.',
+          'When multiple players are tied for weapon priority, the weapon priority section automatically expands to show the tie-breaker information.',
+        image: '/images/release-notes/weapon-priorities.gif',
+        commits: [{ hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' }],
       },
       {
         category: 'fix',
@@ -98,31 +106,461 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
-        title: 'Auth persistence improvements',
-        description: 'Better handling of login state across sessions',
-        details:
-          'Fixed issues where users would be logged out unexpectedly. Improved token refresh handling and session persistence in localStorage.',
-        commits: [
-          { hash: '6054c9f', message: 'Fix three major issues: auth persistence, universal tomestone, weapon priority' },
-        ],
-      },
-      {
-        category: 'fix',
         title: 'Universal tomestone integration',
         description: 'Fixed TypeScript errors for universal tomestone tracking',
         image: '/images/release-notes/universal-tomestone.gif',
+        commits: [{ hash: '7a43c87', message: 'Fix TypeScript errors for Universal Tomestone integration' }],
+      },
+      {
+        category: 'fix',
+        title: 'Auth persistence improvements',
+        description: 'Better handling of login state across sessions',
+        details:
+          'Fixed issues where users would be logged out unexpectedly. Improved token refresh handling and session persistence.',
+        commits: [{ hash: '6054c9f', message: 'Fix auth persistence and session handling' }],
+      },
+    ],
+  },
+  {
+    version: '0.9.0',
+    date: '2026-01-04',
+    title: 'Design System v2 & Accessibility',
+    highlights: ['WCAG compliance', 'Improved components'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Design System v2',
+        description: 'Major component library update with improved accessibility',
+        details:
+          'Comprehensive update to the design system including new tokens, icons, forms, menus, navigation, and scroll-lock fixes. Improved contrast ratios and keyboard navigation.',
+        link: { href: '/docs/design-system', label: 'View Design System' },
         commits: [
-          { hash: '7a43c87', message: 'Fix TypeScript errors for Universal Tomestone integration' },
+          { hash: 'd5f8f8d', message: 'Design System v2 + UX Improvements' },
+          { hash: 'd08c5e1', message: 'Design System v2.2.0: Menus, navigation, and scroll-lock fixes' },
+          { hash: '293681d', message: 'Design System v2.1.0: Tokens, icons, forms, and accessibility fixes' },
         ],
       },
       {
         category: 'improvement',
-        title: 'Auto-expand weapon priority on ties',
-        description: 'Weapon priority section now auto-expands when there are rolling ties',
+        title: 'WCAG accessibility updates',
+        description: 'Improved color contrast, keyboard navigation, and screen reader support',
         details:
-          'When multiple players are tied for weapon priority, the weapon priority section automatically expands to show the tie-breaker information.',
-        image: '/images/release-notes/weapon-priorities.gif',
-        commits: [{ hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' }],
+          'Updated Radix Select components, improved tooltip layouts, fixed scroll-lock issues for better accessibility compliance.',
+        commits: [
+          { hash: '587b095', message: 'Design System WCAG updates: Radix Select, tooltips layout, scroll-lock fixes' },
+          { hash: 'aec35db', message: 'Fix Radix Select scroll-lock breaking sticky nav' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Sidebar navigation',
+        description: 'Added collapsible navigation panel to documentation pages',
+        details:
+          'Documentation pages now have a sticky sidebar with grouped navigation. All sections are collapsible and support scroll tracking.',
+        commits: [
+          { hash: '82be733', message: 'Add sidebar navigation to DesignSystem page' },
+          { hash: '17a305e', message: 'Grouped navigation and Nav Panel section' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Scroll tracking improvements',
+        description: 'Fixed navigation highlighting to use "most recently scrolled past" algorithm',
+        commits: [
+          { hash: 'b914b38', message: 'Improve nav scroll tracking with better algorithm' },
+          { hash: 'c1c5fe6', message: 'Fix nav click race condition with scroll lock pattern' },
+        ],
+      },
+    ],
+  },
+  {
+    version: '0.8.0',
+    date: '2025-12-28',
+    title: 'UX Enhancements',
+    highlights: ['Player card redesign', 'Weekly loot grid'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Weekly Loot Grid view',
+        description: 'Visual grid showing who got what loot each week',
+        details:
+          'New grid view displaying loot distribution across the raid group by week. Click on cells to quickly log loot.',
+        commits: [{ hash: '542760f', message: 'Add Weekly Loot Grid view' }],
+      },
+      {
+        category: 'feature',
+        title: 'Weapon priority job selector',
+        description: 'Redesigned modal with selection order badges',
+        details:
+          'Weapon priority modal redesigned with a single panel layout and popup job selector. Shows numbered badges indicating selection order.',
+        commits: [
+          { hash: '3978085', message: 'Redesign Weapon Priority modal: single panel with popup job selector' },
+          { hash: '16d79c0', message: 'Add selection order badges to weapon priority job selector' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Player card header redesign',
+        description: 'Progress bar showing BiS completion percentage',
+        details:
+          'Player cards now show a visual progress bar in the header indicating BiS completion. Average item level displayed alongside.',
+        commits: [{ hash: '61670c0', message: 'Redesign player card header with progress bar' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Checkbox and loot sync',
+        description: 'Checking gear boxes now prompts to log loot entry',
+        details:
+          'When you check a gear slot as obtained, you\'re prompted to log the corresponding loot entry. Keeps gear tracking and loot history in sync.',
+        commits: [{ hash: '5af0dd4', message: 'Checkbox to loot entry sync with confirmation prompts' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Confirmation modals',
+        description: 'Added confirmation dialogs for destructive actions',
+        commits: [{ hash: '12b0351', message: 'UX improvements: confirmation modals, expanded lists, and grid presets' }],
+      },
+      {
+        category: 'fix',
+        title: 'iLv calculation accuracy',
+        description: 'Fixed item level calculations for tome gear augmentation states',
+        commits: [{ hash: '4f3f762', message: 'Fix iLv calculation accuracy and checkbox behavior' }],
+      },
+    ],
+  },
+  {
+    version: '0.7.0',
+    date: '2025-12-20',
+    title: 'Parity Implementation',
+    highlights: ['Gear categories', 'iLv tracking'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Gear source categories',
+        description: '9 categories for tracking current equipment source',
+        details:
+          'Track where your current gear came from: Savage, Tome (upgraded), Tome (base), Catchup, Crafted, Relic, Prep, Normal, or Unknown. Helps understand gear progression.',
+        commits: [{ hash: 'ec257d0', message: 'Parity Implementation: Gear Categories, iLv Tracking, and Adjustments' }],
+      },
+      {
+        category: 'feature',
+        title: 'Item level tracking',
+        description: 'Average iLv calculated and displayed per player',
+        details:
+          'Each player card now shows their average item level based on currently equipped gear. Calculated from gear source categories and tier configuration.',
+        commits: [{ hash: '50d00d1', message: 'Parity Phases 2-4: Frontend types, iLv tracking, adjustments' }],
+      },
+      {
+        category: 'feature',
+        title: 'Mid-tier roster adjustments',
+        description: 'Loot and page adjustments for players joining mid-tier',
+        details:
+          'New adjustment fields allow fair priority calculations for players who join after the tier has started. Positive adjustments count extra drops, negative ignore drops.',
+        commits: [{ hash: 'f332a5c', message: 'Add parity adjustment fields' }],
+      },
+      {
+        category: 'fix',
+        title: 'BiS import currentSource inference',
+        description: 'Fixed gear source detection when importing BiS sets',
+        commits: [{ hash: '55196e3', message: 'Fix BiS import currentSource inference' }],
+      },
+    ],
+  },
+  {
+    version: '0.6.0',
+    date: '2025-12-15',
+    title: 'Loot Tracking Redesign',
+    highlights: ['Week selector', 'Unified overview'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Week selector',
+        description: 'Navigate loot history by raid week',
+        details:
+          'New week selector lets you browse loot history week by week. See what dropped each week and who received items.',
+        commits: [
+          { hash: 'b9ae0fb', message: 'Week Selector Enhancement' },
+          { hash: '599e280', message: 'Fix week selector in quick log modals' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Unified week overview',
+        description: 'Single view showing all loot activity for a week',
+        details:
+          'Consolidated view combining loot drops, book earnings, and material usage for each week.',
+        commits: [{ hash: '249b005', message: 'Unified Week Overview UI' }],
+      },
+      {
+        category: 'feature',
+        title: 'Weapon priority quick-log',
+        description: 'Log weapon drops directly from priority panel',
+        details:
+          'Added Log button to weapon priority entries for quick access to logging weapons without navigating away.',
+        commits: [
+          { hash: '1ee37f1', message: 'Weapon Priority Quick-Log' },
+          { hash: '04c4587', message: 'Add Log button to all weapon priority entries' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Summary tab redesign',
+        description: 'Cleaner layout with better information hierarchy',
+        commits: [{ hash: '9ca9095', message: 'Summary Tab Redesign' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Sectioned log layout',
+        description: 'Log tab reorganized with Week/All Time toggle',
+        commits: [{ hash: 'cd96bcc', message: 'Log tab redesign: sectioned layout with Week/All Time toggle' }],
+      },
+      {
+        category: 'fix',
+        title: 'Auto-set week start date',
+        description: 'First loot entry automatically sets the tier start date',
+        commits: [{ hash: '78f8ee5', message: 'Auto-set week_start_date on first loot entry' }],
+      },
+    ],
+  },
+  {
+    version: '0.5.0',
+    date: '2025-12-08',
+    title: 'BiS Import System',
+    highlights: ['XIVGear integration', 'Item hover cards'],
+    items: [
+      {
+        category: 'feature',
+        title: 'BiS import from XIVGear',
+        description: 'Import your BiS set directly from XIVGear.app',
+        details:
+          'Paste a XIVGear URL to automatically import your BiS configuration. Supports all jobs and automatically detects gear sources.',
+        commits: [{ hash: '01b1b0b', message: 'BiS import from XIVGear' }],
+      },
+      {
+        category: 'feature',
+        title: 'BiS presets',
+        description: 'Pre-configured BiS sets for all 21 combat jobs',
+        details:
+          'Quick-select from curated BiS presets for each job. Filtered by tier and includes GCD-specific options.',
+        commits: [
+          { hash: '20ec083', message: 'BiS presets with GCD, auto-filter by tier' },
+          { hash: '04e33e3', message: 'Add BiS presets for all 21 combat jobs with descriptions' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Item icons with hover cards',
+        description: 'Gear slots show item icons with detailed hover information',
+        details:
+          'Hover over any gear slot to see the item name, icon, and stats. Icons are fetched from game data and cached.',
+        commits: [
+          { hash: '404b716', message: 'Item icons with hover cards' },
+          { hash: '8e28955', message: 'BiS presets dropdown and in-game gear slot names' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'BiS icon persistence',
+        description: 'Fixed item icons not persisting after refresh',
+        commits: [{ hash: '41af3b4', message: 'Fix BiS icon persistence and improve DnD/cursor UX' }],
+      },
+    ],
+  },
+  {
+    version: '0.4.0',
+    date: '2025-12-01',
+    title: 'Design & Branding',
+    highlights: ['Teal Glow theme', 'Drag-and-drop'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Teal Glow design system',
+        description: 'New dark theme with teal accent colors',
+        details:
+          'Complete visual redesign with a professional dark theme. Teal (#14b8a6) accent color throughout with role-specific colors for tank, healer, and DPS.',
+        commits: [{ hash: '4173d34', message: 'Implement Teal Glow design system' }],
+      },
+      {
+        category: 'feature',
+        title: 'Drag-and-drop reordering',
+        description: 'Rearrange players and groups with drag-and-drop',
+        details:
+          'Drag players to reorder within a group or swap between groups. Supports insert-between mode and visual drop indicators.',
+        commits: [
+          { hash: 'ae5e682', message: 'Redesign drag-and-drop with clean architecture' },
+          { hash: 'a3f2a99', message: 'Add insert-between mode for drag-and-drop' },
+          { hash: 'bc29d64', message: 'Improve drag-and-drop UX with swap indicator' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Sort presets',
+        description: 'Quick sort options: Role, Priority, Custom order',
+        details:
+          'Sort the raid roster by role (tanks, healers, DPS), by loot priority score, or maintain a custom order with drag-and-drop.',
+        commits: [{ hash: '3afa7c6', message: 'Add drag-and-drop reordering, sort presets, group view' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Cross-group drag',
+        description: 'Drag players between G1 and G2, positions auto-swap',
+        details:
+          'Dragging a player to the other group automatically swaps their position (T1↔T2, H1↔H2, etc.).',
+        commits: [
+          { hash: '5b98c72', message: 'Fix cross-group swap to update both cards positions' },
+          { hash: '780b085', message: 'Wide layout, header consolidation, cross-group drag' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'New branding',
+        description: 'Updated logo and home page hero',
+        commits: [
+          { hash: '57ee0df', message: 'Update branding and home page hero' },
+          { hash: '0dc3b3a', message: 'UX improvements and new branding' },
+        ],
+      },
+    ],
+  },
+  {
+    version: '0.3.0',
+    date: '2025-11-20',
+    title: 'Teams & Invitations',
+    highlights: ['Invitation system', 'Player ownership'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Invitation system',
+        description: 'Invite links with role, expiration, and max uses',
+        details:
+          'Generate invite links to add members to your static. Set the role they\'ll receive, expiration time, and maximum number of uses.',
+        commits: [{ hash: '4848e3d', message: 'Add invitations system and player-user linking' }],
+      },
+      {
+        category: 'feature',
+        title: 'Player ownership',
+        description: 'Members can claim and edit their own player card',
+        details:
+          'Use "Take Ownership" to link your Discord account to a player card. You can then edit your own gear without Lead permissions.',
+        commits: [
+          { hash: 'fd8552b', message: 'Add linked players section to Members panel' },
+          { hash: 'bc6d024', message: 'Fix Take Ownership and update ownership icons' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Tier snapshots',
+        description: 'Separate rosters for each raid tier',
+        details:
+          'Keep your roster across raid tiers. Roll over from one tier to the next without losing your setup. Switch between tiers to view historical progress.',
+        commits: [{ hash: 'b73f8a3', message: 'Add tier snapshots and roster system' }],
+      },
+      {
+        category: 'feature',
+        title: 'AAC Heavyweight tier',
+        description: 'Added M5S-M8S tier configuration',
+        commits: [{ hash: '2f2a924', message: 'Add AAC Heavyweight tier, reduce layout padding' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Member role management',
+        description: 'Owners and leads can change member roles',
+        commits: [{ hash: 'ae2db72', message: 'Fix member role update endpoint to accept JSON body' }],
+      },
+    ],
+  },
+  {
+    version: '0.2.0',
+    date: '2025-11-10',
+    title: 'Authentication & Groups',
+    highlights: ['Discord login', 'Static groups'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Discord OAuth authentication',
+        description: 'Login with your Discord account',
+        details:
+          'Secure authentication using Discord OAuth. Your Discord username and avatar are used throughout the app.',
+        commits: [{ hash: 'bac1bf0', message: 'Add Discord OAuth authentication foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Static groups',
+        description: 'Create and manage multiple statics',
+        details:
+          'Create static groups with unique share codes. Invite members, assign roles (Owner, Lead, Member), and manage multiple statics from one account.',
+        commits: [
+          { hash: '99d1681', message: 'Add static groups and memberships' },
+          { hash: '19fef0b', message: 'Add frontend auth components' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Share codes',
+        description: 'Easy-to-share 8-character codes for each static',
+        details:
+          'Each static gets a unique share code. Share it with others to give them view access, or use invite links for member access.',
+      },
+      {
+        category: 'feature',
+        title: 'Role-based permissions',
+        description: 'Owner, Lead, Member, and Viewer access levels',
+        details:
+          'Owners have full control. Leads can manage tiers and players. Members can edit their claimed players. Viewers have read-only access.',
+      },
+      {
+        category: 'fix',
+        title: 'JWT secret persistence',
+        description: 'Fixed authentication tokens across deployments',
+        commits: [{ hash: '394d713', message: 'Fix JWT secret persistence across deployments' }],
+      },
+    ],
+  },
+  {
+    version: '0.1.0',
+    date: '2025-11-01',
+    title: 'Initial Release',
+    highlights: ['Core features', 'Loot priority'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Gear tracking',
+        description: 'Track BiS progress for your entire static',
+        details:
+          'Mark gear slots as obtained and augmented. See completion percentage at a glance. Track both raid drops and tome gear.',
+      },
+      {
+        category: 'feature',
+        title: 'Loot priority system',
+        description: 'Smart loot suggestions based on need and fairness',
+        details:
+          'Priority scores consider who needs the item, role priority for the slot, and past loot distribution. Helps make fair loot decisions.',
+      },
+      {
+        category: 'feature',
+        title: 'Weapon priority tracking',
+        description: 'Track weapon needs across multiple jobs per player',
+        details:
+          'Players can set priority for weapons across their jobs. The system tracks who has received weapon drops and suggests fair distribution.',
+      },
+      {
+        category: 'feature',
+        title: 'Book/page tracking',
+        description: 'Track book drops and spending for tome upgrades',
+        details:
+          'Log book drops from each floor. Track spending on tome upgrade materials. See who has books to spend and who needs more.',
+      },
+      {
+        category: 'feature',
+        title: 'FastAPI backend',
+        description: 'RESTful API with SQLite/PostgreSQL support',
+        commits: [{ hash: 'fc9d8c2', message: 'Add FastAPI backend with data persistence' }],
+      },
+      {
+        category: 'feature',
+        title: 'React frontend',
+        description: 'Modern React app with TypeScript and Tailwind CSS',
+        commits: [{ hash: '3e00a27', message: 'Add frontend with Phase 1 core features' }],
       },
     ],
   },
