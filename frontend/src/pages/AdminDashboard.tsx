@@ -280,68 +280,68 @@ export function AdminDashboard() {
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
                   <th
-                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('name')}
                   >
                     <span className="flex items-center gap-1">
                       Name
-                      <span className={sortField === 'name' ? '' : 'invisible'}>
+                      <span className={sortField === 'name' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
                   </th>
                   <th
-                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('owner')}
                   >
                     <span className="flex items-center gap-1">
                       Owner
-                      <span className={sortField === 'owner' ? '' : 'invisible'}>
+                      <span className={sortField === 'owner' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
                   </th>
                   <th
-                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('memberCount')}
                   >
                     <span className="flex items-center justify-center gap-1">
                       Members
-                      <span className={sortField === 'memberCount' ? '' : 'invisible'}>
+                      <span className={sortField === 'memberCount' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
                   </th>
                   <th
-                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('tierCount')}
                   >
                     <span className="flex items-center justify-center gap-1">
                       Tiers
-                      <span className={sortField === 'tierCount' ? '' : 'invisible'}>
+                      <span className={sortField === 'tierCount' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
                   </th>
                   <th
-                    className="text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-center px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('isPublic')}
                   >
                     <span className="flex items-center justify-center gap-1">
                       Visibility
-                      <span className={sortField === 'isPublic' ? '' : 'invisible'}>
+                      <span className={sortField === 'isPublic' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
                   </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
                   <th
-                    className="text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                    className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
                     onClick={() => handleSort('createdAt')}
                   >
                     <span className="flex items-center gap-1">
                       Created
-                      <span className={sortField === 'createdAt' ? '' : 'invisible'}>
+                      <span className={sortField === 'createdAt' ? '' : 'invisible group-hover:visible'}>
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
