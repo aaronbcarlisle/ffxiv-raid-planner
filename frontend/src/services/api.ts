@@ -8,9 +8,10 @@
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
 import type { BiSImportData, BiSPresetsResponse } from '../types';
+import { API_BASE_URL } from '../config';
 
-// Get API base URL from environment or default to localhost
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Re-export for backward compatibility
+export { API_BASE_URL } from '../config';
 
 /**
  * API Error class for handling HTTP errors
