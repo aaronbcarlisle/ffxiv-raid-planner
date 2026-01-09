@@ -5,7 +5,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { BookOpen, Palette, Calculator, Layers, FileText, ChevronRight } from 'lucide-react';
+import { BookOpen, Palette, Calculator, FileText, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface DocCategory {
@@ -20,6 +20,50 @@ interface DocCategory {
 
 const DOC_CATEGORIES: DocCategory[] = [
   {
+    id: 'getting-started',
+    title: 'Getting Started',
+    description: 'Role-based guides for leads and members, plus common task references.',
+    icon: BookOpen,
+    href: '/docs/getting-started',
+    status: 'available',
+    sections: [
+      'Guide for Static Leads',
+      'Guide for Static Members',
+      'Common Tasks Reference',
+      'Permissions Matrix',
+    ],
+  },
+  {
+    id: 'loot-math',
+    title: 'Loot & Priority Math',
+    description: 'How loot priority calculations work. Formulas, edge cases, and the philosophy behind fair distribution.',
+    icon: Calculator,
+    href: '/docs/loot-math',
+    status: 'available',
+    sections: [
+      'Priority Score Formula',
+      'Role-Based Weighting',
+      'Slot Value Weights',
+      'Weapon Priority System',
+      'Book/Page Economy',
+    ],
+  },
+  {
+    id: 'api-docs',
+    title: 'API Developer Docs',
+    description: 'REST API reference for developers. Endpoints, authentication, request/response schemas.',
+    icon: FileText,
+    href: '/docs/api',
+    status: 'available',
+    sections: [
+      'Authentication (Discord OAuth)',
+      'Static Groups & Memberships',
+      'Tier Snapshots & Players',
+      'Loot Logging & Page Ledger',
+      'BiS Import Endpoints',
+    ],
+  },
+  {
     id: 'design-system',
     title: 'Design System',
     description: 'Complete visual reference for the design system. Colors, typography, components, and patterns.',
@@ -33,51 +77,6 @@ const DOC_CATEGORIES: DocCategory[] = [
       'Component Library',
       'Icon Library (100+ icons)',
       'Layout Patterns',
-    ],
-  },
-  {
-    id: 'loot-math',
-    title: 'Loot & Priority Math',
-    description: 'How loot priority calculations work. Formulas, edge cases, and the philosophy behind fair distribution.',
-    icon: Calculator,
-    href: '/docs/loot-math',
-    status: 'coming-soon',
-    sections: [
-      'Priority Score Formula',
-      'Role-Based Weighting',
-      'Need vs Greed Logic',
-      'Mid-Tier Adjustments',
-      'Book/Page Economy',
-    ],
-  },
-  {
-    id: 'data-models',
-    title: 'Data Models',
-    description: 'Technical reference for the data structures. Gear slots, player states, and tier snapshots.',
-    icon: Layers,
-    href: '/docs/data-models',
-    status: 'coming-soon',
-    sections: [
-      'Player & Gear Schema',
-      'Static Group Structure',
-      'Tier Snapshots',
-      'Loot Log Format',
-      'API Endpoints',
-    ],
-  },
-  {
-    id: 'api-docs',
-    title: 'API Developer Docs',
-    description: 'REST API reference for developers. Endpoints, authentication, request/response schemas.',
-    icon: FileText,
-    href: '/docs/api',
-    status: 'coming-soon',
-    sections: [
-      'Authentication (Discord OAuth)',
-      'Static Groups & Memberships',
-      'Tier Snapshots & Players',
-      'Loot Logging & Page Ledger',
-      'BiS Import Endpoints',
     ],
   },
 ];
