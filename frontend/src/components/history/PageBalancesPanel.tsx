@@ -46,7 +46,7 @@ export function PageBalancesPanel({
   currentWeek,
   canEdit,
 }: PageBalancesPanelProps) {
-  const { pageBalances, isLoading, fetchPageBalances, markFloorCleared, adjustBookBalance } =
+  const { pageBalances, isLoading, fetchPageBalances, markFloorCleared, adjustBookBalance, clearAllPageLedger, deletePlayerLedger } =
     useLootTrackingStore();
   const [showMarkClearedModal, setShowMarkClearedModal] = useState(false);
   const [editState, setEditState] = useState<EditState | null>(null);
@@ -75,39 +75,28 @@ export function PageBalancesPanel({
     setIsResetting(true);
 
     try {
-      const adjustments: { playerId: string; bookType: 'I' | 'II' | 'III' | 'IV'; amount: number }[] = [];
-
       if (resetState.type === 'all') {
-        // Reset all books for all players
-        pageBalances.forEach(b => {
-          if (b.bookI !== 0) adjustments.push({ playerId: b.playerId, bookType: 'I', amount: -b.bookI });
-          if (b.bookII !== 0) adjustments.push({ playerId: b.playerId, bookType: 'II', amount: -b.bookII });
-          if (b.bookIII !== 0) adjustments.push({ playerId: b.playerId, bookType: 'III', amount: -b.bookIII });
-          if (b.bookIV !== 0) adjustments.push({ playerId: b.playerId, bookType: 'IV', amount: -b.bookIV });
-        });
+        // Reset all books for all players - delete ledger history
+        await clearAllPageLedger(groupId, tierId);
+        toast.success('Reset all book balances - history cleared');
       } else if (resetState.type === 'row' && resetState.playerId) {
-        // Reset all books for one player
-        const balance = pageBalances.find(b => b.playerId === resetState.playerId);
-        if (balance) {
-          if (balance.bookI !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'I', amount: -balance.bookI });
-          if (balance.bookII !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'II', amount: -balance.bookII });
-          if (balance.bookIII !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'III', amount: -balance.bookIII });
-          if (balance.bookIV !== 0) adjustments.push({ playerId: balance.playerId, bookType: 'IV', amount: -balance.bookIV });
-        }
+        // Reset all books for one player - delete their ledger history
+        await deletePlayerLedger(groupId, tierId, resetState.playerId);
+        await fetchPageBalances(groupId, tierId); // Refresh balances after delete
+        toast.success(`Reset all book balances for ${resetState.playerName}`);
       } else if (resetState.type === 'column' && resetState.bookType) {
-        // Reset one book type for all players
+        // Reset one book type for all players - use adjustments (no endpoint for column delete)
         const key = `book${resetState.bookType}` as 'bookI' | 'bookII' | 'bookIII' | 'bookIV';
-        pageBalances.forEach(b => {
-          if (b[key] !== 0) adjustments.push({ playerId: b.playerId, bookType: resetState.bookType!, amount: -b[key] });
-        });
+        let adjustmentCount = 0;
+        for (const b of pageBalances) {
+          if (b[key] !== 0) {
+            await adjustBookBalance(groupId, tierId, b.playerId, resetState.bookType, -b[key], currentWeek, 'Reset to zero');
+            adjustmentCount++;
+          }
+        }
+        toast.success(`Reset Book ${resetState.bookType} for ${adjustmentCount} player(s)`);
       }
 
-      // Execute adjustments
-      for (const adj of adjustments) {
-        await adjustBookBalance(groupId, tierId, adj.playerId, adj.bookType, adj.amount, currentWeek, 'Reset to zero');
-      }
-
-      toast.success(`Reset ${adjustments.length} book balance(s) to zero`);
       setResetState(null);
     } catch {
       toast.error('Failed to reset book balances');

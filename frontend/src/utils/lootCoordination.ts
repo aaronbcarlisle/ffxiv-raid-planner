@@ -296,6 +296,34 @@ export async function deleteLootAndRevertGear(
       });
     }
   }
+
+  // 3. Revert weapon priority if this was a weapon drop or book
+  if (entry.itemSlot === 'weapon' && (entry.method === 'drop' || entry.method === 'book')) {
+    // Ensure tier is loaded
+    if (!tierStore.currentTier?.players) {
+      await tierStore.fetchTier(groupId, tierId);
+    }
+
+    const player = useTierStore.getState().currentTier?.players?.find(
+      (p) => p.id === entry.recipientPlayerId
+    );
+
+    if (player?.weaponPriorities) {
+      // Determine which job's weapon to un-mark
+      const weaponJob = entry.weaponJob || player.job;
+      const updatedPriorities = player.weaponPriorities.map((wp) =>
+        wp.job === weaponJob
+          ? { ...wp, received: false, receivedDate: undefined }
+          : wp
+      );
+      await useTierStore.getState().updateWeaponPriorities(
+        groupId,
+        tierId,
+        entry.recipientPlayerId,
+        updatedPriorities
+      );
+    }
+  }
 }
 
 // ==================== Priority Suggestion Functions ====================

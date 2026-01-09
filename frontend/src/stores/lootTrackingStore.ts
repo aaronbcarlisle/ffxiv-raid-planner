@@ -62,6 +62,7 @@ interface LootTrackingState {
   markFloorCleared: (groupId: string, tierId: string, data: MarkFloorClearedRequest) => Promise<void>;
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
   deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
+  clearAllPageLedger: (groupId: string, tierId: string) => Promise<void>;
   clearLootTracking: () => void;
   clearPlayerLedger: () => void;
 }
@@ -386,6 +387,31 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`);
       // Clear local state
       set({ playerLedger: [], isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  clearAllPageLedger: async (groupId, tierId) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Get all players with ledger entries from page balances
+      const balances = get().pageBalances;
+      const playerIds = [...new Set(balances.map((b) => b.playerId))];
+
+      // Delete each player's ledger
+      for (const playerId of playerIds) {
+        await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`);
+      }
+
+      // Refresh balances and weeks
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchPageLedger(groupId, tierId),
+        get().fetchWeeksWithEntries(groupId, tierId),
+      ]);
+      set({ isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;

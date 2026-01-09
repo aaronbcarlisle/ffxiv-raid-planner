@@ -49,11 +49,12 @@ async def get_tier_snapshot(
     group_id: str,
     tier_id: str,
 ) -> TierSnapshot:
-    """Get tier snapshot by tier_id (no permission check - caller must check)"""
+    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)"""
     result = await db.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
     )
     tier = result.scalar_one_or_none()
@@ -721,8 +722,8 @@ async def clear_player_page_ledger(
 ):
     """Clear all page ledger entries for a specific player"""
     # Check edit permissions (Owner/Lead only)
-    group = await get_static_group(db, group_id)
-    await check_edit_permission(db, group, current_user)
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
