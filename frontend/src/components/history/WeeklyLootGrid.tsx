@@ -116,11 +116,15 @@ export function WeeklyLootGrid({
     }
 
     // Delete options - only show if user has edit permission
+    // Note: Close context menu before delete to prevent stale state
     if (canDeleteLoot) {
       items.push({
         label: 'Delete',
         icon: <Trash2 className="w-4 h-4" />,
-        onClick: () => onDeleteLoot(entry.id),
+        onClick: () => {
+          setContextMenu(null);
+          onDeleteLoot(entry.id);
+        },
         danger: true,
       });
     }
@@ -129,13 +133,16 @@ export function WeeklyLootGrid({
       items.push({
         label: 'Delete',
         icon: <Trash2 className="w-4 h-4" />,
-        onClick: () => onDeleteMaterial(entry.id),
+        onClick: () => {
+          setContextMenu(null);
+          onDeleteMaterial(entry.id);
+        },
         danger: true,
       });
     }
 
     return items;
-  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit]);
+  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),
@@ -397,14 +404,22 @@ export function WeeklyLootGrid({
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
                       className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={() => {
-                        if (canClickToLog) onLogLoot(floor.number, item.slot);
-                        if (canClickToEdit && lootEntry) onEditLoot(lootEntry);
+                        // Edit takes priority over log (mutually exclusive but use else for clarity)
+                        if (canClickToEdit && lootEntry) {
+                          onEditLoot(lootEntry);
+                        } else if (canClickToLog) {
+                          onLogLoot(floor.number, item.slot);
+                        }
                       }}
                       onKeyDown={isClickable ? (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          if (canClickToLog) onLogLoot(floor.number, item.slot);
-                          if (canClickToEdit && lootEntry) onEditLoot(lootEntry);
+                          // Edit takes priority over log
+                          if (canClickToEdit && lootEntry) {
+                            onEditLoot(lootEntry);
+                          } else if (canClickToLog) {
+                            onLogLoot(floor.number, item.slot);
+                          }
                         }
                       } : undefined}
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}

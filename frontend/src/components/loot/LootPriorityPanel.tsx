@@ -403,6 +403,8 @@ export function LootPriorityPanel({
                   <button
                     key={floor}
                     onClick={() => onFloorChange(floor)}
+                    aria-label={`Select Floor ${floor}`}
+                    aria-pressed={isSelected}
                     className={`
                       px-3 py-1.5 rounded text-xs font-bold transition-colors border
                       ${isSelected

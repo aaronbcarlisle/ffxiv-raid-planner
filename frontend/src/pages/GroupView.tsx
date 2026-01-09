@@ -325,12 +325,16 @@ export function GroupView() {
   }, [shareCode]);
 
   // Smart tab defaulting: reset to Roster when switching statics
+  // Note: We only depend on currentGroup.id, not searchParams, to avoid
+  // re-running when other URL params change (tier, viewAs, etc.)
   useEffect(() => {
     if (!currentGroup?.id) return;
 
     try {
       const lastStaticId = localStorage.getItem('last-static-id');
-      const urlTab = searchParams.get('tab');
+      // Read URL tab directly from window.location to avoid searchParams dependency
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTab = urlParams.get('tab');
 
       // If switching to a different static (not just refreshing the same one)
       // AND there's no explicit tab in the URL, reset to 'players' tab
@@ -343,7 +347,7 @@ export function GroupView() {
     } catch {
       // Ignore localStorage errors
     }
-  }, [currentGroup?.id, searchParams, setPageMode]);
+  }, [currentGroup?.id, setPageMode]);
 
   // Load sortPreset from localStorage when tier changes (only if not specified in URL)
   useEffect(() => {

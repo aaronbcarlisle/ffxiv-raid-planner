@@ -32,6 +32,9 @@ import {
 
 const STORAGE_KEY = 'last-seen-version';
 
+/** Pixels from viewport top to consider a section "active" during scroll */
+const SCROLL_THRESHOLD_PX = 120;
+
 // Category styling configuration
 const CATEGORY_CONFIG: Record<
   ReleaseCategory,
@@ -491,7 +494,7 @@ export default function ReleaseNotes() {
         return;
       }
 
-      const threshold = 120;
+      const threshold = SCROLL_THRESHOLD_PX;
       const viewportHeight = window.innerHeight;
 
       // Get all version sections
