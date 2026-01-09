@@ -39,7 +39,7 @@ export const RELEASES: Release[] = [
     version: '1.0.0',
     date: '2026-01-09',
     title: 'Documentation & Polish',
-    highlights: ['Comprehensive documentation', 'Release notes system'],
+    highlights: ['Comprehensive documentation', 'Deep linking & Copy URL'],
     items: [
       {
         category: 'feature',
@@ -82,6 +82,26 @@ export const RELEASES: Release[] = [
         details:
           'New release banner appears when updates are deployed. Dismissible by clicking X or viewing release notes. Version history page shows all releases with categorized changes.',
         link: { href: '/docs/release-notes', label: 'View Release Notes' },
+      },
+      {
+        category: 'feature',
+        title: 'Deep linking & shareable URLs',
+        description: 'Share links to specific tabs, views, players, and loot entries',
+        details:
+          'URLs now capture your current view state. Share a link to jump directly to a specific tab, floor, sort order, or even highlight a specific player card or loot entry. Parameters include: tab, subtab, floor, view, groups, sort, logLayout, logView, weaponFilter, player, and entry.',
+        commits: [
+          { hash: 'deb7919', message: 'Add extended deep linking and Copy URL features' },
+          { hash: '24c4b66', message: 'Add URL deep linking for tabs and documentation anchors' },
+        ],
+      },
+      {
+        category: 'feature',
+        title: 'Copy URL for players and loot entries',
+        description: 'Right-click player cards or hover loot entries to copy shareable links',
+        details:
+          'New "Copy URL" option in player card context menu and on loot entry hover. When someone follows the link, the item briefly highlights with a teal glow animation to draw attention.',
+        image: '/images/release-notes/copy-url.gif',
+        commits: [{ hash: 'deb7919', message: 'Add extended deep linking and Copy URL features' }],
       },
       {
         category: 'improvement',
