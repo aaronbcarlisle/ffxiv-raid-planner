@@ -37,17 +37,17 @@ function RoleCard({
   color: 'teal' | 'blue';
 }) {
   const colorClasses = {
-    teal: 'from-accent to-accent-deep hover:border-accent/50',
-    blue: 'from-blue-500 to-blue-600 hover:border-blue-500/50',
+    teal: { bg: 'bg-accent', border: 'hover:border-accent/50' },
+    blue: { bg: 'bg-blue-500', border: 'hover:border-blue-500/50' },
   };
 
   return (
     <Link
       to={href}
-      className={`group block bg-surface-card border border-border-subtle rounded-xl p-6 hover:shadow-lg transition-all ${colorClasses[color].split(' ')[1]}`}
+      className={`group block bg-surface-card border border-border-subtle rounded-xl p-6 hover:shadow-lg transition-all ${colorClasses[color].border}`}
     >
       <div className="flex items-start gap-4 mb-4">
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClasses[color].split(' ').slice(0, 2).join(' ')} flex items-center justify-center shrink-0`}>
+        <div className={`w-12 h-12 rounded-xl ${colorClasses[color].bg} flex items-center justify-center shrink-0`}>
           <Icon className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
