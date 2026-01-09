@@ -20,6 +20,7 @@ import { FloorSection } from './FloorSection';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
 import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import {
   Dropdown,
   DropdownTrigger,
@@ -32,6 +33,7 @@ import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
+import { Pencil, Link, Trash2 } from 'lucide-react';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -432,6 +434,14 @@ export function SectionedLogView({
     materialType?: string;
   } | null>(null);
 
+  // Context menu state for list view entries
+  const [listContextMenu, setListContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: LootLogEntry | MaterialLogEntry;
+    type: 'loot' | 'material';
+  } | null>(null);
+
   // Combine loot and material entries, sorted by creation time (newest first)
   const combinedEntries = useMemo(() => {
     const lootWithType = weekLootEntries.map(e => ({ ...e, entryType: 'loot' as const }));
@@ -479,6 +489,7 @@ export function SectionedLogView({
           key={`loot-${entry.id}`}
           id={`loot-entry-${entry.id}`}
           className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isHighlighted ? 'highlight-pulse' : ''}`}
+          onContextMenu={(e) => handleListContextMenu(e, entry, 'loot')}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -546,6 +557,7 @@ export function SectionedLogView({
         <div
           key={`mat-${entry.id}`}
           className="bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3"
+          onContextMenu={(e) => handleListContextMenu(e, entry, 'material')}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -599,6 +611,74 @@ export function SectionedLogView({
       await handleDeleteLoot(entry);
     }
   }, [weekLootEntries, handleDeleteLoot]);
+
+  // Handler for editing loot from grid
+  const handleGridEditLoot = useCallback((entry: LootLogEntry) => {
+    setEntryToEdit(entry);
+    setGridModalState(null);
+    setShowLootModal(true);
+  }, []);
+
+  // Handler for copying entry URL (used by both list and grid)
+  const handleCopyEntryUrlById = useCallback((entryId: number) => {
+    handleCopyEntryUrl(String(entryId));
+  }, [handleCopyEntryUrl]);
+
+  // Handle right-click on list view entries
+  const handleListContextMenu = useCallback((
+    e: React.MouseEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    e.preventDefault();
+    setListContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Get context menu items for list view entries
+  const getListContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!listContextMenu) return [];
+    const { entry, type } = listContextMenu;
+    const items: ContextMenuItem[] = [];
+
+    if (type === 'loot' && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => {
+          setEntryToEdit(entry as LootLogEntry);
+          setShowLootModal(true);
+        },
+      });
+    }
+
+    items.push({
+      label: 'Copy URL',
+      icon: <Link className="w-4 h-4" />,
+      onClick: () => handleCopyEntryUrl(String(entry.id)),
+    });
+
+    if (canEdit) {
+      items.push({ separator: true });
+
+      if (type === 'loot') {
+        items.push({
+          label: 'Delete',
+          icon: <Trash2 className="w-4 h-4" />,
+          onClick: () => handleDeleteLoot(entry as LootLogEntry),
+          danger: true,
+        });
+      } else {
+        items.push({
+          label: 'Delete',
+          icon: <Trash2 className="w-4 h-4" />,
+          onClick: () => handleDeleteMaterial(entry.id),
+          danger: true,
+        });
+      }
+    }
+
+    return items;
+  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial]);
 
   return (
     <div className="space-y-4">
@@ -705,6 +785,8 @@ export function SectionedLogView({
               onLogMaterial={handleGridLogMaterial}
               onDeleteLoot={handleGridDeleteLoot}
               onDeleteMaterial={handleDeleteMaterial}
+              onEditLoot={handleGridEditLoot}
+              onCopyEntryUrl={handleCopyEntryUrlById}
             />
           )}
 
@@ -1018,6 +1100,16 @@ export function SectionedLogView({
           variant="danger"
           onConfirm={confirmState.onConfirm}
           onCancel={() => setConfirmState(null)}
+        />
+      )}
+
+      {/* List View Context Menu */}
+      {listContextMenu && (
+        <ContextMenu
+          x={listContextMenu.x}
+          y={listContextMenu.y}
+          items={getListContextMenuItems()}
+          onClose={() => setListContextMenu(null)}
         />
       )}
     </div>

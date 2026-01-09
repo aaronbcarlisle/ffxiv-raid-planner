@@ -9,12 +9,14 @@
  * - Grid-based item layout
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { getRoleColor, type Role } from '../../gamedata';
 import { type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
+import { Pencil, Link, Trash2 } from 'lucide-react';
 
 /**
  * Floor colors - MUST match CSS tokens in index.css
@@ -49,6 +51,9 @@ interface WeeklyLootGridProps {
   onLogMaterial?: (floor: FloorNumber, material: string) => void;
   onDeleteLoot?: (entryId: number) => void;
   onDeleteMaterial?: (entryId: number) => void;
+  onEditLoot?: (entry: LootLogEntry) => void;
+  onEditMaterial?: (entry: MaterialLogEntry) => void;
+  onCopyEntryUrl?: (entryId: number) => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
 }
 
@@ -63,7 +68,76 @@ export function WeeklyLootGrid({
   onLogMaterial,
   onDeleteLoot,
   onDeleteMaterial,
+  onEditLoot,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onEditMaterial, // Reserved for future material editing
+  onCopyEntryUrl,
 }: WeeklyLootGridProps) {
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    entry: LootLogEntry | MaterialLogEntry;
+    type: 'loot' | 'material';
+  } | null>(null);
+
+  // Handle context menu for entries
+  const handleContextMenu = useCallback((
+    e: React.MouseEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Get context menu items for an entry
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!contextMenu) return [];
+    const { entry, type } = contextMenu;
+    const items: ContextMenuItem[] = [];
+
+    if (type === 'loot' && onEditLoot) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditLoot(entry as LootLogEntry),
+      });
+    }
+
+    if (onCopyEntryUrl) {
+      items.push({
+        label: 'Copy URL',
+        icon: <Link className="w-4 h-4" />,
+        onClick: () => onCopyEntryUrl(entry.id),
+      });
+    }
+
+    if (items.length > 0 && ((type === 'loot' && onDeleteLoot) || (type === 'material' && onDeleteMaterial))) {
+      items.push({ separator: true });
+    }
+
+    if (type === 'loot' && onDeleteLoot) {
+      items.push({
+        label: 'Delete',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => onDeleteLoot(entry.id),
+        danger: true,
+      });
+    }
+
+    if (type === 'material' && onDeleteMaterial) {
+      items.push({
+        label: 'Delete',
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => onDeleteMaterial(entry.id),
+        danger: true,
+      });
+    }
+
+    return items;
+  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),
@@ -314,13 +388,18 @@ export function WeeklyLootGrid({
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
-                  const canClick = canEdit && onLogLoot && !lootEntry;
+                  const canClickToLog = canEdit && onLogLoot && !lootEntry;
+                  const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
 
                   return (
                     <div
                       key={item.slot}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${canClick ? 'cursor-pointer' : ''}`}
-                      onClick={canClick ? () => onLogLoot(floor.number, item.slot) : undefined}
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${canClickToLog || canClickToEdit ? 'cursor-pointer' : ''}`}
+                      onClick={() => {
+                        if (canClickToLog) onLogLoot(floor.number, item.slot);
+                        if (canClickToEdit && lootEntry) onEditLoot(lootEntry);
+                      }}
+                      onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -338,6 +417,7 @@ export function WeeklyLootGrid({
                       key={mat.type}
                       className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''}`}
                       onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
+                      onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"
@@ -355,6 +435,15 @@ export function WeeklyLootGrid({
         ))}
       </div>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

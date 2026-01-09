@@ -164,6 +164,11 @@ export function GroupView() {
   const [groupView, setGroupViewState] = useState(() => {
     return searchParams.get('groups') === 'true';
   });
+
+  // Subs view (separate substitutes): URL param > default (false)
+  const [subsView, setSubsViewState] = useState(() => {
+    return searchParams.get('subs') === 'true';
+  });
   const [playerModalCount, setPlayerModalCount] = useState(0); // Track open modals in PlayerCards
 
   // Highlighted player for deep-link scroll animation
@@ -236,6 +241,21 @@ export function GroupView() {
         params.set('groups', 'true');
       } else {
         params.delete('groups');
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Wrapper to update subsView and URL
+  const setSubsView = useCallback((enabled: boolean) => {
+    setSubsViewState(enabled);
+    // Update URL - only include if enabled
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (enabled) {
+        params.set('subs', 'true');
+      } else {
+        params.delete('subs');
       }
       return params;
     }, { replace: true });
@@ -639,11 +659,16 @@ export function GroupView() {
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
     if (!groupView) return null;
-    return groupPlayersByLightParty(sortedPlayers);
-  }, [groupView, sortedPlayers]);
+    return groupPlayersByLightParty(sortedPlayers, subsView);
+  }, [groupView, sortedPlayers, subsView]);
 
   // Check if we have enough position data to enable group view
   const hasPositionData = sortedPlayers.filter(p => p.configured && p.position).length >= 2;
+
+  // Check if any substitutes exist
+  const hasSubstitutes = useMemo(() => {
+    return sortedPlayers.some(p => p.isSubstitute);
+  }, [sortedPlayers]);
 
   // Only count configured players for team summary
   const configuredPlayers = useMemo(() => {
@@ -867,7 +892,7 @@ export function GroupView() {
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             <div className="relative flex items-center justify-end gap-3">
               {/* Floor selector moved into Loot tab's Gear Priority sub-tab */}
-              {/* Sort mode + Group view + View mode toggle - visible in Players tab */}
+              {/* Sort mode + Group view + Subs + View mode toggle - visible in Players tab */}
               <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
                 <SortModeSelector
                   sortPreset={sortPreset}
@@ -878,6 +903,20 @@ export function GroupView() {
                   onToggle={setGroupView}
                   disabled={!hasPositionData}
                 />
+                {/* Subs toggle - only show when substitutes exist */}
+                {hasSubstitutes && (
+                  <button
+                    onClick={() => setSubsView(!subsView)}
+                    className={`px-3 py-1.5 text-sm rounded transition-colors font-bold ${
+                      subsView
+                        ? 'bg-accent text-accent-contrast'
+                        : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                    }`}
+                    title={subsView ? 'Show subs with main roster' : 'Separate substitutes'}
+                  >
+                    Subs
+                  </button>
+                )}
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
               </div>
             </div>
@@ -943,6 +982,19 @@ export function GroupView() {
                       </h3>
                       <div className={gridClasses}>
                         {groupedPlayers.unassigned.map((player) => renderPlayerCard(player))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Substitutes - shown when subsView is enabled */}
+                  {subsView && groupedPlayers.substitutes.length > 0 && (
+                    <div className="opacity-75">
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+                        Substitutes
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.substitutes.map((player) => renderPlayerCard(player))}
                       </div>
                     </div>
                   )}
