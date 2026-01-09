@@ -666,7 +666,9 @@ export function GroupView() {
   // When viewing as another user, use their role instead of actual role
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
-  const canEdit = userRole === 'owner' || userRole === 'lead';
+  // Admins (not using View As) have owner-level edit permissions
+  const isAdminAccess = user?.isAdmin && !viewAsUser;
+  const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
 
   // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
@@ -699,7 +701,7 @@ export function GroupView() {
   }, []);
 
   // Check roster management permission for DnD
-  const rosterPermission = canManageRoster(userRole);
+  const rosterPermission = canManageRoster(userRole, isAdminAccess);
 
   // DnD hook - encapsulates all drag and drop logic
   const dnd = useDragAndDrop({
@@ -731,7 +733,7 @@ export function GroupView() {
     // If player is configured, show droppable player card
     if (player.configured) {
       // Check if user can reset this player's gear
-      const resetPermission = canResetGear(userRole, player, effectiveUserId, user?.isAdmin && !viewAsUser);
+      const resetPermission = canResetGear(userRole, player, effectiveUserId, isAdminAccess);
 
       return (
         <DroppablePlayerCard
@@ -747,7 +749,7 @@ export function GroupView() {
           isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
-          isAdmin={user?.isAdmin && !viewAsUser}
+          isAdmin={isAdminAccess}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           isHighlighted={highlightedPlayerId === player.id}
@@ -877,7 +879,7 @@ export function GroupView() {
       )}
 
       {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
-      {user?.isAdmin && !viewAsUser && !actualUserRole && (
+      {isAdminAccess && !actualUserRole && (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-400" />
