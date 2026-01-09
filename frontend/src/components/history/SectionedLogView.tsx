@@ -82,7 +82,6 @@ export function SectionedLogView({
     fetchPageBalances,
     fetchWeekDataTypes,
     deleteMaterialEntry,
-    updateLootEntry,
   } = useLootTrackingStore();
 
   // Modal states
