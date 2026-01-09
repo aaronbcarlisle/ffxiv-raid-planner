@@ -11,10 +11,21 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogArgs = unknown[];
 
 /**
+ * Indices for extracting time portion from ISO 8601 string.
+ * Date.toISOString() returns "YYYY-MM-DDTHH:MM:SS.mmmZ"
+ * - Index 11 is 'H' (start of hours)
+ * - Index 23 is 'Z' (exclusive end, after milliseconds)
+ * Result: "HH:MM:SS.mmm"
+ */
+const ISO_TIME_START = 11;
+const ISO_TIME_END = 23;
+
+/**
  * Format a timestamp for log messages
+ * Extracts "HH:MM:SS.mmm" from the ISO 8601 string.
  */
 function timestamp(): string {
-  return new Date().toISOString().slice(11, 23);
+  return new Date().toISOString().slice(ISO_TIME_START, ISO_TIME_END);
 }
 
 /**

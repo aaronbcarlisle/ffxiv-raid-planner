@@ -29,6 +29,18 @@ const HTTP_MESSAGES: Record<number, string> = {
 };
 
 /**
+ * Patterns for detecting network-related errors from error messages.
+ * These are used to identify when a request failed due to connectivity issues
+ * rather than server-side errors.
+ */
+const NETWORK_ERROR_PATTERNS = ['fetch', 'network', 'NetworkError'] as const;
+
+/**
+ * Patterns for detecting timeout-related errors from error messages.
+ */
+const TIMEOUT_ERROR_PATTERNS = ['timeout'] as const;
+
+/**
  * Parse an error into a standardized ApiError structure
  */
 export function parseApiError(error: unknown): ApiError {
@@ -44,7 +56,10 @@ export function parseApiError(error: unknown): ApiError {
   // Handle Error objects
   if (error instanceof Error) {
     // Network errors
-    if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('NetworkError')) {
+    const isNetworkError = NETWORK_ERROR_PATTERNS.some((pattern) =>
+      error.message.includes(pattern)
+    );
+    if (isNetworkError) {
       return {
         message: 'Network error. Please check your connection.',
         code: 'NETWORK_ERROR',
@@ -52,7 +67,10 @@ export function parseApiError(error: unknown): ApiError {
     }
 
     // Timeout errors
-    if (error.message.includes('timeout') || error.name === 'AbortError') {
+    const isTimeoutError =
+      error.name === 'AbortError' ||
+      TIMEOUT_ERROR_PATTERNS.some((pattern) => error.message.includes(pattern));
+    if (isTimeoutError) {
       return {
         message: 'Request timed out. Please try again.',
         code: 'TIMEOUT',

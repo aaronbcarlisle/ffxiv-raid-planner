@@ -9,6 +9,21 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Forbidden patterns for JWT secret validation
+# Uses word boundaries (\b) to reduce false positives with randomly generated secrets
+# that might contain letter sequences like "test" as part of a larger random string.
+FORBIDDEN_SECRET_PATTERNS: list[str] = [
+    r"\bchangeme\b",    # Common placeholder value
+    r"\bsecret\b",      # Generic "secret" placeholder
+    r"\bdev[-_]",       # Development prefix (dev-, dev_)
+    r"\btest[-_]",      # Test prefix (test-, test_)
+    r"\bplaceholder\b", # Explicit placeholder marker
+    r"\bexample\b",     # Example/documentation value
+    r"^password",       # Starts with "password"
+    r"_key$",           # Ends with "_key" (like "my_api_key")
+]
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
 
@@ -91,14 +106,9 @@ class Settings(BaseSettings):
                     "JWT_SECRET_KEY must be at least 32 characters in production"
                 )
 
-            # Check for placeholder patterns using word boundaries to reduce false positives
-            # with randomly generated secrets that might contain letter sequences like "test"
-            forbidden_patterns = [
-                r'\bchangeme\b', r'\bsecret\b', r'\bdev[-_]', r'\btest[-_]',
-                r'\bplaceholder\b', r'\bexample\b', r'^password', r'_key$'
-            ]
+            # Check for placeholder patterns
             secret_lower = self.jwt_secret_key.lower()
-            if any(re.search(p, secret_lower) for p in forbidden_patterns):
+            if any(re.search(p, secret_lower) for p in FORBIDDEN_SECRET_PATTERNS):
                 raise ValueError(
                     "JWT_SECRET_KEY appears to contain a placeholder value - "
                     "please use a secure random key"

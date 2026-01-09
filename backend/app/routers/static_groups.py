@@ -4,6 +4,7 @@ import copy
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import Any, TypeVar
 
 import structlog
 from fastapi import APIRouter, Depends, status
@@ -46,6 +47,9 @@ from ..services import generate_share_code
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
 logger = structlog.get_logger(__name__)
+
+# TypeVar for generic type preservation in safe_copy_json
+T = TypeVar("T")
 
 
 def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
@@ -418,7 +422,7 @@ async def duplicate_group(
     tier_id_map: dict[str, str] = {}
     player_id_map: dict[str, str] = {}
 
-    def safe_copy_json(value, default, field_name: str = "unknown"):
+    def safe_copy_json(value: Any, default: T, field_name: str = "unknown") -> T:
         """Copy JSON field, handling both Python objects and JSON strings."""
         if value is None:
             return default

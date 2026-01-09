@@ -160,7 +160,6 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
             newName,
             copyTiers: true,
             copyPlayers: true,
-            copyLootHistory: false,
           }),
         }
       );
