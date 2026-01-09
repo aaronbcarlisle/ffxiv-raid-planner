@@ -69,8 +69,7 @@ export function WeeklyLootGrid({
   onDeleteLoot,
   onDeleteMaterial,
   onEditLoot,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onEditMaterial, // Reserved for future material editing
+  onEditMaterial: _onEditMaterial, // Reserved for future material editing
   onCopyEntryUrl,
 }: WeeklyLootGridProps) {
   // Context menu state
