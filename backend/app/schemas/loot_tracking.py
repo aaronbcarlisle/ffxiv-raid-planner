@@ -168,6 +168,16 @@ class MaterialLogEntryCreate(CamelModel):
     notes: str | None = None
 
 
+class MaterialLogEntryUpdate(CamelModel):
+    """Request schema for updating a material log entry"""
+
+    week_number: int | None = Field(None, ge=1)
+    floor: str | None = None
+    material_type: MaterialTypeEnum | None = None
+    recipient_player_id: str | None = None
+    notes: str | None = None
+
+
 class MaterialLogEntryResponse(CamelModel):
     """Response schema for a material log entry"""
 

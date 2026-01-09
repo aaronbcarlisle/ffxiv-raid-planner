@@ -30,7 +30,7 @@ import {
 } from '../primitives/Dropdown';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import { Pencil, Link, Trash2 } from 'lucide-react';
@@ -100,6 +100,7 @@ export function SectionedLogView({
     playerName: string;
   } | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | undefined>(undefined);
+  const [materialEntryToEdit, setMaterialEntryToEdit] = useState<MaterialLogEntry | undefined>(undefined);
   const [resetModalType, setResetModalType] = useState<ResetType | null>(null);
 
   // Confirmation modal state
@@ -202,6 +203,14 @@ export function SectionedLogView({
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry logged');
   }, [groupId, tierId, onWeekChange, fetchMaterialLog, fetchWeekDataTypes]);
+
+  const handleUpdateMaterial = useCallback(async (updates: MaterialLogEntryUpdate) => {
+    if (!materialEntryToEdit) return;
+    const { updateMaterialEntry } = useLootTrackingStore.getState();
+    await updateMaterialEntry(groupId, tierId, materialEntryToEdit.id, updates);
+    await fetchMaterialLog(groupId, tierId, currentWeek);
+    toast.success('Material entry updated');
+  }, [groupId, tierId, currentWeek, materialEntryToEdit, fetchMaterialLog]);
 
   // Get the week parameter for fetching page balances based on view mode
   const getBalanceWeekParam = useCallback(() => {
@@ -646,6 +655,13 @@ export function SectionedLogView({
     setShowLootModal(true);
   }, []);
 
+  // Handler for editing material from grid
+  const handleGridEditMaterial = useCallback((entry: MaterialLogEntry) => {
+    setMaterialEntryToEdit(entry);
+    setGridModalState(null);
+    setShowMaterialModal(true);
+  }, []);
+
   // Handler for copying entry URL (used by both list and grid)
   const handleCopyEntryUrlById = useCallback((entryId: number, entryType: 'loot' | 'material' = 'loot') => {
     handleCopyEntryUrl(String(entryId), entryType);
@@ -674,6 +690,17 @@ export function SectionedLogView({
         onClick: () => {
           setEntryToEdit(entry as LootLogEntry);
           setShowLootModal(true);
+        },
+      });
+    }
+
+    if (type === 'material' && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => {
+          setMaterialEntryToEdit(entry as MaterialLogEntry);
+          setShowMaterialModal(true);
         },
       });
     }
@@ -815,6 +842,7 @@ export function SectionedLogView({
               onDeleteLoot={handleGridDeleteLoot}
               onDeleteMaterial={handleDeleteMaterial}
               onEditLoot={handleGridEditLoot}
+              onEditMaterial={handleGridEditMaterial}
               onCopyEntryUrl={handleCopyEntryUrlById}
             />
           )}
@@ -1061,13 +1089,15 @@ export function SectionedLogView({
       {showMaterialModal && (
         <LogMaterialModal
           isOpen={showMaterialModal}
-          onClose={() => { setShowMaterialModal(false); setGridModalState(null); }}
+          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); }}
           onSubmit={handleMaterialSubmit}
+          onUpdate={handleUpdateMaterial}
           players={players}
           floors={floors}
           currentWeek={currentWeek}
           presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
           suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
+          editEntry={materialEntryToEdit}
         />
       )}
 

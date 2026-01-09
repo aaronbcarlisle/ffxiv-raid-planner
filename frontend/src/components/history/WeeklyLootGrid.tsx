@@ -62,7 +62,7 @@ export function WeeklyLootGrid({
   onDeleteLoot,
   onDeleteMaterial,
   onEditLoot,
-  onEditMaterial: _onEditMaterial, // Reserved for future material editing
+  onEditMaterial,
   onCopyEntryUrl,
 }: WeeklyLootGridProps) {
   // Context menu state
@@ -102,6 +102,14 @@ export function WeeklyLootGrid({
         label: 'Edit',
         icon: <Pencil className="w-4 h-4" />,
         onClick: () => onEditLoot(entry as LootLogEntry),
+      });
+    }
+
+    if (type === 'material' && onEditMaterial && canEdit) {
+      items.push({
+        label: 'Edit',
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditMaterial(entry as MaterialLogEntry),
       });
     }
 
@@ -148,7 +156,7 @@ export function WeeklyLootGrid({
     }
 
     return items;
-  }, [contextMenu, onEditLoot, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu]);
+  }, [contextMenu, onEditLoot, onEditMaterial, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),
@@ -441,26 +449,38 @@ export function WeeklyLootGrid({
                 {/* Material columns */}
                 {floor.materials.map(mat => {
                   const matEntry = getMaterialForFloor(floor.number, mat.type);
-                  const canClickMat = canEdit && onLogMaterial && !matEntry;
+                  const canClickToLogMat = canEdit && onLogMaterial && !matEntry;
+                  const canClickToEditMat = canEdit && onEditMaterial && !!matEntry;
                   const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
-                  // Show pointer cursor if cell is interactive (can log, or has entry for context menu)
-                  const showPointer = canClickMat || !!matEntry;
 
+                  const isClickable = canClickToLogMat || canClickToEditMat;
                   return (
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${showPointer ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-                      onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
-                      onKeyDown={canClickMat ? (e) => {
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      onClick={() => {
+                        // Edit takes priority over log (mutually exclusive but use else for clarity)
+                        if (canClickToEditMat && matEntry) {
+                          onEditMaterial(matEntry);
+                        } else if (canClickToLogMat) {
+                          onLogMaterial(floor.number, mat.type);
+                        }
+                      }}
+                      onKeyDown={isClickable ? (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          onLogMaterial(floor.number, mat.type);
+                          // Edit takes priority over log
+                          if (canClickToEditMat && matEntry) {
+                            onEditMaterial(matEntry);
+                          } else if (canClickToLogMat) {
+                            onLogMaterial(floor.number, mat.type);
+                          }
                         }
                       } : undefined}
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
-                      role={canClickMat ? 'button' : undefined}
-                      tabIndex={canClickMat ? 0 : -1}
+                      role={isClickable ? 'button' : undefined}
+                      tabIndex={isClickable ? 0 : -1}
                     >
                       <div
                         className="text-[10px] mb-1"

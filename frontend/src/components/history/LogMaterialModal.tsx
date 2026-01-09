@@ -1,11 +1,11 @@
 /**
  * Log Material Modal
  *
- * Modal for logging upgrade material distribution (Twine, Glaze, Solvent).
+ * Modal for logging or editing upgrade material distribution (Twine, Glaze, Solvent).
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import type { SnapshotPlayer, MaterialType, StaticSettings } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -22,6 +22,7 @@ interface LogMaterialModalProps {
     recipientPlayerId: string;
     notes?: string;
   }) => Promise<void>;
+  onUpdate?: (data: MaterialLogEntryUpdate) => Promise<void>;
   players: SnapshotPlayer[];
   floors: string[];
   currentWeek: number;
@@ -29,6 +30,8 @@ interface LogMaterialModalProps {
   suggestedPlayer?: SnapshotPlayer;
   suggestedMaterial?: MaterialType;
   presetFloor?: string;
+  /** If provided, modal operates in edit mode */
+  editEntry?: MaterialLogEntry;
 }
 
 /**
@@ -46,6 +49,7 @@ export function LogMaterialModal({
   isOpen,
   onClose,
   onSubmit,
+  onUpdate,
   players,
   floors,
   currentWeek,
@@ -53,7 +57,9 @@ export function LogMaterialModal({
   suggestedPlayer,
   suggestedMaterial,
   presetFloor,
+  editEntry,
 }: LogMaterialModalProps) {
+  const isEditMode = !!editEntry;
   // Determine initial floor: use preset if valid, otherwise find first floor with materials
   const getInitialFloor = () => {
     if (presetFloor && getMaterialsForFloor(presetFloor).length > 0) {
@@ -83,27 +89,41 @@ export function LogMaterialModal({
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
 
-  // Reset state when modal opens with new preset values
+  // Reset state when modal opens with new preset values or edit entry
   useEffect(() => {
     if (isOpen) {
-      const initialFloor = presetFloor && getMaterialsForFloor(presetFloor).length > 0
-        ? presetFloor
-        : floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
-      setSelectedFloor(initialFloor);
+      if (editEntry) {
+        // Edit mode: use existing entry values
+        setSelectedFloor(editEntry.floor);
+        setSelectedMaterial(editEntry.materialType);
+        setSelectedPlayer(editEntry.recipientPlayerId);
+        setWeekNumber(editEntry.weekNumber);
+        setNotes(editEntry.notes || '');
+        setShowAllRecipients(false);
+        // If the recipient is a substitute, enable includeSubs so they appear in dropdown
+        const recipient = players.find(p => p.id === editEntry.recipientPlayerId);
+        setIncludeSubs(recipient?.isSubstitute ?? false);
+      } else {
+        // Add mode: use presets if provided, otherwise defaults
+        const initialFloor = presetFloor && getMaterialsForFloor(presetFloor).length > 0
+          ? presetFloor
+          : floors.find((f) => getMaterialsForFloor(f).length > 0) || floors[0];
+        setSelectedFloor(initialFloor);
 
-      const floorMaterials = getMaterialsForFloor(initialFloor);
-      const initialMaterial = suggestedMaterial && floorMaterials.includes(suggestedMaterial)
-        ? suggestedMaterial
-        : floorMaterials[0] || 'twine';
-      setSelectedMaterial(initialMaterial);
+        const floorMaterials = getMaterialsForFloor(initialFloor);
+        const initialMaterial = suggestedMaterial && floorMaterials.includes(suggestedMaterial)
+          ? suggestedMaterial
+          : floorMaterials[0] || 'twine';
+        setSelectedMaterial(initialMaterial);
 
-      setSelectedPlayer(suggestedPlayer?.id || '');
-      setWeekNumber(currentWeek);
-      setNotes('');
-      setShowAllRecipients(false);
-      setIncludeSubs(false);
+        setSelectedPlayer(suggestedPlayer?.id || '');
+        setWeekNumber(currentWeek);
+        setNotes('');
+        setShowAllRecipients(false);
+        setIncludeSubs(false);
+      }
     }
-  }, [isOpen, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors]);
+  }, [isOpen, editEntry, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors, players]);
 
   // Get material log from store for priority calculation
   const { materialLog } = useLootTrackingStore();
@@ -124,13 +144,25 @@ export function LogMaterialModal({
 
     setIsSubmitting(true);
     try {
-      await onSubmit({
-        weekNumber,
-        floor: selectedFloor,
-        materialType: selectedMaterial,
-        recipientPlayerId: selectedPlayer,
-        notes: notes.trim() || undefined,
-      });
+      if (isEditMode && onUpdate) {
+        // Edit mode: call onUpdate with changes
+        await onUpdate({
+          weekNumber,
+          floor: selectedFloor,
+          materialType: selectedMaterial,
+          recipientPlayerId: selectedPlayer,
+          notes: notes.trim() || undefined,
+        });
+      } else {
+        // Add mode: call onSubmit with full data
+        await onSubmit({
+          weekNumber,
+          floor: selectedFloor,
+          materialType: selectedMaterial,
+          recipientPlayerId: selectedPlayer,
+          notes: notes.trim() || undefined,
+        });
+      }
       onClose();
     } catch {
       // Error handled by caller
@@ -210,7 +242,7 @@ export function LogMaterialModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-surface-card rounded-lg p-6 max-w-md w-full mx-4 border border-border-default">
         <h3 className="text-lg font-medium text-text-primary mb-4">
-          Log Material
+          {isEditMode ? 'Edit Material Entry' : 'Log Material'}
         </h3>
 
         <div className="space-y-4">
@@ -358,7 +390,7 @@ export function LogMaterialModal({
             }
             className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
-            {isSubmitting ? 'Logging...' : 'Log Material'}
+            {isSubmitting ? (isEditMode ? 'Saving...' : 'Logging...') : (isEditMode ? 'Save Changes' : 'Log Material')}
           </button>
         </div>
       </div>

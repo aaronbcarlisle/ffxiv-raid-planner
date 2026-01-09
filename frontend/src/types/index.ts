@@ -661,6 +661,15 @@ export interface MaterialLogEntryCreate {
   notes?: string;
 }
 
+// Material log entry update request (all fields optional)
+export interface MaterialLogEntryUpdate {
+  weekNumber?: number;
+  floor?: string;
+  materialType?: MaterialType;
+  recipientPlayerId?: string;
+  notes?: string;
+}
+
 // Loot log entry create request
 export interface LootLogEntryCreate {
   weekNumber: number;
