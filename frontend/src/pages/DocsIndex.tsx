@@ -18,6 +18,7 @@ import {
   ListOrdered,
   Swords,
   Users,
+  Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -47,6 +48,14 @@ const USER_DOCS: DocItem[] = [
     icon: Sparkles,
     href: '/docs/release-notes',
     sections: ['Latest Updates', 'New Features', 'Bug Fixes'],
+  },
+  {
+    id: 'roadmap',
+    title: 'Roadmap & Status',
+    description: 'Development plan, completed features, and what\'s next',
+    icon: Wrench,
+    href: '/docs/roadmap',
+    sections: ['Current Status', 'Completed Phases', 'Planned Features'],
   },
 ];
 

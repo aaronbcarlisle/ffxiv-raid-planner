@@ -27,6 +27,7 @@ import {
   Palette,
   ExternalLink,
   Sparkles,
+  Wrench,
 } from 'lucide-react';
 
 interface UserMenuProps {
@@ -112,6 +113,15 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             >
               <span className="flex items-center gap-1">
                 Release Notes
+                <ExternalLink className="w-3 h-3 text-text-muted" />
+              </span>
+            </DropdownItem>
+            <DropdownItem
+              icon={<Wrench className="w-4 h-4" />}
+              onSelect={() => window.open('/docs/roadmap', '_blank')}
+            >
+              <span className="flex items-center gap-1">
+                Roadmap
                 <ExternalLink className="w-3 h-3 text-text-muted" />
               </span>
             </DropdownItem>
