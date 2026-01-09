@@ -18,7 +18,9 @@ import {
   ChevronDown,
   ChevronRight,
   GitCommit,
+  Link2,
 } from 'lucide-react';
+import { toast } from '../stores/toastStore';
 import {
   CURRENT_VERSION,
   RELEASES,
@@ -227,6 +229,18 @@ function ReleaseCard({
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-semibold text-text-primary">v{release.version}</h2>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = `${window.location.origin}/docs/release-notes#v${release.version}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Link copied to clipboard');
+                  }}
+                  className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                  title="Copy link to this version"
+                >
+                  <Link2 className="w-4 h-4" />
+                </button>
                 {isLatest && (
                   <span className="px-2 py-0.5 text-xs font-medium bg-accent text-white rounded">
                     LATEST
