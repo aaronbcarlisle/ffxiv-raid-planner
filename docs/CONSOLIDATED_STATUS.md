@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 9, 2026 (v1.0.1 Released)
+**Last Updated:** January 9, 2026 (v1.0.2 Released)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 This document consolidates:
@@ -102,25 +102,25 @@ This document consolidates:
 | Issue | Location | Impact | Fix | Status |
 |-------|----------|--------|-----|--------|
 | **No database migrations** | Backend | Data loss risk on schema changes | Add Alembic migrations | ✅ Done |
-| **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter | ⏳ Pending |
-| **Test coverage** | Frontend + Backend | Regressions, bugs | pytest + vitest | ✅ Done (238 tests) |
+| **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter | ✅ Done (v1.0.2) |
+| **Test coverage** | Frontend + Backend | Regressions, bugs | pytest + vitest | ✅ Done (399 tests) |
 
 ### 🟠 P1 - High Priority
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **Missing error boundaries** | Frontend | App crashes on errors | Add React ErrorBoundary |
-| **No ARIA labels** | UI components | Accessibility issues | Add aria-* attributes to dropdowns/modals |
-| **Inconsistent button styles** | Throughout UI | Poor UX | Standardize Button component |
-| **No loading skeletons** | All pages | Poor perceived performance | Add skeleton components |
+| Issue | Location | Impact | Fix | Status |
+|-------|----------|--------|-----|--------|
+| **Missing error boundaries** | Frontend | App crashes on errors | Add React ErrorBoundary | ✅ Done (v1.0.1) |
+| **No ARIA labels** | UI components | Accessibility issues | Add aria-* attributes | ✅ Mostly done (v1.0.2) |
+| **No loading skeletons** | All pages | Poor perceived performance | Add skeleton components | ✅ Done (v1.0.1) |
+| **Security headers** | Backend API | Security vulnerabilities | Add HSTS, X-Frame-Options | ✅ Done (v1.0.2) |
 
-### 🟡 P2 - Medium Priority
+### 🟡 P2 - Medium Priority (Low Priority / Nice to Have)
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **Raw Tailwind values** | Many components | Design system drift | Use CSS custom properties |
-| **Duplicate DEFAULT_SETTINGS** | GroupView, HistoryView, useLootActions | Maintenance burden | Create shared constant |
-| **PlayerCard too complex** | PlayerCard.tsx (682 lines) | Hard to maintain | Split into sub-components |
+| Issue | Location | Impact | Fix | Status |
+|-------|----------|--------|-----|--------|
+| **Raw Tailwind values** | Many components | Design system drift | Use CSS custom properties | ⏳ Ongoing |
+| **Duplicate DEFAULT_SETTINGS** | Multiple files | Maintenance burden | Create shared constant | ✅ Done (utils/constants.ts) |
+| **Large component files** | GroupView (1239 lines) | Hard to maintain | Consider splitting | ⏳ Optional |
 
 ---
 
@@ -140,11 +140,11 @@ This document consolidates:
 #### ❌ Outstanding Items
 - [x] **Database Migrations** - Critical: Add Alembic ✅ Done
 - [x] **Database Indexes** - High: Add indexes on common queries ✅ Done (v1.0.1)
-- [ ] **Rate Limiting** - Critical: Add slowapi
-- [ ] **Redis Caching** - High: Replace in-memory cache for XIVAPI
+- [x] **Rate Limiting** - Critical: Add slowapi ✅ Done (v1.0.2)
+- [x] **Redis Caching** - High: Redis support added, falls back to in-memory ✅ Done
 - [x] **Structured Logging** - High: Add structlog ✅ Done (v1.0.1)
-- [ ] **Security Headers** - High: Add CSP, X-Frame-Options, etc.
-- [ ] **API Versioning** - Low: Prepare for v2 API
+- [x] **Security Headers** - High: Add HSTS, X-Frame-Options, etc. ✅ Done (v1.0.2)
+- [ ] **API Versioning** - Low: Prepare for v2 API (future consideration)
 
 ### Frontend UX/UI Audit
 
@@ -157,10 +157,10 @@ This document consolidates:
 
 #### ❌ Outstanding Items
 - [ ] **Badge overflow** - Medium: PlayerCard shows 7+ badges, need overflow UI
-- [ ] **Toast notifications** - High: Toast.tsx exists but not integrated
-- [ ] **Design token audit** - Medium: Many raw Tailwind values remain
-- [ ] **Keyboard shortcuts** - Low: No global keyboard handler
-- [ ] **Onboarding tooltips** - Low: No first-run experience
+- [x] **Toast notifications** - High: Toast integrated with errorHandler ✅ Done (v1.0.1)
+- [ ] **Design token audit** - Medium: Many raw Tailwind values remain (ongoing)
+- [ ] **Keyboard shortcuts** - Low: No global keyboard handler (future)
+- [ ] **Onboarding tooltips** - Low: No first-run experience (future)
 
 ### Loot System Audit
 
@@ -337,10 +337,11 @@ This document consolidates:
 - Plan gear verification workflow
 
 ### Up Next
-- Add error boundaries
-- Add rate limiting (slowapi)
-- Complete accessibility improvements (ARIA labels, keyboard navigation)
-- Clean up design system (replace raw Tailwind with CSS tokens)
+- ~~Add error boundaries~~ ✅ Done (react-error-boundary)
+- ~~Add rate limiting (slowapi)~~ ✅ Done (with Redis support)
+- ~~Add security headers~~ ✅ Done (HSTS, X-Frame-Options, etc.)
+- Design system cleanup (replace raw Tailwind with CSS tokens) - ongoing
+- Consider splitting large components (GroupView 1239 lines) - optional
 
 ### Future Phases
 - **Phase 7:** Lodestone auto-sync - Verify equipped gear against Lodestone
