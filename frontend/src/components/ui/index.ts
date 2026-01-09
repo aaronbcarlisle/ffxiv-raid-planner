@@ -2,6 +2,7 @@ export { Checkbox } from './Checkbox';
 export { ContextMenu, type ContextMenuItem } from './ContextMenu';
 export { GroupViewToggle } from './GroupViewToggle';
 export { JobIcon } from './JobIcon';
+export { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 export { Modal } from './Modal';
 export { Select } from './Select';
 export { SettingsPopover } from './SettingsPopover';
