@@ -24,23 +24,24 @@ def migrate_sqlite(db_path: str) -> None:
     import sqlite3
 
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    # Check if column already exists
-    cursor.execute("PRAGMA table_info(users)")
-    columns = [col[1] for col in cursor.fetchall()]
+        # Check if column already exists
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
 
-    if "is_admin" in columns:
-        print("Column 'is_admin' already exists in users table. Skipping.")
+        if "is_admin" in columns:
+            print("Column 'is_admin' already exists in users table. Skipping.")
+            return
+
+        # Add the column
+        print("Adding 'is_admin' column to users table...")
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0")
+        conn.commit()
+        print("Migration complete!")
+    finally:
         conn.close()
-        return
-
-    # Add the column
-    print("Adding 'is_admin' column to users table...")
-    cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0")
-    conn.commit()
-    conn.close()
-    print("Migration complete!")
 
 
 def migrate_postgresql(database_url: str) -> None:
@@ -51,27 +52,34 @@ def migrate_postgresql(database_url: str) -> None:
         print("Error: psycopg2 not installed. Install with: pip install psycopg2-binary")
         sys.exit(1)
 
-    conn = psycopg2.connect(database_url)
-    cursor = conn.cursor()
+    conn = None
+    try:
+        conn = psycopg2.connect(database_url)
+        cursor = conn.cursor()
 
-    # Check if column already exists
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'is_admin'
-    """)
+        # Check if column already exists
+        cursor.execute("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'is_admin'
+        """)
 
-    if cursor.fetchone():
-        print("Column 'is_admin' already exists in users table. Skipping.")
-        conn.close()
-        return
+        if cursor.fetchone():
+            print("Column 'is_admin' already exists in users table. Skipping.")
+            return
 
-    # Add the column
-    print("Adding 'is_admin' column to users table...")
-    cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE")
-    conn.commit()
-    conn.close()
-    print("Migration complete!")
+        # Add the column
+        print("Adding 'is_admin' column to users table...")
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE")
+        conn.commit()
+        print("Migration complete!")
+    except Exception:
+        if conn is not None:
+            conn.rollback()
+        raise
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def main() -> None:

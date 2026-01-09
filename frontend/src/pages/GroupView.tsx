@@ -61,20 +61,30 @@ export function GroupView() {
   useEffect(() => {
     const viewAsUserId = searchParams.get('viewAs');
     if (viewAsUserId && currentGroup?.id && user?.isAdmin) {
-      // Start viewing as the specified user
-      startViewAs(currentGroup.id, viewAsUserId);
+      // Only start viewAs if not already viewing as this user in this group
+      if (!viewAsUser || viewAsUser.userId !== viewAsUserId || viewAsUser.groupId !== currentGroup.id) {
+        startViewAs(currentGroup.id, viewAsUserId);
+      }
     } else if (!viewAsUserId && viewAsUser) {
       // URL param removed, stop viewing as
       stopViewAs();
     }
   }, [searchParams, currentGroup?.id, user?.isAdmin, startViewAs, stopViewAs, viewAsUser]);
 
-  // Clean up viewAs state when leaving the page
+  // Clear stale viewAs state if group changed
+  useEffect(() => {
+    if (viewAsUser && currentGroup?.id && viewAsUser.groupId !== currentGroup.id) {
+      stopViewAs();
+    }
+  }, [viewAsUser, currentGroup?.id, stopViewAs]);
+
+  // Clean up viewAs state when unmounting (leaving this page entirely)
   useEffect(() => {
     return () => {
       stopViewAs();
     };
-  }, [stopViewAs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
@@ -720,7 +730,7 @@ export function GroupView() {
     // If player is configured, show droppable player card
     if (player.configured) {
       // Check if user can reset this player's gear
-      const resetPermission = canResetGear(userRole, player, effectiveUserId);
+      const resetPermission = canResetGear(userRole, player, effectiveUserId, user?.isAdmin && !viewAsUser);
 
       return (
         <DroppablePlayerCard
@@ -733,7 +743,7 @@ export function GroupView() {
           dragState={dnd.dragState}
           canEdit={canEdit}
           currentUserId={effectiveUserId}
-          isGroupOwner={currentGroup?.userRole === 'owner'}
+          isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
           groupId={currentGroup!.id}

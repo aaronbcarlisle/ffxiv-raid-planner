@@ -8,7 +8,7 @@ from typing import Any, TypeVar
 
 import structlog
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -308,6 +308,155 @@ async def get_static_group_by_code(
 
     user_role = MemberRole(membership.role) if membership else None
     return group_to_response_with_members(group, user_role)
+
+
+# --- Admin Endpoints ---
+# NOTE: These must be defined BEFORE /{group_id} to avoid route conflicts
+
+
+@router.get("/admin/all", response_model=AdminStaticGroupListResponse)
+async def list_all_static_groups_admin(
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AdminStaticGroupListResponse:
+    """List all static groups (admin only).
+
+    This endpoint is restricted to admin users and returns all static groups
+    in the system with owner information for troubleshooting purposes.
+
+    Args:
+        search: Optional search term to filter by group name or owner username
+        limit: Maximum number of groups to return (default 50, max 100)
+        offset: Number of groups to skip for pagination
+    """
+    # Check admin permission
+    if not await is_user_admin(session, current_user.id):
+        raise PermissionDenied("Admin access required")
+
+    # Clamp limit to prevent unbounded queries
+    limit = min(max(1, limit), 100)
+    offset = max(0, offset)
+
+    # Build query
+    query = (
+        select(StaticGroup)
+        .options(
+            selectinload(StaticGroup.owner),
+            selectinload(StaticGroup.tier_snapshots),
+            selectinload(StaticGroup.memberships),
+        )
+        .order_by(StaticGroup.name)
+    )
+
+    # Apply search filter if provided
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.join(User, StaticGroup.owner_id == User.id).where(
+            (StaticGroup.name.ilike(search_term)) |
+            (User.discord_username.ilike(search_term))
+        )
+
+    # Get total count (before pagination) using func.count() for efficiency
+    count_query = select(func.count(StaticGroup.id))
+    if search:
+        search_term = f"%{search.lower()}%"
+        count_query = count_query.join(User, StaticGroup.owner_id == User.id).where(
+            (StaticGroup.name.ilike(search_term)) |
+            (User.discord_username.ilike(search_term))
+        )
+    total = await session.scalar(count_query) or 0
+
+    # Apply pagination
+    query = query.offset(offset).limit(limit)
+
+    result = await session.execute(query)
+    groups = result.unique().scalars().all()
+
+    items = [
+        AdminStaticGroupListItem(
+            id=group.id,
+            name=group.name,
+            share_code=group.share_code,
+            is_public=group.is_public,
+            owner_id=group.owner_id,
+            owner=OwnerInfo(
+                id=group.owner.id,
+                discord_username=group.owner.discord_username,
+                discord_avatar=group.owner.discord_avatar,
+                avatar_url=group.owner.avatar_url,
+                display_name=group.owner.display_name,
+            ) if group.owner else None,
+            member_count=group.member_count,
+            tier_count=len(group.tier_snapshots) if group.tier_snapshots else 0,
+            created_at=group.created_at,
+            updated_at=group.updated_at,
+        )
+        for group in groups
+    ]
+
+    return AdminStaticGroupListResponse(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/admin/user-role/{group_id}/{user_id}")
+async def get_user_role_in_group_admin(
+    group_id: str,
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Get a user's role in a specific group (admin only).
+
+    Used for the "View As" feature to show the UI from another user's perspective.
+    Returns the user's membership info including role, or indicates they're not a member.
+    """
+    # Check admin permission
+    if not await is_user_admin(session, current_user.id):
+        raise PermissionDenied("Admin access required")
+
+    # Verify group exists
+    group = await get_static_group(session, group_id)
+
+    # Get target user info
+    result = await session.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+
+    if not target_user:
+        raise NotFound("User not found")
+
+    # Get their membership in this group
+    membership = await get_user_membership(session, user_id, group_id)
+
+    # Check if user is linked to any player in this group (via player.user_id)
+    linked_player_result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(TierSnapshot.static_group_id == group_id)
+        .where(SnapshotPlayer.user_id == user_id)
+        .limit(1)
+    )
+    linked_player = linked_player_result.scalar_one_or_none()
+
+    return {
+        "userId": target_user.id,
+        "discordUsername": target_user.discord_username,
+        "displayName": target_user.display_name,
+        "avatarUrl": target_user.avatar_url,
+        "groupId": group_id,
+        "groupName": group.name,
+        "isMember": membership is not None,
+        "role": membership.role if membership else None,
+        "isLinkedPlayer": linked_player is not None,
+        "linkedPlayerId": linked_player.id if linked_player else None,
+        "linkedPlayerName": linked_player.name if linked_player else None,
+    }
 
 
 @router.get("/{group_id}", response_model=StaticGroupWithMembers)
@@ -814,152 +963,3 @@ async def transfer_ownership(
     await session.flush()
 
     return group_to_response(group, MemberRole.LEAD)
-
-
-# --- Admin Endpoints ---
-
-
-@router.get("/admin/all", response_model=AdminStaticGroupListResponse)
-async def list_all_static_groups_admin(
-    search: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> AdminStaticGroupListResponse:
-    """List all static groups (admin only).
-
-    This endpoint is restricted to admin users and returns all static groups
-    in the system with owner information for troubleshooting purposes.
-
-    Args:
-        search: Optional search term to filter by group name or owner username
-        limit: Maximum number of groups to return (default 50, max 100)
-        offset: Number of groups to skip for pagination
-    """
-    # Check admin permission
-    if not await is_user_admin(session, current_user.id):
-        raise PermissionDenied("Admin access required")
-
-    # Clamp limit to prevent unbounded queries
-    limit = min(max(1, limit), 100)
-    offset = max(0, offset)
-
-    # Build query
-    query = (
-        select(StaticGroup)
-        .options(
-            selectinload(StaticGroup.owner),
-            selectinload(StaticGroup.tier_snapshots),
-            selectinload(StaticGroup.memberships),
-        )
-        .order_by(StaticGroup.name)
-    )
-
-    # Apply search filter if provided
-    if search:
-        search_term = f"%{search.lower()}%"
-        query = query.join(User, StaticGroup.owner_id == User.id).where(
-            (StaticGroup.name.ilike(search_term)) |
-            (User.discord_username.ilike(search_term))
-        )
-
-    # Get total count (before pagination)
-    count_query = select(StaticGroup)
-    if search:
-        search_term = f"%{search.lower()}%"
-        count_query = count_query.join(User, StaticGroup.owner_id == User.id).where(
-            (StaticGroup.name.ilike(search_term)) |
-            (User.discord_username.ilike(search_term))
-        )
-    count_result = await session.execute(count_query)
-    total = len(count_result.scalars().all())
-
-    # Apply pagination
-    query = query.offset(offset).limit(limit)
-
-    result = await session.execute(query)
-    groups = result.unique().scalars().all()
-
-    items = [
-        AdminStaticGroupListItem(
-            id=group.id,
-            name=group.name,
-            share_code=group.share_code,
-            is_public=group.is_public,
-            owner_id=group.owner_id,
-            owner=OwnerInfo(
-                id=group.owner.id,
-                discord_username=group.owner.discord_username,
-                discord_avatar=group.owner.discord_avatar,
-                avatar_url=group.owner.avatar_url,
-                display_name=group.owner.display_name,
-            ) if group.owner else None,
-            member_count=group.member_count,
-            tier_count=len(group.tier_snapshots) if group.tier_snapshots else 0,
-            created_at=group.created_at,
-            updated_at=group.updated_at,
-        )
-        for group in groups
-    ]
-
-    return AdminStaticGroupListResponse(
-        items=items,
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
-
-
-@router.get("/admin/user-role/{group_id}/{user_id}")
-async def get_user_role_in_group_admin(
-    group_id: str,
-    user_id: str,
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Get a user's role in a specific group (admin only).
-
-    Used for the "View As" feature to show the UI from another user's perspective.
-    Returns the user's membership info including role, or indicates they're not a member.
-    """
-    # Check admin permission
-    if not await is_user_admin(session, current_user.id):
-        raise PermissionDenied("Admin access required")
-
-    # Verify group exists
-    group = await get_static_group(session, group_id)
-
-    # Get target user info
-    result = await session.execute(select(User).where(User.id == user_id))
-    target_user = result.scalar_one_or_none()
-
-    if not target_user:
-        raise NotFound("User not found")
-
-    # Get their membership in this group
-    membership = await get_user_membership(session, user_id, group_id)
-
-    # Check if user is linked to any player in this group (via player.user_id)
-    linked_player_result = await session.execute(
-        select(SnapshotPlayer)
-        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
-        .where(TierSnapshot.static_group_id == group_id)
-        .where(SnapshotPlayer.user_id == user_id)
-        .limit(1)
-    )
-    linked_player = linked_player_result.scalar_one_or_none()
-
-    return {
-        "userId": target_user.id,
-        "discordUsername": target_user.discord_username,
-        "displayName": target_user.display_name,
-        "avatarUrl": target_user.avatar_url,
-        "groupId": group_id,
-        "groupName": group.name,
-        "isMember": membership is not None,
-        "role": membership.role if membership else None,
-        "isLinkedPlayer": linked_player is not None,
-        "linkedPlayerId": linked_player.id if linked_player else None,
-        "linkedPlayerName": linked_player.name if linked_player else None,
-    }

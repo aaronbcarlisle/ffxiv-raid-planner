@@ -50,8 +50,8 @@ export function AdminDashboard() {
         const data = await response.json();
         setViewAsMembers(data.map((m: { user: MemberInfo }) => m.user).filter(Boolean));
       }
-    } catch {
-      // Ignore errors
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
     } finally {
       setViewAsMembersLoading(false);
     }

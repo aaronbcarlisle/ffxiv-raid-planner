@@ -25,7 +25,7 @@ def create_admin_membership(user_id: str, group_id: str) -> Membership:
     """
     now = datetime.now(timezone.utc).isoformat()
     return Membership(
-        id="admin-virtual-membership",
+        id=f"admin-virtual-{user_id}-{group_id}",
         user_id=user_id,
         static_group_id=group_id,
         role=MemberRole.OWNER.value,
