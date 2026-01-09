@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
-import type { FloorNumber, UpgradeMaterialType } from '../../gamedata/loot-tables';
+import type { FloorNumber } from '../../gamedata/loot-tables';
 import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import {

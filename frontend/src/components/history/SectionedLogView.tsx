@@ -28,7 +28,7 @@ import {
 } from '../primitives/Dropdown';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
 
@@ -186,7 +186,7 @@ export function SectionedLogView({
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
     floor: string;
-    materialType: 'twine' | 'glaze' | 'solvent';
+    materialType: MaterialType;
     recipientPlayerId: string;
     notes?: string;
   }) => {

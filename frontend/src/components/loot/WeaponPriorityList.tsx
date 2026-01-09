@@ -18,13 +18,6 @@ interface RollResult {
   roll: number;
 }
 
-// Group of tied entries with optional roll results
-interface TieGroup {
-  entries: WeaponPriorityEntry[];
-  tieGroup: number;
-  rollResults?: RollResult[];
-}
-
 interface WeaponPriorityCardProps {
   job: string;
   jobName: string;

@@ -7,10 +7,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { SnapshotPlayer, MaterialType, StaticSettings } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
-import { getPriorityForUpgradeMaterial } from '../../utils/priority';
+import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
-import { parseFloorName, FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
+import { parseFloorName, FLOOR_LOOT_TABLES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 
 interface LogMaterialModalProps {
   isOpen: boolean;
@@ -145,12 +145,10 @@ export function LogMaterialModal({
 
     // Get players who need this material (have unaugmented tome pieces)
     // Pass materialLog to account for materials already received
-    const priorityList = getPriorityForUpgradeMaterial(
-      configuredPlayers,
-      selectedMaterial,
-      settings,
-      materialLog
-    );
+    // Use different priority function for universal_tomestone vs augmentation materials
+    const priorityList = isSlotAugmentationMaterial(selectedMaterial)
+      ? getPriorityForUpgradeMaterial(configuredPlayers, selectedMaterial, settings, materialLog)
+      : getPriorityForUniversalTomestone(configuredPlayers, settings, materialLog);
 
     // Also include players who don't need the material (at the bottom)
     const playersWithPriority = priorityList.map(({ player, score }, index) => ({
