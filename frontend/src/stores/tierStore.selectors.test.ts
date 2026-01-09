@@ -228,7 +228,7 @@ describe('tierStore selectors', () => {
       });
 
       const result = selectFromStore(
-        (state) => state.currentTier?.players.find((p) => p.id === 'nonexistent')
+        (state) => state.currentTier?.players?.find((p) => p.id === 'nonexistent')
       );
       expect(result).toBeUndefined();
     });
@@ -241,14 +241,14 @@ describe('tierStore selectors', () => {
       });
 
       const result = selectFromStore(
-        (state) => state.currentTier?.players.find((p) => p.id === 'target-player')
+        (state) => state.currentTier?.players?.find((p) => p.id === 'target-player')
       );
       expect(result?.name).toBe('Target');
     });
 
     it('returns undefined when no tier selected', () => {
       const result = selectFromStore(
-        (state) => state.currentTier?.players.find((p) => p.id === 'any-id')
+        (state) => state.currentTier?.players?.find((p) => p.id === 'any-id')
       );
       expect(result).toBeUndefined();
     });
@@ -262,7 +262,7 @@ describe('tierStore selectors', () => {
       });
 
       const result = selectFromStore(
-        (state) => state.currentTier?.players.find((p) => p.position === 'T1')
+        (state) => state.currentTier?.players?.find((p) => p.position === 'T1')
       );
       expect(result).toBeUndefined();
     });
@@ -278,7 +278,7 @@ describe('tierStore selectors', () => {
       });
 
       const result = selectFromStore(
-        (state) => state.currentTier?.players.find((p) => p.position === 'T1')
+        (state) => state.currentTier?.players?.find((p) => p.position === 'T1')
       );
       expect(result?.name).toBe('Tank');
     });
@@ -287,7 +287,7 @@ describe('tierStore selectors', () => {
   describe('configuredPlayers selector', () => {
     it('returns empty array when no tier selected', () => {
       const result = selectFromStore(
-        (state) => state.currentTier?.players.filter((p) => p.configured) ?? []
+        (state) => state.currentTier?.players?.filter((p) => p.configured) ?? []
       );
       expect(result).toEqual([]);
     });
@@ -304,7 +304,7 @@ describe('tierStore selectors', () => {
       });
 
       const result = selectFromStore(
-        (state) => state.currentTier?.players.filter((p) => p.configured) ?? []
+        (state) => state.currentTier?.players?.filter((p) => p.configured) ?? []
       );
       expect(result).toHaveLength(2);
       expect(result.map((p) => p.name)).toEqual(['Configured', 'Also Configured']);

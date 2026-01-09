@@ -235,7 +235,7 @@ describe('eventBus', () => {
         name: string;
       }
 
-      const callback = vi.fn<[UserData], void>();
+      const callback = vi.fn();
       eventBus.on<UserData>('user-event', callback);
 
       const userData: UserData = { id: '123', name: 'Test' };

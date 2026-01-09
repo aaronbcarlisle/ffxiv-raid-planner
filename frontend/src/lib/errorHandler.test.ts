@@ -2,7 +2,7 @@
  * Unit tests for the centralized error handler utility
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseApiError,
   handleApiError,
@@ -192,8 +192,7 @@ describe('handleApiError', () => {
     vi.clearAllMocks();
   });
 
-  it('parses error and returns ApiError', async () => {
-    const { toast } = await import('../stores/toastStore');
+  it('parses error and returns ApiError', () => {
     const response = new Response(null, { status: 404 });
 
     const result = handleApiError(response, 'fetch player');
