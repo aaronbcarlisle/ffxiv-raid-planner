@@ -433,12 +433,14 @@ export function WeeklyLootGrid({
                   const matEntry = getMaterialForFloor(floor.number, mat.type);
                   const canClickMat = canEdit && onLogMaterial && !matEntry;
                   const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
+                  // Show pointer cursor if cell is interactive (can log, or has entry for context menu)
+                  const showPointer = canClickMat || !!matEntry;
 
                   return (
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${showPointer ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
                       onKeyDown={canClickMat ? (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
