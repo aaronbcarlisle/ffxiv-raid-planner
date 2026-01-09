@@ -81,9 +81,11 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
 
 
 # CORS middleware
+# Supports both static origins list and regex pattern for Vercel previews
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=settings.cors_vercel_preview_pattern or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

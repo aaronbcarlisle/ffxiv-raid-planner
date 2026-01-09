@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     # CORS for production - only the actual frontend domain (set via CORS_ORIGINS_PRODUCTION)
     cors_origins_production: str = ""  # e.g., "https://raidplanner.example.com"
 
+    # CORS regex pattern for Vercel preview deployments
+    # Allows preview URLs like: https://ffxiv-raid-planner-dev-git-*.vercel.app
+    # Set to empty string to disable preview CORS
+    cors_vercel_preview_pattern: str = r"https://ffxiv-raid-planner-dev-.*\.vercel\.app"
+
     # Debug mode
     debug: bool = True
 
