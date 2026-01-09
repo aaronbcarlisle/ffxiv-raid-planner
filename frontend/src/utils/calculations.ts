@@ -300,13 +300,12 @@ export function calculateAverageItemLevel(
 
     // Calculate from currentSource for unacquired gear or when itemLevel unavailable
     const currentSource = getEffectiveCurrentSource(slot);
-    if (currentSource === 'unknown') {
-      // Skip unknown slots in average calculation
-      continue;
-    }
-
     const isWeapon = slot.slot === 'weapon';
-    const iLv = getItemLevelForCategory(tierId, currentSource, isWeapon);
+
+    // For 'unknown' slots, assume crafted gear as baseline (most common starting point)
+    // This prevents inflated averages when only a few items are checked
+    const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
+    const iLv = getItemLevelForCategory(tierId, effectiveSource, isWeapon);
     if (iLv > 0) {
       totalILv += iLv;
       validSlots++;
