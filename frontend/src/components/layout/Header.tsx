@@ -177,24 +177,6 @@ export function Header() {
 
   return (
     <header className="bg-surface-raised border-b border-border-default">
-      {/* Development Warning Banner */}
-      <div className="bg-status-warning/10 border-b border-status-warning/30">
-        <div className="max-w-[120rem] mx-auto px-4 py-1.5 flex items-center justify-center gap-2 text-sm">
-          <svg className="w-4 h-4 text-status-warning flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span className="text-status-warning">
-            <strong>Active Development</strong> — UX/UI changes in progress.
-          </span>
-          <Link
-            to="/docs/design-system"
-            className="text-accent hover:text-accent-bright underline underline-offset-2 transition-colors"
-          >
-            Read more
-          </Link>
-        </div>
-      </div>
-
       <div className="max-w-[120rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-4 min-w-0">

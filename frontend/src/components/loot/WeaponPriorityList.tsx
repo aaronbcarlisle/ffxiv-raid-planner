@@ -5,12 +5,19 @@
  * Shows which players should receive weapons in what order.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
+
+// Roll result for a player
+interface RollResult {
+  playerId: string;
+  roll: number;
+}
 
 interface WeaponPriorityCardProps {
   job: string;
@@ -28,9 +35,84 @@ function WeaponPriorityCard({
   onLogClick,
 }: WeaponPriorityCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [rollResults, setRollResults] = useState<Map<number, RollResult[]>>(new Map());
+
   const maxShown = 3;
   const hasMore = priority.length > maxShown;
   const visibleEntries = expanded ? priority : priority.slice(0, maxShown);
+
+  // Group entries and identify tie groups
+  const groupedEntries = useMemo(() => {
+    const result: Array<{ entry: WeaponPriorityEntry; displayRank: number; tieGroupEntries?: WeaponPriorityEntry[] }> = [];
+    let currentRank = 1;
+    let i = 0;
+
+    while (i < visibleEntries.length) {
+      const entry = visibleEntries[i];
+
+      if (entry.isTied && entry.tieGroup !== undefined) {
+        // Collect all entries in the same tie group that are visible
+        const tieGroupEntries = visibleEntries.filter(
+          (e) => e.tieGroup === entry.tieGroup
+        );
+
+        // Add first entry with tie group info
+        result.push({
+          entry,
+          displayRank: currentRank,
+          tieGroupEntries,
+        });
+
+        // Skip the rest of the tie group (they're handled together)
+        i += tieGroupEntries.length;
+        currentRank++; // Tie group counts as one rank
+      } else {
+        result.push({ entry, displayRank: currentRank });
+        i++;
+        currentRank++;
+      }
+    }
+
+    return result;
+  }, [visibleEntries]);
+
+  // Roll for a tie group
+  const handleRoll = useCallback((tieGroup: number, visibleEntries: WeaponPriorityEntry[]) => {
+    // Check if there are more tied players in the full list than what's visible
+    const allTiedEntries = priority.filter((e) => e.tieGroup === tieGroup);
+
+    // If tie group extends beyond visible entries, auto-expand
+    if (allTiedEntries.length > visibleEntries.length) {
+      setExpanded(true);
+    }
+
+    // Roll for ALL tied entries (not just visible ones)
+    const results: RollResult[] = allTiedEntries.map((e) => ({
+      playerId: e.player.id,
+      roll: Math.floor(Math.random() * 100) + 1, // 1-100
+    }));
+
+    // Sort by roll descending so winner is first
+    results.sort((a, b) => b.roll - a.roll);
+
+    setRollResults((prev) => new Map(prev).set(tieGroup, results));
+  }, [priority]);
+
+  // Get winner from roll results
+  const getWinnerId = useCallback((tieGroup: number): string | null => {
+    const results = rollResults.get(tieGroup);
+    if (!results || results.length === 0) return null;
+    // Winner is highest roll (first after sorting)
+    return results[0].playerId;
+  }, [rollResults]);
+
+  // Get roll for a specific player
+  const getPlayerRoll = useCallback((tieGroup: number, playerId: string): number | null => {
+    const results = rollResults.get(tieGroup);
+    if (!results) return null;
+    const result = results.find((r) => r.playerId === playerId);
+    return result?.roll ?? null;
+  }, [rollResults]);
 
   return (
     <div className="bg-surface-base rounded-lg p-3">
@@ -45,9 +127,109 @@ function WeaponPriorityCard({
         <div className="text-sm text-text-muted py-2">No one needs</div>
       ) : (
         <div className="space-y-1">
-          {visibleEntries.map((entry, index) => {
-            const roleColor = getRoleColor(entry.player.role as any);
-            const isFirst = index === 0;
+          {groupedEntries.map(({ entry, displayRank, tieGroupEntries }, groupIndex) => {
+            const isTieGroup = tieGroupEntries && tieGroupEntries.length > 1;
+            const tieGroup = entry.tieGroup;
+            const hasRolled = tieGroup !== undefined && rollResults.has(tieGroup);
+            const winnerId = tieGroup !== undefined ? getWinnerId(tieGroup) : null;
+
+            if (isTieGroup && tieGroupEntries) {
+              // Render tie group
+              return (
+                <div
+                  key={`tie-${tieGroup}`}
+                  className={`rounded border border-dashed border-yellow-500/50 ${
+                    groupIndex === 0 ? 'bg-accent/10' : 'bg-yellow-500/5'
+                  }`}
+                >
+                  {/* Tie group header with roll button */}
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-yellow-500/30">
+                    <span className="text-xs text-yellow-500 font-medium">
+                      Tied for #{displayRank}
+                    </span>
+                    <button
+                      onClick={() => handleRoll(tieGroup!, tieGroupEntries)}
+                      className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-medium"
+                    >
+                      {hasRolled ? 'Reroll' : 'Roll'}
+                    </button>
+                  </div>
+
+                  {/* Tied players */}
+                  {tieGroupEntries.map((tieEntry) => {
+                    const roleColor = tieEntry.player.role
+                      ? getRoleColor(tieEntry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+                      : '#9ca3af';
+                    const playerRoll = tieGroup !== undefined ? getPlayerRoll(tieGroup, tieEntry.player.id) : null;
+                    const isWinner = winnerId === tieEntry.player.id;
+                    const isFirst = groupIndex === 0;
+
+                    return (
+                      <div
+                        key={tieEntry.player.id}
+                        className={`flex items-center justify-between px-2 py-1 text-sm group ${
+                          isWinner ? 'bg-green-500/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`flex-shrink-0 w-4 ${
+                              isFirst || isWinner ? 'text-accent font-medium' : 'text-text-secondary'
+                            }`}
+                          >
+                            -
+                          </span>
+                          <span
+                            className={`truncate ${
+                              isWinner ? 'text-green-400 font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                            }`}
+                          >
+                            {tieEntry.player.name}
+                          </span>
+                          {tieEntry.isMainJob && (
+                            <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
+                              Main
+                            </span>
+                          )}
+                          {playerRoll !== null && (
+                            <span
+                              className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                                isWinner ? 'bg-green-500/30 text-green-400 font-medium' : 'bg-surface-elevated text-text-muted'
+                              }`}
+                            >
+                              {playerRoll}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {/* Log button - shows on hover */}
+                          {showLogButtons && onLogClick && (
+                            <button
+                              onClick={() => onLogClick(job, tieEntry.player)}
+                              className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                            >
+                              Log
+                            </button>
+                          )}
+                          <span
+                            className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
+                            style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                          >
+                            {tieEntry.score}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Render regular (non-tied) entry
+            const roleColor = entry.player.role
+              ? getRoleColor(entry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+              : '#9ca3af';
+            const isFirst = groupIndex === 0;
 
             return (
               <div
@@ -62,7 +244,7 @@ function WeaponPriorityCard({
                       isFirst ? 'text-accent font-medium' : 'text-text-secondary'
                     }`}
                   >
-                    {index + 1}.
+                    {displayRank}.
                   </span>
                   <span
                     className={`truncate ${
@@ -127,7 +309,32 @@ export function WeaponPriorityList({
   showLogButtons = false,
   onLogClick,
 }: WeaponPriorityListProps) {
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  // URL params for deep linking
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Role filter: URL param > default
+  const [roleFilter, setRoleFilterState] = useState<RoleFilter>(() => {
+    const urlFilter = searchParams.get('weaponFilter');
+    if (urlFilter === 'all' || urlFilter === 'tank' || urlFilter === 'healer' || urlFilter === 'dps') {
+      return urlFilter;
+    }
+    return 'all';
+  });
+
+  // Wrapper to update roleFilter and URL
+  const setRoleFilter = useCallback((filter: RoleFilter) => {
+    setRoleFilterState(filter);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (filter === 'all') {
+        params.delete('weaponFilter');
+      } else {
+        params.set('weaponFilter', filter);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
   const sortedJobs = useMemo(() => {

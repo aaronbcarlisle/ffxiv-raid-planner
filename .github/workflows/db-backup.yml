@@ -1,10 +1,11 @@
 name: Database Backup
 
 on:
-  schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
-  workflow_dispatch: # Allow manual trigger
+  # Schedule disabled - Railway handles backups
+  # To re-enable: uncomment the schedule section below
+  # schedule:
+  #   - cron: '0 2 * * *'
+  workflow_dispatch: # Manual trigger only
 
 jobs:
   backup:

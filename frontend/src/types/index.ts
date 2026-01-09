@@ -565,6 +565,8 @@ export interface LootLogEntry {
   recipientPlayerName: string;
   method: LootMethod;
   notes?: string;
+  weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
+  isExtra: boolean;    // True if extra/off-job loot
   createdAt: string;
   createdByUserId: string;
   createdByUsername: string;
@@ -598,7 +600,7 @@ export interface PageBalance {
 }
 
 // Material types for upgrade materials
-export type MaterialType = 'twine' | 'glaze' | 'solvent';
+export type MaterialType = 'twine' | 'glaze' | 'solvent' | 'universal_tomestone';
 
 // Material log entry
 export interface MaterialLogEntry {
@@ -622,6 +624,7 @@ export interface MaterialBalance {
   twine: number;
   glaze: number;
   solvent: number;
+  universalTomestone: number;
 }
 
 // Material log entry create request
@@ -641,6 +644,8 @@ export interface LootLogEntryCreate {
   recipientPlayerId: string;
   method: LootMethod;
   notes?: string;
+  weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
+  isExtra?: boolean;   // True if extra/off-job loot
 }
 
 // Loot log entry update request
@@ -651,6 +656,8 @@ export interface LootLogEntryUpdate {
   recipientPlayerId?: string;
   method?: LootMethod;
   notes?: string;
+  weaponJob?: string;
+  isExtra?: boolean;
 }
 
 // Page ledger entry create request

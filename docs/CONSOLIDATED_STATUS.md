@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 2, 2026 (Parity Implementation In Progress)
+**Last Updated:** January 9, 2026 (v1.0.0 Released)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 This document consolidates:
@@ -44,16 +44,22 @@ This document consolidates:
 | **UI State Persistence** | 6.5 | ✅ Complete | Tab, week, tier selections persist on refresh |
 | **Tier-Specific Share Links** | 6.5 | ✅ Complete | Shift+click copies URL with tier param |
 
-### 🔨 In Progress: Parity Implementation
+### ✅ Completed: v1.0.0 Release (January 2026)
 
 **Audit:** `docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md`
 **Plan:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Gear Category Tracking** | 🔨 In Progress | 9 categories for current gear (vs 2 for BiS) |
-| **iLv Calculation** | 🔨 Planned | Per-slot iLv, average iLv display |
-| **Roster Adjustments** | 🔨 Planned | lootAdjustment + pageAdjustments for mid-tier joins |
+| **Gear Category Tracking** | ✅ Complete | 9 categories for current gear (vs 2 for BiS) |
+| **iLv Calculation** | ✅ Complete | Per-slot iLv, average iLv display |
+| **Roster Adjustments** | ✅ Complete | lootAdjustment + pageAdjustments for mid-tier joins |
+| **Weapon Job Tracking** | ✅ Complete | Track which job's weapon was logged, display with job icon |
+| **Extra Loot Tagging** | ✅ Complete | Mark loot as "extra" vs BiS priority |
+| **Universal Tomestone** | ✅ Complete | Fourth material type for weapon augmentation |
+| **Weapon Priority Ties** | ✅ Complete | Roll button for tied players, auto-expand on roll |
+| **Release Notes System** | ✅ Complete | In-app release notes with version notification |
+| **Auth Persistence** | ✅ Complete | Proactive token refresh, production detection |
 | **Alt Job Linking** | ⏳ Future | Multi-job players with shared page pools |
 
 ### 🚧 Partially Complete / Needs Work
@@ -80,11 +86,11 @@ This document consolidates:
 
 ### 🔴 P0 - Must Fix Before Production
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **No database migrations** | Backend | Data loss risk on schema changes | Add Alembic migrations |
-| **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter |
-| **No test coverage** | Frontend + Backend | Regressions, bugs | Add pytest (backend) + vitest (frontend) |
+| Issue | Location | Impact | Fix | Status |
+|-------|----------|--------|-----|--------|
+| **No database migrations** | Backend | Data loss risk on schema changes | Add Alembic migrations | ✅ Done |
+| **No rate limiting** | Backend API | DoS vulnerability | Add slowapi rate limiter | ⏳ Pending |
+| **No test coverage** | Frontend + Backend | Regressions, bugs | Add pytest (backend) + vitest (frontend) | 🟡 Partial (25 tests) |
 
 ### 🟠 P1 - High Priority
 
@@ -119,7 +125,7 @@ This document consolidates:
 - [x] Removed legacy models (Phase 1-3 cleanup done per UNIFIED_AUDIT_PLAN)
 
 #### ❌ Outstanding Items
-- [ ] **Database Migrations** - Critical: Add Alembic
+- [x] **Database Migrations** - Critical: Add Alembic ✅ Done
 - [ ] **Database Indexes** - High: Add indexes on common queries
 - [ ] **Rate Limiting** - Critical: Add slowapi
 - [ ] **Redis Caching** - High: Replace in-memory cache for XIVAPI
@@ -288,33 +294,32 @@ This document consolidates:
 4. ~~UI state persistence (tabs, weeks, tiers)~~ ✅
 5. ~~Tier-specific share links~~ ✅
 
-### ✅ Completed (January 2, 2026)
+### ✅ Completed (January 2-8, 2026)
 6. ~~Parity audit comparing web-app to spreadsheets~~ ✅
 7. ~~Create implementation plan for parity gaps~~ ✅
+8. ~~Implement parity features (gear categories, iLv, adjustments)~~ ✅
+9. ~~Add weapon job tracking and extra loot tagging~~ ✅
+10. ~~Add universal tomestone material type~~ ✅
+11. ~~Add release notes system~~ ✅
+12. ~~Fix auth persistence issues~~ ✅
+13. ~~Set up database migrations (Alembic)~~ ✅
+14. ~~Archive old planning/audit files to docs/archive/~~ ✅
 
-### 🔨 Current Priority: Parity Implementation
-See plan: `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+### 🔨 Current Priority: Phase 7 Planning
+- Design Lodestone auto-sync architecture
+- Evaluate XIVAPI character endpoints
+- Plan gear verification workflow
 
-**Phase 1:** Backend schema changes (GearSourceCategory, adjustments, migration)
-**Phase 2:** Frontend type definitions
-**Phase 3:** Business logic (iLv calculation, priority adjustments)
-**Phase 4:** UI updates (currentSource selector, iLv display, adjustments)
-**Phase 5:** Testing and documentation
+### Up Next
+- Add error boundaries
+- Expand test coverage (target: 50+ tests)
+- Complete accessibility improvements (ARIA labels, keyboard navigation)
+- Clean up design system (replace raw Tailwind with CSS tokens)
 
-### After Parity
-8. Archive old planning/audit files to docs/archive/
-9. Add error boundaries
-10. Set up database migrations (Alembic)
-
-### This Month
-9. Add basic test suite (vitest + pytest)
-10. Complete accessibility improvements
-11. Clean up design system
-
-### This Quarter
-12. Production readiness (security, caching, monitoring)
-13. Lodestone auto-sync feature
-14. Consider FFLogs integration
+### Future Phases
+- **Phase 7:** Lodestone auto-sync - Verify equipped gear against Lodestone
+- **Phase 8:** FFLogs integration - Parse logs for gear verification
+- **Phase 9:** Discord bot - Notifications and commands
 
 ---
 

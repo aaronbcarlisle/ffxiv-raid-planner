@@ -17,7 +17,7 @@ import { PlayerLedgerModal } from './PlayerLedgerModal';
 import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface UnifiedWeekOverviewProps {
@@ -338,7 +338,7 @@ export function UnifiedWeekOverview({
   const handleLogMaterial = useCallback(async (data: {
     weekNumber: number;
     floor: string;
-    materialType: 'twine' | 'glaze' | 'solvent';
+    materialType: MaterialType;
     recipientPlayerId: string;
     notes?: string;
   }) => {

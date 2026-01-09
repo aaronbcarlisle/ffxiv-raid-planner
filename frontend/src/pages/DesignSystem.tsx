@@ -8,6 +8,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import { IconButton } from '../components/primitives/IconButton';
@@ -1418,10 +1419,25 @@ function NavSidebar({
 }
 
 export function DesignSystem() {
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState('design-principles');
   // Track programmatic scroll to prevent scroll handler from overwriting clicked section
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
+
+  // Handle URL hash anchor on mount/change
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1); // Remove #
+      const element = document.getElementById(id);
+      if (element) {
+        setActiveSection(id);
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
 
   // Handle nav item click - locks scroll tracking until scroll animation completes
   const handleNavClick = useCallback((sectionId: string) => {

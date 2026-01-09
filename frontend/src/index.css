@@ -461,3 +461,20 @@ dialog input[type="radio"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Highlight pulse animation for deep-linked elements */
+@keyframes highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(20, 184, 166, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+
+.highlight-pulse {
+  animation: highlight-pulse 2s ease-out;
+}

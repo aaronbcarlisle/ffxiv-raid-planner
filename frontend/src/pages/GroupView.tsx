@@ -59,14 +59,38 @@ export function GroupView() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
+
+  // Tab state: URL param > localStorage > default
+  // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
+    const urlTab = searchParams.get('tab');
+    // Map URL-friendly names to internal PageMode
+    if (urlTab === 'players') return 'players';
+    if (urlTab === 'loot') return 'loot';
+    if (urlTab === 'log') return 'history';
+    if (urlTab === 'summary') return 'stats';
     const saved = localStorage.getItem('group-view-tab');
     // Handle legacy 'stats' tab - redirect to 'players'
     if (saved === 'stats') return 'players';
     return (saved as PageMode) || 'players';
   });
 
-  // Wrapper to persist pageMode
+  // Subtab state for loot panel: URL param > localStorage > default
+  const [lootSubTab, setLootSubTabState] = useState<'matrix' | 'gear' | 'weapon'>(() => {
+    const urlSubtab = searchParams.get('subtab');
+    if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') {
+      return urlSubtab;
+    }
+    try {
+      const saved = localStorage.getItem('loot-priority-subtab');
+      if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
+    } catch {
+      // Ignore
+    }
+    return 'matrix';
+  });
+
+  // Wrapper to persist pageMode and update URL
   const setPageMode = useCallback((mode: PageMode) => {
     setPageModeState(mode);
     try {
@@ -74,19 +98,77 @@ export function GroupView() {
     } catch {
       // Ignore localStorage errors
     }
-  }, []);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    // Map internal PageMode to URL-friendly names
+    const urlTab = mode === 'history' ? 'log' : mode === 'stats' ? 'summary' : mode;
+    // Update URL params
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', urlTab);
+      // Remove subtab if not on loot tab
+      if (mode !== 'loot') {
+        params.delete('subtab');
+      } else {
+        // Add current subtab when switching to loot
+        params.set('subtab', lootSubTab);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams, lootSubTab]);
+
+  // Wrapper to persist lootSubTab and update URL
+  const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
+    setLootSubTabState(tab);
+    try {
+      localStorage.setItem('loot-priority-subtab', tab);
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL params
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set('subtab', tab);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+  // View mode: URL param > localStorage > default
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => {
+    const urlView = searchParams.get('view');
+    if (urlView === 'compact' || urlView === 'expanded') return urlView;
     const saved = localStorage.getItem('party-view-mode');
     return saved === 'expanded' ? 'expanded' : 'compact';
   });
-  const [selectedFloor, setSelectedFloor] = useState<FloorNumber>(1);
+
+  // Floor selection: URL param > default (1)
+  const [selectedFloor, setSelectedFloorState] = useState<FloorNumber>(() => {
+    const urlFloor = searchParams.get('floor');
+    if (urlFloor === '1' || urlFloor === '2' || urlFloor === '3' || urlFloor === '4') {
+      return parseInt(urlFloor, 10) as FloorNumber;
+    }
+    return 1;
+  });
+
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [clipboardPlayer, setClipboardPlayer] = useState<SnapshotPlayer | null>(null);
-  const [sortPreset, setSortPresetState] = useState<SortPreset>('standard');
-  const [groupView, setGroupView] = useState(false);
+
+  // Sort preset: URL param > localStorage > default
+  const [sortPreset, setSortPresetState] = useState<SortPreset>(() => {
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'standard' || urlSort === 'dps-first' || urlSort === 'healer-first' || urlSort === 'custom') {
+      return urlSort;
+    }
+    return 'standard'; // Will be overwritten by tier-specific localStorage in useEffect
+  });
+
+  // Group view (G1/G2): URL param > default (false)
+  const [groupView, setGroupViewState] = useState(() => {
+    return searchParams.get('groups') === 'true';
+  });
   const [playerModalCount, setPlayerModalCount] = useState(0); // Track open modals in PlayerCards
 
-  // Wrapper to persist sortPreset per-tier
+  // Highlighted player for deep-link scroll animation
+  const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+
+  // Wrapper to persist sortPreset per-tier and update URL
   const setSortPreset = useCallback((preset: SortPreset) => {
     setSortPresetState(preset);
     if (currentTier?.tierId) {
@@ -96,7 +178,67 @@ export function GroupView() {
         // Ignore localStorage errors
       }
     }
-  }, [currentTier?.tierId]);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (preset === 'standard') {
+        params.delete('sort');
+      } else {
+        params.set('sort', preset);
+      }
+      return params;
+    }, { replace: true });
+  }, [currentTier?.tierId, setSearchParams]);
+
+  // Wrapper to persist viewMode and update URL
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeState(mode);
+    try {
+      localStorage.setItem('party-view-mode', mode);
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'compact') {
+        params.delete('view');
+      } else {
+        params.set('view', mode);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Wrapper to update floor and URL
+  const setSelectedFloor = useCallback((floor: FloorNumber) => {
+    setSelectedFloorState(floor);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (floor === 1) {
+        params.delete('floor');
+      } else {
+        params.set('floor', String(floor));
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Wrapper to update groupView and URL
+  const setGroupView = useCallback((enabled: boolean) => {
+    setGroupViewState(enabled);
+    // Update URL - only include if enabled
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (enabled) {
+        params.set('groups', 'true');
+      } else {
+        params.delete('groups');
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Clear tiers when shareCode changes (switching groups)
   useEffect(() => {
@@ -129,14 +271,14 @@ export function GroupView() {
     }
   }, [shareCode]);
 
-  // Persist view mode preference
-  useEffect(() => {
-    localStorage.setItem('party-view-mode', viewMode);
-  }, [viewMode]);
-
-  // Load sortPreset from localStorage when tier changes
+  // Load sortPreset from localStorage when tier changes (only if not specified in URL)
   useEffect(() => {
     if (!currentTier?.tierId) return;
+    // Skip if URL already has a sort param (user explicitly linked to this sort)
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'standard' || urlSort === 'dps-first' || urlSort === 'healer-first' || urlSort === 'custom') {
+      return;
+    }
     try {
       const saved = localStorage.getItem(`sort-preset-${currentTier.tierId}`);
       if (saved === 'standard' || saved === 'dps-first' || saved === 'healer-first' || saved === 'custom') {
@@ -147,7 +289,41 @@ export function GroupView() {
     } catch {
       setSortPresetState('standard');
     }
-  }, [currentTier?.tierId]);
+  }, [currentTier?.tierId, searchParams]);
+
+  // Handle player deep link - scroll to and highlight player
+  useEffect(() => {
+    const playerParam = searchParams.get('player');
+    if (!playerParam || !currentTier?.players) return;
+
+    // Find the player by ID
+    const player = currentTier.players.find(p => p.id === playerParam);
+    if (!player) return;
+
+    // Set highlighted player ID
+    setHighlightedPlayerId(playerParam);
+
+    // Scroll to the player card after a short delay (allow render)
+    setTimeout(() => {
+      const element = document.getElementById(`player-card-${playerParam}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    // Clear highlight after animation completes (2s)
+    const timer = setTimeout(() => {
+      setHighlightedPlayerId(null);
+      // Also clear the player param from URL
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.delete('player');
+        return params;
+      }, { replace: true });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, currentTier?.players, setSearchParams]);
 
   // Fetch tiers and load tier (from URL, localStorage, or active) sequentially
   useEffect(() => {
@@ -176,7 +352,12 @@ export function GroupView() {
       if (activeTier) {
         await fetchTier(currentGroup.id, activeTier.tierId);
         // Always show current tier in URL (so copying URL shares the right tier)
-        setSearchParams({ tier: activeTier.tierId }, { replace: true });
+        // Preserve existing tab/subtab params
+        setSearchParams(prev => {
+          const params = new URLSearchParams(prev);
+          params.set('tier', activeTier.tierId);
+          return params;
+        }, { replace: true });
       }
     })();
 
@@ -203,8 +384,12 @@ export function GroupView() {
       } catch {
         // Ignore localStorage errors
       }
-      // Update URL to reflect current tier (so copying URL shares the right tier)
-      setSearchParams({ tier: tierId }, { replace: true });
+      // Update URL to reflect current tier, preserving tab/subtab params
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.set('tier', tierId);
+        return params;
+      }, { replace: true });
       fetchTier(currentGroup.id, tierId);
     }
   }, [currentGroup?.id, fetchTier, setSearchParams]);
@@ -518,6 +703,7 @@ export function GroupView() {
           userHasClaimedPlayer={userHasClaimedPlayer}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
+          isHighlighted={highlightedPlayerId === player.id}
           onUpdate={(updates) => handleUpdatePlayer(player.id, updates)}
           onRemove={() => handleRemovePlayer(player.id)}
           onCopy={() => {
@@ -544,6 +730,13 @@ export function GroupView() {
           onReleasePlayer={() => handleReleasePlayer(player.id)}
           onModalOpen={handlePlayerModalOpen}
           onModalClose={handlePlayerModalClose}
+          onCopyUrl={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', 'players');
+            url.searchParams.set('player', player.id);
+            navigator.clipboard.writeText(url.toString());
+            toast.success('Link copied to clipboard');
+          }}
         />
       );
     }
@@ -773,6 +966,14 @@ export function GroupView() {
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
+              activeSubTab={lootSubTab}
+              onSubTabChange={setLootSubTab}
+              onLogSuccess={() => {
+                // Refresh tier data so weapon priority list updates
+                if (currentGroup?.id && currentTier?.tierId) {
+                  fetchTier(currentGroup.id, currentTier.tierId);
+                }
+              }}
             />
           )}
 

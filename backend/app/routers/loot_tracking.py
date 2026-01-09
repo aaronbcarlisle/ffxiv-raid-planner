@@ -49,11 +49,12 @@ async def get_tier_snapshot(
     group_id: str,
     tier_id: str,
 ) -> TierSnapshot:
-    """Get tier snapshot by tier_id (no permission check - caller must check)"""
+    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)"""
     result = await db.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
     )
     tier = result.scalar_one_or_none()
@@ -132,6 +133,8 @@ async def get_loot_log(
             recipient_player_name=entry.recipient_player.name,
             method=entry.method,
             notes=entry.notes,
+            weapon_job=entry.weapon_job,
+            is_extra=entry.is_extra,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
             created_by_username=entry.created_by.discord_username,
@@ -183,6 +186,8 @@ async def create_loot_log_entry(
         recipient_player_id=data.recipient_player_id,
         method=data.method.value,  # Use .value to get lowercase string for PostgreSQL enum
         notes=data.notes,
+        weapon_job=data.weapon_job,
+        is_extra=data.is_extra,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
     )
@@ -203,6 +208,8 @@ async def create_loot_log_entry(
         recipient_player_name=entry.recipient_player.name,
         method=entry.method,
         notes=entry.notes,
+        weapon_job=entry.weapon_job,
+        is_extra=entry.is_extra,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
         created_by_username=entry.created_by.discord_username,
@@ -265,6 +272,10 @@ async def update_loot_log_entry(
         entry.method = data.method.value
     if data.notes is not None:
         entry.notes = data.notes
+    if data.weapon_job is not None:
+        entry.weapon_job = data.weapon_job
+    if data.is_extra is not None:
+        entry.is_extra = data.is_extra
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])
@@ -279,6 +290,8 @@ async def update_loot_log_entry(
         recipient_player_name=entry.recipient_player.name,
         method=entry.method,
         notes=entry.notes,
+        weapon_job=entry.weapon_job,
+        is_extra=entry.is_extra,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
         created_by_username=entry.created_by.discord_username,
@@ -709,8 +722,8 @@ async def clear_player_page_ledger(
 ):
     """Clear all page ledger entries for a specific player"""
     # Check edit permissions (Owner/Lead only)
-    group = await get_static_group(db, group_id)
-    await check_edit_permission(db, group, current_user)
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -1032,13 +1045,13 @@ async def get_material_balances(
     material_map: dict[str, dict[str, int]] = {}
     for row in material_counts_result.all():
         if row.recipient_player_id not in material_map:
-            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0}
+            material_map[row.recipient_player_id] = {"twine": 0, "glaze": 0, "solvent": 0, "universal_tomestone": 0}
         material_map[row.recipient_player_id][row.material_type] = row.count
 
     # Build response using the lookup map
     balances = []
     for player in players:
-        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0})
+        counts = material_map.get(player.id, {"twine": 0, "glaze": 0, "solvent": 0, "universal_tomestone": 0})
         balances.append(
             MaterialBalanceResponse(
                 player_id=player.id,
@@ -1046,6 +1059,7 @@ async def get_material_balances(
                 twine=counts.get("twine", 0),
                 glaze=counts.get("glaze", 0),
                 solvent=counts.get("solvent", 0),
+                universal_tomestone=counts.get("universal_tomestone", 0),
             )
         )
 

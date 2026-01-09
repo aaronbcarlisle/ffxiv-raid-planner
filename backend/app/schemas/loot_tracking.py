@@ -53,6 +53,8 @@ class LootLogEntryCreate(CamelModel):
     recipient_player_id: str
     method: LootMethodEnum
     notes: str | None = None
+    weapon_job: str | None = None  # "DRG", "WHM", etc. for weapon slots
+    is_extra: bool = False  # True if extra/off-job loot
 
 
 class LootLogEntryUpdate(CamelModel):
@@ -64,6 +66,8 @@ class LootLogEntryUpdate(CamelModel):
     recipient_player_id: str | None = None
     method: LootMethodEnum | None = None
     notes: str | None = None
+    weapon_job: str | None = None
+    is_extra: bool | None = None
 
 
 class LootLogEntryResponse(CamelModel):
@@ -78,6 +82,8 @@ class LootLogEntryResponse(CamelModel):
     recipient_player_name: str  # Populated from join
     method: str
     notes: str | None
+    weapon_job: str | None  # "DRG", "WHM", etc. for weapon slots
+    is_extra: bool  # True if extra/off-job loot
     created_at: str
     created_by_user_id: str
     created_by_username: str  # Populated from join
@@ -149,6 +155,7 @@ class MaterialTypeEnum(str, Enum):
     TWINE = "twine"  # Left-side armor augmentation
     GLAZE = "glaze"  # Accessory augmentation
     SOLVENT = "solvent"  # Weapon augmentation
+    UNIVERSAL_TOMESTONE = "universal_tomestone"  # Tome weapon upgrade
 
 
 class MaterialLogEntryCreate(CamelModel):
@@ -187,3 +194,4 @@ class MaterialBalanceResponse(CamelModel):
     twine: int  # Total twine received
     glaze: int  # Total glaze received
     solvent: int  # Total solvent received
+    universal_tomestone: int  # Total universal tomestones received

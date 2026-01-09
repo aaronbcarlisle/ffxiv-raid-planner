@@ -15,6 +15,15 @@ const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ defa
 // Documentation pages
 const DocsIndex = lazy(() => import('./pages/DocsIndex').then(m => ({ default: m.DocsIndex })));
 const DesignSystemPage = lazy(() => import('./pages/DesignSystem').then(m => ({ default: m.DesignSystem })));
+const LootMathDocs = lazy(() => import('./pages/LootMathDocs'));
+const ApiDocs = lazy(() => import('./pages/ApiDocs'));
+const ApiCookbook = lazy(() => import('./pages/ApiCookbook'));
+const QuickStartDocs = lazy(() => import('./pages/QuickStartDocs'));
+const LeadsGuideDocs = lazy(() => import('./pages/LeadsGuideDocs'));
+const MembersGuideDocs = lazy(() => import('./pages/MembersGuideDocs'));
+const CommonTasksDocs = lazy(() => import('./pages/CommonTasksDocs'));
+const ReleaseNotes = lazy(() => import('./pages/ReleaseNotes'));
+const RoadmapDocs = lazy(() => import('./pages/RoadmapDocs'));
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -58,6 +67,15 @@ function App() {
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/design-system" element={<DesignSystemPage />} />
+            <Route path="docs/loot-math" element={<LootMathDocs />} />
+            <Route path="docs/api" element={<ApiDocs />} />
+            <Route path="docs/api/cookbook" element={<ApiCookbook />} />
+            <Route path="docs/getting-started" element={<QuickStartDocs />} />
+            <Route path="docs/guides/leads" element={<LeadsGuideDocs />} />
+            <Route path="docs/guides/members" element={<MembersGuideDocs />} />
+            <Route path="docs/guides/common-tasks" element={<CommonTasksDocs />} />
+            <Route path="docs/release-notes" element={<ReleaseNotes />} />
+            <Route path="docs/roadmap" element={<RoadmapDocs />} />
             {/* Legacy redirect for old /design-system URL */}
             <Route path="design-system" element={<DesignSystemPage />} />
           </Route>

@@ -32,6 +32,7 @@ interface PlayerCardProps {
   userHasClaimedPlayer?: boolean;
   groupId: string;
   tierId: string;
+  isHighlighted?: boolean;
   dragListeners?: DragListeners;
   dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
@@ -44,6 +45,7 @@ interface PlayerCardProps {
   onReleasePlayer?: () => void;
   onModalOpen?: () => void;
   onModalClose?: () => void;
+  onCopyUrl?: () => void;
 }
 
 export const PlayerCard = memo(function PlayerCard({
@@ -58,6 +60,7 @@ export const PlayerCard = memo(function PlayerCard({
   userHasClaimedPlayer,
   groupId,
   tierId,
+  isHighlighted,
   dragListeners,
   dragAttributes,
   onUpdate,
@@ -70,6 +73,7 @@ export const PlayerCard = memo(function PlayerCard({
   onReleasePlayer,
   onModalOpen,
   onModalClose,
+  onCopyUrl,
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -275,6 +279,16 @@ export const PlayerCard = memo(function PlayerCard({
       onClick: onCopy,
       // Copy is always allowed (read-only operation)
     },
+    ...(onCopyUrl ? [{
+      label: 'Copy URL',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      ),
+      onClick: onCopyUrl,
+      // Copy URL is always allowed (read-only operation)
+    }] : []),
     {
       label: 'Paste Player',
       icon: CONTEXT_MENU_ICONS.paste,
@@ -327,7 +341,8 @@ export const PlayerCard = memo(function PlayerCard({
 
   return (
     <div
-      className="bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px]"
+      id={`player-card-${player.id}`}
+      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${isHighlighted ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
     >

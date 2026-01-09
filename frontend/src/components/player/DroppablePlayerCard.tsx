@@ -24,6 +24,7 @@ interface DroppablePlayerCardProps {
   userHasClaimedPlayer?: boolean;
   groupId: string;
   tierId: string;
+  isHighlighted?: boolean;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;
@@ -34,6 +35,7 @@ interface DroppablePlayerCardProps {
   onReleasePlayer?: () => void;
   onModalOpen?: () => void;
   onModalClose?: () => void;
+  onCopyUrl?: () => void;
 }
 
 export function DroppablePlayerCard({

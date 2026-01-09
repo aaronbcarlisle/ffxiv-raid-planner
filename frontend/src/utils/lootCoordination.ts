@@ -23,6 +23,8 @@ export interface LogLootOptions {
   updateGear?: boolean;
   /** Update weapon priority when logging a weapon drop */
   updateWeaponPriority?: boolean;
+  /** Specific weapon job to mark as received (defaults to player's main job) */
+  weaponJob?: string;
 }
 
 export interface DeleteLootOptions {
@@ -115,9 +117,12 @@ export async function logLootAndUpdateGear(
     );
 
     if (player?.weaponPriorities) {
-      // Mark the player's main job weapon as received
+      // Use the passed weaponJob, fall back to data.weaponJob, then player's main job
+      const targetJob = options.weaponJob || data.weaponJob || player.job;
+
+      // Mark the target job's weapon as received
       const updatedPriorities = player.weaponPriorities.map((wp) =>
-        wp.job === player.job
+        wp.job === targetJob
           ? { ...wp, received: true, receivedDate: new Date().toISOString() }
           : wp
       );
@@ -289,6 +294,34 @@ export async function deleteLootAndRevertGear(
       await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
         gear: updatedGear,
       });
+    }
+  }
+
+  // 3. Revert weapon priority if this was a weapon drop or book
+  if (entry.itemSlot === 'weapon' && (entry.method === 'drop' || entry.method === 'book')) {
+    // Ensure tier is loaded
+    if (!tierStore.currentTier?.players) {
+      await tierStore.fetchTier(groupId, tierId);
+    }
+
+    const player = useTierStore.getState().currentTier?.players?.find(
+      (p) => p.id === entry.recipientPlayerId
+    );
+
+    if (player?.weaponPriorities) {
+      // Determine which job's weapon to un-mark
+      const weaponJob = entry.weaponJob || player.job;
+      const updatedPriorities = player.weaponPriorities.map((wp) =>
+        wp.job === weaponJob
+          ? { ...wp, received: false, receivedDate: undefined }
+          : wp
+      );
+      await useTierStore.getState().updateWeaponPriorities(
+        groupId,
+        tierId,
+        entry.recipientPlayerId,
+        updatedPriorities
+      );
     }
   }
 }

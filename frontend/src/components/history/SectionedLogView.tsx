@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
 import { AddLootEntryModal } from './AddLootEntryModal';
@@ -28,7 +29,7 @@ import {
 } from '../primitives/Dropdown';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
-import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry } from '../../types';
+import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
 
@@ -58,6 +59,7 @@ const MATERIAL_LABELS: Record<string, string> = {
   twine: 'Twine',
   glaze: 'Glaze',
   solvent: 'Solvent',
+  universal_tomestone: 'Universal Tomestone',
 };
 
 export function SectionedLogView({
@@ -186,7 +188,7 @@ export function SectionedLogView({
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
     floor: string;
-    materialType: 'twine' | 'glaze' | 'solvent';
+    materialType: MaterialType;
     recipientPlayerId: string;
     notes?: string;
   }) => {
@@ -242,7 +244,7 @@ export function SectionedLogView({
   const handleResetConfirm = useCallback(async () => {
     if (!resetModalType) return;
 
-    const { deleteMaterialEntry, adjustBookBalance } = useLootTrackingStore.getState();
+    const { deleteMaterialEntry, clearAllPageLedger } = useLootTrackingStore.getState();
 
     try {
       // Reset loot log (all entries for this tier)
@@ -260,17 +262,9 @@ export function SectionedLogView({
         }
       }
 
-      // Reset book balances
+      // Reset book balances - actually delete ledger history (not just zero out with adjustments)
       if (resetModalType === 'books' || resetModalType === 'all') {
-        const books = ['I', 'II', 'III', 'IV'] as const;
-        for (const balance of pageBalances) {
-          for (const book of books) {
-            const value = balance[`book${book}` as keyof typeof balance] as number;
-            if (value !== 0) {
-              await adjustBookBalance(groupId, tierId, balance.playerId, book, -value, currentWeek, 'Reset all');
-            }
-          }
-        }
+        await clearAllPageLedger(groupId, tierId);
       }
 
       // Refresh all data
@@ -289,12 +283,17 @@ export function SectionedLogView({
     } finally {
       setResetModalType(null);
     }
-  }, [resetModalType, groupId, tierId, currentWeek, pageBalances, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
+  }, [resetModalType, groupId, tierId, currentWeek, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
+
+  // URL params for deep linking
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Layout mode: 'grid' (weekly loot grid) or 'split' (traditional list view)
-  // Default to 'grid' for first-time users
+  // Priority: URL param > localStorage > default
   const [layoutMode, setLayoutMode] = useState<'split' | 'grid'>(() => {
+    const urlLayout = searchParams.get('logLayout');
+    if (urlLayout === 'split' || urlLayout === 'grid') return urlLayout;
     try {
       const saved = localStorage.getItem('log-layout-mode');
       return saved === 'split' ? 'split' : 'grid';
@@ -303,7 +302,7 @@ export function SectionedLogView({
     }
   });
 
-  // Persist layout mode
+  // Persist layout mode and update URL
   const handleLayoutModeChange = useCallback((mode: 'split' | 'grid') => {
     setLayoutMode(mode);
     try {
@@ -311,7 +310,17 @@ export function SectionedLogView({
     } catch {
       // Ignore localStorage errors
     }
-  }, []);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'grid') {
+        params.delete('logLayout');
+      } else {
+        params.set('logLayout', mode);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Book balances sidebar collapsed state
   const [booksSidebarCollapsed, setBooksSidebarCollapsed] = useState(() => {
@@ -335,8 +344,67 @@ export function SectionedLogView({
     });
   }, []);
 
-  // View mode for loot log: 'chronological' or 'byFloor'
-  const [lootViewMode, setLootViewMode] = useState<'chronological' | 'byFloor'>('byFloor');
+  // View mode for loot log: 'chronological' (timeline) or 'byFloor'
+  // Priority: URL param > default
+  const [lootViewMode, setLootViewModeState] = useState<'chronological' | 'byFloor'>(() => {
+    const urlView = searchParams.get('logView');
+    if (urlView === 'timeline') return 'chronological';
+    if (urlView === 'byFloor') return 'byFloor';
+    return 'byFloor';
+  });
+
+  // Wrapper to update lootViewMode and URL
+  const setLootViewMode = useCallback((mode: 'chronological' | 'byFloor') => {
+    setLootViewModeState(mode);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'byFloor') {
+        params.delete('logView');
+      } else {
+        params.set('logView', 'timeline');
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Highlighted entry for deep-link scroll animation
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+
+  // Handle entry deep link - scroll to and highlight entry
+  useEffect(() => {
+    const entryParam = searchParams.get('entry');
+    if (!entryParam || !lootLog) return;
+
+    // Find the entry (entry.id is a number, URL param is string)
+    const entryId = parseInt(entryParam, 10);
+    const entry = lootLog.find(e => e.id === entryId);
+    if (!entry) return;
+
+    // Set highlighted entry (store as string for consistency)
+    setHighlightedEntryId(entryParam);
+
+    // Scroll to the entry after a short delay
+    setTimeout(() => {
+      const element = document.getElementById(`loot-entry-${entryParam}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    // Clear highlight after animation
+    const timer = setTimeout(() => {
+      setHighlightedEntryId(null);
+      // Clear entry param from URL
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.delete('entry');
+        return params;
+      }, { replace: true });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, lootLog, setSearchParams]);
 
   // Floor filter for By Floor view (which floors to show)
   const [visibleFloors, setVisibleFloors] = useState<Set<FloorNumber>>(new Set([1, 2, 3, 4]));
@@ -390,14 +458,27 @@ export function SectionedLogView({
     return grouped;
   }, [combinedEntries]);
 
+  // Helper to copy entry URL
+  const handleCopyEntryUrl = useCallback((entryId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'log');
+    url.searchParams.set('entry', entryId);
+    navigator.clipboard.writeText(url.toString());
+    toast.success('Link copied to clipboard');
+  }, []);
+
   // Helper to render a single loot or material entry
   const renderEntry = (entry: CombinedEntry) => {
     if (entry.entryType === 'loot') {
       const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
+      const isWeapon = entry.itemSlot === 'weapon';
+      // Compare as strings since highlightedEntryId is string and entry.id is number
+      const isHighlighted = highlightedEntryId === String(entry.id);
       return (
         <div
           key={`loot-${entry.id}`}
-          className="bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3"
+          id={`loot-entry-${entry.id}`}
+          className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isHighlighted ? 'highlight-pulse' : ''}`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -405,7 +486,12 @@ export function SectionedLogView({
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
                   {entry.floor}
                 </span>
-                <span className="text-text-primary font-medium">{slotName}</span>
+                {isWeapon && entry.weaponJob && (
+                  <JobIcon job={entry.weaponJob} size="sm" />
+                )}
+                <span className="text-text-primary font-medium">
+                  {isWeapon && entry.weaponJob ? `Weapon (${entry.weaponJob})` : slotName}
+                </span>
                 <span className="text-text-muted">→</span>
                 <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
                 <span
@@ -417,27 +503,41 @@ export function SectionedLogView({
                 >
                   {entry.method}
                 </span>
+                {entry.isExtra && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
+                    Extra
+                  </span>
+                )}
               </div>
               <div className="text-xs text-text-muted mt-1">
                 {formatDate(entry.createdAt)}
               </div>
             </div>
-            {canEdit && (
-              <div className="flex items-center gap-3 ml-4">
-                <button
-                  onClick={() => { setEntryToEdit(entry); setShowLootModal(true); }}
-                  className="text-text-muted hover:text-accent text-sm"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteLoot(entry)}
-                  className="text-status-error hover:text-status-error/80 text-sm"
-                >
-                  Delete
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-3 ml-4">
+              <button
+                onClick={() => handleCopyEntryUrl(String(entry.id))}
+                className="text-text-muted hover:text-accent text-sm"
+                title="Copy link to this entry"
+              >
+                Copy URL
+              </button>
+              {canEdit && (
+                <>
+                  <button
+                    onClick={() => { setEntryToEdit(entry); setShowLootModal(true); }}
+                    className="text-text-muted hover:text-accent text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLoot(entry)}
+                    className="text-status-error hover:text-status-error/80 text-sm"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -757,6 +857,7 @@ export function SectionedLogView({
                         {(['I', 'II', 'III', 'IV'] as const).map((book) => (
                           <th key={book} className="text-center py-1 px-0.5 w-7">{book}</th>
                         ))}
+                        <th className="w-6"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -791,6 +892,17 @@ export function SectionedLogView({
                                 </td>
                               );
                             })}
+                            <td className="py-1 px-0.5">
+                              <button
+                                onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
+                                className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                                title={`View book history for ${player.name}`}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}

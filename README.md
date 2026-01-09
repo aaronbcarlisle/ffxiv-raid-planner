@@ -31,7 +31,15 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 - Auto-calculated loot priority per floor
 - Priority based on role + gear needs
 - Book cost tracking (weeks to BiS)
-- Upgrade material tracking (Twine/Glaze/Solvent)
+- Upgrade material tracking (Twine/Glaze/Solvent/Universal Tomestone)
+- Weapon job tracking (which job's weapon was received)
+- Extra loot tagging (mark off-job/extra drops)
+
+### Weapon Priority
+- Multi-job weapon tracking per player
+- Drag-and-drop priority reordering
+- Main job priority bonus (2000 points)
+- Tie-breaker roll system with auto-expand
 
 ### Collaboration
 - **Role-Based Access** - Owner/Lead/Member/Viewer permissions
@@ -129,10 +137,10 @@ _See [CLAUDE.md](./CLAUDE.md) for detailed project structure and key files._
 
 ## Current Raid Tier
 
-**AAC Cruiserweight (Savage)** - Patch 7.2
-- Floors: M5S, M6S, M7S, M8S
-- Savage gear: iLvl 760 (weapon 765)
-- Tome gear: iLvl 750 (augmented 760)
+**AAC Heavyweight (Savage)** - Patch 7.4
+- Floors: M9S, M10S, M11S, M12S
+- Savage gear: iLvl 790 (weapon 795)
+- Tome gear: iLvl 780 (augmented 790)
 
 ## Contributing
 

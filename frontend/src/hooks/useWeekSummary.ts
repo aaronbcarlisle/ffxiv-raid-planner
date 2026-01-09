@@ -182,4 +182,5 @@ export const MATERIAL_INFO: Record<
   twine: { label: 'Twine', shortLabel: 'T', color: 'text-blue-400' },
   glaze: { label: 'Glaze', shortLabel: 'G', color: 'text-purple-400' },
   solvent: { label: 'Solvent', shortLabel: 'S', color: 'text-amber-400' },
+  universal_tomestone: { label: 'Universal Tomestone', shortLabel: 'U', color: 'text-teal-400' },
 };
