@@ -72,18 +72,32 @@ function VersionNav({
   onVersionClick: (version: string) => void;
 }) {
   const [scrollState, setScrollState] = useState({ top: true, bottom: false });
+  const scrollContainerNodeRef = useRef<HTMLDivElement | null>(null);
+
+  // Store the node reference via callback ref
   const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll();
-    }
+    scrollContainerNodeRef.current = node;
+  }, []);
+
+  // Set up scroll listener with proper cleanup
+  useEffect(() => {
+    const node = scrollContainerNodeRef.current;
+    if (!node) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = node;
+      setScrollState({
+        top: scrollTop < 10,
+        bottom: scrollTop + clientHeight >= scrollHeight - 10,
+      });
+    };
+
+    node.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial check
+
+    return () => {
+      node.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleClick = (version: string) => {

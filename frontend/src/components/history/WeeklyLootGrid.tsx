@@ -390,15 +390,25 @@ export function WeeklyLootGrid({
                   const canClickToLog = canEdit && onLogLoot && !lootEntry;
                   const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
 
+                  const isClickable = canClickToLog || canClickToEdit;
                   return (
                     <div
                       key={item.slot}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${canClickToLog || canClickToEdit ? 'cursor-pointer' : ''}`}
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''}`}
                       onClick={() => {
                         if (canClickToLog) onLogLoot(floor.number, item.slot);
                         if (canClickToEdit && lootEntry) onEditLoot(lootEntry);
                       }}
+                      onKeyDown={isClickable ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (canClickToLog) onLogLoot(floor.number, item.slot);
+                          if (canClickToEdit && lootEntry) onEditLoot(lootEntry);
+                        }
+                      } : undefined}
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
+                      role={isClickable ? 'button' : undefined}
+                      tabIndex={isClickable ? 0 : -1}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -416,7 +426,15 @@ export function WeeklyLootGrid({
                       key={mat.type}
                       className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${canClickMat ? 'cursor-pointer' : ''}`}
                       onClick={canClickMat ? () => onLogMaterial(floor.number, mat.type) : undefined}
+                      onKeyDown={canClickMat ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onLogMaterial(floor.number, mat.type);
+                        }
+                      } : undefined}
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
+                      role={canClickMat ? 'button' : undefined}
+                      tabIndex={canClickMat ? 0 : -1}
                     >
                       <div
                         className="text-[10px] mb-1"
