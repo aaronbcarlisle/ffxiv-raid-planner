@@ -145,13 +145,8 @@ export function canClaimPlayer(
 ): PermissionCheck {
   const effectiveRole = getEffectiveRole(userRole, isAdmin);
 
-  if ((!effectiveRole && !isAdmin) || !currentUserId) {
+  if (!effectiveRole || !currentUserId) {
     return { allowed: false, reason: 'You must be logged in to claim cards' };
-  }
-
-  // Admins can claim/unclaim any card
-  if (isAdmin) {
-    return { allowed: true };
   }
 
   // Can't claim if already owned by someone else

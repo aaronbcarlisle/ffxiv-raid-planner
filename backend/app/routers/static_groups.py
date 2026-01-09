@@ -351,9 +351,11 @@ async def list_all_static_groups_admin(
         .order_by(StaticGroup.name)
     )
 
+    # Compute search term once if provided
+    search_term = f"%{search.lower()}%" if search else None
+
     # Apply search filter if provided
-    if search:
-        search_term = f"%{search.lower()}%"
+    if search_term:
         query = query.join(User, StaticGroup.owner_id == User.id).where(
             (StaticGroup.name.ilike(search_term)) |
             (User.discord_username.ilike(search_term))
@@ -361,8 +363,7 @@ async def list_all_static_groups_admin(
 
     # Get total count (before pagination) using func.count() for efficiency
     count_query = select(func.count(StaticGroup.id))
-    if search:
-        search_term = f"%{search.lower()}%"
+    if search_term:
         count_query = count_query.join(User, StaticGroup.owner_id == User.id).where(
             (StaticGroup.name.ilike(search_term)) |
             (User.discord_username.ilike(search_term))

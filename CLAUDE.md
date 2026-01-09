@@ -388,6 +388,16 @@ Super-user access for app owners to troubleshoot any static group.
 - Click any row to view/edit that static
 - Only visible to users with `isAdmin=true`
 
+**View As Feature:**
+- Admins can impersonate any member of a static group
+- Click eye icon in Actions column → select member from modal
+- URL supports `?viewAs={userId}` for direct linking
+- Amber banner shows current impersonation with "Exit View As" button
+- Permissions reflect the impersonated user's role (not admin)
+- All UI permission checks use `getEffectiveRole()` which applies View As context
+- Exit clears both URL param and Zustand state
+- Validates group ID to prevent stale state across navigation
+
 **Security:**
 - Admin can only be granted via direct database access or env var whitelist
 - The env var only grants admin, never revokes (manual DB edit to revoke)

@@ -746,6 +746,7 @@ export function GroupView() {
           isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
+          isAdmin={user?.isAdmin && !viewAsUser}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           isHighlighted={highlightedPlayerId === player.id}

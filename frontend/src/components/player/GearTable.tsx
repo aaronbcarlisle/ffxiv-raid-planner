@@ -250,6 +250,7 @@ interface GearTableProps {
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 export function GearTable({
@@ -261,9 +262,10 @@ export function GearTable({
   player,
   userRole,
   currentUserId,
+  isAdmin,
 }: GearTableProps) {
   // Check gear edit permission
-  const gearPermission = canEditGear(userRole, player, currentUserId);
+  const gearPermission = canEditGear(userRole, player, currentUserId, isAdmin);
   const getSlotStatus = (slot: string): GearSlotStatus => {
     return gear.find((g) => g.slot === slot) ?? {
       slot: slot as GearSlotStatus['slot'],

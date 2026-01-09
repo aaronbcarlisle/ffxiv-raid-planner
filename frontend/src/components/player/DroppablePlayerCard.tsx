@@ -22,6 +22,7 @@ interface DroppablePlayerCardProps {
   isGroupOwner?: boolean;
   userRole?: MemberRole | null;
   userHasClaimedPlayer?: boolean;
+  isAdmin?: boolean;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
