@@ -76,7 +76,7 @@ function CategoryBadge({ category }: { category: ReleaseCategory }) {
 
 function ReleaseItemRow({ item }: { item: ReleaseItem }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0);
+  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0) || item.image;
 
   return (
     <li className="group">
@@ -110,6 +110,16 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
       {/* Expanded Content */}
       {isExpanded && hasExpandableContent && (
         <div className="ml-[88px] mr-3 mb-3 p-4 bg-surface-elevated rounded-lg border border-border-subtle">
+          {item.image && (
+            <div className="mb-4 rounded-lg overflow-hidden border border-border-subtle">
+              <img
+                src={item.image}
+                alt={`${item.title} demonstration`}
+                className="w-full h-auto"
+              />
+            </div>
+          )}
+
           {item.details && (
             <p className="text-sm text-text-secondary mb-4">{item.details}</p>
           )}

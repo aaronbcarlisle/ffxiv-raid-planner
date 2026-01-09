@@ -21,6 +21,7 @@ export interface ReleaseItem {
   description?: string;
   details?: string; // Extended description shown when expanded
   commits?: CommitInfo[]; // Related commits
+  image?: string; // Path to image/gif shown when expanded
 }
 
 export interface Release {
@@ -103,6 +104,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Universal tomestone integration',
         description: 'Fixed TypeScript errors for universal tomestone tracking',
+        image: '/images/release-notes/universal-tomestone.gif',
         commits: [
           { hash: '7a43c87', message: 'Fix TypeScript errors for Universal Tomestone integration' },
         ],
@@ -113,6 +115,7 @@ export const RELEASES: Release[] = [
         description: 'Weapon priority section now auto-expands when there are rolling ties',
         details:
           'When multiple players are tied for weapon priority, the weapon priority section automatically expands to show the tie-breaker information.',
+        image: '/images/release-notes/universal-tomestone.gif',
         commits: [{ hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' }],
       },
     ],
