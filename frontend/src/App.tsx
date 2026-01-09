@@ -59,6 +59,10 @@ function App() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+      {/* TEST BANNER - REMOVE AFTER VERIFYING DEPLOYMENT */}
+      <div className="bg-yellow-500 text-black text-center py-2 font-bold">
+        TEST DEPLOYMENT - If you see this, Vercel is deploying from main correctly!
+      </div>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Layout />}>
