@@ -139,6 +139,8 @@ class StaticGroupResponse(CamelModel):
     member_count: int = 0
     # User's role in this group (if authenticated)
     user_role: MemberRoleEnum | None = None
+    # True if user_role is granted via admin privileges (not actual membership)
+    is_admin_access: bool = False
 
 
 class StaticGroupWithMembers(CamelModel):
@@ -156,6 +158,8 @@ class StaticGroupWithMembers(CamelModel):
     updated_at: str
     # User's role in this group (if authenticated)
     user_role: MemberRoleEnum | None = None
+    # True if user_role is granted via admin privileges (not actual membership)
+    is_admin_access: bool = False
 
 
 class StaticGroupListItem(CamelModel):
@@ -168,6 +172,8 @@ class StaticGroupListItem(CamelModel):
     owner_id: str
     member_count: int = 0
     user_role: MemberRoleEnum | None = None
+    # Always false for dashboard list items (admin uses admin dashboard)
+    is_admin_access: bool = False
     source: GroupSourceEnum = GroupSourceEnum.MEMBERSHIP
     settings: StaticSettingsSchema | None = None
     created_at: str

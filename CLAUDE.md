@@ -14,6 +14,18 @@ A web-based tool for FFXIV static raid groups to track gear progress toward BiS,
 
 ---
 
+## IMPORTANT: Git Commit & PR Rules
+
+**NEVER add AI attribution to commits or PRs.** This includes:
+- No "Co-Authored-By: Claude" or similar in commit messages
+- No "Generated with Claude Code" in PR descriptions
+- No "Written by AI" or contributor credits for AI assistance
+- No AI tool attribution of any kind in any commit or PR content
+
+This rule is **absolute and non-negotiable**.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -457,6 +469,12 @@ Super-user access for app owners to troubleshoot any static group.
 - `backend/scripts/migrate_add_is_admin.py` - Migration script
 - `frontend/src/pages/AdminDashboard.tsx` - Admin dashboard page
 - `frontend/src/utils/permissions.ts` - `getEffectiveRole()` helper
+
+**Admin System Helpers (when to use which):**
+- `get_user_role_for_response()` - Use in API endpoints to get `(role, is_admin_access)` tuple for responses
+- `is_user_admin()` - Use for permission checks in service layer (returns bool)
+- `check_view_permission()` - Use for view access validation (handles admins automatically)
+- `create_admin_membership()` - Creates virtual membership object for admins accessing non-member groups
 
 ### Frontend Utilities (v1.0.1)
 

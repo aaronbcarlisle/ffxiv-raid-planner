@@ -23,6 +23,7 @@ from ..permissions import (
     get_static_group_by_share_code,
     get_user_linked_static_groups,
     get_user_membership,
+    get_user_role_for_response,
     get_user_static_groups,
     is_user_admin,
     require_can_manage_members,
@@ -114,6 +115,7 @@ def membership_to_response(membership: Membership, include_user: bool = True) ->
 def group_to_response(
     group: StaticGroup,
     user_role: MemberRole | None = None,
+    is_admin_access: bool = False,
 ) -> StaticGroupResponse:
     """Convert StaticGroup model to StaticGroupResponse schema"""
     return StaticGroupResponse(
@@ -127,12 +129,14 @@ def group_to_response(
         updated_at=group.updated_at,
         member_count=group.member_count,
         user_role=MemberRoleEnum(user_role.value) if user_role else None,
+        is_admin_access=is_admin_access,
     )
 
 
 def group_to_response_with_members(
     group: StaticGroup,
     user_role: MemberRole | None = None,
+    is_admin_access: bool = False,
 ) -> StaticGroupWithMembers:
     """Convert StaticGroup model to StaticGroupWithMembers schema"""
     owner_info = None
@@ -162,6 +166,7 @@ def group_to_response_with_members(
         created_at=group.created_at,
         updated_at=group.updated_at,
         user_role=MemberRoleEnum(user_role.value) if user_role else None,
+        is_admin_access=is_admin_access,
     )
 
 
@@ -303,11 +308,17 @@ async def get_static_group_by_code(
     )
     group = result.scalar_one()
 
-    # Check view permission
-    membership = await check_view_permission(session, group, current_user)
+    # Check view permission (this also handles private group access checks)
+    await check_view_permission(session, group, current_user)
 
-    user_role = MemberRole(membership.role) if membership else None
-    return group_to_response_with_members(group, user_role)
+    # Get role and admin access flag for response
+    user_role, is_admin_access = (None, False)
+    if current_user:
+        user_role, is_admin_access = await get_user_role_for_response(
+            session, current_user.id, group.id
+        )
+
+    return group_to_response_with_members(group, user_role, is_admin_access)
 
 
 # --- Admin Endpoints ---
@@ -344,6 +355,21 @@ async def list_all_static_groups_admin(
     limit = min(max(1, limit), 100)
     offset = max(0, offset)
 
+    # Build subqueries for computed columns (memberCount, tierCount)
+    member_count_subq = (
+        select(func.count(Membership.id))
+        .where(Membership.static_group_id == StaticGroup.id)
+        .correlate(StaticGroup)
+        .scalar_subquery()
+    )
+
+    tier_count_subq = (
+        select(func.count(TierSnapshot.id))
+        .where(TierSnapshot.static_group_id == StaticGroup.id)
+        .correlate(StaticGroup)
+        .scalar_subquery()
+    )
+
     # Build base query with eager loading
     query = (
         select(StaticGroup)
@@ -354,11 +380,19 @@ async def list_all_static_groups_admin(
         )
     )
 
+    # For owner sorting, we need to join the User table
+    needs_owner_join = sort_by == "owner"
+    if needs_owner_join:
+        query = query.join(User, StaticGroup.owner_id == User.id)
+
     # Determine sort column and direction
     sort_columns = {
         "name": StaticGroup.name,
         "createdAt": StaticGroup.created_at,
         "isPublic": StaticGroup.is_public,
+        "memberCount": member_count_subq,
+        "tierCount": tier_count_subq,
+        "owner": User.discord_username,  # Requires owner join
     }
     sort_column = sort_columns.get(sort_by, StaticGroup.name)
     if sort_order == "desc":
@@ -371,7 +405,10 @@ async def list_all_static_groups_admin(
 
     # Apply search filter if provided
     if search_term:
-        query = query.join(User, StaticGroup.owner_id == User.id).where(
+        # Only join User if not already joined for owner sorting
+        if not needs_owner_join:
+            query = query.join(User, StaticGroup.owner_id == User.id)
+        query = query.where(
             (StaticGroup.name.ilike(search_term)) |
             (User.discord_username.ilike(search_term))
         )
@@ -496,11 +533,17 @@ async def get_static_group_by_id(
     if not group:
         raise NotFound("Static group not found")
 
-    # Check view permission
-    membership = await check_view_permission(session, group, current_user)
+    # Check view permission (this also handles private group access checks)
+    await check_view_permission(session, group, current_user)
 
-    user_role = MemberRole(membership.role) if membership else None
-    return group_to_response_with_members(group, user_role)
+    # Get role and admin access flag for response
+    user_role, is_admin_access = (None, False)
+    if current_user:
+        user_role, is_admin_access = await get_user_role_for_response(
+            session, current_user.id, group.id
+        )
+
+    return group_to_response_with_members(group, user_role, is_admin_access)
 
 
 @router.put("/{group_id}", response_model=StaticGroupResponse)
@@ -531,11 +574,12 @@ async def update_static_group(
 
     await session.flush()
 
-    # Get user's membership for response
-    membership = await get_user_membership(session, current_user.id, group_id)
-    user_role = MemberRole(membership.role) if membership else None
+    # Get user's role for response (including admin virtual role)
+    user_role, is_admin_access = await get_user_role_for_response(
+        session, current_user.id, group_id
+    )
 
-    return group_to_response(group, user_role)
+    return group_to_response(group, user_role, is_admin_access)
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)

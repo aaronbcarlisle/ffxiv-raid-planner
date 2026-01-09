@@ -17,6 +17,7 @@ interface HistoryViewProps {
   players: SnapshotPlayer[];
   floors: string[];
   userRole: string;
+  isAdmin?: boolean;
 }
 
 export function HistoryView({
@@ -25,6 +26,7 @@ export function HistoryView({
   players,
   floors,
   userRole,
+  isAdmin = false,
 }: HistoryViewProps) {
   const {
     currentWeek,
@@ -80,8 +82,8 @@ export function HistoryView({
     setSelectedWeek(week);
   };
 
-  // Determine if user can edit (Owner/Lead)
-  const canEdit = ['owner', 'lead'].includes(userRole);
+  // Determine if user can edit (Owner/Lead or Admin)
+  const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
   return (
     <div className="space-y-4">

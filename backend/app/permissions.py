@@ -103,6 +103,34 @@ async def get_user_membership(
     return result.scalar_one_or_none()
 
 
+async def get_user_role_for_response(
+    session: AsyncSession,
+    user_id: str,
+    group_id: str,
+) -> tuple[MemberRole | None, bool]:
+    """
+    Get user's effective role for API responses, including admin virtual role.
+
+    This function should be used in API endpoint responses to correctly
+    represent admin users' access level even when they're not actual members.
+
+    Returns:
+        Tuple of (role, is_admin_access) where:
+        - role: The user's effective role (including 'owner' for admins)
+        - is_admin_access: True if role is granted via admin privileges (not actual membership)
+    """
+    # First check actual membership
+    membership = await get_user_membership(session, user_id, group_id)
+    if membership:
+        return MemberRole(membership.role), False
+
+    # Check if user is admin - grants owner access
+    if await is_user_admin(session, user_id):
+        return MemberRole.OWNER, True
+
+    return None, False
+
+
 async def require_membership(
     session: AsyncSession,
     user_id: str,
