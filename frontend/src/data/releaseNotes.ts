@@ -100,7 +100,6 @@ export const RELEASES: Release[] = [
         description: 'Right-click player cards or hover loot entries to copy shareable links',
         details:
           'New "Copy URL" option in player card context menu and on loot entry hover. When someone follows the link, the item briefly highlights with a teal glow animation to draw attention.',
-        image: '/images/release-notes/copy-url.gif',
         commits: [{ hash: 'deb7919', message: 'Add extended deep linking and Copy URL features' }],
       },
       {
