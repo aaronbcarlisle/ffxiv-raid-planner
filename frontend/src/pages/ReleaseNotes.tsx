@@ -143,6 +143,8 @@ function VersionNav({
                         : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
                       }
                     `}
+                    aria-label={`Jump to version ${release.version}${isLatest ? ' (latest)' : ''}`}
+                    aria-current={isActive ? 'true' : undefined}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[13px]">v{release.version}</span>

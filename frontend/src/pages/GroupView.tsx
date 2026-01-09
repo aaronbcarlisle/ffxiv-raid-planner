@@ -335,9 +335,7 @@ export function GroupView() {
       // If switching to a different static (not just refreshing the same one)
       // AND there's no explicit tab in the URL, reset to 'players' tab
       if (lastStaticId && lastStaticId !== currentGroup.id && !urlTab) {
-        setPageModeState('players');
-        // Clear any persisted tab to avoid confusion on next refresh
-        localStorage.setItem('group-view-tab', 'players');
+        setPageMode('players');
       }
 
       // Always update last-static-id to current
@@ -345,7 +343,7 @@ export function GroupView() {
     } catch {
       // Ignore localStorage errors
     }
-  }, [currentGroup?.id, searchParams]);
+  }, [currentGroup?.id, searchParams, setPageMode]);
 
   // Load sortPreset from localStorage when tier changes (only if not specified in URL)
   useEffect(() => {
@@ -968,6 +966,8 @@ export function GroupView() {
                         : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
                     }`}
                     title={subsView ? 'Show subs with main roster' : 'Separate substitutes'}
+                    aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                    aria-pressed={subsView}
                   >
                     Subs
                   </button>
