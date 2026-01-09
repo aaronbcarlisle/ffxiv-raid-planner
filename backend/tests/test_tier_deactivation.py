@@ -212,7 +212,7 @@ class TestTierDeactivation:
             session, test_group, tier_id="aac-heavyweight", is_active=True
         )
         tier1.current_week = 5
-        tier1.week_start_date = "2026-01-01T00:00:00+00:00"
+        tier1.week_start_date = "2027-01-01T00:00:00+00:00"
         await session.flush()
 
         original_week = tier1.current_week

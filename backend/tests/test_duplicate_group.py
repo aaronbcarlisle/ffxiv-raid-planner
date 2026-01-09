@@ -193,7 +193,7 @@ class TestDuplicateGroupEndpoint:
         # Create tier with week tracking set
         tier = await create_tier_snapshot(session, test_group)
         tier.current_week = 5
-        tier.week_start_date = "2026-01-01T00:00:00+00:00"
+        tier.week_start_date = "2027-01-01T00:00:00+00:00"
         await session.flush()
 
         response = await client.post(

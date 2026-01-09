@@ -353,11 +353,14 @@ async def update_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    # If setting as active, deactivate others with bulk update
+    # If setting as active, deactivate other tiers (exclude current to avoid SQLAlchemy change tracking issues)
     if data.is_active is True:
         await session.execute(
             update(TierSnapshot)
-            .where(TierSnapshot.static_group_id == group_id)
+            .where(
+                TierSnapshot.static_group_id == group_id,
+                TierSnapshot.id != snapshot.id,
+            )
             .values(is_active=False)
         )
 
