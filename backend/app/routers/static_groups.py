@@ -5,6 +5,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+import structlog
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +45,7 @@ from ..schemas import (
 from ..services import generate_share_code
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
+logger = structlog.get_logger(__name__)
 
 
 def settings_to_schema(settings: dict | None) -> StaticSettingsSchema | None:
@@ -366,10 +368,6 @@ async def duplicate_group(
     in a single database transaction, avoiding the N+1 query problem of multiple
     sequential API calls.
     """
-    import structlog
-
-    logger = structlog.get_logger(__name__)
-
     # Verify permission - must be member of source group
     membership = await get_user_membership(session, current_user.id, group_id)
     if not membership:
@@ -420,7 +418,7 @@ async def duplicate_group(
     tier_id_map: dict[str, str] = {}
     player_id_map: dict[str, str] = {}
 
-    def safe_copy_json(value, default):
+    def safe_copy_json(value, default, field_name: str = "unknown"):
         """Copy JSON field, handling both Python objects and JSON strings."""
         if value is None:
             return default
@@ -428,7 +426,13 @@ async def duplicate_group(
             try:
                 parsed = json.loads(value)
                 return copy.deepcopy(parsed)
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(
+                    "Failed to parse JSON field during group duplication",
+                    field=field_name,
+                    error=str(e),
+                    value_preview=value[:100] if len(value) > 100 else value,
+                )
                 return default
         if isinstance(value, (list, dict)):
             return copy.deepcopy(value)
@@ -477,9 +481,9 @@ async def duplicate_group(
                         is_substitute=source_player.is_substitute,
                         notes=source_player.notes,
                         bis_link=source_player.bis_link,
-                        gear=safe_copy_json(source_player.gear, []),
-                        tome_weapon=safe_copy_json(source_player.tome_weapon, {}),
-                        weapon_priorities=safe_copy_json(source_player.weapon_priorities, []),
+                        gear=safe_copy_json(source_player.gear, [], "gear"),
+                        tome_weapon=safe_copy_json(source_player.tome_weapon, {}, "tome_weapon"),
+                        weapon_priorities=safe_copy_json(source_player.weapon_priorities, [], "weapon_priorities"),
                         weapon_priorities_locked=False,  # Reset lock state
                         weapon_priorities_locked_by=None,
                         weapon_priorities_locked_at=None,

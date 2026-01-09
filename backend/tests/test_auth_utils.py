@@ -1,8 +1,6 @@
 """Tests for JWT authentication utilities"""
 
-import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 
 from jose import jwt
 

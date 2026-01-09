@@ -5,7 +5,7 @@
  * Useful for cross-component events that don't fit into Zustand state.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 type EventCallback<T = unknown> = (data: T) => void;
 
@@ -97,8 +97,18 @@ export const eventBus = createEventBus();
  * }
  */
 export function useEventBus<T>(event: string, handler: (data: T) => void): void {
-  // Memoize handler to prevent re-subscribing on every render
-  const stableHandler = useCallback(handler, [handler]);
+  // Use ref to always have access to latest handler without re-subscribing
+  const handlerRef = useRef(handler);
+
+  // Keep ref updated with latest handler
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
+
+  // Stable callback that calls the ref
+  const stableHandler = useCallback((data: T) => {
+    handlerRef.current(data);
+  }, []);
 
   useEffect(() => {
     return eventBus.on<T>(event, stableHandler);

@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Membership, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from tests.factories import (
-    create_membership,
     create_snapshot_player,
     create_static_group,
     create_tier_snapshot,
@@ -56,8 +55,8 @@ class TestDuplicateGroupEndpoint:
         auth_headers: dict,
     ):
         """Test duplication copies all tiers from source group."""
-        # Create a second tier
-        tier2 = await create_tier_snapshot(
+        # Create a second tier (used implicitly via database)
+        await create_tier_snapshot(
             session, test_group, tier_id="aac-cruiserweight", is_active=False
         )
 
@@ -91,8 +90,8 @@ class TestDuplicateGroupEndpoint:
         auth_headers: dict,
     ):
         """Test duplication copies players with their configuration."""
-        # Create configured players
-        player1 = await create_snapshot_player(
+        # Create configured players (used implicitly via database)
+        await create_snapshot_player(
             session,
             test_tier,
             name="Tank Player",
@@ -101,7 +100,7 @@ class TestDuplicateGroupEndpoint:
             position="T1",
             sort_order=0,
         )
-        player2 = await create_snapshot_player(
+        await create_snapshot_player(
             session,
             test_tier,
             name="Healer Player",
