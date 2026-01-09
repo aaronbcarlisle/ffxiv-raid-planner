@@ -172,6 +172,8 @@ class StaticGroupListItem(CamelModel):
     owner_id: str
     member_count: int = 0
     user_role: MemberRoleEnum | None = None
+    # Always false for dashboard list items (admin uses admin dashboard)
+    is_admin_access: bool = False
     source: GroupSourceEnum = GroupSourceEnum.MEMBERSHIP
     settings: StaticSettingsSchema | None = None
     created_at: str

@@ -202,7 +202,7 @@ describe('canResetGear', () => {
       expect(result.allowed).toBe(true);
     });
 
-    it('denies members from resetting other players gear', () => {
+    it("denies members from resetting other players' gear", () => {
       const result = canResetGear('member', player, 'other-user');
       expect(result.allowed).toBe(false);
     });
@@ -310,13 +310,13 @@ describe('canClaimPlayer', () => {
     expect(result.allowed).toBe(true);
   });
 
-  it('denies members from claiming others claimed players', () => {
+  it("denies members from claiming others' claimed players", () => {
     const result = canClaimPlayer('member', claimedPlayer, 'user-456');
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain('claimed by another');
   });
 
-  it('allows owners to unclaim others players', () => {
+  it("allows owners to unclaim others' players", () => {
     const result = canClaimPlayer('owner', claimedPlayer, 'user-456');
     expect(result.allowed).toBe(true);
   });

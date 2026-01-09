@@ -360,6 +360,8 @@ export interface StaticGroupListItem {
   ownerId: string;
   memberCount: number;
   userRole?: MemberRole;
+  // Always false for dashboard items (admin uses AdminDashboard with StaticGroupWithMembers)
+  isAdminAccess: boolean;
   source: GroupSource;
   settings?: StaticGroupSettings;
   createdAt: string;
