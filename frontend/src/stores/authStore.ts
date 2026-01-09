@@ -12,7 +12,9 @@ import type { User, AuthTokens, DiscordAuthUrl } from '../types';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Production detection and misconfiguration warning
-const isProduction = typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
+const isBrowser = typeof window !== 'undefined';
+const hostname = isBrowser ? window.location.hostname : '';
+const isProduction = isBrowser && hostname !== 'localhost' && hostname !== '127.0.0.1';
 const isLocalhostApi = API_BASE_URL.includes('localhost');
 
 if (isProduction && isLocalhostApi) {

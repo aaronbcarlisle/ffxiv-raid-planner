@@ -58,6 +58,7 @@ const MATERIAL_LABELS: Record<string, string> = {
   twine: 'Twine',
   glaze: 'Glaze',
   solvent: 'Solvent',
+  universal_tomestone: 'Universal Tomestone',
 };
 
 export function SectionedLogView({

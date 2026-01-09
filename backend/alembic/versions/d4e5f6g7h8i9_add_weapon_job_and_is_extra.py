@@ -35,7 +35,7 @@ def upgrade() -> None:
     if "is_extra" not in existing_columns:
         op.add_column(
             "loot_log_entries",
-            sa.Column("is_extra", sa.Boolean(), nullable=False, server_default="false"),
+            sa.Column("is_extra", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         )
 
 
