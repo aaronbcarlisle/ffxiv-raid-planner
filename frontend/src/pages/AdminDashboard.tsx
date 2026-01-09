@@ -285,7 +285,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Name
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
@@ -296,7 +296,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Owner
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
@@ -307,7 +307,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Members
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
@@ -318,7 +318,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Tiers
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
@@ -329,7 +329,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center justify-center gap-1">
                       Visibility
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
@@ -341,7 +341,7 @@ export function AdminDashboard() {
                   >
                     <span className="flex items-center gap-1">
                       Created
-                      <span className="invisible group-hover:visible">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                         {sortDirection === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </span>
                     </span>
