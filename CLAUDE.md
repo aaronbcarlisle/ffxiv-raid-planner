@@ -343,3 +343,34 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 
 ### Implementation Plans
 - **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+
+---
+
+## Context Management
+
+This project has automated context management via Claude Code PreCompact hooks.
+
+### Automatic Handoff Generation
+When context auto-compacts, a SESSION_HANDOFF document is automatically created at:
+`frontend/docs/SESSION_HANDOFF_AUTO_{date}_{session-id}.md`
+
+The handoff includes:
+- Session ID for resuming (`claude --resume {id}`)
+- Prompt for starting fresh with context
+- Quick reference commands
+
+### Manual Handoff
+For complex work, create manual handoffs at `frontend/docs/SESSION_HANDOFF_{description}.md` with:
+1. What was done (files changed, key decisions)
+2. What's next (pending tasks, blockers)
+3. Key code locations with line numbers
+
+### Low Context Warning
+When context reaches ~15-20% remaining, proactively:
+1. Create a SESSION_HANDOFF summarizing progress
+2. List in-progress tasks and next steps
+3. Notify the user that context is low
+
+### Hook Configuration
+- Hook script: `.claude/hooks/generate-handoff.sh`
+- Settings: `.claude/settings.json`

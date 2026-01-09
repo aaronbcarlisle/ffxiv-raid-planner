@@ -5,7 +5,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { BookOpen, Palette, Calculator, FileText, ChevronRight } from 'lucide-react';
+import { BookOpen, Palette, Calculator, FileText, ChevronRight, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface DocCategory {
@@ -19,6 +19,20 @@ interface DocCategory {
 }
 
 const DOC_CATEGORIES: DocCategory[] = [
+  {
+    id: 'release-notes',
+    title: 'Release Notes',
+    description: 'What\'s new in each version. Features, bug fixes, and improvements.',
+    icon: Sparkles,
+    href: '/docs/release-notes',
+    status: 'available',
+    sections: [
+      'Latest Updates',
+      'New Features',
+      'Bug Fixes',
+      'Improvements',
+    ],
+  },
   {
     id: 'getting-started',
     title: 'Getting Started',
