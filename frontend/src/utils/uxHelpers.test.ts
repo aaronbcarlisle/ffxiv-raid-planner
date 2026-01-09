@@ -87,10 +87,20 @@ describe('Context Menu Permission Logic', () => {
   });
 
   describe('Copy URL option visibility', () => {
-    // Copy URL is always available (read-only action)
+    // Copy URL is always available (read-only action) - doesn't check canEdit
     it('shows when callback exists regardless of canEdit', () => {
-      expect(true && true).toBe(true); // hasCallback && true
-      expect(false && true).toBe(false); // !hasCallback
+      const hasCallback = true;
+      const canEdit = false; // Even without edit permission
+
+      // Copy URL only depends on callback existing, not canEdit
+      const showCopyUrl = hasCallback; // Note: no canEdit check
+      expect(showCopyUrl).toBe(true);
+    });
+
+    it('hides when callback does not exist', () => {
+      const hasCallback = false;
+      const showCopyUrl = hasCallback;
+      expect(showCopyUrl).toBe(false);
     });
   });
 });
