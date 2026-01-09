@@ -115,7 +115,7 @@ export const RELEASES: Release[] = [
         description: 'Weapon priority section now auto-expands when there are rolling ties',
         details:
           'When multiple players are tied for weapon priority, the weapon priority section automatically expands to show the tie-breaker information.',
-        image: '/images/release-notes/universal-tomestone.gif',
+        image: '/images/release-notes/weapon-priorities.gif',
         commits: [{ hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' }],
       },
     ],
