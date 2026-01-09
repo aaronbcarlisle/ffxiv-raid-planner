@@ -46,6 +46,7 @@ export function QuickLogDropModal({
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [includeSubs, setIncludeSubs] = useState(false);
 
   const isWeapon = slot === 'weapon';
 
@@ -56,6 +57,7 @@ export function QuickLogDropModal({
       setSelectedWeek(maxWeek);
       setUpdateGear(true);
       setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
+      setIncludeSubs(false);
     }
   }, [isOpen, suggestedPlayer.id, maxWeek]);
 
@@ -103,24 +105,28 @@ export function QuickLogDropModal({
     }
   };
 
-  const configuredPlayers = allPlayers.filter((p) => p.configured);
+  // Filter to configured players, excluding subs unless includeSubs is checked
+  const eligiblePlayers = useMemo(() =>
+    allPlayers.filter((p) => p.configured && (includeSubs || !p.isSubstitute)),
+    [allPlayers, includeSubs]
+  );
   const slotName = GEAR_SLOT_NAMES[slot as keyof typeof GEAR_SLOT_NAMES] || slot;
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
   // Sort players by priority and add labels
   const sortedRecipients = useMemo(() => {
-    if (!slot) return configuredPlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
+    if (!slot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
 
     // Get priority entries for this slot
     const priorityEntries = slot === 'ring1' || slot === 'ring2'
-      ? getPriorityForRing(configuredPlayers, DEFAULT_SETTINGS)
-      : getPriorityForItem(configuredPlayers, slot as GearSlot, DEFAULT_SETTINGS);
+      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+      : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
 
     // Create a map of player ID to priority rank
     const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
 
     // Sort all players: those with priority first (by rank), then others alphabetically
-    return configuredPlayers
+    return eligiblePlayers
       .map(player => {
         const priority = priorityMap.get(player.id);
         return {
@@ -135,7 +141,7 @@ export function QuickLogDropModal({
         if (a.needsItem && b.needsItem) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [configuredPlayers, slot]);
+  }, [eligiblePlayers, slot]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
@@ -190,7 +196,18 @@ export function QuickLogDropModal({
 
         {/* Recipient selection */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Recipient</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm text-text-secondary">Recipient</label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeSubs}
+                onChange={(e) => setIncludeSubs(e.target.checked)}
+                className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+              />
+              <span className="text-xs text-text-muted">Include Subs</span>
+            </label>
+          </div>
           <select
             value={recipientPlayerId}
             onChange={(e) => setRecipientPlayerId(e.target.value)}

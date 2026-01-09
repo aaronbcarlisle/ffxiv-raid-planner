@@ -81,6 +81,7 @@ export function LogMaterialModal({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const [includeSubs, setIncludeSubs] = useState(false);
 
   // Reset state when modal opens with new preset values
   useEffect(() => {
@@ -100,6 +101,7 @@ export function LogMaterialModal({
       setWeekNumber(currentWeek);
       setNotes('');
       setShowAllRecipients(false);
+      setIncludeSubs(false);
     }
   }, [isOpen, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors]);
 
@@ -141,14 +143,15 @@ export function LogMaterialModal({
   // This respects role priority (melee > ranged > caster > tank > healer)
   // and boosts score by number of unaugmented pieces needing this material
   const sortedPlayersWithPriority = useMemo(() => {
-    const configuredPlayers = players.filter((p) => p.configured);
+    // Filter to configured players, excluding subs unless includeSubs is checked
+    const eligiblePlayers = players.filter((p) => p.configured && (includeSubs || !p.isSubstitute));
 
     // Get players who need this material (have unaugmented tome pieces)
     // Pass materialLog to account for materials already received
     // Use different priority function for universal_tomestone vs augmentation materials
     const priorityList = isSlotAugmentationMaterial(selectedMaterial)
-      ? getPriorityForUpgradeMaterial(configuredPlayers, selectedMaterial, settings, materialLog)
-      : getPriorityForUniversalTomestone(configuredPlayers, settings, materialLog);
+      ? getPriorityForUpgradeMaterial(eligiblePlayers, selectedMaterial, settings, materialLog)
+      : getPriorityForUniversalTomestone(eligiblePlayers, settings, materialLog);
 
     // Also include players who don't need the material (at the bottom)
     const playersWithPriority = priorityList.map(({ player, score }, index) => ({
@@ -160,7 +163,7 @@ export function LogMaterialModal({
 
     // Add players who don't need this material at the bottom
     const playersWithPriorityIds = new Set(priorityList.map(p => p.player.id));
-    const playersWithoutNeed = configuredPlayers
+    const playersWithoutNeed = eligiblePlayers
       .filter(p => !playersWithPriorityIds.has(p.id))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(player => ({
@@ -171,7 +174,7 @@ export function LogMaterialModal({
       }));
 
     return [...playersWithPriority, ...playersWithoutNeed];
-  }, [players, selectedMaterial, settings, materialLog]);
+  }, [players, selectedMaterial, settings, materialLog, includeSubs]);
 
   // Filter to only show players who need the material (unless showAllRecipients)
   const visibleRecipients = useMemo(() => {
@@ -267,15 +270,26 @@ export function LogMaterialModal({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-sm text-text-secondary">Recipient</label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showAllRecipients}
-                  onChange={(e) => setShowAllRecipients(e.target.checked)}
-                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                />
-                <span className="text-xs text-text-muted">Show all players</span>
-              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeSubs}
+                    onChange={(e) => setIncludeSubs(e.target.checked)}
+                    className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+                  />
+                  <span className="text-xs text-text-muted">Include Subs</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showAllRecipients}
+                    onChange={(e) => setShowAllRecipients(e.target.checked)}
+                    className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
+                  />
+                  <span className="text-xs text-text-muted">Show all players</span>
+                </label>
+              </div>
             </div>
             <select
               value={selectedPlayer}
