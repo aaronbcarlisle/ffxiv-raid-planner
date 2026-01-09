@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Text
+from sqlalchemy import Boolean, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -25,6 +25,9 @@ class User(Base):
     discord_avatar: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Admin flag - grants super-user access to all statics
+    # Can only be set via direct DB access or ADMIN_DISCORD_IDS env var
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )

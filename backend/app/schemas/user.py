@@ -29,6 +29,7 @@ class UserResponse(CamelModel):
     avatar_url: str | None = None
     display_name: str | None = None
     email: str | None = None
+    is_admin: bool = False
     created_at: str
     updated_at: str
     last_login_at: str | None = None

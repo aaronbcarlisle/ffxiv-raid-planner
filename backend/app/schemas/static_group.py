@@ -180,3 +180,27 @@ class DuplicateGroupRequest(CamelModel):
     new_name: str = Field(..., min_length=1, max_length=100, description="Name for the duplicated group")
     copy_tiers: bool = Field(default=True, description="Whether to copy tier snapshots")
     copy_players: bool = Field(default=True, description="Whether to copy players (requires copy_tiers)")
+
+
+class AdminStaticGroupListItem(CamelModel):
+    """Schema for static group in admin list (includes owner info)"""
+
+    id: str
+    name: str
+    share_code: str
+    is_public: bool
+    owner_id: str
+    owner: OwnerInfo | None = None
+    member_count: int = 0
+    tier_count: int = 0
+    created_at: str
+    updated_at: str
+
+
+class AdminStaticGroupListResponse(CamelModel):
+    """Paginated response for admin static group list"""
+
+    items: list[AdminStaticGroupListItem]
+    total: int
+    limit: int
+    offset: int

@@ -12,6 +12,7 @@ import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLootTrackingStore } from '../stores/lootTrackingStore';
+import { useViewAsStore } from '../stores/viewAsStore';
 import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
@@ -54,6 +55,36 @@ export function GroupView() {
     clearTiers,
   } = useTierStore();
   const { user, login } = useAuthStore();
+  const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
+
+  // Handle viewAs URL parameter
+  useEffect(() => {
+    const viewAsUserId = searchParams.get('viewAs');
+    if (viewAsUserId && currentGroup?.id && user?.isAdmin) {
+      // Only start viewAs if not already viewing as this user in this group
+      if (!viewAsUser || viewAsUser.userId !== viewAsUserId || viewAsUser.groupId !== currentGroup.id) {
+        startViewAs(currentGroup.id, viewAsUserId);
+      }
+    } else if (!viewAsUserId && viewAsUser) {
+      // URL param removed, stop viewing as
+      stopViewAs();
+    }
+  }, [searchParams, currentGroup?.id, user?.isAdmin, startViewAs, stopViewAs, viewAsUser]);
+
+  // Clear stale viewAs state if group changed
+  useEffect(() => {
+    if (viewAsUser && currentGroup?.id && viewAsUser.groupId !== currentGroup.id) {
+      stopViewAs();
+    }
+  }, [viewAsUser, currentGroup?.id, stopViewAs]);
+
+  // Clean up viewAs state when unmounting (leaving this page entirely)
+  useEffect(() => {
+    return () => {
+      stopViewAs();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
@@ -607,11 +638,12 @@ export function GroupView() {
     return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
 
-  // Check if current user has already claimed a player in this tier
+  // Check if current user (or viewAs user) has already claimed a player in this tier
   const userHasClaimedPlayer = useMemo(() => {
-    if (!user?.id || !currentTier?.players) return false;
-    return currentTier.players.some(p => p.userId === user.id);
-  }, [user?.id, currentTier?.players]);
+    const checkUserId = viewAsUser ? viewAsUser.userId : user?.id;
+    if (!checkUserId || !currentTier?.players) return false;
+    return currentTier.players.some(p => p.userId === checkUserId);
+  }, [viewAsUser, user?.id, currentTier?.players]);
 
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
@@ -629,8 +661,14 @@ export function GroupView() {
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
-  const userRole = currentGroup?.userRole;
+
+  // When viewing as another user, use their role instead of actual role
+  const actualUserRole = currentGroup?.userRole;
+  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   const canEdit = userRole === 'owner' || userRole === 'lead';
+
+  // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
+  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
@@ -692,7 +730,7 @@ export function GroupView() {
     // If player is configured, show droppable player card
     if (player.configured) {
       // Check if user can reset this player's gear
-      const resetPermission = canResetGear(userRole, player, user?.id);
+      const resetPermission = canResetGear(userRole, player, effectiveUserId, user?.isAdmin && !viewAsUser);
 
       return (
         <DroppablePlayerCard
@@ -704,8 +742,8 @@ export function GroupView() {
           clipboardPlayer={clipboardPlayer}
           dragState={dnd.dragState}
           canEdit={canEdit}
-          currentUserId={user?.id}
-          isGroupOwner={currentGroup?.userRole === 'owner'}
+          currentUserId={effectiveUserId}
+          isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
           groupId={currentGroup!.id}

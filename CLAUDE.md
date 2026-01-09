@@ -40,6 +40,7 @@ pnpm lint             # ESLint
 cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
 cd backend && python scripts/backfill_gcd.py        # BiS preset regen
 cd backend && python scripts/normalize_preset_names.py
+cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run once)
 ```
 
 ---
@@ -77,7 +78,7 @@ See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-a
 
 ### Resolved in v1.0.1
 - ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
-- ~~**T-001:** Low test coverage~~ - Now 237 tests (95 backend + 142 frontend)
+- ~~**T-001:** Low test coverage~~ - Now 240 tests (98 backend + 142 frontend)
 
 ---
 
@@ -366,6 +367,40 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Proactive token refresh on app load (60-second buffer)
 - Production misconfiguration detection with console warnings
 - JWT expiration check prevents unnecessary 401 errors
+
+### Admin System (v1.0.2)
+Super-user access for app owners to troubleshoot any static group.
+
+**Setup:**
+1. Run migration: `python scripts/migrate_add_is_admin.py`
+2. Set `ADMIN_DISCORD_IDS` env var (comma-separated Discord IDs)
+3. Admin users log in via Discord - flag is auto-set on login
+
+**How it works:**
+- `is_admin` column on `users` table (boolean, default false)
+- `ADMIN_DISCORD_IDS` env var = whitelist that auto-grants admin on login
+- Admin users get owner-level access to ALL static groups (view, edit, manage)
+- No API endpoint to grant admin - only via env var or direct DB edit
+
+**Admin Dashboard (`/admin/statics`):**
+- Shows ALL statics in the system with search/filter
+- Displays owner info (avatar, username), member/tier counts
+- Click any row to view/edit that static
+- Only visible to users with `isAdmin=true`
+
+**Security:**
+- Admin can only be granted via direct database access or env var whitelist
+- The env var only grants admin, never revokes (manual DB edit to revoke)
+- Frontend permission utilities accept `isAdmin` parameter for UI checks
+
+**Files:**
+- `backend/app/models/user.py` - `is_admin` column
+- `backend/app/config.py` - `admin_discord_ids` setting
+- `backend/app/permissions.py` - `is_user_admin()`, `create_admin_membership()`
+- `backend/app/routers/static_groups.py` - `GET /api/static-groups/admin/all`
+- `backend/scripts/migrate_add_is_admin.py` - Migration script
+- `frontend/src/pages/AdminDashboard.tsx` - Admin dashboard page
+- `frontend/src/utils/permissions.ts` - `getEffectiveRole()` helper
 
 ### Frontend Utilities (v1.0.1)
 
