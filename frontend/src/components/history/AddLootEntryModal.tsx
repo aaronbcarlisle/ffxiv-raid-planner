@@ -89,7 +89,9 @@ export function AddLootEntryModal({
       setMethod(editEntry.method as LootMethod);
       setNotes(editEntry.notes || '');
       setShowAllRecipients(false);
-      setIncludeSubs(false);
+      // If the recipient is a substitute, enable includeSubs so they appear in dropdown
+      const recipient = players.find(p => p.id === editEntry.recipientPlayerId);
+      setIncludeSubs(recipient?.isSubstitute ?? false);
     } else {
       // Add mode: use presets if provided, otherwise defaults
       setWeekNumber(currentWeek || 1);
@@ -102,7 +104,7 @@ export function AddLootEntryModal({
       setShowAllRecipients(false);
       setIncludeSubs(false);
     }
-  }, [editEntry, currentWeek, floors, presetFloor, presetSlot]);
+  }, [editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
   // Get available slots for selected floor
   const availableSlots = useMemo(() => {
