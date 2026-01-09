@@ -44,7 +44,6 @@ export function QuickLogMaterialModal({
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [isSaving, setIsSaving] = useState(false);
-  const [includeSubs, setIncludeSubs] = useState(false);
   const { createMaterialEntry, materialLog } = useLootTrackingStore();
 
   // Reset state when modal opens
@@ -52,7 +51,6 @@ export function QuickLogMaterialModal({
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(maxWeek);
-      setIncludeSubs(false);
     }
   }, [isOpen, suggestedPlayer.id, maxWeek]);
 
@@ -81,10 +79,10 @@ export function QuickLogMaterialModal({
     }
   };
 
-  // Filter to configured players, excluding subs unless includeSubs is checked
+  // Filter to configured main roster players (subs can only be logged via Log tab)
   const eligiblePlayers = useMemo(() =>
-    allPlayers.filter((p) => p.configured && (includeSubs || !p.isSubstitute)),
-    [allPlayers, includeSubs]
+    allPlayers.filter((p) => p.configured && !p.isSubstitute),
+    [allPlayers]
   );
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
@@ -161,18 +159,7 @@ export function QuickLogMaterialModal({
 
         {/* Recipient selection */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-text-secondary">Recipient</label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeSubs}
-                onChange={(e) => setIncludeSubs(e.target.checked)}
-                className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-              />
-              <span className="text-xs text-text-muted">Include Subs</span>
-            </label>
-          </div>
+          <label className="block text-sm text-text-secondary mb-1">Recipient</label>
           <select
             value={recipientPlayerId}
             onChange={(e) => setRecipientPlayerId(e.target.value)}

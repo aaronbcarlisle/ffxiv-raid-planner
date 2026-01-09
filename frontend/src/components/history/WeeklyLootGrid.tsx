@@ -73,6 +73,12 @@ export function WeeklyLootGrid({
     type: 'loot' | 'material';
   } | null>(null);
 
+  // Filter out substitute players from display
+  const mainRosterPlayers = useMemo(() =>
+    players.filter(p => !p.isSubstitute),
+    [players]
+  );
+
   // Handle context menu for entries
   const handleContextMenu = useCallback((
     e: React.MouseEvent,
@@ -154,17 +160,17 @@ export function WeeklyLootGrid({
     [materialLog, currentWeek]
   );
 
-  // Calculate loot counts per player
+  // Calculate loot counts per player (main roster only)
   const playerLootCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    players.forEach(p => { counts[p.id] = 0; });
+    mainRosterPlayers.forEach(p => { counts[p.id] = 0; });
     weekLootEntries.forEach(e => {
       if (counts[e.recipientPlayerId] !== undefined) {
         counts[e.recipientPlayerId]++;
       }
     });
     return counts;
-  }, [players, weekLootEntries]);
+  }, [mainRosterPlayers, weekLootEntries]);
 
   // Calculate average for fairness coloring
   const avgLoot = useMemo(() => {
@@ -330,7 +336,7 @@ export function WeeklyLootGrid({
     <div className="space-y-4">
       {/* Loot Count Summary Bar */}
       <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-auto">
-        {players.map(player => {
+        {mainRosterPlayers.map(player => {
           const count = playerLootCounts[player.id] || 0;
           const style = getLootCountStyle(count);
           const roleColor = getRoleColor(getValidRole(player.role));

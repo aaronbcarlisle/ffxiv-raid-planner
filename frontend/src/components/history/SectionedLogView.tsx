@@ -974,7 +974,8 @@ export function SectionedLogView({
                     <tbody>
                       {pageBalances.map((balance) => {
                         const player = players.find(p => p.id === balance.playerId);
-                        if (!player) return null;
+                        // Skip substitute players
+                        if (!player || player.isSubstitute) return null;
 
                         return (
                           <tr key={balance.playerId} className="border-t border-border-subtle hover:bg-surface-elevated/50">

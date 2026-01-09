@@ -21,6 +21,9 @@ interface LootCountBarProps {
 const POSITION_ORDER = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
 export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProps) {
+  // Filter out substitute players
+  const mainRosterPlayers = players.filter(p => !p.isSubstitute);
+
   // Filter loot to current week
   const weekLoot = lootLog.filter(e => e.weekNumber === currentWeek);
 
@@ -32,7 +35,7 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
   });
 
   // Sort players by position
-  const sortedPlayers = [...players].sort((a, b) => {
+  const sortedPlayers = [...mainRosterPlayers].sort((a, b) => {
     const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 999;
     const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 999;
     return aIdx - bIdx;
@@ -41,7 +44,7 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
   // Calculate average for color coding
   const counts = sortedPlayers.map(p => countsByPlayer.get(p.id) || 0);
   const total = counts.reduce((a, b) => a + b, 0);
-  const average = players.length > 0 ? total / players.length : 0;
+  const average = mainRosterPlayers.length > 0 ? total / mainRosterPlayers.length : 0;
 
   const getCountStyle = (count: number): string => {
     if (count > average + 1) {
@@ -55,7 +58,7 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
     return 'bg-surface-interactive text-text-secondary border-border-default';
   };
 
-  if (players.length === 0) {
+  if (mainRosterPlayers.length === 0) {
     return null;
   }
 
