@@ -117,10 +117,16 @@ function VersionNav({
 
   const handleClick = (version: string) => {
     onVersionClick(version);
-    const element = document.getElementById(`v${version}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Delay scroll until after React re-renders the expanded content
+    // Using requestAnimationFrame + setTimeout to ensure DOM has updated
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const element = document.getElementById(`v${version}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+    });
   };
 
   return (
