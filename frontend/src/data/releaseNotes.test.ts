@@ -8,7 +8,6 @@ import {
   RELEASES,
   getLatestRelease,
   isNewerVersion,
-  type Release,
   type ReleaseCategory,
 } from './releaseNotes';
 
