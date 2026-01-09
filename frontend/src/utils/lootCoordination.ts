@@ -23,6 +23,8 @@ export interface LogLootOptions {
   updateGear?: boolean;
   /** Update weapon priority when logging a weapon drop */
   updateWeaponPriority?: boolean;
+  /** Specific weapon job to mark as received (defaults to player's main job) */
+  weaponJob?: string;
 }
 
 export interface DeleteLootOptions {
@@ -115,9 +117,12 @@ export async function logLootAndUpdateGear(
     );
 
     if (player?.weaponPriorities) {
-      // Mark the player's main job weapon as received
+      // Use the passed weaponJob, fall back to data.weaponJob, then player's main job
+      const targetJob = options.weaponJob || data.weaponJob || player.job;
+
+      // Mark the target job's weapon as received
       const updatedPriorities = player.weaponPriorities.map((wp) =>
-        wp.job === player.job
+        wp.job === targetJob
           ? { ...wp, received: true, receivedDate: new Date().toISOString() }
           : wp
       );

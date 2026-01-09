@@ -7,12 +7,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
+import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, GearSlot } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
+import { RAID_JOBS } from '../../gamedata/jobs';
 
 interface QuickLogDropModalProps {
   isOpen: boolean;
@@ -42,7 +44,10 @@ export function QuickLogDropModal({
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);
+  const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isWeapon = slot === 'weapon';
 
   // Reset state when modal opens
   useEffect(() => {
@@ -50,6 +55,7 @@ export function QuickLogDropModal({
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(maxWeek);
       setUpdateGear(true);
+      setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
     }
   }, [isOpen, suggestedPlayer.id, maxWeek]);
 
@@ -59,6 +65,10 @@ export function QuickLogDropModal({
 
     setIsSaving(true);
     try {
+      const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
+      // For weapon drops from gear priority, the weapon job is the recipient's main job
+      const weaponJob = isWeapon ? recipient?.job : undefined;
+
       await logLootAndUpdateGear(
         groupId,
         tierId,
@@ -68,20 +78,25 @@ export function QuickLogDropModal({
           itemSlot: slot,
           recipientPlayerId,
           method: 'drop',
+          weaponJob,
+          isExtra,
+          notes: isWeapon && weaponJob ? `${weaponJob} weapon${isExtra ? ' (extra)' : ''}` : undefined,
         },
         {
           updateGear,
-          updateWeaponPriority: slot === 'weapon',
+          updateWeaponPriority: isWeapon,
+          weaponJob, // Pass for weapon priority updates
         }
       );
 
-      const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
       const slotName = GEAR_SLOT_NAMES[slot as keyof typeof GEAR_SLOT_NAMES] || slot;
-      toast.success(`Logged ${slotName} drop for ${recipient?.name || 'player'}`);
+      const jobInfo = weaponJob ? RAID_JOBS.find((j) => j.abbreviation === weaponJob) : null;
+      const displayName = isWeapon && jobInfo ? `${jobInfo.name} Weapon` : slotName;
+      toast.success(`Logged ${displayName} drop for ${recipient?.name || 'player'}`);
 
       onSuccess?.();
       onClose();
-    } catch (error) {
+    } catch {
       toast.error('Failed to log drop');
     } finally {
       setIsSaving(false);
@@ -146,7 +161,16 @@ export function QuickLogDropModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Item:</span>
-            <span className="text-text-primary font-medium">{slotName}</span>
+            {isWeapon && selectedPlayer ? (
+              <div className="flex items-center gap-2">
+                <JobIcon job={selectedPlayer.job} size="sm" />
+                <span className="text-text-primary font-medium">
+                  {RAID_JOBS.find((j) => j.abbreviation === selectedPlayer.job)?.name || selectedPlayer.job} Weapon
+                </span>
+              </div>
+            ) : (
+              <span className="text-text-primary font-medium">{slotName}</span>
+            )}
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
@@ -192,6 +216,21 @@ export function QuickLogDropModal({
             Mark {slotName.toLowerCase()} as acquired for {selectedPlayer?.name || 'player'}
           </span>
         </label>
+
+        {/* Extra loot checkbox (weapons only) */}
+        {isWeapon && (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isExtra}
+              onChange={(e) => setIsExtra(e.target.checked)}
+              className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
+            />
+            <span className="text-sm text-text-primary">
+              Extra loot (not BiS priority)
+            </span>
+          </label>
+        )}
 
         {/* Preview */}
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">

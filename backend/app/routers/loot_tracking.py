@@ -132,6 +132,8 @@ async def get_loot_log(
             recipient_player_name=entry.recipient_player.name,
             method=entry.method,
             notes=entry.notes,
+            weapon_job=entry.weapon_job,
+            is_extra=entry.is_extra,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
             created_by_username=entry.created_by.discord_username,
@@ -183,6 +185,8 @@ async def create_loot_log_entry(
         recipient_player_id=data.recipient_player_id,
         method=data.method.value,  # Use .value to get lowercase string for PostgreSQL enum
         notes=data.notes,
+        weapon_job=data.weapon_job,
+        is_extra=data.is_extra,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
     )
@@ -203,6 +207,8 @@ async def create_loot_log_entry(
         recipient_player_name=entry.recipient_player.name,
         method=entry.method,
         notes=entry.notes,
+        weapon_job=entry.weapon_job,
+        is_extra=entry.is_extra,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
         created_by_username=entry.created_by.discord_username,
@@ -265,6 +271,10 @@ async def update_loot_log_entry(
         entry.method = data.method.value
     if data.notes is not None:
         entry.notes = data.notes
+    if data.weapon_job is not None:
+        entry.weapon_job = data.weapon_job
+    if data.is_extra is not None:
+        entry.is_extra = data.is_extra
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])
@@ -279,6 +289,8 @@ async def update_loot_log_entry(
         recipient_player_name=entry.recipient_player.name,
         method=entry.method,
         notes=entry.notes,
+        weapon_job=entry.weapon_job,
+        is_extra=entry.is_extra,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
         created_by_username=entry.created_by.discord_username,
