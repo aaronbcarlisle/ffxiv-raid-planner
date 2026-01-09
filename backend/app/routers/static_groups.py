@@ -443,17 +443,19 @@ async def duplicate_group(
         return default
 
     if data.copy_tiers and source_group.tier_snapshots:
-        # Track if we've already set an active tier to ensure only one is active
-        active_tier_set = False
+        # Find which tier_id is currently active in the source group
+        # This ensures the same tier (by tier_id like "aac-heavyweight") stays active
+        source_active_tier_id = next(
+            (t.tier_id for t in source_group.tier_snapshots if t.is_active),
+            None
+        )
 
         for source_tier in source_group.tier_snapshots:
             new_tier_id = str(uuid.uuid4())
             tier_id_map[source_tier.id] = new_tier_id
 
-            # Only allow one active tier in the duplicated group
-            should_be_active = source_tier.is_active and not active_tier_set
-            if should_be_active:
-                active_tier_set = True
+            # Set the tier with matching tier_id as active (preserves user's selection)
+            should_be_active = source_tier.tier_id == source_active_tier_id
 
             new_tier = TierSnapshot(
                 id=new_tier_id,
