@@ -12,9 +12,10 @@ interface CreateTierModalProps {
   groupId: string;
   existingTierIds: string[];
   onClose: () => void;
+  onCreate?: () => void; // Called after successful tier creation
 }
 
-export function CreateTierModal({ groupId, existingTierIds, onClose }: CreateTierModalProps) {
+export function CreateTierModal({ groupId, existingTierIds, onClose, onCreate }: CreateTierModalProps) {
   const { createTier, isSaving } = useTierStore();
   const [selectedTierId, setSelectedTierId] = useState('');
 
@@ -25,6 +26,7 @@ export function CreateTierModal({ groupId, existingTierIds, onClose }: CreateTie
 
     try {
       await createTier(groupId, selectedTierId);
+      onCreate?.();
       onClose();
     } catch {
       // Error handled in store

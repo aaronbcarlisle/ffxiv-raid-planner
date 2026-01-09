@@ -235,7 +235,7 @@ export function Dashboard() {
 
     return [
       {
-        label: 'Edit Static',
+        label: 'Open Static',
         onClick: handleEditStatic,
       },
       {

@@ -3,11 +3,12 @@
  *
  * Displays all releases with categorized items.
  * Items are expandable to show detailed information and commit history.
+ * Includes sidebar navigation for quick version jumping.
  *
  * Accessible at: /docs/release-notes
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Sparkles,
@@ -61,6 +62,108 @@ const CATEGORY_CONFIG: Record<
     color: 'bg-status-warning/20 text-status-warning border-status-warning/30',
   },
 };
+
+// Sidebar Navigation Component
+function VersionNav({
+  activeVersion,
+  onVersionClick,
+}: {
+  activeVersion: string;
+  onVersionClick: (version: string) => void;
+}) {
+  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
+  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) {
+      const handleScroll = () => {
+        const { scrollTop, scrollHeight, clientHeight } = node;
+        setScrollState({
+          top: scrollTop < 10,
+          bottom: scrollTop + clientHeight >= scrollHeight - 10,
+        });
+      };
+      node.addEventListener('scroll', handleScroll);
+      handleScroll();
+    }
+  }, []);
+
+  const handleClick = (version: string) => {
+    onVersionClick(version);
+    const element = document.getElementById(`v${version}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <nav className="sticky top-6 w-48 shrink-0 hidden lg:block self-start h-fit z-40">
+      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
+        <div
+          className={`
+            absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10
+            bg-gradient-to-b from-surface-card to-transparent
+            transition-opacity duration-150
+            ${scrollState.top ? 'opacity-0' : 'opacity-100'}
+          `}
+        />
+
+        <div
+          ref={scrollContainerRef}
+          className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
+        >
+          <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
+            Versions
+          </div>
+          <ul className="space-y-px">
+            {RELEASES.map((release, idx) => {
+              const isActive = activeVersion === release.version;
+              const isLatest = idx === 0;
+
+              return (
+                <li key={release.version}>
+                  <button
+                    onClick={() => handleClick(release.version)}
+                    className={`
+                      w-full text-left px-2 py-1.5 rounded transition-colors
+                      ${isActive
+                        ? 'bg-accent/10 text-accent font-medium'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[13px]">v{release.version}</span>
+                      {isLatest && (
+                        <span className="px-1 py-0.5 text-[9px] font-medium bg-accent/20 text-accent rounded">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-text-muted mt-0.5">
+                      {new Date(release.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div
+          className={`
+            absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10
+            bg-gradient-to-t from-surface-card to-transparent
+            transition-opacity duration-150
+            ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}
+          `}
+        />
+      </div>
+    </nav>
+  );
+}
 
 function CategoryBadge({ category }: { category: ReleaseCategory }) {
   const config = CATEGORY_CONFIG[category];
@@ -300,6 +403,9 @@ function ReleaseCard({
 
 export default function ReleaseNotes() {
   const location = useLocation();
+  const [activeVersion, setActiveVersion] = useState(RELEASES[0]?.version || '');
+  const isScrollingRef = useRef(false);
+  const scrollEndTimeoutRef = useRef<number | null>(null);
 
   // Track expanded versions - Set allows multiple to be expanded
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(() => {
@@ -313,6 +419,7 @@ export default function ReleaseNotes() {
       const version = location.hash.slice(2); // Remove #v
       // Expand this version
       setExpandedVersions(prev => new Set([...prev, version]));
+      setActiveVersion(version);
       // Scroll to it after a small delay
       setTimeout(() => {
         const element = document.getElementById(location.hash.slice(1));
@@ -322,6 +429,85 @@ export default function ReleaseNotes() {
       }, 100);
     }
   }, [location.hash]);
+
+  // Handle sidebar version click
+  const handleVersionClick = useCallback((version: string) => {
+    setActiveVersion(version);
+    // Expand this version if not already expanded
+    setExpandedVersions(prev => new Set([...prev, version]));
+    isScrollingRef.current = true;
+  }, []);
+
+  // Scroll-based active version tracking
+  useEffect(() => {
+    const handleScroll = () => {
+      // Skip if we're in the middle of a programmatic scroll
+      if (isScrollingRef.current) {
+        if (scrollEndTimeoutRef.current) {
+          clearTimeout(scrollEndTimeoutRef.current);
+        }
+        scrollEndTimeoutRef.current = window.setTimeout(() => {
+          isScrollingRef.current = false;
+        }, 150);
+        return;
+      }
+
+      const threshold = 120;
+      const viewportHeight = window.innerHeight;
+
+      // Get all version sections
+      const sections = RELEASES.map(r => ({
+        version: r.version,
+        element: document.getElementById(`v${r.version}`),
+      })).filter(s => s.element);
+
+      let bestVersion: string | null = null;
+      let bestTop = -Infinity;
+
+      // Find the section that's closest to the top of the viewport but still visible
+      for (const section of sections) {
+        if (section.element) {
+          const rect = section.element.getBoundingClientRect();
+          if (rect.top <= threshold && rect.top > bestTop) {
+            bestTop = rect.top;
+            bestVersion = section.version;
+          }
+        }
+      }
+
+      // If no section is above threshold, find the first visible one
+      if (!bestVersion) {
+        for (const section of sections) {
+          if (section.element) {
+            const rect = section.element.getBoundingClientRect();
+            if (rect.top >= 0 && rect.top < viewportHeight) {
+              bestVersion = section.version;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback to first section
+      if (!bestVersion) {
+        bestVersion = sections[0]?.version || RELEASES[0]?.version;
+      }
+
+      if (bestVersion) {
+        setActiveVersion(bestVersion);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollEndTimeoutRef.current) {
+        clearTimeout(scrollEndTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Toggle a version's expanded state
   const handleToggle = (version: string) => {
@@ -371,32 +557,39 @@ export default function ReleaseNotes() {
         </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-[80rem] mx-auto px-6 lg:px-8 py-12">
-        {/* Tip */}
-        <div className="mb-8 p-4 bg-accent/5 border border-accent/20 rounded-lg">
-          <p className="text-sm text-text-secondary">
-            <span className="font-medium text-accent">Tip:</span> Click on any release to expand it,
-            then click individual items to see detailed information and related commits.
-          </p>
-        </div>
+      {/* Content with Sidebar */}
+      <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-12 flex gap-8">
+        <VersionNav
+          activeVersion={activeVersion}
+          onVersionClick={handleVersionClick}
+        />
 
-        <div className="space-y-4">
-          {RELEASES.map((release, idx) => (
-            <ReleaseCard
-              key={release.version}
-              release={release}
-              isLatest={idx === 0}
-              forceExpanded={expandedVersions.has(release.version)}
-              onToggle={handleToggle}
-            />
-          ))}
-        </div>
+        <main className="flex-1 min-w-0">
+          {/* Tip */}
+          <div className="mb-8 p-4 bg-accent/5 border border-accent/20 rounded-lg">
+            <p className="text-sm text-text-secondary">
+              <span className="font-medium text-accent">Tip:</span> Click on any release to expand it,
+              then click individual items to see detailed information and related commits.
+            </p>
+          </div>
 
-        {RELEASES.length === 0 && (
-          <div className="text-center py-12 text-text-muted">No releases yet.</div>
-        )}
-      </main>
+          <div className="space-y-4">
+            {RELEASES.map((release, idx) => (
+              <ReleaseCard
+                key={release.version}
+                release={release}
+                isLatest={idx === 0}
+                forceExpanded={expandedVersions.has(release.version)}
+                onToggle={handleToggle}
+              />
+            ))}
+          </div>
+
+          {RELEASES.length === 0 && (
+            <div className="text-center py-12 text-text-muted">No releases yet.</div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

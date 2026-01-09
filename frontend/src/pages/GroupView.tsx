@@ -272,6 +272,29 @@ export function GroupView() {
     }
   }, [shareCode]);
 
+  // Smart tab defaulting: reset to Roster when switching statics
+  useEffect(() => {
+    if (!currentGroup?.id) return;
+
+    try {
+      const lastStaticId = localStorage.getItem('last-static-id');
+      const urlTab = searchParams.get('tab');
+
+      // If switching to a different static (not just refreshing the same one)
+      // AND there's no explicit tab in the URL, reset to 'players' tab
+      if (lastStaticId && lastStaticId !== currentGroup.id && !urlTab) {
+        setPageModeState('players');
+        // Clear any persisted tab to avoid confusion on next refresh
+        localStorage.setItem('group-view-tab', 'players');
+      }
+
+      // Always update last-static-id to current
+      localStorage.setItem('last-static-id', currentGroup.id);
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [currentGroup?.id, searchParams]);
+
   // Load sortPreset from localStorage when tier changes (only if not specified in URL)
   useEffect(() => {
     if (!currentTier?.tierId) return;
@@ -1013,6 +1036,7 @@ export function GroupView() {
           groupId={currentGroup.id}
           existingTierIds={existingTierIds}
           onClose={() => setShowCreateTierModal(false)}
+          onCreate={() => setPageMode('players')}
         />
       )}
 

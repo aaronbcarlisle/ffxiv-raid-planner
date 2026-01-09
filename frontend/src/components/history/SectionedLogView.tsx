@@ -31,7 +31,7 @@ import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootC
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
+import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -746,21 +746,27 @@ export function SectionedLogView({
                 </div>
                 {/* Floor filter - only shown in By Floor mode */}
                 {lootViewMode === 'byFloor' && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-text-muted mr-1">Floors:</span>
-                    {([1, 2, 3, 4] as FloorNumber[]).map(floor => (
-                      <button
-                        key={floor}
-                        onClick={() => toggleFloorVisibility(floor)}
-                        className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
-                          visibleFloors.has(floor)
-                            ? 'bg-accent text-accent-contrast'
-                            : 'bg-surface-base text-text-muted hover:text-text-secondary'
-                        }`}
-                      >
-                        {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted mr-1">Floor:</span>
+                    {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
+                      const isSelected = visibleFloors.has(floor);
+                      const floorColors = FLOOR_COLORS[floor];
+                      return (
+                        <button
+                          key={floor}
+                          onClick={() => toggleFloorVisibility(floor)}
+                          className={`
+                            px-3 py-1.5 rounded text-xs font-bold transition-colors
+                            ${isSelected
+                              ? `${floorColors.bg} ${floorColors.text} ${floorColors.border} border`
+                              : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                            }
+                          `}
+                        >
+                          {floors[floor - 1]?.split(' ')[0] || `F${floor}`}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
