@@ -4,7 +4,7 @@ Loot Log Entry Model
 Tracks individual loot drops and how they were obtained.
 """
 
-from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -24,6 +24,8 @@ class LootLogEntry(Base):
         nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    weapon_job: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "DRG", "WHM", etc. for weapon slots
+    is_extra: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)  # True if extra/off-job loot
     created_at: Mapped[str] = mapped_column(Text, nullable=False)  # ISO timestamp
     created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
 

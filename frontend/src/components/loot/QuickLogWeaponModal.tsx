@@ -44,6 +44,7 @@ export function QuickLogWeaponModal({
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);
+  const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Reset state when modal opens
@@ -52,8 +53,18 @@ export function QuickLogWeaponModal({
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(maxWeek);
       setUpdateGear(true);
+      // Auto-detect if this is extra loot (weapon job doesn't match player's main job)
+      setIsExtra(suggestedPlayer.job !== weaponJob);
     }
-  }, [isOpen, suggestedPlayer.id, maxWeek]);
+  }, [isOpen, suggestedPlayer.id, suggestedPlayer.job, weaponJob, maxWeek]);
+
+  // Update isExtra when recipient changes
+  useEffect(() => {
+    const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
+    if (recipient) {
+      setIsExtra(recipient.job !== weaponJob);
+    }
+  }, [recipientPlayerId, weaponJob, allPlayers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +81,9 @@ export function QuickLogWeaponModal({
           itemSlot: 'weapon',
           recipientPlayerId,
           method: 'drop',
-          notes: `${weaponJob} weapon`,
+          weaponJob,
+          isExtra,
+          notes: `${weaponJob} weapon${isExtra ? ' (extra)' : ''}`,
         },
         {
           updateGear,
@@ -194,6 +207,22 @@ export function QuickLogWeaponModal({
           <span className="text-sm text-text-primary">
             Mark weapon as acquired for {selectedPlayer?.name || 'player'}
           </span>
+        </label>
+
+        {/* Extra loot checkbox */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isExtra}
+            onChange={(e) => setIsExtra(e.target.checked)}
+            className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
+          />
+          <span className="text-sm text-text-primary">
+            Extra loot (not BiS priority)
+          </span>
+          {selectedPlayer?.job !== weaponJob && (
+            <span className="text-xs text-text-muted">(auto-detected: off-job)</span>
+          )}
         </label>
 
         {/* Preview */}

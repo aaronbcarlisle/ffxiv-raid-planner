@@ -394,6 +394,7 @@ export function SectionedLogView({
   const renderEntry = (entry: CombinedEntry) => {
     if (entry.entryType === 'loot') {
       const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
+      const isWeapon = entry.itemSlot === 'weapon';
       return (
         <div
           key={`loot-${entry.id}`}
@@ -405,7 +406,12 @@ export function SectionedLogView({
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
                   {entry.floor}
                 </span>
-                <span className="text-text-primary font-medium">{slotName}</span>
+                {isWeapon && entry.weaponJob && (
+                  <JobIcon job={entry.weaponJob} size="sm" />
+                )}
+                <span className="text-text-primary font-medium">
+                  {isWeapon && entry.weaponJob ? `Weapon (${entry.weaponJob})` : slotName}
+                </span>
                 <span className="text-text-muted">→</span>
                 <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
                 <span
@@ -417,6 +423,11 @@ export function SectionedLogView({
                 >
                   {entry.method}
                 </span>
+                {entry.isExtra && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
+                    Extra
+                  </span>
+                )}
               </div>
               <div className="text-xs text-text-muted mt-1">
                 {formatDate(entry.createdAt)}

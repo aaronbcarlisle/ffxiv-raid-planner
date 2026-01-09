@@ -773,6 +773,12 @@ export function GroupView() {
               lootLog={lootLog}
               materialLog={materialLog}
               showEnhancedScores={true}
+              onLogSuccess={() => {
+                // Refresh tier data so weapon priority list updates
+                if (currentGroup?.id && currentTier?.tierId) {
+                  fetchTier(currentGroup.id, currentTier.tierId);
+                }
+              }}
             />
           )}
 
