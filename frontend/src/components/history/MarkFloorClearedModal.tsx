@@ -25,13 +25,14 @@ export function MarkFloorClearedModal({
   floors,
   currentWeek,
 }: MarkFloorClearedModalProps) {
-  const configuredPlayers = players.filter((p) => p.configured);
+  // Only show main roster players (configured and not substitutes)
+  const mainRosterPlayers = players.filter((p) => p.configured && !p.isSubstitute);
 
   const [weekNumber, setWeekNumber] = useState(currentWeek || 1);
   const [floor, setFloor] = useState(floors[0] || '');
   // Default to all configured players selected
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(
-    () => new Set(configuredPlayers.map((p) => p.id))
+    () => new Set(mainRosterPlayers.map((p) => p.id))
   );
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -47,7 +48,7 @@ export function MarkFloorClearedModal({
   };
 
   const handleSelectAll = () => {
-    setSelectedPlayerIds(new Set(configuredPlayers.map((p) => p.id)));
+    setSelectedPlayerIds(new Set(mainRosterPlayers.map((p) => p.id)));
   };
 
   const handleClearAll = () => {
@@ -140,7 +141,7 @@ export function MarkFloorClearedModal({
           </div>
 
           <div className="border border-border-default rounded-lg max-h-64 overflow-y-auto">
-            {configuredPlayers.map((player) => (
+            {mainRosterPlayers.map((player) => (
               <label
                 key={player.id}
                 className="flex items-center gap-3 p-3 hover:bg-surface-hover cursor-pointer border-b border-border-default last:border-b-0"

@@ -705,9 +705,10 @@ export function GroupView() {
     return sortedPlayers.some(p => p.isSubstitute);
   }, [sortedPlayers]);
 
-  // Only count configured players for team summary
-  const configuredPlayers = useMemo(() => {
-    return sortedPlayers.filter(p => p.configured);
+  // Main roster players: configured and not substitutes
+  // Used for Loot Priority, Summary, and other features that should exclude subs
+  const mainRosterPlayers = useMemo(() => {
+    return sortedPlayers.filter(p => p.configured && !p.isSubstitute);
   }, [sortedPlayers]);
 
   const isLoading = groupLoading || tierLoading;
@@ -1107,9 +1108,9 @@ export function GroupView() {
           )}
 
           {/* Loot Tab */}
-          {pageMode === 'loot' && tierInfo && configuredPlayers.length > 0 && (
+          {pageMode === 'loot' && tierInfo && mainRosterPlayers.length > 0 && (
             <LootPriorityPanel
-              players={configuredPlayers}
+              players={mainRosterPlayers}
               settings={{
                 ...DEFAULT_SETTINGS,
                 ...(currentGroup?.settings && { lootPriority: currentGroup.settings.lootPriority }),
@@ -1139,11 +1140,11 @@ export function GroupView() {
           )}
 
           {/* Summary Tab */}
-          {pageMode === 'stats' && tierInfo && currentTier?.players && (
+          {pageMode === 'stats' && tierInfo && mainRosterPlayers.length > 0 && (
             <TeamSummaryEnhanced
               groupId={currentGroup!.id}
               tierId={currentTier.tierId}
-              players={currentTier.players}
+              players={mainRosterPlayers}
               tierInfo={tierInfo}
             />
           )}
