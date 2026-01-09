@@ -28,6 +28,7 @@ interface PlayerCardHeaderProps {
   tierId: string;
   userRole?: MemberRole | null;
   currentUserId?: string;
+  isAdmin?: boolean;
   onJobChange: (job: string) => void;
   onNameChange: (name: string) => void;
   onPositionChange: (position: RaidPosition | undefined) => void;
@@ -45,6 +46,7 @@ export function PlayerCardHeader({
   tierId,
   userRole,
   currentUserId,
+  isAdmin,
   onJobChange,
   onNameChange,
   onPositionChange,
@@ -63,7 +65,7 @@ export function PlayerCardHeader({
   const roleColor = getRoleColor(displayRole);
 
   // Check edit permission
-  const editPermission = canEditPlayer(userRole, player, currentUserId);
+  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
 
   // Focus name input when editing starts
   useEffect(() => {
@@ -226,6 +228,7 @@ export function PlayerCardHeader({
               player={player}
               userRole={userRole}
               currentUserId={currentUserId}
+              isAdmin={isAdmin}
             />
           </div>
         </div>

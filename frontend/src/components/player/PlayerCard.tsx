@@ -30,6 +30,7 @@ interface PlayerCardProps {
   isGroupOwner?: boolean;
   userRole?: MemberRole | null;
   userHasClaimedPlayer?: boolean;
+  isAdmin?: boolean;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -58,6 +59,7 @@ export const PlayerCard = memo(function PlayerCard({
   isGroupOwner,
   userRole,
   userHasClaimedPlayer,
+  isAdmin,
   groupId,
   tierId,
   isHighlighted,
@@ -239,9 +241,9 @@ export const PlayerCard = memo(function PlayerCard({
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
   // Permission checks
-  const editPermission = canEditPlayer(userRole, player, currentUserId);
-  const rosterPermission = canManageRoster(userRole);
-  const resetPermission = canResetGear(userRole, player, currentUserId);
+  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
+  const rosterPermission = canManageRoster(userRole, isAdmin);
+  const resetPermission = canResetGear(userRole, player, currentUserId, isAdmin);
 
   // Context menu items
   const contextMenuItems: ContextMenuItem[] = [
@@ -551,6 +553,7 @@ export const PlayerCard = memo(function PlayerCard({
           tierId={tierId}
           userRole={userRole}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
@@ -569,6 +572,7 @@ export const PlayerCard = memo(function PlayerCard({
             currentUserId={currentUserId}
             player={player}
             userRole={userRole}
+            isAdmin={isAdmin}
             onTankRoleChange={handleTankRoleChange}
           />
         </div>
@@ -585,6 +589,7 @@ export const PlayerCard = memo(function PlayerCard({
         player={player}
         userRole={userRole}
         currentUserId={currentUserId}
+        isAdmin={isAdmin}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
       />

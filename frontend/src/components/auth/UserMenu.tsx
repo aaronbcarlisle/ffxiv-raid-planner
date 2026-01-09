@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Sparkles,
   Wrench,
+  Shield,
 } from 'lucide-react';
 
 interface UserMenuProps {
@@ -86,6 +87,16 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         >
           My Statics
         </DropdownItem>
+
+        {/* Admin Dashboard - only for admins */}
+        {user.isAdmin && (
+          <DropdownItem
+            icon={<Shield className="w-4 h-4 text-amber-400" />}
+            onSelect={() => navigate('/admin/statics')}
+          >
+            <span className="text-amber-400">Admin Dashboard</span>
+          </DropdownItem>
+        )}
 
         <DropdownSub>
           <DropdownSubTrigger

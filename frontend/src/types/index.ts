@@ -270,6 +270,7 @@ export interface User {
   avatarUrl?: string;
   displayName?: string;
   email?: string;
+  isAdmin: boolean;  // Super-user access to all statics
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -502,6 +503,30 @@ export interface InvitationAcceptResponse {
   staticGroupId?: string;
   shareCode?: string;
   role?: MemberRole;
+}
+
+// ==================== Admin Types ====================
+
+// Admin static group list item (includes owner info)
+export interface AdminStaticGroupListItem {
+  id: string;
+  name: string;
+  shareCode: string;
+  isPublic: boolean;
+  ownerId: string;
+  owner?: OwnerInfo;
+  memberCount: number;
+  tierCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Admin static group list response (paginated)
+export interface AdminStaticGroupListResponse {
+  items: AdminStaticGroupListItem[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 // ==================== BiS Import Types ====================

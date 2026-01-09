@@ -8,6 +8,7 @@ import { initializeAuth } from './stores/authStore';
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
@@ -63,6 +64,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="admin/statics" element={<AdminDashboard />} />
             <Route path="group/:shareCode" element={<GroupView />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />

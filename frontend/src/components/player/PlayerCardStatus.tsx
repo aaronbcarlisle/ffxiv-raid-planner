@@ -34,6 +34,7 @@ interface PlayerCardStatusProps {
   currentUserId?: string;
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
+  isAdmin?: boolean;
   onTankRoleChange: (tankRole: TankRole | undefined) => void;
 }
 
@@ -47,6 +48,7 @@ export function PlayerCardStatus({
   currentUserId,
   player,
   userRole,
+  isAdmin,
   onTankRoleChange,
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
@@ -117,6 +119,7 @@ export function PlayerCardStatus({
           player={player}
           userRole={userRole}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       )}
     </div>

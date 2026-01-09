@@ -17,6 +17,7 @@ interface PositionSelectorProps {
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   currentUserId?: string;
+  isAdmin?: boolean;
 }
 
 // Get suggested positions based on role
@@ -78,12 +79,13 @@ export function PositionSelector({
   player,
   userRole,
   currentUserId,
+  isAdmin,
 }: PositionSelectorProps) {
   const [open, setOpen] = useState(false);
   const suggested = getSuggestedPositions(role);
 
   // Check edit permission
-  const editPermission = canEditPlayer(userRole, player, currentUserId);
+  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
 
   const handleSelect = (pos: RaidPosition | undefined) => {
     onSelect(pos);

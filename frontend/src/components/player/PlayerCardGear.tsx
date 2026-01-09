@@ -23,6 +23,7 @@ interface PlayerCardGearProps {
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   currentUserId?: string;
+  isAdmin?: boolean;
   onGearChange: (slot: string, updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
 }
@@ -34,6 +35,7 @@ export function PlayerCardGear({
   player,
   userRole,
   currentUserId,
+  isAdmin,
   onGearChange,
   onTomeWeaponChange,
 }: PlayerCardGearProps) {
@@ -48,6 +50,7 @@ export function PlayerCardGear({
           player={player}
           userRole={userRole}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       </div>
     );

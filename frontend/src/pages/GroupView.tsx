@@ -12,6 +12,7 @@ import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLootTrackingStore } from '../stores/lootTrackingStore';
+import { useViewAsStore } from '../stores/viewAsStore';
 import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
@@ -32,6 +33,7 @@ import { logger } from '../lib/logger';
 import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
+import { ShieldAlert } from 'lucide-react';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -54,6 +56,36 @@ export function GroupView() {
     clearTiers,
   } = useTierStore();
   const { user, login } = useAuthStore();
+  const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
+
+  // Handle viewAs URL parameter
+  useEffect(() => {
+    const viewAsUserId = searchParams.get('viewAs');
+    if (viewAsUserId && currentGroup?.id && user?.isAdmin) {
+      // Only start viewAs if not already viewing as this user in this group
+      if (!viewAsUser || viewAsUser.userId !== viewAsUserId || viewAsUser.groupId !== currentGroup.id) {
+        startViewAs(currentGroup.id, viewAsUserId);
+      }
+    } else if (!viewAsUserId && viewAsUser) {
+      // URL param removed, stop viewing as
+      stopViewAs();
+    }
+  }, [searchParams, currentGroup?.id, user?.isAdmin, startViewAs, stopViewAs, viewAsUser]);
+
+  // Clear stale viewAs state if group changed
+  useEffect(() => {
+    if (viewAsUser && currentGroup?.id && viewAsUser.groupId !== currentGroup.id) {
+      stopViewAs();
+    }
+  }, [viewAsUser, currentGroup?.id, stopViewAs]);
+
+  // Clean up viewAs state when unmounting (leaving this page entirely)
+  useEffect(() => {
+    return () => {
+      stopViewAs();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Local UI state
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
@@ -650,11 +682,12 @@ export function GroupView() {
     return sortPlayersByRole(currentTier.players, displayOrder, sortPreset);
   }, [currentTier?.players, sortPreset]);
 
-  // Check if current user has already claimed a player in this tier
+  // Check if current user (or viewAs user) has already claimed a player in this tier
   const userHasClaimedPlayer = useMemo(() => {
-    if (!user?.id || !currentTier?.players) return false;
-    return currentTier.players.some(p => p.userId === user.id);
-  }, [user?.id, currentTier?.players]);
+    const checkUserId = viewAsUser ? viewAsUser.userId : user?.id;
+    if (!checkUserId || !currentTier?.players) return false;
+    return currentTier.players.some(p => p.userId === checkUserId);
+  }, [viewAsUser, user?.id, currentTier?.players]);
 
   // Group players by light party when group view is enabled
   const groupedPlayers = useMemo(() => {
@@ -677,8 +710,16 @@ export function GroupView() {
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
-  const userRole = currentGroup?.userRole;
-  const canEdit = userRole === 'owner' || userRole === 'lead';
+
+  // When viewing as another user, use their role instead of actual role
+  const actualUserRole = currentGroup?.userRole;
+  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
+  // Admins (not using View As) have owner-level edit permissions
+  const isAdminAccess = !!(user?.isAdmin && !viewAsUser);
+  const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
+
+  // Effective user ID for ownership checks (use viewAs user's ID when viewing as them)
+  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
@@ -708,7 +749,7 @@ export function GroupView() {
   }, []);
 
   // Check roster management permission for DnD
-  const rosterPermission = canManageRoster(userRole);
+  const rosterPermission = canManageRoster(userRole, isAdminAccess);
 
   // DnD hook - encapsulates all drag and drop logic
   const dnd = useDragAndDrop({
@@ -740,7 +781,7 @@ export function GroupView() {
     // If player is configured, show droppable player card
     if (player.configured) {
       // Check if user can reset this player's gear
-      const resetPermission = canResetGear(userRole, player, user?.id);
+      const resetPermission = canResetGear(userRole, player, effectiveUserId, isAdminAccess);
 
       return (
         <DroppablePlayerCard
@@ -752,10 +793,11 @@ export function GroupView() {
           clipboardPlayer={clipboardPlayer}
           dragState={dnd.dragState}
           canEdit={canEdit}
-          currentUserId={user?.id}
-          isGroupOwner={currentGroup?.userRole === 'owner'}
+          currentUserId={effectiveUserId}
+          isGroupOwner={userRole === 'owner'}
           userRole={userRole}
           userHasClaimedPlayer={userHasClaimedPlayer}
+          isAdmin={isAdminAccess}
           groupId={currentGroup!.id}
           tierId={currentTier!.tierId}
           isHighlighted={highlightedPlayerId === player.id}
@@ -881,6 +923,19 @@ export function GroupView() {
               Create First Tier
             </button>
           )}
+        </div>
+      )}
+
+      {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
+      {isAdminAccess && !actualUserRole && (
+        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-amber-400" />
+            <span className="text-sm text-amber-200">
+              <span className="font-medium">Admin Access:</span>{' '}
+              You're viewing this static as an administrator. You have owner-level permissions but are not a member.
+            </span>
+          </div>
         </div>
       )}
 
