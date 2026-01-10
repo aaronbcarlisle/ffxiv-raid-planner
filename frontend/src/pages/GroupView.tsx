@@ -1073,31 +1073,34 @@ export function GroupView() {
               {/* Grouped View (G1/G2) */}
               {groupView && groupedPlayers ? (
                 <div className="space-y-8 mb-8">
-                  {/* Group 1 */}
-                  {groupedPlayers.group1.length > 0 && (
-                    <div>
-                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                        <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G1</span>
-                        Light Party 1
-                      </h3>
-                      <div className={gridClasses}>
-                        {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
+                  {/* G1/G2 Container - side by side on ultrawide */}
+                  <div className="grid grid-cols-1 gap-8 grid-g1g2-side">
+                    {/* Group 1 - Blue themed */}
+                    {groupedPlayers.group1.length > 0 && (
+                      <div>
+                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                          <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-500/30">G1</span>
+                          Light Party 1
+                        </h3>
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 grid-g1g2-cards">
+                          {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Group 2 */}
-                  {groupedPlayers.group2.length > 0 && (
-                    <div>
-                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                        <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs font-bold">G2</span>
-                        Light Party 2
-                      </h3>
-                      <div className={gridClasses}>
-                        {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
+                    {/* Group 2 - Red themed */}
+                    {groupedPlayers.group2.length > 0 && (
+                      <div>
+                        <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold border border-red-500/30">G2</span>
+                          Light Party 2
+                        </h3>
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 grid-g1g2-cards">
+                          {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Unassigned */}
                   {groupedPlayers.unassigned.length > 0 && (

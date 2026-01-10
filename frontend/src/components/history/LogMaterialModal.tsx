@@ -290,15 +290,27 @@ export function LogMaterialModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Material Entry' : 'Log Material'}>
       <div className="space-y-4">
-        {/* Floor select */}
-        <div>
-          <Label htmlFor="floor">Floor</Label>
-          <Select
-            id="floor"
-            value={selectedFloor}
-            onChange={handleFloorChange}
-            options={floorOptions}
-          />
+        {/* Week + Floor row (matching loot modal layout) */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="week">Week</Label>
+            <NumberInput
+              value={weekNumber}
+              onChange={(val) => setWeekNumber(val ?? 1)}
+              min={1}
+              size="sm"
+              showButtons={false}
+            />
+          </div>
+          <div>
+            <Label htmlFor="floor">Floor</Label>
+            <Select
+              id="floor"
+              value={selectedFloor}
+              onChange={handleFloorChange}
+              options={floorOptions}
+            />
+          </div>
         </div>
 
         {/* Material type select */}
@@ -358,18 +370,6 @@ export function LogMaterialModal({
               No one needs this material! Enable "Show all players" to assign anyway.
             </div>
           )}
-        </div>
-
-        {/* Week number */}
-        <div>
-          <Label htmlFor="week">Week</Label>
-          <NumberInput
-            value={weekNumber}
-            onChange={(val) => setWeekNumber(val ?? 1)}
-            min={1}
-            size="sm"
-            showButtons={false}
-          />
         </div>
 
         {/* Notes */}

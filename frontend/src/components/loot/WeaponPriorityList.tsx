@@ -295,14 +295,15 @@ function WeaponPriorityCard({
   );
 }
 
-// Role section configuration
-type RoleSection = 'tank' | 'healer' | 'melee' | 'ranged';
+// Role section configuration - separate physical ranged and magical ranged (caster)
+type RoleSection = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 
-const ROLE_SECTIONS: { id: RoleSection; label: string; roles: string[]; color: string }[] = [
-  { id: 'tank', label: 'Tanks', roles: ['tank'], color: 'text-role-tank' },
-  { id: 'healer', label: 'Healers', roles: ['healer'], color: 'text-role-healer' },
-  { id: 'melee', label: 'Melee DPS', roles: ['melee'], color: 'text-role-melee' },
-  { id: 'ranged', label: 'Ranged & Caster', roles: ['ranged', 'caster'], color: 'text-role-ranged' },
+const ROLE_SECTIONS: { id: RoleSection; label: string; roles: string[]; textColor: string; bgColor: string; borderColor: string }[] = [
+  { id: 'tank', label: 'Tanks', roles: ['tank'], textColor: 'text-role-tank', bgColor: 'bg-role-tank', borderColor: 'border-role-tank' },
+  { id: 'healer', label: 'Healers', roles: ['healer'], textColor: 'text-role-healer', bgColor: 'bg-role-healer', borderColor: 'border-role-healer' },
+  { id: 'melee', label: 'Melee DPS', roles: ['melee'], textColor: 'text-role-melee', bgColor: 'bg-role-melee', borderColor: 'border-role-melee' },
+  { id: 'ranged', label: 'Physical Ranged', roles: ['ranged'], textColor: 'text-role-ranged', bgColor: 'bg-role-ranged', borderColor: 'border-role-ranged' },
+  { id: 'caster', label: 'Magical Ranged', roles: ['caster'], textColor: 'text-role-caster', bgColor: 'bg-role-caster', borderColor: 'border-role-caster' },
 ];
 
 interface WeaponPriorityListProps {
@@ -327,13 +328,12 @@ export function WeaponPriorityList({
     const urlSections = searchParams.get('weaponSections');
     if (urlSections) {
       const sections = urlSections.split(',').filter(s =>
-        ['tank', 'healer', 'melee', 'ranged'].includes(s)
+        ['tank', 'healer', 'melee', 'ranged', 'caster'].includes(s)
       ) as RoleSection[];
-      if (sections.length > 0) {
-        return new Set(sections);
-      }
+      // Allow empty set from URL (all hidden)
+      return new Set(sections);
     }
-    return new Set(['tank', 'healer', 'melee', 'ranged']);
+    return new Set(['tank', 'healer', 'melee', 'ranged', 'caster']);
   });
 
   // Wrapper to toggle section visibility and update URL
@@ -341,10 +341,8 @@ export function WeaponPriorityList({
     setVisibleSectionsState(prev => {
       const next = new Set(prev);
       if (next.has(section)) {
-        // Don't allow hiding all sections
-        if (next.size > 1) {
-          next.delete(section);
-        }
+        // Allow hiding all sections (will show empty state)
+        next.delete(section);
       } else {
         next.add(section);
       }
@@ -352,9 +350,12 @@ export function WeaponPriorityList({
       // Update URL
       setSearchParams(params => {
         const newParams = new URLSearchParams(params);
-        if (next.size === 4) {
+        if (next.size === 5) {
           // All visible = default, remove param
           newParams.delete('weaponSections');
+        } else if (next.size === 0) {
+          // None visible - use special marker
+          newParams.set('weaponSections', 'none');
         } else {
           newParams.set('weaponSections', Array.from(next).join(','));
         }
@@ -363,16 +364,6 @@ export function WeaponPriorityList({
 
       return next;
     });
-  }, [setSearchParams]);
-
-  // Show all sections
-  const showAllSections = useCallback(() => {
-    setVisibleSectionsState(new Set(['tank', 'healer', 'melee', 'ranged']));
-    setSearchParams(params => {
-      const newParams = new URLSearchParams(params);
-      newParams.delete('weaponSections');
-      return newParams;
-    }, { replace: true });
   }, [setSearchParams]);
 
   // Get all jobs that appear in weapon priorities OR are main jobs
@@ -415,23 +406,13 @@ export function WeaponPriorityList({
     );
   }
 
-  const allVisible = visibleSections.size === 4;
+  const anyVisible = visibleSections.size > 0;
 
   return (
     <div className="space-y-6">
-      {/* Section filter toggles */}
+      {/* Section filter toggles - role-colored */}
       <div className="flex items-center justify-end gap-2 flex-wrap">
         <span className="text-sm text-text-muted mr-1">Show:</span>
-        <button
-          onClick={showAllSections}
-          className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
-            allVisible
-              ? 'bg-accent text-accent-contrast'
-              : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
-          }`}
-        >
-          All
-        </button>
         {ROLE_SECTIONS.map(section => {
           const isVisible = visibleSections.has(section.id);
           const jobCount = jobsBySection.get(section.id)?.length || 0;
@@ -442,10 +423,10 @@ export function WeaponPriorityList({
               key={section.id}
               onClick={() => toggleSection(section.id)}
               aria-pressed={isVisible}
-              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+              className={`px-3 py-1 text-sm rounded transition-colors font-bold border ${
                 isVisible
-                  ? 'bg-accent text-accent-contrast'
-                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                  ? `${section.bgColor} text-white ${section.borderColor}`
+                  : `bg-surface-interactive ${section.textColor} ${section.borderColor}/40 hover:${section.bgColor}/20`
               }`}
             >
               {section.label}
@@ -453,6 +434,14 @@ export function WeaponPriorityList({
           );
         })}
       </div>
+
+      {/* Empty state when no sections visible */}
+      {!anyVisible && (
+        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
+          <p>No role sections selected.</p>
+          <p className="text-sm mt-1">Click a role button above to show weapons.</p>
+        </div>
+      )}
 
       {/* Role sections */}
       {ROLE_SECTIONS.map(section => {
@@ -464,7 +453,7 @@ export function WeaponPriorityList({
           <div key={section.id} className="space-y-3">
             {/* Section header */}
             <div className="flex items-center gap-3">
-              <h4 className={`text-sm font-semibold ${section.color}`}>
+              <h4 className={`text-sm font-semibold ${section.textColor}`}>
                 {section.label}
               </h4>
               <div className="flex-1 h-px bg-border-subtle" />
