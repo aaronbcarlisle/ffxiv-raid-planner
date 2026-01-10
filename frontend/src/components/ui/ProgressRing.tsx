@@ -1,8 +1,10 @@
 /**
  * ProgressRing Component
  *
- * A circular progress indicator with color-coded thresholds.
+ * A circular progress indicator that transitions from gray to accent color.
  * Used to display gear completion progress on player cards.
+ * - Low progress (0-25%): muted gray
+ * - Progress (26%+): accent teal
  */
 
 interface ProgressRingProps {
@@ -27,19 +29,11 @@ const SIZE_CONFIG = {
 
 /**
  * Get the color class based on progress percentage.
- * Uses app design tokens for consistency.
+ * Transitions from gray (low) to accent teal (high/complete).
  */
 function getProgressColor(percentage: number): { stroke: string; text: string } {
-  if (percentage >= 100) {
-    // Complete - success green
-    return { stroke: 'stroke-status-success', text: 'text-status-success' };
-  }
-  if (percentage >= 76) {
-    // Near complete (9-10/11) - warning amber (almost there!)
-    return { stroke: 'stroke-status-warning', text: 'text-status-warning' };
-  }
   if (percentage >= 26) {
-    // Mid progress (3-8/11) - accent teal
+    // Any meaningful progress - accent teal (including complete)
     return { stroke: 'stroke-accent', text: 'text-accent' };
   }
   // Low progress (0-2/11) - muted gray
