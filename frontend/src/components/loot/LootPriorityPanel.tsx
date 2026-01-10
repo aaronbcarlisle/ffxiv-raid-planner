@@ -153,7 +153,7 @@ export function LootPriorityPanel({
   selectedFloor,
   floorName,
   floors,
-  dutyNames,
+  // dutyNames - unused but kept in interface for future use
   onFloorChange,
   showLogButtons = false,
   groupId,
@@ -213,7 +213,9 @@ export function LootPriorityPanel({
   }, [onFloorChange]);
 
   // Handle gear floor change - also update matrix floor to keep in sync
-  const handleGearFloorChange = useCallback((floor: FloorNumber) => {
+  // Type accepts FloorNumber | 'all' for FilterBar compatibility, but 'all' is filtered out
+  const handleGearFloorChange = useCallback((floor: FloorNumber | 'all') => {
+    if (floor === 'all') return; // Gear Priority doesn't support 'all'
     // Update matrix floor to match (unless user has 'all' selected, keep their preference)
     if (matrixFloor !== 'all') {
       setMatrixFloor(floor);

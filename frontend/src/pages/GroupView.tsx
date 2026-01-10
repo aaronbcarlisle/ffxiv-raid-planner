@@ -33,7 +33,7 @@ import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculatio
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster, canResetGear } from '../utils/permissions';
 import { logger } from '../lib/logger';
-import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode } from '../types';
+import type { SnapshotPlayer, PageMode, ViewMode, SortPreset, GearSlotStatus, ResetMode, GearSlot } from '../types';
 import { GEAR_SLOTS } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 import { ShieldAlert, Eye } from 'lucide-react';
@@ -966,10 +966,10 @@ export function GroupView() {
 
   // Compute which slots have loot entries for each player (for "Go to Loot Entry" feature)
   const playerSlotsWithLootEntries = useMemo(() => {
-    const map = new Map<string, Set<string>>();
+    const map = new Map<string, Set<GearSlot>>();
     for (const entry of lootLog) {
-      const existing = map.get(entry.recipientPlayerId) ?? new Set<string>();
-      existing.add(entry.itemSlot);
+      const existing = map.get(entry.recipientPlayerId) ?? new Set<GearSlot>();
+      existing.add(entry.itemSlot as GearSlot);
       map.set(entry.recipientPlayerId, existing);
     }
     return map;

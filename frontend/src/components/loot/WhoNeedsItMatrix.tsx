@@ -170,7 +170,7 @@ export function WhoNeedsItMatrix({
                 <td className="py-2 px-3 text-text-primary font-medium text-xs">
                   <div className="flex items-center gap-1.5">
                     <img
-                      src={GEAR_SLOT_ICONS[slot === 'ring' ? 'ring1' : slot as GearSlot]}
+                      src={GEAR_SLOT_ICONS[slot as GearSlot]}
                       alt=""
                       className="w-4 h-4 opacity-60"
                     />

@@ -406,7 +406,10 @@ export function WeaponPriorityList({
   });
 
   // Wrapper to toggle section visibility and update URL
-  const toggleSection = useCallback((section: RoleSectionId) => {
+  // Accepts string for FilterBar compatibility but validates it's a valid RoleSectionId
+  const toggleSection = useCallback((sectionId: string) => {
+    if (!['tank', 'healer', 'melee', 'ranged', 'caster'].includes(sectionId)) return;
+    const section = sectionId as RoleSectionId;
     setVisibleSectionsState(prev => {
       const next = new Set(prev);
       if (next.has(section)) {

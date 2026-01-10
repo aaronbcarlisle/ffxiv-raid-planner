@@ -145,7 +145,7 @@ export function AddLootEntryModal({
     // Filter to configured players, excluding subs unless includeSubs is checked
     const eligiblePlayers = players.filter((p) => p.configured && (includeSubs || !p.isSubstitute));
 
-    if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
+    if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, score: 0, needsItem: false }));
 
     // Get priority entries for this slot
     const priorityEntries = itemSlot === 'ring1' || itemSlot === 'ring2'
