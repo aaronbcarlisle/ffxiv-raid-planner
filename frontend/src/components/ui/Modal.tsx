@@ -28,6 +28,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };

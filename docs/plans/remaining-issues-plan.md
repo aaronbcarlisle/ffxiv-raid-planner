@@ -44,7 +44,7 @@ After investigation, most items listed in CONSOLIDATED_STATUS.md were **already 
 | Item | Priority | Notes |
 |------|----------|-------|
 | Raw Tailwind values | Low | Ongoing design system improvement |
-| Large component files | Low | GroupView is 1267 lines - could split but functional |
+| Large component files | Low | GroupView is 1276 lines - could split but functional |
 | Badge overflow UI | Done | Already handled with flex-wrap |
 | Keyboard shortcuts | Done | Added in this PR (press ? to see) |
 | Onboarding tooltips | Future | First-run experience |

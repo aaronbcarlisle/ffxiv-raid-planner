@@ -66,17 +66,3 @@ export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboar
   }, [handleKeyDown]);
 }
 
-/**
- * Common shortcut definitions
- */
-export const SHORTCUT_KEYS = {
-  HELP: '?',
-  PLAYERS_TAB: '1',
-  LOOT_TAB: '2',
-  SUMMARY_TAB: '3',
-  LOG_TAB: '4',
-  TOGGLE_VIEW: 'v',
-  TOGGLE_GROUPS: 'g',
-  ADD_PLAYER: 'n',
-  ESCAPE: 'Escape',
-} as const;

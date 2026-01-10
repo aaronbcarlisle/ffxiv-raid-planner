@@ -120,7 +120,7 @@ This document consolidates:
 |-------|----------|--------|-----|--------|
 | **Raw Tailwind values** | Many components | Design system drift | Use CSS custom properties | ⏳ Ongoing |
 | **Duplicate DEFAULT_SETTINGS** | Multiple files | Maintenance burden | Create shared constant | ✅ Done (utils/constants.ts) |
-| **Large component files** | GroupView (1239 lines) | Hard to maintain | Consider splitting | ⏳ Optional |
+| **Large component files** | GroupView (1276 lines) | Hard to maintain | Consider splitting | ⏳ Optional |
 
 ---
 
@@ -156,10 +156,10 @@ This document consolidates:
 - [x] PlayerCard has left-accent role styling
 
 #### ❌ Outstanding Items
-- [ ] **Badge overflow** - Medium: PlayerCard shows 7+ badges, need overflow UI
+- [x] **Badge overflow** - Medium: PlayerCard badge display ✅ Done (flex-wrap)
 - [x] **Toast notifications** - High: Toast integrated with errorHandler ✅ Done (v1.0.1)
 - [ ] **Design token audit** - Medium: Many raw Tailwind values remain (ongoing)
-- [ ] **Keyboard shortcuts** - Low: No global keyboard handler (future)
+- [x] **Keyboard shortcuts** - Low: Global keyboard handler ✅ Done (v1.0.3)
 - [ ] **Onboarding tooltips** - Low: No first-run experience (future)
 
 ### Loot System Audit

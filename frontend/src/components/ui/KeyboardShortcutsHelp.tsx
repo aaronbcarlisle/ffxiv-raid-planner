@@ -24,8 +24,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'View Controls (Players tab only)',
     shortcuts: [
-      { key: 'V', description: 'Toggle compact/expanded view' },
-      { key: 'G', description: 'Toggle G1/G2 group view' },
+      { key: 'v', description: 'Toggle compact/expanded view' },
+      { key: 'g', description: 'Toggle G1/G2 group view' },
     ],
   },
   {
