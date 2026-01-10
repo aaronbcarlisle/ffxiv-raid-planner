@@ -351,8 +351,7 @@ export function WeeklyLootGrid({
           return (
             <div
               key={player.id}
-              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border"
-              style={{ borderColor: '#1f1f28' }}
+              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
             >
               <div
                 className="text-[10px] font-semibold mb-0.5"

@@ -15,6 +15,7 @@ import { GEAR_SLOT_NAMES } from '../../types';
 import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
+import { Tooltip } from '../primitives';
 
 interface WhoNeedsItMatrixProps {
   players: SnapshotPlayer[];
@@ -151,9 +152,11 @@ export function WhoNeedsItMatrix({
                       </span>
                       <JobIcon job={player.job} size="xs" />
                     </div>
-                    <span className="text-[10px] text-text-muted truncate max-w-[56px]">
-                      {player.name.split(' ')[0]}
-                    </span>
+                    <Tooltip content={player.name}>
+                      <span className="text-[10px] text-text-muted truncate max-w-[56px] block">
+                        {player.name.split(' ')[0]}
+                      </span>
+                    </Tooltip>
                   </div>
                 </th>
               ))}

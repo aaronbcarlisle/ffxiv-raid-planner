@@ -49,6 +49,11 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     onDismiss(toast.id);
   }, [toast.id, onDismiss]);
 
+  const handleAction = useCallback(() => {
+    toast.action?.onClick();
+    onDismiss(toast.id);
+  }, [toast.action, toast.id, onDismiss]);
+
   // Auto-dismiss after duration
   useEffect(() => {
     if (toast.duration > 0) {
@@ -69,9 +74,19 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       <span className="flex-shrink-0 mt-0.5">
         {TOAST_ICONS[toast.type]}
       </span>
-      <p className="flex-1 text-sm font-medium text-text-primary">
-        {toast.message}
-      </p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-text-primary">
+          {toast.message}
+        </p>
+        {toast.action && (
+          <button
+            onClick={handleAction}
+            className="mt-2 text-xs font-semibold underline underline-offset-2 hover:no-underline transition-colors"
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
       <button
         onClick={handleDismiss}
         className="flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity"

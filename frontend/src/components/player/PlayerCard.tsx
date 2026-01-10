@@ -5,7 +5,7 @@
  * Supports drag-and-drop, context menu, and inline editing.
  */
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerCardGear } from './PlayerCardGear';
@@ -248,8 +248,8 @@ export const PlayerCard = memo(function PlayerCard({
   const rosterPermission = canManageRoster(userRole, isAdmin);
   const resetPermission = canResetGear(userRole, player, currentUserId, isAdmin);
 
-  // Context menu items
-  const contextMenuItems: ContextMenuItem[] = [
+  // Memoized context menu items to prevent recreation on every render
+  const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
       icon: CONTEXT_MENU_ICONS.importBis,
@@ -342,7 +342,27 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
-  ];
+  ], [
+    player.bisLink,
+    player.isSubstitute,
+    editPermission.allowed,
+    editPermission.reason,
+    rosterPermission.allowed,
+    rosterPermission.reason,
+    resetPermission.allowed,
+    resetPermission.reason,
+    clipboardPlayer,
+    canClaim,
+    canRelease,
+    isLinkedToMe,
+    onResetGear,
+    onCopy,
+    onCopyUrl,
+    onDuplicate,
+    onUpdate,
+    onClaimPlayer,
+    onReleasePlayer,
+  ]);
 
   return (
     <div

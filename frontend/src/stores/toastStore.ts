@@ -8,11 +8,17 @@ import { create } from 'zustand';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: string;
   type: ToastType;
   message: string;
   duration: number; // milliseconds, 0 = persistent
+  action?: ToastAction; // Optional action button (e.g., "Retry")
 }
 
 interface ToastStore {
@@ -60,6 +66,7 @@ const DEFAULT_DURATIONS: Record<ToastType, number> = {
  * Usage:
  *   toast.success('Player saved!')
  *   toast.error('Failed to update gear')
+ *   toast.errorWithRetry('Failed to save', retryFunction)
  *   toast.warning('Unsaved changes')
  *   toast.info('Copied to clipboard')
  */
@@ -77,6 +84,19 @@ export const toast = {
       type: 'error',
       message,
       duration: duration ?? DEFAULT_DURATIONS.error,
+    });
+  },
+
+  /** Show error toast with a Retry button */
+  errorWithRetry: (message: string, onRetry: () => void, duration?: number) => {
+    return useToastStore.getState().addToast({
+      type: 'error',
+      message,
+      duration: duration ?? 8000, // Longer duration to allow retry
+      action: {
+        label: 'Retry',
+        onClick: onRetry,
+      },
     });
   },
 

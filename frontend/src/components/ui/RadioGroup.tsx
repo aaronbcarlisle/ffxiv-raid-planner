@@ -86,34 +86,37 @@ export function RadioGroup({
                 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              <div className="relative flex items-center justify-center mt-0.5">
-                <input
-                  type="radio"
-                  id={optionId}
-                  name={name}
-                  value={option.value}
-                  checked={isSelected}
-                  disabled={isDisabled}
-                  onChange={() => !isDisabled && onChange(option.value)}
-                  className="sr-only peer"
-                />
-                <div
-                  className={`
-                  w-4 h-4 rounded-full border-2 transition-all
-                  ${
-                    isSelected
-                      ? 'border-accent bg-accent'
-                      : 'border-border-default bg-surface-elevated'
-                  }
-                  ${!isDisabled && !isSelected ? 'hover:border-accent/50' : ''}
-                  peer-focus:ring-2 peer-focus:ring-accent/30 peer-focus:ring-offset-2 peer-focus:ring-offset-surface-base
-                `}
-                >
-                  {isSelected && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-accent-contrast" />
-                    </div>
-                  )}
+              {/* Container with h-5 to align with text line height */}
+              <div className="flex items-center h-5">
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="radio"
+                    id={optionId}
+                    name={name}
+                    value={option.value}
+                    checked={isSelected}
+                    disabled={isDisabled}
+                    onChange={() => !isDisabled && onChange(option.value)}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className={`
+                    w-4 h-4 rounded-full border-2 transition-all
+                    ${
+                      isSelected
+                        ? 'border-accent bg-accent'
+                        : 'border-border-default bg-surface-elevated'
+                    }
+                    ${!isDisabled && !isSelected ? 'hover:border-accent/50' : ''}
+                    peer-focus:ring-2 peer-focus:ring-accent/30 peer-focus:ring-offset-2 peer-focus:ring-offset-surface-base
+                  `}
+                  >
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-contrast" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
