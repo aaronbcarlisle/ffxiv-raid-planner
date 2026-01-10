@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.2';
+export const CURRENT_VERSION = '1.0.3';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.3',
+    date: '2026-01-09',
+    title: 'Keyboard Shortcuts',
+    highlights: ['Keyboard shortcuts', 'Documentation updates'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Keyboard shortcuts',
+        description: 'Quick navigation and controls for power users',
+        details:
+          'Press ? to see all available shortcuts. Use 1-4 to switch tabs (Players/Loot/Log/Summary), v and g to toggle view modes on the Players tab, and Escape to close modals. All modals now close with Escape key.',
+        commits: [{ hash: '8e949e5', message: 'Add keyboard shortcuts for common actions' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Updated documentation',
+        description: 'Comprehensive status document updates and user guides',
+        details:
+          'Updated CONSOLIDATED_STATUS.md to reflect completed items from previous releases. Added keyboard shortcuts documentation to Member Guide and developer docs.',
+        commits: [{ hash: '6795b62', message: 'Update status docs: mark completed items from previous PRs' }],
+      },
+    ],
+  },
   {
     version: '1.0.2',
     date: '2026-01-09',

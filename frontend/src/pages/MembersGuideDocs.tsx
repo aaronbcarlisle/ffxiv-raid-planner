@@ -530,6 +530,20 @@ export default function MembersGuideDocs() {
                   has final say on loot distribution. Talk to them about adjustments if needed.
                 </p>
               </div>
+
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+                <h3 className="font-medium text-text-primary mb-2">
+                  Are there keyboard shortcuts?
+                </h3>
+                <p className="text-text-secondary text-sm mb-3">
+                  Yes! Press <kbd className="px-1.5 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">?</kbd> to see all available shortcuts. Quick reference:
+                </p>
+                <ul className="text-text-secondary text-sm space-y-1 ml-4 list-disc">
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">1-4</kbd> Switch tabs (Players/Loot/Log/Summary)</li>
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">v</kbd> Toggle compact/expanded view (Players tab)</li>
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">g</kbd> Toggle G1/G2 group view (Players tab)</li>
+                </ul>
+              </div>
             </div>
 
             <div className="mt-8">

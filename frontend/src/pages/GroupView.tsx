@@ -23,8 +23,9 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, KeyboardShortcutsHelp } from '../components/ui';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
@@ -92,6 +93,7 @@ export function GroupView() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
   // Tab state: URL param > localStorage > default
   // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
@@ -741,7 +743,36 @@ export function GroupView() {
   // Check if any modal is open (page-level or player-level)
   const isAnyModalOpen = showSettingsModal || showRolloverDialog ||
                           showDeleteTierConfirm || showCreateTierModal ||
-                          playerModalCount > 0;
+                          showKeyboardHelp || playerModalCount > 0;
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    disabled: isAnyModalOpen,
+    shortcuts: [
+      { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
+      { key: '1', description: 'Players tab', action: () => setPageMode('players') },
+      { key: '2', description: 'Loot tab', action: () => setPageMode('loot') },
+      { key: '3', description: 'Log tab', action: () => setPageMode('history') },
+      { key: '4', description: 'Summary tab', action: () => setPageMode('stats') },
+      { key: 'v', description: 'Toggle view mode', action: () => {
+        // Only toggle view mode on players tab
+        if (pageMode === 'players') {
+          setViewMode(viewMode === 'compact' ? 'expanded' : 'compact');
+        }
+      }},
+      { key: 'g', description: 'Toggle group view', action: () => {
+        // Only toggle group view on players tab
+        if (pageMode === 'players') {
+          setGroupView(!groupView);
+        }
+      }},
+      { key: 'Escape', description: 'Close/clear', action: () => {
+        setShowKeyboardHelp(false);
+        setEditingPlayerId(null);
+        setHighlightedPlayerId(null);
+      }},
+    ],
+  });
 
   // Modal callbacks for PlayerCards
   const handlePlayerModalOpen = useCallback(() => {
@@ -1234,6 +1265,12 @@ export function GroupView() {
           onDeleted={handleTierDeleted}
         />
       )}
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
+      />
     </>
   );
 }

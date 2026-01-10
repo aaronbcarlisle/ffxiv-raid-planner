@@ -132,7 +132,7 @@ describe('releaseNotes', () => {
 
     it('has appropriate highlights', () => {
       expect(v102?.highlights).toContain('Grid view for loot logging');
-      expect(v102?.highlights).toContain('Smart tab navigation');
+      expect(v102?.highlights).toContain('Material editing & sub filtering');
     });
 
     it('has feature items', () => {

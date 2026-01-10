@@ -82,6 +82,8 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `lib/errorHandler.ts` | Centralized error parsing with HTTP messages |
 | `lib/logger.ts` | Development-aware logging with scoping |
 | `lib/eventBus.ts` | Pub/sub for cross-component communication |
+| `hooks/useKeyboardShortcuts.ts` | Global keyboard shortcuts hook |
+| `components/ui/KeyboardShortcutsHelp.tsx` | Keyboard shortcuts help modal |
 | `config.ts` | API URL and environment configuration |
 
 ---
@@ -425,6 +427,27 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Independent from G1/G2 view - can show subs without group split
 - Matches G1/G2 toggle styling with user-add icon and accent colors
 - Uses `aria-label` for accessibility
+
+### Keyboard Shortcuts (v1.0.3)
+Global keyboard shortcuts for power users in GroupView.
+
+**Available shortcuts:**
+| Key | Action |
+|-----|--------|
+| `?` | Show keyboard shortcuts help |
+| `1` | Go to Players tab |
+| `2` | Go to Loot tab |
+| `3` | Go to Log tab |
+| `4` | Go to Summary tab |
+| `v` | Toggle compact/expanded view (Players tab only) |
+| `g` | Toggle G1/G2 group view (Players tab only) |
+| `Escape` | Close modal |
+
+**Implementation:**
+- `hooks/useKeyboardShortcuts.ts` - Reusable hook with modifier support
+- `components/ui/KeyboardShortcutsHelp.tsx` - Help modal component
+- Shortcuts disabled when typing in inputs or when modals are open
+- Uses `isInputElement()` check to prevent conflicts with text entry
 
 ### Admin System (v1.0.2)
 Super-user access for app owners to troubleshoot any static group.
