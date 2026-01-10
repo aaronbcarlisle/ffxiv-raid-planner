@@ -5,6 +5,8 @@
  */
 
 import { useState } from 'react';
+import { Modal, Select, RadioGroup, Label } from '../ui';
+import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
 import { getTierById, RAID_TIERS } from '../../gamedata';
 import type { TierSnapshot } from '../../types';
@@ -20,7 +22,7 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
   const { rollover, isSaving } = useTierStore();
 
   const [targetTierId, setTargetTierId] = useState('');
-  const [resetGear, setResetGear] = useState(true);
+  const [resetGear, setResetGear] = useState('true');
   const [error, setError] = useState<string | null>(null);
 
   // Available tiers for rollover (filter out existing)
@@ -33,26 +35,47 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
     setError(null);
 
     try {
-      await rollover(groupId, currentTier.tierId, targetTierId, resetGear);
+      await rollover(groupId, currentTier.tierId, targetTierId, resetGear === 'true');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rollover');
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
-        <h2 className="text-xl font-display text-accent mb-4">Roll Over to New Tier</h2>
+  // Build tier options for Select
+  const tierOptions = [
+    { value: '', label: 'Select a tier...' },
+    ...availableTiers.map((tier) => ({
+      value: tier.id,
+      label: `${tier.name} (${tier.shortName})`,
+    })),
+  ];
 
+  // Build gear reset options for RadioGroup
+  const gearResetOptions = [
+    {
+      value: 'true',
+      label: 'Reset gear (start fresh)',
+      description: 'All gear slots will be unchecked in the new tier',
+    },
+    {
+      value: 'false',
+      label: 'Keep current gear progress',
+      description: 'Copy gear state as-is (useful for mid-tier roster changes)',
+    },
+  ];
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Roll Over to New Tier">
+      <div className="space-y-4">
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm">
+          <div className="p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
             {error}
           </div>
         )}
 
         {/* Source Tier */}
-        <div className="mb-4 p-3 bg-surface-elevated rounded border border-border-subtle">
+        <div className="p-3 bg-surface-elevated rounded border border-border-subtle">
           <span className="text-text-muted text-sm">Source:</span>
           <span className="text-text-primary ml-2 font-medium">
             {sourceTierInfo?.name || currentTier.tierId}
@@ -63,21 +86,15 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
         </div>
 
         {/* Target Tier Selector */}
-        <div className="mb-4">
-          <label className="block text-sm text-text-secondary mb-2">Target Tier</label>
+        <div>
+          <Label htmlFor="targetTier">Target Tier</Label>
           {availableTiers.length > 0 ? (
-            <select
+            <Select
+              id="targetTier"
               value={targetTierId}
-              onChange={(e) => setTargetTierId(e.target.value)}
-              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            >
-              <option value="">Select a tier...</option>
-              {availableTiers.map((tier) => (
-                <option key={tier.id} value={tier.id}>
-                  {tier.name} ({tier.shortName})
-                </option>
-              ))}
-            </select>
+              onChange={setTargetTierId}
+              options={tierOptions}
+            />
           ) : (
             <p className="text-text-muted text-sm italic">
               No available tiers. All tiers have been created.
@@ -86,40 +103,18 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
         </div>
 
         {/* Gear Reset Option */}
-        <div className="mb-6">
-          <label className="block text-sm text-text-secondary mb-2">Gear Progress</label>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={resetGear}
-                onChange={() => setResetGear(true)}
-              />
-              <div>
-                <span className="text-text-primary">Reset gear (start fresh)</span>
-                <p className="text-xs text-text-muted">
-                  All gear slots will be unchecked in the new tier
-                </p>
-              </div>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={!resetGear}
-                onChange={() => setResetGear(false)}
-              />
-              <div>
-                <span className="text-text-primary">Keep current gear progress</span>
-                <p className="text-xs text-text-muted">
-                  Copy gear state as-is (useful for mid-tier roster changes)
-                </p>
-              </div>
-            </label>
-          </div>
+        <div>
+          <RadioGroup
+            name="gearReset"
+            label="Gear Progress"
+            value={resetGear}
+            onChange={setResetGear}
+            options={gearResetOptions}
+          />
         </div>
 
         {/* Info Note */}
-        <div className="mb-6 p-3 bg-accent/10 border border-accent/20 rounded text-sm">
+        <div className="p-3 bg-accent/10 border border-accent/20 rounded text-sm">
           <p className="text-text-secondary">
             Rollover will copy all players (names, jobs, roles, positions) to the new tier.
             The new tier will become active, and the source tier will remain accessible.
@@ -127,22 +122,19 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:text-text-primary"
-          >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleRollover}
-            disabled={!targetTierId || isSaving}
-            className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!targetTierId}
+            loading={isSaving}
           >
-            {isSaving ? 'Rolling Over...' : 'Roll Over'}
-          </button>
+            Roll Over
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

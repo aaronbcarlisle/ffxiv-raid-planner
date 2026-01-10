@@ -12,7 +12,8 @@ import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
-import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
+import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
+import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
@@ -368,21 +369,23 @@ export const PlayerCard = memo(function PlayerCard({
           Are you sure you want to remove <span className="text-text-primary font-medium">{player.name}</span> from the static?
         </p>
         <div className="flex justify-end gap-3">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() => setShowRemoveConfirm(false)}
-            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
             onClick={() => {
               onRemove();
               setShowRemoveConfirm(false);
             }}
-            className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
           >
             Remove
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -397,92 +400,50 @@ export const PlayerCard = memo(function PlayerCard({
             Choose what to reset for <span className="text-text-primary font-medium">{player.name}</span> ({player.job}):
           </p>
 
-          {/* Radio option 1: Reset progress only */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'progress' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="progress"
-              checked={resetMode === 'progress'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Unchecks all Have/Aug checkboxes</li>
-                <li>• Resets tome weapon tracking</li>
-                <li>• Keeps BiS link and sources</li>
-              </ul>
-            </div>
-          </label>
+          <RadioGroup
+            name="resetMode"
+            value={resetMode}
+            onChange={(value) => setResetMode(value as ResetMode)}
+            options={[
+              {
+                value: 'progress',
+                label: 'Reset progress only (keep BiS configuration)',
+                description: '• Unchecks all Have/Aug checkboxes\n• Resets tome weapon tracking\n• Keeps BiS link and sources',
+              },
+              {
+                value: 'unlink',
+                label: 'Unlink BiS (keep progress)',
+                description: '• Removes BiS reference\n• Clears item metadata (names, icons)\n• Keeps current sources and progress',
+              },
+              {
+                value: 'all',
+                label: 'Reset everything (complete wipe)',
+                description: '• Unchecks all Have/Aug checkboxes\n• Resets BiS sources to defaults\n• Removes BiS link and metadata\n• Resets tome weapon tracking',
+              },
+            ]}
+          />
 
-          {/* Radio option 2: Unlink BiS */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'unlink' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="unlink"
-              checked={resetMode === 'unlink'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Removes BiS reference</li>
-                <li>• Clears item metadata (names, icons)</li>
-                <li>• Keeps current sources and progress</li>
-              </ul>
-            </div>
-          </label>
-
-          {/* Radio option 3: Reset everything */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'all' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="all"
-              checked={resetMode === 'all'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Unchecks all Have/Aug checkboxes</li>
-                <li>• Resets BiS sources to defaults</li>
-                <li>• Removes BiS link and metadata</li>
-                <li>• Resets tome weapon tracking</li>
-              </ul>
-            </div>
-          </label>
-
-          <p className="text-status-warning text-sm mt-4">⚠️ This action cannot be undone.</p>
+          <p className="text-status-warning text-sm mt-4">This action cannot be undone.</p>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() => setShowResetConfirm(false)}
-            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
             onClick={() => {
               onResetGear?.(resetMode);
               setShowResetConfirm(false);
             }}
-            className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
           >
             Reset Gear
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -517,21 +478,22 @@ export const PlayerCard = memo(function PlayerCard({
             You've changed {player.name}'s job. Would you like to import a new BiS set for this job?
           </p>
           <div className="flex justify-end gap-3">
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => setShowBiSReimportPrompt(false)}
-              className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
             >
               No, Keep Current
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
               onClick={() => {
                 setShowBiSReimportPrompt(false);
                 setShowBiSImport(true);
               }}
-              className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
             >
               Yes, Import BiS
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>

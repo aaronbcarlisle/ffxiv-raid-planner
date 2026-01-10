@@ -28,6 +28,7 @@ import {
   DropdownItem,
   DropdownSeparator,
 } from '../primitives/Dropdown';
+import { Button } from '../primitives';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
@@ -806,18 +807,18 @@ export function SectionedLogView({
         {/* Action buttons */}
         {canEdit && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              size="sm"
               onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
-              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
             >
               + Log Loot
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
-              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
             >
               + Log Material
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1053,12 +1054,14 @@ export function SectionedLogView({
                 {/* Mark Floor Cleared - at bottom of Books section */}
                 {canEdit && (
                   <div className="p-2 border-t border-border-subtle">
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => setShowFloorClearedModal(true)}
-                      className="w-full px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
+                      className="w-full"
                     >
                       Mark Floor Cleared
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>

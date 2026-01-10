@@ -7,6 +7,9 @@
 
 import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
+import { Label } from './Label';
+import { Input } from './Input';
+import { Button } from '../primitives';
 
 export type ResetType = 'loot' | 'books' | 'all';
 
@@ -75,54 +78,37 @@ export function ResetConfirmModal({
 
         {/* Type to confirm */}
         <div className="space-y-2">
-          <label htmlFor="reset-confirm" className="block text-sm text-text-secondary">
+          <Label htmlFor="reset-confirm">
             Type <span className="font-mono font-bold text-text-primary">RESET</span> to confirm:
-          </label>
-          <input
+          </Label>
+          <Input
             id="reset-confirm"
-            type="text"
             value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
+            onChange={setConfirmText}
             placeholder="Type RESET"
-            className="w-full px-3 py-2 bg-surface-base border border-border-default rounded-lg
-                       text-text-primary placeholder-text-muted focus:outline-none focus:ring-2
-                       focus:ring-status-error/50 focus:border-status-error"
-            autoComplete="off"
             disabled={isResetting}
           />
         </div>
 
         {/* Buttons */}
         <div className="flex justify-end gap-3 pt-2">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onCancel}
             disabled={isResetting}
-            className="px-4 py-2 text-sm font-medium text-text-secondary bg-surface-interactive
-                       rounded-lg hover:bg-surface-elevated transition-colors disabled:opacity-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              canConfirm
-                ? 'bg-status-error text-white hover:bg-status-error/90'
-                : 'bg-status-error/30 text-status-error/50 cursor-not-allowed'
-            }`}
+            loading={isResetting}
           >
-            {isResetting ? (
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Resetting...
-              </span>
-            ) : (
-              'Reset'
-            )}
-          </button>
+            Reset
+          </Button>
         </div>
       </div>
     </Modal>

@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
+import { Input } from '../components/ui';
+import { Button } from '../components/primitives';
 import { BookOpen, Users, Calculator, Sparkles } from 'lucide-react';
 import type { MemberRole } from '../types';
 
@@ -140,21 +142,20 @@ export function Home() {
 
       {/* Share code input */}
       <form onSubmit={handleViewStatic} className="flex items-center gap-2 justify-center mb-16">
-        <input
-          type="text"
+        <Input
           value={shareCode}
-          onChange={(e) => setShareCode(e.target.value.toUpperCase())}
+          onChange={(val) => setShareCode(val.toUpperCase())}
           placeholder="Enter share code..."
           maxLength={8}
-          className="bg-surface-raised border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none w-48 text-center font-mono uppercase"
+          className="w-48 text-center font-mono uppercase"
         />
-        <button
+        <Button
           type="submit"
+          variant="secondary"
           disabled={!shareCode.trim()}
-          className="bg-surface-raised border border-border-default px-6 py-3 rounded-lg text-text-primary hover:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           View
-        </button>
+        </Button>
       </form>
 
       {/* Content section - different for logged in vs logged out users */}
