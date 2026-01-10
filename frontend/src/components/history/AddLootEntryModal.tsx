@@ -110,35 +110,15 @@ export function AddLootEntryModal({
       setIncludeSubs(recipient?.isSubstitute ?? false);
     } else {
       // Add mode: use presets if provided, otherwise defaults
+      // Note: Initial recipientPlayerId is computed in useState for preset cases
+      // The auto-selection effect handles subsequent slot changes
       setWeekNumber(currentWeek || 1);
-      const initialFloor = presetFloor || floors[0] || '';
-      setFloor(initialFloor);
-
-      // Determine initial slot
-      const floorNum = getFloorNumber(initialFloor);
-      const lootTable = FLOOR_LOOT_TABLES[floorNum];
-      const slots = lootTable?.gearDrops || [];
-      const initialSlot = presetSlot && slots.includes(presetSlot as GearSlot)
-        ? presetSlot
-        : slots[0] || '';
-      setItemSlot(initialSlot);
-
-      // Compute initial recipient based on priority
-      if (initialSlot) {
-        const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
-        const priorityEntries = initialSlot === 'ring1' || initialSlot === 'ring2'
-          ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
-          : getPriorityForItem(eligiblePlayers, initialSlot as GearSlot, DEFAULT_SETTINGS);
-
-        if (priorityEntries.length > 0) {
-          setRecipientPlayerId(priorityEntries[0].player.id);
-        } else {
-          setRecipientPlayerId('');
-        }
-      } else {
-        setRecipientPlayerId('');
+      setFloor(presetFloor || floors[0] || '');
+      if (presetSlot) {
+        setItemSlot(presetSlot);
       }
-
+      // Don't set recipientPlayerId here - useState handles initial value,
+      // auto-selection effect handles changes
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
