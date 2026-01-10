@@ -87,7 +87,7 @@ export function PlayerCardStatus({
 
       {/* "You" badge */}
       {isLinkedToMe && (
-        <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-medium" title="This is you">
+        <span className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium" title="This is you">
           You
         </span>
       )}
@@ -95,7 +95,7 @@ export function PlayerCardStatus({
       {/* Linked user badge */}
       {isLinkedToOther && linkedUser && (
         <span
-          className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
+          className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
           title={`Linked to ${linkedUser.displayName || linkedUser.discordUsername}`}
         >
           {linkedUser.avatarUrl ? (

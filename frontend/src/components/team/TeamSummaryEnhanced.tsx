@@ -244,9 +244,9 @@ export function TeamSummaryEnhanced({
               <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
               <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
               <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-blue-400" title={tierInfo.upgradeMaterials.twine}>T</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-purple-400" title={tierInfo.upgradeMaterials.glaze}>G</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-amber-400" title={tierInfo.upgradeMaterials.solvent}>S</th>
+              <th className="px-2 py-3 text-center text-sm font-medium text-material-twine" title={tierInfo.upgradeMaterials.twine}>T</th>
+              <th className="px-2 py-3 text-center text-sm font-medium text-material-glaze" title={tierInfo.upgradeMaterials.glaze}>G</th>
+              <th className="px-2 py-3 text-center text-sm font-medium text-material-solvent" title={tierInfo.upgradeMaterials.solvent}>S</th>
             </tr>
           </thead>
           <tbody>
@@ -278,13 +278,13 @@ export function TeamSummaryEnhanced({
               <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.IV}<span className="text-text-muted">/{totals.booksNeeded.IV}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-blue-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-twine">
                 {totals.matsReceived.twine}<span className="text-text-muted">/{totals.matsNeeded.twine}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-purple-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-glaze">
                 {totals.matsReceived.glaze}<span className="text-text-muted">/{totals.matsNeeded.glaze}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-amber-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-solvent">
                 {totals.matsReceived.solvent}<span className="text-text-muted">/{totals.matsNeeded.solvent}</span>
               </td>
             </tr>
@@ -296,9 +296,9 @@ export function TeamSummaryEnhanced({
       <div className="p-4 border-t border-border-default">
         <div className="flex flex-wrap gap-4 text-xs text-text-muted">
           <span>I-IV = Book types (Floor 1-4)</span>
-          <span className="text-blue-400">T = {tierInfo.upgradeMaterials.twine}</span>
-          <span className="text-purple-400">G = {tierInfo.upgradeMaterials.glaze}</span>
-          <span className="text-amber-400">S = {tierInfo.upgradeMaterials.solvent}</span>
+          <span className="text-material-twine">T = {tierInfo.upgradeMaterials.twine}</span>
+          <span className="text-material-glaze">G = {tierInfo.upgradeMaterials.glaze}</span>
+          <span className="text-material-solvent">S = {tierInfo.upgradeMaterials.solvent}</span>
           <span className="text-status-success">Green = Complete</span>
         </div>
       </div>

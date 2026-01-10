@@ -18,12 +18,12 @@ import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
 import type { MemberRole } from '../../types';
 
-// Role badge colors
+// Role badge colors - using semantic membership tokens
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
 // Custom event types for communication with GroupView

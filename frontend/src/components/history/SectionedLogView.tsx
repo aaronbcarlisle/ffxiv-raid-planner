@@ -603,9 +603,9 @@ export function SectionedLogView({
                   {entry.floor}
                 </span>
                 <span className={`font-medium ${
-                  entry.materialType === 'twine' ? 'text-blue-400' :
-                  entry.materialType === 'glaze' ? 'text-green-400' :
-                  'text-purple-400'
+                  entry.materialType === 'twine' ? 'text-material-twine' :
+                  entry.materialType === 'glaze' ? 'text-material-glaze' :
+                  'text-material-solvent'
                 }`}>
                   {MATERIAL_LABELS[entry.materialType]}
                 </span>

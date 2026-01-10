@@ -48,13 +48,13 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
 
   const getCountStyle = (count: number): string => {
     if (count > average + 1) {
-      // Above average - blue
-      return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+      // Above average - info (received more loot)
+      return 'bg-status-info/20 text-status-info border-status-info/40';
     } else if (count < average - 1) {
-      // Below average - yellow
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+      // Below average - warning (received less loot)
+      return 'bg-status-warning/20 text-status-warning border-status-warning/40';
     }
-    // Average - gray
+    // Average - neutral
     return 'bg-surface-interactive text-text-secondary border-border-default';
   };
 

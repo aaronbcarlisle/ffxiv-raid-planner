@@ -22,10 +22,10 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 };
 
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'text-amber-400',
-  lead: 'text-blue-400',
-  member: 'text-green-400',
-  viewer: 'text-gray-400',
+  owner: 'text-membership-owner',
+  lead: 'text-membership-lead',
+  member: 'text-membership-member',
+  viewer: 'text-membership-viewer',
 };
 
 export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) {
@@ -97,15 +97,15 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
 
   const getStatusBadge = (inv: Invitation) => {
     if (!inv.isActive) {
-      return <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Revoked</span>;
+      return <span className="px-2 py-0.5 bg-status-error/20 text-status-error text-xs rounded">Revoked</span>;
     }
     if (isExpired(inv)) {
-      return <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">Expired</span>;
+      return <span className="px-2 py-0.5 bg-status-warning/20 text-status-warning text-xs rounded">Expired</span>;
     }
     if (inv.maxUses && inv.useCount >= inv.maxUses) {
-      return <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded">Exhausted</span>;
+      return <span className="px-2 py-0.5 bg-text-muted/20 text-text-muted text-xs rounded">Exhausted</span>;
     }
-    return <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Active</span>;
+    return <span className="px-2 py-0.5 bg-status-success/20 text-status-success text-xs rounded">Active</span>;
   };
 
   if (!canManage) {

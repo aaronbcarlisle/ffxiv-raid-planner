@@ -9,12 +9,12 @@ import { useViewAsStore } from '../../stores/viewAsStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, X } from 'lucide-react';
 
-// Role badge colors (matching other components)
+// Role badge colors - using semantic membership tokens
 const ROLE_COLORS: Record<string, string> = {
-  owner: 'bg-teal-500/30 text-teal-300 border-teal-500/50',
-  lead: 'bg-purple-500/30 text-purple-300 border-purple-500/50',
-  member: 'bg-blue-500/30 text-blue-300 border-blue-500/50',
-  viewer: 'bg-zinc-500/30 text-zinc-300 border-zinc-500/50',
+  owner: 'bg-membership-owner/30 text-membership-owner border-membership-owner/50',
+  lead: 'bg-membership-lead/30 text-membership-lead border-membership-lead/50',
+  member: 'bg-membership-member/30 text-membership-member border-membership-member/50',
+  viewer: 'bg-membership-viewer/30 text-membership-viewer border-membership-viewer/50',
 };
 
 export function ViewAsBanner() {
@@ -42,16 +42,16 @@ export function ViewAsBanner() {
   const roleLabel = viewAsUser.role
     ? viewAsUser.role.charAt(0).toUpperCase() + viewAsUser.role.slice(1)
     : 'Not a member';
-  const roleColor = viewAsUser.role ? ROLE_COLORS[viewAsUser.role] : 'bg-red-500/30 text-red-300 border-red-500/50';
+  const roleColor = viewAsUser.role ? ROLE_COLORS[viewAsUser.role] : 'bg-status-error/30 text-status-error border-status-error/50';
 
   return (
-    <div className="bg-amber-500/20 border-b border-amber-500/30">
+    <div className="bg-status-warning/20 border-b border-status-warning/30">
       <div className="max-w-[120rem] mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Eye className="w-4 h-4 text-amber-400" />
-          <span className="text-amber-200 text-sm">
+          <Eye className="w-4 h-4 text-status-warning" />
+          <span className="text-status-warning text-sm">
             Viewing as{' '}
-            <span className="font-medium text-amber-100">
+            <span className="font-medium text-status-warning">
               {displayName}
             </span>
           </span>
@@ -63,7 +63,7 @@ export function ViewAsBanner() {
 
           {/* Linked player info */}
           {viewAsUser.isLinkedPlayer && viewAsUser.linkedPlayerName && (
-            <span className="text-xs text-amber-300/70">
+            <span className="text-xs text-status-warning/70">
               (linked to {viewAsUser.linkedPlayerName})
             </span>
           )}
@@ -71,7 +71,7 @@ export function ViewAsBanner() {
 
         <button
           onClick={handleExitViewAs}
-          className="flex items-center gap-1.5 px-3 py-1 text-sm text-amber-200 hover:text-amber-100 hover:bg-amber-500/20 rounded transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 text-sm text-status-warning hover:text-status-warning/80 hover:bg-status-warning/20 rounded transition-colors"
         >
           <X className="w-4 h-4" />
           Exit View As

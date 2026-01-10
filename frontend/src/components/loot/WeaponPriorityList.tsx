@@ -138,18 +138,18 @@ function WeaponPriorityCard({
               return (
                 <div
                   key={`tie-${tieGroup}`}
-                  className={`rounded border border-dashed border-yellow-500/50 ${
-                    groupIndex === 0 ? 'bg-accent/10' : 'bg-yellow-500/5'
+                  className={`rounded border border-dashed border-status-warning/50 ${
+                    groupIndex === 0 ? 'bg-accent/10' : 'bg-status-warning/5'
                   }`}
                 >
                   {/* Tie group header with roll button */}
-                  <div className="flex items-center justify-between px-2 py-1 border-b border-yellow-500/30">
-                    <span className="text-xs text-yellow-500 font-medium">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-status-warning/30">
+                    <span className="text-xs text-status-warning font-medium">
                       Tied for #{displayRank}
                     </span>
                     <button
                       onClick={() => handleRoll(tieGroup!, tieGroupEntries)}
-                      className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-medium"
+                      className="px-2 py-0.5 text-xs rounded bg-status-warning/20 text-status-warning hover:bg-status-warning/30 transition-colors font-medium"
                     >
                       {hasRolled ? 'Reroll' : 'Roll'}
                     </button>
@@ -168,7 +168,7 @@ function WeaponPriorityCard({
                       <div
                         key={tieEntry.player.id}
                         className={`flex items-center justify-between px-2 py-1 text-sm group ${
-                          isWinner ? 'bg-green-500/20' : ''
+                          isWinner ? 'bg-status-success/20' : ''
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -182,7 +182,7 @@ function WeaponPriorityCard({
                           <JobIcon job={tieEntry.player.job} size="xs" />
                           <span
                             className={`truncate ${
-                              isWinner ? 'text-green-400 font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                              isWinner ? 'text-status-success font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
                             }`}
                           >
                             {tieEntry.player.name}
@@ -195,7 +195,7 @@ function WeaponPriorityCard({
                           {playerRoll !== null && (
                             <span
                               className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
-                                isWinner ? 'bg-green-500/30 text-green-400 font-medium' : 'bg-surface-elevated text-text-muted'
+                                isWinner ? 'bg-status-success/30 text-status-success font-medium' : 'bg-surface-elevated text-text-muted'
                               }`}
                             >
                               {playerRoll}

@@ -211,12 +211,12 @@ export function WhoNeedsItMatrix({
                 })}
                 <td className="text-center py-2 px-3">
                   {isFree ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
                       FREE
                     </span>
                   ) : (
                     <span className={`text-xs ${
-                      count > 4 ? 'text-red-400' : count > 2 ? 'text-yellow-400' : 'text-text-muted'
+                      count > 4 ? 'text-status-error' : count > 2 ? 'text-status-warning' : 'text-text-muted'
                     }`}>
                       {count}/8
                     </span>
@@ -243,7 +243,7 @@ export function WhoNeedsItMatrix({
           <span>Has or not BiS</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
             FREE
           </span>
           <span>No one needs</span>

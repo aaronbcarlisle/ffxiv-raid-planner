@@ -16,10 +16,10 @@ interface MembersPanelProps {
 }
 
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -108,7 +108,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm">
+        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
           {error}
         </div>
       )}
@@ -201,7 +201,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
                     <button
                       onClick={() => handleRemoveMember(member.id)}
                       disabled={isSaving}
-                      className="p-1 text-text-muted hover:text-red-400 transition-colors"
+                      className="p-1 text-text-muted hover:text-status-error transition-colors"
                       title="Remove member"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,7 +235,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
             {linkedPlayers.map((linked) => (
               <div
                 key={linked.playerId}
-                className="flex items-center justify-between p-3 bg-surface-raised rounded-lg border border-amber-500/20"
+                className="flex items-center justify-between p-3 bg-surface-raised rounded-lg border border-membership-linked/20"
               >
                 <div className="flex items-center gap-3">
                   {linked.user.avatarUrl ? (
@@ -245,8 +245,8 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                      <span className="text-amber-400 text-sm font-medium">
+                    <div className="w-8 h-8 rounded-full bg-membership-linked/20 flex items-center justify-center">
+                      <span className="text-membership-linked text-sm font-medium">
                         {(linked.user.displayName || linked.user.discordUsername || '?').charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -263,7 +263,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
                   </div>
                 </div>
 
-                <span className="text-xs px-2 py-0.5 rounded border bg-amber-500/20 text-amber-400 border-amber-500/30">
+                <span className="text-xs px-2 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">
                   Linked
                 </span>
               </div>

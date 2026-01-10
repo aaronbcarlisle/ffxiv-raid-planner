@@ -81,14 +81,16 @@
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
-  --color-status-info: #14b8a6;
+  --color-status-info: #3b82f6;         /* Blue for informational */
 
   /* ================================
-     BRAND COLORS
-     Third-party service branding
+     MATERIAL COLORS
+     Upgrade material type colors (matching FFXIV game)
      ================================ */
-  --color-discord: #5865F2;              /* Discord blurple */
-  --color-discord-hover: #4752C4;        /* Darker blurple for hover */
+  --color-material-twine: #3b82f6;      /* Blue - armor upgrade */
+  --color-material-glaze: #a855f7;      /* Purple - accessory upgrade */
+  --color-material-solvent: #eab308;    /* Amber - weapon upgrade */
+  --color-material-tomestone: #f97316;  /* Orange - universal tomestone */
 
   /* ================================
      TEXT COLORS

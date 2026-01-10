@@ -90,10 +90,10 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         {/* Admin Dashboard - only for admins */}
         {user.isAdmin && (
           <DropdownItem
-            icon={<Shield className="w-4 h-4 text-amber-400" />}
+            icon={<Shield className="w-4 h-4 text-status-warning" />}
             onSelect={() => navigate('/admin/statics')}
           >
-            <span className="text-amber-400">Admin Dashboard</span>
+            <span className="text-status-warning">Admin Dashboard</span>
           </DropdownItem>
         )}
 
