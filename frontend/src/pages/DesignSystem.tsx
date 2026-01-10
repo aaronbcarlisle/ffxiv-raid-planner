@@ -323,6 +323,7 @@ const NAV_GROUPS = [
       { id: 'membership-colors', label: 'Membership' },
       { id: 'gear-source-colors', label: 'Gear Sources' },
       { id: 'status-colors', label: 'Status' },
+      { id: 'material-colors', label: 'Materials' },
       { id: 'text-colors', label: 'Text' },
     ],
   },
@@ -1890,12 +1891,43 @@ export function DesignSystem() {
               { name: 'Success', token: '--color-status-success', hex: '#22c55e' },
               { name: 'Warning', token: '--color-status-warning', hex: '#eab308' },
               { name: 'Error', token: '--color-status-error', hex: '#ef4444' },
-              { name: 'Info', token: '--color-status-info', hex: '#14b8a6' },
+              { name: 'Info', token: '--color-status-info', hex: '#3b82f6' },
             ].map((status) => (
               <ColorSwatch key={status.name} {...status} />
             ))}
           </div>
         </Section>
+
+          {/* Material Colors */}
+          <Section id="material-colors" title="Material Colors">
+            <p className="text-text-secondary mb-6">
+              Upgrade material colors matching FFXIV game materials for consistent visual identification.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: 'Twine', token: '--color-material-twine', hex: '#3b82f6', description: 'Armor upgrade' },
+                { name: 'Glaze', token: '--color-material-glaze', hex: '#a855f7', description: 'Accessory upgrade' },
+                { name: 'Solvent', token: '--color-material-solvent', hex: '#eab308', description: 'Weapon upgrade' },
+                { name: 'Tomestone', token: '--color-material-tomestone', hex: '#f97316', description: 'Universal' },
+              ].map((material) => (
+                <div key={material.name} className="bg-surface-card rounded-lg border border-border-subtle p-4">
+                  <div
+                    className="w-full h-12 rounded-lg mb-3"
+                    style={{ backgroundColor: material.hex }}
+                  />
+                  <div className="text-sm font-medium text-text-primary">{material.name}</div>
+                  <div className="text-xs text-text-muted font-mono">{material.hex}</div>
+                  <div className="text-xs text-text-secondary mt-1">{material.description}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
+              <h4 className="text-sm font-medium text-text-primary mb-2">Usage</h4>
+              <code className="text-xs text-accent">
+                text-material-twine, text-material-glaze, text-material-solvent
+              </code>
+            </div>
+          </Section>
 
           {/* Text Colors */}
           <Section id="text-colors" title="Text Colors">
