@@ -82,6 +82,12 @@ export function Select({
   // Prevent Radix scroll-lock from breaking sticky nav
   usePreventScrollLock(open);
 
+  // Filter out empty-value options (Radix doesn't allow empty string values)
+  // Use the empty option's label as placeholder if provided
+  const emptyOption = options.find(opt => opt.value === '');
+  const effectivePlaceholder = emptyOption?.label || placeholder;
+  const validOptions = options.filter(opt => opt.value !== '');
+
   return (
     <SelectPrimitive.Root
       value={value}
@@ -105,7 +111,7 @@ export function Select({
           ${className}
         `}
       >
-        <SelectPrimitive.Value placeholder={placeholder} />
+        <SelectPrimitive.Value placeholder={effectivePlaceholder} />
         <SelectPrimitive.Icon>
           <ChevronDown className="w-4 h-4 text-text-muted" />
         </SelectPrimitive.Icon>
@@ -126,7 +132,7 @@ export function Select({
         align="start"
       >
         <SelectPrimitive.Viewport className="p-1">
-          {options.map((option) => (
+          {validOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>
