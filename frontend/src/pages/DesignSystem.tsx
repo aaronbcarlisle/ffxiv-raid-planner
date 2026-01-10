@@ -1831,16 +1831,20 @@ export function DesignSystem() {
 
           {/* Membership Colors */}
           <Section id="membership-colors" title="Membership Role Colors">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <p className="text-text-secondary mb-6">
+            User role within static groups. Use semantic tokens for consistent styling.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { name: 'Owner', token: '--color-member-owner', hex: '#14b8a6', access: 'Full control' },
-              { name: 'Lead', token: '--color-member-lead', hex: '#a855f7', access: 'Manage tiers/players' },
-              { name: 'Member', token: '--color-member-member', hex: '#3b82f6', access: 'Edit claimed players' },
-              { name: 'Viewer', token: '--color-member-viewer', hex: '#71717a', access: 'Read-only' },
+              { name: 'Owner', token: 'membership-owner', hex: '#14b8a6', access: 'Full control', tailwind: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30' },
+              { name: 'Lead', token: 'membership-lead', hex: '#a855f7', access: 'Manage tiers/players', tailwind: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30' },
+              { name: 'Member', token: 'membership-member', hex: '#3b82f6', access: 'Edit claimed players', tailwind: 'bg-membership-member/20 text-membership-member border-membership-member/30' },
+              { name: 'Viewer', token: 'membership-viewer', hex: '#71717a', access: 'Read-only', tailwind: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30' },
+              { name: 'Linked', token: 'membership-linked', hex: '#f59e0b', access: 'Player-linked access', tailwind: 'bg-membership-linked/20 text-membership-linked border-membership-linked/30' },
             ].map((role) => (
-              <div key={role.name} className="flex items-center gap-3">
+              <div key={role.name} className="space-y-2">
                 <div
-                  className="px-3 py-1.5 rounded border text-sm font-medium"
+                  className="px-3 py-1.5 rounded border text-sm font-medium text-center"
                   style={{
                     backgroundColor: `${role.hex}20`,
                     borderColor: `${role.hex}40`,
@@ -1849,7 +1853,10 @@ export function DesignSystem() {
                 >
                   {role.name}
                 </div>
-                <span className="text-xs text-text-secondary">{role.access}</span>
+                <div className="text-xs text-text-muted text-center">{role.access}</div>
+                <code className="block text-[10px] text-accent bg-surface-elevated px-2 py-1 rounded text-center truncate" title={role.tailwind}>
+                  {role.token}
+                </code>
               </div>
             ))}
           </div>

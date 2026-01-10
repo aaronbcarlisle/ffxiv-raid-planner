@@ -43,6 +43,16 @@
   --color-role-caster: #b45ad4;
 
   /* ================================
+     MEMBERSHIP COLORS
+     User role within static groups
+     ================================ */
+  --color-membership-owner: #14b8a6;    /* Teal - same as accent */
+  --color-membership-lead: #a855f7;     /* Purple */
+  --color-membership-member: #3b82f6;   /* Blue */
+  --color-membership-viewer: #71717a;   /* Zinc */
+  --color-membership-linked: #f59e0b;   /* Amber */
+
+  /* ================================
      GEAR SOURCE COLORS
      Distinct from status colors
      ================================ */

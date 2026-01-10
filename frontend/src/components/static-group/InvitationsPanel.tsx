@@ -3,9 +3,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { Select, Label, NumberInput } from '../ui';
-import { Button } from '../primitives';
+import { Button, IconButton } from '../primitives';
 import type { Invitation, MemberRole } from '../../types';
 
 interface InvitationsPanelProps {
@@ -120,7 +121,14 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
       {error && (
         <div className="bg-status-error/20 text-status-error p-3 rounded text-sm flex justify-between items-center">
           <span>{error}</span>
-          <button onClick={clearError} className="hover:text-status-error/80">&times;</button>
+          <IconButton
+            icon={X}
+            onClick={clearError}
+            variant="ghost"
+            size="sm"
+            aria-label="Dismiss error"
+            className="text-status-error hover:text-status-error/80"
+          />
         </div>
       )}
 
