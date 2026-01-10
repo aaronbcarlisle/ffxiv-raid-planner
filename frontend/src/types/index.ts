@@ -37,22 +37,22 @@ export type GearSourceCategory =
   | 'normal'   // iLv 760/765 - Normal raid
   | 'unknown'; // Unset state
 
-// Display names for gear source categories
+// Display names for gear source categories (shorthand for compact display)
 export const GEAR_SOURCE_NAMES: Record<GearSourceCategory, string> = {
   savage: 'Savage',
-  tome_up: 'Aug. Tome',
-  catchup: 'Catch-up',
-  tome: 'Tomestone',
+  tome_up: 'Aug',
+  catchup: 'Catch',
+  tome: 'Tome',
   relic: 'Relic',
-  crafted: 'Crafted',
-  prep: 'Prev. BiS',
-  normal: 'Normal',
-  unknown: 'Unknown',
+  crafted: 'Craft',
+  prep: 'Prev',
+  normal: 'Norm',
+  unknown: '?',
 };
 
 // Color classes for gear source categories
 export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
-  savage: 'text-amber-400',     // Gold for raid drops
+  savage: 'text-gear-raid',     // Same as raid drops (green)
   tome_up: 'text-teal-400',     // Teal for augmented tome
   catchup: 'text-blue-400',     // Blue for catch-up
   tome: 'text-teal-400/70',     // Dimmer teal for unaugmented tome
