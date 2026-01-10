@@ -16,7 +16,7 @@ import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
 import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 import {
   Copy,
@@ -63,6 +63,10 @@ interface PlayerCardProps {
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
+  /** Slots that have loot entries (for "Go to Loot Entry" feature) */
+  slotsWithLootEntries?: Set<GearSlot>;
+  /** Navigate to loot entry for a slot */
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 export const PlayerCard = memo(function PlayerCard({
@@ -92,6 +96,8 @@ export const PlayerCard = memo(function PlayerCard({
   onModalOpen,
   onModalClose,
   onCopyUrl,
+  slotsWithLootEntries,
+  onNavigateToLootEntry,
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -699,6 +705,8 @@ export const PlayerCard = memo(function PlayerCard({
         isAdmin={isAdmin}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
+        slotsWithLootEntries={slotsWithLootEntries}
+        onNavigateToLootEntry={onNavigateToLootEntry}
       />
 
       {/* Expanded mode: spacer after gear (fills remaining space, footer hidden) */}

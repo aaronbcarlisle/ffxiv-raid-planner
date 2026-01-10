@@ -116,3 +116,10 @@ d332075 Add Item name column to GearTable (Task 2.4) - REVERTED
 - Right-click any loot/material entry → "Go to [PlayerName]"
 - Navigates to Players tab and highlights the recipient's card
 - Works in Grid and List views
+
+**Bidirectional Loot Navigation:**
+- Right-click gear slot icon (raid BiS only) → "Go to Loot Entry"
+- Alt+Click on gear slot icon → jump to corresponding loot entry
+- Alt+Click on loot/material entry → jump to recipient's player card
+- Shows visual ring highlight on hoverable slots
+- Title tooltip hints at Alt+Click functionality

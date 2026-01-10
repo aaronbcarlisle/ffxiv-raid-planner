@@ -810,6 +810,45 @@ export function GroupView() {
     }, 2500);
   }, [setPageMode]);
 
+  // Highlighted entry for navigating to loot log
+  const [highlightedEntry, setHighlightedEntry] = useState<{ id: string; type: 'loot' | 'material' } | null>(null);
+
+  // Navigate to loot entry from player card (gear slot → loot entry)
+  const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {
+    // Find the loot entry for this player and slot
+    const entry = lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
+    if (!entry) {
+      toast.info('No loot entry found for this slot');
+      return;
+    }
+    // Switch to history (Log) tab
+    setPageMode('history');
+    // Set highlighted entry
+    setHighlightedEntry({ id: String(entry.id), type: 'loot' });
+    // Scroll to entry after short delay to allow tab change render
+    setTimeout(() => {
+      const element = document.getElementById(`loot-entry-${entry.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+    // Clear highlight after animation completes
+    setTimeout(() => {
+      setHighlightedEntry(null);
+    }, 2500);
+  }, [lootLog, setPageMode]);
+
+  // Compute which slots have loot entries for each player (for "Go to Loot Entry" feature)
+  const playerSlotsWithLootEntries = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const entry of lootLog) {
+      const existing = map.get(entry.recipientPlayerId) ?? new Set<string>();
+      existing.add(entry.itemSlot);
+      map.set(entry.recipientPlayerId, existing);
+    }
+    return map;
+  }, [lootLog]);
+
   // Check roster management permission for DnD
   const rosterPermission = canManageRoster(userRole, isAdminAccess);
 
@@ -896,6 +935,8 @@ export function GroupView() {
             navigator.clipboard.writeText(url.toString());
             toast.success('Link copied to clipboard');
           }}
+          slotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+          onNavigateToLootEntry={(slot) => handleNavigateToLootEntry(player.id, slot)}
         />
       );
     }
@@ -1238,6 +1279,8 @@ export function GroupView() {
               userRole={userRole || 'viewer'}
               isAdmin={isAdminAccess}
               onNavigateToPlayer={handleNavigateToPlayer}
+              highlightedEntryId={highlightedEntry?.id}
+              highlightedEntryType={highlightedEntry?.type}
             />
           )}
         </>

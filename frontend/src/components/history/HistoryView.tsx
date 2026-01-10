@@ -19,6 +19,8 @@ interface HistoryViewProps {
   userRole: string;
   isAdmin?: boolean;
   onNavigateToPlayer?: (playerId: string) => void;
+  highlightedEntryId?: string | null;
+  highlightedEntryType?: 'loot' | 'material' | null;
 }
 
 export function HistoryView({
@@ -29,6 +31,8 @@ export function HistoryView({
   userRole,
   isAdmin = false,
   onNavigateToPlayer,
+  highlightedEntryId,
+  highlightedEntryType,
 }: HistoryViewProps) {
   const {
     currentWeek,
@@ -111,6 +115,8 @@ export function HistoryView({
         canEdit={canEdit}
         onWeekChange={handleWeekChange}
         onNavigateToPlayer={onNavigateToPlayer}
+        highlightedEntryId={highlightedEntryId}
+        highlightedEntryType={highlightedEntryType}
       />
     </div>
   );

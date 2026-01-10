@@ -430,7 +430,13 @@ export function WeeklyLootGrid({
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
                       className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Alt+Click navigates to player
+                        if (e.altKey && lootEntry && onNavigateToPlayer) {
+                          e.preventDefault();
+                          onNavigateToPlayer(lootEntry.recipientPlayerId);
+                          return;
+                        }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)
                         if (canClickToEdit && lootEntry) {
                           onEditLoot(lootEntry);
@@ -452,6 +458,7 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
+                      title={lootEntry && onNavigateToPlayer ? 'Alt+Click to go to player' : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -472,7 +479,13 @@ export function WeeklyLootGrid({
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
                       className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Alt+Click navigates to player
+                        if (e.altKey && matEntry && onNavigateToPlayer) {
+                          e.preventDefault();
+                          onNavigateToPlayer(matEntry.recipientPlayerId);
+                          return;
+                        }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)
                         if (canClickToEditMat && matEntry) {
                           onEditMaterial(matEntry);
@@ -494,6 +507,7 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
+                      title={matEntry && onNavigateToPlayer ? 'Alt+Click to go to player' : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"

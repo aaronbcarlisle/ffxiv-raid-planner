@@ -3,7 +3,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
-import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode } from '../../types';
+import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode, GearSlot } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Export types for drag handle
@@ -37,6 +37,10 @@ interface DroppablePlayerCardProps {
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
+  /** Slots that have loot entries (for "Go to Loot Entry" feature) */
+  slotsWithLootEntries?: Set<GearSlot>;
+  /** Navigate to loot entry for a slot */
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 export function DroppablePlayerCard({

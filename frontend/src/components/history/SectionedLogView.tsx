@@ -57,6 +57,10 @@ interface SectionedLogViewProps {
   canEdit: boolean;
   onWeekChange?: (weekNumber: number) => void;
   onNavigateToPlayer?: (playerId: string) => void;
+  /** External highlighted entry ID (e.g., from navigation) */
+  highlightedEntryId?: string | null;
+  /** External highlighted entry type */
+  highlightedEntryType?: 'loot' | 'material' | null;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -75,6 +79,8 @@ export function SectionedLogView({
   canEdit,
   onWeekChange,
   onNavigateToPlayer,
+  highlightedEntryId: externalHighlightedEntryId,
+  highlightedEntryType: externalHighlightedEntryType,
 }: SectionedLogViewProps) {
   const {
     lootLog,
@@ -382,9 +388,13 @@ export function SectionedLogView({
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Highlighted entry for deep-link scroll animation
-  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
-  const [highlightedEntryType, setHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
+  // Internal highlighted entry for deep-link scroll animation (from URL params)
+  const [internalHighlightedEntryId, setInternalHighlightedEntryId] = useState<string | null>(null);
+  const [internalHighlightedEntryType, setInternalHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
+
+  // Combined highlighted entry - prefer external (navigation) over internal (URL)
+  const highlightedEntryId = externalHighlightedEntryId || internalHighlightedEntryId;
+  const highlightedEntryType = externalHighlightedEntryType || internalHighlightedEntryType;
 
   // Handle entry deep link - scroll to and highlight entry
   useEffect(() => {
@@ -413,8 +423,8 @@ export function SectionedLogView({
     }
 
     // Set highlighted entry (store as string for consistency)
-    setHighlightedEntryId(entryParam);
-    setHighlightedEntryType(entryType);
+    setInternalHighlightedEntryId(entryParam);
+    setInternalHighlightedEntryType(entryType);
 
     // Scroll to the entry after a short delay
     setTimeout(() => {
@@ -426,8 +436,8 @@ export function SectionedLogView({
 
     // Clear highlight after animation
     const timer = setTimeout(() => {
-      setHighlightedEntryId(null);
-      setHighlightedEntryType(null);
+      setInternalHighlightedEntryId(null);
+      setInternalHighlightedEntryType(null);
       // Clear entry params from URL
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
