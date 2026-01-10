@@ -34,7 +34,7 @@ import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
-import { Pencil, Link, Trash2 } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -56,6 +56,7 @@ interface SectionedLogViewProps {
   currentWeek: number;
   canEdit: boolean;
   onWeekChange?: (weekNumber: number) => void;
+  onNavigateToPlayer?: (playerId: string) => void;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -73,6 +74,7 @@ export function SectionedLogView({
   currentWeek,
   canEdit,
   onWeekChange,
+  onNavigateToPlayer,
 }: SectionedLogViewProps) {
   const {
     lootLog,
@@ -782,6 +784,19 @@ export function SectionedLogView({
       onClick: () => handleCopyEntryUrl(String(entry.id), type),
     });
 
+    // Go to Player - navigate to recipient's player card
+    if (onNavigateToPlayer) {
+      const recipientName = 'recipientPlayerName' in entry ? entry.recipientPlayerName : '';
+      const recipientId = 'recipientPlayerId' in entry ? entry.recipientPlayerId : '';
+      if (recipientId) {
+        items.push({
+          label: `Go to ${recipientName}`,
+          icon: <UserRound className="w-4 h-4" />,
+          onClick: () => onNavigateToPlayer(recipientId),
+        });
+      }
+    }
+
     if (canEdit) {
       items.push({ separator: true });
 
@@ -803,7 +818,7 @@ export function SectionedLogView({
     }
 
     return items;
-  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial]);
+  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial, onNavigateToPlayer]);
 
   return (
     <div className="space-y-4">
@@ -936,6 +951,7 @@ export function SectionedLogView({
               onEditLoot={handleGridEditLoot}
               onEditMaterial={handleGridEditMaterial}
               onCopyEntryUrl={handleCopyEntryUrlById}
+              onNavigateToPlayer={onNavigateToPlayer}
             />
           )}
 

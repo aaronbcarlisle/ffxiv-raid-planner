@@ -791,6 +791,25 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, []);
 
+  // Navigate to player card from other tabs (e.g., from Log entry context menu)
+  const handleNavigateToPlayer = useCallback((playerId: string) => {
+    // Switch to players tab
+    setPageMode('players');
+    // Set highlighted player ID
+    setHighlightedPlayerId(playerId);
+    // Scroll to player card after short delay to allow tab change render
+    setTimeout(() => {
+      const element = document.getElementById(`player-card-${playerId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+    // Clear highlight after animation completes
+    setTimeout(() => {
+      setHighlightedPlayerId(null);
+    }, 2500);
+  }, [setPageMode]);
+
   // Check roster management permission for DnD
   const rosterPermission = canManageRoster(userRole, isAdminAccess);
 
@@ -1218,6 +1237,7 @@ export function GroupView() {
               floors={tierInfo.floors}
               userRole={userRole || 'viewer'}
               isAdmin={isAdminAccess}
+              onNavigateToPlayer={handleNavigateToPlayer}
             />
           )}
         </>

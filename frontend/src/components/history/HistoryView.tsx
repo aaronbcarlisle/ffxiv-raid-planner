@@ -18,6 +18,7 @@ interface HistoryViewProps {
   floors: string[];
   userRole: string;
   isAdmin?: boolean;
+  onNavigateToPlayer?: (playerId: string) => void;
 }
 
 export function HistoryView({
@@ -27,6 +28,7 @@ export function HistoryView({
   floors,
   userRole,
   isAdmin = false,
+  onNavigateToPlayer,
 }: HistoryViewProps) {
   const {
     currentWeek,
@@ -108,6 +110,7 @@ export function HistoryView({
         currentWeek={selectedWeek}
         canEdit={canEdit}
         onWeekChange={handleWeekChange}
+        onNavigateToPlayer={onNavigateToPlayer}
       />
     </div>
   );
