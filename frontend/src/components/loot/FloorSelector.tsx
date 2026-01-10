@@ -1,3 +1,4 @@
+import { Select } from '../ui';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 
 interface FloorSelectorProps {
@@ -13,37 +14,21 @@ export function FloorSelector({
   selectedFloor,
   onFloorChange,
 }: FloorSelectorProps) {
-  // Get the full duty name for the currently selected floor
-  const selectedDutyName = dutyNames?.[selectedFloor - 1];
+  // Build options with floor names and optional duty name labels
+  const options = floors.map((floor, index) => {
+    const floorNumber = index + 1;
+    const dutyName = dutyNames?.[index];
+    return {
+      value: String(floorNumber),
+      label: dutyName ? `${floor} - ${dutyName}` : floor,
+    };
+  });
 
   return (
-    <div className="relative" title={selectedDutyName}>
-      <select
-        value={selectedFloor}
-        onChange={(e) => onFloorChange(Number(e.target.value) as FloorNumber)}
-        className="appearance-none bg-surface-raised border border-border-default rounded-md px-4 py-2 pr-8 text-sm font-medium text-text-primary cursor-pointer hover:border-accent focus:border-accent focus:outline-none"
-      >
-        {floors.map((floor, index) => {
-          const floorNumber = (index + 1) as FloorNumber;
-          const dutyName = dutyNames?.[index];
-          return (
-            <option key={floor} value={floorNumber} title={dutyName}>
-              {floor}
-            </option>
-          );
-        })}
-      </select>
-      {/* Custom dropdown arrow */}
-      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-        <svg
-          className="w-4 h-4 text-text-muted"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-    </div>
+    <Select
+      value={String(selectedFloor)}
+      onChange={(value) => onFloorChange(Number(value) as FloorNumber)}
+      options={options}
+    />
   );
 }

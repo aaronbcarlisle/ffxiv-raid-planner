@@ -30,6 +30,17 @@ export interface WeekDataInfo {
   types: WeekEntryType[];
 }
 
+/** Granular loading states to prevent UI jitter */
+interface LoadingStates {
+  lootLog: boolean;
+  pageLedger: boolean;
+  pageBalances: boolean;
+  playerLedger: boolean;
+  materialLog: boolean;
+  materialBalances: boolean;
+  currentWeek: boolean;
+}
+
 interface LootTrackingState {
   lootLog: LootLogEntry[];
   weeksWithEntries: Set<number>; // Tracks which weeks have loot OR ledger entries (for week selector)
@@ -41,7 +52,10 @@ interface LootTrackingState {
   materialBalances: MaterialBalance[];
   currentWeek: number;
   maxWeek: number; // max(currentWeek, maxLoggedWeek) for week selector
+  /** @deprecated Use loadingStates for granular loading. Kept for backward compatibility. */
   isLoading: boolean;
+  /** Granular loading states per data type */
+  loadingStates: LoadingStates;
   error: string | null;
 
   // Actions
@@ -69,6 +83,16 @@ interface LootTrackingState {
   clearPlayerLedger: () => void;
 }
 
+const INITIAL_LOADING_STATES: LoadingStates = {
+  lootLog: false,
+  pageLedger: false,
+  pageBalances: false,
+  playerLedger: false,
+  materialLog: false,
+  materialBalances: false,
+  currentWeek: false,
+};
+
 export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   lootLog: [],
   weeksWithEntries: new Set<number>(),
@@ -81,18 +105,28 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   currentWeek: 1,
   maxWeek: 1,
   isLoading: false,
+  loadingStates: { ...INITIAL_LOADING_STATES },
   error: null,
 
   fetchLootLog: async (groupId, tierId, week) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, lootLog: true },
+      error: null,
+    }));
     try {
       const params = week ? `?week=${week}` : '';
       const response = await api.get<LootLogEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/loot-log${params}`
       );
-      set({ lootLog: response, isLoading: false });
+      set((state) => ({
+        lootLog: response,
+        loadingStates: { ...state.loadingStates, lootLog: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, lootLog: false },
+      }));
       throw error;
     }
   },
@@ -133,87 +167,142 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   },
 
   fetchPageLedger: async (groupId, tierId, week) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, pageLedger: true },
+      error: null,
+    }));
     try {
       const params = week ? `?week=${week}` : '';
       const response = await api.get<PageLedgerEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger${params}`
       );
-      set({ pageLedger: response, isLoading: false });
+      set((state) => ({
+        pageLedger: response,
+        loadingStates: { ...state.loadingStates, pageLedger: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, pageLedger: false },
+      }));
       throw error;
     }
   },
 
   fetchPageBalances: async (groupId, tierId, week) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, pageBalances: true },
+      error: null,
+    }));
     try {
       const params = week !== undefined ? `?week=${week}` : '';
       const response = await api.get<PageBalance[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/page-balances${params}`
       );
-      set({ pageBalances: response, isLoading: false });
+      set((state) => ({
+        pageBalances: response,
+        loadingStates: { ...state.loadingStates, pageBalances: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, pageBalances: false },
+      }));
       throw error;
     }
   },
 
   fetchPlayerLedger: async (groupId, tierId, playerId) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, playerLedger: true },
+      error: null,
+    }));
     try {
       const response = await api.get<PageLedgerEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`
       );
-      set({ playerLedger: response, isLoading: false });
+      set((state) => ({
+        playerLedger: response,
+        loadingStates: { ...state.loadingStates, playerLedger: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, playerLedger: false },
+      }));
       throw error;
     }
   },
 
   fetchMaterialLog: async (groupId, tierId, week) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, materialLog: true },
+      error: null,
+    }));
     try {
       const params = week ? `?week=${week}` : '';
       const response = await api.get<MaterialLogEntry[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/material-log${params}`
       );
-      set({ materialLog: response, isLoading: false });
+      set((state) => ({
+        materialLog: response,
+        loadingStates: { ...state.loadingStates, materialLog: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, materialLog: false },
+      }));
       throw error;
     }
   },
 
   fetchMaterialBalances: async (groupId, tierId) => {
-    set({ isLoading: true, error: null });
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, materialBalances: true },
+      error: null,
+    }));
     try {
       const response = await api.get<MaterialBalance[]>(
         `/api/static-groups/${groupId}/tiers/${tierId}/material-balances`
       );
-      set({ materialBalances: response, isLoading: false });
+      set((state) => ({
+        materialBalances: response,
+        loadingStates: { ...state.loadingStates, materialBalances: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, materialBalances: false },
+      }));
       throw error;
     }
   },
 
   fetchCurrentWeek: async (groupId, tierId) => {
+    set((state) => ({
+      loadingStates: { ...state.loadingStates, currentWeek: true },
+    }));
     try {
       const response = await api.get<{ currentWeek: number; maxWeek: number }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
       );
-      set({ currentWeek: response.currentWeek, maxWeek: response.maxWeek });
+      set((state) => ({
+        currentWeek: response.currentWeek,
+        maxWeek: response.maxWeek,
+        loadingStates: { ...state.loadingStates, currentWeek: false },
+      }));
     } catch (error: any) {
-      set({ error: error.message });
+      set((state) => ({
+        error: error.message,
+        loadingStates: { ...state.loadingStates, currentWeek: false },
+      }));
       throw error;
     }
   },
 
   createLootEntry: async (groupId, tierId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/loot-log`, data);
       // Update maxWeek if the new entry's week is higher
@@ -228,13 +317,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       // Refresh loot log
       await get().fetchLootLog(groupId, tierId);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   updateLootEntry: async (groupId, tierId, entryId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.put(`/api/static-groups/${groupId}/tiers/${tierId}/loot-log/${entryId}`, data);
       // Refresh loot log and weeks with entries (week may have changed)
@@ -243,13 +332,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   deleteLootEntry: async (groupId, tierId, entryId) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/loot-log/${entryId}`);
       // Refresh loot log and weeks with entries (week may now be empty)
@@ -258,13 +347,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   createMaterialEntry: async (groupId, tierId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/material-log`, data);
       // Update maxWeek if the new entry's week is higher
@@ -282,13 +371,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialBalances(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   deleteMaterialEntry: async (groupId, tierId, entryId) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/material-log/${entryId}`);
       // Refresh material log, balances, and weeks with entries (week may now be empty)
@@ -298,13 +387,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   updateMaterialEntry: async (groupId, tierId, entryId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.put(`/api/static-groups/${groupId}/tiers/${tierId}/material-log/${entryId}`, data);
       // Refresh material log and balances
@@ -313,13 +402,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialBalances(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   createPageEntry: async (groupId, tierId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, data);
       // Update weeksWithEntries if needed
@@ -337,13 +426,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageBalances(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   markFloorCleared: async (groupId, tierId, data) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/mark-floor-cleared`, data);
       // Update weeksWithEntries and maxWeek
@@ -361,7 +450,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageBalances(groupId, tierId),
       ]);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
@@ -369,7 +458,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   adjustBookBalance: async (groupId, tierId, playerId, bookType, adjustment, currentWeek, notes) => {
     if (adjustment === 0) return; // No-op for zero adjustment
 
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       // Create an adjustment ledger entry
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
@@ -393,25 +482,25 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       // Refresh balances
       await get().fetchPageBalances(groupId, tierId);
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   deletePlayerLedger: async (groupId, tierId, playerId) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`);
       // Clear local state
-      set({ playerLedger: [], isLoading: false });
+      set({ playerLedger: [] });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
 
   clearAllPageLedger: async (groupId, tierId) => {
-    set({ isLoading: true, error: null });
+    set({ error: null });
     try {
       // Get all players with ledger entries from page balances
       const balances = get().pageBalances;
@@ -428,9 +517,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
-      set({ isLoading: false });
     } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      set({ error: error.message });
       throw error;
     }
   },
@@ -448,6 +536,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       currentWeek: 1,
       maxWeek: 1,
       isLoading: false,
+      loadingStates: { ...INITIAL_LOADING_STATES },
       error: null,
     });
   },

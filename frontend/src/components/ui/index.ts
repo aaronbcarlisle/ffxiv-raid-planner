@@ -13,6 +13,7 @@ export { ResetConfirmModal } from './ResetConfirmModal';
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { SettingsPopover } from './SettingsPopover';
 export { Skeleton } from './Skeleton';
+export { Spinner, SpinnerOverlay } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { TextArea, type TextAreaProps } from './TextArea';

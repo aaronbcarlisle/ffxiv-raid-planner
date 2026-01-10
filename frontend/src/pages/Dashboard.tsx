@@ -10,7 +10,7 @@ import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-rea
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
-import { ContextMenu, Select, Input, Label, Checkbox, Modal } from '../components/ui';
+import { ContextMenu, Select, Input, Label, Checkbox, Modal, Spinner } from '../components/ui';
 import { Button, IconButton } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
@@ -263,7 +263,7 @@ export function Dashboard() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" label="Loading authentication" />
       </div>
     );
   }
@@ -328,33 +328,69 @@ export function Dashboard() {
       {/* Loading */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" label="Loading statics" />
         </div>
       ) : groups.length === 0 ? (
-        /* Empty state */
-        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
-          <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-accent"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
+        /* Empty state with onboarding guidance */
+        <div className="bg-surface-card rounded-lg border border-border-default p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-accent"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-display text-accent mb-2">Welcome to FFXIV Raid Planner</h2>
+            <p className="text-text-muted max-w-md mx-auto">
+              Track your static's gear progress, manage loot distribution, and coordinate Best-in-Slot (BiS) builds.
+            </p>
           </div>
-          <h2 className="text-xl font-display text-accent mb-2">No Statics Yet</h2>
-          <p className="text-text-muted mb-6">
-            Create your first static group to start tracking gear progress.
-          </p>
-          <Button onClick={() => setShowCreateModal(true)}>
-            Create Your First Static
-          </Button>
+
+          {/* Getting started steps */}
+          <div className="grid gap-4 sm:grid-cols-3 mb-8 max-w-3xl mx-auto">
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">1</span>
+                <h3 className="font-medium text-text-primary">Create a Static</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Set up your raid group with a name. Share the code to let members join.
+              </p>
+            </div>
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">2</span>
+                <h3 className="font-medium text-text-primary">Add Players</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Add your 8 raiders with their jobs. Assign positions for G1/G2 organization.
+              </p>
+            </div>
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">3</span>
+                <h3 className="font-medium text-text-primary">Import BiS</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Link XIVGear or Etro sets to track each player's best-in-slot gear goals.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Button onClick={() => setShowCreateModal(true)}>
+              Create Your First Static
+            </Button>
+          </div>
         </div>
       ) : viewMode === 'grid' ? (
         /* Groups grid */

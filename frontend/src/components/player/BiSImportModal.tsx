@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Modal, Checkbox, Label, Select, Input } from '../ui';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Modal, Checkbox, Label, Select, Input, Spinner } from '../ui';
 import { Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
 import {
@@ -128,6 +128,42 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     onClose();
   };
 
+  // Real-time URL validation
+  const urlValidation = useMemo(() => {
+    if (!inputValue.trim()) {
+      return { isValid: true, hint: null }; // Empty is valid (user might use preset)
+    }
+
+    const trimmed = inputValue.trim().toLowerCase();
+
+    // Check for valid URL patterns
+    const isXivgear = trimmed.includes('xivgear.app');
+    const isEtro = trimmed.includes('etro.gg');
+
+    if (isXivgear || isEtro) {
+      // Basic URL structure check
+      if (isXivgear && !trimmed.includes('/share/') && !trimmed.includes('/sl/')) {
+        return { isValid: false, hint: 'XIVGear links should contain /share/ or /sl/' };
+      }
+      if (isEtro && !trimmed.includes('/gearset/')) {
+        return { isValid: false, hint: 'Etro links should contain /gearset/' };
+      }
+      return { isValid: true, hint: null };
+    }
+
+    // Check if it looks like a UUID (direct paste)
+    const uuidPattern = /^[a-f0-9-]{36}$/;
+    if (uuidPattern.test(trimmed)) {
+      return { isValid: true, hint: 'Detected UUID - will try XIVGear' };
+    }
+
+    // Unknown format
+    return {
+      isValid: false,
+      hint: 'Paste a link from xivgear.app or etro.gg'
+    };
+  }, [inputValue]);
+
   const handlePreview = async () => {
     // Need either a preset selected or a URL entered
     if (selectedPresetIndex === '' && !inputValue.trim()) return;
@@ -200,18 +236,34 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     } catch (err) {
       setState('error');
       if (err instanceof Error) {
-        // Check for common error patterns
-        if (err.message.includes('404')) {
-          setError('Gear set not found. Please check the link or UUID.');
-        } else if (err.message.includes('Could not extract UUID')) {
-          setError('Invalid link format. Please paste a valid Etro or XIVGear link.');
-        } else if (err.message.includes('timeout')) {
-          setError('API timed out. Please try again.');
+        // Provide user-friendly error messages with guidance
+        if (err.message.includes('404') || err.message.includes('not found')) {
+          setError(
+            'Gear set not found. This usually means:\n' +
+            '• The set may be private or deleted\n' +
+            '• The link may have expired\n' +
+            '• There might be a typo in the URL'
+          );
+        } else if (err.message.includes('Could not extract UUID') || err.message.includes('Invalid')) {
+          setError(
+            'Could not read this link. Please paste a valid URL from:\n' +
+            '• XIVGear: https://xivgear.app/share/...\n' +
+            '• Etro: https://etro.gg/gearset/...'
+          );
+        } else if (err.message.includes('timeout') || err.message.includes('network')) {
+          setError(
+            'Could not connect to the gear site. Please:\n' +
+            '• Check your internet connection\n' +
+            '• Try again in a moment\n' +
+            '• The site may be temporarily down'
+          );
+        } else if (err.message.includes('rate limit')) {
+          setError('Too many requests. Please wait a moment and try again.');
         } else {
           setError(err.message);
         }
       } else {
-        setError('Failed to fetch gear set. Please try again.');
+        setError('Something went wrong. Please try again.');
         toast.error('Failed to fetch gear set');
       }
     }
@@ -406,6 +458,12 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               placeholder="https://etro.gg/gearset/..."
               autoFocus={!player.configured || presets.length === 0}
             />
+            {/* URL validation hint */}
+            {urlValidation.hint && (
+              <p className={`mt-1 text-xs ${urlValidation.isValid ? 'text-text-muted' : 'text-status-warning'}`}>
+                {urlValidation.hint}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -425,8 +483,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       )}
 
       {state === 'loading' && (
-        <div className="flex flex-col items-center justify-center py-8">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="flex flex-col items-center justify-center py-8 gap-4">
+          <Spinner size="lg" label="Fetching gear set" />
           <p className="text-text-secondary">Fetching gear set...</p>
         </div>
       )}
