@@ -63,6 +63,8 @@ All 285 tests passing.
 ## Git Log (This Session)
 
 ```
+d5e06a1 Improve GearTable UI: fixed-width BiS toggles, compact + button
+6f72dd9 Update documentation to reflect Item column removal
 20ec24d Remove Item name column from GearTable (too cramped)
 b69f3ef Simplify ProgressRing colors (gray to teal transition)
 de11807 Improve CurrentSource column display
@@ -79,7 +81,8 @@ d332075 Add Item name column to GearTable (Task 2.4) - REVERTED
 
 **GearTable columns:** Slot | Current | BiS | Have | Aug
 - CurrentSource shows equipped gear category with shorthand names
-- BiS is a single toggle button (click to switch Raid/Tome)
+- BiS is a single toggle button with fixed width (Raid/Tome same size)
+- Weapon row: "+" button for tome weapon tracking (compact)
 - Item name column was removed (too cramped on smaller screens)
 
 **ProgressRing colors:**
