@@ -146,6 +146,14 @@ function WeaponSlotRow({
             <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
+        <td className="py-1 hidden md:table-cell">
+          <span
+            className="text-xs text-text-muted truncate block max-w-[140px]"
+            title={status.itemName}
+          >
+            {status.itemName || '—'}
+          </span>
+        </td>
         <td className="py-1 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
@@ -197,6 +205,9 @@ function WeaponSlotRow({
             }`}
           >
             └ Tome Weapon
+          </td>
+          <td className="py-1 hidden md:table-cell">
+            {/* Empty cell for Item column alignment */}
           </td>
           <td className="py-1 text-center">
             <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
@@ -383,6 +394,7 @@ export function GearTable({
         <thead>
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
+            <th className="text-left py-1 font-medium hidden md:table-cell">Item</th>
             <th className="text-center py-1 font-medium w-24">BiS Source</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
             <th className="text-center py-1 font-medium w-16">Aug</th>
@@ -417,6 +429,14 @@ export function GearTable({
                     <SlotIcon slot={slot} status={status} size={24} showHover />
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
+                </td>
+                <td className="py-1 hidden md:table-cell">
+                  <span
+                    className="text-xs text-text-muted truncate block max-w-[140px]"
+                    title={status.itemName}
+                  >
+                    {status.itemName || '—'}
+                  </span>
                 </td>
                 <td className="py-1 text-center">
                   <div className="flex justify-center gap-1">
