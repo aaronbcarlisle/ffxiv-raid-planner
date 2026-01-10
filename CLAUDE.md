@@ -77,8 +77,14 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `gamedata/raid-tiers.ts` | Tier configuration |
 | `data/releaseNotes.ts` | Version history data |
 | `pages/ReleaseNotes.tsx` | Release notes page with collapsible nav |
-| `pages/GroupView.tsx` | Main group view with tab navigation |
+| `pages/GroupView.tsx` | Main group view with tab navigation (788 lines) |
 | `pages/AdminDashboard.tsx` | Admin-only static browser |
+| `hooks/useGroupViewState.ts` | GroupView URL/localStorage state sync (343 lines) |
+| `hooks/usePlayerActions.ts` | Player CRUD operations hook (210 lines) |
+| `hooks/useGroupViewKeyboardShortcuts.ts` | GroupView keyboard shortcut config (219 lines) |
+| `hooks/useViewNavigation.ts` | Cross-tab navigation helpers (87 lines) |
+| `components/player/PlayerGrid.tsx` | Player grid with group view and subs (250 lines) |
+| `components/admin/AdminBanners.tsx` | Admin access and View As indicators (69 lines) |
 | `components/layout/ReleaseBanner.tsx` | New version notification |
 | `components/history/WeeklyLootGrid.tsx` | Spreadsheet-style loot grid |
 | `components/history/SectionedLogView.tsx` | Log tab with floor filters |
@@ -97,11 +103,14 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
 
 ### Open Items
-- **P-005:** GroupView.tsx is 811 lines (consider splitting)
+- None - all high/medium priority items resolved
+
+### Resolved in v1.0.5
+- ~~**P-005:** GroupView.tsx is 811 lines~~ - Refactored to 788 lines with 6 extracted modules (PR #16)
 
 ### Resolved in v1.0.1
 - ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
-- ~~**T-001:** Low test coverage~~ - Now 321 tests (95 backend + 226 frontend)
+- ~~**T-001:** Low test coverage~~ - Now 380 tests (95 backend + 285 frontend)
 
 ---
 
@@ -144,7 +153,7 @@ interface SnapshotPlayer {
 }
 ```
 
-### Tests (321 Total)
+### Tests (380 Total)
 
 **Backend (95 tests):**
 ```bash
@@ -157,7 +166,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests for PR features
 
-**Frontend (226 tests):**
+**Frontend (285 tests):**
 ```bash
 pnpm test
 ```
@@ -192,7 +201,8 @@ ffxiv-raid-planner/
 │   └── data/              # SQLite database, local_bis_presets.json
 ├── frontend/src/
 │   ├── components/
-│   │   ├── player/           # PlayerCard, GearTable, BiSImportModal
+│   │   ├── admin/            # AdminBanners (View As indicators)
+│   │   ├── player/           # PlayerCard, PlayerGrid, GearTable, BiSImportModal
 │   │   ├── loot/             # LootPriorityPanel, FloorSelector, QuickLogDropModal
 │   │   ├── history/          # HistoryView, LootLogPanel, PageBalancesPanel
 │   │   ├── weapon-priority/  # WeaponPriorityModal, WeaponPriorityEditor
@@ -200,7 +210,8 @@ ffxiv-raid-planner/
 │   │   ├── auth/             # LoginButton, UserMenu
 │   │   ├── primitives/       # IconButton, VisuallyHidden
 │   │   └── ui/               # Modal, Toast, ContextMenu, TabNavigation
-│   ├── pages/                # Home, Dashboard, GroupView, AuthCallback
+│   ├── hooks/                # useGroupViewState, usePlayerActions, useKeyboardShortcuts
+│   ├── pages/                # Home, Dashboard, GroupView, AuthCallback, AdminDashboard
 │   ├── stores/               # authStore, staticGroupStore, tierStore, lootTrackingStore
 │   ├── gamedata/             # jobs, costs, loot-tables, raid-tiers
 │   ├── utils/                # calculations, priority, lootCoordination
@@ -544,6 +555,46 @@ Super-user access for app owners to troubleshoot any static group.
 - `is_user_admin()` - Use for permission checks in service layer (returns bool)
 - `check_view_permission()` - Use for view access validation (handles admins automatically)
 - `create_admin_membership()` - Creates virtual membership object for admins accessing non-member groups
+
+### GroupView Architecture (v1.0.5)
+The main GroupView page (788 lines) is organized with extracted hooks and components for maintainability.
+
+**Hook Organization:**
+| Hook | Purpose |
+|------|---------|
+| `useGroupViewState` | URL params, localStorage sync, tab state, view toggles |
+| `usePlayerActions` | Player CRUD (update, remove, claim, release, reorder) |
+| `useGroupViewKeyboardShortcuts` | Keyboard shortcut definitions and handlers |
+| `useViewNavigation` | Cross-tab navigation (goToPlayer, goToLootEntry) |
+
+**Component Extraction:**
+| Component | Purpose |
+|-----------|---------|
+| `PlayerGrid` | Renders player cards in grid/group view with drag-drop |
+| `AdminBanners` | Admin access indicator and View As impersonation banner |
+
+**State Flow:**
+```
+URL params → useGroupViewState → GroupView → child components
+     ↑                              ↓
+localStorage ←────────────────── state updates
+```
+
+**Key Patterns:**
+- URL is source of truth for `tab`, `subtab`, `tier`, `viewAs`, `player`
+- localStorage mirrors URL state for persistence across navigation
+- `setPageMode()` wrapper syncs both URL and localStorage
+- Keyboard shortcuts disabled when modals open or typing in inputs
+- View toggles (G1/G2, subs, expanded) use localStorage directly
+
+**Files:**
+- `pages/GroupView.tsx` - Main orchestration (788 lines)
+- `hooks/useGroupViewState.ts` - State management (343 lines)
+- `hooks/usePlayerActions.ts` - Player operations (210 lines)
+- `hooks/useGroupViewKeyboardShortcuts.ts` - Shortcuts (219 lines)
+- `hooks/useViewNavigation.ts` - Navigation helpers (87 lines)
+- `components/player/PlayerGrid.tsx` - Grid rendering (250 lines)
+- `components/admin/AdminBanners.tsx` - Admin UI (69 lines)
 
 ### Frontend Utilities (v1.0.1)
 

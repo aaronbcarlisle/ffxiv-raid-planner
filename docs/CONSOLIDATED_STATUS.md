@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 10, 2026 (v1.0.4 Released)
+**Last Updated:** January 10, 2026 (v1.0.5 Released)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -64,6 +64,17 @@
 | **Comprehensive Test Suite** | ✅ Complete | 321 tests (95 backend + 226 frontend) |
 | **Skeleton Components** | ✅ Complete | Loading placeholder components |
 
+### ✅ Completed: v1.0.5 (January 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **GroupView Refactoring** | ✅ Complete | Reduced from 1468 → 788 lines (46% reduction) |
+| **State Management Hooks** | ✅ Complete | useGroupViewState, usePlayerActions extracted |
+| **Keyboard Shortcuts Hook** | ✅ Complete | useGroupViewKeyboardShortcuts extracted |
+| **Navigation Helpers** | ✅ Complete | useViewNavigation for cross-tab nav |
+| **PlayerGrid Component** | ✅ Complete | Grid rendering with group view and subs |
+| **AdminBanners Component** | ✅ Complete | Admin access and View As indicators |
+
 ### ✅ Completed: v1.0.2-v1.0.4 (January 2026)
 
 | Feature | Status | Description |
@@ -97,7 +108,7 @@
 
 | Issue | Location | Status |
 |-------|----------|--------|
-| **Large component files** | GroupView (1267 lines) | Optional - functional as-is |
+| ~~**Large component files**~~ | ~~GroupView (1267 lines)~~ | ✅ Fixed - Refactored to 788 lines (v1.0.5) |
 | **Materia in tooltips** | GearTable | Future - requires backend changes |
 | **Onboarding tooltips** | First-run experience | Future |
 | **Alt Job Linking** | Multi-job players | Future |
@@ -106,7 +117,7 @@
 
 ## Test Coverage
 
-**Total: 321 tests (95 backend + 226 frontend)**
+**Total: 380 tests (95 backend + 285 frontend)**
 
 ### Backend (95 tests)
 - `test_auth.py` - Authentication endpoints

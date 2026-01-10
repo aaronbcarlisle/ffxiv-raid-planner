@@ -1,12 +1,13 @@
 # FFXIV Raid Planner - Comprehensive Codebase Audit
 
 **Date:** 2026-01-01
-**Last Verified:** 2026-01-09
+**Last Verified:** 2026-01-10
 **Quick Wins Fixed:** 2026-01-02
 **v1.0.1 Fixes:** 2026-01-09
+**v1.0.5 Fixes:** 2026-01-10
 **Auditor:** Principal Architect
 **Repository:** ffxiv-raid-planner
-**Status:** v1.0.1 Released
+**Status:** v1.0.5 Released
 
 ---
 
@@ -41,7 +42,7 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 - Accessible IconButton component with required aria-label
 
 **Areas for Improvement:**
-- Some components are too large and could be decomposed (GroupView.tsx)
+- ~~Some components are too large and could be decomposed (GroupView.tsx)~~ ✅ Fixed v1.0.5
 - Missing loading skeletons in Dashboard
 - Rate limiting not yet implemented
 
@@ -50,7 +51,7 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 | Priority | Total | Open | Fixed | Invalid |
 |----------|-------|------|-------|---------|
 | High | 8 | 0 | 7 | 1 |
-| Medium | 6 | 4 | 2 | 0 |
+| Medium | 6 | 3 | 3 | 0 |
 | Low | 5 | 3 | 2 | 0 |
 
 ---
@@ -61,8 +62,8 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 |--------|-------|
 | Frontend TypeScript/TSX Files | ~90 |
 | Backend Python Files | ~55 |
-| Test Files | 12 (6 backend + 6 frontend) |
-| Total Tests | 237 (95 backend + 142 frontend) |
+| Test Files | 16 (6 backend + 10 frontend) |
+| Total Tests | 380 (95 backend + 285 frontend) |
 | Lines of Code (Frontend) | ~14,000 |
 | Lines of Code (Backend) | ~5,500 |
 
@@ -88,7 +89,7 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 | ID | Issue | Status | Notes |
 |----|-------|--------|-------|
 | P-003 | Unbounded queries | **FIXED** | Pagination with limit=50, max=100 |
-| P-005 | Large GroupView | **OPEN** | 811 lines |
+| P-005 | Large GroupView | **FIXED** | Refactored to 788 lines with 6 extracted modules (v1.0.5) |
 | P-006 | Missing useMemo | **FIXED** | LootPriorityPanel uses useMemo |
 | U-001 | Missing skeletons | **OPEN** | Dashboard uses spinner |
 | S-001 | Token in localStorage | **OPEN** | XSS concern |
@@ -109,11 +110,6 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 ## Open Issues
 
 ### Medium Priority
-
-#### P-005: Large Component File
-- **Location:** `frontend/src/pages/GroupView.tsx` (811 lines)
-- **Issue:** GroupView handles too many concerns.
-- **Recommendation:** Extract PlayerGrid, ToolbarSection, TabContent components.
 
 #### U-001: Missing Skeleton Loaders
 - **Location:** `frontend/src/pages/Dashboard.tsx:354-357`
@@ -156,6 +152,15 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 ---
 
 ## Resolved Issues
+
+### P-005: Large Component File ✅ (v1.0.5)
+- **Resolution:** Refactored GroupView.tsx from 1468 → 788 lines (46% reduction) by extracting:
+  - `useGroupViewState` hook (343 lines) - URL params, localStorage sync, tab state
+  - `usePlayerActions` hook (210 lines) - Player CRUD operations
+  - `useGroupViewKeyboardShortcuts` hook (219 lines) - Keyboard shortcut configuration
+  - `useViewNavigation` hook (87 lines) - Cross-tab navigation helpers
+  - `PlayerGrid` component (250 lines) - Grid rendering with group view and subs
+  - `AdminBanners` component (69 lines) - Admin access and View As indicators
 
 ### P-001: N+1 Query Pattern in duplicateGroup ✅ (v1.0.1)
 - **Resolution:** Implemented bulk `POST /api/static-groups/{id}/duplicate` endpoint that:
@@ -220,4 +225,4 @@ All quick wins have been implemented ✅
 
 ---
 
-*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02, v1.0.1 updates 2026-01-09*
+*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02, v1.0.1 updates 2026-01-09, v1.0.5 updates 2026-01-10*
