@@ -92,6 +92,9 @@ export function Select({
   const effectivePlaceholder = emptyOption?.label || placeholder;
   const validOptions = options.filter(opt => opt.value !== '');
 
+  // Find the selected option to render its icon in the trigger
+  const selectedOption = validOptions.find(opt => opt.value === value);
+
   return (
     <SelectPrimitive.Root
       value={value}
@@ -115,9 +118,17 @@ export function Select({
           ${className}
         `}
       >
-        <SelectPrimitive.Value placeholder={effectivePlaceholder} />
+        {/* Custom value display with icon support */}
+        {selectedOption ? (
+          <span className="flex items-center gap-2 truncate">
+            {selectedOption.icon && <span className="flex-shrink-0">{selectedOption.icon}</span>}
+            <span className="truncate">{selectedOption.label}</span>
+          </span>
+        ) : (
+          <span className="text-text-muted">{effectivePlaceholder}</span>
+        )}
         <SelectPrimitive.Icon>
-          <ChevronDown className="w-4 h-4 text-text-muted" />
+          <ChevronDown className="w-4 h-4 text-text-muted flex-shrink-0" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
 
