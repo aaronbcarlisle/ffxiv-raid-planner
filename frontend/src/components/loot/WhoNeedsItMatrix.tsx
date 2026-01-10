@@ -12,7 +12,7 @@
 
 import { useMemo, useState } from 'react';
 import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import { FLOOR_LOOT_TABLES, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
@@ -168,7 +168,14 @@ export function WhoNeedsItMatrix({
             {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
               <tr key={slot} className="border-t border-border-default/50 hover:bg-surface-hover/30">
                 <td className="py-2 px-3 text-text-primary font-medium text-xs">
-                  {displayName}
+                  <div className="flex items-center gap-1.5">
+                    <img
+                      src={GEAR_SLOT_ICONS[slot === 'ring' ? 'ring1' : slot as GearSlot]}
+                      alt=""
+                      className="w-4 h-4 opacity-60"
+                    />
+                    <span>{displayName}</span>
+                  </div>
                 </td>
                 {sortedPlayers.map(player => {
                   const needs = playersWhoNeed.has(player.id);
