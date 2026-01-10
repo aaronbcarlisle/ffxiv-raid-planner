@@ -100,18 +100,38 @@ export function AddLootEntryModal({
     } else {
       // Add mode: use presets if provided, otherwise defaults
       setWeekNumber(currentWeek || 1);
-      setFloor(presetFloor || floors[0] || '');
-      if (presetSlot) {
-        setItemSlot(presetSlot);
+      const initialFloor = presetFloor || floors[0] || '';
+      setFloor(initialFloor);
+
+      // Determine initial slot
+      const floorNum = getFloorNumber(initialFloor);
+      const lootTable = FLOOR_LOOT_TABLES[floorNum];
+      const slots = lootTable?.gearDrops || [];
+      const initialSlot = presetSlot && slots.includes(presetSlot as GearSlot)
+        ? presetSlot
+        : slots[0] || '';
+      setItemSlot(initialSlot);
+
+      // Compute initial recipient based on priority
+      if (initialSlot) {
+        const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
+        const priorityEntries = initialSlot === 'ring1' || initialSlot === 'ring2'
+          ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+          : getPriorityForItem(eligiblePlayers, initialSlot as GearSlot, DEFAULT_SETTINGS);
+
+        if (priorityEntries.length > 0) {
+          setRecipientPlayerId(priorityEntries[0].player.id);
+        } else {
+          setRecipientPlayerId('');
+        }
       } else {
-        // Reset itemSlot if no preset - availableSlots effect will set it
-        setItemSlot('');
+        setRecipientPlayerId('');
       }
+
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
       setIncludeSubs(false);
-      // Note: recipientPlayerId is set by auto-selection effect
     }
   }, [isOpen, editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
