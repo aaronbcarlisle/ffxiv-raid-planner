@@ -34,7 +34,7 @@ import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculatio
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
-import type { SnapshotPlayer, GearSlot } from '../types';
+import type { SnapshotPlayer, GearSlot, SortPreset } from '../types';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
