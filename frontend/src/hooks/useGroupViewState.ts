@@ -179,13 +179,13 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       params.set('tab', urlTab);
       // Set or clear subtab depending on whether we're on the loot tab
       if (mode === 'loot') {
-        params.set('subtab', lootSubTabState);
+        params.set('subtab', lootSubTab);
       } else {
         params.delete('subtab');
       }
       return params;
     }, { replace: true });
-  }, [setSearchParams, lootSubTabState]);
+  }, [setSearchParams, lootSubTab]);
 
   // Wrapper to persist lootSubTab and update URL
   const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
