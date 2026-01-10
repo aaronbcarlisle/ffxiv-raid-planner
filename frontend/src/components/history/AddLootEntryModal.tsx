@@ -81,8 +81,10 @@ export function AddLootEntryModal({
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
 
-  // Reset form when editEntry or presets change
+  // Reset form when modal opens with new preset values or edit entry
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editEntry) {
       // Edit mode: use existing entry values
       setWeekNumber(editEntry.weekNumber);
@@ -101,13 +103,18 @@ export function AddLootEntryModal({
       setFloor(presetFloor || floors[0] || '');
       if (presetSlot) {
         setItemSlot(presetSlot);
+      } else {
+        // Reset itemSlot if no preset - availableSlots effect will set it
+        setItemSlot('');
       }
+      // Clear recipient - auto-selection effect will set it
+      setRecipientPlayerId('');
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
       setIncludeSubs(false);
     }
-  }, [editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
+  }, [isOpen, editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
   // Get available slots for selected floor
   const availableSlots = useMemo(() => {
@@ -211,10 +218,12 @@ export function AddLootEntryModal({
     return result;
   }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
 
-  // Auto-select top priority recipient when slot changes (add mode only)
+  // Auto-select top priority recipient when modal opens or slot changes (add mode only)
   useEffect(() => {
     // Skip auto-selection in edit mode - preserve the original recipient
     if (isEditMode) return;
+    // Don't run when modal is closed
+    if (!isOpen) return;
 
     // Use visibleRecipients for auto-selection to match what's shown in dropdown
     if (visibleRecipients.length > 0) {
@@ -224,7 +233,7 @@ export function AddLootEntryModal({
       // No visible recipients - clear selection
       setRecipientPlayerId('');
     }
-  }, [itemSlot, visibleRecipients, isEditMode]);
+  }, [itemSlot, visibleRecipients, isEditMode, isOpen, presetSlot]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
