@@ -5,7 +5,7 @@
  * Shows which players should receive weapons in what order.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
@@ -363,6 +363,22 @@ export function WeaponPriorityList({
     setExpandedSections(new Set());
   }, [setExpandedSections]);
 
+  // Listen for 'V' keyboard shortcut (dispatched as custom event from GroupView)
+  useEffect(() => {
+    const handleToggleExpandAll = () => {
+      if (expandedSections.size > 2) {
+        handleCollapseAll();
+      } else {
+        handleExpandAll();
+      }
+    };
+
+    window.addEventListener('loot:toggle-expand-all', handleToggleExpandAll);
+    return () => {
+      window.removeEventListener('loot:toggle-expand-all', handleToggleExpandAll);
+    };
+  }, [expandedSections.size, handleExpandAll, handleCollapseAll]);
+
   // Handler for individual section expand/collapse
   const handleSectionExpandChange = useCallback((sectionId: RoleSectionId, expanded: boolean) => {
     setExpandedSections(prev => {
@@ -438,7 +454,7 @@ export function WeaponPriorityList({
 
   // Group jobs by role section
   const jobsBySection = useMemo(() => {
-    const grouped = new Map<RoleSection, string[]>();
+    const grouped = new Map<RoleSectionId, string[]>();
 
     ROLE_SECTIONS.forEach(section => {
       const sectionJobs = Array.from(allJobs).filter(job => {

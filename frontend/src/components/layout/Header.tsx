@@ -13,7 +13,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
-import { SettingsPopover } from '../ui';
+import { SettingsPopover, TipsCarousel } from '../ui';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
 import type { MemberRole } from '../../types';
@@ -120,6 +120,7 @@ export function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         ),
+        shortcut: 'Alt+Shift+P',
         disabled: !currentTier || isSaving,
         tooltip: !currentTier ? 'Create a tier first' : isSaving ? 'Saving...' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ADD_PLAYER),
@@ -132,6 +133,7 @@ export function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         ),
+        shortcut: 'Alt+Shift+N',
         disabled: availableTiers.length === 0,
         tooltip: availableTiers.length === 0 ? 'All tiers have been created' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.NEW_TIER),
@@ -144,6 +146,7 @@ export function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         ),
+        shortcut: 'Alt+Shift+R',
         disabled: !currentTier || availableTiers.length === 0,
         tooltip: !currentTier ? 'Create a tier first' : availableTiers.length === 0 ? 'All tiers have been created' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ROLLOVER),
@@ -157,6 +160,7 @@ export function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         ),
+        shortcut: 'Alt+Shift+S',
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS),
       }] : []),
       {
@@ -236,6 +240,11 @@ export function Header() {
             </>
           )}
         </div>
+
+        {/* Center: Tips carousel (hidden on mobile, shown on group pages) */}
+        {isGroupRoute && currentGroup && (
+          <TipsCarousel className="hidden xl:flex flex-grow justify-center max-w-md" />
+        )}
 
         {/* Right side: Tier + Settings + Auth */}
         <div className="flex items-center gap-3">

@@ -21,6 +21,7 @@ export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { TextArea, type TextAreaProps } from './TextArea';
 export { ThreeStateCheckbox } from './ThreeStateCheckbox';
+export { TipsCarousel } from './TipsCarousel';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 export { ViewModeToggle } from './ViewModeToggle';

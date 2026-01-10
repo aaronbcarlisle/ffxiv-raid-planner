@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.3';
+export const CURRENT_VERSION = '1.0.5';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,127 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.5',
+    date: '2026-01-10',
+    title: 'Shortcuts & Polish',
+    highlights: ['Redesigned shortcuts', 'Shortcut hints in menus'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Redesigned keyboard shortcuts',
+        description: 'Browser-friendly shortcuts that never conflict with browser defaults',
+        details:
+          'Management shortcuts changed from Ctrl+P/T/R to Alt+Shift+P/N/R/S to avoid conflicts with browser Print, New Tab, and Refresh. Week navigation now uses Alt+Arrow instead of Ctrl+Arrow. All shortcuts now work reliably across Chrome, Firefox, and Safari.',
+      },
+      {
+        category: 'feature',
+        title: 'Shortcut hints in settings menu',
+        description: 'Keyboard shortcuts shown in the gear icon dropdown menu',
+        details:
+          'The settings gear menu now displays keyboard shortcuts next to each action (Add Player, New Tier, etc.). Makes shortcuts more discoverable without opening the help modal.',
+      },
+      {
+        category: 'improvement',
+        title: 'Readable shortcut notation',
+        description: 'Shortcuts shown as Ctrl+S instead of symbols like ⌃S',
+        details:
+          'All keyboard shortcuts throughout the app now use word notation (Ctrl+, Alt+, Shift+) instead of Mac-style symbols. More readable for all users regardless of platform.',
+      },
+      {
+        category: 'feature',
+        title: 'Tips carousel in header',
+        description: 'Rotating tips and tricks shown in the header bar',
+        details:
+          'A subtle tips carousel in the header shows helpful hints that cycle every 15 seconds. Tips are context-aware based on your current tab. Click to cycle faster, or dismiss permanently.',
+      },
+      {
+        category: 'fix',
+        title: 'V key works on Weapon Priorities',
+        description: 'Expand/collapse all now works on the Loot tab weapon priorities',
+        details:
+          'Pressing V on the Loot tab now properly toggles expand/collapse on the Weapon Priorities view. Previously only worked on Players and Log tabs.',
+      },
+      {
+        category: 'fix',
+        title: 'Week navigation keyboard shortcut',
+        description: 'Alt+Arrow now properly navigates weeks on Log tab',
+        details:
+          'Fixed the week navigation keyboard shortcuts on the Log tab. Alt+Left goes to previous week, Alt+Right to next week. Previously used Ctrl+Arrow which conflicted with browser cursor navigation.',
+      },
+    ],
+  },
+  {
+    version: '1.0.4',
+    date: '2026-01-10',
+    title: 'Design System & UX',
+    highlights: ['Cross-week navigation', 'Enhanced shortcuts'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Cross-week loot navigation',
+        description: 'Jump to loot entries in any week from player cards',
+        details:
+          'Clicking "Go to loot entry" from a player card now automatically switches to the correct week and highlights the entry. Previously required manually selecting the week first.',
+      },
+      {
+        category: 'feature',
+        title: 'Enhanced keyboard shortcuts',
+        description: 'New shortcuts for logging and navigation',
+        details:
+          'Alt+L opens Log Loot modal, Alt+M opens Log Material modal, Alt+B opens Mark Floor Cleared. Shift+S navigates to My Statics. Shift+? shows keyboard shortcuts help. All shortcuts shown in menus and tooltips.',
+      },
+      {
+        category: 'feature',
+        title: 'Shift+Click to copy links',
+        description: 'Quick link copying from player cards and loot entries',
+        details:
+          'Shift+Click on player cards or loot entries in the grid view to instantly copy a shareable link. Faster than right-click > Copy URL for power users.',
+      },
+      {
+        category: 'feature',
+        title: 'Keyboard Shortcuts in User menu',
+        description: 'Quick access to shortcuts help from user dropdown',
+        details:
+          'New "Keyboard Shortcuts" item in the user dropdown menu with "?" hotkey hint. Opens the same help modal as pressing Shift+?.',
+      },
+      {
+        category: 'improvement',
+        title: 'Hotkey hints in UI',
+        description: 'Keyboard shortcuts shown in tooltips and menus',
+        details:
+          'Action buttons (Log Loot, Log Material, Mark Floor Cleared) now show their hotkey in tooltips. My Statics menu item shows Shift+S hint. Improved discoverability for power users.',
+      },
+      {
+        category: 'improvement',
+        title: 'GearTable UI improvements',
+        description: 'Cleaner gear table with better visual hierarchy',
+        details:
+          'Removed cramped Item name column for better small-screen support. CurrentSource column hidden by default (available in code for future use). BiS source toggle converted to compact button.',
+      },
+      {
+        category: 'improvement',
+        title: 'BiS Import modal enhancements',
+        description: 'Job and gear icons in import modal',
+        details:
+          'BiS Import modal now shows job icons in preset list and gear slot icons when previewing imported sets. Easier to verify you\'re importing the right configuration.',
+      },
+      {
+        category: 'fix',
+        title: 'Week switching visual bug',
+        description: 'Loot entries now appear immediately when navigating across weeks',
+        details:
+          'Fixed bug where loot entries wouldn\'t appear after jumping to a different week via player card navigation. Required refresh or manual week toggle before. Now updates instantly.',
+      },
+      {
+        category: 'fix',
+        title: 'Job change confirmation',
+        description: 'Proper confirmation when changing player job',
+        details:
+          'Changing a player\'s job now shows a confirmation dialog warning about gear reset. Player card highlights briefly after job change to confirm the update.',
+      },
+    ],
+  },
   {
     version: '1.0.3',
     date: '2026-01-09',

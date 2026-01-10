@@ -13,26 +13,57 @@ interface ShortcutGroup {
 
 const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
-    title: 'Navigation',
+    title: 'Tab Navigation',
     shortcuts: [
-      { key: '1', description: 'Go to Players tab' },
-      { key: '2', description: 'Go to Loot tab' },
-      { key: '3', description: 'Go to Log tab' },
-      { key: '4', description: 'Go to Summary tab' },
+      { key: '1-4', description: 'Switch main tabs' },
+      { key: 'Alt+1-3', description: 'Switch sub tabs (Loot/Log)' },
+      { key: 'Shift+S', description: 'Go to My Statics' },
     ],
   },
   {
-    title: 'View Controls (Players tab only)',
+    title: 'Static/Tier Navigation',
     shortcuts: [
-      { key: 'v', description: 'Toggle compact/expanded view' },
-      { key: 'g', description: 'Toggle G1/G2 group view' },
-      { key: 's', description: 'Toggle substitutes section' },
+      { key: 'Ctrl+[  Ctrl+]', description: 'Previous/next static' },
+      { key: 'Alt+[  Alt+]', description: 'Previous/next tier' },
+    ],
+  },
+  {
+    title: 'View Controls',
+    shortcuts: [
+      { key: 'V', description: 'Expand/collapse (all tabs)' },
+      { key: 'G', description: 'G1/G2 view (Players) / Grid/List (Log)' },
+      { key: 'S', description: 'Toggle substitutes (Players)' },
+      { key: 'Alt+←  Alt+→', description: 'Previous/next week (Log)' },
+    ],
+  },
+  {
+    title: 'Management',
+    shortcuts: [
+      { key: 'Alt+Shift+P', description: 'Add Player' },
+      { key: 'Alt+Shift+N', description: 'New Tier' },
+      { key: 'Alt+Shift+R', description: 'Copy to New Tier' },
+      { key: 'Alt+Shift+S', description: 'Static Settings' },
+    ],
+  },
+  {
+    title: 'Quick Actions',
+    shortcuts: [
+      { key: 'Alt+L', description: 'Log Loot' },
+      { key: 'Alt+M', description: 'Log Material' },
+      { key: 'Alt+B', description: 'Mark Floor Cleared' },
+    ],
+  },
+  {
+    title: 'Mouse Shortcuts',
+    shortcuts: [
+      { key: 'Shift+Click', description: 'Copy link to clipboard' },
+      { key: 'Alt+Click', description: 'Navigate to related item' },
     ],
   },
   {
     title: 'General',
     shortcuts: [
-      { key: '?', description: 'Show this help' },
+      { key: 'Shift+?', description: 'Show this help' },
       { key: 'Esc', description: 'Close modal' },
     ],
   },

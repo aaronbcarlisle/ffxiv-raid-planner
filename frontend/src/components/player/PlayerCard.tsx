@@ -411,12 +411,25 @@ export const PlayerCard = memo(function PlayerCard({
     onReleasePlayer,
   ]);
 
+  // Handle Shift+Click to copy URL
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.shiftKey && onCopyUrl) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Clear any text selection caused by Shift+Click
+      window.getSelection()?.removeAllRanges();
+      onCopyUrl();
+    }
+  };
+
   return (
     <div
       id={`player-card-${player.id}`}
       className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
+      onClick={handleCardClick}
+      title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
     >
       {/* Context Menu */}
       {contextMenu && (

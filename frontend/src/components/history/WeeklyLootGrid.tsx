@@ -431,6 +431,13 @@ export function WeeklyLootGrid({
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
                       className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={(e) => {
+                        // Shift+Click copies entry URL
+                        if (e.shiftKey && lootEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                          window.getSelection()?.removeAllRanges();
+                          onCopyEntryUrl(lootEntry.id, 'loot');
+                          return;
+                        }
                         // Alt+Click navigates to player
                         if (e.altKey && lootEntry && onNavigateToPlayer) {
                           e.preventDefault();
@@ -458,7 +465,7 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={lootEntry && onNavigateToPlayer ? 'Alt+Click to go to player' : undefined}
+                      title={lootEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -480,6 +487,13 @@ export function WeeklyLootGrid({
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
                       className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onClick={(e) => {
+                        // Shift+Click copies entry URL
+                        if (e.shiftKey && matEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                          window.getSelection()?.removeAllRanges();
+                          onCopyEntryUrl(matEntry.id, 'material');
+                          return;
+                        }
                         // Alt+Click navigates to player
                         if (e.altKey && matEntry && onNavigateToPlayer) {
                           e.preventDefault();
@@ -507,7 +521,7 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={matEntry && onNavigateToPlayer ? 'Alt+Click to go to player' : undefined}
+                      title={matEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"

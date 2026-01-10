@@ -22,6 +22,7 @@ interface PopoverAction {
   danger?: boolean;
   disabled?: boolean;
   tooltip?: string;
+  shortcut?: string;
   onClick: () => void;
 }
 
@@ -75,6 +76,11 @@ export function SettingsPopover({ actions }: SettingsPopoverProps) {
                 <span className="text-xs px-1.5 py-0.5 rounded bg-surface-interactive text-text-muted">
                   {action.badge}
                 </span>
+              )}
+              {action.shortcut && (
+                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">
+                  {action.shortcut}
+                </kbd>
               )}
             </DropdownItem>
           </div>

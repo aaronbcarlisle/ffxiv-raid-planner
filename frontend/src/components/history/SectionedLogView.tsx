@@ -61,6 +61,15 @@ interface SectionedLogViewProps {
   highlightedEntryId?: string | null;
   /** External highlighted entry type */
   highlightedEntryType?: 'loot' | 'material' | null;
+  /** Open Log Loot modal (from keyboard shortcut) */
+  openLogLootModal?: boolean;
+  onLogLootModalClose?: () => void;
+  /** Open Log Material modal (from keyboard shortcut) */
+  openLogMaterialModal?: boolean;
+  onLogMaterialModalClose?: () => void;
+  /** Open Mark Floor Cleared modal (from keyboard shortcut) */
+  openMarkFloorClearedModal?: boolean;
+  onMarkFloorClearedModalClose?: () => void;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -81,11 +90,18 @@ export function SectionedLogView({
   onNavigateToPlayer,
   highlightedEntryId: externalHighlightedEntryId,
   highlightedEntryType: externalHighlightedEntryType,
+  openLogLootModal,
+  onLogLootModalClose,
+  openLogMaterialModal,
+  onLogMaterialModalClose,
+  openMarkFloorClearedModal,
+  onMarkFloorClearedModalClose,
 }: SectionedLogViewProps) {
   const {
     lootLog,
     materialLog,
     pageBalances,
+    maxWeek,
     fetchLootLog,
     fetchMaterialLog,
     fetchPageBalances,
@@ -97,6 +113,29 @@ export function SectionedLogView({
   const [showLootModal, setShowLootModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFloorClearedModal, setShowFloorClearedModal] = useState(false);
+
+  // Sync external modal state (from keyboard shortcuts) with internal state
+  useEffect(() => {
+    if (openLogLootModal && !showLootModal) {
+      setShowLootModal(true);
+      setGridModalState(null);
+      setEntryToEdit(undefined);
+    }
+  }, [openLogLootModal, showLootModal]);
+
+  useEffect(() => {
+    if (openLogMaterialModal && !showMaterialModal) {
+      setShowMaterialModal(true);
+      setGridModalState(null);
+      setMaterialEntryToEdit(undefined);
+    }
+  }, [openLogMaterialModal, showMaterialModal]);
+
+  useEffect(() => {
+    if (openMarkFloorClearedModal && !showFloorClearedModal) {
+      setShowFloorClearedModal(true);
+    }
+  }, [openMarkFloorClearedModal, showFloorClearedModal]);
   const [bookViewMode, setBookViewMode] = useState<'week' | 'allTime'>('allTime');
   const [editBookState, setEditBookState] = useState<{
     playerId: string;
@@ -120,11 +159,12 @@ export function SectionedLogView({
     onConfirm: () => Promise<void>;
   } | null>(null);
 
-  // Fetch loot and material data on mount and week change
+  // Fetch loot and material data on mount (no week filter - get all data for client-side filtering)
+  // This allows cross-week navigation and better performance with client-side filtering
   useEffect(() => {
-    fetchLootLog(groupId, tierId, currentWeek);
-    fetchMaterialLog(groupId, tierId, currentWeek);
-  }, [groupId, tierId, currentWeek, fetchLootLog, fetchMaterialLog]);
+    fetchLootLog(groupId, tierId);
+    fetchMaterialLog(groupId, tierId);
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog]);
 
   // Fetch page balances based on view mode (week-specific or all-time)
   useEffect(() => {
@@ -153,7 +193,7 @@ export function SectionedLogView({
       updateWeaponPriority: entry.itemSlot === 'weapon' && options.updateGear,
     });
     onWeekChange?.(entry.weekNumber);
-    await fetchLootLog(groupId, tierId, entry.weekNumber);
+    await fetchLootLog(groupId, tierId);
     // Refresh week data types to update week selector (may add new weeks)
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Loot entry logged');
@@ -163,9 +203,9 @@ export function SectionedLogView({
     if (!entryToEdit) return;
     // Use updateLootAndSyncGear to properly update player gear when recipient changes
     await updateLootAndSyncGear(groupId, tierId, entryToEdit.id, entryToEdit, updates, { syncGear: true });
-    await fetchLootLog(groupId, tierId, currentWeek);
+    await fetchLootLog(groupId, tierId);
     toast.success('Loot entry updated');
-  }, [groupId, tierId, currentWeek, entryToEdit, fetchLootLog]);
+  }, [groupId, tierId, entryToEdit, fetchLootLog]);
 
   const handleDeleteLoot = useCallback((entry: LootLogEntry) => {
     setConfirmState({
@@ -174,13 +214,13 @@ export function SectionedLogView({
       message: `Delete the ${GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot} drop?`,
       onConfirm: async () => {
         await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        await fetchLootLog(groupId, tierId, currentWeek);
+        await fetchLootLog(groupId, tierId);
         await fetchWeekDataTypes(groupId, tierId);
         toast.success('Loot entry deleted');
         setConfirmState(null);
       },
     });
-  }, [groupId, tierId, currentWeek, fetchLootLog, fetchWeekDataTypes]);
+  }, [groupId, tierId, fetchLootLog, fetchWeekDataTypes]);
 
   const handleDeleteMaterial = useCallback((entryId: number) => {
     setConfirmState({
@@ -189,13 +229,13 @@ export function SectionedLogView({
       message: 'Delete this material entry?',
       onConfirm: async () => {
         await deleteMaterialEntry(groupId, tierId, entryId);
-        await fetchMaterialLog(groupId, tierId, currentWeek);
+        await fetchMaterialLog(groupId, tierId);
         await fetchWeekDataTypes(groupId, tierId);
         toast.success('Material entry deleted');
         setConfirmState(null);
       },
     });
-  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
+  }, [groupId, tierId, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
 
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
@@ -207,7 +247,7 @@ export function SectionedLogView({
     const { createMaterialEntry } = useLootTrackingStore.getState();
     await createMaterialEntry(groupId, tierId, data);
     onWeekChange?.(data.weekNumber);
-    await fetchMaterialLog(groupId, tierId, data.weekNumber);
+    await fetchMaterialLog(groupId, tierId);
     // Refresh week data types to update week selector (may add new weeks)
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry logged');
@@ -217,9 +257,9 @@ export function SectionedLogView({
     if (!materialEntryToEdit) return;
     const { updateMaterialEntry } = useLootTrackingStore.getState();
     await updateMaterialEntry(groupId, tierId, materialEntryToEdit.id, updates);
-    await fetchMaterialLog(groupId, tierId, currentWeek);
+    await fetchMaterialLog(groupId, tierId);
     toast.success('Material entry updated');
-  }, [groupId, tierId, currentWeek, materialEntryToEdit, fetchMaterialLog]);
+  }, [groupId, tierId, materialEntryToEdit, fetchMaterialLog]);
 
   // Get the week parameter for fetching page balances based on view mode
   const getBalanceWeekParam = useCallback(() => {
@@ -289,8 +329,8 @@ export function SectionedLogView({
 
       // Refresh all data
       await Promise.all([
-        fetchLootLog(groupId, tierId, currentWeek),
-        fetchMaterialLog(groupId, tierId, currentWeek),
+        fetchLootLog(groupId, tierId),
+        fetchMaterialLog(groupId, tierId),
         fetchPageBalances(groupId, tierId, getBalanceWeekParam()),
         fetchWeekDataTypes(groupId, tierId),
       ]);
@@ -303,7 +343,7 @@ export function SectionedLogView({
     } finally {
       setResetModalType(null);
     }
-  }, [resetModalType, groupId, tierId, currentWeek, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
+  }, [resetModalType, groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
 
   // URL params for deep linking
@@ -527,6 +567,48 @@ export function SectionedLogView({
 
   // Counter to force fresh modal mount when opening from grid
   const [lootModalKey, setLootModalKey] = useState(0);
+
+  // Keyboard shortcut event listeners
+  useEffect(() => {
+    const handleSetView = (e: CustomEvent<'byFloor' | 'chronological'>) => {
+      setLootViewMode(e.detail);
+    };
+    const handleToggleExpandAll = () => {
+      // If all are expanded, collapse all; otherwise expand all
+      if (expandedFloors.size === 4) {
+        handleCollapseAllFloors();
+      } else {
+        handleExpandAllFloors();
+      }
+    };
+    const handleToggleLayout = () => {
+      handleLayoutModeChange(layoutMode === 'grid' ? 'split' : 'grid');
+    };
+    const handlePrevWeek = () => {
+      if (currentWeek > 1) {
+        onWeekChange?.(currentWeek - 1);
+      }
+    };
+    const handleNextWeek = () => {
+      if (currentWeek < maxWeek) {
+        onWeekChange?.(currentWeek + 1);
+      }
+    };
+
+    window.addEventListener('log:set-view', handleSetView as EventListener);
+    window.addEventListener('log:toggle-expand-all', handleToggleExpandAll);
+    window.addEventListener('log:toggle-layout', handleToggleLayout);
+    window.addEventListener('log:prev-week', handlePrevWeek);
+    window.addEventListener('log:next-week', handleNextWeek);
+
+    return () => {
+      window.removeEventListener('log:set-view', handleSetView as EventListener);
+      window.removeEventListener('log:toggle-expand-all', handleToggleExpandAll);
+      window.removeEventListener('log:toggle-layout', handleToggleLayout);
+      window.removeEventListener('log:prev-week', handlePrevWeek);
+      window.removeEventListener('log:next-week', handleNextWeek);
+    };
+  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange]);
 
   // Context menu state for list view entries
   const [listContextMenu, setListContextMenu] = useState<{
@@ -926,12 +1008,14 @@ export function SectionedLogView({
             <Button
               size="sm"
               onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
+              title="Log loot drop (Alt+L)"
             >
               + Log Loot
             </Button>
             <Button
               size="sm"
               onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
+              title="Log material drop (Alt+M)"
             >
               + Log Material
             </Button>
@@ -1178,6 +1262,7 @@ export function SectionedLogView({
                     <button
                       onClick={() => setShowFloorClearedModal(true)}
                       className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                      title="Award books to party (Alt+B)"
                     >
                       Mark Floor Cleared
                     </button>
@@ -1197,7 +1282,7 @@ export function SectionedLogView({
         <AddLootEntryModal
           key={lootModalKey}
           isOpen={showLootModal}
-          onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); }}
+          onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); onLogLootModalClose?.(); }}
           onSubmit={handleAddLoot}
           onUpdate={handleUpdateLoot}
           players={players}
@@ -1212,7 +1297,7 @@ export function SectionedLogView({
       {showMaterialModal && (
         <LogMaterialModal
           isOpen={showMaterialModal}
-          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); }}
+          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}
           onSubmit={handleMaterialSubmit}
           onUpdate={handleUpdateMaterial}
           players={players}
@@ -1227,7 +1312,7 @@ export function SectionedLogView({
       {showFloorClearedModal && (
         <MarkFloorClearedModal
           isOpen={showFloorClearedModal}
-          onClose={() => setShowFloorClearedModal(false)}
+          onClose={() => { setShowFloorClearedModal(false); onMarkFloorClearedModalClose?.(); }}
           onSubmit={handleMarkFloorCleared}
           players={players}
           floors={floors}

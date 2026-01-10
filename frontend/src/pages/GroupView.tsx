@@ -42,7 +42,7 @@ export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentGroup, isLoading: groupLoading, error: groupError, fetchGroupByShareCode } = useStaticGroupStore();
+  const { currentGroup, groups, isLoading: groupLoading, error: groupError, fetchGroupByShareCode } = useStaticGroupStore();
   const {
     tiers,
     currentTier,
@@ -96,6 +96,11 @@ export function GroupView() {
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+
+  // Global log modal states (controlled from keyboard shortcuts)
+  const [showLogLootModal, setShowLogLootModal] = useState(false);
+  const [showLogMaterialModal, setShowLogMaterialModal] = useState(false);
+  const [showMarkFloorClearedModal, setShowMarkFloorClearedModal] = useState(false);
 
   // Tab state: URL param > localStorage > default
   // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
@@ -452,12 +457,14 @@ export function GroupView() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
-  // Initialize loot tracking store when Loot tab is active
+  // Initialize loot tracking store when Loot or Players tab is active
+  // (Players tab needs loot log for gear slot → loot entry navigation)
   const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
   useEffect(() => {
-    if (pageMode === 'loot' && currentGroup?.id && currentTier?.tierId) {
+    if ((pageMode === 'loot' || pageMode === 'players') && currentGroup?.id && currentTier?.tierId) {
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
       // Fetch all loot log entries (no week filter) for enhanced priority calculation
+      // and for gear slot → loot entry navigation on Players tab
       fetchLootLog(currentGroup.id, currentTier.tierId);
       // Fetch all material log entries for material priority calculation
       fetchMaterialLog(currentGroup.id, currentTier.tierId);
@@ -664,12 +671,17 @@ export function GroupView() {
       setShowDeleteTierConfirm(true);
     };
 
+    const handleShowKeyboardShortcuts = () => {
+      setShowKeyboardHelp(true);
+    };
+
     window.addEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
     window.addEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
     window.addEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
     window.addEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
     window.addEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
     window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
+    window.addEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
 
     return () => {
       window.removeEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
@@ -678,6 +690,7 @@ export function GroupView() {
       window.removeEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
       window.removeEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
       window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
+      window.removeEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
     };
   }, [handleTierChange, handleAddPlayer]);
 
@@ -745,35 +758,148 @@ export function GroupView() {
   // Check if any modal is open (page-level or player-level)
   const isAnyModalOpen = showSettingsModal || showRolloverDialog ||
                           showDeleteTierConfirm || showCreateTierModal ||
-                          showKeyboardHelp || playerModalCount > 0;
+                          showKeyboardHelp || showLogLootModal ||
+                          showLogMaterialModal || showMarkFloorClearedModal ||
+                          playerModalCount > 0;
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
     disabled: isAnyModalOpen,
     shortcuts: [
-      { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
+      // ===== Main tab navigation (1-4) =====
       { key: '1', description: 'Players tab', action: () => setPageMode('players') },
       { key: '2', description: 'Loot tab', action: () => setPageMode('loot') },
       { key: '3', description: 'Log tab', action: () => setPageMode('history') },
       { key: '4', description: 'Summary tab', action: () => setPageMode('stats') },
-      { key: 'v', description: 'Toggle view mode', action: () => {
-        // Only toggle view mode on players tab
+
+      // ===== Sub tabs (Alt+1-3) =====
+      // Loot: Matrix (Who Needs It), Gear Priority, Weapon Priority
+      { key: '1', description: 'Sub tab 1', action: () => {
+        if (pageMode === 'loot') setLootSubTab('matrix');
+        if (pageMode === 'history') window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'byFloor' }));
+      }, requireAlt: true },
+      { key: '2', description: 'Sub tab 2', action: () => {
+        if (pageMode === 'loot') setLootSubTab('gear');
+        if (pageMode === 'history') window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'chronological' }));
+      }, requireAlt: true },
+      { key: '3', description: 'Sub tab 3', action: () => {
+        if (pageMode === 'loot') setLootSubTab('weapon');
+      }, requireAlt: true },
+
+      // ===== View controls =====
+      { key: 'v', description: 'Toggle expand/collapse', action: () => {
         if (pageMode === 'players') {
           setViewMode(viewMode === 'compact' ? 'expanded' : 'compact');
         }
+        // Expand/collapse all on Log tab
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:toggle-expand-all'));
+        }
+        // Expand/collapse on Loot tab (weapon priorities)
+        if (pageMode === 'loot') {
+          window.dispatchEvent(new CustomEvent('loot:toggle-expand-all'));
+        }
       }},
-      { key: 'g', description: 'Toggle group view', action: () => {
-        // Only toggle group view on players tab
+      { key: 'g', description: 'Toggle group/grid view', action: () => {
         if (pageMode === 'players') {
           setGroupView(!groupView);
         }
+        // Toggle grid/list on Log tab
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:toggle-layout'));
+        }
       }},
       { key: 's', description: 'Toggle substitutes', action: () => {
-        // Only toggle subs on players tab if there are subs
         if (pageMode === 'players' && hasSubstitutes) {
           setSubsView(!subsView);
         }
       }},
+
+      // ===== Week navigation (Alt+Arrow) =====
+      { key: 'ArrowLeft', description: 'Previous week', action: () => {
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:prev-week'));
+        }
+      }, requireAlt: true },
+      { key: 'ArrowRight', description: 'Next week', action: () => {
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:next-week'));
+        }
+      }, requireAlt: true },
+
+      // ===== Quick actions (Alt+letter) =====
+      { key: 'l', description: 'Log Loot', action: () => {
+        if (canEdit) {
+          setPageMode('history');
+          setShowLogLootModal(true);
+        }
+      }, requireAlt: true },
+      { key: 'm', description: 'Log Material', action: () => {
+        if (canEdit) {
+          setPageMode('history');
+          setShowLogMaterialModal(true);
+        }
+      }, requireAlt: true },
+      { key: 'b', description: 'Mark Floor Cleared', action: () => {
+        if (canEdit) {
+          setPageMode('history');
+          setShowMarkFloorClearedModal(true);
+        }
+      }, requireAlt: true },
+
+      // ===== Navigation (Shift modifiers) =====
+      { key: 's', description: 'My Statics', action: () => navigate('/'), requireShift: true },
+      { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
+
+      // ===== Static/Tier navigation (brackets) =====
+      { key: '[', description: 'Previous static', action: () => {
+        const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
+        if (currentIndex > 0) {
+          navigate(`/group/${groups[currentIndex - 1].shareCode}`);
+        }
+      }, requireMod: true },
+      { key: ']', description: 'Next static', action: () => {
+        const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
+        if (currentIndex >= 0 && currentIndex < groups.length - 1) {
+          navigate(`/group/${groups[currentIndex + 1].shareCode}`);
+        }
+      }, requireMod: true },
+      { key: '[', description: 'Previous tier', action: () => {
+        const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
+        if (currentIndex > 0) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex - 1].tierId } }));
+        }
+      }, requireAlt: true },
+      { key: ']', description: 'Next tier', action: () => {
+        const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
+        if (currentIndex >= 0 && currentIndex < tiers.length - 1) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex + 1].tierId } }));
+        }
+      }, requireAlt: true },
+
+      // ===== Management actions (Alt+Shift) =====
+      { key: 'p', description: 'Add Player', action: () => {
+        if (canEdit && pageMode === 'players' && currentTier) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ADD_PLAYER));
+        }
+      }, requireAlt: true, requireShift: true },
+      { key: 'n', description: 'New Tier', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.NEW_TIER));
+        }
+      }, requireAlt: true, requireShift: true },
+      { key: 'r', description: 'Copy to New Tier', action: () => {
+        if (canEdit && currentTier) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ROLLOVER));
+        }
+      }, requireAlt: true, requireShift: true },
+      { key: 's', description: 'Static Settings', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS));
+        }
+      }, requireAlt: true, requireShift: true },
+
+      // ===== Escape =====
       { key: 'Escape', description: 'Close/clear', action: () => {
         setShowKeyboardHelp(false);
         setEditingPlayerId(null);
@@ -810,8 +936,8 @@ export function GroupView() {
     }, 2500);
   }, [setPageMode]);
 
-  // Highlighted entry for navigating to loot log
-  const [highlightedEntry, setHighlightedEntry] = useState<{ id: string; type: 'loot' | 'material' } | null>(null);
+  // Highlighted entry for navigating to loot log (includes week for cross-week navigation)
+  const [highlightedEntry, setHighlightedEntry] = useState<{ id: string; type: 'loot' | 'material'; week: number } | null>(null);
 
   // Navigate to loot entry from player card (gear slot → loot entry)
   const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {
@@ -823,15 +949,15 @@ export function GroupView() {
     }
     // Switch to history (Log) tab
     setPageMode('history');
-    // Set highlighted entry
-    setHighlightedEntry({ id: String(entry.id), type: 'loot' });
-    // Scroll to entry after short delay to allow tab change render
+    // Set highlighted entry with week for cross-week navigation
+    setHighlightedEntry({ id: String(entry.id), type: 'loot', week: entry.weekNumber });
+    // Scroll to entry after short delay to allow tab change and week switch
     setTimeout(() => {
       const element = document.getElementById(`loot-entry-${entry.id}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 100);
+    }, 200); // Slightly longer delay to allow week switch
     // Clear highlight after animation completes
     setTimeout(() => {
       setHighlightedEntry(null);
@@ -1281,6 +1407,13 @@ export function GroupView() {
               onNavigateToPlayer={handleNavigateToPlayer}
               highlightedEntryId={highlightedEntry?.id}
               highlightedEntryType={highlightedEntry?.type}
+              targetWeek={highlightedEntry?.week}
+              openLogLootModal={showLogLootModal}
+              onLogLootModalClose={() => setShowLogLootModal(false)}
+              openLogMaterialModal={showLogMaterialModal}
+              onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
+              openMarkFloorClearedModal={showMarkFloorClearedModal}
+              onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
             />
           )}
         </>

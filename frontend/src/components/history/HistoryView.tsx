@@ -21,6 +21,17 @@ interface HistoryViewProps {
   onNavigateToPlayer?: (playerId: string) => void;
   highlightedEntryId?: string | null;
   highlightedEntryType?: 'loot' | 'material' | null;
+  /** Target week for navigation (switches to this week when set) */
+  targetWeek?: number | null;
+  /** Open Log Loot modal (from keyboard shortcut) */
+  openLogLootModal?: boolean;
+  onLogLootModalClose?: () => void;
+  /** Open Log Material modal (from keyboard shortcut) */
+  openLogMaterialModal?: boolean;
+  onLogMaterialModalClose?: () => void;
+  /** Open Mark Floor Cleared modal (from keyboard shortcut) */
+  openMarkFloorClearedModal?: boolean;
+  onMarkFloorClearedModalClose?: () => void;
 }
 
 export function HistoryView({
@@ -33,6 +44,13 @@ export function HistoryView({
   onNavigateToPlayer,
   highlightedEntryId,
   highlightedEntryType,
+  targetWeek,
+  openLogLootModal,
+  onLogLootModalClose,
+  openLogMaterialModal,
+  onLogMaterialModalClose,
+  openMarkFloorClearedModal,
+  onMarkFloorClearedModalClose,
 }: HistoryViewProps) {
   const {
     currentWeek,
@@ -84,6 +102,13 @@ export function HistoryView({
     }
   }, [currentWeek, weekStorageKey, setSelectedWeek]);
 
+  // Switch to target week when navigation occurs (from gear slot → loot entry)
+  useEffect(() => {
+    if (targetWeek != null && targetWeek !== selectedWeek) {
+      setSelectedWeek(targetWeek);
+    }
+  }, [targetWeek, selectedWeek, setSelectedWeek]);
+
   const handleWeekChange = (week: number) => {
     setSelectedWeek(week);
   };
@@ -117,6 +142,12 @@ export function HistoryView({
         onNavigateToPlayer={onNavigateToPlayer}
         highlightedEntryId={highlightedEntryId}
         highlightedEntryType={highlightedEntryType}
+        openLogLootModal={openLogLootModal}
+        onLogLootModalClose={onLogLootModalClose}
+        openLogMaterialModal={openLogMaterialModal}
+        onLogMaterialModalClose={onLogMaterialModalClose}
+        openMarkFloorClearedModal={openMarkFloorClearedModal}
+        onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
       />
     </div>
   );
