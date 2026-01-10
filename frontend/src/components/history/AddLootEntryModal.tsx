@@ -107,12 +107,11 @@ export function AddLootEntryModal({
         // Reset itemSlot if no preset - availableSlots effect will set it
         setItemSlot('');
       }
-      // Clear recipient - auto-selection effect will set it
-      setRecipientPlayerId('');
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
       setIncludeSubs(false);
+      // Note: recipientPlayerId is set by auto-selection effect
     }
   }, [isOpen, editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
@@ -218,12 +217,11 @@ export function AddLootEntryModal({
     return result;
   }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
 
-  // Auto-select top priority recipient when modal opens or slot changes (add mode only)
+  // Auto-select top priority recipient when slot changes (add mode only)
+  // Matches LogMaterialModal's pattern for consistency
   useEffect(() => {
     // Skip auto-selection in edit mode - preserve the original recipient
-    if (isEditMode) return;
-    // Don't run when modal is closed
-    if (!isOpen) return;
+    if (editEntry) return;
 
     // Use visibleRecipients for auto-selection to match what's shown in dropdown
     if (visibleRecipients.length > 0) {
@@ -233,7 +231,7 @@ export function AddLootEntryModal({
       // No visible recipients - clear selection
       setRecipientPlayerId('');
     }
-  }, [itemSlot, visibleRecipients, isEditMode, isOpen, presetSlot]);
+  }, [itemSlot, visibleRecipients, editEntry]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
