@@ -456,6 +456,31 @@ export function SectionedLogView({
     });
   }, []);
 
+  // Track expanded state for each floor section
+  const [expandedFloors, setExpandedFloors] = useState<Set<FloorNumber>>(new Set([1, 2, 3, 4]));
+
+  // Handlers for expand/collapse all floor sections
+  const handleExpandAllFloors = useCallback(() => {
+    setExpandedFloors(new Set([1, 2, 3, 4]));
+  }, []);
+
+  const handleCollapseAllFloors = useCallback(() => {
+    setExpandedFloors(new Set());
+  }, []);
+
+  // Handler for individual floor expand/collapse
+  const handleFloorExpandChange = useCallback((floor: FloorNumber, expanded: boolean) => {
+    setExpandedFloors(prev => {
+      const next = new Set(prev);
+      if (expanded) {
+        next.add(floor);
+      } else {
+        next.delete(floor);
+      }
+      return next;
+    });
+  }, []);
+
   // State for grid view pre-filled modal
   const [gridModalState, setGridModalState] = useState<{
     type: 'loot' | 'material';
@@ -616,14 +641,31 @@ export function SectionedLogView({
                 {formatDate(entry.createdAt)}
               </div>
             </div>
-            {canEdit && (
+            <div className="flex items-center gap-3 ml-4">
               <button
-                onClick={() => handleDeleteMaterial(entry.id)}
-                className="text-status-error hover:text-status-error/80 text-sm ml-4"
+                onClick={() => handleCopyEntryUrl(String(entry.id), 'material')}
+                className="text-text-muted hover:text-accent text-sm"
+                title="Copy link to this entry"
               >
-                Delete
+                Copy URL
               </button>
-            )}
+              {canEdit && (
+                <>
+                  <button
+                    onClick={() => { setMaterialEntryToEdit(entry); setShowMaterialModal(true); }}
+                    className="text-text-muted hover:text-accent text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMaterial(entry.id)}
+                    className="text-status-error hover:text-status-error/80 text-sm"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -947,6 +989,10 @@ export function SectionedLogView({
                         floor={floorNum}
                         floorName={floorName}
                         entryCount={floorEntries.length}
+                        expanded={expandedFloors.has(floorNum)}
+                        onExpandChange={(expanded) => handleFloorExpandChange(floorNum, expanded)}
+                        onExpandAll={handleExpandAllFloors}
+                        onCollapseAll={handleCollapseAllFloors}
                       >
                         {floorEntries.map(entry => renderEntry(entry))}
                       </FloorSection>

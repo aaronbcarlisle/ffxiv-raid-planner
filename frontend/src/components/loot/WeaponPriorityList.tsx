@@ -298,9 +298,9 @@ function WeaponPriorityCard({
 }
 
 // Role section configuration - separate physical ranged and magical ranged (caster)
-type RoleSection = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+type RoleSectionId = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 
-const ROLE_SECTIONS: { id: RoleSection; label: string; roles: string[]; textColor: string; bgColor: string; borderColor: string }[] = [
+const ROLE_SECTIONS: { id: RoleSectionId; label: string; roles: string[]; textColor: string; bgColor: string; borderColor: string }[] = [
   { id: 'tank', label: 'Tanks', roles: ['tank'], textColor: 'text-role-tank', bgColor: 'bg-role-tank', borderColor: 'border-role-tank' },
   { id: 'healer', label: 'Healers', roles: ['healer'], textColor: 'text-role-healer', bgColor: 'bg-role-healer', borderColor: 'border-role-healer' },
   { id: 'melee', label: 'Melee DPS', roles: ['melee'], textColor: 'text-role-melee', bgColor: 'bg-role-melee', borderColor: 'border-role-melee' },
@@ -325,13 +325,40 @@ export function WeaponPriorityList({
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Track expanded state for each role section
+  const [expandedSections, setExpandedSections] = useState<Set<RoleSectionId>>(
+    new Set(['tank', 'healer', 'melee', 'ranged', 'caster'])
+  );
+
+  // Handlers for expand/collapse all
+  const handleExpandAll = useCallback(() => {
+    setExpandedSections(new Set(['tank', 'healer', 'melee', 'ranged', 'caster']));
+  }, []);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedSections(new Set());
+  }, []);
+
+  // Handler for individual section expand/collapse
+  const handleSectionExpandChange = useCallback((sectionId: RoleSectionId, expanded: boolean) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (expanded) {
+        next.add(sectionId);
+      } else {
+        next.delete(sectionId);
+      }
+      return next;
+    });
+  }, []);
+
   // Visible sections: URL param > default (all visible)
-  const [visibleSections, setVisibleSectionsState] = useState<Set<RoleSection>>(() => {
+  const [visibleSections, setVisibleSectionsState] = useState<Set<RoleSectionId>>(() => {
     const urlSections = searchParams.get('weaponSections');
     if (urlSections) {
       const sections = urlSections.split(',').filter(s =>
         ['tank', 'healer', 'melee', 'ranged', 'caster'].includes(s)
-      ) as RoleSection[];
+      ) as RoleSectionId[];
       // Allow empty set from URL (all hidden)
       return new Set(sections);
     }
@@ -339,7 +366,7 @@ export function WeaponPriorityList({
   });
 
   // Wrapper to toggle section visibility and update URL
-  const toggleSection = useCallback((section: RoleSection) => {
+  const toggleSection = useCallback((section: RoleSectionId) => {
     setVisibleSectionsState(prev => {
       const next = new Set(prev);
       if (next.has(section)) {
@@ -454,7 +481,10 @@ export function WeaponPriorityList({
             role={section}
             itemCount={sectionJobs.length}
             itemLabel="weapon"
-            defaultExpanded
+            expanded={expandedSections.has(section.id)}
+            onExpandChange={(expanded) => handleSectionExpandChange(section.id, expanded)}
+            onExpandAll={handleExpandAll}
+            onCollapseAll={handleCollapseAll}
           >
             {/* Weapon cards grid for this section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -4,9 +4,15 @@
  * A collapsible wrapper that groups content by role with colored header bar.
  * Used in Weapon Priority tab to group weapons by role.
  * Modeled after FloorSection component for consistent UX.
+ *
+ * Features:
+ * - Click to expand/collapse individual section
+ * - Right-click for Expand All / Collapse All context menu
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type MouseEvent } from 'react';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 
 export interface RoleSectionConfig {
   id: string;
@@ -22,8 +28,14 @@ interface RoleSectionProps {
   itemLabel?: string; // e.g., "weapon" / "weapons"
   children: ReactNode;
   defaultExpanded?: boolean;
+  /** Controlled expanded state - if provided, component is controlled */
+  expanded?: boolean;
   /** Callback when expand/collapse state changes */
   onExpandChange?: (expanded: boolean) => void;
+  /** Callback to expand all sections */
+  onExpandAll?: () => void;
+  /** Callback to collapse all sections */
+  onCollapseAll?: () => void;
 }
 
 export function RoleSection({
@@ -32,23 +44,55 @@ export function RoleSection({
   itemLabel = 'weapon',
   children,
   defaultExpanded = true,
+  expanded: controlledExpanded,
   onExpandChange,
+  onExpandAll,
+  onCollapseAll,
 }: RoleSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  // Support both controlled and uncontrolled modes
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const isExpanded = controlledExpanded ?? localExpanded;
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const handleToggle = () => {
     const newExpanded = !isExpanded;
-    setIsExpanded(newExpanded);
+    if (controlledExpanded === undefined) {
+      setLocalExpanded(newExpanded);
+    }
     onExpandChange?.(newExpanded);
   };
+
+  const handleContextMenu = (e: MouseEvent) => {
+    // Only show context menu if expand/collapse all callbacks are provided
+    if (onExpandAll || onCollapseAll) {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const contextMenuItems: ContextMenuItem[] = [
+    ...(onExpandAll ? [{
+      label: 'Expand All',
+      icon: <ChevronsUpDown className="w-4 h-4" />,
+      onClick: onExpandAll,
+    }] : []),
+    ...(onCollapseAll ? [{
+      label: 'Collapse All',
+      icon: <ChevronsDownUp className="w-4 h-4" />,
+      onClick: onCollapseAll,
+    }] : []),
+  ];
 
   const pluralLabel = itemCount === 1 ? itemLabel : `${itemLabel}s`;
 
   return (
     <div className="mb-4">
-      {/* Role Header - clickable to toggle */}
+      {/* Role Header - clickable to toggle, right-click for context menu */}
       <button
         onClick={handleToggle}
+        onContextMenu={handleContextMenu}
         className={`
           w-full flex items-center justify-between px-3 py-2
           ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}
@@ -79,6 +123,15 @@ export function RoleSection({
         <div className={`bg-surface-elevated/30 border border-t-0 ${role.borderColor}/30 rounded-b-lg p-3`}>
           {children}
         </div>
+      )}
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );
