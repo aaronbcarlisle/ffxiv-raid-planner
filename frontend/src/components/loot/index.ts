@@ -5,4 +5,5 @@ export { QuickLogDropModal } from './QuickLogDropModal';
 export { QuickLogWeaponModal } from './QuickLogWeaponModal';
 export { RoleSection, ROLE_SECTION_CONFIGS, getRoleSectionConfig, type RoleSectionConfig } from './RoleSection';
 export { SummaryPanel } from './SummaryPanel';
+export { WeaponPriorityList } from './WeaponPriorityList';
 export { WhoNeedsItMatrix } from './WhoNeedsItMatrix';

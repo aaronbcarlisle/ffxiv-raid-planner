@@ -5,26 +5,32 @@
  * Features:
  * - Position-first headers (T1, T2, H1, H2, M1, M2, R1, R2)
  * - "FREE" badge when no one needs an item
- * - Floor filter tabs with color coding
+ * - Floor filter tabs with color coding (using FilterBar)
  * - Click indicator to quick-log loot
+ * - Supports controlled or uncontrolled floor selection
  */
 
 import { useMemo, useState } from 'react';
 import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { Tooltip } from '../primitives';
+import { FilterBar } from './FilterBar';
+
+type FloorFilter = FloorNumber | 'all';
 
 interface WhoNeedsItMatrixProps {
   players: SnapshotPlayer[];
   floors: string[];  // e.g., ["M9S", "M10S", "M11S", "M12S"]
   onLogClick?: (slot: GearSlot, player: SnapshotPlayer, floor: string) => void;
   showLogButtons?: boolean;
+  /** Controlled floor selection - if provided, component is controlled */
+  selectedFloor?: FloorFilter;
+  /** Callback when floor changes (required if selectedFloor is provided) */
+  onFloorChange?: (floor: FloorFilter) => void;
 }
-
-type FloorFilter = FloorNumber | 'all';
 
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
@@ -50,8 +56,19 @@ export function WhoNeedsItMatrix({
   floors,
   onLogClick,
   showLogButtons = true,
+  selectedFloor: controlledFloor,
+  onFloorChange,
 }: WhoNeedsItMatrixProps) {
-  const [selectedFloor, setSelectedFloor] = useState<FloorFilter>('all');
+  // Support both controlled and uncontrolled modes
+  const [localFloor, setLocalFloor] = useState<FloorFilter>('all');
+  const selectedFloor = controlledFloor ?? localFloor;
+  const handleFloorChange = (floor: FloorFilter) => {
+    if (onFloorChange) {
+      onFloorChange(floor);
+    } else {
+      setLocalFloor(floor);
+    }
+  };
 
   // Sort players by raid position
   const sortedPlayers = useMemo(() => {
@@ -104,32 +121,14 @@ export function WhoNeedsItMatrix({
   return (
     <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
       {/* Floor Filter Tabs */}
-      <div className="flex items-center gap-2 p-3 border-b border-border-default bg-surface-elevated/50">
-        <span className="text-xs text-text-muted mr-1">Floor:</span>
-        {(['all', 1, 2, 3, 4] as FloorFilter[]).map(floor => {
-          const isSelected = selectedFloor === floor;
-          const floorColors = floor !== 'all' ? FLOOR_COLORS[floor] : null;
-
-          return (
-            <button
-              key={floor}
-              onClick={() => setSelectedFloor(floor)}
-              aria-label={floor === 'all' ? 'Show all floors' : `Filter by Floor ${floor}`}
-              aria-pressed={isSelected}
-              className={`
-                px-3 py-1.5 rounded text-xs font-bold transition-colors border
-                ${isSelected
-                  ? floor === 'all'
-                    ? 'bg-accent text-accent-contrast border-accent'
-                    : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
-                  : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
-                }
-              `}
-            >
-              {floor === 'all' ? 'All' : floors[floor - 1] || `Floor ${floor}`}
-            </button>
-          );
-        })}
+      <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+        <FilterBar
+          type="floor"
+          floors={floors}
+          selectedFloor={selectedFloor}
+          onFloorChange={handleFloorChange}
+          showAllOption
+        />
       </div>
 
       {/* Matrix Table */}

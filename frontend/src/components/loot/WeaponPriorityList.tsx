@@ -12,6 +12,8 @@ import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/w
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
+import { FilterBar } from './FilterBar';
+import { RoleSection } from './RoleSection';
 
 // Roll result for a player
 interface RollResult {
@@ -398,6 +400,18 @@ export function WeaponPriorityList({
     return grouped;
   }, [allJobs]);
 
+  // Calculate hidden roles (roles with no jobs)
+  const hiddenRoles = useMemo(() => {
+    const hidden = new Set<string>();
+    ROLE_SECTIONS.forEach(section => {
+      const sectionJobs = jobsBySection.get(section.id) || [];
+      if (sectionJobs.length === 0) {
+        hidden.add(section.id);
+      }
+    });
+    return hidden;
+  }, [jobsBySection]);
+
   if (allJobs.size === 0) {
     return (
       <div className="text-center py-8 text-text-muted">
@@ -411,29 +425,12 @@ export function WeaponPriorityList({
   return (
     <div className="space-y-6">
       {/* Section filter toggles - role-colored */}
-      <div className="flex items-center justify-end gap-2 flex-wrap">
-        <span className="text-sm text-text-muted mr-1">Show:</span>
-        {ROLE_SECTIONS.map(section => {
-          const isVisible = visibleSections.has(section.id);
-          const jobCount = jobsBySection.get(section.id)?.length || 0;
-          if (jobCount === 0) return null;
-
-          return (
-            <button
-              key={section.id}
-              onClick={() => toggleSection(section.id)}
-              aria-pressed={isVisible}
-              className={`px-3 py-1 text-sm rounded transition-colors border ${
-                isVisible
-                  ? `${section.bgColor}/10 ${section.textColor} ${section.borderColor}/30`
-                  : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {section.label}
-            </button>
-          );
-        })}
-      </div>
+      <FilterBar
+        type="role"
+        visibleRoles={visibleSections}
+        onRoleToggle={toggleSection}
+        hiddenRoles={hiddenRoles}
+      />
 
       {/* Empty state when no sections visible */}
       {!anyVisible && (
@@ -443,25 +440,20 @@ export function WeaponPriorityList({
         </div>
       )}
 
-      {/* Role sections */}
+      {/* Role sections - collapsible */}
       {ROLE_SECTIONS.map(section => {
         const sectionJobs = jobsBySection.get(section.id) || [];
         if (sectionJobs.length === 0) return null;
         if (!visibleSections.has(section.id)) return null;
 
         return (
-          <div key={section.id} className="space-y-3">
-            {/* Section header */}
-            <div className="flex items-center gap-3">
-              <h4 className={`text-sm font-semibold ${section.textColor}`}>
-                {section.label}
-              </h4>
-              <div className="flex-1 h-px bg-border-subtle" />
-              <span className="text-xs text-text-muted">
-                {sectionJobs.length} {sectionJobs.length === 1 ? 'weapon' : 'weapons'}
-              </span>
-            </div>
-
+          <RoleSection
+            key={section.id}
+            role={section}
+            itemCount={sectionJobs.length}
+            itemLabel="weapon"
+            defaultExpanded
+          >
             {/* Weapon cards grid for this section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sectionJobs.map(job => {
@@ -481,7 +473,7 @@ export function WeaponPriorityList({
                 );
               })}
             </div>
-          </div>
+          </RoleSection>
         );
       })}
     </div>
