@@ -46,7 +46,7 @@ export const RELEASES: Release[] = [
         title: 'Keyboard shortcuts',
         description: 'Quick navigation and controls for power users',
         details:
-          'Press ? to see all available shortcuts. Use 1-4 to switch tabs, v to toggle view mode, g to toggle G1/G2 view, and Escape to close modals. Shortcuts are disabled when typing in text fields.',
+          'Press ? to see all available shortcuts. Use 1-4 to switch tabs (Players/Loot/Log/Summary), v and g to toggle view modes on the Players tab, and Escape to close modals. All modals now close with Escape key.',
         commits: [{ hash: '8e949e5', message: 'Add keyboard shortcuts for common actions' }],
       },
       {

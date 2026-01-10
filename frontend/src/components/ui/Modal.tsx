@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ModalProps {
@@ -20,6 +21,21 @@ const SIZE_CLASSES = {
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+  // Handle escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Prevent all mouse events from passing through to elements behind the modal

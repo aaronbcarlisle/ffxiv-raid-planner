@@ -539,9 +539,9 @@ export default function MembersGuideDocs() {
                   Yes! Press <kbd className="px-1.5 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">?</kbd> to see all available shortcuts. Quick reference:
                 </p>
                 <ul className="text-text-secondary text-sm space-y-1 ml-4 list-disc">
-                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">1-4</kbd> Switch tabs (Players/Loot/Summary/Log)</li>
-                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">v</kbd> Toggle compact/expanded view</li>
-                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">g</kbd> Toggle G1/G2 group view</li>
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">1-4</kbd> Switch tabs (Players/Loot/Log/Summary)</li>
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">v</kbd> Toggle compact/expanded view (Players tab)</li>
+                  <li><kbd className="px-1 py-0.5 text-xs bg-surface-elevated border border-border-default rounded">g</kbd> Toggle G1/G2 group view (Players tab)</li>
                 </ul>
               </div>
             </div>

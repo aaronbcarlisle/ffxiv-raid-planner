@@ -752,11 +752,21 @@ export function GroupView() {
       { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
       { key: '1', description: 'Players tab', action: () => setPageMode('players') },
       { key: '2', description: 'Loot tab', action: () => setPageMode('loot') },
-      { key: '3', description: 'Summary tab', action: () => setPageMode('stats') },
-      { key: '4', description: 'Log tab', action: () => setPageMode('history') },
-      { key: 'v', description: 'Toggle view mode', action: () => setViewMode(viewMode === 'compact' ? 'expanded' : 'compact') },
-      { key: 'g', description: 'Toggle group view', action: () => setGroupView(!groupView) },
-      { key: 'Escape', description: 'Close modal', action: () => {
+      { key: '3', description: 'Log tab', action: () => setPageMode('history') },
+      { key: '4', description: 'Summary tab', action: () => setPageMode('stats') },
+      { key: 'v', description: 'Toggle view mode', action: () => {
+        // Only toggle view mode on players tab
+        if (pageMode === 'players') {
+          setViewMode(viewMode === 'compact' ? 'expanded' : 'compact');
+        }
+      }},
+      { key: 'g', description: 'Toggle group view', action: () => {
+        // Only toggle group view on players tab
+        if (pageMode === 'players') {
+          setGroupView(!groupView);
+        }
+      }},
+      { key: 'Escape', description: 'Close/clear', action: () => {
         setShowKeyboardHelp(false);
         setEditingPlayerId(null);
         setHighlightedPlayerId(null);

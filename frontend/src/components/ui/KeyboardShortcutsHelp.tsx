@@ -17,12 +17,12 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { key: '1', description: 'Go to Players tab' },
       { key: '2', description: 'Go to Loot tab' },
-      { key: '3', description: 'Go to Summary tab' },
-      { key: '4', description: 'Go to Log tab' },
+      { key: '3', description: 'Go to Log tab' },
+      { key: '4', description: 'Go to Summary tab' },
     ],
   },
   {
-    title: 'View Controls',
+    title: 'View Controls (Players tab only)',
     shortcuts: [
       { key: 'V', description: 'Toggle compact/expanded view' },
       { key: 'G', description: 'Toggle G1/G2 group view' },
@@ -32,7 +32,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'General',
     shortcuts: [
       { key: '?', description: 'Show this help' },
-      { key: 'Esc', description: 'Close modal / Clear selection' },
+      { key: 'Esc', description: 'Close modal' },
     ],
   },
 ];

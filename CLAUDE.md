@@ -437,11 +437,11 @@ Global keyboard shortcuts for power users in GroupView.
 | `?` | Show keyboard shortcuts help |
 | `1` | Go to Players tab |
 | `2` | Go to Loot tab |
-| `3` | Go to Summary tab |
-| `4` | Go to Log tab |
-| `v` | Toggle compact/expanded view |
-| `g` | Toggle G1/G2 group view |
-| `Escape` | Close modal, clear selection |
+| `3` | Go to Log tab |
+| `4` | Go to Summary tab |
+| `v` | Toggle compact/expanded view (Players tab only) |
+| `g` | Toggle G1/G2 group view (Players tab only) |
+| `Escape` | Close modal |
 
 **Implementation:**
 - `hooks/useKeyboardShortcuts.ts` - Reusable hook with modifier support
