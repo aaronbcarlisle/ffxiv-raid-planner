@@ -495,21 +495,6 @@ dialog input[type="radio"] {
   }
 }
 
-/* G1/G2 side-by-side layout for ultrawide screens */
-/* On ultrawide (1800px+), show G1 and G2 side by side */
-@media (min-width: 1800px) {
-  .grid-g1g2-side {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* G1/G2 cards: 2x2 grid on wide screens */
-@media (min-width: 1400px) {
-  .grid-g1g2-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 /* Highlight pulse animation for deep-linked elements */
 @keyframes highlight-pulse {
   0% {

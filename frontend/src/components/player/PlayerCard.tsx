@@ -81,6 +81,8 @@ export const PlayerCard = memo(function PlayerCard({
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showUnlinkBiSConfirm, setShowUnlinkBiSConfirm] = useState(false);
+  const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
@@ -104,7 +106,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport || showWeaponPriorityModal || showBiSReimportPrompt;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showBiSReimportPrompt;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -113,7 +115,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showBiSImport, showWeaponPriorityModal, showBiSReimportPrompt, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showBiSReimportPrompt, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -263,7 +265,7 @@ export const PlayerCard = memo(function PlayerCard({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
         </svg>
       ),
-      onClick: () => onUpdate({ bisLink: '' }),
+      onClick: () => setShowUnlinkBiSConfirm(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
@@ -295,7 +297,7 @@ export const PlayerCard = memo(function PlayerCard({
     {
       label: 'Paste Player',
       icon: CONTEXT_MENU_ICONS.paste,
-      onClick: onPaste,
+      onClick: () => setShowPasteConfirm(true),
       disabled: !clipboardPlayer || !editPermission.allowed,
       tooltip: !clipboardPlayer ? 'No player copied' : !editPermission.allowed ? editPermission.reason : undefined,
     },
@@ -443,6 +445,74 @@ export const PlayerCard = memo(function PlayerCard({
             }}
           >
             Reset Gear
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Unlink BiS Confirmation Modal */}
+      <Modal
+        isOpen={showUnlinkBiSConfirm}
+        onClose={() => setShowUnlinkBiSConfirm(false)}
+        title="Unlink BiS"
+        size="sm"
+      >
+        <p className="text-text-secondary mb-4">
+          Are you sure you want to unlink <span className="text-text-primary font-medium">{player.name}</span>'s BiS set?
+        </p>
+        <p className="text-text-muted text-sm mb-6">
+          This will remove the BiS link and item metadata (names, icons). Current progress and sources will be kept.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowUnlinkBiSConfirm(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
+            onClick={() => {
+              onUpdate({ bisLink: '' });
+              setShowUnlinkBiSConfirm(false);
+            }}
+          >
+            Unlink BiS
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Paste Player Confirmation Modal */}
+      <Modal
+        isOpen={showPasteConfirm}
+        onClose={() => setShowPasteConfirm(false)}
+        title="Paste Player"
+        size="sm"
+      >
+        <p className="text-text-secondary mb-4">
+          This will overwrite <span className="text-text-primary font-medium">{player.name}</span>'s gear configuration with data from <span className="text-text-primary font-medium">{clipboardPlayer?.name || 'copied player'}</span>.
+        </p>
+        <p className="text-text-muted text-sm mb-6">
+          Job, BiS sources, progress, and weapon priorities will all be replaced.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowPasteConfirm(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
+            onClick={() => {
+              onPaste();
+              setShowPasteConfirm(false);
+            }}
+          >
+            Paste
           </Button>
         </div>
       </Modal>

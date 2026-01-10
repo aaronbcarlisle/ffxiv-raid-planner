@@ -184,63 +184,59 @@ function WeaponSlotRow({
         </td>
       </tr>
 
-      {/* Tome weapon sub-row - always rendered for consistent card height */}
-      <tr className={`border-t border-border-default/30 ${tomeWeapon.pursuing ? 'bg-surface-elevated/30' : ''}`}>
-        {tomeWeapon.pursuing ? (
-          <>
-            <td
-              className={`py-1 pl-6 text-sm ${
-                tomeWeapon.hasItem
-                  ? tomeWeapon.isAugmented
-                    ? 'text-text-primary'
-                    : 'text-text-secondary'
-                  : 'text-text-muted'
-              }`}
+      {/* Tome weapon sub-row - only shown when +Tome is enabled */}
+      {tomeWeapon.pursuing && (
+        <tr className="border-t border-border-default/30 bg-surface-elevated/30">
+          <td
+            className={`py-1 pl-6 text-sm ${
+              tomeWeapon.hasItem
+                ? tomeWeapon.isAugmented
+                  ? 'text-text-primary'
+                  : 'text-text-secondary'
+                : 'text-text-muted'
+            }`}
+          >
+            └ Tome Weapon
+          </td>
+          <td className="py-1 text-center">
+            <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
+          </td>
+          <td className="py-1">
+            <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
+              <Checkbox
+                checked={tomeWeapon.hasItem}
+                onChange={(checked) => {
+                  // When unchecking "Have", also uncheck "Augmented"
+                  if (!checked) {
+                    onTomeWeaponChange({ hasItem: checked, isAugmented: false });
+                  } else {
+                    onTomeWeaponChange({ hasItem: checked });
+                  }
+                }}
+                disabled={disabled}
+              />
+            </div>
+          </td>
+          <td className="py-1">
+            <div
+              className="flex justify-center"
+              title={
+                disabled
+                  ? disabledTooltip || 'Get the tome weapon first'
+                  : tomeWeapon.hasItem && !tomeWeapon.isAugmented
+                    ? 'Get Solvent from Floor 3 (M11S)'
+                    : undefined
+              }
             >
-              └ Tome Weapon
-            </td>
-            <td className="py-1 text-center">
-              <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
-            </td>
-            <td className="py-1">
-              <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
-                <Checkbox
-                  checked={tomeWeapon.hasItem}
-                  onChange={(checked) => {
-                    // When unchecking "Have", also uncheck "Augmented"
-                    if (!checked) {
-                      onTomeWeaponChange({ hasItem: checked, isAugmented: false });
-                    } else {
-                      onTomeWeaponChange({ hasItem: checked });
-                    }
-                  }}
-                  disabled={disabled}
-                />
-              </div>
-            </td>
-            <td className="py-1">
-              <div
-                className="flex justify-center"
-                title={
-                  disabled
-                    ? disabledTooltip || 'Get the tome weapon first'
-                    : tomeWeapon.hasItem && !tomeWeapon.isAugmented
-                      ? 'Get Solvent from Floor 3 (M11S)'
-                      : undefined
-                }
-              >
-                <Checkbox
-                  checked={tomeWeapon.isAugmented}
-                  onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
-                  disabled={disabled || !tomeWeapon.hasItem}
-                />
-              </div>
-            </td>
-          </>
-        ) : (
-          /* Empty placeholder row to maintain consistent card height */
-          <td colSpan={4} className="py-1 h-[24px]" />
-        )}</tr>
+              <Checkbox
+                checked={tomeWeapon.isAugmented}
+                onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
+                disabled={disabled || !tomeWeapon.hasItem}
+              />
+            </div>
+          </td>
+        </tr>
+      )}
     </>
   );
 }

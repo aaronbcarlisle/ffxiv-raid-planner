@@ -281,41 +281,6 @@ export function GroupView() {
     }, { replace: true });
   }, [setSearchParams]);
 
-  // G1/G2 layout mode: 'side' (side-by-side on ultrawide) or 'stacked' (always vertical)
-  const [g1g2Layout, setG1G2LayoutState] = useState<'side' | 'stacked'>(() => {
-    // Check URL param first, then localStorage, then default to 'side'
-    const urlLayout = searchParams.get('g1g2layout');
-    if (urlLayout === 'side' || urlLayout === 'stacked') {
-      return urlLayout;
-    }
-    try {
-      const stored = localStorage.getItem('group-view-g1g2-layout');
-      if (stored === 'side' || stored === 'stacked') return stored;
-    } catch {
-      // Ignore localStorage errors
-    }
-    return 'side';
-  });
-
-  // Wrapper to update g1g2Layout, localStorage, and URL
-  const setG1G2Layout = useCallback((layout: 'side' | 'stacked') => {
-    setG1G2LayoutState(layout);
-    try {
-      localStorage.setItem('group-view-g1g2-layout', layout);
-    } catch {
-      // Ignore localStorage errors
-    }
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (layout === 'side') {
-        params.delete('g1g2layout');
-      } else {
-        params.set('g1g2layout', layout);
-      }
-      return params;
-    }, { replace: true });
-  }, [setSearchParams]);
-
   // Wrapper to update subsView and URL
   const setSubsView = useCallback((enabled: boolean) => {
     setSubsViewState(enabled);
@@ -831,8 +796,8 @@ export function GroupView() {
     onReorder: handleReorder,
   });
 
-  // Grid classes - responsive from 1 column (mobile) to 6 columns (ultrawide)
-  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl grid-5xl grid-6xl';
+  // Grid classes - responsive from 1 column (mobile) to max 4 columns (wide screens)
+  const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
   // Helper function to render a player card
   const renderPlayerCard = (player: SnapshotPlayer) => {
@@ -1055,32 +1020,6 @@ export function GroupView() {
                   onToggle={setGroupView}
                   disabled={!hasPositionData}
                 />
-                {/* G1/G2 Layout toggle - only show when groupView is active */}
-                {groupView && (
-                  <button
-                    onClick={() => setG1G2Layout(g1g2Layout === 'side' ? 'stacked' : 'side')}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                      g1g2Layout === 'side'
-                        ? 'bg-accent/20 text-accent border border-accent/50'
-                        : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
-                    }`}
-                    title={g1g2Layout === 'side' ? 'Side-by-side layout (responsive)' : 'Stacked layout (always vertical)'}
-                    aria-label={g1g2Layout === 'side' ? 'Switch to stacked layout' : 'Switch to side-by-side layout'}
-                    aria-pressed={g1g2Layout === 'side'}
-                  >
-                    {g1g2Layout === 'side' ? (
-                      /* Columns icon for side-by-side */
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                      </svg>
-                    ) : (
-                      /* Rows icon for stacked */
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    )}
-                  </button>
-                )}
                 {/* Subs toggle - only show when substitutes exist */}
                 {hasSubstitutes && (
                   <button
@@ -1128,37 +1067,34 @@ export function GroupView() {
                 onDragEnd={dnd.handleDragEnd}
                 onDragCancel={dnd.handleDragCancel}
               >
-              {/* Grouped View (G1/G2) */}
+              {/* Grouped View (G1/G2) - G1 on top, G2 below */}
               {groupView && groupedPlayers ? (
                 <div className="space-y-8 mb-8">
-                  {/* G1/G2 Container - side by side on ultrawide (unless stacked layout selected) */}
-                  <div className={`grid grid-cols-1 gap-6 ${g1g2Layout === 'side' ? 'grid-g1g2-side' : ''}`}>
-                    {/* Group 1 - Blue themed with backdrop */}
-                    {groupedPlayers.group1.length > 0 && (
-                      <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4">
-                        <h3 className="text-text-secondary text-sm font-medium mb-4 flex items-center gap-2">
-                          <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-500/30">G1</span>
-                          Light Party 1
-                        </h3>
-                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 grid-g1g2-cards">
-                          {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
-                        </div>
+                  {/* Group 1 */}
+                  {groupedPlayers.group1.length > 0 && (
+                    <div>
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-500/30">G1</span>
+                        Light Party 1
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Group 2 - Red themed with backdrop */}
-                    {groupedPlayers.group2.length > 0 && (
-                      <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                        <h3 className="text-text-secondary text-sm font-medium mb-4 flex items-center gap-2">
-                          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold border border-red-500/30">G2</span>
-                          Light Party 2
-                        </h3>
-                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 grid-g1g2-cards">
-                          {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
-                        </div>
+                  {/* Group 2 */}
+                  {groupedPlayers.group2.length > 0 && (
+                    <div>
+                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+                        <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold border border-red-500/30">G2</span>
+                        Light Party 2
+                      </h3>
+                      <div className={gridClasses}>
+                        {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Unassigned */}
                   {groupedPlayers.unassigned.length > 0 && (
