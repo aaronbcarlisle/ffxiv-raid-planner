@@ -6,12 +6,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Copy, Settings, Trash2 } from 'lucide-react';
+import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
 import { ContextMenu, Select, Input, Label, Checkbox, Modal } from '../components/ui';
-import { Button } from '../components/primitives';
+import { Button, IconButton } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
 
@@ -269,7 +269,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -292,37 +292,24 @@ export function Dashboard() {
           {/* View mode toggle */}
           {groups.length > 0 && (
             <div className="flex bg-surface-raised rounded-md border border-border-default">
-              <button
+              <IconButton
+                icon={LayoutGrid}
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 rounded-l-md text-sm font-medium transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                }`}
-                title="Grid view"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="6" height="6" rx="1" />
-                  <rect x="9" y="1" width="6" height="6" rx="1" />
-                  <rect x="1" y="9" width="6" height="6" rx="1" />
-                  <rect x="9" y="9" width="6" height="6" rx="1" />
-                </svg>
-              </button>
-              <button
+                variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                size="sm"
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
+              />
+              <IconButton
+                icon={List}
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-border-default ${
-                  viewMode === 'list'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                }`}
-                title="List view"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="14" height="4" rx="1" />
-                  <rect x="1" y="7" width="14" height="4" rx="1" />
-                  <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
-                </svg>
-              </button>
+                variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                size="sm"
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
+              />
             </div>
           )}
           <Button onClick={() => setShowCreateModal(true)}>

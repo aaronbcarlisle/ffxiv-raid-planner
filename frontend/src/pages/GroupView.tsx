@@ -24,6 +24,7 @@ import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, KeyboardShortcutsHelp } from '../components/ui';
+import { Button } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
@@ -898,9 +899,9 @@ export function GroupView() {
     const isPrivateGroupError = error.toLowerCase().includes('private');
 
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-6 text-center`}>
-          <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-red-400'}`}>
+      <div className="max-w-4xl mx-auto py-8">
+        <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-status-error/10 border-status-error/30'} border rounded-lg p-6 text-center`}>
+          <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-status-error'}`}>
             {isPrivateGroupError ? 'Private Group' : 'Error'}
           </h2>
           <p className="text-text-secondary mb-4">
@@ -911,19 +912,16 @@ export function GroupView() {
           </p>
           <div className="flex gap-3 justify-center">
             {isPrivateGroupError && !user && (
-              <button
-                onClick={() => login()}
-                className="px-4 py-2 bg-accent hover:bg-accent/80 text-bg-primary font-medium rounded"
-              >
+              <Button onClick={() => login()}>
                 Log In with Discord
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              variant={isPrivateGroupError && !user ? 'secondary' : 'primary'}
               onClick={() => navigate('/dashboard')}
-              className={`px-4 py-2 font-medium rounded ${isPrivateGroupError && !user ? 'bg-surface-elevated hover:bg-surface-card text-text-primary border border-border-default' : 'bg-accent hover:bg-accent/80 text-bg-primary'}`}
             >
               Go to Dashboard
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -932,7 +930,7 @@ export function GroupView() {
 
   if (!currentGroup) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto py-8">
         <div className="text-center py-12">
           <h2 className="text-xl font-display text-accent mb-2">Group Not Found</h2>
           <p className="text-text-muted">The static group you're looking for doesn't exist.</p>
