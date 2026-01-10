@@ -53,6 +53,13 @@
   --color-membership-linked: #f59e0b;   /* Amber */
 
   /* ================================
+     BRAND COLORS
+     External service brand colors
+     ================================ */
+  --color-discord: #5865F2;
+  --color-discord-hover: #4752C4;
+
+  /* ================================
      GEAR SOURCE COLORS
      Distinct from status colors
      ================================ */

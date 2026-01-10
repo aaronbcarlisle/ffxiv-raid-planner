@@ -961,10 +961,10 @@ export function GroupView() {
 
       {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
       {isAdminAccess && (
-        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+        <div className="mb-3 p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-amber-400" />
-            <span className="text-sm text-amber-200">
+            <ShieldAlert className="w-5 h-5 text-status-warning" />
+            <span className="text-sm text-status-warning">
               <span className="font-medium">Admin Access:</span>{' '}
               You're viewing this static as an administrator. You have owner-level permissions but are not a member.
             </span>
@@ -974,14 +974,14 @@ export function GroupView() {
 
       {/* View As indicator - shows when admin is viewing as another user */}
       {viewAsUser && (
-        <div className="mb-3 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+        <div className="mb-3 p-3 bg-membership-lead/10 border border-membership-lead/30 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-purple-400" />
-              <span className="text-sm text-purple-200">
+              <Eye className="w-5 h-5 text-membership-lead" />
+              <span className="text-sm text-membership-lead">
                 <span className="font-medium">Viewing as:</span>{' '}
                 {viewAsUser.displayName || viewAsUser.discordUsername}
-                <span className="ml-1 text-purple-300/70">
+                <span className="ml-1 text-membership-lead/70">
                   ({viewAsUser.role || 'no membership'})
                 </span>
               </span>
@@ -996,7 +996,7 @@ export function GroupView() {
                   return params;
                 }, { replace: true });
               }}
-              className="text-sm text-purple-300 hover:text-purple-100 px-3 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 transition-colors"
+              className="text-sm text-membership-lead hover:text-membership-lead/80 px-3 py-1 rounded bg-membership-lead/20 hover:bg-membership-lead/30 transition-colors"
             >
               Exit View As
             </button>

@@ -245,7 +245,7 @@ export function AdminDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-display text-amber-400">Admin Dashboard</h1>
+          <h1 className="text-3xl font-display text-status-warning">Admin Dashboard</h1>
           <p className="text-text-muted mt-1">
             View and manage all static groups ({total} total)
           </p>
@@ -275,7 +275,7 @@ export function AdminDashboard() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+        <div className="mb-6 p-4 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error">
           {error}
         </div>
       )}
@@ -377,7 +377,7 @@ export function AdminDashboard() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={(e) => handleOpenViewAs(group, e)}
-                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-amber-400"
+                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-status-warning"
                         title="View as member"
                       >
                         <Eye className="w-4 h-4" />
