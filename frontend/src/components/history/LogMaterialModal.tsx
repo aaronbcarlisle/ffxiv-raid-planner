@@ -219,30 +219,52 @@ export function LogMaterialModal({
   //                      If NO ONE needs it, show ONLY subs (fallback)
   // - Show All Players only: All main roster (excluding subs), regardless of need
   // - Both checked: Everyone (all main roster + all subs)
+  // - In Edit mode: Always include the current recipient even if they don't need the material
   const visibleRecipients = useMemo(() => {
+    let result: typeof sortedPlayersWithPriority;
+
     if (showAllRecipients && includeSubs) {
       // Both checked: show everyone
-      return sortedPlayersWithPriority;
-    }
-
-    if (showAllRecipients && !includeSubs) {
+      result = sortedPlayersWithPriority;
+    } else if (showAllRecipients && !includeSubs) {
       // Show all main roster (already filtered out subs in sortedPlayersWithPriority when includeSubs is false)
-      return sortedPlayersWithPriority;
-    }
-
-    if (includeSubs && !showAllRecipients) {
+      result = sortedPlayersWithPriority;
+    } else if (includeSubs && !showAllRecipients) {
       // Include Subs mode: show those who need + fallback to subs if none need
       const needsMaterial = sortedPlayersWithPriority.filter(r => r.needsMaterial);
       if (needsMaterial.length > 0) {
-        return needsMaterial;
+        result = needsMaterial;
+      } else {
+        // No one needs it - show only subs as fallback
+        result = sortedPlayersWithPriority.filter(r => r.player.isSubstitute);
       }
-      // No one needs it - show only subs as fallback
-      return sortedPlayersWithPriority.filter(r => r.player.isSubstitute);
+    } else {
+      // Default: only those who need the material
+      result = sortedPlayersWithPriority.filter(r => r.needsMaterial);
     }
 
-    // Default: only those who need the material
-    return sortedPlayersWithPriority.filter(r => r.needsMaterial);
-  }, [sortedPlayersWithPriority, showAllRecipients, includeSubs]);
+    // In edit mode, ALWAYS ensure the current recipient is in the list
+    // (they may no longer need the material if they already received it)
+    if (isEditMode && editEntry?.recipientPlayerId) {
+      const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
+      if (!currentRecipientInList) {
+        // Find the recipient directly from players prop (unfiltered)
+        const player = players.find(p => p.id === editEntry.recipientPlayerId);
+        if (player) {
+          // Check if they're in sortedPlayersWithPriority for priority info
+          const sortedEntry = sortedPlayersWithPriority.find(r => r.player.id === editEntry.recipientPlayerId);
+          result = [{
+            player,
+            score: sortedEntry?.score ?? 0,
+            rank: sortedEntry?.rank ?? 999,
+            needsMaterial: sortedEntry?.needsMaterial ?? false,
+          }, ...result];
+        }
+      }
+    }
+
+    return result;
+  }, [sortedPlayersWithPriority, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
 
   // Auto-select top priority recipient when material changes
   // Skip auto-selection in edit mode to preserve original recipient
