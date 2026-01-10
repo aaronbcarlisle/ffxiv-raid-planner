@@ -1,138 +1,72 @@
 # Session Handoff: Design System & UX Improvements
 
-**Date:** 2026-01-10 (Updated)
+**Date:** 2026-01-10 (Final Update)
 **Branch:** `feature/design-system-migration`
-**Last Commit:** `4559ebf` - Clean up redundant recipient computation in first useEffect
+**Status:** ✅ COMPLETE - All Phase 1 & 2 tasks done
 
 ---
 
-## Current Status
+## Completed This Session
 
-**Completed:** ~85% of design system migration
-**Remaining:** 6 tasks (see plan below)
+### Phase 1: Quick Wins
+| Task | Description | Commit |
+|------|-------------|--------|
+| ✅ 4.1 | Hotkeys in tooltips | `2dfb00a` |
+| ✅ 3.5 | Gear slot icons in Who Needs It | `0512819` |
+| ✅ 2.4 | Item name column in GearTable | `d332075` |
 
----
-
-## What Was Done This Session
-
-### 1. Job Icons in Select Dropdowns
-- Extended `Select.tsx` to support optional `icon` property on options
-- Added job icons to recipient dropdowns in `AddLootEntryModal` and `LogMaterialModal`
-- Icons show in both dropdown options AND selected value display
-
-### 2. Fixed Recipient Auto-Selection from Grid View
-**Problem:** When clicking a blank cell in the grid view (Log tab), the loot modal opened but didn't auto-select the top priority recipient.
-
-**Root Cause:** `useEffect` runs AFTER the first render, so the modal opened with empty recipient first.
-
-**Solution:**
-- Compute initial recipient in `useState` initialization (runs BEFORE first render)
-- Added `lootModalKey` counter in `SectionedLogView.tsx` to force fresh component mount
-- Key increments when opening from grid via `handleGridLogLoot`
-
-### 3. Edit Entry Recipient Pre-population Fix
-- Fixed both `AddLootEntryModal` and `LogMaterialModal` to always include current recipient in edit mode
-- Even if recipient no longer needs the item, they appear in the dropdown
-
-### 4. Expanded/Collapsed State Persistence
-- `WeaponPriorityList` - localStorage key `weapon-priority-expanded`
-- `SectionedLogView` floor sections - localStorage key `log-floor-expanded`
-- State persists when switching tabs
-
-### 5. Context Menu for Expand/Collapse All
-- Added to `RoleSection.tsx` (weapon priority)
-- Added to `FloorSection.tsx` (log by floor)
-
-### 6. Material Entry Actions
-- Added Copy URL and Edit buttons to material entries in `SectionedLogView.tsx` list view
+### Phase 2: Medium Tasks
+| Task | Description | Commit |
+|------|-------------|--------|
+| ✅ 2.3 | BiS source compact toggle | `d52265d` |
+| ✅ 2.5 | CurrentSource column in GearTable | `116cc35` |
 
 ---
 
-## Remaining Tasks (6 items)
+## Previously Completed (Earlier Sessions)
 
-**Full plan:** `docs/plans/2026-01-10-remaining-design-tasks.md`
+- Design system primitives (Button, IconButton, Modal, Select, etc.)
+- Semantic color tokens
+- FilterBar component for unified floor/role filtering
+- Collapsible RoleSection in Weapon Priority
+- Job icons in Select dropdowns
+- Recipient auto-selection fix from grid view
+- Edit entry recipient pre-population fix
+- Expanded/collapsed state persistence
+- Context menus for Expand/Collapse All
+- Keyboard shortcuts (1-4, V, G, S, ?)
 
-### Phase 1: Quick Wins (~1.5 hours)
-| Task | Description | Complexity |
-|------|-------------|------------|
-| **4.1** | Add hotkeys to tooltips (e.g., "Players (1)", "Compact view (V)") | Low |
-| **3.5** | Add gear slot icons to Who Needs It table | Low |
-| **2.4** | Add Item name column to GearTable | Low |
+---
 
-### Phase 2: Medium Tasks (~1.5 hours)
-| Task | Description | Complexity |
-|------|-------------|------------|
-| **2.3** | Convert BiS source to dropdown (currently two-button toggle) | Medium |
-| **2.5** | Add CurrentSource column to GearTable (responsive) | Medium |
+## Deferred
 
-### Phase 3: Deferred
 | Task | Description | Reason |
 |------|-------------|--------|
-| **2.6** | Show Materia in gear tooltip | Requires backend changes, cache regeneration - defer to separate PR |
+| 2.6 | Materia in gear tooltip | Requires backend changes, cache regeneration |
 
 ---
 
-## Key Code Locations
+## Test Results
 
-### Auto-Selection Pattern (the fix that worked)
-```typescript
-// AddLootEntryModal.tsx lines 76-87
-const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
-  if (editEntry) return editEntry.recipientPlayerId;
-  const slot = presetSlot || '';
-  if (!slot) return '';
-  const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
-  const priorityEntries = slot === 'ring1' || slot === 'ring2'
-    ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
-    : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
-  return priorityEntries[0]?.player.id || '';
-});
+All 285 tests passing.
+
+---
+
+## Next Steps
+
+1. Push changes and update PR #15
+2. Manual testing of new features
+3. Consider Task 2.6 (Materia) for future PR
+
+---
+
+## Git Log (This Session)
+
 ```
-
-### Key Counter for Fresh Mount
-```typescript
-// SectionedLogView.tsx
-const [lootModalKey, setLootModalKey] = useState(0);
-
-const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {
-  setGridModalState({ type: 'loot', floor, slot });
-  setEntryToEdit(undefined);
-  setLootModalKey(k => k + 1); // Force fresh mount
-  setShowLootModal(true);
-}, []);
-
-// In JSX:
-<AddLootEntryModal key={lootModalKey} ... />
+116cc35 Add CurrentSource column to GearTable (Task 2.5)
+d52265d Convert BiS source to compact toggle button (Task 2.3)
+d332075 Add Item name column to GearTable (Task 2.4)
+0512819 Add gear slot icons to Who Needs It matrix (Task 3.5)
+2dfb00a Add hotkeys to tooltips (Task 4.1)
+741e693 Add comprehensive implementation plan for remaining design system tasks
 ```
-
----
-
-## Commands
-
-```bash
-# Start dev servers
-./dev.sh
-
-# Type check
-pnpm tsc --noEmit
-
-# Run tests
-pnpm test
-
-# Check design system compliance
-./frontend/scripts/check-design-system.sh
-```
-
----
-
-## Git Status
-
-Branch is up to date with `origin/feature/design-system-migration`. All changes committed and pushed.
-
----
-
-## Next Session
-
-Read: `docs/plans/2026-01-10-remaining-design-tasks.md`
-
-Start with Phase 1 quick wins (tasks 4.1, 3.5, 2.4), then Phase 2 (tasks 2.3, 2.5).
