@@ -16,6 +16,8 @@ import { forwardRef } from 'react';
 import { Minus, Plus } from 'lucide-react';
 
 export interface NumberInputProps {
+  /** Input element id for label association */
+  id?: string;
   /** Current value */
   value: number;
   /** Change handler */
@@ -43,6 +45,7 @@ export interface NumberInputProps {
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
   (
     {
+      id,
       value,
       onChange,
       min,
@@ -122,6 +125,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
           <input
             ref={ref}
+            id={id}
             type="number"
             value={value}
             onChange={handleChange}

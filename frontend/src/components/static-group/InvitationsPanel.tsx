@@ -122,7 +122,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
         <div className="bg-status-error/20 text-status-error p-3 rounded text-sm flex justify-between items-center">
           <span>{error}</span>
           <IconButton
-            icon={X}
+            icon={<X className="w-4 h-4" />}
             onClick={clearError}
             variant="ghost"
             size="sm"

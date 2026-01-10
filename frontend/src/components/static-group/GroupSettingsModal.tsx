@@ -347,7 +347,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                 value={deleteConfirmText}
                 onChange={setDeleteConfirmText}
                 placeholder={group.name}
-                error={deleteConfirmText !== '' && deleteConfirmText !== group.name}
+                error={deleteConfirmText !== '' && deleteConfirmText !== group.name ? 'Name does not match' : undefined}
               />
             </div>
 

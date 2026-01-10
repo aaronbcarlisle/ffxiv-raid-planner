@@ -5,7 +5,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { VisuallyHidden } from './VisuallyHidden';
 
-type IconButtonVariant = 'default' | 'ghost' | 'danger';
+type IconButtonVariant = 'default' | 'primary' | 'ghost' | 'danger';
 type IconButtonSize = 'sm' | 'md' | 'lg';
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,6 +20,8 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variantStyles: Record<IconButtonVariant, string> = {
   default:
     'bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-overlay',
+  primary:
+    'bg-accent/20 border border-accent/30 text-accent hover:bg-accent/30 active:bg-accent/40',
   ghost:
     'bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-overlay',
   danger:

@@ -293,7 +293,7 @@ export function Dashboard() {
           {groups.length > 0 && (
             <div className="flex bg-surface-raised rounded-md border border-border-default">
               <IconButton
-                icon={LayoutGrid}
+                icon={<LayoutGrid className="w-4 h-4" />}
                 onClick={() => setViewMode('grid')}
                 variant={viewMode === 'grid' ? 'primary' : 'ghost'}
                 size="sm"
@@ -302,7 +302,7 @@ export function Dashboard() {
                 className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
               />
               <IconButton
-                icon={List}
+                icon={<List className="w-4 h-4" />}
                 onClick={() => setViewMode('list')}
                 variant={viewMode === 'list' ? 'primary' : 'ghost'}
                 size="sm"
@@ -644,7 +644,7 @@ export function Dashboard() {
                 value={deleteConfirmText}
                 onChange={setDeleteConfirmText}
                 placeholder={selectedGroup.name}
-                error={deleteConfirmText !== '' && deleteConfirmText !== selectedGroup.name}
+                error={deleteConfirmText !== '' && deleteConfirmText !== selectedGroup.name ? 'Name does not match' : undefined}
               />
             </div>
 

@@ -4,7 +4,7 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -27,6 +27,8 @@ const variantStyles: Record<ButtonVariant, string> = {
     'bg-transparent text-accent hover:bg-active-bg active:bg-accent/20',
   danger:
     'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40 focus:ring-status-error/50',
+  warning:
+    'bg-status-warning/20 text-status-warning border border-status-warning/40 hover:bg-status-warning/30 active:bg-status-warning/40 focus:ring-status-warning/50',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
