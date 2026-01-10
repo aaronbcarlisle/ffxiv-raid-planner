@@ -73,8 +73,14 @@ d332075 Add Item name column to GearTable (Task 2.4)
 741e693 Add comprehensive implementation plan for remaining design system tasks
 ```
 
-## Latest Changes (de11807)
+## Latest Changes
 
-- Shorthand names for CurrentSource: Tome, Craft, Aug, Catch, Prev, Norm
+**b69f3ef - ProgressRing color simplification:**
+- Removed green (complete) and amber (near-complete) colors
+- Now transitions from gray (0-25%) to accent teal (26%+)
+- Complete rings show teal, matching app accent color
+
+**de11807 - CurrentSource improvements:**
+- Shorthand names: Tome, Craft, Aug, Catch, Prev, Norm
 - Savage uses same color as Raid (`text-gear-raid`)
 - Responsive priority: Item hides first (lg), Current stays longer (md)
