@@ -69,10 +69,10 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
         <div className="flex items-center gap-1.5 flex-wrap">
           {sortedPlayers.map(player => {
             const count = countsByPlayer.get(player.id) || 0;
-            // Fallback to gray if role is not set
+            // Fallback to text-secondary if role is not set
             const roleColor = player.role
               ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-              : '#9ca3af';
+              : 'var(--color-text-secondary)';
 
             return (
               <div

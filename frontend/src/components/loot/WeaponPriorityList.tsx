@@ -159,7 +159,7 @@ function WeaponPriorityCard({
                   {tieGroupEntries.map((tieEntry) => {
                     const roleColor = tieEntry.player.role
                       ? getRoleColor(tieEntry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-                      : '#9ca3af';
+                      : 'var(--color-text-secondary)';
                     const playerRoll = tieGroup !== undefined ? getPlayerRoll(tieGroup, tieEntry.player.id) : null;
                     const isWinner = winnerId === tieEntry.player.id;
                     const isFirst = groupIndex === 0;
@@ -229,7 +229,7 @@ function WeaponPriorityCard({
             // Render regular (non-tied) entry
             const roleColor = entry.player.role
               ? getRoleColor(entry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-              : '#9ca3af';
+              : 'var(--color-text-secondary)';
             const isFirst = groupIndex === 0;
 
             return (
