@@ -63,9 +63,14 @@ export function EditBookBalanceModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Current</Label>
-            <div className="px-3 py-2 rounded bg-surface-elevated border border-border-default text-text-primary text-center font-medium">
-              {currentBalance}
-            </div>
+            <NumberInput
+              value={currentBalance}
+              onChange={() => {}}
+              disabled
+              showButtons={false}
+              size="sm"
+              className="opacity-60"
+            />
           </div>
           <div>
             <Label htmlFor="newBalance">New Balance</Label>

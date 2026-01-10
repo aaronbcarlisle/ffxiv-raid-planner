@@ -267,14 +267,13 @@ export function LogMaterialModal({
     return '';
   };
 
-  // Build floor options for Select
-  const floorOptions = floors.map((floor) => {
-    const materials = getMaterialsForFloor(floor);
-    return {
+  // Build floor options for Select - only include floors that have materials
+  const floorOptions = floors
+    .filter((floor) => getMaterialsForFloor(floor).length > 0)
+    .map((floor) => ({
       value: floor,
-      label: materials.length === 0 ? `${floor} (no materials)` : floor,
-    };
-  });
+      label: floor,
+    }));
 
   // Build recipient options for Select
   const recipientOptions = [

@@ -17,12 +17,13 @@ export interface RoleFilter {
 }
 
 // Pre-defined role filters matching WeaponPriorityList
+// Uses same opacity pattern as FLOOR_COLORS: bg/10, border/30
 export const ROLE_FILTERS: RoleFilter[] = [
-  { id: 'tank', label: 'Tanks', textColor: 'text-role-tank', bgColor: 'bg-role-tank', borderColor: 'border-role-tank' },
-  { id: 'healer', label: 'Healers', textColor: 'text-role-healer', bgColor: 'bg-role-healer', borderColor: 'border-role-healer' },
-  { id: 'melee', label: 'Melee DPS', textColor: 'text-role-melee', bgColor: 'bg-role-melee', borderColor: 'border-role-melee' },
-  { id: 'ranged', label: 'Physical Ranged', textColor: 'text-role-ranged', bgColor: 'bg-role-ranged', borderColor: 'border-role-ranged' },
-  { id: 'caster', label: 'Magical Ranged', textColor: 'text-role-caster', bgColor: 'bg-role-caster', borderColor: 'border-role-caster' },
+  { id: 'tank', label: 'Tanks', textColor: 'text-role-tank', bgColor: 'bg-role-tank/10', borderColor: 'border-role-tank/30' },
+  { id: 'healer', label: 'Healers', textColor: 'text-role-healer', bgColor: 'bg-role-healer/10', borderColor: 'border-role-healer/30' },
+  { id: 'melee', label: 'Melee DPS', textColor: 'text-role-melee', bgColor: 'bg-role-melee/10', borderColor: 'border-role-melee/30' },
+  { id: 'ranged', label: 'Physical Ranged', textColor: 'text-role-ranged', bgColor: 'bg-role-ranged/10', borderColor: 'border-role-ranged/30' },
+  { id: 'caster', label: 'Magical Ranged', textColor: 'text-role-caster', bgColor: 'bg-role-caster/10', borderColor: 'border-role-caster/30' },
 ];
 
 interface FloorFilterProps {
@@ -122,7 +123,7 @@ function RoleFilterBar({
             className={`
               px-3 py-1.5 rounded text-xs font-bold transition-colors border
               ${isVisible
-                ? `${role.bgColor}/10 ${role.textColor} ${role.borderColor}/30`
+                ? `${role.bgColor} ${role.textColor} ${role.borderColor}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }
             `}
