@@ -637,6 +637,8 @@ useGroupTiers()          // All tiers for current group
 
 ### Implementation Plans
 - **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+- **Design System Remaining Tasks:** `docs/plans/2026-01-10-remaining-design-tasks.md`
+- **Design System Full Plan:** `docs/plans/2026-01-10-design-system-ux-improvements.md`
 
 ---
 

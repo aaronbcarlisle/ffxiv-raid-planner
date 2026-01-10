@@ -1,169 +1,118 @@
 # Session Handoff: Design System & UX Improvements
 
-**Date:** 2026-01-10
+**Date:** 2026-01-10 (Updated)
 **Branch:** `feature/design-system-migration`
-**Session ID:** `21f27a9d-a675-4db5-9422-cf45ea575c36`
+**Status:** In Progress - 6 tasks remaining
 
 ---
 
-## Session Summary
+## Current State Summary
 
-This session implemented a significant portion of the design system and UX improvements outlined in `docs/plans/2026-01-10-design-system-ux-improvements.md`. The work focused on unifying filter components, enhancing player cards, replacing PNG icons with Lucide, and fixing modal UX issues.
+This branch contains a comprehensive design system migration and UX improvements. The work is approximately 85% complete.
 
----
+### What's Been Completed
 
-## Commits Made This Session
+#### Design System Foundation
+- Created new UI primitives: `Button`, `IconButton`, `Modal`, `Select`, `RadioGroup`, `NumberInput`, `Spinner`, `ProgressRing`
+- Added semantic color tokens for membership roles, materials, status colors
+- Created `FilterBar` component for unified floor/role filtering
+- Created `PageContainer` component for consistent layout
+- Added design system compliance script (`check-design-system.sh`)
 
-### 1. `5a486a2` - Foundation Components (Phase 1)
-Created before this session summarization began.
-- Created `FilterBar.tsx` - unified filter component for floor/role filters
-- Created `ProgressRing.tsx` - SVG circular progress indicator
-- Created `RoleSection.tsx` - collapsible role grouping component
+#### Loot Tab Improvements
+- Unified `FilterBar` applied to Who Needs It, Gear Priority, and Weapon Priority
+- Collapsible `RoleSection` components in Weapon Priority
+- Contained scroll container with `max-h-[calc(100dvh-14rem)]`
+- Floor selection state lifted to parent for cross-tab sync
 
-### 2. `5bd4701` - Loot Tab Improvements (Phase 2)
-- Applied FilterBar to Who Needs It, Gear Priority, and Weapon Priority tabs
-- Added controlled floor selection to WhoNeedsItMatrix
-- Lifted floor selection state to LootPriorityPanel for cross-tab sync
-- Added collapsible RoleSection components to Weapon Priority
-- Implemented contained scroll container with `max-h-[calc(100dvh-14rem)]`
+#### Player Card Improvements
+- `ProgressRing` component replaces text "X/11" counter
+- `LightPartyHeader` for enhanced G1/G2 headers with role icons and progress
+- All PNG context menu icons replaced with Lucide React icons
+- MoreVertical icon for player options menu
 
-### 3. `9faee2a` - Player Card Improvements (Phase 3)
-- Replaced text `X/11` progress counter with ProgressRing component
-- Created LightPartyHeader component for enhanced G1/G2 headers
-- Replaced all PNG context menu icons with Lucide React icons
-- Replaced player options PNG with Lucide MoreVertical icon
-- Fixed filter bar position shift between Weapon/Gear Priority tabs
-- Updated RoleSection border colors to use role theme colors
+#### Modal Improvements
+- All modals migrated to design system components
+- Job icons in Select dropdowns (options AND selected value)
+- Fixed recipient auto-selection when opening loot modal from grid view
+- Fixed edit entry recipient pre-population
+- Expanded/collapsed state persistence for weapon priority and floor sections
+- Context menus for Expand/Collapse All on role sections and floor sections
 
-### 4. `aec6f9f` - Modal Fixes (Phase 4)
-- Fixed Edit Book modal input sizing using disabled NumberInput
-- Filtered material floor selector to only show floors with materials
-
-### 5. `eef9e99` - Filter Label Width Fix
-- Added `min-w-[2.5rem]` to filter labels to prevent shift between tabs
-
----
-
-## Files Changed
-
-### New Files Created
-| File | Purpose |
-|------|---------|
-| `frontend/src/components/loot/FilterBar.tsx` | Unified filter bar for floor/role filters |
-| `frontend/src/components/ui/ProgressRing.tsx` | SVG circular progress indicator with color thresholds |
-| `frontend/src/components/loot/RoleSection.tsx` | Collapsible role section wrapper |
-| `frontend/src/components/player/LightPartyHeader.tsx` | Enhanced G1/G2 headers with role composition and progress |
-
-### Modified Files
-| File | Changes |
-|------|---------|
-| `frontend/src/components/loot/LootPriorityPanel.tsx` | Added FilterBar, floor state lifting, scroll container |
-| `frontend/src/components/loot/WhoNeedsItMatrix.tsx` | Added controlled floor selection, uses FilterBar |
-| `frontend/src/components/loot/WeaponPriorityList.tsx` | Uses FilterBar and RoleSection, fixed header alignment |
-| `frontend/src/components/loot/index.ts` | Added exports for new components |
-| `frontend/src/components/ui/index.ts` | Added ProgressRing export |
-| `frontend/src/components/player/PlayerCardHeader.tsx` | Uses ProgressRing, MoreVertical icon |
-| `frontend/src/components/player/PlayerCard.tsx` | Replaced PNG icons with Lucide icons |
-| `frontend/src/pages/GroupView.tsx` | Uses LightPartyHeader for G1/G2 sections |
-| `frontend/src/components/history/EditBookBalanceModal.tsx` | Fixed input sizing with disabled NumberInput |
-| `frontend/src/components/history/LogMaterialModal.tsx` | Filtered floor selector to valid floors only |
+#### Keyboard Shortcuts
+- Tab navigation (`1-4`)
+- View toggles (`V` for compact, `G` for groups)
+- Help modal (`?`)
 
 ---
 
-## Remaining Tasks from Plan
+## Remaining Tasks (6 items)
 
-### Phase 3 (Partially Complete)
-- [ ] **2.3** Convert BiS source to dropdown in GearTable (currently two-button toggle)
-- [ ] **2.4** Add Item name column to GearTable
-- [ ] **2.5** Add CurrentSource column to GearTable (responsive)
-- [ ] **2.6** Show Materia in gear tooltip (may require cache regeneration)
+**Plan file:** `docs/plans/2026-01-10-remaining-design-tasks.md`
 
-### Phase 4 (Partially Complete)
-- [ ] **3.2** Add job icons to recipient dropdowns in log modals
-- [ ] **3.3** Fix edit loot entry recipient pre-population bug
-- [ ] **3.5** Add gear slot icons to Who Needs It table
+### Phase 1: Quick Wins
+| Task | Description | File |
+|------|-------------|------|
+| **4.1** | Add hotkeys to tooltips (e.g., "Players (1)") | `GroupView.tsx` |
+| **3.5** | Add gear slot icons to Who Needs It table | `WhoNeedsItMatrix.tsx` |
+| **2.4** | Add Item name column to GearTable | `GearTable.tsx` |
 
-### Phase 5 (Not Started)
-- [ ] **4.1** Add hotkeys to tooltips (e.g., "Players (1)", "Compact view (V)")
+### Phase 2: Medium Tasks
+| Task | Description | File |
+|------|-------------|------|
+| **2.3** | Convert BiS source to dropdown (currently two-button toggle) | `GearTable.tsx` |
+| **2.5** | Add CurrentSource column to GearTable (responsive) | `GearTable.tsx` |
+
+### Phase 3: Deferred
+| Task | Description | Reason |
+|------|-------------|--------|
+| **2.6** | Show Materia in gear tooltip | Requires backend changes, cache regeneration |
 
 ---
 
-## Key Patterns & Context
+## Key Code Locations
 
-### FilterBar Component
+### Auto-Selection Fix (Critical Pattern)
 ```typescript
-// Floor filter mode
-<FilterBar
-  type="floor"
-  floors={floors}
-  selectedFloor={selectedFloor}
-  onFloorChange={handleFloorChange}
-  showAllOption={true}
-/>
-
-// Role filter mode
-<FilterBar
-  type="role"
-  visibleRoles={visibleSections}
-  onRoleToggle={toggleSection}
-  hiddenRoles={hiddenRoles}
-/>
+// AddLootEntryModal.tsx lines 76-87
+// useState initializer runs BEFORE first render (not useEffect which runs AFTER)
+const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
+  if (editEntry) return editEntry.recipientPlayerId;
+  const slot = presetSlot || '';
+  if (!slot) return '';
+  const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
+  const priorityEntries = slot === 'ring1' || slot === 'ring2'
+    ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+    : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
+  return priorityEntries[0]?.player.id || '';
+});
 ```
 
-### ProgressRing Component
+### Key Counter for Fresh Mount
 ```typescript
-<ProgressRing
-  value={completedSlots}
-  max={totalSlots}
-  size="md"  // 'sm' | 'md' | 'lg'
-  showLabel  // Shows "X/Y" in center
-/>
-```
-Color thresholds: 0-25% muted, 26-75% accent, 76-99% warning, 100% success
+// SectionedLogView.tsx - Forces fresh component state when opening from grid
+const [lootModalKey, setLootModalKey] = useState(0);
 
-### RoleSection Component
-```typescript
-<RoleSection
-  role={section}  // { id, label, textColor, bgColor, borderColor }
-  itemCount={sectionJobs.length}
-  itemLabel="weapon"
-  defaultExpanded
->
-  {/* Content */}
-</RoleSection>
+const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {
+  setGridModalState({ type: 'loot', floor, slot });
+  setEntryToEdit(undefined);
+  setLootModalKey(k => k + 1); // Force fresh mount
+  setShowLootModal(true);
+}, []);
+
+// In JSX:
+<AddLootEntryModal key={lootModalKey} ... />
 ```
 
-### LightPartyHeader Component
+### Select Component with Icons
 ```typescript
-<LightPartyHeader groupNumber={1} players={groupedPlayers.group1} />
+// Select.tsx supports optional icon on options
+interface SelectOption {
+  value: string;
+  label: string;
+  icon?: ReactNode;  // Icon displays in both dropdown and trigger
+}
 ```
-Shows: G1/G2 badge, role composition icons, progress bar, "X/44 BiS" summary
-
-### Lucide Icons Used in PlayerCard
-```typescript
-import {
-  Copy, ClipboardPaste, CopyPlus, Trash2,
-  UserMinus, UserPlus, Swords, RotateCcw,
-  UserCheck, UserX, FileDown, MoreVertical,
-  Link2Off, Link2,
-} from 'lucide-react';
-```
-
-### Floor/Role Color Patterns
-Both use same opacity pattern for consistency:
-- Background: `/10` opacity (e.g., `bg-role-tank/10`)
-- Border: `/30` opacity (e.g., `border-role-tank/30`)
-- Text: Full color (e.g., `text-role-tank`)
-
----
-
-## Known Issues / Notes
-
-1. **Materia Display (Task 2.6):** Materia data is stored from XIVGear/Etro imports but may not be in the BiS preset cache. Running `python scripts/backfill_gcd.py` may be needed to regenerate cache with materia.
-
-2. **Edit Loot Recipient Bug (Task 3.3):** When editing an existing loot entry, the recipient dropdown appears blank. Root cause is likely a race condition with filter state in `AddLootEntryModal.tsx` around lines 191-204.
-
-3. **GearTable Columns (Tasks 2.4, 2.5):** Adding Item and CurrentSource columns requires responsive design - show on large screens, hide/truncate on smaller breakpoints.
 
 ---
 
@@ -174,10 +123,10 @@ Both use same opacity pattern for consistency:
 ./dev.sh
 
 # Type check
-cd frontend && pnpm tsc --noEmit
+pnpm tsc --noEmit
 
-# Run tests
-cd frontend && pnpm test
+# Run tests (285 passing)
+pnpm test
 
 # Check design system compliance
 ./frontend/scripts/check-design-system.sh
@@ -185,24 +134,53 @@ cd frontend && pnpm test
 
 ---
 
-## Resume Instructions
+## Git Status
 
-To resume this session:
-```bash
-claude --resume 21f27a9d-a675-4db5-9422-cf45ea575c36
+Branch is up to date with `origin/feature/design-system-migration`.
+
+Recent commits:
+- `4559ebf` - Clean up redundant recipient computation in first useEffect
+- `d0a4e9e` - Compute initial recipient in useState before first render
+- `fd6c5e9` - Force fresh modal mount with key counter when opening from grid
+
+---
+
+## PR Status
+
+PR #15 exists: https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/15
+
+The PR should be updated to reflect completed work. Remaining tasks can be addressed before merge or in a follow-up PR.
+
+---
+
+## Next Session Instructions
+
+1. Read this document and `docs/plans/2026-01-10-remaining-design-tasks.md`
+2. Start with Phase 1 quick wins (4.1, 3.5, 2.4)
+3. Then Phase 2 medium tasks (2.3, 2.5)
+4. Defer 2.6 (materia) to separate PR
+
+Or continue from the continuation prompt below.
+
+---
+
+## Continuation Prompt
+
 ```
+Continue work on the FFXIV Raid Planner Design System & UX Improvements.
 
-Or start fresh with the continuation prompt below.
+Branch: feature/design-system-migration
 
----
+Session handoff: docs/SESSION_HANDOFF_2026-01-10_design-system-migration.md
+Implementation plan: docs/plans/2026-01-10-remaining-design-tasks.md
 
-## Implementation Plan Reference
+6 tasks remaining:
+- 4.1: Hotkeys in tooltips
+- 3.5: Gear slot icons in Who Needs It
+- 2.4: Item name column in GearTable
+- 2.3: BiS source dropdown in GearTable
+- 2.5: CurrentSource column in GearTable
+- 2.6: Materia in tooltip (deferred - requires backend changes)
 
-Full plan located at: `docs/plans/2026-01-10-design-system-ux-improvements.md`
-
-Key sections:
-- Tasks 2.3-2.6: GearTable column improvements
-- Tasks 3.2-3.5: Modal recipient/icon improvements
-- Task 4.1: Hotkey tooltips
-
----
+Start with Phase 1 quick wins: tasks 4.1, 3.5, and 2.4.
+```
