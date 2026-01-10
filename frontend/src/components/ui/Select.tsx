@@ -18,7 +18,7 @@
 
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect, type ReactNode } from 'react';
 
 // Counteract Radix's scroll-lock which breaks sticky positioning
 function usePreventScrollLock(isOpen: boolean) {
@@ -58,6 +58,8 @@ function usePreventScrollLock(isOpen: boolean) {
 export interface SelectOption {
   value: string;
   label: string;
+  /** Optional icon to display before the label */
+  icon?: ReactNode;
 }
 
 export interface SelectProps {
@@ -135,7 +137,7 @@ export function Select({
       >
         <SelectPrimitive.Viewport className="p-1">
           {validOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem key={option.value} value={option.value} icon={option.icon}>
               {option.label}
             </SelectItem>
           ))}
@@ -145,32 +147,36 @@ export function Select({
   );
 }
 
-const SelectItem = forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ children, ...props }, ref) => {
-  return (
-    <SelectPrimitive.Item
-      ref={ref}
-      className="
-        relative flex items-center
-        px-8 py-2 rounded
-        text-sm text-text-primary
-        cursor-pointer
-        select-none
-        outline-none
-        data-[highlighted]:bg-accent data-[highlighted]:text-accent-contrast data-[highlighted]:font-bold
-        data-[disabled]:text-text-disabled data-[disabled]:pointer-events-none
-      "
-      {...props}
-    >
-      <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex items-center">
-        <Check className="w-4 h-4" />
-      </SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-    </SelectPrimitive.Item>
-  );
-});
+interface SelectItemProps extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> {
+  icon?: ReactNode;
+}
+
+const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
+  ({ children, icon, ...props }, ref) => {
+    return (
+      <SelectPrimitive.Item
+        ref={ref}
+        className="
+          relative flex items-center
+          px-8 py-2 rounded
+          text-sm text-text-primary
+          cursor-pointer
+          select-none
+          outline-none
+          data-[highlighted]:bg-accent data-[highlighted]:text-accent-contrast data-[highlighted]:font-bold
+          data-[disabled]:text-text-disabled data-[disabled]:pointer-events-none
+        "
+        {...props}
+      >
+        <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex items-center">
+          <Check className="w-4 h-4" />
+        </SelectPrimitive.ItemIndicator>
+        {icon && <span className="mr-2 flex-shrink-0">{icon}</span>}
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      </SelectPrimitive.Item>
+    );
+  }
+);
 
 SelectItem.displayName = 'SelectItem';
 

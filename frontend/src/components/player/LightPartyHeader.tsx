@@ -3,58 +3,19 @@
  *
  * Enhanced header for G1/G2 light party sections showing:
  * - Group badge (G1/G2)
- * - Role composition indicators
  * - Aggregate BiS progress bar
  * - Total completion summary
  */
 
 import { useMemo } from 'react';
 import type { SnapshotPlayer } from '../../types';
-import { getRoleColor, type Role } from '../../gamedata';
 
 interface LightPartyHeaderProps {
   groupNumber: 1 | 2;
   players: SnapshotPlayer[];
 }
 
-// Role labels for tooltips
-const ROLE_LABELS: Record<Role, string> = {
-  tank: 'Tank',
-  healer: 'Healer',
-  melee: 'Melee DPS',
-  ranged: 'Physical Ranged',
-  caster: 'Magical Ranged',
-};
-
-// Simple color-coded circle for each role
-const RoleCircle = ({ role, filled }: { role: Role; filled: boolean }) => {
-  const color = getRoleColor(role);
-  const label = ROLE_LABELS[role];
-
-  return (
-    <div
-      className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity"
-      style={{
-        backgroundColor: color,
-        opacity: filled ? 1 : 0.25,
-      }}
-      title={filled ? label : `${label} (missing)`}
-      aria-label={filled ? `${label} present` : `${label} missing`}
-    />
-  );
-};
-
 export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps) {
-  // Calculate role composition
-  const roleComposition = useMemo(() => {
-    const roles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-    return roles.map(role => ({
-      role,
-      present: players.some(p => p.role === role),
-      count: players.filter(p => p.role === role).length,
-    }));
-  }, [players]);
-
   // Calculate aggregate BiS progress
   const { completed, total, percentage } = useMemo(() => {
     let completedCount = 0;
@@ -102,13 +63,6 @@ export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps
         <span className="text-text-secondary text-sm font-medium">
           Light Party {groupNumber}
         </span>
-      </div>
-
-      {/* Role composition indicators */}
-      <div className="flex items-center gap-1.5">
-        {roleComposition.map(({ role, present }) => (
-          <RoleCircle key={role} role={role} filled={present} />
-        ))}
       </div>
 
       {/* Spacer */}

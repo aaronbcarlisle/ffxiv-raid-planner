@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
@@ -280,7 +281,8 @@ export function LogMaterialModal({
     { value: '', label: 'Select player...' },
     ...visibleRecipients.map(({ player, rank, needsMaterial }) => ({
       value: player.id,
-      label: `${player.name} (${player.job})${getPriorityLabel(rank, needsMaterial)}`,
+      label: `${player.name}${getPriorityLabel(rank, needsMaterial)}`,
+      icon: <JobIcon job={player.job} size="sm" />,
     })),
   ];
 

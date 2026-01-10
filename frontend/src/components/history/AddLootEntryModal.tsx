@@ -13,6 +13,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -287,7 +288,8 @@ export function AddLootEntryModal({
     { value: '', label: 'Select player...' },
     ...visibleRecipients.map(({ player, priority, needsItem }) => ({
       value: player.id,
-      label: `${player.name} (${player.job})${getPriorityLabel(priority, needsItem)}`,
+      label: `${player.name}${getPriorityLabel(priority, needsItem)}`,
+      icon: <JobIcon job={player.job} size="sm" />,
     })),
   ];
 
