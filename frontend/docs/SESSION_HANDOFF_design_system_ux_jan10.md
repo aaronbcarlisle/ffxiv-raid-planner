@@ -63,6 +63,9 @@ All 285 tests passing.
 ## Git Log (This Session)
 
 ```
+77e3531 Add 'Go to [Player]' context menu option for log entries
+c5ff8fe Add job change confirmation and player card highlighting
+2dd4073 Update handoff with BiS modal improvements
 1ac5423 Add job and gear icons to BiS Import modal
 cdaec60 Update documentation: CurrentSource column now hidden
 40496cd Hide CurrentSource column (kept in code for future re-enable)
@@ -101,3 +104,15 @@ d332075 Add Item name column to GearTable (Task 2.4) - REVERTED
 - Job icon in modal header and preset dropdown
 - Large job icon in preview section
 - Gear slot icons with item hover tooltips in changes list
+- Player name included in modal title
+
+**Job Change Flow:**
+- Job changes now require confirmation before applying
+- Modal offers: Change Job & Update BiS / Change Job Only / Cancel
+- Player card highlights and scrolls into view after changes
+- Nothing changes until user confirms
+
+**Log Entry Navigation:**
+- Right-click any loot/material entry → "Go to [PlayerName]"
+- Navigates to Players tab and highlights the recipient's card
+- Works in Grid and List views
