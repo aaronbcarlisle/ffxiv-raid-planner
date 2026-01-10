@@ -12,7 +12,7 @@ import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS } from '../../types';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 
@@ -154,6 +154,15 @@ function WeaponSlotRow({
             {status.itemName || '—'}
           </span>
         </td>
+        <td className="py-1 hidden lg:table-cell text-center">
+          {status.currentSource && status.currentSource !== 'unknown' ? (
+            <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
+              {GEAR_SOURCE_NAMES[status.currentSource]}
+            </span>
+          ) : (
+            <span className="text-xs text-text-muted">—</span>
+          )}
+        </td>
         <td className="py-1 text-center">
           <div className="flex justify-center gap-1">
             {/* Raid is always on for weapon */}
@@ -208,6 +217,9 @@ function WeaponSlotRow({
           </td>
           <td className="py-1 hidden md:table-cell">
             {/* Empty cell for Item column alignment */}
+          </td>
+          <td className="py-1 hidden lg:table-cell">
+            {/* Empty cell for Current column alignment */}
           </td>
           <td className="py-1 text-center">
             <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
@@ -395,6 +407,7 @@ export function GearTable({
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
             <th className="text-left py-1 font-medium hidden md:table-cell">Item</th>
+            <th className="text-center py-1 font-medium hidden lg:table-cell">Current</th>
             <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
             <th className="text-center py-1 font-medium w-16">Aug</th>
@@ -437,6 +450,15 @@ export function GearTable({
                   >
                     {status.itemName || '—'}
                   </span>
+                </td>
+                <td className="py-1 hidden lg:table-cell text-center">
+                  {status.currentSource && status.currentSource !== 'unknown' ? (
+                    <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
+                      {GEAR_SOURCE_NAMES[status.currentSource]}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-text-muted">—</span>
+                  )}
                 </td>
                 <td className="py-1 text-center">
                   <div className="flex justify-center">
