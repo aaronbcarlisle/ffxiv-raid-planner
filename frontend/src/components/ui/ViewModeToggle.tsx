@@ -15,7 +15,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
         }`}
-        title="Compact view"
+        title="Compact view (V)"
       >
         {/* Grid icon - represents compact/thumbnail view */}
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
@@ -32,7 +32,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
         }`}
-        title="Expanded view"
+        title="Expanded view (V)"
       >
         {/* List icon - represents expanded/detailed view */}
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">

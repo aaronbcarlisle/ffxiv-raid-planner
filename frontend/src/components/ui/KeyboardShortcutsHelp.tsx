@@ -26,6 +26,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     shortcuts: [
       { key: 'v', description: 'Toggle compact/expanded view' },
       { key: 'g', description: 'Toggle G1/G2 group view' },
+      { key: 's', description: 'Toggle substitutes section' },
     ],
   },
   {

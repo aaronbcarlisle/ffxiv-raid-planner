@@ -14,7 +14,7 @@ export function GroupViewToggle({ enabled, onToggle, disabled = false }: GroupVi
           ? 'bg-accent/20 text-accent border border-accent/50'
           : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      title={enabled ? 'Switch to standard view' : 'Group by light party (G1/G2)'}
+      title={enabled ? 'Switch to standard view (G)' : 'Group by light party (G)'}
     >
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

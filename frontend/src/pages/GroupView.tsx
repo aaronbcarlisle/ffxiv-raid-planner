@@ -768,6 +768,12 @@ export function GroupView() {
           setGroupView(!groupView);
         }
       }},
+      { key: 's', description: 'Toggle substitutes', action: () => {
+        // Only toggle subs on players tab if there are subs
+        if (pageMode === 'players' && hasSubstitutes) {
+          setSubsView(!subsView);
+        }
+      }},
       { key: 'Escape', description: 'Close/clear', action: () => {
         setShowKeyboardHelp(false);
         setEditingPlayerId(null);
@@ -1030,7 +1036,7 @@ export function GroupView() {
                         ? 'bg-accent/20 text-accent border border-accent/50'
                         : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
                     }`}
-                    title={subsView ? 'Show subs with main roster' : 'Separate substitutes'}
+                    title={subsView ? 'Show subs with main roster (S)' : 'Separate substitutes (S)'}
                     aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
                     aria-pressed={subsView}
                   >
