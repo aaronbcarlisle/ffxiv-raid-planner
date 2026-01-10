@@ -268,71 +268,73 @@ export function Home() {
         </>
       )}
 
-      {/* Documentation Section */}
-      <div className="mt-16 max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <BookOpen className="w-5 h-5 text-accent" />
-          <h2 className="font-display text-xl text-text-primary">Documentation</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          <Link
-            to="/docs/getting-started"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Users className="w-4 h-4 text-accent" />
+      {/* Documentation Section - only show for logged-in users */}
+      {isAuthenticated && (
+        <div className="mt-16 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <BookOpen className="w-5 h-5 text-accent" />
+            <h2 className="font-display text-xl text-text-primary">Documentation</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Link
+              to="/docs/getting-started"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Users className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Getting Started
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Getting Started
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              Guides for static leads and members
-            </p>
-          </Link>
-          <Link
-            to="/docs/loot-math"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Calculator className="w-4 h-4 text-accent" />
+              <p className="text-sm text-text-muted">
+                Guides for static leads and members
+              </p>
+            </Link>
+            <Link
+              to="/docs/loot-math"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Calculator className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Loot & Priority Math
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Loot & Priority Math
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              How priority calculations work
-            </p>
-          </Link>
-          <Link
-            to="/docs/release-notes"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Sparkles className="w-4 h-4 text-accent" />
+              <p className="text-sm text-text-muted">
+                How priority calculations work
+              </p>
+            </Link>
+            <Link
+              to="/docs/release-notes"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Release Notes
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Release Notes
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              Latest updates and features
-            </p>
-          </Link>
+              <p className="text-sm text-text-muted">
+                Latest updates and features
+              </p>
+            </Link>
+          </div>
+          <div className="mt-4 text-center">
+            <Link
+              to="/docs"
+              className="text-sm text-accent hover:text-accent-bright transition-colors"
+            >
+              View all documentation →
+            </Link>
+          </div>
         </div>
-        <div className="mt-4 text-center">
-          <Link
-            to="/docs"
-            className="text-sm text-accent hover:text-accent-bright transition-colors"
-          >
-            View all documentation →
-          </Link>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
