@@ -14,7 +14,7 @@
 | ✅ 3.5 | Gear slot icons in Who Needs It | `0512819` |
 | ⏪ 2.4 | Item name column in GearTable | `20ec24d` (reverted) |
 | ✅ 2.3 | BiS source compact toggle | `d52265d` |
-| ✅ 2.5 | CurrentSource column in GearTable | `116cc35` |
+| 👁️ 2.5 | CurrentSource column in GearTable | `40496cd` (hidden) |
 
 ---
 
@@ -67,12 +67,12 @@
 **Files modified:**
 - `components/player/GearTable.tsx`
 
-### Task 2.5: CurrentSource Column in GearTable
+### Task 2.5: CurrentSource Column in GearTable (HIDDEN)
 - Added "Current" column showing equipped gear source category
 - Uses shorthand names: Tome, Craft, Aug, Catch, Prev, Norm, Savage
 - Savage uses same color as Raid (`text-gear-raid`)
-- Responsive: shown on md+ screens (`hidden md:table-cell`)
-- Color-coded per source category
+- **Currently hidden** - change `hidden` to `hidden md:table-cell` to re-enable
+- Code kept in place for future use
 
 **Files modified:**
 - `components/player/GearTable.tsx`

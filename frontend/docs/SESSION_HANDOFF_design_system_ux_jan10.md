@@ -63,6 +63,7 @@ All 285 tests passing.
 ## Git Log (This Session)
 
 ```
+40496cd Hide CurrentSource column (kept in code for future re-enable)
 d5e06a1 Improve GearTable UI: fixed-width BiS toggles, compact + button
 6f72dd9 Update documentation to reflect Item column removal
 20ec24d Remove Item name column from GearTable (too cramped)
@@ -79,8 +80,8 @@ d332075 Add Item name column to GearTable (Task 2.4) - REVERTED
 
 ## Final Changes Summary
 
-**GearTable columns:** Slot | Current | BiS | Have | Aug
-- CurrentSource shows equipped gear category with shorthand names
+**GearTable columns:** Slot | BiS | Have | Aug
+- CurrentSource column hidden (code kept for future re-enable)
 - BiS is a single toggle button with fixed width (Raid/Tome same size)
 - Weapon row: "+" button for tome weapon tracking (compact)
 - Item name column was removed (too cramped on smaller screens)
