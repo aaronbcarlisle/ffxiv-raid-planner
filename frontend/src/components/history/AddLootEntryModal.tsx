@@ -73,7 +73,18 @@ export function AddLootEntryModal({
   const [weekNumber, setWeekNumber] = useState(editEntry?.weekNumber || currentWeek || 1);
   const [floor, setFloor] = useState(editEntry?.floor || presetFloor || floors[0] || '');
   const [itemSlot, setItemSlot] = useState<string>(editEntry?.itemSlot || presetSlot || '');
-  const [recipientPlayerId, setRecipientPlayerId] = useState(editEntry?.recipientPlayerId || '');
+  // Compute initial recipient during useState - runs BEFORE first render
+  const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
+    if (editEntry) return editEntry.recipientPlayerId;
+    const slot = presetSlot || '';
+    if (!slot) return '';
+    // Compute priority inline for initial value
+    const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
+    const priorityEntries = slot === 'ring1' || slot === 'ring2'
+      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+      : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
+    return priorityEntries[0]?.player.id || '';
+  });
   const [method, setMethod] = useState<LootMethod>((editEntry?.method as LootMethod) || 'drop');
   const [updateGear, setUpdateGear] = useState(true);
   const [notes, setNotes] = useState(editEntry?.notes || '');
