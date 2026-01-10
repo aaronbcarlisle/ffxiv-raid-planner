@@ -345,7 +345,7 @@ export const PlayerCard = memo(function PlayerCard({
   return (
     <div
       id={`player-card-${player.id}`}
-      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${isHighlighted ? 'highlight-pulse' : ''}`}
+      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 ${isHighlighted ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
     >

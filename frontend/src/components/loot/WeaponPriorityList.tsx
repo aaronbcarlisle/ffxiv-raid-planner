@@ -138,18 +138,18 @@ function WeaponPriorityCard({
               return (
                 <div
                   key={`tie-${tieGroup}`}
-                  className={`rounded border border-dashed border-status-warning/50 ${
-                    groupIndex === 0 ? 'bg-accent/10' : 'bg-status-warning/5'
+                  className={`rounded-r border-l-2 ${
+                    groupIndex === 0 ? 'border-accent bg-surface-elevated/50' : 'border-accent/40 bg-surface-elevated/30'
                   }`}
                 >
                   {/* Tie group header with roll button */}
-                  <div className="flex items-center justify-between px-2 py-1 border-b border-status-warning/30">
-                    <span className="text-xs text-status-warning font-medium">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-border-subtle">
+                    <span className="text-xs text-text-muted font-medium">
                       Tied for #{displayRank}
                     </span>
                     <button
                       onClick={() => handleRoll(tieGroup!, tieGroupEntries)}
-                      className="px-2 py-0.5 text-xs rounded bg-status-warning/20 text-status-warning hover:bg-status-warning/30 transition-colors font-medium"
+                      className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
                     >
                       {hasRolled ? 'Reroll' : 'Roll'}
                     </button>
@@ -423,10 +423,10 @@ export function WeaponPriorityList({
               key={section.id}
               onClick={() => toggleSection(section.id)}
               aria-pressed={isVisible}
-              className={`px-3 py-1 text-sm rounded transition-colors font-bold border ${
+              className={`px-3 py-1 text-sm rounded transition-colors border ${
                 isVisible
-                  ? `${section.bgColor} text-white ${section.borderColor}`
-                  : `bg-surface-interactive ${section.textColor} ${section.borderColor}/40 hover:${section.bgColor}/20`
+                  ? `${section.bgColor}/10 ${section.textColor} ${section.borderColor}/30`
+                  : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }`}
             >
               {section.label}
