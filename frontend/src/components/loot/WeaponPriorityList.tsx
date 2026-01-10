@@ -325,19 +325,43 @@ export function WeaponPriorityList({
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Track expanded state for each role section
-  const [expandedSections, setExpandedSections] = useState<Set<RoleSectionId>>(
-    new Set(['tank', 'healer', 'melee', 'ranged', 'caster'])
-  );
+  // Track expanded state for each role section (persisted to localStorage)
+  const [expandedSections, setExpandedSectionsState] = useState<Set<RoleSectionId>>(() => {
+    try {
+      const saved = localStorage.getItem('weapon-priority-expanded');
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        return new Set(parsed.filter(s =>
+          ['tank', 'healer', 'melee', 'ranged', 'caster'].includes(s)
+        ) as RoleSectionId[]);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    return new Set(['tank', 'healer', 'melee', 'ranged', 'caster']);
+  });
+
+  // Wrapper to persist expanded state to localStorage
+  const setExpandedSections = useCallback((update: Set<RoleSectionId> | ((prev: Set<RoleSectionId>) => Set<RoleSectionId>)) => {
+    setExpandedSectionsState(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      try {
+        localStorage.setItem('weapon-priority-expanded', JSON.stringify(Array.from(next)));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  }, []);
 
   // Handlers for expand/collapse all
   const handleExpandAll = useCallback(() => {
     setExpandedSections(new Set(['tank', 'healer', 'melee', 'ranged', 'caster']));
-  }, []);
+  }, [setExpandedSections]);
 
   const handleCollapseAll = useCallback(() => {
     setExpandedSections(new Set());
-  }, []);
+  }, [setExpandedSections]);
 
   // Handler for individual section expand/collapse
   const handleSectionExpandChange = useCallback((sectionId: RoleSectionId, expanded: boolean) => {
@@ -350,7 +374,7 @@ export function WeaponPriorityList({
       }
       return next;
     });
-  }, []);
+  }, [setExpandedSections]);
 
   // Visible sections: URL param > default (all visible)
   const [visibleSections, setVisibleSectionsState] = useState<Set<RoleSectionId>>(() => {

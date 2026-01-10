@@ -456,17 +456,41 @@ export function SectionedLogView({
     });
   }, []);
 
-  // Track expanded state for each floor section
-  const [expandedFloors, setExpandedFloors] = useState<Set<FloorNumber>>(new Set([1, 2, 3, 4]));
+  // Track expanded state for each floor section (persisted to localStorage)
+  const [expandedFloors, setExpandedFloorsState] = useState<Set<FloorNumber>>(() => {
+    try {
+      const saved = localStorage.getItem('log-floor-expanded');
+      if (saved) {
+        const parsed = JSON.parse(saved) as number[];
+        return new Set(parsed.filter(n => [1, 2, 3, 4].includes(n)) as FloorNumber[]);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    return new Set([1, 2, 3, 4]);
+  });
+
+  // Wrapper to persist expanded state to localStorage
+  const setExpandedFloors = useCallback((update: Set<FloorNumber> | ((prev: Set<FloorNumber>) => Set<FloorNumber>)) => {
+    setExpandedFloorsState(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      try {
+        localStorage.setItem('log-floor-expanded', JSON.stringify(Array.from(next)));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  }, []);
 
   // Handlers for expand/collapse all floor sections
   const handleExpandAllFloors = useCallback(() => {
     setExpandedFloors(new Set([1, 2, 3, 4]));
-  }, []);
+  }, [setExpandedFloors]);
 
   const handleCollapseAllFloors = useCallback(() => {
     setExpandedFloors(new Set());
-  }, []);
+  }, [setExpandedFloors]);
 
   // Handler for individual floor expand/collapse
   const handleFloorExpandChange = useCallback((floor: FloorNumber, expanded: boolean) => {
@@ -479,7 +503,7 @@ export function SectionedLogView({
       }
       return next;
     });
-  }, []);
+  }, [setExpandedFloors]);
 
   // State for grid view pre-filled modal
   const [gridModalState, setGridModalState] = useState<{
