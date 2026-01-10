@@ -71,7 +71,7 @@ export function EditBookBalanceModal({
             <Label htmlFor="newBalance">New Balance</Label>
             <NumberInput
               value={newBalance}
-              onChange={setNewBalance}
+              onChange={(val) => setNewBalance(val ?? 0)}
               showButtons={false}
               size="sm"
             />

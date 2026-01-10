@@ -113,7 +113,7 @@ export function MarkFloorClearedModal({
             <Label htmlFor="week">Week</Label>
             <NumberInput
               value={weekNumber}
-              onChange={setWeekNumber}
+              onChange={(val) => setWeekNumber(val ?? 1)}
               min={1}
               size="sm"
               showButtons={false}

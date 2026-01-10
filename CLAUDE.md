@@ -48,6 +48,10 @@ pnpm build            # Production build
 pnpm tsc --noEmit     # Type check
 pnpm lint             # ESLint
 
+# Design System
+./frontend/scripts/check-design-system.sh           # Check for raw HTML/hardcoded colors
+./frontend/scripts/check-design-system.sh --strict  # Strict mode for CI (exits 1 on violations)
+
 # Backend
 cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
 cd backend && python scripts/backfill_gcd.py        # BiS preset regen
@@ -574,9 +578,26 @@ useGroupTiers()          // All tiers for current group
 
 **Role Colors:** Tank (#5a9fd4), Healer (#5ad490), Melee (#d45a5a), Ranged (#d4a05a), Caster (#b45ad4)
 
+**Membership Colors:** Use semantic tokens for role badges:
+- Owner: `text-membership-owner` (teal, same as accent)
+- Lead: `text-membership-lead` (purple)
+- Member: `text-membership-member` (blue)
+- Viewer: `text-membership-viewer` (zinc)
+- Linked: `text-membership-linked` (amber)
+
+**Material Colors:** Use semantic tokens for material indicators:
+- Twine: `text-material-twine` / `bg-material-twine/20`
+- Glaze: `text-material-glaze` / `bg-material-glaze/20`
+- Solvent: `text-material-solvent` / `bg-material-solvent/20`
+- Tomestone: `text-material-tomestone` / `bg-material-tomestone/20`
+
+**Status Colors:** `status-success`, `status-warning`, `status-error`, `status-info`
+
 **Disabled State:** `opacity-50 cursor-not-allowed`
 
 **Modal:** Uses `<div>` not native `<dialog>` (pointer event issues)
+
+**Design System Compliance:** Run `./frontend/scripts/check-design-system.sh` to detect raw HTML elements and hardcoded colors. Use `--strict` flag in CI to fail on violations.
 
 ---
 
