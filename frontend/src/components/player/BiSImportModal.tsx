@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Modal, Checkbox, Label, Select, Input, Spinner } from '../ui';
-import { Button } from '../primitives';
+import { Modal, Checkbox, Label, Select, Input, Spinner, JobIcon } from '../ui';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { Tooltip, TooltipProvider, Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
 import {
   fetchBiSFromXIVGear,
@@ -8,12 +9,13 @@ import {
   fetchBiSPresets,
   detectBiSSource,
 } from '../../services/api';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import type {
   BiSImportData,
   BiSPreset,
   ContentType,
   GearSlotStatus,
+  GearSlot,
   SnapshotPlayer,
 } from '../../types';
 
@@ -351,9 +353,15 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     }
   };
 
-  const modalTitle = player.bisLink ? 'Update BiS' : 'Import BiS';
+  // Modal title with job icon
+  const modalTitle = (
+    <span className="flex items-center gap-2">
+      <JobIcon job={player.job} size="sm" />
+      <span>{player.bisLink ? 'Update BiS' : 'Import BiS'}</span>
+    </span>
+  );
 
-  // Build preset options for Select
+  // Build preset options for Select with job icons
   const presetOptions = [
     {
       value: '',
@@ -366,6 +374,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     ...presets.map((preset, idx) => ({
       value: String(idx),
       label: preset.name,
+      icon: <JobIcon job={player.job} size="xs" />,
     })),
   ];
 
@@ -506,78 +515,115 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       )}
 
       {state === 'preview' && previewData && (
-        <div className="space-y-4">
-          {/* Set info */}
-          <div className="p-3 bg-surface-base rounded-lg border border-border-default">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-text-primary font-medium">{previewData.name}</div>
-                <div className="text-text-secondary text-sm">{previewData.job}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Job mismatch warning */}
-          {jobMismatch && (
-            <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
-              <p className="text-status-warning text-sm">
-                This set is for <span className="font-medium">{previewData.job}</span>, but player is{' '}
-                <span className="font-medium">{player.job}</span>. Import anyway?
-              </p>
-            </div>
-          )}
-
-          {/* Changes */}
-          {changes.length > 0 ? (
-            <div>
-              <h3 className="text-text-secondary text-sm mb-2">Items Changed:</h3>
-              <div className="space-y-1">
-                {changes.map((change) => (
-                  <div
-                    key={change.slot}
-                    className="flex items-center justify-between p-2 bg-surface-base rounded border border-border-default gap-2"
-                  >
-                    <span className="text-text-primary font-medium shrink-0">{change.slotName}</span>
-                    <div className="flex items-center gap-2 text-sm min-w-0">
-                      <span className="text-text-muted truncate" title={change.fromItem}>
-                        {change.fromItem}
-                      </span>
-                      <span className="text-text-muted shrink-0">→</span>
-                      <span className="text-text-secondary truncate" title={change.toItem}>
-                        {change.toItem}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
+        <TooltipProvider>
+          <div className="space-y-4">
+            {/* Set info with job icon */}
             <div className="p-3 bg-surface-base rounded-lg border border-border-default">
-              <p className="text-text-secondary text-sm text-center">
-                No changes - all slots already match!
-              </p>
+              <div className="flex items-center gap-3">
+                <JobIcon job={previewData.job || player.job} size="lg" />
+                <div>
+                  <div className="text-text-primary font-medium">{previewData.name}</div>
+                  <div className="text-text-secondary text-sm">{previewData.job}</div>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Reset checkbox */}
-          {changes.length > 0 && (
-            <Checkbox
-              checked={resetHaveStatus}
-              onChange={setResetHaveStatus}
-              label='Reset "Have" status for changed slots'
-            />
-          )}
+            {/* Job mismatch warning */}
+            {jobMismatch && (
+              <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
+                <p className="text-status-warning text-sm">
+                  This set is for <span className="font-medium">{previewData.job}</span>, but player is{' '}
+                  <span className="font-medium">{player.job}</span>. Import anyway?
+                </p>
+              </div>
+            )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleImport} className="flex-1">
-              Import
-            </Button>
+            {/* Changes with gear icons */}
+            {changes.length > 0 ? (
+              <div>
+                <h3 className="text-text-secondary text-sm mb-2">Items Changed:</h3>
+                <div className="space-y-1">
+                  {changes.map((change) => {
+                    const newSlotData = previewData.slots.find(s => s.slot === change.slot);
+                    const hasItemData = newSlotData?.itemName && newSlotData?.itemLevel;
+                    const gearIcon = newSlotData?.itemIcon || GEAR_SLOT_ICONS[change.slot as GearSlot];
+
+                    return (
+                      <div
+                        key={change.slot}
+                        className="flex items-center p-2 bg-surface-base rounded border border-border-default gap-3"
+                      >
+                        {/* Gear icon with tooltip */}
+                        {hasItemData ? (
+                          <Tooltip
+                            content={
+                              <ItemHoverCard
+                                itemName={newSlotData.itemName!}
+                                itemLevel={newSlotData.itemLevel!}
+                                itemIcon={newSlotData.itemIcon}
+                                itemStats={newSlotData.itemStats}
+                                bisSource={newSlotData.source}
+                              />
+                            }
+                            side="right"
+                            sideOffset={8}
+                          >
+                            <img
+                              src={gearIcon}
+                              alt={change.slotName}
+                              className="w-6 h-6 rounded cursor-pointer shrink-0"
+                            />
+                          </Tooltip>
+                        ) : (
+                          <img
+                            src={gearIcon}
+                            alt={change.slotName}
+                            className="w-6 h-6 opacity-60 shrink-0"
+                          />
+                        )}
+                        <span className="text-text-primary font-medium shrink-0 w-16">{change.slotName}</span>
+                        <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
+                          <span className="text-text-muted truncate" title={change.fromItem}>
+                            {change.fromItem}
+                          </span>
+                          <span className="text-text-muted shrink-0">→</span>
+                          <span className="text-text-secondary truncate" title={change.toItem}>
+                            {change.toItem}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-surface-base rounded-lg border border-border-default">
+                <p className="text-text-secondary text-sm text-center">
+                  No changes - all slots already match!
+                </p>
+              </div>
+            )}
+
+            {/* Reset checkbox */}
+            {changes.length > 0 && (
+              <Checkbox
+                checked={resetHaveStatus}
+                onChange={setResetHaveStatus}
+                label='Reset "Have" status for changed slots'
+              />
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleImport} className="flex-1">
+                Import
+              </Button>
+            </div>
           </div>
-        </div>
+        </TooltipProvider>
       )}
     </Modal>
   );
