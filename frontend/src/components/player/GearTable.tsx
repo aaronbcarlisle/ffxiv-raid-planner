@@ -395,7 +395,7 @@ export function GearTable({
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
             <th className="text-left py-1 font-medium hidden md:table-cell">Item</th>
-            <th className="text-center py-1 font-medium w-24">BiS Source</th>
+            <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
             <th className="text-center py-1 font-medium w-16">Aug</th>
           </tr>
@@ -439,30 +439,21 @@ export function GearTable({
                   </span>
                 </td>
                 <td className="py-1 text-center">
-                  <div className="flex justify-center gap-1">
+                  <div className="flex justify-center">
                     <button
-                      onClick={() => handleSourceChange(slot, 'raid')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                         status.bisSource === 'raid'
                           ? 'bg-gear-raid/20 text-gear-raid'
-                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
-                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          : 'bg-gear-tome/20 text-gear-tome'
+                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
                       disabled={!gearPermission.allowed}
-                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
+                      title={!gearPermission.allowed ? gearPermission.reason : 'Click to toggle BiS source'}
                     >
-                      Raid
-                    </button>
-                    <button
-                      onClick={() => handleSourceChange(slot, 'tome')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        status.bisSource === 'tome'
-                          ? 'bg-gear-tome/20 text-gear-tome'
-                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
-                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!gearPermission.allowed}
-                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
-                    >
-                      Tome
+                      {status.bisSource === 'raid' ? 'Raid' : 'Tome'}
+                      <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
                     </button>
                   </div>
                 </td>
