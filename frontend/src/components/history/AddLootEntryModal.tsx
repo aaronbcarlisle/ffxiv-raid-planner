@@ -164,30 +164,52 @@ export function AddLootEntryModal({
   //                      If NO ONE needs it, show ONLY subs (fallback)
   // - Show All Players only: All main roster (excluding subs), regardless of need
   // - Both checked: Everyone (all main roster + all subs)
+  // - In Edit mode: Always include the current recipient even if they don't need the item
   const visibleRecipients = useMemo(() => {
+    let result: typeof sortedRecipients;
+
     if (showAllRecipients && includeSubs) {
       // Both checked: show everyone
-      return sortedRecipients;
-    }
-
-    if (showAllRecipients && !includeSubs) {
+      result = sortedRecipients;
+    } else if (showAllRecipients && !includeSubs) {
       // Show all main roster (already filtered out subs in sortedRecipients when includeSubs is false)
-      return sortedRecipients;
-    }
-
-    if (includeSubs && !showAllRecipients) {
+      result = sortedRecipients;
+    } else if (includeSubs && !showAllRecipients) {
       // Include Subs mode: show those who need + fallback to subs if none need
       const needsItem = sortedRecipients.filter(r => r.needsItem);
       if (needsItem.length > 0) {
-        return needsItem;
+        result = needsItem;
+      } else {
+        // No one needs it - show only subs as fallback
+        result = sortedRecipients.filter(r => r.player.isSubstitute);
       }
-      // No one needs it - show only subs as fallback
-      return sortedRecipients.filter(r => r.player.isSubstitute);
+    } else {
+      // Default: only those who need the item
+      result = sortedRecipients.filter(r => r.needsItem);
     }
 
-    // Default: only those who need the item
-    return sortedRecipients.filter(r => r.needsItem);
-  }, [sortedRecipients, showAllRecipients, includeSubs]);
+    // In edit mode, ensure the current recipient is always in the list
+    // (they may no longer need the item if they already received it)
+    if (isEditMode && editEntry) {
+      const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
+      if (!currentRecipientInList) {
+        // Find the recipient in the full list and add them
+        const currentRecipient = sortedRecipients.find(r => r.player.id === editEntry.recipientPlayerId);
+        if (currentRecipient) {
+          result = [currentRecipient, ...result];
+        } else {
+          // Recipient might be filtered out entirely (e.g., not configured)
+          // Try to find them in players directly
+          const player = players.find(p => p.id === editEntry.recipientPlayerId);
+          if (player) {
+            result = [{ player, priority: 999, score: 0, needsItem: false }, ...result];
+          }
+        }
+      }
+    }
+
+    return result;
+  }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
 
   // Auto-select top priority recipient when slot changes (add mode only)
   useEffect(() => {
