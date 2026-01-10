@@ -286,14 +286,23 @@ export function GroupView() {
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
+  // Memoize setSortPreset wrapper to prevent unnecessary re-renders
+  const setSortPresetWithTier = useCallback(
+    (preset: SortPreset) => setSortPreset(preset, currentTier?.tierId),
+    [setSortPreset, currentTier?.tierId]
+  );
+
   // Use extracted player actions hook
   const playerActions = usePlayerActions({
     groupId: currentGroup?.id,
     tierId: currentTier?.tierId,
     players: currentTier?.players,
     setEditingPlayerId,
-    setSortPreset: (preset) => setSortPreset(preset, currentTier?.tierId),
+    setSortPreset: setSortPresetWithTier,
   });
+
+  // Extract handleAddPlayer for stable effect dependency
+  const { handleAddPlayer } = playerActions;
 
   // Use extracted navigation hook
   const { handleNavigateToPlayer, handleNavigateToLootEntry } = useViewNavigation({
@@ -311,7 +320,7 @@ export function GroupView() {
         handleTierChange(detail.tierId);
       }
     };
-    const handleAddPlayerEvent = () => { playerActions.handleAddPlayer(); };
+    const handleAddPlayerEvent = () => { handleAddPlayer(); };
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
     const handleSettingsEvent = () => { setShowSettingsModal(true); };
@@ -335,7 +344,7 @@ export function GroupView() {
       window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
       window.removeEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
     };
-  }, [handleTierChange, playerActions, setShowCreateTierModal, setShowRolloverDialog, setShowSettingsModal, setShowDeleteTierConfirm, setShowKeyboardHelp]);
+  }, [handleTierChange, handleAddPlayer, setShowCreateTierModal, setShowRolloverDialog, setShowSettingsModal, setShowDeleteTierConfirm, setShowKeyboardHelp]);
 
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
