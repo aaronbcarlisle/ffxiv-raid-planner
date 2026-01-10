@@ -33,35 +33,26 @@ interface PlayerSummaryRow {
   matsNeeded: { twine: number; glaze: number; solvent: number };
 }
 
-// Progress cell component with mini progress bar
-function ProgressCell({
+// Simple text cell for book/material values - shows current/needed with color coding
+function ValueCell({
   current,
   needed,
-  colorClass = 'bg-accent',
+  colorClass,
 }: {
   current: number;
   needed: number;
   colorClass?: string;
 }) {
   if (needed === 0) {
-    return <span className="text-text-muted text-xs">-</span>;
+    return <span className="text-text-muted">-</span>;
   }
 
-  const percent = Math.min(100, Math.round((current / needed) * 100));
   const isComplete = current >= needed;
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-xs font-medium ${isComplete ? 'text-status-success' : 'text-text-primary'}`}>
-        {current}/{needed}
-      </span>
-      <div className="w-full h-1 bg-surface-elevated rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${isComplete ? 'bg-status-success' : colorClass}`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
+    <span className={isComplete ? 'text-status-success font-medium' : colorClass || 'text-text-primary'}>
+      {current}<span className="text-text-muted">/{needed}</span>
+    </span>
   );
 }
 
@@ -80,17 +71,17 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
   return (
     <tr className="border-b border-border-default last:border-b-0 hover:bg-surface-elevated/50 transition-colors">
       {/* Player */}
-      <td className="px-2 py-2">
+      <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <JobIcon job={player.job} size="sm" />
-          <span className="text-sm font-medium text-text-primary truncate max-w-[100px]">{player.name}</span>
+          <span className="text-sm font-medium text-text-primary">{player.name}</span>
         </div>
       </td>
 
-      {/* Gear % with progress bar */}
-      <td className="px-2 py-2">
-        <div className="flex flex-col items-center gap-0.5 min-w-[50px]">
-          <span className={`text-xs font-bold ${
+      {/* Gear % with progress bar - keep this one */}
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-bold min-w-[32px] ${
             gearPercent === 100 ? 'text-status-success' :
             gearPercent >= 75 ? 'text-status-warning' :
             gearPercent >= 50 ? 'text-accent' :
@@ -98,7 +89,7 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
           }`}>
             {gearPercent}%
           </span>
-          <div className="w-full h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-surface-elevated rounded-full overflow-hidden min-w-[60px]">
             <div
               className={`h-full rounded-full transition-all ${getGearColor()}`}
               style={{ width: `${gearPercent}%` }}
@@ -107,29 +98,29 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
         </div>
       </td>
 
-      {/* Books: I, II, III, IV (with mini progress bars) */}
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={booksBalance.I} needed={booksNeeded.I} />
+      {/* Books: I, II, III, IV - simple text values */}
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={booksBalance.I} needed={booksNeeded.I} />
       </td>
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={booksBalance.II} needed={booksNeeded.II} />
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={booksBalance.II} needed={booksNeeded.II} />
       </td>
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={booksBalance.III} needed={booksNeeded.III} />
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={booksBalance.III} needed={booksNeeded.III} />
       </td>
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={booksBalance.IV} needed={booksNeeded.IV} />
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={booksBalance.IV} needed={booksNeeded.IV} />
       </td>
 
-      {/* Materials: T, G, S (with colored progress bars) */}
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={matsReceived.twine} needed={matsNeeded.twine} colorClass="bg-material-twine" />
+      {/* Materials: T, G, S - simple text with color */}
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={matsReceived.twine} needed={matsNeeded.twine} colorClass="text-material-twine" />
       </td>
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={matsReceived.glaze} needed={matsNeeded.glaze} colorClass="bg-material-glaze" />
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={matsReceived.glaze} needed={matsNeeded.glaze} colorClass="text-material-glaze" />
       </td>
-      <td className="px-1 py-2 min-w-[45px]">
-        <ProgressCell current={matsReceived.solvent} needed={matsNeeded.solvent} colorClass="bg-material-solvent" />
+      <td className="px-2 py-2 text-center text-sm">
+        <ValueCell current={matsReceived.solvent} needed={matsNeeded.solvent} colorClass="text-material-solvent" />
       </td>
     </tr>
   );
@@ -366,20 +357,20 @@ export function TeamSummaryEnhanced({
         </div>
       </div>
 
-      {/* Table - compact layout */}
+      {/* Table - simplified layout */}
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
+        <table className="w-full">
           <thead>
             <tr className="border-b border-border-default bg-surface-elevated/50">
-              <th className="w-[140px] px-2 py-2 text-left text-xs font-medium text-text-secondary">Player</th>
-              <th className="w-[60px] px-2 py-2 text-center text-xs font-medium text-text-secondary">Gear</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-text-secondary" title={tierInfo.floors[0]}>I</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-material-twine" title={tierInfo.upgradeMaterials.twine}>T</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-material-glaze" title={tierInfo.upgradeMaterials.glaze}>G</th>
-              <th className="w-[55px] px-1 py-2 text-center text-xs font-medium text-material-solvent" title={tierInfo.upgradeMaterials.solvent}>S</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary">Player</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary" style={{ minWidth: '140px' }}>Gear</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[0]}>I</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-twine" title={tierInfo.upgradeMaterials.twine}>T</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-glaze" title={tierInfo.upgradeMaterials.glaze}>G</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-solvent" title={tierInfo.upgradeMaterials.solvent}>S</th>
             </tr>
           </thead>
           <tbody>
@@ -389,9 +380,9 @@ export function TeamSummaryEnhanced({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-border-default bg-surface-elevated/30">
-              <td className="px-2 py-2 text-xs font-semibold text-text-secondary">Team Avg</td>
-              <td className="px-2 py-2 text-center">
-                <span className={`text-xs font-bold ${
+              <td className="px-3 py-2 text-sm font-semibold text-text-secondary">Team Total</td>
+              <td className="px-3 py-2">
+                <span className={`text-sm font-bold ${
                   totals.gearPercent === 100 ? 'text-status-success' :
                   totals.gearPercent >= 75 ? 'text-status-warning' :
                   'text-text-primary'
@@ -399,25 +390,25 @@ export function TeamSummaryEnhanced({
                   {totals.gearPercent}%
                 </span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium">
+              <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.I}<span className="text-text-muted">/{totals.booksNeeded.I}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium">
+              <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.II}<span className="text-text-muted">/{totals.booksNeeded.II}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium">
+              <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.III}<span className="text-text-muted">/{totals.booksNeeded.III}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium">
+              <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.IV}<span className="text-text-muted">/{totals.booksNeeded.IV}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium text-material-twine">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-twine">
                 {totals.matsReceived.twine}<span className="text-text-muted">/{totals.matsNeeded.twine}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium text-material-glaze">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-glaze">
                 {totals.matsReceived.glaze}<span className="text-text-muted">/{totals.matsNeeded.glaze}</span>
               </td>
-              <td className="px-1 py-2 text-center text-xs font-medium text-material-solvent">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-solvent">
                 {totals.matsReceived.solvent}<span className="text-text-muted">/{totals.matsNeeded.solvent}</span>
               </td>
             </tr>
