@@ -513,6 +513,9 @@ export function SectionedLogView({
     materialType?: string;
   } | null>(null);
 
+  // Counter to force fresh modal mount when opening from grid
+  const [lootModalKey, setLootModalKey] = useState(0);
+
   // Context menu state for list view entries
   const [listContextMenu, setListContextMenu] = useState<{
     x: number;
@@ -700,6 +703,7 @@ export function SectionedLogView({
   const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {
     setGridModalState({ type: 'loot', floor, slot });
     setEntryToEdit(undefined);
+    setLootModalKey(k => k + 1); // Force fresh mount
     setShowLootModal(true);
   }, []);
 
@@ -1165,6 +1169,7 @@ export function SectionedLogView({
       {/* Modals */}
       {showLootModal && (
         <AddLootEntryModal
+          key={lootModalKey}
           isOpen={showLootModal}
           onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); }}
           onSubmit={handleAddLoot}
