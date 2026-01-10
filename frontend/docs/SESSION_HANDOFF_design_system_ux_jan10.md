@@ -63,6 +63,8 @@ All 285 tests passing.
 ## Git Log (This Session)
 
 ```
+de11807 Improve CurrentSource column display
+d42a5db Update documentation with completed design system tasks
 116cc35 Add CurrentSource column to GearTable (Task 2.5)
 d52265d Convert BiS source to compact toggle button (Task 2.3)
 d332075 Add Item name column to GearTable (Task 2.4)
@@ -70,3 +72,9 @@ d332075 Add Item name column to GearTable (Task 2.4)
 2dfb00a Add hotkeys to tooltips (Task 4.1)
 741e693 Add comprehensive implementation plan for remaining design system tasks
 ```
+
+## Latest Changes (de11807)
+
+- Shorthand names for CurrentSource: Tome, Craft, Aug, Catch, Prev, Norm
+- Savage uses same color as Raid (`text-gear-raid`)
+- Responsive priority: Item hides first (lg), Current stays longer (md)
