@@ -574,7 +574,7 @@ export function GroupView() {
               <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
                 <SortModeSelector
                   sortPreset={sortPreset}
-                  onPresetChange={(preset) => setSortPreset(preset, currentTier?.tierId)}
+                  onPresetChange={setSortPresetWithTier}
                 />
                 <GroupViewToggle
                   enabled={groupView}
