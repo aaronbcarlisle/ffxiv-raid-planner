@@ -26,7 +26,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-accent hover:bg-active-bg active:bg-accent/20',
   danger:
-    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40',
+    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40 focus:ring-status-error/50',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

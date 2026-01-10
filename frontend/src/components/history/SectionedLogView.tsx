@@ -774,8 +774,8 @@ export function SectionedLogView({
           {canEdit && (
             <Dropdown>
               <DropdownTrigger asChild>
-                <button className="px-3 py-1.5 text-sm text-status-error border border-status-error/30 rounded cursor-pointer
-                                    hover:bg-status-error/10 transition-colors flex items-center gap-1.5">
+                <button className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
+                                    hover:bg-status-error/20 hover:border-status-error/60 active:bg-status-error/30 transition-colors flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>

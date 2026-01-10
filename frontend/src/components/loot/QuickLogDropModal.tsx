@@ -191,12 +191,13 @@ export function QuickLogDropModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <Select
-              value={selectedWeek}
-              onChange={setSelectedWeek}
-              options={weekOptions}
-              className="w-32"
-            />
+            <div className="w-32">
+              <Select
+                value={selectedWeek}
+                onChange={setSelectedWeek}
+                options={weekOptions}
+              />
+            </div>
           </div>
         </div>
 

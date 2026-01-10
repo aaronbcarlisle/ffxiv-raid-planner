@@ -277,12 +277,15 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
               <div className="mb-6">
                 <Label>Share Link</Label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={`${window.location.origin}/group/${group.shareCode}`}
-                    onChange={() => {}}
-                    className="flex-1 font-mono text-sm"
-                    disabled
-                  />
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      value={`${window.location.origin}/group/${group.shareCode}`}
+                      onChange={() => {}}
+                      className="font-mono text-sm"
+                      fullWidth
+                      disabled
+                    />
+                  </div>
                   <Button
                     type="button"
                     variant="secondary"

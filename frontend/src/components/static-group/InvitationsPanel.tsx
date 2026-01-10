@@ -127,7 +127,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
       {/* Create Invitation */}
       {!showCreateForm ? (
         <Button
-          variant="ghost"
+          variant="secondary"
           onClick={() => setShowCreateForm(true)}
           className="w-full"
         >

@@ -25,9 +25,7 @@ function usePreventScrollLock(isOpen: boolean) {
   useEffect(() => {
     if (!isOpen) return;
 
-    // Override Radix's scroll-lock styles on body
     const body = document.body;
-    const originalStyle = body.getAttribute('style') || '';
 
     const override = () => {
       body.style.setProperty('position', 'static', 'important');
@@ -48,7 +46,11 @@ function usePreventScrollLock(isOpen: boolean) {
 
     return () => {
       observer.disconnect();
-      body.setAttribute('style', originalStyle);
+      // Remove the properties we set instead of restoring potentially stale values
+      // (the original captured style could contain Radix's pointer-events: none)
+      body.style.removeProperty('position');
+      body.style.removeProperty('overflow');
+      body.style.removeProperty('pointer-events');
     };
   }, [isOpen]);
 }
