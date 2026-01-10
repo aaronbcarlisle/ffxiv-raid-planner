@@ -43,6 +43,23 @@
   --color-role-caster: #b45ad4;
 
   /* ================================
+     MEMBERSHIP COLORS
+     User role within static groups
+     ================================ */
+  --color-membership-owner: #14b8a6;    /* Teal - same as accent */
+  --color-membership-lead: #a855f7;     /* Purple */
+  --color-membership-member: #3b82f6;   /* Blue */
+  --color-membership-viewer: #71717a;   /* Zinc */
+  --color-membership-linked: #f59e0b;   /* Amber */
+
+  /* ================================
+     BRAND COLORS
+     External service brand colors
+     ================================ */
+  --color-discord: #5865F2;
+  --color-discord-hover: #4752C4;
+
+  /* ================================
      GEAR SOURCE COLORS
      Distinct from status colors
      ================================ */
@@ -64,14 +81,16 @@
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
   --color-status-error: #ef4444;
-  --color-status-info: #14b8a6;
+  --color-status-info: #3b82f6;         /* Blue for informational */
 
   /* ================================
-     BRAND COLORS
-     Third-party service branding
+     MATERIAL COLORS
+     Upgrade material type colors (matching FFXIV game)
      ================================ */
-  --color-discord: #5865F2;              /* Discord blurple */
-  --color-discord-hover: #4752C4;        /* Darker blurple for hover */
+  --color-material-twine: #3b82f6;      /* Blue - armor upgrade */
+  --color-material-glaze: #a855f7;      /* Purple - accessory upgrade */
+  --color-material-solvent: #eab308;    /* Amber - weapon upgrade */
+  --color-material-tomestone: #f97316;  /* Orange - universal tomestone */
 
   /* ================================
      TEXT COLORS
@@ -459,6 +478,20 @@ dialog input[type="radio"] {
 @media (min-width: 1400px) {
   .grid-4xl {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Custom 5-column breakpoint for ultrawide screens */
+@media (min-width: 1600px) {
+  .grid-5xl {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Custom 6-column breakpoint for ultrawide screens */
+@media (min-width: 2000px) {
+  .grid-6xl {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 

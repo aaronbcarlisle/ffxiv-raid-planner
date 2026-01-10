@@ -18,16 +18,14 @@
 
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
-import { forwardRef, useState, useEffect } from 'react';
+import { forwardRef, useState, useEffect, type ReactNode } from 'react';
 
 // Counteract Radix's scroll-lock which breaks sticky positioning
 function usePreventScrollLock(isOpen: boolean) {
   useEffect(() => {
     if (!isOpen) return;
 
-    // Override Radix's scroll-lock styles on body
     const body = document.body;
-    const originalStyle = body.getAttribute('style') || '';
 
     const override = () => {
       body.style.setProperty('position', 'static', 'important');
@@ -48,7 +46,11 @@ function usePreventScrollLock(isOpen: boolean) {
 
     return () => {
       observer.disconnect();
-      body.setAttribute('style', originalStyle);
+      // Remove the properties we set instead of restoring potentially stale values
+      // (the original captured style could contain Radix's pointer-events: none)
+      body.style.removeProperty('position');
+      body.style.removeProperty('overflow');
+      body.style.removeProperty('pointer-events');
     };
   }, [isOpen]);
 }
@@ -56,6 +58,8 @@ function usePreventScrollLock(isOpen: boolean) {
 export interface SelectOption {
   value: string;
   label: string;
+  /** Optional icon to display before the label */
+  icon?: ReactNode;
 }
 
 export interface SelectProps {
@@ -82,6 +86,15 @@ export function Select({
   // Prevent Radix scroll-lock from breaking sticky nav
   usePreventScrollLock(open);
 
+  // Filter out empty-value options (Radix doesn't allow empty string values)
+  // Use the empty option's label as placeholder if provided
+  const emptyOption = options.find(opt => opt.value === '');
+  const effectivePlaceholder = emptyOption?.label || placeholder;
+  const validOptions = options.filter(opt => opt.value !== '');
+
+  // Find the selected option to render its icon in the trigger
+  const selectedOption = validOptions.find(opt => opt.value === value);
+
   return (
     <SelectPrimitive.Root
       value={value}
@@ -105,9 +118,17 @@ export function Select({
           ${className}
         `}
       >
-        <SelectPrimitive.Value placeholder={placeholder} />
+        {/* Custom value display with icon support */}
+        {selectedOption ? (
+          <span className="flex items-center gap-2 truncate">
+            {selectedOption.icon && <span className="flex-shrink-0">{selectedOption.icon}</span>}
+            <span className="truncate">{selectedOption.label}</span>
+          </span>
+        ) : (
+          <span className="text-text-muted">{effectivePlaceholder}</span>
+        )}
         <SelectPrimitive.Icon>
-          <ChevronDown className="w-4 h-4 text-text-muted" />
+          <ChevronDown className="w-4 h-4 text-text-muted flex-shrink-0" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
 
@@ -126,8 +147,8 @@ export function Select({
         align="start"
       >
         <SelectPrimitive.Viewport className="p-1">
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+          {validOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value} icon={option.icon}>
               {option.label}
             </SelectItem>
           ))}
@@ -137,32 +158,36 @@ export function Select({
   );
 }
 
-const SelectItem = forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ children, ...props }, ref) => {
-  return (
-    <SelectPrimitive.Item
-      ref={ref}
-      className="
-        relative flex items-center
-        px-8 py-2 rounded
-        text-sm text-text-primary
-        cursor-pointer
-        select-none
-        outline-none
-        data-[highlighted]:bg-accent data-[highlighted]:text-accent-contrast data-[highlighted]:font-bold
-        data-[disabled]:text-text-disabled data-[disabled]:pointer-events-none
-      "
-      {...props}
-    >
-      <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex items-center">
-        <Check className="w-4 h-4" />
-      </SelectPrimitive.ItemIndicator>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-    </SelectPrimitive.Item>
-  );
-});
+interface SelectItemProps extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> {
+  icon?: ReactNode;
+}
+
+const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
+  ({ children, icon, ...props }, ref) => {
+    return (
+      <SelectPrimitive.Item
+        ref={ref}
+        className="
+          relative flex items-center
+          px-8 py-2 rounded
+          text-sm text-text-primary
+          cursor-pointer
+          select-none
+          outline-none
+          data-[highlighted]:bg-accent data-[highlighted]:text-accent-contrast data-[highlighted]:font-bold
+          data-[disabled]:text-text-disabled data-[disabled]:pointer-events-none
+        "
+        {...props}
+      >
+        <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex items-center">
+          <Check className="w-4 h-4" />
+        </SelectPrimitive.ItemIndicator>
+        {icon && <span className="mr-2 flex-shrink-0">{icon}</span>}
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      </SelectPrimitive.Item>
+    );
+  }
+);
 
 SelectItem.displayName = 'SelectItem';
 

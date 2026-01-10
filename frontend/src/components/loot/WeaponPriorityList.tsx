@@ -5,13 +5,15 @@
  * Shows which players should receive weapons in what order.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
+import { FilterBar } from './FilterBar';
+import { RoleSection } from './RoleSection';
 
 // Roll result for a player
 interface RollResult {
@@ -138,18 +140,18 @@ function WeaponPriorityCard({
               return (
                 <div
                   key={`tie-${tieGroup}`}
-                  className={`rounded border border-dashed border-yellow-500/50 ${
-                    groupIndex === 0 ? 'bg-accent/10' : 'bg-yellow-500/5'
+                  className={`rounded-r border-l-2 ${
+                    groupIndex === 0 ? 'border-accent bg-surface-elevated/50' : 'border-accent/40 bg-surface-elevated/30'
                   }`}
                 >
                   {/* Tie group header with roll button */}
-                  <div className="flex items-center justify-between px-2 py-1 border-b border-yellow-500/30">
-                    <span className="text-xs text-yellow-500 font-medium">
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-border-subtle">
+                    <span className="text-xs text-text-muted font-medium">
                       Tied for #{displayRank}
                     </span>
                     <button
                       onClick={() => handleRoll(tieGroup!, tieGroupEntries)}
-                      className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-medium"
+                      className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
                     >
                       {hasRolled ? 'Reroll' : 'Roll'}
                     </button>
@@ -159,7 +161,7 @@ function WeaponPriorityCard({
                   {tieGroupEntries.map((tieEntry) => {
                     const roleColor = tieEntry.player.role
                       ? getRoleColor(tieEntry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-                      : '#9ca3af';
+                      : 'var(--color-text-secondary)';
                     const playerRoll = tieGroup !== undefined ? getPlayerRoll(tieGroup, tieEntry.player.id) : null;
                     const isWinner = winnerId === tieEntry.player.id;
                     const isFirst = groupIndex === 0;
@@ -168,7 +170,7 @@ function WeaponPriorityCard({
                       <div
                         key={tieEntry.player.id}
                         className={`flex items-center justify-between px-2 py-1 text-sm group ${
-                          isWinner ? 'bg-green-500/20' : ''
+                          isWinner ? 'bg-status-success/20' : ''
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
@@ -182,7 +184,7 @@ function WeaponPriorityCard({
                           <JobIcon job={tieEntry.player.job} size="xs" />
                           <span
                             className={`truncate ${
-                              isWinner ? 'text-green-400 font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                              isWinner ? 'text-status-success font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
                             }`}
                           >
                             {tieEntry.player.name}
@@ -195,7 +197,7 @@ function WeaponPriorityCard({
                           {playerRoll !== null && (
                             <span
                               className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
-                                isWinner ? 'bg-green-500/30 text-green-400 font-medium' : 'bg-surface-elevated text-text-muted'
+                                isWinner ? 'bg-status-success/30 text-status-success font-medium' : 'bg-surface-elevated text-text-muted'
                               }`}
                             >
                               {playerRoll}
@@ -229,7 +231,7 @@ function WeaponPriorityCard({
             // Render regular (non-tied) entry
             const roleColor = entry.player.role
               ? getRoleColor(entry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-              : '#9ca3af';
+              : 'var(--color-text-secondary)';
             const isFirst = groupIndex === 0;
 
             return (
@@ -295,7 +297,16 @@ function WeaponPriorityCard({
   );
 }
 
-type RoleFilter = 'all' | 'tank' | 'healer' | 'dps';
+// Role section configuration - separate physical ranged and magical ranged (caster)
+type RoleSectionId = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+
+const ROLE_SECTIONS: { id: RoleSectionId; label: string; roles: string[]; textColor: string; bgColor: string; borderColor: string }[] = [
+  { id: 'tank', label: 'Tanks', roles: ['tank'], textColor: 'text-role-tank', bgColor: 'bg-role-tank', borderColor: 'border-role-tank' },
+  { id: 'healer', label: 'Healers', roles: ['healer'], textColor: 'text-role-healer', bgColor: 'bg-role-healer', borderColor: 'border-role-healer' },
+  { id: 'melee', label: 'Melee DPS', roles: ['melee'], textColor: 'text-role-melee', bgColor: 'bg-role-melee', borderColor: 'border-role-melee' },
+  { id: 'ranged', label: 'Physical Ranged', roles: ['ranged'], textColor: 'text-role-ranged', bgColor: 'bg-role-ranged', borderColor: 'border-role-ranged' },
+  { id: 'caster', label: 'Magical Ranged', roles: ['caster'], textColor: 'text-role-caster', bgColor: 'bg-role-caster', borderColor: 'border-role-caster' },
+];
 
 interface WeaponPriorityListProps {
   players: SnapshotPlayer[];
@@ -314,74 +325,164 @@ export function WeaponPriorityList({
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Role filter: URL param > default
-  const [roleFilter, setRoleFilterState] = useState<RoleFilter>(() => {
-    const urlFilter = searchParams.get('weaponFilter');
-    if (urlFilter === 'all' || urlFilter === 'tank' || urlFilter === 'healer' || urlFilter === 'dps') {
-      return urlFilter;
+  // Track expanded state for each role section (persisted to localStorage)
+  const [expandedSections, setExpandedSectionsState] = useState<Set<RoleSectionId>>(() => {
+    try {
+      const saved = localStorage.getItem('weapon-priority-expanded');
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        return new Set(parsed.filter(s =>
+          ['tank', 'healer', 'melee', 'ranged', 'caster'].includes(s)
+        ) as RoleSectionId[]);
+      }
+    } catch {
+      // Ignore localStorage errors
     }
-    return 'all';
+    return new Set(['tank', 'healer', 'melee', 'ranged', 'caster']);
   });
 
-  // Wrapper to update roleFilter and URL
-  const setRoleFilter = useCallback((filter: RoleFilter) => {
-    setRoleFilterState(filter);
-    // Update URL - only include if not default
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (filter === 'all') {
-        params.delete('weaponFilter');
-      } else {
-        params.set('weaponFilter', filter);
+  // Wrapper to persist expanded state to localStorage
+  const setExpandedSections = useCallback((update: Set<RoleSectionId> | ((prev: Set<RoleSectionId>) => Set<RoleSectionId>)) => {
+    setExpandedSectionsState(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      try {
+        localStorage.setItem('weapon-priority-expanded', JSON.stringify(Array.from(next)));
+      } catch {
+        // Ignore localStorage errors
       }
-      return params;
-    }, { replace: true });
+      return next;
+    });
+  }, []);
+
+  // Handlers for expand/collapse all
+  const handleExpandAll = useCallback(() => {
+    setExpandedSections(new Set(['tank', 'healer', 'melee', 'ranged', 'caster']));
+  }, [setExpandedSections]);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedSections(new Set());
+  }, [setExpandedSections]);
+
+  // Listen for 'V' keyboard shortcut (dispatched as custom event from GroupView)
+  useEffect(() => {
+    const handleToggleExpandAll = () => {
+      if (expandedSections.size > 2) {
+        handleCollapseAll();
+      } else {
+        handleExpandAll();
+      }
+    };
+
+    window.addEventListener('loot:toggle-expand-all', handleToggleExpandAll);
+    return () => {
+      window.removeEventListener('loot:toggle-expand-all', handleToggleExpandAll);
+    };
+  }, [expandedSections.size, handleExpandAll, handleCollapseAll]);
+
+  // Handler for individual section expand/collapse
+  const handleSectionExpandChange = useCallback((sectionId: RoleSectionId, expanded: boolean) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (expanded) {
+        next.add(sectionId);
+      } else {
+        next.delete(sectionId);
+      }
+      return next;
+    });
+  }, [setExpandedSections]);
+
+  // Visible sections: URL param > default (all visible)
+  const [visibleSections, setVisibleSectionsState] = useState<Set<RoleSectionId>>(() => {
+    const urlSections = searchParams.get('weaponSections');
+    if (urlSections) {
+      const sections = urlSections.split(',').filter(s =>
+        ['tank', 'healer', 'melee', 'ranged', 'caster'].includes(s)
+      ) as RoleSectionId[];
+      // Allow empty set from URL (all hidden)
+      return new Set(sections);
+    }
+    return new Set(['tank', 'healer', 'melee', 'ranged', 'caster']);
+  });
+
+  // Wrapper to toggle section visibility and update URL
+  // Accepts string for FilterBar compatibility but validates it's a valid RoleSectionId
+  const toggleSection = useCallback((sectionId: string) => {
+    if (!['tank', 'healer', 'melee', 'ranged', 'caster'].includes(sectionId)) return;
+    const section = sectionId as RoleSectionId;
+    setVisibleSectionsState(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        // Allow hiding all sections (will show empty state)
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+
+      // Update URL
+      setSearchParams(params => {
+        const newParams = new URLSearchParams(params);
+        if (next.size === 5) {
+          // All visible = default, remove param
+          newParams.delete('weaponSections');
+        } else if (next.size === 0) {
+          // None visible - use special marker
+          newParams.set('weaponSections', 'none');
+        } else {
+          newParams.set('weaponSections', Array.from(next).join(','));
+        }
+        return newParams;
+      }, { replace: true });
+
+      return next;
+    });
   }, [setSearchParams]);
+
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
-  const sortedJobs = useMemo(() => {
-    const allJobs = new Set<string>();
+  const allJobs = useMemo(() => {
+    const jobs = new Set<string>();
     for (const player of players) {
       // Add main job by default
       if (player.job) {
-        allJobs.add(player.job);
+        jobs.add(player.job);
       }
       // Add explicitly set weapon priorities
       for (const wp of player.weaponPriorities || []) {
-        allJobs.add(wp.job);
+        jobs.add(wp.job);
       }
     }
-
-    // Sort jobs by role (tank > healer > melee > ranged > caster)
-    return Array.from(allJobs).sort((a, b) => {
-      const jobA = RAID_JOBS.find((j) => j.abbreviation === a);
-      const jobB = RAID_JOBS.find((j) => j.abbreviation === b);
-      if (!jobA || !jobB) return 0;
-
-      const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-      const indexA = roleOrder.indexOf(jobA.role);
-      const indexB = roleOrder.indexOf(jobB.role);
-
-      return indexA - indexB;
-    });
+    return jobs;
   }, [players]);
 
-  // Filter jobs by selected role
-  const filteredJobs = useMemo(() => {
-    if (roleFilter === 'all') return sortedJobs;
+  // Group jobs by role section
+  const jobsBySection = useMemo(() => {
+    const grouped = new Map<RoleSectionId, string[]>();
 
-    return sortedJobs.filter((job) => {
-      const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
-      if (!jobInfo) return false;
-
-      if (roleFilter === 'tank') return jobInfo.role === 'tank';
-      if (roleFilter === 'healer') return jobInfo.role === 'healer';
-      if (roleFilter === 'dps') return ['melee', 'ranged', 'caster'].includes(jobInfo.role);
-      return true;
+    ROLE_SECTIONS.forEach(section => {
+      const sectionJobs = Array.from(allJobs).filter(job => {
+        const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+        return jobInfo && section.roles.includes(jobInfo.role);
+      });
+      grouped.set(section.id, sectionJobs);
     });
-  }, [sortedJobs, roleFilter]);
 
-  if (sortedJobs.length === 0) {
+    return grouped;
+  }, [allJobs]);
+
+  // Calculate hidden roles (roles with no jobs)
+  const hiddenRoles = useMemo(() => {
+    const hidden = new Set<string>();
+    ROLE_SECTIONS.forEach(section => {
+      const sectionJobs = jobsBySection.get(section.id) || [];
+      if (sectionJobs.length === 0) {
+        hidden.add(section.id);
+      }
+    });
+    return hidden;
+  }, [jobsBySection]);
+
+  if (allJobs.size === 0) {
     return (
       <div className="text-center py-8 text-text-muted">
         <p>No configured players yet.</p>
@@ -389,63 +490,67 @@ export function WeaponPriorityList({
     );
   }
 
-  const filterButtonClass = (filter: RoleFilter) =>
-    `px-3 py-1 text-sm rounded transition-colors font-bold ${
-      roleFilter === filter
-        ? 'bg-accent text-accent-contrast'
-        : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
-    }`;
+  const anyVisible = visibleSections.size > 0;
 
   return (
     <div className="space-y-4">
-      {/* Role filter buttons */}
-      <div className="flex items-center justify-end gap-2">
-        <span className="text-sm text-text-muted mr-1">Filter:</span>
-        <button
-          onClick={() => setRoleFilter('all')}
-          className={filterButtonClass('all')}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setRoleFilter('tank')}
-          className={filterButtonClass('tank')}
-        >
-          Tank
-        </button>
-        <button
-          onClick={() => setRoleFilter('healer')}
-          className={filterButtonClass('healer')}
-        >
-          Healer
-        </button>
-        <button
-          onClick={() => setRoleFilter('dps')}
-          className={filterButtonClass('dps')}
-        >
-          DPS
-        </button>
+      {/* Section filter toggles - role-colored, matching Gear Priority header style */}
+      <div className="-mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated/50">
+        <FilterBar
+          type="role"
+          visibleRoles={visibleSections}
+          onRoleToggle={toggleSection}
+          hiddenRoles={hiddenRoles}
+        />
       </div>
 
-      {/* Weapon cards grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredJobs.map((job) => {
-          const priority = getWeaponPriorityForJob(players, job, settings);
-          const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
-          const jobName = jobInfo?.name || job;
+      {/* Empty state when no sections visible */}
+      {!anyVisible && (
+        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
+          <p>No role sections selected.</p>
+          <p className="text-sm mt-1">Click a role button above to show weapons.</p>
+        </div>
+      )}
 
-          return (
-            <WeaponPriorityCard
-              key={job}
-              job={job}
-              jobName={jobName}
-              priority={priority}
-              showLogButtons={showLogButtons}
-              onLogClick={onLogClick}
-            />
-          );
-        })}
-      </div>
+      {/* Role sections - collapsible */}
+      {ROLE_SECTIONS.map(section => {
+        const sectionJobs = jobsBySection.get(section.id) || [];
+        if (sectionJobs.length === 0) return null;
+        if (!visibleSections.has(section.id)) return null;
+
+        return (
+          <RoleSection
+            key={section.id}
+            role={section}
+            itemCount={sectionJobs.length}
+            itemLabel="weapon"
+            expanded={expandedSections.has(section.id)}
+            onExpandChange={(expanded) => handleSectionExpandChange(section.id, expanded)}
+            onExpandAll={handleExpandAll}
+            onCollapseAll={handleCollapseAll}
+          >
+            {/* Weapon cards grid for this section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sectionJobs.map(job => {
+                const priority = getWeaponPriorityForJob(players, job, settings);
+                const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+                const jobName = jobInfo?.name || job;
+
+                return (
+                  <WeaponPriorityCard
+                    key={job}
+                    job={job}
+                    jobName={jobName}
+                    priority={priority}
+                    showLogButtons={showLogButtons}
+                    onLogClick={onLogClick}
+                  />
+                );
+              })}
+            </div>
+          </RoleSection>
+        );
+      })}
     </div>
   );
 }

@@ -323,6 +323,7 @@ const NAV_GROUPS = [
       { id: 'membership-colors', label: 'Membership' },
       { id: 'gear-source-colors', label: 'Gear Sources' },
       { id: 'status-colors', label: 'Status' },
+      { id: 'material-colors', label: 'Materials' },
       { id: 'text-colors', label: 'Text' },
     ],
   },
@@ -350,6 +351,8 @@ const NAV_GROUPS = [
     items: [
       { id: 'forms-inputs', label: 'Forms & Inputs' },
       { id: 'menus-navigation', label: 'Menus & Nav' },
+      { id: 'tab-patterns', label: 'Tab Patterns' },
+      { id: 'containers', label: 'Containers' },
       { id: 'page-layout', label: 'Page Layout' },
       { id: 'nav-panels', label: 'Nav Panels' },
     ],
@@ -1379,6 +1382,227 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/primitives
   );
 }
 
+// Tab Patterns Section
+function TabPatternsSection() {
+  return (
+    <Section id="tab-patterns" title="Tab Patterns">
+      <p className="text-text-secondary mb-6">
+        Different tab structures serve different purposes. Understanding when to use each pattern
+        ensures consistent UX across the application.
+      </p>
+
+      {/* Pattern 1: Content Variant Tabs */}
+      <Subsection title="Content Variant Tabs">
+        <p className="text-sm text-text-muted mb-4">
+          Use for showing the same data in different visualizations. Tabs appear inside the section header.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-text-primary font-medium">Loot Priority</h3>
+            <div className="flex bg-surface-base rounded-lg p-0.5">
+              <button className="px-3 py-1 text-sm rounded bg-accent text-accent-contrast font-bold">
+                Who Needs It
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary">
+                Gear Priority
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary">
+                Weapon Priority
+              </button>
+            </div>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Content area - same data, different view
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Loot tab subtabs (Who Needs It, Gear Priority, Weapon Priority)
+        </div>
+      </Subsection>
+
+      {/* Pattern 2: Layout Mode Toggles */}
+      <Subsection title="Layout Mode Toggles">
+        <p className="text-sm text-text-muted mb-4">
+          Use for fundamentally different UI layouts. Toggles appear at the top level, separate from content.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex bg-surface-base rounded-lg p-0.5">
+              <button className="px-3 py-1 text-sm rounded bg-accent text-accent-contrast font-bold flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+                Grid
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+                List
+              </button>
+            </div>
+            <button className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg flex items-center gap-1.5">
+              Reset
+            </button>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Completely different layout structure
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Log tab Grid/List toggle - the entire UI structure changes
+        </div>
+      </Subsection>
+
+      {/* Pattern 3: View/Filter Subtabs */}
+      <Subsection title="View/Filter Subtabs">
+        <p className="text-sm text-text-muted mb-4">
+          Use for sorting, filtering, or grouping within a layout. Appears inside the content area, smaller than layout toggles.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-text-primary font-medium">Loot Log</span>
+            <div className="flex bg-surface-base rounded p-0.5">
+              <button className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold">
+                By Floor
+              </button>
+              <button className="px-2 py-0.5 text-xs rounded text-text-secondary">
+                Timeline
+              </button>
+            </div>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Same list, different grouping/sorting
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Log List view (By Floor vs Timeline) - same entries, different organization
+        </div>
+      </Subsection>
+
+      {/* Pattern 4: Context-Appropriate Sizing */}
+      <Subsection title="Context-Appropriate Sizing">
+        <p className="text-sm text-text-muted mb-4">
+          Element sizes should reflect their importance. Primary interaction areas get prominence, summaries stay compact.
+        </p>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-surface-elevated p-4 rounded-lg border border-border-default">
+            <div className="text-sm text-text-primary font-medium mb-2">Grid View (Primary)</div>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {['T1', 'T2', 'H1', 'H2'].map(pos => (
+                <div key={pos} className="bg-surface-base rounded p-2 text-center">
+                  <div className="text-lg font-bold text-accent">{pos}</div>
+                  <div className="text-xs text-text-muted">Name</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-text-muted">Large player badges - this is the primary editing interface</div>
+          </div>
+          <div className="bg-surface-elevated p-4 rounded-lg border border-border-default">
+            <div className="text-sm text-text-primary font-medium mb-2">List Header (Summary)</div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-text-muted">Week 1 Drops:</span>
+              {['T1', 'H1', 'M1', 'R1'].map(pos => (
+                <span key={pos} className="px-1.5 py-0.5 text-xs bg-surface-base rounded text-text-secondary">
+                  {pos}
+                </span>
+              ))}
+            </div>
+            <div className="text-xs text-text-muted">Tiny badges - just a summary, not for editing</div>
+          </div>
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
+// Container System Section
+function ContainersSection() {
+  return (
+    <Section id="containers" title="Container System">
+      <p className="text-text-secondary mb-6">
+        A 5-tier container system for consistent width constraints across page types.
+        Prevents content from stretching infinitely on ultrawide monitors (3440px+).
+      </p>
+
+      {/* Container Tiers */}
+      <Subsection title="Container Tiers">
+        <p className="text-sm text-text-muted mb-4">
+          Each tier serves a specific purpose. Use the PageContainer component or apply classes directly.
+        </p>
+        <div className="space-y-3">
+          {[
+            { name: 'data', width: '160rem (2560px)', desc: 'Data-dense grids, player cards', example: 'GroupView' },
+            { name: 'wide', width: '120rem (1920px)', desc: 'Documentation with sidebar', example: 'API Docs, Guides' },
+            { name: 'focus', width: '80rem (1280px)', desc: 'Focused content, simple docs', example: 'Release Notes' },
+            { name: 'narrow', width: 'max-w-6xl (1152px)', desc: 'Card grids, dashboards', example: 'Dashboard' },
+            { name: 'compact', width: 'max-w-4xl (896px)', desc: 'Marketing, landing pages', example: 'Home page' },
+          ].map(tier => (
+            <div key={tier.name} className="flex items-center gap-4 p-3 bg-surface-elevated rounded-lg border border-border-default">
+              <code className="px-2 py-1 bg-accent/10 text-accent rounded text-sm font-mono min-w-[80px]">
+                {tier.name}
+              </code>
+              <div className="flex-1">
+                <div className="text-text-primary text-sm font-medium">{tier.width}</div>
+                <div className="text-text-muted text-xs">{tier.desc}</div>
+              </div>
+              <div className="text-text-secondary text-xs">{tier.example}</div>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+
+      {/* Usage */}
+      <Subsection title="Usage">
+        <p className="text-sm text-text-muted mb-4">
+          Import PageContainer from layout or use Tailwind classes directly.
+        </p>
+        <div className="bg-surface-overlay rounded-lg p-4 border border-border-default">
+          <pre className="text-sm text-text-secondary overflow-x-auto">
+            <code>{`// Using PageContainer component
+import { PageContainer } from '../components/layout';
+
+<PageContainer variant="data">
+  <PlayerGrid />
+</PageContainer>
+
+// Or use Tailwind classes directly
+<div className="max-w-[160rem] mx-auto">
+  <PlayerGrid />
+</div>`}</code>
+          </pre>
+        </div>
+      </Subsection>
+
+      {/* Grid Breakpoints */}
+      <Subsection title="Grid Breakpoints">
+        <p className="text-sm text-text-muted mb-4">
+          Custom grid breakpoints for ultrawide scaling. Player grids scale from 1-6 columns.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { breakpoint: 'sm (640px)', cols: '2 columns' },
+            { breakpoint: 'lg (1024px)', cols: '3 columns' },
+            { breakpoint: 'grid-4xl (1400px)', cols: '4 columns' },
+            { breakpoint: 'grid-5xl (1600px)', cols: '5 columns' },
+            { breakpoint: 'grid-6xl (2000px)', cols: '6 columns' },
+          ].map(bp => (
+            <div key={bp.breakpoint} className="p-3 bg-surface-elevated rounded border border-border-default">
+              <div className="text-xs text-text-muted">{bp.breakpoint}</div>
+              <div className="text-sm text-text-primary font-medium">{bp.cols}</div>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
 // Sidebar Navigation Component
 function NavSidebar({
   activeSection,
@@ -1831,16 +2055,20 @@ export function DesignSystem() {
 
           {/* Membership Colors */}
           <Section id="membership-colors" title="Membership Role Colors">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <p className="text-text-secondary mb-6">
+            User role within static groups. Use semantic tokens for consistent styling.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { name: 'Owner', token: '--color-member-owner', hex: '#14b8a6', access: 'Full control' },
-              { name: 'Lead', token: '--color-member-lead', hex: '#a855f7', access: 'Manage tiers/players' },
-              { name: 'Member', token: '--color-member-member', hex: '#3b82f6', access: 'Edit claimed players' },
-              { name: 'Viewer', token: '--color-member-viewer', hex: '#71717a', access: 'Read-only' },
+              { name: 'Owner', token: 'membership-owner', hex: '#14b8a6', access: 'Full control', tailwind: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30' },
+              { name: 'Lead', token: 'membership-lead', hex: '#a855f7', access: 'Manage tiers/players', tailwind: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30' },
+              { name: 'Member', token: 'membership-member', hex: '#3b82f6', access: 'Edit claimed players', tailwind: 'bg-membership-member/20 text-membership-member border-membership-member/30' },
+              { name: 'Viewer', token: 'membership-viewer', hex: '#71717a', access: 'Read-only', tailwind: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30' },
+              { name: 'Linked', token: 'membership-linked', hex: '#f59e0b', access: 'Player-linked access', tailwind: 'bg-membership-linked/20 text-membership-linked border-membership-linked/30' },
             ].map((role) => (
-              <div key={role.name} className="flex items-center gap-3">
+              <div key={role.name} className="space-y-2">
                 <div
-                  className="px-3 py-1.5 rounded border text-sm font-medium"
+                  className="px-3 py-1.5 rounded border text-sm font-medium text-center"
                   style={{
                     backgroundColor: `${role.hex}20`,
                     borderColor: `${role.hex}40`,
@@ -1849,7 +2077,10 @@ export function DesignSystem() {
                 >
                   {role.name}
                 </div>
-                <span className="text-xs text-text-secondary">{role.access}</span>
+                <div className="text-xs text-text-muted text-center">{role.access}</div>
+                <code className="block text-[10px] text-accent bg-surface-elevated px-2 py-1 rounded text-center truncate" title={role.tailwind}>
+                  {role.token}
+                </code>
               </div>
             ))}
           </div>
@@ -1883,12 +2114,43 @@ export function DesignSystem() {
               { name: 'Success', token: '--color-status-success', hex: '#22c55e' },
               { name: 'Warning', token: '--color-status-warning', hex: '#eab308' },
               { name: 'Error', token: '--color-status-error', hex: '#ef4444' },
-              { name: 'Info', token: '--color-status-info', hex: '#14b8a6' },
+              { name: 'Info', token: '--color-status-info', hex: '#3b82f6' },
             ].map((status) => (
               <ColorSwatch key={status.name} {...status} />
             ))}
           </div>
         </Section>
+
+          {/* Material Colors */}
+          <Section id="material-colors" title="Material Colors">
+            <p className="text-text-secondary mb-6">
+              Upgrade material colors matching FFXIV game materials for consistent visual identification.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: 'Twine', token: '--color-material-twine', hex: '#3b82f6', description: 'Armor upgrade' },
+                { name: 'Glaze', token: '--color-material-glaze', hex: '#a855f7', description: 'Accessory upgrade' },
+                { name: 'Solvent', token: '--color-material-solvent', hex: '#eab308', description: 'Weapon upgrade' },
+                { name: 'Tomestone', token: '--color-material-tomestone', hex: '#f97316', description: 'Universal' },
+              ].map((material) => (
+                <div key={material.name} className="bg-surface-card rounded-lg border border-border-subtle p-4">
+                  <div
+                    className="w-full h-12 rounded-lg mb-3"
+                    style={{ backgroundColor: material.hex }}
+                  />
+                  <div className="text-sm font-medium text-text-primary">{material.name}</div>
+                  <div className="text-xs text-text-muted font-mono">{material.hex}</div>
+                  <div className="text-xs text-text-secondary mt-1">{material.description}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
+              <h4 className="text-sm font-medium text-text-primary mb-2">Usage</h4>
+              <code className="text-xs text-accent">
+                text-material-twine, text-material-glaze, text-material-solvent
+              </code>
+            </div>
+          </Section>
 
           {/* Text Colors */}
           <Section id="text-colors" title="Text Colors">
@@ -2125,6 +2387,12 @@ export function DesignSystem() {
 
         {/* Menus & Navigation */}
         <MenusSection />
+
+        {/* Tab Patterns */}
+        <TabPatternsSection />
+
+        {/* Container System */}
+        <ContainersSection />
 
         {/* Page Layout */}
         <Section id="page-layout" title="Page Layout">

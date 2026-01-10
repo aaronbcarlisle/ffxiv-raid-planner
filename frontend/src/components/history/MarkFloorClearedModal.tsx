@@ -5,7 +5,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Select, Checkbox, TextArea, Label } from '../ui';
+import { NumberInput } from '../ui/NumberInput';
+import { Button } from '../primitives';
 import type { MarkFloorClearedRequest, SnapshotPlayer } from '../../types';
 
 interface MarkFloorClearedModalProps {
@@ -92,12 +94,15 @@ export function MarkFloorClearedModal({
       setNotes('');
 
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by store
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Build floor options for Select
+  const floorOptions = floors.map((f) => ({ value: f, label: f }));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Mark Floor Cleared">
@@ -105,103 +110,91 @@ export function MarkFloorClearedModal({
         {/* Week and Floor */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Week</label>
-            <input
-              type="number"
-              min={1}
+            <Label htmlFor="week">Week</Label>
+            <NumberInput
               value={weekNumber}
-              onChange={(e) => setWeekNumber(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
+              onChange={(val) => setWeekNumber(val ?? 1)}
+              min={1}
+              size="sm"
+              showButtons={false}
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Floor</label>
-            <select
+            <Label htmlFor="floor">Floor</Label>
+            <Select
+              id="floor"
               value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-            >
-              {floors.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setFloor}
+              options={floorOptions}
+            />
           </div>
         </div>
 
         {/* Player selection */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm text-text-secondary">
+            <Label className="mb-0">
               Players ({selectedPlayerIds.size} selected)
-            </label>
+            </Label>
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={handleSelectAll}
-                className="text-xs text-accent hover:text-accent-bright"
               >
                 Select All
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={handleClearAll}
-                className="text-xs text-text-muted hover:text-text-secondary"
               >
                 Clear
-              </button>
+              </Button>
             </div>
           </div>
 
           <div className="border border-border-default rounded-lg max-h-64 overflow-y-auto">
             {mainRosterPlayers.map((player) => (
-              <label
+              <div
                 key={player.id}
-                className="flex items-center gap-3 p-3 hover:bg-surface-hover cursor-pointer border-b border-border-default last:border-b-0"
+                className="flex items-center gap-3 p-3 hover:bg-surface-hover border-b border-border-default last:border-b-0"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selectedPlayerIds.has(player.id)}
                   onChange={() => handleTogglePlayer(player.id)}
-                  className="cursor-pointer"
+                  label={`${player.name} (${player.job})`}
                 />
-                <span className="text-sm text-text-primary">
-                  {player.name} ({player.job})
-                </span>
-              </label>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Notes */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Notes (optional)</label>
-          <textarea
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <TextArea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g., Weekly reclears"
             rows={2}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none resize-none"
           />
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={selectedPlayerIds.size === 0 || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={selectedPlayerIds.size === 0}
+            loading={isSaving}
           >
-            {isSaving ? 'Marking...' : `Mark ${selectedPlayerIds.size} Player${selectedPlayerIds.size === 1 ? '' : 's'}`}
-          </button>
+            {`Mark ${selectedPlayerIds.size} Player${selectedPlayerIds.size === 1 ? '' : 's'}`}
+          </Button>
         </div>
       </form>
     </Modal>

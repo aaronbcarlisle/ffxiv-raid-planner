@@ -28,12 +28,13 @@ import {
   DropdownItem,
   DropdownSeparator,
 } from '../primitives/Dropdown';
+import { Button } from '../primitives';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
-import { Pencil, Link, Trash2 } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -55,6 +56,20 @@ interface SectionedLogViewProps {
   currentWeek: number;
   canEdit: boolean;
   onWeekChange?: (weekNumber: number) => void;
+  onNavigateToPlayer?: (playerId: string) => void;
+  /** External highlighted entry ID (e.g., from navigation) */
+  highlightedEntryId?: string | null;
+  /** External highlighted entry type */
+  highlightedEntryType?: 'loot' | 'material' | null;
+  /** Open Log Loot modal (from keyboard shortcut) */
+  openLogLootModal?: boolean;
+  onLogLootModalClose?: () => void;
+  /** Open Log Material modal (from keyboard shortcut) */
+  openLogMaterialModal?: boolean;
+  onLogMaterialModalClose?: () => void;
+  /** Open Mark Floor Cleared modal (from keyboard shortcut) */
+  openMarkFloorClearedModal?: boolean;
+  onMarkFloorClearedModalClose?: () => void;
 }
 
 const MATERIAL_LABELS: Record<string, string> = {
@@ -72,11 +87,21 @@ export function SectionedLogView({
   currentWeek,
   canEdit,
   onWeekChange,
+  onNavigateToPlayer,
+  highlightedEntryId: externalHighlightedEntryId,
+  highlightedEntryType: externalHighlightedEntryType,
+  openLogLootModal,
+  onLogLootModalClose,
+  openLogMaterialModal,
+  onLogMaterialModalClose,
+  openMarkFloorClearedModal,
+  onMarkFloorClearedModalClose,
 }: SectionedLogViewProps) {
   const {
     lootLog,
     materialLog,
     pageBalances,
+    maxWeek,
     fetchLootLog,
     fetchMaterialLog,
     fetchPageBalances,
@@ -88,6 +113,29 @@ export function SectionedLogView({
   const [showLootModal, setShowLootModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFloorClearedModal, setShowFloorClearedModal] = useState(false);
+
+  // Sync external modal state (from keyboard shortcuts) with internal state
+  useEffect(() => {
+    if (openLogLootModal && !showLootModal) {
+      setShowLootModal(true);
+      setGridModalState(null);
+      setEntryToEdit(undefined);
+    }
+  }, [openLogLootModal, showLootModal]);
+
+  useEffect(() => {
+    if (openLogMaterialModal && !showMaterialModal) {
+      setShowMaterialModal(true);
+      setGridModalState(null);
+      setMaterialEntryToEdit(undefined);
+    }
+  }, [openLogMaterialModal, showMaterialModal]);
+
+  useEffect(() => {
+    if (openMarkFloorClearedModal && !showFloorClearedModal) {
+      setShowFloorClearedModal(true);
+    }
+  }, [openMarkFloorClearedModal, showFloorClearedModal]);
   const [bookViewMode, setBookViewMode] = useState<'week' | 'allTime'>('allTime');
   const [editBookState, setEditBookState] = useState<{
     playerId: string;
@@ -111,11 +159,12 @@ export function SectionedLogView({
     onConfirm: () => Promise<void>;
   } | null>(null);
 
-  // Fetch loot and material data on mount and week change
+  // Fetch loot and material data on mount (no week filter - get all data for client-side filtering)
+  // This allows cross-week navigation and better performance with client-side filtering
   useEffect(() => {
-    fetchLootLog(groupId, tierId, currentWeek);
-    fetchMaterialLog(groupId, tierId, currentWeek);
-  }, [groupId, tierId, currentWeek, fetchLootLog, fetchMaterialLog]);
+    fetchLootLog(groupId, tierId);
+    fetchMaterialLog(groupId, tierId);
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog]);
 
   // Fetch page balances based on view mode (week-specific or all-time)
   useEffect(() => {
@@ -144,7 +193,7 @@ export function SectionedLogView({
       updateWeaponPriority: entry.itemSlot === 'weapon' && options.updateGear,
     });
     onWeekChange?.(entry.weekNumber);
-    await fetchLootLog(groupId, tierId, entry.weekNumber);
+    await fetchLootLog(groupId, tierId);
     // Refresh week data types to update week selector (may add new weeks)
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Loot entry logged');
@@ -154,9 +203,9 @@ export function SectionedLogView({
     if (!entryToEdit) return;
     // Use updateLootAndSyncGear to properly update player gear when recipient changes
     await updateLootAndSyncGear(groupId, tierId, entryToEdit.id, entryToEdit, updates, { syncGear: true });
-    await fetchLootLog(groupId, tierId, currentWeek);
+    await fetchLootLog(groupId, tierId);
     toast.success('Loot entry updated');
-  }, [groupId, tierId, currentWeek, entryToEdit, fetchLootLog]);
+  }, [groupId, tierId, entryToEdit, fetchLootLog]);
 
   const handleDeleteLoot = useCallback((entry: LootLogEntry) => {
     setConfirmState({
@@ -165,13 +214,13 @@ export function SectionedLogView({
       message: `Delete the ${GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot} drop?`,
       onConfirm: async () => {
         await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        await fetchLootLog(groupId, tierId, currentWeek);
+        await fetchLootLog(groupId, tierId);
         await fetchWeekDataTypes(groupId, tierId);
         toast.success('Loot entry deleted');
         setConfirmState(null);
       },
     });
-  }, [groupId, tierId, currentWeek, fetchLootLog, fetchWeekDataTypes]);
+  }, [groupId, tierId, fetchLootLog, fetchWeekDataTypes]);
 
   const handleDeleteMaterial = useCallback((entryId: number) => {
     setConfirmState({
@@ -180,13 +229,13 @@ export function SectionedLogView({
       message: 'Delete this material entry?',
       onConfirm: async () => {
         await deleteMaterialEntry(groupId, tierId, entryId);
-        await fetchMaterialLog(groupId, tierId, currentWeek);
+        await fetchMaterialLog(groupId, tierId);
         await fetchWeekDataTypes(groupId, tierId);
         toast.success('Material entry deleted');
         setConfirmState(null);
       },
     });
-  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
+  }, [groupId, tierId, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
 
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
@@ -198,7 +247,7 @@ export function SectionedLogView({
     const { createMaterialEntry } = useLootTrackingStore.getState();
     await createMaterialEntry(groupId, tierId, data);
     onWeekChange?.(data.weekNumber);
-    await fetchMaterialLog(groupId, tierId, data.weekNumber);
+    await fetchMaterialLog(groupId, tierId);
     // Refresh week data types to update week selector (may add new weeks)
     await fetchWeekDataTypes(groupId, tierId);
     toast.success('Material entry logged');
@@ -208,9 +257,9 @@ export function SectionedLogView({
     if (!materialEntryToEdit) return;
     const { updateMaterialEntry } = useLootTrackingStore.getState();
     await updateMaterialEntry(groupId, tierId, materialEntryToEdit.id, updates);
-    await fetchMaterialLog(groupId, tierId, currentWeek);
+    await fetchMaterialLog(groupId, tierId);
     toast.success('Material entry updated');
-  }, [groupId, tierId, currentWeek, materialEntryToEdit, fetchMaterialLog]);
+  }, [groupId, tierId, materialEntryToEdit, fetchMaterialLog]);
 
   // Get the week parameter for fetching page balances based on view mode
   const getBalanceWeekParam = useCallback(() => {
@@ -280,8 +329,8 @@ export function SectionedLogView({
 
       // Refresh all data
       await Promise.all([
-        fetchLootLog(groupId, tierId, currentWeek),
-        fetchMaterialLog(groupId, tierId, currentWeek),
+        fetchLootLog(groupId, tierId),
+        fetchMaterialLog(groupId, tierId),
         fetchPageBalances(groupId, tierId, getBalanceWeekParam()),
         fetchWeekDataTypes(groupId, tierId),
       ]);
@@ -294,7 +343,7 @@ export function SectionedLogView({
     } finally {
       setResetModalType(null);
     }
-  }, [resetModalType, groupId, tierId, currentWeek, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
+  }, [resetModalType, groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
 
   // URL params for deep linking
@@ -379,9 +428,13 @@ export function SectionedLogView({
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Highlighted entry for deep-link scroll animation
-  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
-  const [highlightedEntryType, setHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
+  // Internal highlighted entry for deep-link scroll animation (from URL params)
+  const [internalHighlightedEntryId, setInternalHighlightedEntryId] = useState<string | null>(null);
+  const [internalHighlightedEntryType, setInternalHighlightedEntryType] = useState<'loot' | 'material' | null>(null);
+
+  // Combined highlighted entry - prefer external (navigation) over internal (URL)
+  const highlightedEntryId = externalHighlightedEntryId || internalHighlightedEntryId;
+  const highlightedEntryType = externalHighlightedEntryType || internalHighlightedEntryType;
 
   // Handle entry deep link - scroll to and highlight entry
   useEffect(() => {
@@ -410,8 +463,8 @@ export function SectionedLogView({
     }
 
     // Set highlighted entry (store as string for consistency)
-    setHighlightedEntryId(entryParam);
-    setHighlightedEntryType(entryType);
+    setInternalHighlightedEntryId(entryParam);
+    setInternalHighlightedEntryType(entryType);
 
     // Scroll to the entry after a short delay
     setTimeout(() => {
@@ -423,8 +476,8 @@ export function SectionedLogView({
 
     // Clear highlight after animation
     const timer = setTimeout(() => {
-      setHighlightedEntryId(null);
-      setHighlightedEntryType(null);
+      setInternalHighlightedEntryId(null);
+      setInternalHighlightedEntryType(null);
       // Clear entry params from URL
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
@@ -455,6 +508,55 @@ export function SectionedLogView({
     });
   }, []);
 
+  // Track expanded state for each floor section (persisted to localStorage)
+  const [expandedFloors, setExpandedFloorsState] = useState<Set<FloorNumber>>(() => {
+    try {
+      const saved = localStorage.getItem('log-floor-expanded');
+      if (saved) {
+        const parsed = JSON.parse(saved) as number[];
+        return new Set(parsed.filter(n => [1, 2, 3, 4].includes(n)) as FloorNumber[]);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+    return new Set([1, 2, 3, 4]);
+  });
+
+  // Wrapper to persist expanded state to localStorage
+  const setExpandedFloors = useCallback((update: Set<FloorNumber> | ((prev: Set<FloorNumber>) => Set<FloorNumber>)) => {
+    setExpandedFloorsState(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      try {
+        localStorage.setItem('log-floor-expanded', JSON.stringify(Array.from(next)));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  }, []);
+
+  // Handlers for expand/collapse all floor sections
+  const handleExpandAllFloors = useCallback(() => {
+    setExpandedFloors(new Set([1, 2, 3, 4]));
+  }, [setExpandedFloors]);
+
+  const handleCollapseAllFloors = useCallback(() => {
+    setExpandedFloors(new Set());
+  }, [setExpandedFloors]);
+
+  // Handler for individual floor expand/collapse
+  const handleFloorExpandChange = useCallback((floor: FloorNumber, expanded: boolean) => {
+    setExpandedFloors(prev => {
+      const next = new Set(prev);
+      if (expanded) {
+        next.add(floor);
+      } else {
+        next.delete(floor);
+      }
+      return next;
+    });
+  }, [setExpandedFloors]);
+
   // State for grid view pre-filled modal
   const [gridModalState, setGridModalState] = useState<{
     type: 'loot' | 'material';
@@ -462,6 +564,51 @@ export function SectionedLogView({
     slot?: string;
     materialType?: string;
   } | null>(null);
+
+  // Counter to force fresh modal mount when opening from grid
+  const [lootModalKey, setLootModalKey] = useState(0);
+
+  // Keyboard shortcut event listeners
+  useEffect(() => {
+    const handleSetView = (e: CustomEvent<'byFloor' | 'chronological'>) => {
+      setLootViewMode(e.detail);
+    };
+    const handleToggleExpandAll = () => {
+      // If all are expanded, collapse all; otherwise expand all
+      if (expandedFloors.size === 4) {
+        handleCollapseAllFloors();
+      } else {
+        handleExpandAllFloors();
+      }
+    };
+    const handleToggleLayout = () => {
+      handleLayoutModeChange(layoutMode === 'grid' ? 'split' : 'grid');
+    };
+    const handlePrevWeek = () => {
+      if (currentWeek > 1) {
+        onWeekChange?.(currentWeek - 1);
+      }
+    };
+    const handleNextWeek = () => {
+      if (currentWeek < maxWeek) {
+        onWeekChange?.(currentWeek + 1);
+      }
+    };
+
+    window.addEventListener('log:set-view', handleSetView as EventListener);
+    window.addEventListener('log:toggle-expand-all', handleToggleExpandAll);
+    window.addEventListener('log:toggle-layout', handleToggleLayout);
+    window.addEventListener('log:prev-week', handlePrevWeek);
+    window.addEventListener('log:next-week', handleNextWeek);
+
+    return () => {
+      window.removeEventListener('log:set-view', handleSetView as EventListener);
+      window.removeEventListener('log:toggle-expand-all', handleToggleExpandAll);
+      window.removeEventListener('log:toggle-layout', handleToggleLayout);
+      window.removeEventListener('log:prev-week', handlePrevWeek);
+      window.removeEventListener('log:next-week', handleNextWeek);
+    };
+  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange]);
 
   // Context menu state for list view entries
   const [listContextMenu, setListContextMenu] = useState<{
@@ -602,9 +749,10 @@ export function SectionedLogView({
                   {entry.floor}
                 </span>
                 <span className={`font-medium ${
-                  entry.materialType === 'twine' ? 'text-blue-400' :
-                  entry.materialType === 'glaze' ? 'text-green-400' :
-                  'text-purple-400'
+                  entry.materialType === 'twine' ? 'text-material-twine' :
+                  entry.materialType === 'glaze' ? 'text-material-glaze' :
+                  entry.materialType === 'universal_tomestone' ? 'text-material-tomestone' :
+                  'text-material-solvent'
                 }`}>
                   {MATERIAL_LABELS[entry.materialType]}
                 </span>
@@ -615,14 +763,31 @@ export function SectionedLogView({
                 {formatDate(entry.createdAt)}
               </div>
             </div>
-            {canEdit && (
+            <div className="flex items-center gap-3 ml-4">
               <button
-                onClick={() => handleDeleteMaterial(entry.id)}
-                className="text-status-error hover:text-status-error/80 text-sm ml-4"
+                onClick={() => handleCopyEntryUrl(String(entry.id), 'material')}
+                className="text-text-muted hover:text-accent text-sm"
+                title="Copy link to this entry"
               >
-                Delete
+                Copy URL
               </button>
-            )}
+              {canEdit && (
+                <>
+                  <button
+                    onClick={() => { setMaterialEntryToEdit(entry); setShowMaterialModal(true); }}
+                    className="text-text-muted hover:text-accent text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMaterial(entry.id)}
+                    className="text-status-error hover:text-status-error/80 text-sm"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -633,6 +798,7 @@ export function SectionedLogView({
   const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {
     setGridModalState({ type: 'loot', floor, slot });
     setEntryToEdit(undefined);
+    setLootModalKey(k => k + 1); // Force fresh mount
     setShowLootModal(true);
   }, []);
 
@@ -711,6 +877,19 @@ export function SectionedLogView({
       onClick: () => handleCopyEntryUrl(String(entry.id), type),
     });
 
+    // Go to Player - navigate to recipient's player card
+    if (onNavigateToPlayer) {
+      const recipientName = 'recipientPlayerName' in entry ? entry.recipientPlayerName : '';
+      const recipientId = 'recipientPlayerId' in entry ? entry.recipientPlayerId : '';
+      if (recipientId) {
+        items.push({
+          label: `Go to ${recipientName}`,
+          icon: <UserRound className="w-4 h-4" />,
+          onClick: () => onNavigateToPlayer(recipientId),
+        });
+      }
+    }
+
     if (canEdit) {
       items.push({ separator: true });
 
@@ -732,7 +911,7 @@ export function SectionedLogView({
     }
 
     return items;
-  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial]);
+  }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial, onNavigateToPlayer]);
 
   return (
     <div className="space-y-4">
@@ -773,8 +952,8 @@ export function SectionedLogView({
           {canEdit && (
             <Dropdown>
               <DropdownTrigger asChild>
-                <button className="px-3 py-1.5 text-sm text-status-error border border-status-error/30 rounded cursor-pointer
-                                    hover:bg-status-error/10 transition-colors flex items-center gap-1.5">
+                <button className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
+                                    hover:bg-status-error/20 hover:border-status-error/60 active:bg-status-error/30 transition-colors flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -785,18 +964,39 @@ export function SectionedLogView({
                 </button>
               </DropdownTrigger>
               <DropdownContent align="start">
-                <DropdownItem onSelect={() => setResetModalType('loot')}>
-                  Reset Loot Log
+                <DropdownItem
+                  onSelect={() => setResetModalType('loot')}
+                  className="text-status-error focus:text-status-error"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Reset Loot Log
+                  </span>
                 </DropdownItem>
-                <DropdownItem onSelect={() => setResetModalType('books')}>
-                  Reset Book Balances
+                <DropdownItem
+                  onSelect={() => setResetModalType('books')}
+                  className="text-status-error focus:text-status-error"
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Reset Book Balances
+                  </span>
                 </DropdownItem>
                 <DropdownSeparator />
                 <DropdownItem
                   onSelect={() => setResetModalType('all')}
-                  className="text-status-error focus:text-status-error"
+                  className="text-status-error focus:text-status-error font-semibold"
                 >
-                  Reset All Data
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset All Data
+                  </span>
                 </DropdownItem>
               </DropdownContent>
             </Dropdown>
@@ -806,18 +1006,20 @@ export function SectionedLogView({
         {/* Action buttons */}
         {canEdit && (
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              size="sm"
               onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
-              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+              title="Log loot drop (Alt+L)"
             >
               + Log Loot
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
-              className="px-3 py-1.5 text-sm rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+              title="Log material drop (Alt+M)"
             >
               + Log Material
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -844,6 +1046,7 @@ export function SectionedLogView({
               onEditLoot={handleGridEditLoot}
               onEditMaterial={handleGridEditMaterial}
               onCopyEntryUrl={handleCopyEntryUrlById}
+              onNavigateToPlayer={onNavigateToPlayer}
             />
           )}
 
@@ -925,6 +1128,10 @@ export function SectionedLogView({
                         floor={floorNum}
                         floorName={floorName}
                         entryCount={floorEntries.length}
+                        expanded={expandedFloors.has(floorNum)}
+                        onExpandChange={(expanded) => handleFloorExpandChange(floorNum, expanded)}
+                        onExpandAll={handleExpandAllFloors}
+                        onCollapseAll={handleCollapseAllFloors}
                       >
                         {floorEntries.map(entry => renderEntry(entry))}
                       </FloorSection>
@@ -940,7 +1147,7 @@ export function SectionedLogView({
         </div>
 
         {/* Book Balances - Sidebar */}
-        <div className={`transition-all duration-200 ${booksSidebarCollapsed ? 'w-10' : 'w-72'} flex-shrink-0`}>
+        <div className={`transition-all duration-200 ${booksSidebarCollapsed ? 'w-10' : 'w-80'} flex-shrink-0`}>
           <section className="bg-surface-card border border-border-default rounded-lg h-full">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
@@ -951,7 +1158,7 @@ export function SectionedLogView({
                   <div className="flex bg-surface-base rounded p-0.5">
                     <button
                       onClick={() => setBookViewMode('week')}
-                      className={`px-1.5 py-0.5 text-[10px] rounded transition-colors font-bold ${
+                      className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
                         bookViewMode === 'week'
                           ? 'bg-accent text-accent-contrast'
                           : 'text-text-secondary hover:text-text-primary'
@@ -961,7 +1168,7 @@ export function SectionedLogView({
                     </button>
                     <button
                       onClick={() => setBookViewMode('allTime')}
-                      className={`px-1.5 py-0.5 text-[10px] rounded transition-colors font-bold ${
+                      className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
                         bookViewMode === 'allTime'
                           ? 'bg-accent text-accent-contrast'
                           : 'text-text-secondary hover:text-text-primary'
@@ -987,16 +1194,16 @@ export function SectionedLogView({
             {!booksSidebarCollapsed && (
               <div className="p-2 max-h-[600px] overflow-y-auto">
                 {pageBalances.length === 0 ? (
-                  <p className="text-text-muted text-xs p-2">No book data.</p>
+                  <p className="text-text-muted text-sm p-2">No book data.</p>
                 ) : (
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="text-text-muted">
-                        <th className="text-left py-1 px-1">Player</th>
+                        <th className="text-left py-1.5 px-1">Player</th>
                         {(['I', 'II', 'III', 'IV'] as const).map((book) => (
-                          <th key={book} className="text-center py-1 px-0.5 w-7">{book}</th>
+                          <th key={book} className="text-center py-1.5 px-1 w-9">{book}</th>
                         ))}
-                        <th className="w-6"></th>
+                        <th className="w-8"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1007,10 +1214,10 @@ export function SectionedLogView({
 
                         return (
                           <tr key={balance.playerId} className="border-t border-border-subtle hover:bg-surface-elevated/50">
-                            <td className="py-1.5 px-1">
+                            <td className="py-2 px-1">
                               <div className="flex items-center gap-1.5">
-                                <JobIcon job={player.job} size="xs" />
-                                <span className="text-text-primary truncate max-w-[80px]">{player.name}</span>
+                                <JobIcon job={player.job} size="sm" />
+                                <span className="text-text-primary truncate max-w-[100px]">{player.name}</span>
                               </div>
                             </td>
                             {(['I', 'II', 'III', 'IV'] as const).map((book) => {
@@ -1018,7 +1225,7 @@ export function SectionedLogView({
                               return (
                                 <td
                                   key={book}
-                                  className={`text-center py-1.5 px-0.5 ${canEdit ? 'cursor-pointer hover:bg-accent/20 rounded transition-colors' : ''}`}
+                                  className={`text-center py-2 px-1 ${canEdit ? 'cursor-pointer hover:bg-accent/20 rounded transition-colors' : ''}`}
                                   onClick={canEdit ? () => setEditBookState({
                                     playerId: balance.playerId,
                                     playerName: player.name,
@@ -1032,13 +1239,13 @@ export function SectionedLogView({
                                 </td>
                               );
                             })}
-                            <td className="py-1 px-0.5">
+                            <td className="py-1.5 px-1">
                               <button
                                 onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
                                 className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
                                 title={`View book history for ${player.name}`}
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                                 </svg>
                               </button>
@@ -1055,7 +1262,8 @@ export function SectionedLogView({
                   <div className="p-2 border-t border-border-subtle">
                     <button
                       onClick={() => setShowFloorClearedModal(true)}
-                      className="w-full px-3 py-1.5 text-sm rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
+                      className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                      title="Award books to party (Alt+B)"
                     >
                       Mark Floor Cleared
                     </button>
@@ -1073,8 +1281,9 @@ export function SectionedLogView({
       {/* Modals */}
       {showLootModal && (
         <AddLootEntryModal
+          key={lootModalKey}
           isOpen={showLootModal}
-          onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); }}
+          onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); onLogLootModalClose?.(); }}
           onSubmit={handleAddLoot}
           onUpdate={handleUpdateLoot}
           players={players}
@@ -1089,7 +1298,7 @@ export function SectionedLogView({
       {showMaterialModal && (
         <LogMaterialModal
           isOpen={showMaterialModal}
-          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); }}
+          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}
           onSubmit={handleMaterialSubmit}
           onUpdate={handleUpdateMaterial}
           players={players}
@@ -1104,7 +1313,7 @@ export function SectionedLogView({
       {showFloorClearedModal && (
         <MarkFloorClearedModal
           isOpen={showFloorClearedModal}
-          onClose={() => setShowFloorClearedModal(false)}
+          onClose={() => { setShowFloorClearedModal(false); onMarkFloorClearedModalClose?.(); }}
           onSubmit={handleMarkFloorCleared}
           players={players}
           floors={floors}

@@ -9,8 +9,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
-import { Eye, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
+import { Input } from '../components/ui';
+import { Button } from '../components/primitives';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
 
 // Sortable columns
@@ -239,65 +241,41 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-display text-amber-400">Admin Dashboard</h1>
+          <h1 className="text-3xl font-display text-status-warning">Admin Dashboard</h1>
           <p className="text-text-muted mt-1">
             View and manage all static groups ({total} total)
           </p>
         </div>
-        <button
+        <Button
+          variant="ghost"
           onClick={() => navigate('/dashboard')}
-          className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
+          className="flex items-center gap-2"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <ArrowLeft className="w-4 h-4" />
           Back to My Statics
-        </button>
+        </Button>
       </div>
 
       {/* Search */}
       <div className="mb-6">
         <div className="relative max-w-md">
-          <input
-            type="text"
+          <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search by group name or owner..."
-            className="w-full bg-surface-elevated border border-border-default rounded-lg px-4 py-2 pl-10 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            className="pl-10"
           />
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+        <div className="mb-6 p-4 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error">
           {error}
         </div>
       )}
@@ -399,7 +377,7 @@ export function AdminDashboard() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={(e) => handleOpenViewAs(group, e)}
-                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-amber-400"
+                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-status-warning"
                         title="View as member"
                       >
                         <Eye className="w-4 h-4" />

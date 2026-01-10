@@ -27,7 +27,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import type { WeaponPriority } from '../../types';
-import { JobIcon } from '../ui/JobIcon';
+import { JobIcon, Checkbox } from '../ui';
 import { RAID_JOBS } from '../../gamedata/jobs';
 
 interface WeaponPriorityGridProps {
@@ -113,19 +113,13 @@ function ItemContent({
       </div>
 
       {/* Received checkbox with label */}
-      <label className={`flex items-center gap-1.5 flex-shrink-0 ${isDragOverlay ? '' : 'cursor-pointer'}`}>
-        <input
-          type="checkbox"
-          checked={priority.received}
-          onChange={(e) => {
-            e.stopPropagation();
-            onToggleReceived?.();
-          }}
-          disabled={disabled || isDragOverlay}
-          className="w-4 h-4 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        <span className="text-xs text-text-secondary">Received</span>
-      </label>
+      <Checkbox
+        checked={priority.received}
+        onChange={() => onToggleReceived?.()}
+        disabled={disabled || isDragOverlay}
+        label="Received"
+        className="gap-1.5"
+      />
 
       {/* Remove button - always visible */}
       <button

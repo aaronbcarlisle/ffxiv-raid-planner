@@ -8,6 +8,7 @@
  */
 
 import type { WeekEntryType } from '../../stores/lootTrackingStore';
+import { Select } from '../ui';
 
 interface WeekSelectorProps {
   currentWeek: number;
@@ -134,35 +135,15 @@ export function WeekSelector({
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-text-muted">Week</span>
-        <div className="relative">
-          <select
-            value={currentWeek}
-            onChange={(e) => onWeekChange(Number(e.target.value))}
-            disabled={disabled}
-            className="appearance-none bg-surface-raised border border-border-default rounded-md px-3 py-1.5 pr-8 text-sm font-medium text-text-primary cursor-pointer hover:border-accent focus:border-accent focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {displayedWeeks.map((week) => (
-              <option
-                key={week}
-                value={week}
-                className={hasEntries(week) ? '' : 'text-text-muted'}
-              >
-                {getWeekLabel(week)}
-              </option>
-            ))}
-          </select>
-          {/* Custom dropdown arrow */}
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg
-              className="w-4 h-4 text-text-muted"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
+        <Select
+          value={String(currentWeek)}
+          onChange={(value) => onWeekChange(Number(value))}
+          disabled={disabled}
+          options={displayedWeeks.map((week) => ({
+            value: String(week),
+            label: getWeekLabel(week),
+          }))}
+        />
       </div>
 
       <button

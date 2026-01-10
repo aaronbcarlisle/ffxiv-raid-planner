@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Select, Label } from '../ui';
+import { Button } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone, type PriorityEntry } from '../../utils/priority';
@@ -42,7 +43,7 @@ export function QuickLogMaterialModal({
   onSuccess,
 }: QuickLogMaterialModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
-  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
+  const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
   const [isSaving, setIsSaving] = useState(false);
   const { createMaterialEntry, materialLog } = useLootTrackingStore();
 
@@ -50,7 +51,7 @@ export function QuickLogMaterialModal({
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
-      setSelectedWeek(maxWeek);
+      setSelectedWeek(String(maxWeek));
     }
   }, [isOpen, suggestedPlayer.id, maxWeek]);
 
@@ -61,7 +62,7 @@ export function QuickLogMaterialModal({
     setIsSaving(true);
     try {
       await createMaterialEntry(groupId, tierId, {
-        weekNumber: selectedWeek,
+        weekNumber: Number(selectedWeek),
         floor,
         materialType: material,
         recipientPlayerId,
@@ -72,7 +73,7 @@ export function QuickLogMaterialModal({
 
       onSuccess?.();
       onClose();
-    } catch (error) {
+    } catch {
       toast.error('Failed to log material');
     } finally {
       setIsSaving(false);
@@ -124,6 +125,18 @@ export function QuickLogMaterialModal({
     return '';
   };
 
+  // Build week options
+  const weekOptions = Array.from({ length: maxWeek }, (_, i) => ({
+    value: String(i + 1),
+    label: `Week ${i + 1}`,
+  }));
+
+  // Build recipient options
+  const recipientOptions = sortedRecipients.map(({ player, priority, needsMaterial }) => ({
+    value: player.id,
+    label: `${player.name} (${player.job})${getPriorityLabel(priority, needsMaterial)}`,
+  }));
+
   return (
     <Modal
       isOpen={isOpen}
@@ -143,34 +156,25 @@ export function QuickLogMaterialModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              className="px-2 py-1 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none text-sm"
-            >
-              {Array.from({ length: maxWeek }, (_, i) => i + 1).map((week) => (
-                <option key={week} value={week}>
-                  Week {week}
-                </option>
-              ))}
-            </select>
+            <div className="w-32">
+              <Select
+                value={selectedWeek}
+                onChange={setSelectedWeek}
+                options={weekOptions}
+              />
+            </div>
           </div>
         </div>
 
         {/* Recipient selection */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Recipient</label>
-          <select
+          <Label htmlFor="recipient">Recipient</Label>
+          <Select
+            id="recipient"
             value={recipientPlayerId}
-            onChange={(e) => setRecipientPlayerId(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            {sortedRecipients.map(({ player, priority, needsMaterial }) => (
-              <option key={player.id} value={player.id}>
-                {player.name} ({player.job}){getPriorityLabel(priority, needsMaterial)}
-              </option>
-            ))}
-          </select>
+            onChange={setRecipientPlayerId}
+            options={recipientOptions}
+          />
         </div>
 
         {/* Preview */}
@@ -183,20 +187,16 @@ export function QuickLogMaterialModal({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={!recipientPlayerId || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!recipientPlayerId}
+            loading={isSaving}
           >
-            {isSaving ? 'Logging...' : 'Log Material'}
-          </button>
+            Log Material
+          </Button>
         </div>
       </form>
     </Modal>

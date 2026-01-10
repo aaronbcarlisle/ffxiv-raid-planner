@@ -10,7 +10,10 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
+import { NumberInput } from '../ui/NumberInput';
+import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -70,7 +73,18 @@ export function AddLootEntryModal({
   const [weekNumber, setWeekNumber] = useState(editEntry?.weekNumber || currentWeek || 1);
   const [floor, setFloor] = useState(editEntry?.floor || presetFloor || floors[0] || '');
   const [itemSlot, setItemSlot] = useState<string>(editEntry?.itemSlot || presetSlot || '');
-  const [recipientPlayerId, setRecipientPlayerId] = useState(editEntry?.recipientPlayerId || '');
+  // Compute initial recipient during useState - runs BEFORE first render
+  const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
+    if (editEntry) return editEntry.recipientPlayerId;
+    const slot = presetSlot || '';
+    if (!slot) return '';
+    // Compute priority inline for initial value
+    const eligiblePlayers = players.filter((p) => p.configured && !p.isSubstitute);
+    const priorityEntries = slot === 'ring1' || slot === 'ring2'
+      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
+      : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
+    return priorityEntries[0]?.player.id || '';
+  });
   const [method, setMethod] = useState<LootMethod>((editEntry?.method as LootMethod) || 'drop');
   const [updateGear, setUpdateGear] = useState(true);
   const [notes, setNotes] = useState(editEntry?.notes || '');
@@ -78,8 +92,10 @@ export function AddLootEntryModal({
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
 
-  // Reset form when editEntry or presets change
+  // Reset form when modal opens with new preset values or edit entry
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editEntry) {
       // Edit mode: use existing entry values
       setWeekNumber(editEntry.weekNumber);
@@ -94,17 +110,21 @@ export function AddLootEntryModal({
       setIncludeSubs(recipient?.isSubstitute ?? false);
     } else {
       // Add mode: use presets if provided, otherwise defaults
+      // Note: Initial recipientPlayerId is computed in useState for preset cases
+      // The auto-selection effect handles subsequent slot changes
       setWeekNumber(currentWeek || 1);
       setFloor(presetFloor || floors[0] || '');
       if (presetSlot) {
         setItemSlot(presetSlot);
       }
+      // Don't set recipientPlayerId here - useState handles initial value,
+      // auto-selection effect handles changes
       setMethod('drop');
       setNotes('');
       setShowAllRecipients(false);
       setIncludeSubs(false);
     }
-  }, [editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
+  }, [isOpen, editEntry, currentWeek, floors, presetFloor, presetSlot, players]);
 
   // Get available slots for selected floor
   const availableSlots = useMemo(() => {
@@ -125,7 +145,7 @@ export function AddLootEntryModal({
     // Filter to configured players, excluding subs unless includeSubs is checked
     const eligiblePlayers = players.filter((p) => p.configured && (includeSubs || !p.isSubstitute));
 
-    if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
+    if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, score: 0, needsItem: false }));
 
     // Get priority entries for this slot
     const priorityEntries = itemSlot === 'ring1' || itemSlot === 'ring2'
@@ -154,27 +174,90 @@ export function AddLootEntryModal({
       });
   }, [players, itemSlot, includeSubs]);
 
-  // Filter to only show players who need the item (unless showAllRecipients)
+  // Filter recipients based on checkbox states
+  // Logic:
+  // - Neither checked: Main roster who need item only
+  // - Include Subs only: Main roster who need item + subs who need item.
+  //                      If NO ONE needs it, show ONLY subs (fallback)
+  // - Show All Players only: All main roster (excluding subs), regardless of need
+  // - Both checked: Everyone (all main roster + all subs)
+  // - In Edit mode: Always include the current recipient even if they don't need the item
   const visibleRecipients = useMemo(() => {
-    if (showAllRecipients) return sortedRecipients;
-    return sortedRecipients.filter(r => r.needsItem);
-  }, [sortedRecipients, showAllRecipients]);
+    let result: typeof sortedRecipients;
 
-  // Auto-select top priority recipient when slot changes (add mode only)
-  useEffect(() => {
-    // Skip auto-selection in edit mode - preserve the original recipient
-    if (isEditMode) return;
+    if (showAllRecipients && includeSubs) {
+      // Both checked: show everyone
+      result = sortedRecipients;
+    } else if (showAllRecipients && !includeSubs) {
+      // Show all main roster (already filtered out subs in sortedRecipients when includeSubs is false)
+      result = sortedRecipients;
+    } else if (includeSubs && !showAllRecipients) {
+      // Include Subs mode: show those who need + fallback to subs if none need
+      const needsItem = sortedRecipients.filter(r => r.needsItem);
+      if (needsItem.length > 0) {
+        result = needsItem;
+      } else {
+        // No one needs it - show only subs as fallback
+        result = sortedRecipients.filter(r => r.player.isSubstitute);
+      }
+    } else {
+      // Default: only those who need the item
+      result = sortedRecipients.filter(r => r.needsItem);
+    }
 
-    if (sortedRecipients.length > 0) {
-      const topPriority = sortedRecipients.find(r => r.needsItem);
-      if (topPriority) {
-        setRecipientPlayerId(topPriority.player.id);
-      } else if (sortedRecipients.length > 0) {
-        // Fall back to first player if no one needs the item
-        setRecipientPlayerId(sortedRecipients[0].player.id);
+    // In edit mode, ALWAYS ensure the current recipient is in the list
+    // (they may no longer need the item if they already received it)
+    if (isEditMode && editEntry?.recipientPlayerId) {
+      const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
+      if (!currentRecipientInList) {
+        // Find the recipient directly from players prop (unfiltered)
+        const player = players.find(p => p.id === editEntry.recipientPlayerId);
+        if (player) {
+          // Check if they're in sortedRecipients for priority info
+          const sortedEntry = sortedRecipients.find(r => r.player.id === editEntry.recipientPlayerId);
+          result = [{
+            player,
+            priority: sortedEntry?.priority ?? 999,
+            score: sortedEntry?.score ?? 0,
+            needsItem: sortedEntry?.needsItem ?? false,
+          }, ...result];
+        }
       }
     }
-  }, [itemSlot, sortedRecipients, isEditMode]);
+
+    return result;
+  }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
+
+  // Auto-select top priority recipient when slot changes (add mode only)
+  // Only triggers on itemSlot change, not on filter checkbox changes
+  useEffect(() => {
+    // Skip auto-selection in edit mode - preserve the original recipient
+    if (editEntry) return;
+
+    // Auto-select first visible recipient when slot changes
+    if (visibleRecipients.length > 0) {
+      setRecipientPlayerId(visibleRecipients[0].player.id);
+    } else {
+      setRecipientPlayerId('');
+    }
+    // Intentionally only depend on itemSlot - we don't want to reset selection
+    // when users toggle filter checkboxes, only when the slot changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemSlot, editEntry]);
+
+  // When filter checkboxes change, ensure selected player is still visible
+  // If not visible, keep selection (they can still submit) but show warning state
+  useEffect(() => {
+    if (editEntry) return;
+    if (!recipientPlayerId) return;
+
+    // Check if current selection is in visible list
+    const isVisible = visibleRecipients.some(r => r.player.id === recipientPlayerId);
+    if (!isVisible && visibleRecipients.length > 0) {
+      // Current selection is not visible - auto-select first visible
+      setRecipientPlayerId(visibleRecipients[0].player.id);
+    }
+  }, [visibleRecipients, recipientPlayerId, editEntry]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
@@ -246,52 +329,66 @@ export function AddLootEntryModal({
     ? 'Ring'
     : GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
 
+  // Build floor options for Select
+  const floorOptions = floors.map(f => ({ value: f, label: f }));
+
+  // Build slot options for Select
+  const slotOptions = availableSlots.map(slot => ({
+    value: slot,
+    label: slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot],
+  }));
+
+  // Build recipient options for Select
+  const recipientOptions = [
+    { value: '', label: 'Select player...' },
+    ...visibleRecipients.map(({ player, priority, needsItem }) => ({
+      value: player.id,
+      label: `${player.name}${getPriorityLabel(priority, needsItem)}`,
+      icon: <JobIcon job={player.job} size="sm" />,
+    })),
+  ];
+
+  // Build method options for RadioGroup
+  const methodOptions = [
+    { value: 'drop', label: 'Drop' },
+    { value: 'book', label: 'Book' },
+  ];
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Week and Floor */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Week</label>
-            <input
-              type="number"
-              min={1}
+            <Label htmlFor="week">Week</Label>
+            <NumberInput
               value={weekNumber}
-              onChange={(e) => setWeekNumber(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
+              onChange={(val) => setWeekNumber(val ?? 1)}
+              min={1}
+              size="sm"
+              showButtons={false}
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Floor</label>
-            <select
+            <Label htmlFor="floor">Floor</Label>
+            <Select
+              id="floor"
               value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-            >
-              {floors.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setFloor}
+              options={floorOptions}
+            />
           </div>
         </div>
 
         {/* Item Slot - filtered by floor */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Item Slot</label>
-          <select
+          <Label htmlFor="slot">Item Slot</Label>
+          <Select
+            id="slot"
             value={itemSlot}
-            onChange={(e) => setItemSlot(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            {availableSlots.map((slot) => (
-              <option key={slot} value={slot}>
-                {/* Show "Ring" for ring1 on floor 1 since it's a generic ring drop */}
-                {slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot]}
-              </option>
-            ))}
-          </select>
+            onChange={setItemSlot}
+            options={slotOptions}
+          />
           <div className="text-xs text-text-muted mt-1">
             Showing items that drop from {floor}
           </div>
@@ -300,41 +397,28 @@ export function AddLootEntryModal({
         {/* Recipient - sorted by priority */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-text-secondary">Recipient</label>
+            <Label htmlFor="recipient" className="mb-0">Recipient</Label>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeSubs}
-                  onChange={(e) => setIncludeSubs(e.target.checked)}
-                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                />
-                <span className="text-xs text-text-muted">Include Subs</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showAllRecipients}
-                  onChange={(e) => setShowAllRecipients(e.target.checked)}
-                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                />
-                <span className="text-xs text-text-muted">Show all players</span>
-              </label>
+              <Checkbox
+                checked={includeSubs}
+                onChange={setIncludeSubs}
+                label="Include Subs"
+                className="text-xs"
+              />
+              <Checkbox
+                checked={showAllRecipients}
+                onChange={setShowAllRecipients}
+                label="Show all players"
+                className="text-xs"
+              />
             </div>
           </div>
-          <select
+          <Select
+            id="recipient"
             value={recipientPlayerId}
-            onChange={(e) => setRecipientPlayerId(e.target.value)}
-            required
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            <option value="">Select player...</option>
-            {visibleRecipients.map(({ player, priority, needsItem }) => (
-              <option key={player.id} value={player.id}>
-                {player.name} ({player.job}){getPriorityLabel(priority, needsItem)}
-              </option>
-            ))}
-          </select>
+            onChange={setRecipientPlayerId}
+            options={recipientOptions}
+          />
           {visibleRecipients.length === 0 && !showAllRecipients && (
             <div className="text-xs text-status-success mt-1">
               No one needs this item! Enable "Show all players" to assign anyway.
@@ -344,74 +428,48 @@ export function AddLootEntryModal({
 
         {/* Method */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Method</label>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="drop"
-                checked={method === 'drop'}
-                onChange={() => setMethod('drop')}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-text-primary">Drop</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="book"
-                checked={method === 'book'}
-                onChange={() => setMethod('book')}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-text-primary">Book</span>
-            </label>
-          </div>
+          <Label>Method</Label>
+          <RadioGroup
+            name="method"
+            value={method}
+            onChange={(value) => setMethod(value as LootMethod)}
+            options={methodOptions}
+            orientation="horizontal"
+          />
         </div>
 
         {/* Update gear checkbox - for drops and books in add mode */}
         {!isEditMode && (method === 'drop' || method === 'book') && (
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={updateGear}
-              onChange={(e) => setUpdateGear(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
-            />
-            <span className="text-sm text-text-primary">
-              Also mark {slotName.toLowerCase()} as acquired for {selectedPlayer?.name || 'player'}
-            </span>
-          </label>
+          <Checkbox
+            checked={updateGear}
+            onChange={setUpdateGear}
+            label={`Also mark ${slotName.toLowerCase()} as acquired for ${selectedPlayer?.name || 'player'}`}
+          />
         )}
 
         {/* Notes */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Notes (optional)</label>
-          <textarea
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <TextArea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g., Traded for tomestone piece"
             rows={2}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none resize-none"
           />
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={!recipientPlayerId || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!recipientPlayerId}
+            loading={isSaving}
           >
-            {isSaving ? (isEditMode ? 'Saving...' : 'Logging...') : (isEditMode ? 'Save Changes' : 'Log Loot')}
-          </button>
+            {isEditMode ? 'Save Changes' : 'Log Loot'}
+          </Button>
         </div>
       </form>
     </Modal>

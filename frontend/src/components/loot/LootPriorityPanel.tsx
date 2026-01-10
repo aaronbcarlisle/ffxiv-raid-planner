@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import {
   getPriorityForItem,
@@ -17,11 +17,14 @@ import {
 } from '../../utils/lootCoordination';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
+import { FilterBar } from './FilterBar';
 import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
+
+type MatrixFloorFilter = FloorNumber | 'all';
 
 type LootSubTabType = 'matrix' | 'gear' | 'weapon';
 
@@ -150,7 +153,7 @@ export function LootPriorityPanel({
   selectedFloor,
   floorName,
   floors,
-  dutyNames,
+  // dutyNames - unused but kept in interface for future use
   onFloorChange,
   showLogButtons = false,
   groupId,
@@ -195,6 +198,31 @@ export function LootPriorityPanel({
       }
     }
   }, [onSubTabChange]);
+
+  // Matrix floor filter state (supports 'all' option)
+  // Syncs with parent's selectedFloor when a specific floor is selected
+  const [matrixFloor, setMatrixFloor] = useState<MatrixFloorFilter>('all');
+
+  // Handle matrix floor change - sync with parent when specific floor selected
+  const handleMatrixFloorChange = useCallback((floor: MatrixFloorFilter) => {
+    setMatrixFloor(floor);
+    // If a specific floor is selected (not 'all'), also update parent
+    if (floor !== 'all' && onFloorChange) {
+      onFloorChange(floor);
+    }
+  }, [onFloorChange]);
+
+  // Handle gear floor change - also update matrix floor to keep in sync
+  // Type accepts FloorNumber | 'all' for FilterBar compatibility, but 'all' is filtered out
+  const handleGearFloorChange = useCallback((floor: FloorNumber | 'all') => {
+    if (floor === 'all') return; // Gear Priority doesn't support 'all'
+    // Update matrix floor to match (unless user has 'all' selected, keep their preference)
+    if (matrixFloor !== 'all') {
+      setMatrixFloor(floor);
+    }
+    // Call parent handler
+    onFloorChange?.(floor);
+  }, [matrixFloor, onFloorChange]);
 
   // Modal state for quick log
   const [modalState, setModalState] = useState<{
@@ -341,9 +369,9 @@ export function LootPriorityPanel({
   };
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg p-4">
-      {/* Header with sub-tabs */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100dvh-14rem)]">
+      {/* Header with sub-tabs - stays visible */}
+      <div className="flex items-center justify-between p-4 pb-0 flex-shrink-0">
         <div className="flex items-center gap-4">
           <h3 className="font-display text-lg text-accent">
             Loot Priority
@@ -389,35 +417,21 @@ export function LootPriorityPanel({
         )}
       </div>
 
-      {/* Gear Priority Tab Content */}
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto p-4 pt-4">
+        {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
         <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-          {/* Floor selector for Gear Priority - matches WhoNeedsItMatrix layout */}
+          {/* Floor selector for Gear Priority - uses FilterBar for consistency */}
           {onFloorChange && (
-            <div className="flex items-center gap-2 p-3 border-b border-border-default bg-surface-elevated/50">
-              <span className="text-xs text-text-muted mr-1">Floor:</span>
-              {([1, 2, 3, 4] as FloorNumber[]).map((floor) => {
-                const isSelected = selectedFloor === floor;
-                const floorColors = FLOOR_COLORS[floor];
-                return (
-                  <button
-                    key={floor}
-                    onClick={() => onFloorChange(floor)}
-                    aria-label={`Select Floor ${floor}`}
-                    aria-pressed={isSelected}
-                    className={`
-                      px-3 py-1.5 rounded text-xs font-bold transition-colors border
-                      ${isSelected
-                        ? `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
-                        : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
-                      }
-                    `}
-                    title={dutyNames?.[floor - 1]}
-                  >
-                    {floors[floor - 1] || `Floor ${floor}`}
-                  </button>
-                );
-              })}
+            <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+              <FilterBar
+                type="floor"
+                floors={floors}
+                selectedFloor={selectedFloor}
+                onFloorChange={handleGearFloorChange}
+                showAllOption={false}
+              />
             </div>
           )}
           {/* Content area with padding */}
@@ -472,7 +486,7 @@ export function LootPriorityPanel({
 
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
-        <div>
+        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden p-4">
           <WeaponPriorityList
             players={players}
             settings={settings}
@@ -489,8 +503,11 @@ export function LootPriorityPanel({
           floors={floors}
           showLogButtons={!!canShowLogButtons}
           onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+          selectedFloor={matrixFloor}
+          onFloorChange={handleMatrixFloorChange}
         />
       )}
+      </div>
 
       {/* Quick Log Modal */}
       {canShowLogButtons && modalState.player && (

@@ -157,7 +157,7 @@ export function DocsIndex() {
                   <span className="px-3 py-1.5 bg-accent/10 rounded-lg text-sm text-accent font-medium">
                     Guide for Leads
                   </span>
-                  <span className="px-3 py-1.5 bg-blue-500/10 rounded-lg text-sm text-blue-400 font-medium">
+                  <span className="px-3 py-1.5 bg-membership-member/10 rounded-lg text-sm text-membership-member font-medium">
                     Guide for Members
                   </span>
                   <span className="px-3 py-1.5 bg-surface-elevated rounded-lg text-sm text-text-secondary">

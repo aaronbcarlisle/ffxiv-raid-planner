@@ -6,7 +6,7 @@
  */
 
 import { GearTable } from './GearTable';
-import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer } from '../../types';
+import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer, GearSlot } from '../../types';
 import { GEAR_SLOT_ICONS } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
@@ -26,6 +26,10 @@ interface PlayerCardGearProps {
   isAdmin?: boolean;
   onGearChange: (slot: string, updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
+  /** Slots that have loot entries (for "Go to Loot Entry" feature) */
+  slotsWithLootEntries?: Set<GearSlot>;
+  /** Navigate to loot entry for a slot */
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 export function PlayerCardGear({
@@ -38,6 +42,8 @@ export function PlayerCardGear({
   isAdmin,
   onGearChange,
   onTomeWeaponChange,
+  slotsWithLootEntries,
+  onNavigateToLootEntry,
 }: PlayerCardGearProps) {
   if (isExpanded) {
     return (
@@ -51,6 +57,8 @@ export function PlayerCardGear({
           userRole={userRole}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
+          slotsWithLootEntries={slotsWithLootEntries}
+          onNavigateToLootEntry={onNavigateToLootEntry}
         />
       </div>
     );

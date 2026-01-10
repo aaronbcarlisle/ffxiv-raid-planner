@@ -2,13 +2,14 @@
  * Team Summary Enhanced
  *
  * Combines gear tracking, book tracking, and material tracking into a single
- * comprehensive per-player summary view.
+ * comprehensive per-player summary view with aggregate stats and visual indicators.
  */
 
 import { useEffect, useMemo, memo } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
+import { Users, Target, Wrench, BookOpen } from 'lucide-react';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
 
@@ -32,30 +33,39 @@ interface PlayerSummaryRow {
   matsNeeded: { twine: number; glaze: number; solvent: number };
 }
 
+// Simple text cell for book/material values - shows current/needed with color coding
+function ValueCell({
+  current,
+  needed,
+  colorClass,
+}: {
+  current: number;
+  needed: number;
+  colorClass?: string;
+}) {
+  if (needed === 0) {
+    return <span className="text-text-muted">-</span>;
+  }
+
+  const isComplete = current >= needed;
+
+  return (
+    <span className={isComplete ? 'text-status-success font-medium' : colorClass || 'text-text-primary'}>
+      {current}<span className="text-text-muted">/{needed}</span>
+    </span>
+  );
+}
+
 // Memoized row component
 const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) {
   const { player, gearPercent, booksBalance, booksNeeded, matsReceived, matsNeeded } = row;
 
-  // Helper to format book display (balance / needed)
-  const formatBook = (balance: number, needed: number) => {
-    if (needed === 0) return <span className="text-text-muted">-</span>;
-    const hasEnough = balance >= needed;
-    return (
-      <span className={hasEnough ? 'text-status-success' : 'text-text-primary'}>
-        {balance}<span className="text-text-muted">/{needed}</span>
-      </span>
-    );
-  };
-
-  // Helper to format material display (received / needed)
-  const formatMat = (received: number, needed: number) => {
-    if (needed === 0) return <span className="text-text-muted">-</span>;
-    const hasEnough = received >= needed;
-    return (
-      <span className={hasEnough ? 'text-status-success' : 'text-text-primary'}>
-        {received}<span className="text-text-muted">/{needed}</span>
-      </span>
-    );
+  // Get color class based on gear completion
+  const getGearColor = () => {
+    if (gearPercent === 100) return 'bg-status-success';
+    if (gearPercent >= 75) return 'bg-status-warning';
+    if (gearPercent >= 50) return 'bg-accent';
+    return 'bg-text-muted';
   };
 
   return (
@@ -68,40 +78,49 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
         </div>
       </td>
 
-      {/* Gear % */}
-      <td className="px-3 py-2 text-center">
-        <span className={`text-sm font-medium ${
-          gearPercent === 100 ? 'text-status-success' :
-          gearPercent >= 75 ? 'text-status-warning' :
-          'text-text-primary'
-        }`}>
-          {gearPercent}%
-        </span>
+      {/* Gear % with progress bar - keep this one */}
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-bold min-w-[32px] ${
+            gearPercent === 100 ? 'text-status-success' :
+            gearPercent >= 75 ? 'text-status-warning' :
+            gearPercent >= 50 ? 'text-accent' :
+            'text-text-primary'
+          }`}>
+            {gearPercent}%
+          </span>
+          <div className="flex-1 h-2 bg-surface-elevated rounded-full overflow-hidden min-w-[60px]">
+            <div
+              className={`h-full rounded-full transition-all ${getGearColor()}`}
+              style={{ width: `${gearPercent}%` }}
+            />
+          </div>
+        </div>
       </td>
 
-      {/* Books: I, II, III, IV (balance/needed) */}
+      {/* Books: I, II, III, IV - simple text values */}
       <td className="px-2 py-2 text-center text-sm">
-        {formatBook(booksBalance.I, booksNeeded.I)}
+        <ValueCell current={booksBalance.I} needed={booksNeeded.I} />
       </td>
       <td className="px-2 py-2 text-center text-sm">
-        {formatBook(booksBalance.II, booksNeeded.II)}
+        <ValueCell current={booksBalance.II} needed={booksNeeded.II} />
       </td>
       <td className="px-2 py-2 text-center text-sm">
-        {formatBook(booksBalance.III, booksNeeded.III)}
+        <ValueCell current={booksBalance.III} needed={booksNeeded.III} />
       </td>
       <td className="px-2 py-2 text-center text-sm">
-        {formatBook(booksBalance.IV, booksNeeded.IV)}
+        <ValueCell current={booksBalance.IV} needed={booksNeeded.IV} />
       </td>
 
-      {/* Materials: T, G, S (received/needed) */}
+      {/* Materials: T, G, S - simple text with color */}
       <td className="px-2 py-2 text-center text-sm">
-        {formatMat(matsReceived.twine, matsNeeded.twine)}
+        <ValueCell current={matsReceived.twine} needed={matsNeeded.twine} colorClass="text-material-twine" />
       </td>
       <td className="px-2 py-2 text-center text-sm">
-        {formatMat(matsReceived.glaze, matsNeeded.glaze)}
+        <ValueCell current={matsReceived.glaze} needed={matsNeeded.glaze} colorClass="text-material-glaze" />
       </td>
       <td className="px-2 py-2 text-center text-sm">
-        {formatMat(matsReceived.solvent, matsNeeded.solvent)}
+        <ValueCell current={matsReceived.solvent} needed={matsNeeded.solvent} colorClass="text-material-solvent" />
       </td>
     </tr>
   );
@@ -223,6 +242,21 @@ export function TeamSummaryEnhanced({
     );
   }
 
+  // Calculate aggregate stats for summary cards
+  const aggregateStats = useMemo(() => {
+    const totalBooksNeeded = totals.booksNeeded.I + totals.booksNeeded.II + totals.booksNeeded.III + totals.booksNeeded.IV;
+    const totalBooksHave = totals.booksBalance.I + totals.booksBalance.II + totals.booksBalance.III + totals.booksBalance.IV;
+    const totalMatsNeeded = totals.matsNeeded.twine + totals.matsNeeded.glaze + totals.matsNeeded.solvent;
+    const totalMatsHave = totals.matsReceived.twine + totals.matsReceived.glaze + totals.matsReceived.solvent;
+
+    return {
+      playerCount: playerSummaries.length,
+      gearPercent: totals.gearPercent,
+      booksProgress: { have: totalBooksHave, need: totalBooksNeeded },
+      matsProgress: { have: totalMatsHave, need: totalMatsNeeded },
+    };
+  }, [totals, playerSummaries.length]);
+
   return (
     <div className="bg-surface-card rounded-lg border border-border-default">
       {/* Header */}
@@ -233,20 +267,110 @@ export function TeamSummaryEnhanced({
         </p>
       </div>
 
-      {/* Table */}
+      {/* Aggregate Stats Cards */}
+      <div className="p-4 border-b border-border-default">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Players */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-accent/10">
+                <Users className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-text-secondary text-sm">Players</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.playerCount}<span className="text-text-muted text-lg">/8</span>
+            </div>
+          </div>
+
+          {/* BiS Completion */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`p-2 rounded-lg ${
+                aggregateStats.gearPercent === 100
+                  ? 'bg-status-success/10'
+                  : aggregateStats.gearPercent >= 50
+                    ? 'bg-accent/10'
+                    : 'bg-surface-elevated'
+              }`}>
+                <Target className={`w-5 h-5 ${
+                  aggregateStats.gearPercent === 100
+                    ? 'text-status-success'
+                    : aggregateStats.gearPercent >= 50
+                      ? 'text-accent'
+                      : 'text-text-secondary'
+                }`} />
+              </div>
+              <span className="text-text-secondary text-sm">BiS Progress</span>
+            </div>
+            <div className={`text-2xl font-bold ${
+              aggregateStats.gearPercent === 100
+                ? 'text-status-success'
+                : aggregateStats.gearPercent >= 50
+                  ? 'text-accent'
+                  : 'text-text-primary'
+            }`}>
+              {aggregateStats.gearPercent}%
+            </div>
+            {/* Progress bar */}
+            <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  aggregateStats.gearPercent === 100
+                    ? 'bg-status-success'
+                    : aggregateStats.gearPercent >= 50
+                      ? 'bg-accent'
+                      : 'bg-text-muted'
+                }`}
+                style={{ width: `${aggregateStats.gearPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Books Progress */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-surface-elevated">
+                <BookOpen className="w-5 h-5 text-text-secondary" />
+              </div>
+              <span className="text-text-secondary text-sm">Books Collected</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.booksProgress.have}
+              <span className="text-text-muted text-lg">/{aggregateStats.booksProgress.need}</span>
+            </div>
+          </div>
+
+          {/* Materials Progress */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-surface-elevated">
+                <Wrench className="w-5 h-5 text-text-secondary" />
+              </div>
+              <span className="text-text-secondary text-sm">Materials Received</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.matsProgress.have}
+              <span className="text-text-muted text-lg">/{aggregateStats.matsProgress.need}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Table - simplified layout */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border-default bg-surface-elevated/50">
-              <th className="px-3 py-3 text-left text-sm font-medium text-text-secondary">Player</th>
-              <th className="px-3 py-3 text-center text-sm font-medium text-text-secondary">Gear</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[0]}>I</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-blue-400" title={tierInfo.upgradeMaterials.twine}>T</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-purple-400" title={tierInfo.upgradeMaterials.glaze}>G</th>
-              <th className="px-2 py-3 text-center text-sm font-medium text-amber-400" title={tierInfo.upgradeMaterials.solvent}>S</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary">Player</th>
+              <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary" style={{ minWidth: '140px' }}>Gear</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[0]}>I</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-twine" title={tierInfo.upgradeMaterials.twine}>T</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-glaze" title={tierInfo.upgradeMaterials.glaze}>G</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-material-solvent" title={tierInfo.upgradeMaterials.solvent}>S</th>
             </tr>
           </thead>
           <tbody>
@@ -255,10 +379,10 @@ export function TeamSummaryEnhanced({
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-border-default bg-surface-elevated/30">
-              <td className="px-3 py-2 text-sm font-medium text-text-secondary">Team Total</td>
-              <td className="px-3 py-2 text-center">
-                <span className={`text-sm font-medium ${
+            <tr className="border-t-2 border-border-default bg-surface-elevated/30">
+              <td className="px-3 py-2 text-sm font-semibold text-text-secondary">Team Total</td>
+              <td className="px-3 py-2">
+                <span className={`text-sm font-bold ${
                   totals.gearPercent === 100 ? 'text-status-success' :
                   totals.gearPercent >= 75 ? 'text-status-warning' :
                   'text-text-primary'
@@ -278,13 +402,13 @@ export function TeamSummaryEnhanced({
               <td className="px-2 py-2 text-center text-sm font-medium">
                 {totals.booksBalance.IV}<span className="text-text-muted">/{totals.booksNeeded.IV}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-blue-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-twine">
                 {totals.matsReceived.twine}<span className="text-text-muted">/{totals.matsNeeded.twine}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-purple-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-glaze">
                 {totals.matsReceived.glaze}<span className="text-text-muted">/{totals.matsNeeded.glaze}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-amber-400">
+              <td className="px-2 py-2 text-center text-sm font-medium text-material-solvent">
                 {totals.matsReceived.solvent}<span className="text-text-muted">/{totals.matsNeeded.solvent}</span>
               </td>
             </tr>
@@ -292,13 +416,13 @@ export function TeamSummaryEnhanced({
         </table>
       </div>
 
-      {/* Legend */}
-      <div className="p-4 border-t border-border-default">
-        <div className="flex flex-wrap gap-4 text-xs text-text-muted">
-          <span>I-IV = Book types (Floor 1-4)</span>
-          <span className="text-blue-400">T = {tierInfo.upgradeMaterials.twine}</span>
-          <span className="text-purple-400">G = {tierInfo.upgradeMaterials.glaze}</span>
-          <span className="text-amber-400">S = {tierInfo.upgradeMaterials.solvent}</span>
+      {/* Legend - more compact */}
+      <div className="px-4 py-3 border-t border-border-default bg-surface-elevated/20">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+          <span>I-IV = Books (Floor 1-4)</span>
+          <span className="text-material-twine">T = {tierInfo.upgradeMaterials.twine}</span>
+          <span className="text-material-glaze">G = {tierInfo.upgradeMaterials.glaze}</span>
+          <span className="text-material-solvent">S = {tierInfo.upgradeMaterials.solvent}</span>
           <span className="text-status-success">Green = Complete</span>
         </div>
       </div>

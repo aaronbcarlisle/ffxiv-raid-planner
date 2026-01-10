@@ -428,17 +428,16 @@ export default function LootMathDocs() {
             <Subsection title="Default Priority Order">
               <div className="space-y-2 mb-6">
                 {[
-                  { role: 'Melee', score: 125, color: '#d45a5a', jobs: 'MNK, DRG, NIN, SAM, RPR, VPR' },
-                  { role: 'Ranged', score: 100, color: '#d4a05a', jobs: 'BRD, MCH, DNC' },
-                  { role: 'Caster', score: 75, color: '#b45ad4', jobs: 'BLM, SMN, RDM, PCT' },
-                  { role: 'Tank', score: 50, color: '#5a9fd4', jobs: 'PLD, WAR, DRK, GNB' },
-                  { role: 'Healer', score: 25, color: '#5ad490', jobs: 'WHM, SCH, AST, SGE' },
+                  { role: 'Melee', score: 125, colorClass: 'bg-role-melee', jobs: 'MNK, DRG, NIN, SAM, RPR, VPR' },
+                  { role: 'Ranged', score: 100, colorClass: 'bg-role-ranged', jobs: 'BRD, MCH, DNC' },
+                  { role: 'Caster', score: 75, colorClass: 'bg-role-caster', jobs: 'BLM, SMN, RDM, PCT' },
+                  { role: 'Tank', score: 50, colorClass: 'bg-role-tank', jobs: 'PLD, WAR, DRK, GNB' },
+                  { role: 'Healer', score: 25, colorClass: 'bg-role-healer', jobs: 'WHM, SCH, AST, SGE' },
                 ].map((item, index) => (
                   <div key={item.role} className="flex items-center gap-4 bg-surface-card border border-border-subtle rounded-lg p-3">
                     <div className="text-lg font-bold text-text-muted w-8">#{index + 1}</div>
                     <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: item.color }}
+                      className={`w-4 h-4 rounded-full ${item.colorClass}`}
                     />
                     <div className="flex-1">
                       <div className="font-medium text-text-primary">{item.role}</div>

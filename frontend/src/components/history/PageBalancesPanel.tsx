@@ -145,7 +145,7 @@ export function PageBalancesPanel({
           {canEdit && pageBalances.length > 0 && (
             <button
               onClick={() => setResetState({ type: 'all' })}
-              className="px-3 py-1.5 rounded bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+              className="px-3 py-1.5 rounded bg-status-error/20 text-status-error text-sm hover:bg-status-error/30 transition-colors"
               title="Reset all book balances to zero"
             >
               Reset All
@@ -179,7 +179,7 @@ export function PageBalancesPanel({
                   <th
                     key={bookType}
                     className={`px-3 py-2 text-center text-sm text-text-secondary ${
-                      canEdit ? 'cursor-pointer hover:text-red-400 transition-colors' : ''
+                      canEdit ? 'cursor-pointer hover:text-status-error transition-colors' : ''
                     }`}
                     onClick={canEdit ? () => setResetState({ type: 'column', bookType }) : undefined}
                     title={canEdit ? `Click to reset Book ${bookType} for all players` : undefined}
@@ -263,7 +263,7 @@ export function PageBalancesPanel({
                             playerId: balance.playerId,
                             playerName: balance.playerName
                           })}
-                          className="p-1 rounded text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          className="p-1 rounded text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors"
                           title={`Reset all books for ${balance.playerName}`}
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -346,7 +346,7 @@ export function PageBalancesPanel({
               <button
                 onClick={handleResetConfirm}
                 disabled={isResetting}
-                className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/90 transition-colors disabled:opacity-50"
               >
                 {isResetting ? 'Resetting...' : 'Reset'}
               </button>

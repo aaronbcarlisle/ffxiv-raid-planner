@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ExternalLink, Check, ArrowRight } from 'lucide-react';
 
 // Navigation items
@@ -199,6 +199,7 @@ function NavSidebar({ activeSection, onSectionClick }: { activeSection: string; 
 }
 
 export default function LeadsGuideDocs() {
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState('overview');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
@@ -206,7 +207,24 @@ export default function LeadsGuideDocs() {
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);
     isScrollingRef.current = true;
+    // Update URL hash for shareable links
+    window.history.replaceState(null, '', `#${sectionId}`);
   }, []);
+
+  // Handle URL hash on mount/change
+  useEffect(() => {
+    if (location.hash) {
+      const sectionId = location.hash.slice(1); // Remove #
+      const section = NAV_SECTIONS.find(s => s.id === sectionId);
+      if (section) {
+        setActiveSection(sectionId);
+        // Scroll to section after a small delay
+        setTimeout(() => {
+          document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     const handleScroll = () => {

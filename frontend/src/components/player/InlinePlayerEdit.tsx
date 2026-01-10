@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { JobPicker } from './JobPicker';
-import { JobIcon } from '../ui/JobIcon';
+import { JobIcon, Label } from '../ui';
 import {
   getJobsByRole,
   getJobDisplayName,
@@ -266,7 +266,7 @@ export function InlinePlayerEdit({ player, userRole, onSave, onCancel }: InlineP
           <>
             {/* Role filter toggles (non-template slots only) */}
             <div className="mb-4">
-              <label className="block text-xs text-text-muted mb-2">Filter by Role</label>
+              <Label size="sm" className="mb-2 text-text-muted">Filter by Role</Label>
               <div className="flex gap-2">
                 {ROLE_FILTERS.map((rf) => (
                   <button

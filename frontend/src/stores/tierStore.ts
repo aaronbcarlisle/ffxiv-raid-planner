@@ -245,9 +245,29 @@ export const useTierStore = create<TierState>((set, get) => ({
 
   /**
    * Update a player in the current tier
+   * Uses optimistic updates for instant UI feedback
    */
   updatePlayer: async (groupId: string, tierId: string, playerId: string, data: Partial<SnapshotPlayer>) => {
-    set({ isSaving: true, error: null });
+    // Store previous state for rollback
+    const previousTier = get().currentTier;
+    const previousPlayer = previousTier?.players?.find(p => p.id === playerId);
+
+    // Optimistic update - apply changes immediately
+    set((state) => {
+      if (state.currentTier?.players) {
+        return {
+          currentTier: {
+            ...state.currentTier,
+            players: state.currentTier.players.map(p =>
+              p.id === playerId ? { ...p, ...data } : p
+            ),
+          },
+          isSaving: true,
+          error: null,
+        };
+      }
+      return { isSaving: true, error: null };
+    });
 
     try {
       const updatedPlayer = await authRequest<SnapshotPlayer>(
@@ -258,7 +278,7 @@ export const useTierStore = create<TierState>((set, get) => ({
         }
       );
 
-      // Update player in current tier
+      // Replace optimistic update with server response
       set((state) => {
         if (state.currentTier?.players) {
           return {
@@ -274,10 +294,29 @@ export const useTierStore = create<TierState>((set, get) => ({
         return { isSaving: false };
       });
     } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to update player',
-        isSaving: false,
-      });
+      // Rollback to previous state on error
+      if (previousPlayer && previousTier) {
+        set((state) => {
+          if (state.currentTier?.players) {
+            return {
+              currentTier: {
+                ...state.currentTier,
+                players: state.currentTier.players.map(p =>
+                  p.id === playerId ? previousPlayer : p
+                ),
+              },
+              error: error instanceof Error ? error.message : 'Failed to update player',
+              isSaving: false,
+            };
+          }
+          return { isSaving: false };
+        });
+      } else {
+        set({
+          error: error instanceof Error ? error.message : 'Failed to update player',
+          isSaving: false,
+        });
+      }
       throw error;
     }
   },

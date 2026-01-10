@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
-import { Checkbox } from '../ui/Checkbox';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Modal, Checkbox, Label, Select, Input, Spinner, JobIcon } from '../ui';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { Tooltip, TooltipProvider, Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
 import {
   fetchBiSFromXIVGear,
@@ -8,12 +9,13 @@ import {
   fetchBiSPresets,
   detectBiSSource,
 } from '../../services/api';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import type {
   BiSImportData,
   BiSPreset,
   ContentType,
   GearSlotStatus,
+  GearSlot,
   SnapshotPlayer,
 } from '../../types';
 
@@ -83,13 +85,13 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   // Preset state
   const [presets, setPresets] = useState<BiSPreset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
-  const [selectedPresetIndex, setSelectedPresetIndex] = useState<number | null>(null);
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');
 
   // Fetch presets when modal opens (category determined by tier's contentType)
   useEffect(() => {
     if (isOpen && player.job && player.configured) {
       setPresetsLoading(true);
-      setSelectedPresetIndex(null);
+      setSelectedPresetIndex('');
       fetchBiSPresets(player.job, contentType)
         .then((response) => {
           setPresets(response.presets);
@@ -120,7 +122,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     setChanges([]);
     setResetHaveStatus(true);
     setJobMismatch(false);
-    setSelectedPresetIndex(null);
+    setSelectedPresetIndex('');
   }, [player.bisLink]);
 
   const handleClose = () => {
@@ -128,18 +130,55 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     onClose();
   };
 
+  // Real-time URL validation
+  const urlValidation = useMemo(() => {
+    if (!inputValue.trim()) {
+      return { isValid: true, hint: null }; // Empty is valid (user might use preset)
+    }
+
+    const trimmed = inputValue.trim().toLowerCase();
+
+    // Check for valid URL patterns
+    const isXivgear = trimmed.includes('xivgear.app');
+    const isEtro = trimmed.includes('etro.gg');
+
+    if (isXivgear || isEtro) {
+      // Basic URL structure check
+      if (isXivgear && !trimmed.includes('/share/') && !trimmed.includes('/sl/')) {
+        return { isValid: false, hint: 'XIVGear links should contain /share/ or /sl/' };
+      }
+      if (isEtro && !trimmed.includes('/gearset/')) {
+        return { isValid: false, hint: 'Etro links should contain /gearset/' };
+      }
+      return { isValid: true, hint: null };
+    }
+
+    // Check if it looks like a UUID (direct paste)
+    const uuidPattern = /^[a-f0-9-]{36}$/;
+    if (uuidPattern.test(trimmed)) {
+      return { isValid: true, hint: 'Detected UUID - will try XIVGear' };
+    }
+
+    // Unknown format
+    return {
+      isValid: false,
+      hint: 'Paste a link from xivgear.app or etro.gg'
+    };
+  }, [inputValue]);
+
   const handlePreview = async () => {
     // Need either a preset selected or a URL entered
-    if (selectedPresetIndex === null && !inputValue.trim()) return;
+    if (selectedPresetIndex === '' && !inputValue.trim()) return;
 
     setState('loading');
     setError('');
 
     try {
       let data: BiSImportData;
+      const presetIdx = selectedPresetIndex !== '' ? parseInt(selectedPresetIndex, 10) : null;
 
-      if (selectedPresetIndex !== null) {
-        const selectedPreset = presets[selectedPresetIndex];
+      if (presetIdx !== null) {
+        const selectedPreset = presets[presetIdx];
         if (selectedPreset?.uuid) {
           // Shortlink preset with direct XIVGear UUID
           data = await fetchBiSFromXIVGear(selectedPreset.uuid, selectedPreset.setIndex ?? 0);
@@ -150,7 +189,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         } else {
           // Fallback for presets without githubTier (legacy)
           const bisUrl = `bis|${player.job.toLowerCase()}|current`;
-          data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
+          data = await fetchBiSFromXIVGear(bisUrl, presetIdx);
         }
       } else {
         // Detect source and call appropriate API
@@ -199,18 +238,34 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     } catch (err) {
       setState('error');
       if (err instanceof Error) {
-        // Check for common error patterns
-        if (err.message.includes('404')) {
-          setError('Gear set not found. Please check the link or UUID.');
-        } else if (err.message.includes('Could not extract UUID')) {
-          setError('Invalid link format. Please paste a valid Etro or XIVGear link.');
-        } else if (err.message.includes('timeout')) {
-          setError('API timed out. Please try again.');
+        // Provide user-friendly error messages with guidance
+        if (err.message.includes('404') || err.message.includes('not found')) {
+          setError(
+            'Gear set not found. This usually means:\n' +
+            '• The set may be private or deleted\n' +
+            '• The link may have expired\n' +
+            '• There might be a typo in the URL'
+          );
+        } else if (err.message.includes('Could not extract UUID') || err.message.includes('Invalid')) {
+          setError(
+            'Could not read this link. Please paste a valid URL from:\n' +
+            '• XIVGear: https://xivgear.app/share/...\n' +
+            '• Etro: https://etro.gg/gearset/...'
+          );
+        } else if (err.message.includes('timeout') || err.message.includes('network')) {
+          setError(
+            'Could not connect to the gear site. Please:\n' +
+            '• Check your internet connection\n' +
+            '• Try again in a moment\n' +
+            '• The site may be temporarily down'
+          );
+        } else if (err.message.includes('rate limit')) {
+          setError('Too many requests. Please wait a moment and try again.');
         } else {
           setError(err.message);
         }
       } else {
-        setError('Failed to fetch gear set. Please try again.');
+        setError('Something went wrong. Please try again.');
         toast.error('Failed to fetch gear set');
       }
     }
@@ -218,6 +273,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
   const handleImport = () => {
     if (!previewData) return;
+    const presetIdx = selectedPresetIndex !== '' ? parseInt(selectedPresetIndex, 10) : null;
 
     // Build new gear array
     const newGear = player.gear.map((currentSlot) => {
@@ -266,8 +322,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
     // Determine what to store as bisLink
     let bisLink: string;
-    if (selectedPresetIndex !== null) {
-      const selectedPreset = presets[selectedPresetIndex];
+    if (presetIdx !== null) {
+      const selectedPreset = presets[presetIdx];
       if (selectedPreset?.uuid) {
         // Shortlink preset - store the XIVGear shortlink format
         bisLink = `sl|${selectedPreset.uuid}`;
@@ -297,7 +353,32 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     }
   };
 
-  const modalTitle = player.bisLink ? 'Update BiS' : 'Import BiS';
+  // Modal title with job icon and player name
+  const modalTitle = (
+    <span className="flex items-center gap-2">
+      <JobIcon job={player.job} size="sm" />
+      <span>{player.bisLink ? 'Update' : 'Import'} BiS for {player.name}</span>
+    </span>
+  );
+
+  // Build preset options for Select with job icons
+  const presetOptions = [
+    {
+      value: '',
+      label: presetsLoading
+        ? 'Loading presets...'
+        : presets.length === 0
+          ? `No presets for ${player.job}`
+          : 'Choose a preset...',
+    },
+    ...presets.map((preset, idx) => ({
+      value: String(idx),
+      label: preset.name,
+      icon: <JobIcon job={player.job} size="xs" />,
+    })),
+  ];
+
+  const selectedPreset = selectedPresetIndex !== '' ? presets[parseInt(selectedPresetIndex, 10)] : null;
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
@@ -307,67 +388,51 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           {player.configured && (
             <div className="space-y-3">
               <div>
-                <label htmlFor="bisPreset" className="block text-text-secondary mb-1 text-sm">
-                  Select a preset
-                </label>
-                <select
-                id="bisPreset"
-                value={selectedPresetIndex ?? ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedPresetIndex(value === '' ? null : parseInt(value, 10));
-                  // Clear manual input when preset selected
-                  if (value !== '') {
-                    setInputValue('');
-                  }
-                }}
-                disabled={presetsLoading || presets.length === 0}
-                className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-50"
-              >
-                <option value="">
-                  {presetsLoading
-                    ? 'Loading presets...'
-                    : presets.length === 0
-                      ? `No presets for ${player.job}`
-                      : 'Choose a preset...'}
-                </option>
-                {presets.map((preset, idx) => (
-                  <option key={preset.index} value={idx}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-              {/* Description for selected preset */}
-              {selectedPresetIndex !== null && presets[selectedPresetIndex]?.description && (
-                <p className="mt-1.5 text-xs text-text-muted italic">
-                  {presets[selectedPresetIndex].description}
-                </p>
-              )}
-              {/* Attribution line - only show when presets loaded */}
-              {!presetsLoading && presets.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted">
-                  <span>Presets curated by</span>
-                  <a
-                    href={getBalanceGuideUrl(player.job)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent-bright hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    The Balance
-                  </a>
-                  <span className="text-text-muted/50">→</span>
-                  <a
-                    href={getBalanceGuideUrl(player.job)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent-bright hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View {player.job} guide
-                  </a>
-                </div>
-              )}
+                <Label htmlFor="bisPreset">Select a preset</Label>
+                <Select
+                  id="bisPreset"
+                  value={selectedPresetIndex}
+                  onChange={(value) => {
+                    setSelectedPresetIndex(value);
+                    // Clear manual input when preset selected
+                    if (value !== '') {
+                      setInputValue('');
+                    }
+                  }}
+                  options={presetOptions}
+                  disabled={presetsLoading || presets.length === 0}
+                />
+                {/* Description for selected preset */}
+                {selectedPreset?.description && (
+                  <p className="mt-1.5 text-xs text-text-muted italic">
+                    {selectedPreset.description}
+                  </p>
+                )}
+                {/* Attribution line - only show when presets loaded */}
+                {!presetsLoading && presets.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted">
+                    <span>Presets curated by</span>
+                    <a
+                      href={getBalanceGuideUrl(player.job)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-bright hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      The Balance
+                    </a>
+                    <span className="text-text-muted/50">→</span>
+                    <a
+                      href={getBalanceGuideUrl(player.job)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-bright hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View {player.job} guide
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -383,52 +448,52 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
           {/* Manual URL input */}
           <div>
-            <label htmlFor="bisLink" className="block text-text-secondary mb-1 text-sm">
+            <Label htmlFor="bisLink">
               {player.configured && presets.length > 0
                 ? 'Etro or XIVGear link'
                 : 'Paste Etro or XIVGear link'}
-            </label>
-            <input
+            </Label>
+            <Input
               id="bisLink"
-              type="text"
               value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
+              onChange={(value) => {
+                setInputValue(value);
                 // Clear preset selection when typing
-                if (e.target.value) {
-                  setSelectedPresetIndex(null);
+                if (value) {
+                  setSelectedPresetIndex('');
                 }
               }}
               onKeyDown={handleKeyDown}
               placeholder="https://etro.gg/gearset/..."
-              className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               autoFocus={!player.configured || presets.length === 0}
             />
+            {/* URL validation hint */}
+            {urlValidation.hint && (
+              <p className={`mt-1 text-xs ${urlValidation.isValid ? 'text-text-muted' : 'text-status-warning'}`}>
+                {urlValidation.hint}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handlePreview}
-              disabled={selectedPresetIndex === null && !inputValue.trim()}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={selectedPresetIndex === '' && !inputValue.trim()}
+              className="flex-1"
             >
               Preview
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {state === 'loading' && (
-        <div className="flex flex-col items-center justify-center py-8">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="flex flex-col items-center justify-center py-8 gap-4">
+          <Spinner size="lg" label="Fetching gear set" />
           <p className="text-text-secondary">Fetching gear set...</p>
         </div>
       )}
@@ -439,105 +504,126 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             <p className="text-status-error">{error}</p>
           </div>
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => setState('input')}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright"
-            >
+            </Button>
+            <Button type="button" onClick={() => setState('input')} className="flex-1">
               Try Again
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {state === 'preview' && previewData && (
-        <div className="space-y-4">
-          {/* Set info */}
-          <div className="p-3 bg-surface-base rounded-lg border border-border-default">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-text-primary font-medium">{previewData.name}</div>
-                <div className="text-text-secondary text-sm">{previewData.job}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Job mismatch warning */}
-          {jobMismatch && (
-            <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
-              <p className="text-status-warning text-sm">
-                This set is for <span className="font-medium">{previewData.job}</span>, but player is{' '}
-                <span className="font-medium">{player.job}</span>. Import anyway?
-              </p>
-            </div>
-          )}
-
-          {/* Changes */}
-          {changes.length > 0 ? (
-            <div>
-              <h3 className="text-text-secondary text-sm mb-2">Items Changed:</h3>
-              <div className="space-y-1">
-                {changes.map((change) => (
-                  <div
-                    key={change.slot}
-                    className="flex items-center justify-between p-2 bg-surface-base rounded border border-border-default gap-2"
-                  >
-                    <span className="text-text-primary font-medium shrink-0">{change.slotName}</span>
-                    <div className="flex items-center gap-2 text-sm min-w-0">
-                      <span className="text-text-muted truncate" title={change.fromItem}>
-                        {change.fromItem}
-                      </span>
-                      <span className="text-text-muted shrink-0">→</span>
-                      <span className="text-text-secondary truncate" title={change.toItem}>
-                        {change.toItem}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
+        <TooltipProvider>
+          <div className="space-y-4">
+            {/* Set info with job icon */}
             <div className="p-3 bg-surface-base rounded-lg border border-border-default">
-              <p className="text-text-secondary text-sm text-center">
-                No changes - all slots already match!
-              </p>
+              <div className="flex items-center gap-3">
+                <JobIcon job={previewData.job || player.job} size="lg" />
+                <div>
+                  <div className="text-text-primary font-medium">{previewData.name}</div>
+                  <div className="text-text-secondary text-sm">{previewData.job}</div>
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Reset checkbox */}
-          {changes.length > 0 && (
-            <Checkbox
-              checked={resetHaveStatus}
-              onChange={setResetHaveStatus}
-              label='Reset "Have" status for changed slots'
-            />
-          )}
+            {/* Job mismatch warning */}
+            {jobMismatch && (
+              <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
+                <p className="text-status-warning text-sm">
+                  This set is for <span className="font-medium">{previewData.job}</span>, but player is{' '}
+                  <span className="font-medium">{player.job}</span>. Import anyway?
+                </p>
+              </div>
+            )}
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleImport}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright"
-            >
-              Import
-            </button>
+            {/* Changes with gear icons */}
+            {changes.length > 0 ? (
+              <div>
+                <h3 className="text-text-secondary text-sm mb-2">Items Changed:</h3>
+                <div className="space-y-1">
+                  {changes.map((change) => {
+                    const newSlotData = previewData.slots.find(s => s.slot === change.slot);
+                    const hasItemData = newSlotData?.itemName && newSlotData?.itemLevel;
+                    const gearIcon = newSlotData?.itemIcon || GEAR_SLOT_ICONS[change.slot as GearSlot];
+
+                    return (
+                      <div
+                        key={change.slot}
+                        className="flex items-center p-2 bg-surface-base rounded border border-border-default gap-3"
+                      >
+                        {/* Gear icon with tooltip */}
+                        {hasItemData ? (
+                          <Tooltip
+                            content={
+                              <ItemHoverCard
+                                itemName={newSlotData.itemName!}
+                                itemLevel={newSlotData.itemLevel!}
+                                itemIcon={newSlotData.itemIcon}
+                                itemStats={newSlotData.itemStats}
+                                bisSource={newSlotData.source}
+                              />
+                            }
+                            side="right"
+                            sideOffset={8}
+                          >
+                            <img
+                              src={gearIcon}
+                              alt={change.slotName}
+                              className="w-6 h-6 rounded cursor-pointer shrink-0"
+                            />
+                          </Tooltip>
+                        ) : (
+                          <img
+                            src={gearIcon}
+                            alt={change.slotName}
+                            className="w-6 h-6 opacity-60 shrink-0"
+                          />
+                        )}
+                        <span className="text-text-primary font-medium shrink-0 w-16">{change.slotName}</span>
+                        <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
+                          <span className="text-text-muted truncate" title={change.fromItem}>
+                            {change.fromItem}
+                          </span>
+                          <span className="text-text-muted shrink-0">→</span>
+                          <span className="text-text-secondary truncate" title={change.toItem}>
+                            {change.toItem}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-surface-base rounded-lg border border-border-default">
+                <p className="text-text-secondary text-sm text-center">
+                  No changes - all slots already match!
+                </p>
+              </div>
+            )}
+
+            {/* Reset checkbox */}
+            {changes.length > 0 && (
+              <Checkbox
+                checked={resetHaveStatus}
+                onChange={setResetHaveStatus}
+                label='Reset "Have" status for changed slots'
+              />
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleImport} className="flex-1">
+                Import
+              </Button>
+            </div>
           </div>
-        </div>
+        </TooltipProvider>
       )}
     </Modal>
   );

@@ -8,13 +8,16 @@
  * - Radix Tooltip for hover cards
  */
 
+import { useState } from 'react';
 import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS } from '../../types';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
+import { FileSearch } from 'lucide-react';
 
 // Helper function to get upgrade material tooltip based on gear slot
 function getUpgradeMaterialTooltip(slot: GearSlot): string {
@@ -42,12 +45,43 @@ function SlotIcon({
   status,
   size = 24,
   showHover = false,
+  hasLootEntry = false,
+  onNavigateToLootEntry,
 }: {
   slot: GearSlot;
   status: GearSlotStatus;
   size?: number;
   showHover?: boolean;
+  hasLootEntry?: boolean;
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    // Only show context menu if there's a loot entry to navigate to
+    if (hasLootEntry && onNavigateToLootEntry) {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Alt+Click navigates to loot entry
+    if (e.altKey && hasLootEntry && onNavigateToLootEntry) {
+      e.preventDefault();
+      e.stopPropagation();
+      onNavigateToLootEntry(slot);
+    }
+  };
+
+  const contextMenuItems: ContextMenuItem[] = hasLootEntry && onNavigateToLootEntry
+    ? [{
+        label: 'Go to Loot Entry',
+        icon: <FileSearch className="w-4 h-4" />,
+        onClick: () => onNavigateToLootEntry(slot),
+      }]
+    : [];
   const hasItem = status.hasItem;
   const bisSource = status.bisSource;
   const isAugmented = status.isAugmented;
@@ -97,25 +131,61 @@ function SlotIcon({
   // Wrap with Tooltip if we have item data and hover is enabled
   if (showHover && hasItemData) {
     return (
-      <Tooltip
-        content={
-          <ItemHoverCard
-            itemName={status.itemName!}
-            itemLevel={status.itemLevel!}
-            itemIcon={status.itemIcon}
-            itemStats={status.itemStats}
-            bisSource={bisSource}
+      <>
+        <Tooltip
+          content={
+            <ItemHoverCard
+              itemName={status.itemName!}
+              itemLevel={status.itemLevel!}
+              itemIcon={status.itemIcon}
+              itemStats={status.itemStats}
+              bisSource={bisSource}
+            />
+          }
+          side="right"
+          sideOffset={8}
+        >
+          <div
+            className={`cursor-pointer ${hasLootEntry && onNavigateToLootEntry ? 'hover:ring-1 hover:ring-accent/50 rounded' : ''}`}
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            title={hasLootEntry ? 'Alt+Click to go to loot entry' : undefined}
+          >
+            {iconElement}
+          </div>
+        </Tooltip>
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenuItems}
+            onClose={() => setContextMenu(null)}
           />
-        }
-        side="right"
-        sideOffset={8}
-      >
-        <div className="cursor-pointer">{iconElement}</div>
-      </Tooltip>
+        )}
+      </>
     );
   }
 
-  return <div>{iconElement}</div>;
+  return (
+    <>
+      <div
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        className={hasLootEntry && onNavigateToLootEntry ? 'cursor-pointer hover:ring-1 hover:ring-accent/50 rounded' : ''}
+        title={hasLootEntry ? 'Alt+Click to go to loot entry' : undefined}
+      >
+        {iconElement}
+      </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
+  );
 }
 
 // Special weapon row with optional tome weapon sub-row
@@ -126,6 +196,8 @@ interface WeaponSlotRowProps {
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
   disabled?: boolean;
   disabledTooltip?: string;
+  hasLootEntry?: boolean;
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 function WeaponSlotRow({
@@ -135,6 +207,8 @@ function WeaponSlotRow({
   onTomeWeaponChange,
   disabled = false,
   disabledTooltip,
+  hasLootEntry = false,
+  onNavigateToLootEntry,
 }: WeaponSlotRowProps) {
   return (
     <>
@@ -142,9 +216,26 @@ function WeaponSlotRow({
       <tr className="border-t border-border-default/50">
         <td className="py-1 text-text-secondary">
           <div className="flex items-center gap-3">
-            <SlotIcon slot="weapon" status={status} size={24} showHover />
+            <SlotIcon
+              slot="weapon"
+              status={status}
+              size={24}
+              showHover
+              hasLootEntry={hasLootEntry}
+              onNavigateToLootEntry={onNavigateToLootEntry}
+            />
             <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
+        </td>
+        {/* CurrentSource column hidden for now */}
+        <td className="py-1 hidden text-center">
+          {status.currentSource && status.currentSource !== 'unknown' ? (
+            <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
+              {GEAR_SOURCE_NAMES[status.currentSource]}
+            </span>
+          ) : (
+            <span className="text-xs text-text-muted">—</span>
+          )}
         </td>
         <td className="py-1 text-center">
           <div className="flex justify-center gap-1">
@@ -152,10 +243,10 @@ function WeaponSlotRow({
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium ${disabled ? 'opacity-50' : ''}`}>
               Raid
             </span>
-            {/* +Tome is a toggle for interim tome weapon */}
+            {/* + is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium transition-colors ${
                 tomeWeapon.pursuing
                   ? 'bg-gear-tome/20 text-gear-tome'
                   : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
@@ -163,7 +254,7 @@ function WeaponSlotRow({
               title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
               disabled={disabled}
             >
-              +Tome
+              +
             </button>
           </div>
         </td>
@@ -184,7 +275,7 @@ function WeaponSlotRow({
         </td>
       </tr>
 
-      {/* Tome weapon sub-row (only shown when pursuing) */}
+      {/* Tome weapon sub-row - only shown when +Tome is enabled */}
       {tomeWeapon.pursuing && (
         <tr className="border-t border-border-default/30 bg-surface-elevated/30">
           <td
@@ -197,6 +288,10 @@ function WeaponSlotRow({
             }`}
           >
             └ Tome Weapon
+          </td>
+          {/* CurrentSource column hidden for now */}
+          <td className="py-1 hidden">
+            {/* Empty cell for Current column alignment */}
           </td>
           <td className="py-1 text-center">
             <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
@@ -251,6 +346,10 @@ interface GearTableProps {
   userRole?: MemberRole | null;
   currentUserId?: string;
   isAdmin?: boolean;
+  /** Slots that have loot entries (for "Go to Loot Entry" feature) */
+  slotsWithLootEntries?: Set<GearSlot>;
+  /** Navigate to loot entry for a slot */
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 export function GearTable({
@@ -263,6 +362,8 @@ export function GearTable({
   userRole,
   currentUserId,
   isAdmin,
+  slotsWithLootEntries,
+  onNavigateToLootEntry,
 }: GearTableProps) {
   // Check gear edit permission
   const gearPermission = canEditGear(userRole, player, currentUserId, isAdmin);
@@ -383,7 +484,9 @@ export function GearTable({
         <thead>
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
-            <th className="text-center py-1 font-medium w-24">BiS Source</th>
+            {/* CurrentSource column hidden for now - change to "hidden md:table-cell" to re-enable */}
+            <th className="text-center py-1 font-medium hidden">Current</th>
+            <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
             <th className="text-center py-1 font-medium w-16">Aug</th>
           </tr>
@@ -404,6 +507,8 @@ export function GearTable({
                   onTomeWeaponChange={handleTomeWeaponUpdate}
                   disabled={!gearPermission.allowed}
                   disabledTooltip={gearPermission.reason}
+                  hasLootEntry={slotsWithLootEntries?.has('weapon')}
+                  onNavigateToLootEntry={onNavigateToLootEntry}
                 />
               );
             }
@@ -414,35 +519,43 @@ export function GearTable({
               <tr key={slot} className="border-t border-border-default/50">
                 <td className="py-1 text-text-secondary">
                   <div className="flex items-center gap-3">
-                    <SlotIcon slot={slot} status={status} size={24} showHover />
+                    <SlotIcon
+                      slot={slot}
+                      status={status}
+                      size={24}
+                      showHover
+                      hasLootEntry={slotsWithLootEntries?.has(slot) && status.bisSource === 'raid'}
+                      onNavigateToLootEntry={onNavigateToLootEntry}
+                    />
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
                 </td>
+                {/* CurrentSource column hidden for now */}
+                <td className="py-1 hidden text-center">
+                  {status.currentSource && status.currentSource !== 'unknown' ? (
+                    <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
+                      {GEAR_SOURCE_NAMES[status.currentSource]}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-text-muted">—</span>
+                  )}
+                </td>
                 <td className="py-1 text-center">
-                  <div className="flex justify-center gap-1">
+                  <div className="flex justify-center">
                     <button
-                      onClick={() => handleSourceChange(slot, 'raid')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
+                      className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${
                         status.bisSource === 'raid'
                           ? 'bg-gear-raid/20 text-gear-raid'
-                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
-                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          : 'bg-gear-tome/20 text-gear-tome'
+                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
                       disabled={!gearPermission.allowed}
-                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
+                      title={!gearPermission.allowed ? gearPermission.reason : 'Click to toggle BiS source'}
                     >
-                      Raid
-                    </button>
-                    <button
-                      onClick={() => handleSourceChange(slot, 'tome')}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                        status.bisSource === 'tome'
-                          ? 'bg-gear-tome/20 text-gear-tome'
-                          : `bg-surface-interactive text-text-muted ${gearPermission.allowed ? 'hover:text-text-secondary' : ''}`
-                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!gearPermission.allowed}
-                      title={!gearPermission.allowed ? gearPermission.reason : undefined}
-                    >
-                      Tome
+                      {status.bisSource === 'raid' ? 'Raid' : 'Tome'}
+                      <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                      </svg>
                     </button>
                   </div>
                 </td>

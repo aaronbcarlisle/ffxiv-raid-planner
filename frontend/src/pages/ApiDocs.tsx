@@ -115,10 +115,10 @@ function EndpointCard({
   responseBody?: string;
 }) {
   const methodColors = {
-    GET: 'bg-blue-500/20 text-blue-400',
-    POST: 'bg-green-500/20 text-green-400',
-    PUT: 'bg-amber-500/20 text-amber-400',
-    DELETE: 'bg-red-500/20 text-red-400',
+    GET: 'bg-status-info/20 text-status-info',
+    POST: 'bg-status-success/20 text-status-success',
+    PUT: 'bg-status-warning/20 text-status-warning',
+    DELETE: 'bg-status-error/20 text-status-error',
   };
 
   return (

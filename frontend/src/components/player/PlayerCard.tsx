@@ -5,19 +5,34 @@
  * Supports drag-and-drop, context menu, and inline editing.
  */
 
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
-import { ContextMenu, Modal, type ContextMenuItem } from '../ui';
+import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
+import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
-import { CONTEXT_MENU_ICONS } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
+import {
+  Copy,
+  ClipboardPaste,
+  CopyPlus,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Swords,
+  RotateCcw,
+  UserCheck,
+  UserX,
+  FileDown,
+  Link2Off,
+  Link2,
+} from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardProps {
@@ -47,6 +62,10 @@ interface PlayerCardProps {
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
+  /** Slots that have loot entries (for "Go to Loot Entry" feature) */
+  slotsWithLootEntries?: Set<GearSlot>;
+  /** Navigate to loot entry for a slot */
+  onNavigateToLootEntry?: (slot: GearSlot) => void;
 }
 
 export const PlayerCard = memo(function PlayerCard({
@@ -76,14 +95,20 @@ export const PlayerCard = memo(function PlayerCard({
   onModalOpen,
   onModalClose,
   onCopyUrl,
+  slotsWithLootEntries,
+  onNavigateToLootEntry,
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showUnlinkBiSConfirm, setShowUnlinkBiSConfirm] = useState(false);
+  const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
-  const [showBiSReimportPrompt, setShowBiSReimportPrompt] = useState(false);
+  const [showJobChangeConfirm, setShowJobChangeConfirm] = useState(false);
+  const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
+  const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Get role color for left border
@@ -103,7 +128,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showBiSImport || showWeaponPriorityModal || showBiSReimportPrompt;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -112,7 +137,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showBiSImport, showWeaponPriorityModal, showBiSReimportPrompt, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -184,18 +209,51 @@ export const PlayerCard = memo(function PlayerCard({
     }
   };
 
-  const handleJobChange = async (newJob: string) => {
-    const newRole = getRoleForJob(newJob);
+  // When job is selected from picker, store it and show confirmation
+  const handleJobChange = (newJob: string) => {
+    // Don't prompt if selecting the same job
+    if (newJob === player.job) return;
+    setPendingJobChange(newJob);
+    setShowJobChangeConfirm(true);
+  };
+
+  // Actually apply the job change after confirmation
+  const confirmJobChange = async (updateBiS: boolean) => {
+    if (!pendingJobChange) return;
+    const newRole = getRoleForJob(pendingJobChange);
     if (newRole) {
       try {
-        await onUpdate({ job: newJob, role: newRole });
-        // Prompt to reimport BiS after successful job change
-        setShowBiSReimportPrompt(true);
+        await onUpdate({ job: pendingJobChange, role: newRole });
+        setShowJobChangeConfirm(false);
+        setPendingJobChange(null);
+        // Trigger highlight and scroll
+        triggerHighlight();
+        // Open BiS import if requested
+        if (updateBiS) {
+          setShowBiSImport(true);
+        }
       } catch (error) {
         // Error already handled by api.ts (toast shown)
-        // Just prevent unhandled promise rejection
       }
     }
+  };
+
+  // Cancel job change - close modal and clear pending
+  const cancelJobChange = () => {
+    setShowJobChangeConfirm(false);
+    setPendingJobChange(null);
+  };
+
+  // Trigger highlight animation and scroll to card
+  const triggerHighlight = () => {
+    setLocalHighlight(true);
+    // Scroll the card into view
+    const cardElement = document.getElementById(`player-card-${player.id}`);
+    if (cardElement) {
+      cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Clear highlight after animation
+    setTimeout(() => setLocalHighlight(false), 2000);
   };
 
   const handleNameChange = async (name: string) => {
@@ -245,31 +303,26 @@ export const PlayerCard = memo(function PlayerCard({
   const rosterPermission = canManageRoster(userRole, isAdmin);
   const resetPermission = canResetGear(userRole, player, currentUserId, isAdmin);
 
-  // Context menu items
-  const contextMenuItems: ContextMenuItem[] = [
+  // Memoized context menu items to prevent recreation on every render
+  const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
-      icon: CONTEXT_MENU_ICONS.importBis,
+      icon: <FileDown className="w-4 h-4" />,
       onClick: () => setShowBiSImport(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
     ...(player.bisLink ? [{
       label: 'Unlink BiS',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
-        </svg>
-      ),
-      onClick: () => onUpdate({ bisLink: '' }),
+      icon: <Link2Off className="w-4 h-4" />,
+      onClick: () => setShowUnlinkBiSConfirm(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
     { separator: true },
     {
       label: 'Weapon Priorities',
-      icon: CONTEXT_MENU_ICONS.weaponPriority,
+      icon: <Swords className="w-4 h-4" />,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -277,37 +330,33 @@ export const PlayerCard = memo(function PlayerCard({
     { separator: true },
     {
       label: 'Copy Player',
-      icon: CONTEXT_MENU_ICONS.copy,
+      icon: <Copy className="w-4 h-4" />,
       onClick: onCopy,
       // Copy is always allowed (read-only operation)
     },
     ...(onCopyUrl ? [{
       label: 'Copy URL',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-      ),
+      icon: <Link2 className="w-4 h-4" />,
       onClick: onCopyUrl,
       // Copy URL is always allowed (read-only operation)
     }] : []),
     {
       label: 'Paste Player',
-      icon: CONTEXT_MENU_ICONS.paste,
-      onClick: onPaste,
+      icon: <ClipboardPaste className="w-4 h-4" />,
+      onClick: () => setShowPasteConfirm(true),
       disabled: !clipboardPlayer || !editPermission.allowed,
       tooltip: !clipboardPlayer ? 'No player copied' : !editPermission.allowed ? editPermission.reason : undefined,
     },
     {
       label: 'Duplicate Player',
-      icon: CONTEXT_MENU_ICONS.duplicate,
+      icon: <CopyPlus className="w-4 h-4" />,
       onClick: () => onDuplicate(),
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
-      icon: CONTEXT_MENU_ICONS.substitute,
+      icon: player.isSubstitute ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
@@ -315,38 +364,71 @@ export const PlayerCard = memo(function PlayerCard({
     { separator: true },
     ...(canClaim ? [{
       label: 'Take Ownership',
-      icon: CONTEXT_MENU_ICONS.takeOwnership,
+      icon: <UserCheck className="w-4 h-4" />,
       onClick: onClaimPlayer,
     }] : []),
     ...(canRelease ? [{
       label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
-      icon: CONTEXT_MENU_ICONS.releaseOwnership,
+      icon: <UserX className="w-4 h-4" />,
       onClick: onReleasePlayer,
     }] : []),
     { separator: true },
     {
       label: 'Reset Gear',
-      icon: CONTEXT_MENU_ICONS.resetGear,
+      icon: <RotateCcw className="w-4 h-4" />,
       onClick: () => setShowResetConfirm(true),
       disabled: !onResetGear || !resetPermission.allowed,
       tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
     },
     {
       label: 'Remove Player',
-      icon: CONTEXT_MENU_ICONS.remove,
+      icon: <Trash2 className="w-4 h-4" />,
       onClick: () => setShowRemoveConfirm(true),
       danger: true,
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
-  ];
+  ], [
+    player.bisLink,
+    player.isSubstitute,
+    editPermission.allowed,
+    editPermission.reason,
+    rosterPermission.allowed,
+    rosterPermission.reason,
+    resetPermission.allowed,
+    resetPermission.reason,
+    clipboardPlayer,
+    canClaim,
+    canRelease,
+    isLinkedToMe,
+    onResetGear,
+    onCopy,
+    onCopyUrl,
+    onDuplicate,
+    onUpdate,
+    onClaimPlayer,
+    onReleasePlayer,
+  ]);
+
+  // Handle Shift+Click to copy URL
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (e.shiftKey && onCopyUrl) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Clear any text selection caused by Shift+Click
+      window.getSelection()?.removeAllRanges();
+      onCopyUrl();
+    }
+  };
 
   return (
     <div
       id={`player-card-${player.id}`}
-      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] ${isHighlighted ? 'highlight-pulse' : ''}`}
+      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
+      onClick={handleCardClick}
+      title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
     >
       {/* Context Menu */}
       {contextMenu && (
@@ -368,21 +450,23 @@ export const PlayerCard = memo(function PlayerCard({
           Are you sure you want to remove <span className="text-text-primary font-medium">{player.name}</span> from the static?
         </p>
         <div className="flex justify-end gap-3">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() => setShowRemoveConfirm(false)}
-            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
             onClick={() => {
               onRemove();
               setShowRemoveConfirm(false);
             }}
-            className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
           >
             Remove
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -397,92 +481,118 @@ export const PlayerCard = memo(function PlayerCard({
             Choose what to reset for <span className="text-text-primary font-medium">{player.name}</span> ({player.job}):
           </p>
 
-          {/* Radio option 1: Reset progress only */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'progress' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="progress"
-              checked={resetMode === 'progress'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Reset progress only (keep BiS configuration)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Unchecks all Have/Aug checkboxes</li>
-                <li>• Resets tome weapon tracking</li>
-                <li>• Keeps BiS link and sources</li>
-              </ul>
-            </div>
-          </label>
+          <RadioGroup
+            name="resetMode"
+            value={resetMode}
+            onChange={(value) => setResetMode(value as ResetMode)}
+            options={[
+              {
+                value: 'progress',
+                label: 'Reset progress only (keep BiS configuration)',
+                description: '• Unchecks all Have/Aug checkboxes\n• Resets tome weapon tracking\n• Keeps BiS link and sources',
+              },
+              {
+                value: 'unlink',
+                label: 'Unlink BiS (keep progress)',
+                description: '• Removes BiS reference\n• Clears item metadata (names, icons)\n• Keeps current sources and progress',
+              },
+              {
+                value: 'all',
+                label: 'Reset everything (complete wipe)',
+                description: '• Unchecks all Have/Aug checkboxes\n• Resets BiS sources to defaults\n• Removes BiS link and metadata\n• Resets tome weapon tracking',
+              },
+            ]}
+          />
 
-          {/* Radio option 2: Unlink BiS */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'unlink' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="unlink"
-              checked={resetMode === 'unlink'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Unlink BiS (keep progress)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Removes BiS reference</li>
-                <li>• Clears item metadata (names, icons)</li>
-                <li>• Keeps current sources and progress</li>
-              </ul>
-            </div>
-          </label>
-
-          {/* Radio option 3: Reset everything */}
-          <label className={`flex items-start gap-3 p-3 rounded cursor-pointer mb-3 transition-colors ${
-            resetMode === 'all' ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-hover border border-transparent'
-          }`}>
-            <input
-              type="radio"
-              name="resetMode"
-              value="all"
-              checked={resetMode === 'all'}
-              onChange={(e) => setResetMode(e.target.value as ResetMode)}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="text-text-primary font-medium mb-1">Reset everything (complete wipe)</div>
-              <ul className="text-text-secondary text-sm space-y-0.5">
-                <li>• Unchecks all Have/Aug checkboxes</li>
-                <li>• Resets BiS sources to defaults</li>
-                <li>• Removes BiS link and metadata</li>
-                <li>• Resets tome weapon tracking</li>
-              </ul>
-            </div>
-          </label>
-
-          <p className="text-status-warning text-sm mt-4">⚠️ This action cannot be undone.</p>
+          <p className="text-status-warning text-sm mt-4">This action cannot be undone.</p>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={() => setShowResetConfirm(false)}
-            className="px-4 py-2 rounded text-text-secondary hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
             onClick={() => {
               onResetGear?.(resetMode);
               setShowResetConfirm(false);
             }}
-            className="px-4 py-2 rounded bg-status-warning text-white hover:bg-status-warning/80 transition-colors"
           >
             Reset Gear
-          </button>
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Unlink BiS Confirmation Modal */}
+      <Modal
+        isOpen={showUnlinkBiSConfirm}
+        onClose={() => setShowUnlinkBiSConfirm(false)}
+        title="Unlink BiS"
+        size="sm"
+      >
+        <p className="text-text-secondary mb-4">
+          Are you sure you want to unlink <span className="text-text-primary font-medium">{player.name}</span>'s BiS set?
+        </p>
+        <p className="text-text-muted text-sm mb-6">
+          This will remove the BiS link and item metadata (names, icons). Current progress and sources will be kept.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowUnlinkBiSConfirm(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
+            onClick={() => {
+              onUpdate({ bisLink: '' });
+              setShowUnlinkBiSConfirm(false);
+            }}
+          >
+            Unlink BiS
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Paste Player Confirmation Modal */}
+      <Modal
+        isOpen={showPasteConfirm}
+        onClose={() => setShowPasteConfirm(false)}
+        title="Paste Player"
+        size="sm"
+      >
+        <p className="text-text-secondary mb-4">
+          This will overwrite <span className="text-text-primary font-medium">{player.name}</span>'s gear configuration with data from <span className="text-text-primary font-medium">{clipboardPlayer?.name || 'copied player'}</span>.
+        </p>
+        <p className="text-text-muted text-sm mb-6">
+          Job, BiS sources, progress, and weapon priorities will all be replaced.
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowPasteConfirm(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="warning"
+            onClick={() => {
+              onPaste();
+              setShowPasteConfirm(false);
+            }}
+          >
+            Paste
+          </Button>
         </div>
       </Modal>
 
@@ -492,7 +602,10 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowBiSImport(false)}
         player={player}
         contentType={contentType}
-        onImport={(updates) => onUpdate(updates)}
+        onImport={(updates) => {
+          onUpdate(updates);
+          triggerHighlight();
+        }}
       />
 
       {/* Weapon Priority Modal */}
@@ -505,33 +618,45 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowWeaponPriorityModal(false)}
       />
 
-      {/* BiS Reimport Prompt */}
+      {/* Job Change Confirmation Modal */}
       <Modal
-        isOpen={showBiSReimportPrompt}
-        onClose={() => setShowBiSReimportPrompt(false)}
-        title="Import BiS for New Job?"
+        isOpen={showJobChangeConfirm}
+        onClose={cancelJobChange}
+        title={`Change ${player.name}'s Job?`}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-text-secondary">
-            You've changed {player.name}'s job. Would you like to import a new BiS set for this job?
+            Change job from <span className="text-text-primary font-medium">{player.job}</span> to{' '}
+            <span className="text-text-primary font-medium">{pendingJobChange}</span>?
           </p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setShowBiSReimportPrompt(false)}
-              className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
+          <p className="text-text-muted text-sm">
+            Would you like to update BiS for the new job?
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              onClick={() => confirmJobChange(true)}
+              className="w-full"
             >
-              No, Keep Current
-            </button>
-            <button
-              onClick={() => {
-                setShowBiSReimportPrompt(false);
-                setShowBiSImport(true);
-              }}
-              className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+              Change Job & Update BiS
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => confirmJobChange(false)}
+              className="w-full"
             >
-              Yes, Import BiS
-            </button>
+              Change Job Only
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={cancelJobChange}
+              className="w-full"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       </Modal>
@@ -592,6 +717,8 @@ export const PlayerCard = memo(function PlayerCard({
         isAdmin={isAdmin}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
+        slotsWithLootEntries={slotsWithLootEntries}
+        onNavigateToLootEntry={onNavigateToLootEntry}
       />
 
       {/* Expanded mode: spacer after gear (fills remaining space, footer hidden) */}

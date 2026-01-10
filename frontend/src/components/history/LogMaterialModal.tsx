@@ -5,6 +5,10 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
+import { NumberInput } from '../ui/NumberInput';
+import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
@@ -208,24 +212,74 @@ export function LogMaterialModal({
     return [...playersWithPriority, ...playersWithoutNeed];
   }, [players, selectedMaterial, settings, materialLog, includeSubs]);
 
-  // Filter to only show players who need the material (unless showAllRecipients)
+  // Filter recipients based on checkbox states
+  // Logic:
+  // - Neither checked: Main roster who need material only
+  // - Include Subs only: Main roster who need material + subs who need material.
+  //                      If NO ONE needs it, show ONLY subs (fallback)
+  // - Show All Players only: All main roster (excluding subs), regardless of need
+  // - Both checked: Everyone (all main roster + all subs)
+  // - In Edit mode: Always include the current recipient even if they don't need the material
   const visibleRecipients = useMemo(() => {
-    if (showAllRecipients) return sortedPlayersWithPriority;
-    return sortedPlayersWithPriority.filter(r => r.needsMaterial);
-  }, [sortedPlayersWithPriority, showAllRecipients]);
+    let result: typeof sortedPlayersWithPriority;
 
-  // Auto-select top priority recipient when material changes
-  useEffect(() => {
-    if (sortedPlayersWithPriority.length > 0) {
-      const topPriority = sortedPlayersWithPriority.find(r => r.needsMaterial);
-      if (topPriority) {
-        setSelectedPlayer(topPriority.player.id);
-      } else if (sortedPlayersWithPriority.length > 0) {
-        // Fall back to first player if no one needs the material
-        setSelectedPlayer(sortedPlayersWithPriority[0].player.id);
+    if (showAllRecipients && includeSubs) {
+      // Both checked: show everyone
+      result = sortedPlayersWithPriority;
+    } else if (showAllRecipients && !includeSubs) {
+      // Show all main roster (already filtered out subs in sortedPlayersWithPriority when includeSubs is false)
+      result = sortedPlayersWithPriority;
+    } else if (includeSubs && !showAllRecipients) {
+      // Include Subs mode: show those who need + fallback to subs if none need
+      const needsMaterial = sortedPlayersWithPriority.filter(r => r.needsMaterial);
+      if (needsMaterial.length > 0) {
+        result = needsMaterial;
+      } else {
+        // No one needs it - show only subs as fallback
+        result = sortedPlayersWithPriority.filter(r => r.player.isSubstitute);
+      }
+    } else {
+      // Default: only those who need the material
+      result = sortedPlayersWithPriority.filter(r => r.needsMaterial);
+    }
+
+    // In edit mode, ALWAYS ensure the current recipient is in the list
+    // (they may no longer need the material if they already received it)
+    if (isEditMode && editEntry?.recipientPlayerId) {
+      const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
+      if (!currentRecipientInList) {
+        // Find the recipient directly from players prop (unfiltered)
+        const player = players.find(p => p.id === editEntry.recipientPlayerId);
+        if (player) {
+          // Check if they're in sortedPlayersWithPriority for priority info
+          const sortedEntry = sortedPlayersWithPriority.find(r => r.player.id === editEntry.recipientPlayerId);
+          result = [{
+            player,
+            score: sortedEntry?.score ?? 0,
+            rank: sortedEntry?.rank ?? 999,
+            needsMaterial: sortedEntry?.needsMaterial ?? false,
+          }, ...result];
+        }
       }
     }
-  }, [selectedMaterial, sortedPlayersWithPriority]);
+
+    return result;
+  }, [sortedPlayersWithPriority, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
+
+  // Auto-select top priority recipient when material changes
+  // Skip auto-selection in edit mode to preserve original recipient
+  useEffect(() => {
+    if (editEntry) return; // Don't auto-select in edit mode
+
+    // Use visibleRecipients for auto-selection to match what's shown in dropdown
+    if (visibleRecipients.length > 0) {
+      // Select the first visible recipient (already sorted by priority)
+      setSelectedPlayer(visibleRecipients[0].player.id);
+    } else {
+      // No visible recipients - clear selection
+      setSelectedPlayer('');
+    }
+  }, [selectedMaterial, visibleRecipients, editEntry]);
 
   // Get priority label for a player
   const getPriorityLabel = (rank: number, needsMaterial: boolean): string => {
@@ -236,164 +290,142 @@ export function LogMaterialModal({
     return '';
   };
 
+  // Build floor options for Select - only include floors that have materials
+  const floorOptions = floors
+    .filter((floor) => getMaterialsForFloor(floor).length > 0)
+    .map((floor) => ({
+      value: floor,
+      label: floor,
+    }));
+
+  // Build recipient options for Select
+  const recipientOptions = [
+    { value: '', label: 'Select player...' },
+    ...visibleRecipients.map(({ player, rank, needsMaterial }) => ({
+      value: player.id,
+      label: `${player.name}${getPriorityLabel(rank, needsMaterial)}`,
+      icon: <JobIcon job={player.job} size="sm" />,
+    })),
+  ];
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-surface-card rounded-lg p-6 max-w-md w-full mx-4 border border-border-default">
-        <h3 className="text-lg font-medium text-text-primary mb-4">
-          {isEditMode ? 'Edit Material Entry' : 'Log Material'}
-        </h3>
-
-        <div className="space-y-4">
-          {/* Floor select */}
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Material Entry' : 'Log Material'}>
+      <div className="space-y-4">
+        {/* Week + Floor row (matching loot modal layout) */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">
-              Floor
-            </label>
-            <select
+            <Label htmlFor="week">Week</Label>
+            <NumberInput
+              value={weekNumber}
+              onChange={(val) => setWeekNumber(val ?? 1)}
+              min={1}
+              size="sm"
+              showButtons={false}
+            />
+          </div>
+          <div>
+            <Label htmlFor="floor">Floor</Label>
+            <Select
+              id="floor"
               value={selectedFloor}
-              onChange={(e) => handleFloorChange(e.target.value)}
-              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            >
-              {floors.map((floor) => {
-                const materials = getMaterialsForFloor(floor);
+              onChange={handleFloorChange}
+              options={floorOptions}
+            />
+          </div>
+        </div>
+
+        {/* Material type select */}
+        <div>
+          <Label>Material</Label>
+          {availableMaterials.length === 0 ? (
+            <div className="text-text-muted text-sm py-2">
+              No materials drop from this floor
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              {availableMaterials.map((material) => {
+                const info = MATERIAL_INFO[material];
                 return (
-                  <option key={floor} value={floor} disabled={materials.length === 0}>
-                    {floor} {materials.length === 0 ? '(no materials)' : ''}
-                  </option>
+                  <Button
+                    key={material}
+                    type="button"
+                    variant={selectedMaterial === material ? 'primary' : 'secondary'}
+                    onClick={() => setSelectedMaterial(material)}
+                    className="flex-1"
+                  >
+                    {info.label}
+                  </Button>
                 );
               })}
-            </select>
-          </div>
-
-          {/* Material type select */}
-          <div>
-            <label className="block text-sm text-text-secondary mb-1">
-              Material
-            </label>
-            {availableMaterials.length === 0 ? (
-              <div className="text-text-muted text-sm py-2">
-                No materials drop from this floor
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                {availableMaterials.map((material) => {
-                  const info = MATERIAL_INFO[material];
-                  return (
-                    <button
-                      key={material}
-                      onClick={() => setSelectedMaterial(material)}
-                      className={`flex-1 px-3 py-2 rounded border transition-colors ${
-                        selectedMaterial === material
-                          ? 'bg-accent/20 border-accent text-accent'
-                          : 'bg-surface-elevated border-border-default text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      {info.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Player select */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm text-text-secondary">Recipient</label>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={includeSubs}
-                    onChange={(e) => setIncludeSubs(e.target.checked)}
-                    className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                  />
-                  <span className="text-xs text-text-muted">Include Subs</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showAllRecipients}
-                    onChange={(e) => setShowAllRecipients(e.target.checked)}
-                    className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                  />
-                  <span className="text-xs text-text-muted">Show all players</span>
-                </label>
-              </div>
             </div>
-            <select
-              value={selectedPlayer}
-              onChange={(e) => setSelectedPlayer(e.target.value)}
-              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            >
-              <option value="">Select player...</option>
-              {visibleRecipients.map(({ player, rank, needsMaterial }) => (
-                <option key={player.id} value={player.id}>
-                  {player.name} ({player.job}){getPriorityLabel(rank, needsMaterial)}
-                </option>
-              ))}
-            </select>
-            {visibleRecipients.length === 0 && !showAllRecipients && (
-              <div className="text-xs text-status-success mt-1">
-                No one needs this material! Enable "Show all players" to assign anyway.
-              </div>
-            )}
-          </div>
-
-          {/* Week number */}
-          <div>
-            <label className="block text-sm text-text-secondary mb-1">
-              Week
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={weekNumber}
-              onChange={(e) => setWeekNumber(parseInt(e.target.value, 10) || 1)}
-              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm text-text-secondary mb-1">
-              Notes (optional)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add a note..."
-              className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-            />
-          </div>
+          )}
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-primary hover:bg-surface-raised transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              !selectedPlayer ||
-              !selectedMaterial ||
-              availableMaterials.length === 0
-            }
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? (isEditMode ? 'Saving...' : 'Logging...') : (isEditMode ? 'Save Changes' : 'Log Material')}
-          </button>
+        {/* Player select */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <Label htmlFor="recipient" className="mb-0">Recipient</Label>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={includeSubs}
+                onChange={setIncludeSubs}
+                label="Include Subs"
+                className="text-xs"
+              />
+              <Checkbox
+                checked={showAllRecipients}
+                onChange={setShowAllRecipients}
+                label="Show all players"
+                className="text-xs"
+              />
+            </div>
+          </div>
+          <Select
+            id="recipient"
+            value={selectedPlayer}
+            onChange={setSelectedPlayer}
+            options={recipientOptions}
+          />
+          {visibleRecipients.length === 0 && !showAllRecipients && (
+            <div className="text-xs text-status-success mt-1">
+              No one needs this material! Enable "Show all players" to assign anyway.
+            </div>
+          )}
+        </div>
+
+        {/* Notes */}
+        <div>
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <TextArea
+            value={notes}
+            onChange={setNotes}
+            placeholder="Add a note..."
+            rows={2}
+          />
         </div>
       </div>
-    </div>
+
+      {/* Actions */}
+      <div className="flex justify-end gap-3 mt-6">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!selectedPlayer || !selectedMaterial || availableMaterials.length === 0}
+          loading={isSubmitting}
+        >
+          {isEditMode ? 'Save Changes' : 'Log Material'}
+        </Button>
+      </div>
+    </Modal>
   );
 }

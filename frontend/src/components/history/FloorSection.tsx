@@ -3,10 +3,16 @@
  *
  * A collapsible wrapper that groups loot entries by floor with colored header bar.
  * Uses floor color coding from loot-tables.ts.
+ *
+ * Features:
+ * - Click to expand/collapse individual section
+ * - Right-click for Expand All / Collapse All context menu
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type MouseEvent } from 'react';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 
 interface FloorSectionProps {
   floor: FloorNumber;
@@ -14,17 +20,71 @@ interface FloorSectionProps {
   entryCount: number;
   children: ReactNode;
   defaultExpanded?: boolean;
+  /** Controlled expanded state - if provided, component is controlled */
+  expanded?: boolean;
+  /** Callback when expand/collapse state changes */
+  onExpandChange?: (expanded: boolean) => void;
+  /** Callback to expand all sections */
+  onExpandAll?: () => void;
+  /** Callback to collapse all sections */
+  onCollapseAll?: () => void;
 }
 
-export function FloorSection({ floor, floorName, entryCount, children, defaultExpanded = true }: FloorSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+export function FloorSection({
+  floor,
+  floorName,
+  entryCount,
+  children,
+  defaultExpanded = true,
+  expanded: controlledExpanded,
+  onExpandChange,
+  onExpandAll,
+  onCollapseAll,
+}: FloorSectionProps) {
+  // Support both controlled and uncontrolled modes
+  const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
+  const isExpanded = controlledExpanded ?? localExpanded;
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
   const colors = FLOOR_COLORS[floor];
+
+  const handleToggle = () => {
+    const newExpanded = !isExpanded;
+    if (controlledExpanded === undefined) {
+      setLocalExpanded(newExpanded);
+    }
+    onExpandChange?.(newExpanded);
+  };
+
+  const handleContextMenu = (e: MouseEvent) => {
+    // Only show context menu if expand/collapse all callbacks are provided
+    if (onExpandAll || onCollapseAll) {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const contextMenuItems: ContextMenuItem[] = [
+    ...(onExpandAll ? [{
+      label: 'Expand All',
+      icon: <ChevronsUpDown className="w-4 h-4" />,
+      onClick: onExpandAll,
+    }] : []),
+    ...(onCollapseAll ? [{
+      label: 'Collapse All',
+      icon: <ChevronsDownUp className="w-4 h-4" />,
+      onClick: onCollapseAll,
+    }] : []),
+  ];
 
   return (
     <div className="mb-4">
-      {/* Floor Header - clickable to toggle */}
+      {/* Floor Header - clickable to toggle, right-click for context menu */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
+        onContextMenu={handleContextMenu}
         className={`w-full flex items-center justify-between px-3 py-2 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} border ${colors.bg} ${colors.border} transition-all hover:opacity-90`}
       >
         <div className="flex items-center gap-2">
@@ -47,9 +107,18 @@ export function FloorSection({ floor, floorName, entryCount, children, defaultEx
       </button>
       {/* Content - collapsible */}
       {isExpanded && (
-        <div className="bg-surface-elevated/30 border border-t-0 border-border-default rounded-b-lg p-2 space-y-2">
+        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2 space-y-2`}>
           {children}
         </div>
+      )}
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );

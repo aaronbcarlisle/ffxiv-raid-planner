@@ -85,12 +85,12 @@ export function AuthCallback() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-surface-elevated">
       <div className="text-center max-w-md mx-auto p-8 bg-surface-card rounded-lg border border-border-default">
-        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 bg-status-error/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6 text-status-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h2 className="text-xl font-display text-red-400 mb-2">Authentication Failed</h2>
+        <h2 className="text-xl font-display text-status-error mb-2">Authentication Failed</h2>
         <p className="text-text-secondary mb-4">
           {error || 'Something went wrong during sign in. Please try again.'}
         </p>

@@ -24,6 +24,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Modal, Checkbox, Label, Input } from '../ui';
+import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
@@ -191,21 +193,10 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-      <div className="bg-surface-card rounded-lg border border-border-default w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border-default">
-          <h2 className="text-xl font-display text-accent">Static Settings</h2>
-          <button
-            onClick={onClose}
-            className="text-text-muted hover:text-text-primary text-2xl leading-none"
-          >
-            &times;
-          </button>
-        </div>
-
+    <Modal isOpen={true} onClose={onClose} title="Static Settings" size="lg">
+      <div className="flex flex-col h-full">
         {/* Tabs */}
-        <div className="flex border-b border-border-default">
+        <div className="flex border-b border-border-default -mx-6 px-6">
           <button
             onClick={() => setActiveTab('general')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
@@ -249,9 +240,9 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="py-4 overflow-y-auto flex-1">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
               {error}
             </div>
           )}
@@ -260,80 +251,77 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
             <>
               {/* Static Name */}
               <div className="mb-4">
-                <label className="block text-sm text-text-secondary mb-1">Static Name</label>
-                <input
-                  type="text"
+                <Label htmlFor="staticName">Static Name</Label>
+                <Input
+                  id="staticName"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={setName}
                   disabled={!isOwner}
-                  className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent disabled:opacity-50"
                 />
               </div>
 
               {/* Public/Private Toggle */}
               <div className="mb-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    disabled={!isOwner}
-                    className="w-4 h-4 rounded border-border-default bg-surface-elevated text-accent focus:ring-accent focus:ring-offset-0"
-                  />
-                  <div>
-                    <span className="text-text-primary">Public Static</span>
-                    <p className="text-xs text-text-muted">
-                      Anyone with the share link can view this static (read-only)
-                    </p>
-                  </div>
-                </label>
+                <Checkbox
+                  checked={isPublic}
+                  onChange={setIsPublic}
+                  disabled={!isOwner}
+                  label="Public Static"
+                />
+                <p className="text-xs text-text-muted ml-6 mt-1">
+                  Anyone with the share link can view this static (read-only)
+                </p>
               </div>
 
               {/* Share Code */}
               <div className="mb-6">
-                <label className="block text-sm text-text-secondary mb-1">Share Link</label>
+                <Label>Share Link</Label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={`${window.location.origin}/group/${group.shareCode}`}
-                    readOnly
-                    className="flex-1 bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary text-sm font-mono"
-                  />
-                  <button
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      value={`${window.location.origin}/group/${group.shareCode}`}
+                      onChange={() => {}}
+                      className="font-mono text-sm"
+                      fullWidth
+                      disabled
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={handleCopyShareCode}
-                    className="px-3 py-2 bg-accent/20 text-accent rounded hover:bg-accent/30 text-sm"
                   >
                     {copied ? 'Copied!' : 'Copy'}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-between">
+              <div className="flex justify-between pt-4 border-t border-border-default">
                 <div>
                   {isOwner && (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="text-red-400 hover:text-red-300 text-sm"
+                      className="text-status-error hover:text-status-error/80"
                     >
                       Delete Static
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <div className="flex gap-3">
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-text-secondary hover:text-text-primary"
-                  >
+                  <Button type="button" variant="secondary" onClick={onClose}>
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSave}
-                    disabled={!hasChanges || isSaving || !isOwner}
-                    className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!hasChanges || !isOwner}
+                    loading={isSaving}
                   >
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
+                    Save
+                  </Button>
                 </div>
               </div>
             </>
@@ -342,8 +330,8 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
           {activeTab === 'general' && showDeleteConfirm && (
           /* Delete Confirmation */
           <div>
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-              <p className="text-red-400 font-medium mb-2">Delete this static?</p>
+            <div className="mb-4 p-3 bg-status-error/10 border border-status-error/30 rounded">
+              <p className="text-status-error font-medium mb-2">Delete this static?</p>
               <p className="text-text-secondary text-sm">
                 This will permanently delete <strong className="text-text-primary">{group.name}</strong> and all its tier snapshots.
                 This action cannot be undone.
@@ -351,35 +339,38 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm text-text-secondary mb-1">
+              <Label htmlFor="deleteConfirm">
                 Type <span className="font-mono text-text-primary">{group.name}</span> to confirm
-              </label>
-              <input
-                type="text"
+              </Label>
+              <Input
+                id="deleteConfirm"
                 value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full bg-surface-elevated border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
+                onChange={setDeleteConfirmText}
                 placeholder={group.name}
+                error={deleteConfirmText !== '' && deleteConfirmText !== group.name ? 'Name does not match' : undefined}
               />
             </div>
 
             <div className="flex justify-end gap-3">
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => {
                   setShowDeleteConfirm(false);
                   setDeleteConfirmText('');
                 }}
-                className="px-4 py-2 text-text-secondary hover:text-text-primary"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
                 onClick={handleDelete}
-                disabled={deleteConfirmText !== group.name || isDeleting}
-                className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={deleteConfirmText !== group.name}
+                loading={isDeleting}
               >
-                {isDeleting ? 'Deleting...' : 'Delete Static'}
-              </button>
+                Delete Static
+              </Button>
             </div>
           </div>
           )}
@@ -391,7 +382,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
               </p>
 
               {!canEditPriority && (
-                <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 text-sm">
+                <div className="mb-4 p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm">
                   Only owners and leads can modify priority settings.
                 </div>
               )}
@@ -410,28 +401,26 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                 </SortableContext>
               </DndContext>
 
-              <div className="flex justify-between">
-                <button
+              <div className="flex justify-between pt-4 border-t border-border-default">
+                <Button
+                  type="button"
+                  variant="ghost"
                   onClick={handleResetPriority}
                   disabled={!canEditPriority}
-                  className="text-text-secondary hover:text-text-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Reset to Default
-                </button>
+                </Button>
                 <div className="flex gap-3">
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-text-secondary hover:text-text-primary"
-                  >
+                  <Button type="button" variant="secondary" onClick={onClose}>
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSave}
-                    disabled={!priorityChanged || isSaving || !canEditPriority}
-                    className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!priorityChanged || !canEditPriority}
+                    loading={isSaving}
                   >
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
+                    Save
+                  </Button>
                 </div>
               </div>
             </div>
@@ -446,6 +435,6 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

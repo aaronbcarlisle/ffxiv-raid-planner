@@ -14,11 +14,11 @@ const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
   history: 'history',
 };
 
-const TABS: { id: PageMode; label: string }[] = [
-  { id: 'players', label: 'Roster' },
-  { id: 'loot', label: 'Loot' },
-  { id: 'history', label: 'Log' },
-  { id: 'stats', label: 'Summary' },
+const TABS: { id: PageMode; label: string; hotkey: string }[] = [
+  { id: 'players', label: 'Roster', hotkey: '1' },
+  { id: 'loot', label: 'Loot', hotkey: '2' },
+  { id: 'history', label: 'Log', hotkey: '3' },
+  { id: 'stats', label: 'Summary', hotkey: '4' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
@@ -28,6 +28,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
+          title={`${tab.label} (${tab.hotkey})`}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors border
             ${

@@ -28,6 +28,7 @@ import {
   Sparkles,
   Wrench,
   Shield,
+  Keyboard,
 } from 'lucide-react';
 
 interface UserMenuProps {
@@ -84,16 +85,19 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           }
           onSelect={() => navigate('/dashboard')}
         >
-          My Statics
+          <span className="flex items-center justify-between w-full">
+            My Statics
+            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">Shift+S</kbd>
+          </span>
         </DropdownItem>
 
         {/* Admin Dashboard - only for admins */}
         {user.isAdmin && (
           <DropdownItem
-            icon={<Shield className="w-4 h-4 text-amber-400" />}
+            icon={<Shield className="w-4 h-4 text-status-warning" />}
             onSelect={() => navigate('/admin/statics')}
           >
-            <span className="text-amber-400">Admin Dashboard</span>
+            <span className="text-status-warning">Admin Dashboard</span>
           </DropdownItem>
         )}
 
@@ -139,6 +143,16 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             </DropdownItem>
           </DropdownSubContent>
         </DropdownSub>
+
+        <DropdownItem
+          icon={<Keyboard className="w-4 h-4" />}
+          onSelect={() => window.dispatchEvent(new CustomEvent('show-keyboard-shortcuts'))}
+        >
+          <span className="flex items-center justify-between w-full">
+            Shortcuts
+            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">Shift+?</kbd>
+          </span>
+        </DropdownItem>
 
         <DropdownSeparator />
 

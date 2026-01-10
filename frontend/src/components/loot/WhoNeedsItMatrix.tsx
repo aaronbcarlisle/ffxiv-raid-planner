@@ -5,25 +5,32 @@
  * Features:
  * - Position-first headers (T1, T2, H1, H2, M1, M2, R1, R2)
  * - "FREE" badge when no one needs an item
- * - Floor filter tabs with color coding
+ * - Floor filter tabs with color coding (using FilterBar)
  * - Click indicator to quick-log loot
+ * - Supports controlled or uncontrolled floor selection
  */
 
 import { useMemo, useState } from 'react';
 import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
-import { GEAR_SLOT_NAMES } from '../../types';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+import { FLOOR_LOOT_TABLES, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
+import { Tooltip } from '../primitives';
+import { FilterBar } from './FilterBar';
+
+type FloorFilter = FloorNumber | 'all';
 
 interface WhoNeedsItMatrixProps {
   players: SnapshotPlayer[];
   floors: string[];  // e.g., ["M9S", "M10S", "M11S", "M12S"]
   onLogClick?: (slot: GearSlot, player: SnapshotPlayer, floor: string) => void;
   showLogButtons?: boolean;
+  /** Controlled floor selection - if provided, component is controlled */
+  selectedFloor?: FloorFilter;
+  /** Callback when floor changes (required if selectedFloor is provided) */
+  onFloorChange?: (floor: FloorFilter) => void;
 }
-
-type FloorFilter = FloorNumber | 'all';
 
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
@@ -49,8 +56,19 @@ export function WhoNeedsItMatrix({
   floors,
   onLogClick,
   showLogButtons = true,
+  selectedFloor: controlledFloor,
+  onFloorChange,
 }: WhoNeedsItMatrixProps) {
-  const [selectedFloor, setSelectedFloor] = useState<FloorFilter>('all');
+  // Support both controlled and uncontrolled modes
+  const [localFloor, setLocalFloor] = useState<FloorFilter>('all');
+  const selectedFloor = controlledFloor ?? localFloor;
+  const handleFloorChange = (floor: FloorFilter) => {
+    if (onFloorChange) {
+      onFloorChange(floor);
+    } else {
+      setLocalFloor(floor);
+    }
+  };
 
   // Sort players by raid position
   const sortedPlayers = useMemo(() => {
@@ -103,32 +121,14 @@ export function WhoNeedsItMatrix({
   return (
     <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
       {/* Floor Filter Tabs */}
-      <div className="flex items-center gap-2 p-3 border-b border-border-default bg-surface-elevated/50">
-        <span className="text-xs text-text-muted mr-1">Floor:</span>
-        {(['all', 1, 2, 3, 4] as FloorFilter[]).map(floor => {
-          const isSelected = selectedFloor === floor;
-          const floorColors = floor !== 'all' ? FLOOR_COLORS[floor] : null;
-
-          return (
-            <button
-              key={floor}
-              onClick={() => setSelectedFloor(floor)}
-              aria-label={floor === 'all' ? 'Show all floors' : `Filter by Floor ${floor}`}
-              aria-pressed={isSelected}
-              className={`
-                px-3 py-1.5 rounded text-xs font-bold transition-colors border
-                ${isSelected
-                  ? floor === 'all'
-                    ? 'bg-accent text-accent-contrast border-accent'
-                    : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
-                  : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
-                }
-              `}
-            >
-              {floor === 'all' ? 'All' : floors[floor - 1] || `Floor ${floor}`}
-            </button>
-          );
-        })}
+      <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+        <FilterBar
+          type="floor"
+          floors={floors}
+          selectedFloor={selectedFloor}
+          onFloorChange={handleFloorChange}
+          showAllOption
+        />
       </div>
 
       {/* Matrix Table */}
@@ -151,9 +151,11 @@ export function WhoNeedsItMatrix({
                       </span>
                       <JobIcon job={player.job} size="xs" />
                     </div>
-                    <span className="text-[10px] text-text-muted truncate max-w-[56px]">
-                      {player.name.split(' ')[0]}
-                    </span>
+                    <Tooltip content={player.name}>
+                      <span className="text-[10px] text-text-muted truncate max-w-[56px] block">
+                        {player.name.split(' ')[0]}
+                      </span>
+                    </Tooltip>
                   </div>
                 </th>
               ))}
@@ -166,7 +168,14 @@ export function WhoNeedsItMatrix({
             {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
               <tr key={slot} className="border-t border-border-default/50 hover:bg-surface-hover/30">
                 <td className="py-2 px-3 text-text-primary font-medium text-xs">
-                  {displayName}
+                  <div className="flex items-center gap-1.5">
+                    <img
+                      src={GEAR_SLOT_ICONS[slot as GearSlot]}
+                      alt=""
+                      className="w-4 h-4 opacity-60"
+                    />
+                    <span>{displayName}</span>
+                  </div>
                 </td>
                 {sortedPlayers.map(player => {
                   const needs = playersWhoNeed.has(player.id);
@@ -211,12 +220,12 @@ export function WhoNeedsItMatrix({
                 })}
                 <td className="text-center py-2 px-3">
                   {isFree ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
                       FREE
                     </span>
                   ) : (
                     <span className={`text-xs ${
-                      count > 4 ? 'text-red-400' : count > 2 ? 'text-yellow-400' : 'text-text-muted'
+                      count > 4 ? 'text-status-error' : count > 2 ? 'text-status-warning' : 'text-text-muted'
                     }`}>
                       {count}/8
                     </span>
@@ -243,7 +252,7 @@ export function WhoNeedsItMatrix({
           <span>Has or not BiS</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
             FREE
           </span>
           <span>No one needs</span>

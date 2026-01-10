@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
+import { Button } from '../primitives';
 import { WeaponPriorityGrid } from './WeaponPriorityGrid';
 import { JobSelectorPanel } from './JobSelectorPanel';
 import { useTierStore } from '../../stores/tierStore';
@@ -290,28 +291,25 @@ export function WeaponPriorityModal({
           {/* Footer - only show in priority view */}
           {!showJobSelector && (
             <div className="flex-shrink-0 flex justify-between gap-3 pt-4 border-t border-border-default mt-4">
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={handleResetClick}
                 disabled={!canEdit || weaponPriorities.length <= 1}
-                className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Reset to main job only"
               >
                 Reset
-              </button>
+              </Button>
               <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-                >
+                <Button type="button" variant="secondary" onClick={onClose}>
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
-                  disabled={!canEdit || isSaving}
-                  className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!canEdit}
+                  loading={isSaving}
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
-                </button>
+                  Save
+                </Button>
               </div>
             </div>
           )}
@@ -331,18 +329,16 @@ export function WeaponPriorityModal({
               This means you may receive a different weapon first.
             </p>
             <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-              <button
-                onClick={handleCancelMainJobAction}
-                className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-              >
+              <Button type="button" variant="secondary" onClick={handleCancelMainJobAction}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="warning"
                 onClick={handleConfirmMainJobAction}
-                className="px-4 py-2 rounded bg-status-warning text-status-warning-contrast font-bold hover:brightness-110 transition-colors"
               >
                 Confirm
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -360,18 +356,16 @@ export function WeaponPriorityModal({
               Are you sure you want to reset your weapon priorities? This will remove all jobs except your main job ({player.job}).
             </p>
             <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-              <button
-                onClick={handleCancelReset}
-                className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-              >
+              <Button type="button" variant="secondary" onClick={handleCancelReset}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="warning"
                 onClick={handleConfirmReset}
-                className="px-4 py-2 rounded bg-status-warning text-status-warning-contrast font-bold hover:brightness-110 transition-colors"
               >
                 Reset
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

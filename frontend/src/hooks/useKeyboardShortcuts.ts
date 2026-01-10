@@ -15,6 +15,8 @@ export interface KeyboardShortcut {
   requireMod?: boolean;
   /** Require shift key */
   requireShift?: boolean;
+  /** Require alt key */
+  requireAlt?: boolean;
 }
 
 interface UseKeyboardShortcutsOptions {
@@ -51,7 +53,8 @@ export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboar
       const keyMatch = event.key.toLowerCase() === s.key.toLowerCase();
       const modMatch = s.requireMod ? (event.metaKey || event.ctrlKey) : !(event.metaKey || event.ctrlKey);
       const shiftMatch = s.requireShift ? event.shiftKey : !event.shiftKey;
-      return keyMatch && modMatch && shiftMatch;
+      const altMatch = s.requireAlt ? event.altKey : !event.altKey;
+      return keyMatch && modMatch && shiftMatch && altMatch;
     });
 
     if (shortcut) {
@@ -65,4 +68,3 @@ export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboar
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 }
-

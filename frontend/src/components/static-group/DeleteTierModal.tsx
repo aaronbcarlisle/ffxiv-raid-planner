@@ -4,6 +4,8 @@
  * Confirmation modal for deleting a tier snapshot.
  */
 
+import { Modal } from '../ui';
+import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
 import { getTierById } from '../../gamedata';
 import { toast } from '../../stores/toastStore';
@@ -33,33 +35,29 @@ export function DeleteTierModal({ groupId, tierSnapshotId, tierId, onClose, onDe
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
-        <h2 className="text-xl font-display text-red-400 mb-4">Delete Tier</h2>
-
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
+    <Modal isOpen={true} onClose={onClose} title="Delete Tier">
+      <div className="space-y-4">
+        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">
           <p className="text-text-secondary">
             Are you sure you want to delete <strong className="text-text-primary">{tierInfo?.name || tierId}</strong>?
             This will remove all player data for this tier.
           </p>
         </div>
 
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:text-text-primary"
-          >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
             onClick={handleDelete}
-            disabled={isSaving}
-            className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={isSaving}
           >
-            {isSaving ? 'Deleting...' : 'Delete Tier'}
-          </button>
+            Delete Tier
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

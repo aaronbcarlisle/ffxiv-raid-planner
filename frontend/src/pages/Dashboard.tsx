@@ -6,11 +6,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Copy, Settings, Trash2 } from 'lucide-react';
+import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
-import { ContextMenu } from '../components/ui';
+import { ContextMenu, Select, Input, Label, Checkbox, Modal, Spinner } from '../components/ui';
+import { Button, IconButton } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
 
@@ -33,12 +34,12 @@ function getRecentStaticCodes(): string[] {
   }
 }
 
-// Role badge colors
+// Role badge colors - using semantic membership tokens
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -49,7 +50,7 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 };
 
 // Linked badge (for groups where user is linked to a player but not a member)
-const LINKED_BADGE_COLOR = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked border-membership-linked/30';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -262,13 +263,13 @@ export function Dashboard() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" label="Loading authentication" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -278,79 +279,48 @@ export function Dashboard() {
         <div className="flex items-center gap-3">
           {/* Sort mode dropdown */}
           {groups.length > 0 && (
-            <div className="relative">
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as DashboardSort)}
-                className="appearance-none bg-surface-raised border border-border-default rounded-md px-3 py-2 pr-8 text-sm font-medium text-text-primary cursor-pointer hover:border-accent focus:border-accent focus:outline-none"
-              >
-                {(Object.entries(SORT_LABELS) as [DashboardSort, string][]).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              {/* Custom dropdown arrow */}
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-text-muted"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <Select
+              value={sortMode}
+              onChange={(val) => setSortMode(val as DashboardSort)}
+              options={Object.entries(SORT_LABELS).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+              className="w-36"
+            />
           )}
           {/* View mode toggle */}
           {groups.length > 0 && (
             <div className="flex bg-surface-raised rounded-md border border-border-default">
-              <button
+              <IconButton
+                icon={<LayoutGrid className="w-4 h-4" />}
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-2 rounded-l-md text-sm font-medium transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                }`}
-                title="Grid view"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="6" height="6" rx="1" />
-                  <rect x="9" y="1" width="6" height="6" rx="1" />
-                  <rect x="1" y="9" width="6" height="6" rx="1" />
-                  <rect x="9" y="9" width="6" height="6" rx="1" />
-                </svg>
-              </button>
-              <button
+                variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                size="sm"
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
+                className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
+              />
+              <IconButton
+                icon={<List className="w-4 h-4" />}
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-2 rounded-r-md text-sm font-medium transition-colors border-l border-border-default ${
-                  viewMode === 'list'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                }`}
-                title="List view"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                  <rect x="1" y="1" width="14" height="4" rx="1" />
-                  <rect x="1" y="7" width="14" height="4" rx="1" />
-                  <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
-                </svg>
-              </button>
+                variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                size="sm"
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
+                className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
+              />
             </div>
           )}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright transition-colors"
-          >
+          <Button onClick={() => setShowCreateModal(true)}>
             Create Static
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+        <div className="mb-6 p-4 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error">
           {error}
         </div>
       )}
@@ -358,36 +328,69 @@ export function Dashboard() {
       {/* Loading */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" label="Loading statics" />
         </div>
       ) : groups.length === 0 ? (
-        /* Empty state */
-        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
-          <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-accent"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
+        /* Empty state with onboarding guidance */
+        <div className="bg-surface-card rounded-lg border border-border-default p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-accent"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-display text-accent mb-2">Welcome to FFXIV Raid Planner</h2>
+            <p className="text-text-muted max-w-md mx-auto">
+              Track your static's gear progress, manage loot distribution, and coordinate Best-in-Slot (BiS) builds.
+            </p>
           </div>
-          <h2 className="text-xl font-display text-accent mb-2">No Statics Yet</h2>
-          <p className="text-text-muted mb-6">
-            Create your first static group to start tracking gear progress.
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-accent text-bg-primary px-6 py-2 rounded font-medium hover:bg-accent-bright transition-colors"
-          >
-            Create Your First Static
-          </button>
+
+          {/* Getting started steps */}
+          <div className="grid gap-4 sm:grid-cols-3 mb-8 max-w-3xl mx-auto">
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">1</span>
+                <h3 className="font-medium text-text-primary">Create a Static</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Set up your raid group with a name. Share the code to let members join.
+              </p>
+            </div>
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">2</span>
+                <h3 className="font-medium text-text-primary">Add Players</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Add your 8 raiders with their jobs. Assign positions for G1/G2 organization.
+              </p>
+            </div>
+            <div className="bg-surface-raised rounded-lg p-4 border border-border-subtle">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent/20 text-accent text-sm font-bold">3</span>
+                <h3 className="font-medium text-text-primary">Import BiS</h3>
+              </div>
+              <p className="text-sm text-text-muted">
+                Link XIVGear or Etro sets to track each player's best-in-slot gear goals.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Button onClick={() => setShowCreateModal(true)}>
+              Create Your First Static
+            </Button>
+          </div>
         </div>
       ) : viewMode === 'grid' ? (
         /* Groups grid */
@@ -464,13 +467,14 @@ export function Dashboard() {
                   onClick={(e) => handleCopyCode(group.shareCode, e)}
                   className="p-1 rounded hover:bg-surface-interactive transition-colors"
                   title="Copy code (hold Shift for full URL)"
+                  aria-label="Copy share code"
                 >
                   {copiedCode === group.shareCode ? (
-                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                   )}
@@ -551,13 +555,14 @@ export function Dashboard() {
                     onClick={(e) => handleCopyCode(group.shareCode, e)}
                     className="p-1 rounded hover:bg-surface-elevated transition-colors"
                     title="Copy code (hold Shift for full URL)"
+                    aria-label="Copy share code"
                   >
                     {copiedCode === group.shareCode ? (
-                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
-                      <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     )}
@@ -585,63 +590,57 @@ export function Dashboard() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-          <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-display text-accent mb-4">Create Static Group</h2>
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => {
+            setShowCreateModal(false);
+            setNewGroupName('');
+            setNewGroupPublic(false);
+          }}
+          title="Create Static Group"
+        >
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <div>
+              <Label htmlFor="groupName">Group Name</Label>
+              <Input
+                id="groupName"
+                value={newGroupName}
+                onChange={setNewGroupName}
+                placeholder="e.g., Girliepops, Hardcore Raiders"
+                autoFocus
+              />
+            </div>
 
-            <form onSubmit={handleCreateGroup}>
-              <div className="mb-4">
-                <label htmlFor="groupName" className="block text-sm text-text-secondary mb-1">
-                  Group Name
-                </label>
-                <input
-                  type="text"
-                  id="groupName"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="e.g., Girliepops, Hardcore Raiders"
-                  className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-                  autoFocus
-                />
-              </div>
+            <div>
+              <Checkbox
+                checked={newGroupPublic}
+                onChange={setNewGroupPublic}
+                label="Make this group public (anyone with the link can view)"
+              />
+            </div>
 
-              <div className="mb-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newGroupPublic}
-                    onChange={(e) => setNewGroupPublic(e.target.checked)}
-                    className="w-4 h-4 rounded border-border-default bg-surface-elevated text-accent focus:ring-accent focus:ring-offset-0"
-                  />
-                  <span className="text-sm text-text-secondary">
-                    Make this group public (anyone with the link can view)
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setNewGroupName('');
-                    setNewGroupPublic(false);
-                  }}
-                  className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newGroupName.trim() || isCreating}
-                  className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewGroupName('');
+                  setNewGroupPublic(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!newGroupName.trim()}
+                loading={isCreating}
+              >
+                Create
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Settings Modal */}
@@ -657,51 +656,59 @@ export function Dashboard() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-          <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-display text-red-400 mb-4">Delete Static</h2>
-
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-              <p className="text-red-400 font-medium mb-2">Delete this static?</p>
+        <Modal
+          isOpen={showDeleteConfirm}
+          onClose={() => {
+            setShowDeleteConfirm(false);
+            setDeleteConfirmText('');
+          }}
+          title="Delete Static"
+        >
+          <div className="space-y-4">
+            <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">
+              <p className="text-status-error font-medium mb-2">Delete this static?</p>
               <p className="text-text-secondary text-sm">
                 This will permanently delete <strong className="text-text-primary">{selectedGroup.name}</strong> and all its tier snapshots.
                 This action cannot be undone.
               </p>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm text-text-secondary mb-1">
+            <div>
+              <Label htmlFor="deleteConfirm">
                 Type <span className="font-mono text-text-primary">{selectedGroup.name}</span> to confirm
-              </label>
-              <input
-                type="text"
+              </Label>
+              <Input
+                id="deleteConfirm"
                 value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full bg-surface-elevated border border-red-500/30 rounded px-3 py-2 text-text-primary focus:outline-none focus:border-red-500"
+                onChange={setDeleteConfirmText}
                 placeholder={selectedGroup.name}
+                error={deleteConfirmText !== '' && deleteConfirmText !== selectedGroup.name ? 'Name does not match' : undefined}
               />
             </div>
 
-            <div className="flex justify-end gap-3">
-              <button
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => {
                   setShowDeleteConfirm(false);
                   setDeleteConfirmText('');
                 }}
-                className="px-4 py-2 text-text-secondary hover:text-text-primary"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
                 onClick={handleConfirmDelete}
-                disabled={deleteConfirmText !== selectedGroup.name || isDeleting}
-                className="bg-red-500 text-white px-4 py-2 rounded font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={deleteConfirmText !== selectedGroup.name}
+                loading={isDeleting}
               >
-                {isDeleting ? 'Deleting...' : 'Delete Static'}
-              </button>
+                Delete Static
+              </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

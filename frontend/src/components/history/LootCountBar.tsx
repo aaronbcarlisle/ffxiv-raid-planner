@@ -48,13 +48,13 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
 
   const getCountStyle = (count: number): string => {
     if (count > average + 1) {
-      // Above average - blue
-      return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+      // Above average - info (received more loot)
+      return 'bg-status-info/20 text-status-info border-status-info/40';
     } else if (count < average - 1) {
-      // Below average - yellow
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+      // Below average - warning (received less loot)
+      return 'bg-status-warning/20 text-status-warning border-status-warning/40';
     }
-    // Average - gray
+    // Average - neutral
     return 'bg-surface-interactive text-text-secondary border-border-default';
   };
 
@@ -69,10 +69,10 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
         <div className="flex items-center gap-1.5 flex-wrap">
           {sortedPlayers.map(player => {
             const count = countsByPlayer.get(player.id) || 0;
-            // Fallback to gray if role is not set
+            // Fallback to text-secondary if role is not set
             const roleColor = player.role
               ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-              : '#9ca3af';
+              : 'var(--color-text-secondary)';
 
             return (
               <div

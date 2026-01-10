@@ -1,12 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'; // sm=24rem, md=28rem (default), lg=32rem, xl=36rem, 2xl=42rem, 3xl=48rem, 4xl=56rem, 5xl=64rem
+}
+
+// Get all focusable elements within a container
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  const selector = [
+    'button:not([disabled])',
+    'a[href]',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(', ');
+  return Array.from(container.querySelectorAll<HTMLElement>(selector));
 }
 
 const SIZE_CLASSES = {
@@ -21,21 +34,82 @@ const SIZE_CLASSES = {
 };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
-  // Handle escape key to close modal
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Handle keyboard events - escape to close, tab for focus trap
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      // Use stopImmediatePropagation to prevent other modal escape handlers from firing
+      // This ensures only the topmost modal closes when Escape is pressed
+      e.stopImmediatePropagation();
+      onClose();
+      return;
+    }
+
+    // Focus trap - handle Tab key
+    if (e.key === 'Tab' && modalRef.current) {
+      const focusable = getFocusableElements(modalRef.current);
+      if (focusable.length === 0) return;
+
+      const firstElement = focusable[0];
+      const lastElement = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        // Shift+Tab: if on first element, wrap to last
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        // Tab: if on last element, wrap to first
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    }
+  }, [onClose]);
+
+  // Store previous focus and set up event listener
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-      }
-    };
+    // Store currently focused element
+    previousFocusRef.current = document.activeElement as HTMLElement;
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleKeyDown]);
+
+  // Set initial focus when modal opens
+  useEffect(() => {
+    if (isOpen && modalRef.current) {
+      // Small delay to ensure modal content is rendered
+      const timer = requestAnimationFrame(() => {
+        if (modalRef.current) {
+          const focusable = getFocusableElements(modalRef.current);
+          // Focus first focusable element, or the modal itself
+          if (focusable.length > 0) {
+            focusable[0].focus();
+          } else {
+            modalRef.current.focus();
+          }
+        }
+      });
+      return () => cancelAnimationFrame(timer);
+    }
+  }, [isOpen]);
+
+  // Restore focus when modal closes
+  useEffect(() => {
+    if (!isOpen && previousFocusRef.current) {
+      // Restore focus to the element that opened the modal
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,17 +127,25 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       onClick={handleBackdropEvent}
       onContextMenu={handleBackdropEvent}
     >
-      <div className={`bg-surface-card border border-border-default rounded-lg w-full ${sizeClass} max-h-[90vh] flex flex-col`}>
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        tabIndex={-1}
+        className={`bg-surface-card border border-border-default rounded-lg w-full ${sizeClass} max-h-[90vh] flex flex-col`}
+      >
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
-          <h2 className="font-display text-xl text-accent">{title}</h2>
+          <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text-primary text-2xl leading-none"
+            aria-label="Close modal"
           >
             &times;
           </button>
         </div>
-        <div className="p-4 overflow-y-auto flex-1">{children}</div>
+        <div className="p-6 overflow-y-auto overflow-x-hidden flex-1">{children}</div>
       </div>
     </div>,
     document.body

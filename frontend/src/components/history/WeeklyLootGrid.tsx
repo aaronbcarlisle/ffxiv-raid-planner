@@ -16,17 +16,17 @@ import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { Pencil, Link, Trash2 } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
 
 /**
- * Material colors - MUST match CSS tokens in index.css
- * @see --color-gear-crafted, --color-gear-augmented
+ * Material colors using CSS custom properties for design system compliance
+ * @see index.css --color-material-* tokens
  */
 const MATERIAL_COLORS: Record<string, string> = {
-  twine: '#c4b5fd',   // (--color-gear-crafted)
-  glaze: '#fcd34d',   // (--color-gear-augmented)
-  solvent: '#f87171', // (--color-progress-priority)
-  universal_tomestone: '#14b8a6', // Teal (accent color)
+  twine: 'var(--color-material-twine)',
+  glaze: 'var(--color-material-glaze)',
+  solvent: 'var(--color-material-solvent)',
+  universal_tomestone: 'var(--color-material-tomestone)',
 };
 
 interface WeeklyLootGridProps {
@@ -46,6 +46,7 @@ interface WeeklyLootGridProps {
   onEditMaterial?: (entry: MaterialLogEntry) => void;
   onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
+  onNavigateToPlayer?: (playerId: string) => void;
 }
 
 export function WeeklyLootGrid({
@@ -64,6 +65,7 @@ export function WeeklyLootGrid({
   onEditLoot,
   onEditMaterial,
   onCopyEntryUrl,
+  onNavigateToPlayer,
 }: WeeklyLootGridProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -120,6 +122,19 @@ export function WeeklyLootGrid({
         icon: <Link className="w-4 h-4" />,
         onClick: () => onCopyEntryUrl(entry.id, type),
       });
+    }
+
+    // Go to Player - navigate to recipient's player card
+    if (onNavigateToPlayer) {
+      const recipientName = 'recipientPlayerName' in entry ? entry.recipientPlayerName : '';
+      const recipientId = 'recipientPlayerId' in entry ? entry.recipientPlayerId : '';
+      if (recipientId) {
+        items.push({
+          label: `Go to ${recipientName}`,
+          icon: <UserRound className="w-4 h-4" />,
+          onClick: () => onNavigateToPlayer(recipientId),
+        });
+      }
     }
 
     // Separator before delete if there are other items and delete is available
@@ -188,15 +203,12 @@ export function WeeklyLootGrid({
 
   /**
    * Get loot style based on count vs average
-   * Colors reference CSS tokens:
-   * - Blue (#3b82f6) = most loot (--color-floor-2)
-   * - Yellow (#eab308) = least loot (--color-status-warning)
-   * - Gray (#a1a1aa) = average (--color-text-secondary)
+   * Uses CSS custom properties for design system compliance
    */
   const getLootCountStyle = (count: number) => {
-    if (count > avgLoot + 1) return { color: '#3b82f6', label: 'Most' };
-    if (count < avgLoot - 1) return { color: '#eab308', label: 'Least' };
-    return { color: '#a1a1aa', label: 'Average' };
+    if (count > avgLoot + 1) return { color: 'var(--color-status-info)', label: 'Most' };
+    if (count < avgLoot - 1) return { color: 'var(--color-status-warning)', label: 'Least' };
+    return { color: 'var(--color-text-secondary)', label: 'Average' };
   };
 
   // Get player by ID
@@ -235,7 +247,7 @@ export function WeeklyLootGrid({
     }
 
     const player = getPlayerById(entry.recipientPlayerId);
-    const roleColor = player ? getRoleColor(getValidRole(player.role)) : '#a1a1aa';
+    const roleColor = player ? getRoleColor(getValidRole(player.role)) : 'var(--color-text-secondary)';
 
     return (
       <div className="group flex items-center gap-1">
@@ -258,8 +270,9 @@ export function WeeklyLootGrid({
             }}
             className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
             title="Delete entry"
+            aria-label="Delete loot entry"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -272,8 +285,9 @@ export function WeeklyLootGrid({
             }}
             className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
             title="Delete entry"
+            aria-label="Delete material entry"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -352,8 +366,7 @@ export function WeeklyLootGrid({
           return (
             <div
               key={player.id}
-              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border"
-              style={{ borderColor: '#1f1f28' }}
+              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
             >
               <div
                 className="text-[10px] font-semibold mb-0.5"
@@ -416,8 +429,21 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
-                      onClick={() => {
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      onClick={(e) => {
+                        // Shift+Click copies entry URL
+                        if (e.shiftKey && lootEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                          window.getSelection()?.removeAllRanges();
+                          onCopyEntryUrl(lootEntry.id, 'loot');
+                          return;
+                        }
+                        // Alt+Click navigates to player
+                        if (e.altKey && lootEntry && onNavigateToPlayer) {
+                          e.preventDefault();
+                          onNavigateToPlayer(lootEntry.recipientPlayerId);
+                          return;
+                        }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)
                         if (canClickToEdit && lootEntry) {
                           onEditLoot(lootEntry);
@@ -439,6 +465,7 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
+                      title={lootEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
@@ -458,8 +485,21 @@ export function WeeklyLootGrid({
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-                      onClick={() => {
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      onClick={(e) => {
+                        // Shift+Click copies entry URL
+                        if (e.shiftKey && matEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                          window.getSelection()?.removeAllRanges();
+                          onCopyEntryUrl(matEntry.id, 'material');
+                          return;
+                        }
+                        // Alt+Click navigates to player
+                        if (e.altKey && matEntry && onNavigateToPlayer) {
+                          e.preventDefault();
+                          onNavigateToPlayer(matEntry.recipientPlayerId);
+                          return;
+                        }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)
                         if (canClickToEditMat && matEntry) {
                           onEditMaterial(matEntry);
@@ -481,10 +521,11 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
+                      title={matEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"
-                        style={{ color: MATERIAL_COLORS[mat.type] || '#a1a1aa' }}
+                        style={{ color: MATERIAL_COLORS[mat.type] || 'var(--color-text-secondary)' }}
                       >
                         {mat.name}
                       </div>
@@ -520,15 +561,15 @@ export function LootFairnessLegend() {
     <div className="flex items-center gap-6 text-xs text-text-muted px-1">
       <span className="text-text-secondary">Loot fairness:</span>
       <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#3b82f6' }} />
+        <div className="w-2.5 h-2.5 rounded bg-status-info" />
         <span>Most (&gt;avg+1)</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#a1a1aa' }} />
+        <div className="w-2.5 h-2.5 rounded bg-text-secondary" />
         <span>Average</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded" style={{ backgroundColor: '#eab308' }} />
+        <div className="w-2.5 h-2.5 rounded bg-status-warning" />
         <span>Least (&lt;avg-1)</span>
       </div>
     </div>

@@ -3,15 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
+import { Input } from '../components/ui';
+import { Button } from '../components/primitives';
 import { BookOpen, Users, Calculator, Sparkles } from 'lucide-react';
 import type { MemberRole } from '../types';
 
-// Role badge colors
+// Role badge colors - using semantic membership tokens
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  lead: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  member: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
 // Get recently accessed share codes from localStorage
@@ -140,21 +142,20 @@ export function Home() {
 
       {/* Share code input */}
       <form onSubmit={handleViewStatic} className="flex items-center gap-2 justify-center mb-16">
-        <input
-          type="text"
+        <Input
           value={shareCode}
-          onChange={(e) => setShareCode(e.target.value.toUpperCase())}
+          onChange={(val) => setShareCode(val.toUpperCase())}
           placeholder="Enter share code..."
           maxLength={8}
-          className="bg-surface-raised border border-border-default rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none w-48 text-center font-mono uppercase"
+          className="w-48 text-center font-mono uppercase"
         />
-        <button
+        <Button
           type="submit"
+          variant="secondary"
           disabled={!shareCode.trim()}
-          className="bg-surface-raised border border-border-default px-6 py-3 rounded-lg text-text-primary hover:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           View
-        </button>
+        </Button>
       </form>
 
       {/* Content section - different for logged in vs logged out users */}
@@ -182,7 +183,7 @@ export function Home() {
                       {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
                     </span>
                   ) : group.source === 'linked' ? (
-                    <span className="text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 bg-amber-500/20 text-amber-400 border-amber-500/30">
+                    <span className="text-xs px-2 py-0.5 rounded border flex-shrink-0 ml-2 bg-membership-linked/20 text-membership-linked border-membership-linked/30">
                       Linked
                     </span>
                   ) : null}
@@ -267,71 +268,73 @@ export function Home() {
         </>
       )}
 
-      {/* Documentation Section */}
-      <div className="mt-16 max-w-4xl mx-auto">
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <BookOpen className="w-5 h-5 text-accent" />
-          <h2 className="font-display text-xl text-text-primary">Documentation</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          <Link
-            to="/docs/getting-started"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Users className="w-4 h-4 text-accent" />
+      {/* Documentation Section - only show for logged-in users */}
+      {isAuthenticated && (
+        <div className="mt-16 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <BookOpen className="w-5 h-5 text-accent" />
+            <h2 className="font-display text-xl text-text-primary">Documentation</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Link
+              to="/docs/getting-started"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Users className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Getting Started
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Getting Started
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              Guides for static leads and members
-            </p>
-          </Link>
-          <Link
-            to="/docs/loot-math"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Calculator className="w-4 h-4 text-accent" />
+              <p className="text-sm text-text-muted">
+                Guides for static leads and members
+              </p>
+            </Link>
+            <Link
+              to="/docs/loot-math"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Calculator className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Loot & Priority Math
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Loot & Priority Math
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              How priority calculations work
-            </p>
-          </Link>
-          <Link
-            to="/docs/release-notes"
-            className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Sparkles className="w-4 h-4 text-accent" />
+              <p className="text-sm text-text-muted">
+                How priority calculations work
+              </p>
+            </Link>
+            <Link
+              to="/docs/release-notes"
+              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                </div>
+                <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
+                  Release Notes
+                </h3>
               </div>
-              <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                Release Notes
-              </h3>
-            </div>
-            <p className="text-sm text-text-muted">
-              Latest updates and features
-            </p>
-          </Link>
+              <p className="text-sm text-text-muted">
+                Latest updates and features
+              </p>
+            </Link>
+          </div>
+          <div className="mt-4 text-center">
+            <Link
+              to="/docs"
+              className="text-sm text-accent hover:text-accent-bright transition-colors"
+            >
+              View all documentation →
+            </Link>
+          </div>
         </div>
-        <div className="mt-4 text-center">
-          <Link
-            to="/docs"
-            className="text-sm text-accent hover:text-accent-bright transition-colors"
-          >
-            View all documentation →
-          </Link>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

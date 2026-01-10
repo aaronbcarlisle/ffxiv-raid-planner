@@ -3,7 +3,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
+import { Select, Label, NumberInput } from '../ui';
+import { Button, IconButton } from '../primitives';
 import type { Invitation, MemberRole } from '../../types';
 
 interface InvitationsPanelProps {
@@ -19,10 +22,10 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 };
 
 const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'text-amber-400',
-  lead: 'text-blue-400',
-  member: 'text-green-400',
-  viewer: 'text-gray-400',
+  owner: 'text-membership-owner',
+  lead: 'text-membership-lead',
+  member: 'text-membership-member',
+  viewer: 'text-membership-viewer',
 };
 
 export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) {
@@ -94,15 +97,15 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
 
   const getStatusBadge = (inv: Invitation) => {
     if (!inv.isActive) {
-      return <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Revoked</span>;
+      return <span className="px-2 py-0.5 bg-status-error/20 text-status-error text-xs rounded">Revoked</span>;
     }
     if (isExpired(inv)) {
-      return <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">Expired</span>;
+      return <span className="px-2 py-0.5 bg-status-warning/20 text-status-warning text-xs rounded">Expired</span>;
     }
     if (inv.maxUses && inv.useCount >= inv.maxUses) {
-      return <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 text-xs rounded">Exhausted</span>;
+      return <span className="px-2 py-0.5 bg-text-muted/20 text-text-muted text-xs rounded">Exhausted</span>;
     }
-    return <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Active</span>;
+    return <span className="px-2 py-0.5 bg-status-success/20 text-status-success text-xs rounded">Active</span>;
   };
 
   if (!canManage) {
@@ -116,81 +119,90 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-500/20 text-red-400 p-3 rounded text-sm flex justify-between items-center">
+        <div className="bg-status-error/20 text-status-error p-3 rounded text-sm flex justify-between items-center">
           <span>{error}</span>
-          <button onClick={clearError} className="hover:text-red-300">&times;</button>
+          <IconButton
+            icon={<X className="w-4 h-4" />}
+            onClick={clearError}
+            variant="ghost"
+            size="sm"
+            aria-label="Dismiss error"
+            className="text-status-error hover:text-status-error/80"
+          />
         </div>
       )}
 
       {/* Create Invitation */}
       {!showCreateForm ? (
-        <button
+        <Button
+          variant="secondary"
           onClick={() => setShowCreateForm(true)}
-          className="w-full px-4 py-2 bg-accent/20 hover:bg-accent/30 text-accent rounded transition-colors"
+          className="w-full"
         >
           + Create Invitation Link
-        </button>
+        </Button>
       ) : (
         <div className="bg-surface-elevated border border-border-default rounded-lg p-4 space-y-4">
           <h4 className="text-text-primary font-medium">New Invitation</h4>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-text-secondary mb-1">Role</label>
-              <select
+              <Label htmlFor="invite-role">Role</Label>
+              <Select
+                id="invite-role"
                 value={newRole}
-                onChange={(e) => setNewRole(e.target.value as MemberRole)}
-                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
-              >
-                <option value="member">Member</option>
-                <option value="lead">Lead</option>
-                <option value="viewer">Viewer</option>
-              </select>
+                onChange={(val) => setNewRole(val as MemberRole)}
+                options={[
+                  { value: 'member', label: 'Member' },
+                  { value: 'lead', label: 'Lead' },
+                  { value: 'viewer', label: 'Viewer' },
+                ]}
+              />
             </div>
 
             <div>
-              <label className="block text-sm text-text-secondary mb-1">Expires In</label>
-              <select
-                value={expiresInDays ?? 'never'}
-                onChange={(e) => setExpiresInDays(e.target.value === 'never' ? null : Number(e.target.value))}
-                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary focus:outline-none focus:border-accent"
-              >
-                <option value="1">1 day</option>
-                <option value="7">7 days</option>
-                <option value="14">14 days</option>
-                <option value="30">30 days</option>
-                <option value="never">Never</option>
-              </select>
+              <Label htmlFor="invite-expires">Expires In</Label>
+              <Select
+                id="invite-expires"
+                value={expiresInDays?.toString() ?? 'never'}
+                onChange={(val) => setExpiresInDays(val === 'never' ? null : Number(val))}
+                options={[
+                  { value: '1', label: '1 day' },
+                  { value: '7', label: '7 days' },
+                  { value: '14', label: '14 days' },
+                  { value: '30', label: '30 days' },
+                  { value: 'never', label: 'Never' },
+                ]}
+              />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm text-text-secondary mb-1">Max Uses (optional)</label>
-              <input
-                type="number"
-                value={maxUses ?? ''}
-                onChange={(e) => setMaxUses(e.target.value ? Number(e.target.value) : null)}
+              <Label htmlFor="invite-max-uses">Max Uses (optional)</Label>
+              <NumberInput
+                id="invite-max-uses"
+                value={maxUses}
+                onChange={setMaxUses}
+                min={1}
+                max={100}
                 placeholder="Unlimited"
-                min="1"
-                max="100"
-                className="w-full px-3 py-2 bg-surface-base border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
               />
             </div>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <button
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => setShowCreateForm(false)}
-              className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCreate}
-              disabled={isCreating}
-              className="px-4 py-2 bg-accent text-bg-primary rounded hover:bg-accent-bright disabled:opacity-50 transition-colors"
+              loading={isCreating}
             >
-              {isCreating ? 'Creating...' : 'Create'}
-            </button>
+              Create
+            </Button>
           </div>
         </div>
       )}
@@ -229,22 +241,25 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
 
                 <div className="flex items-center gap-2">
                   {inv.isValid && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => copyInviteLink(inv.inviteCode)}
-                      className="px-3 py-1.5 text-sm bg-surface-interactive hover:bg-surface-base border border-border-default rounded transition-colors"
                       title="Copy invite link"
                     >
                       {copiedCode === inv.inviteCode ? '✓ Copied' : 'Copy Link'}
-                    </button>
+                    </Button>
                   )}
                   {inv.isActive && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleRevoke(inv.id)}
-                      className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
                       title="Revoke invitation"
+                      className="text-status-error hover:text-status-error/80"
                     >
                       Revoke
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Select, Checkbox, Label } from '../ui';
+import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
@@ -42,7 +43,7 @@ export function QuickLogDropModal({
   onSuccess,
 }: QuickLogDropModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
-  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
+  const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -53,7 +54,7 @@ export function QuickLogDropModal({
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
-      setSelectedWeek(maxWeek);
+      setSelectedWeek(String(maxWeek));
       setUpdateGear(true);
       setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
     }
@@ -73,7 +74,7 @@ export function QuickLogDropModal({
         groupId,
         tierId,
         {
-          weekNumber: selectedWeek,
+          weekNumber: Number(selectedWeek),
           floor,
           itemSlot: slot,
           recipientPlayerId,
@@ -150,6 +151,18 @@ export function QuickLogDropModal({
     return '';
   };
 
+  // Build week options
+  const weekOptions = Array.from({ length: maxWeek }, (_, i) => ({
+    value: String(i + 1),
+    label: `Week ${i + 1}`,
+  }));
+
+  // Build recipient options
+  const recipientOptions = sortedRecipients.map(({ player, priority, needsItem }) => ({
+    value: player.id,
+    label: `${player.name} (${player.job})${getPriorityLabel(priority, needsItem)}`,
+  }));
+
   return (
     <Modal
       isOpen={isOpen}
@@ -178,62 +191,41 @@ export function QuickLogDropModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <select
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-              className="px-2 py-1 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none text-sm"
-            >
-              {Array.from({ length: maxWeek }, (_, i) => i + 1).map((week) => (
-                <option key={week} value={week}>
-                  Week {week}
-                </option>
-              ))}
-            </select>
+            <div className="w-32">
+              <Select
+                value={selectedWeek}
+                onChange={setSelectedWeek}
+                options={weekOptions}
+              />
+            </div>
           </div>
         </div>
 
         {/* Recipient selection */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Recipient</label>
-          <select
+          <Label htmlFor="recipient">Recipient</Label>
+          <Select
+            id="recipient"
             value={recipientPlayerId}
-            onChange={(e) => setRecipientPlayerId(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            {sortedRecipients.map(({ player, priority, needsItem }) => (
-              <option key={player.id} value={player.id}>
-                {player.name} ({player.job}){getPriorityLabel(priority, needsItem)}
-              </option>
-            ))}
-          </select>
+            onChange={setRecipientPlayerId}
+            options={recipientOptions}
+          />
         </div>
 
         {/* Update gear checkbox */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={updateGear}
-            onChange={(e) => setUpdateGear(e.target.checked)}
-            className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
-          />
-          <span className="text-sm text-text-primary">
-            Mark {slotName.toLowerCase()} as acquired for {selectedPlayer?.name || 'player'}
-          </span>
-        </label>
+        <Checkbox
+          checked={updateGear}
+          onChange={setUpdateGear}
+          label={`Mark ${slotName.toLowerCase()} as acquired for ${selectedPlayer?.name || 'player'}`}
+        />
 
         {/* Extra loot checkbox (weapons only) */}
         {isWeapon && (
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isExtra}
-              onChange={(e) => setIsExtra(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
-            />
-            <span className="text-sm text-text-primary">
-              Extra loot (not BiS priority)
-            </span>
-          </label>
+          <Checkbox
+            checked={isExtra}
+            onChange={setIsExtra}
+            label="Extra loot (not BiS priority)"
+          />
         )}
 
         {/* Preview */}
@@ -252,20 +244,16 @@ export function QuickLogDropModal({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={!recipientPlayerId || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!recipientPlayerId}
+            loading={isSaving}
           >
-            {isSaving ? 'Logging...' : 'Log Drop'}
-          </button>
+            Log Drop
+          </Button>
         </div>
       </form>
     </Modal>

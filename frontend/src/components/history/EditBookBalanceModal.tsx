@@ -5,7 +5,9 @@
  */
 
 import { useState } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Label, TextArea } from '../ui';
+import { NumberInput } from '../ui/NumberInput';
+import { Button } from '../primitives';
 
 interface EditBookBalanceModalProps {
   isOpen: boolean;
@@ -60,19 +62,23 @@ export function EditBookBalanceModal({
         {/* Current and New Balance */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Current</label>
-            <div className="px-3 py-2 rounded bg-surface-elevated border border-border-default text-text-primary text-center font-medium">
-              {currentBalance}
-            </div>
+            <Label>Current</Label>
+            <NumberInput
+              value={currentBalance}
+              onChange={() => {}}
+              disabled
+              showButtons={false}
+              size="sm"
+              className="opacity-60"
+            />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">New Balance</label>
-            <input
-              type="number"
+            <Label htmlFor="newBalance">New Balance</Label>
+            <NumberInput
               value={newBalance}
-              onChange={(e) => setNewBalance(parseInt(e.target.value) || 0)}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary text-center focus:border-accent focus:outline-none"
-              autoFocus
+              onChange={(val) => setNewBalance(val ?? 0)}
+              showButtons={false}
+              size="sm"
             />
           </div>
         </div>
@@ -90,32 +96,27 @@ export function EditBookBalanceModal({
 
         {/* Notes */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Notes (optional)</label>
-          <input
-            type="text"
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <TextArea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g., Correction for missed clear"
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
+            rows={2}
           />
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={adjustment === 0 || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={adjustment === 0}
+            loading={isSaving}
           >
-            {isSaving ? 'Saving...' : adjustment === 0 ? 'No Change' : 'Save'}
-          </button>
+            {adjustment === 0 ? 'No Change' : 'Save'}
+          </Button>
         </div>
       </form>
     </Modal>

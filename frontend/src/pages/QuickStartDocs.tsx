@@ -38,7 +38,7 @@ function RoleCard({
 }) {
   const colorClasses = {
     teal: { bg: 'bg-accent', border: 'hover:border-accent/50' },
-    blue: { bg: 'bg-blue-500', border: 'hover:border-blue-500/50' },
+    blue: { bg: 'bg-membership-member', border: 'hover:border-membership-member/50' },
   };
 
   return (

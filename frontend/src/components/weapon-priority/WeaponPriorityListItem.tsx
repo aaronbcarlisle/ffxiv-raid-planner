@@ -8,7 +8,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WeaponPriority } from '../../types';
 import { RAID_JOBS } from '../../gamedata/jobs';
-import { JobIcon } from '../ui/JobIcon';
+import { JobIcon, Checkbox } from '../ui';
 
 interface WeaponPriorityListItemProps {
   id: string;
@@ -97,16 +97,12 @@ export function WeaponPriorityListItem({
       </div>
 
       {/* Received checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={priority.received}
-          onChange={onToggleReceived}
-          disabled={disabled}
-          className="w-4 h-4 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        <span className="text-sm text-text-secondary">Received</span>
-      </label>
+      <Checkbox
+        checked={priority.received}
+        onChange={onToggleReceived}
+        disabled={disabled}
+        label="Received"
+      />
 
       {/* Remove button */}
       <button

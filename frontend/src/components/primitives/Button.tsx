@@ -4,7 +4,7 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,7 +26,9 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-accent hover:bg-active-bg active:bg-accent/20',
   danger:
-    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40',
+    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40 focus:ring-status-error/50',
+  warning:
+    'bg-status-warning/20 text-status-warning border border-status-warning/40 hover:bg-status-warning/30 active:bg-status-warning/40 focus:ring-status-warning/50',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -57,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         className={`
-          inline-flex items-center justify-center rounded-lg font-semibold
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
           transition-all duration-fast
           focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-surface-base
           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none

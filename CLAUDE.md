@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.2 Released (Phase 1-6.5 + Parity + Audit + UX Improvements) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.4 Released (Phase 1-6.5 + Parity + Audit + UX + Design System Migration) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -47,6 +47,10 @@ pnpm dev              # Frontend only
 pnpm build            # Production build
 pnpm tsc --noEmit     # Type check
 pnpm lint             # ESLint
+
+# Design System
+./frontend/scripts/check-design-system.sh           # Check for raw HTML/hardcoded colors
+./frontend/scripts/check-design-system.sh --strict  # Strict mode for CI (exits 1 on violations)
 
 # Backend
 cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
@@ -391,13 +395,17 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Production misconfiguration detection with console warnings
 - JWT expiration check prevents unnecessary 401 errors
 
-### Weekly Loot Grid (v1.0.2)
+### Weekly Loot Grid (v1.0.4)
 - Spreadsheet-style view in Log tab for viewing/logging weekly loot
 - Floor-colored section headers matching floor selector colors
 - Click cells to log loot, right-click for context menu
 - Context menu respects `canEdit` permission - Edit/Delete hidden for read-only users
 - Loot count summary bar shows distribution fairness indicators
 - `highlightedEntryId` prop supports deep linking with pulse animation
+- Shift+Click on entries copies link to clipboard
+- Alt+Click on entries navigates to recipient player card
+- Cross-week navigation: jumping to entries in different weeks auto-switches week selector
+- Data fetched without week filter for client-side filtering (enables cross-week nav)
 
 ### Floor Selectors (v1.0.2)
 - Unified colored button tabs across Gear Priorities, Who Needs It, and Log By Floor
@@ -428,26 +436,64 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Matches G1/G2 toggle styling with user-add icon and accent colors
 - Uses `aria-label` for accessibility
 
-### Keyboard Shortcuts (v1.0.3)
+### Keyboard Shortcuts (v1.0.4)
 Global keyboard shortcuts for power users in GroupView.
 
-**Available shortcuts:**
+**Tab Navigation:**
 | Key | Action |
 |-----|--------|
-| `?` | Show keyboard shortcuts help |
-| `1` | Go to Players tab |
-| `2` | Go to Loot tab |
-| `3` | Go to Log tab |
-| `4` | Go to Summary tab |
-| `v` | Toggle compact/expanded view (Players tab only) |
-| `g` | Toggle G1/G2 group view (Players tab only) |
+| `1` - `4` | Main tabs (Players, Loot, Log, Summary) |
+| `Alt+1` - `Alt+3` | Sub tabs (within Loot/Log tabs) |
+| `Shift+S` | Go to My Statics (dashboard) |
+
+**Static/Tier Navigation:**
+| Key | Action |
+|-----|--------|
+| `Ctrl+[` / `Ctrl+]` | Previous/next static |
+| `Alt+[` / `Alt+]` | Previous/next tier |
+
+**View Controls:**
+| Key | Action |
+|-----|--------|
+| `V` | Expand/collapse (all tabs) |
+| `G` | G1/G2 view (Players) / Grid/List (Log) |
+| `S` | Toggle substitutes (Players) |
+| `Alt+Left` / `Alt+Right` | Previous/next week (Log) |
+
+**Management (Alt+Shift):**
+| Key | Action |
+|-----|--------|
+| `Alt+Shift+P` | Add Player |
+| `Alt+Shift+N` | New Tier |
+| `Alt+Shift+R` | Copy to New Tier |
+| `Alt+Shift+S` | Static Settings |
+
+**Quick Actions (Alt):**
+| Key | Action |
+|-----|--------|
+| `Alt+L` | Log Loot |
+| `Alt+M` | Log Material |
+| `Alt+B` | Mark Floor Cleared |
+
+**Mouse Shortcuts:**
+| Action | Effect |
+|--------|--------|
+| `Shift+Click` | Copy link to clipboard (player cards, loot entries) |
+| `Alt+Click` | Navigate to related item (go to player from loot) |
+
+**General:**
+| Key | Action |
+|-----|--------|
+| `Shift+?` | Show keyboard shortcuts help |
 | `Escape` | Close modal |
 
 **Implementation:**
-- `hooks/useKeyboardShortcuts.ts` - Reusable hook with modifier support
+- `hooks/useKeyboardShortcuts.ts` - Reusable hook with modifier support (requireAlt, requireShift, requireCtrl)
 - `components/ui/KeyboardShortcutsHelp.tsx` - Help modal component
 - Shortcuts disabled when typing in inputs or when modals are open
 - Uses `isInputElement()` check to prevent conflicts with text entry
+- User dropdown menu includes "Keyboard Shortcuts" item with event dispatch
+- Action buttons show hotkey hints in tooltips (e.g., "Log loot drop (Alt+L)")
 
 ### Admin System (v1.0.2)
 Super-user access for app owners to troubleshoot any static group.
@@ -574,9 +620,26 @@ useGroupTiers()          // All tiers for current group
 
 **Role Colors:** Tank (#5a9fd4), Healer (#5ad490), Melee (#d45a5a), Ranged (#d4a05a), Caster (#b45ad4)
 
+**Membership Colors:** Use semantic tokens for role badges:
+- Owner: `text-membership-owner` (teal, same as accent)
+- Lead: `text-membership-lead` (purple)
+- Member: `text-membership-member` (blue)
+- Viewer: `text-membership-viewer` (zinc)
+- Linked: `text-membership-linked` (amber)
+
+**Material Colors:** Use semantic tokens for material indicators:
+- Twine: `text-material-twine` / `bg-material-twine/20`
+- Glaze: `text-material-glaze` / `bg-material-glaze/20`
+- Solvent: `text-material-solvent` / `bg-material-solvent/20`
+- Tomestone: `text-material-tomestone` / `bg-material-tomestone/20`
+
+**Status Colors:** `status-success`, `status-warning`, `status-error`, `status-info`
+
 **Disabled State:** `opacity-50 cursor-not-allowed`
 
 **Modal:** Uses `<div>` not native `<dialog>` (pointer event issues)
+
+**Design System Compliance:** Run `./frontend/scripts/check-design-system.sh` to detect raw HTML elements and hardcoded colors. Use `--strict` flag in CI to fail on violations.
 
 ---
 
@@ -616,6 +679,8 @@ useGroupTiers()          // All tiers for current group
 
 ### Implementation Plans
 - **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
+- **Design System Remaining Tasks:** `docs/plans/2026-01-10-remaining-design-tasks.md`
+- **Design System Full Plan:** `docs/plans/2026-01-10-design-system-ux-improvements.md`
 
 ---
 

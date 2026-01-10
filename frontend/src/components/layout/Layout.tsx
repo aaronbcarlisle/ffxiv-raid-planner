@@ -9,7 +9,8 @@ export function Layout() {
       <Header />
       <ViewAsBanner />
       <ReleaseBanner />
-      <main className="max-w-[120rem] mx-auto px-4 py-3">
+      {/* Content container - pages control their own max-width */}
+      <main className="w-full px-4 py-3">
         <Outlet />
       </main>
     </div>
