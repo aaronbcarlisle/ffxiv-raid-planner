@@ -146,7 +146,8 @@ function WeaponSlotRow({
             <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
-        <td className="py-1 hidden md:table-cell text-center">
+        {/* CurrentSource column hidden for now */}
+        <td className="py-1 hidden text-center">
           {status.currentSource && status.currentSource !== 'unknown' ? (
             <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
               {GEAR_SOURCE_NAMES[status.currentSource]}
@@ -207,7 +208,8 @@ function WeaponSlotRow({
           >
             └ Tome Weapon
           </td>
-          <td className="py-1 hidden md:table-cell">
+          {/* CurrentSource column hidden for now */}
+          <td className="py-1 hidden">
             {/* Empty cell for Current column alignment */}
           </td>
           <td className="py-1 text-center">
@@ -395,7 +397,8 @@ export function GearTable({
         <thead>
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
-            <th className="text-center py-1 font-medium hidden md:table-cell">Current</th>
+            {/* CurrentSource column hidden for now - change to "hidden md:table-cell" to re-enable */}
+            <th className="text-center py-1 font-medium hidden">Current</th>
             <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
             <th className="text-center py-1 font-medium w-16">Aug</th>
@@ -431,7 +434,8 @@ export function GearTable({
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
                 </td>
-                <td className="py-1 hidden md:table-cell text-center">
+                {/* CurrentSource column hidden for now */}
+                <td className="py-1 hidden text-center">
                   {status.currentSource && status.currentSource !== 'unknown' ? (
                     <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
                       {GEAR_SOURCE_NAMES[status.currentSource]}
