@@ -1165,6 +1165,7 @@ export function SectionedLogView({
       {/* Modals */}
       {showLootModal && (
         <AddLootEntryModal
+          key={entryToEdit?.id ?? `add-${gridModalState?.floor}-${gridModalState?.slot}`}
           isOpen={showLootModal}
           onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); }}
           onSubmit={handleAddLoot}
