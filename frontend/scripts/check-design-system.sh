@@ -40,24 +40,31 @@ declare -A PATTERNS=(
   ['<textarea ']='TextArea'
 )
 
-# Files/patterns to exclude (intentional exceptions)
-EXCLUDE_PATTERNS=(
+# Files to exclude (intentional exceptions) - use filename only
+EXCLUDE_FILES=(
   "DesignSystem.tsx"  # Demo page showing all components
-  "components/primitives"  # Primitive components themselves
-  "components/ui/Input.tsx"
-  "components/ui/Select.tsx"
-  "components/ui/Checkbox.tsx"
-  "components/ui/Label.tsx"
-  "components/ui/TextArea.tsx"
-  "components/ui/NumberInput.tsx"
-  "components/ui/RadioGroup.tsx"
-  "node_modules"
+  "Input.tsx"         # The component itself
+  "Select.tsx"        # The component itself
+  "Checkbox.tsx"      # The component itself
+  "Label.tsx"         # The component itself
+  "TextArea.tsx"      # The component itself
+  "NumberInput.tsx"   # The component itself
+  "RadioGroup.tsx"    # The component itself
+)
+
+# Directories to exclude
+EXCLUDE_DIRS=(
+  "primitives"   # Primitive components use raw HTML
+  "node_modules" # Dependencies
 )
 
 # Build exclude args for grep
 EXCLUDE_ARGS=""
-for pattern in "${EXCLUDE_PATTERNS[@]}"; do
-  EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=*$pattern*"
+for file in "${EXCLUDE_FILES[@]}"; do
+  EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude=$file"
+done
+for dir in "${EXCLUDE_DIRS[@]}"; do
+  EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude-dir=$dir"
 done
 
 total_violations=0

@@ -229,20 +229,35 @@ export function AddLootEntryModal({
   }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
 
   // Auto-select top priority recipient when slot changes (add mode only)
-  // Matches LogMaterialModal's pattern for consistency
+  // Only triggers on itemSlot change, not on filter checkbox changes
   useEffect(() => {
     // Skip auto-selection in edit mode - preserve the original recipient
     if (editEntry) return;
 
-    // Use visibleRecipients for auto-selection to match what's shown in dropdown
+    // Auto-select first visible recipient when slot changes
     if (visibleRecipients.length > 0) {
-      // Select the first visible recipient (already sorted by priority)
       setRecipientPlayerId(visibleRecipients[0].player.id);
     } else {
-      // No visible recipients - clear selection
       setRecipientPlayerId('');
     }
-  }, [itemSlot, visibleRecipients, editEntry]);
+    // Intentionally only depend on itemSlot - we don't want to reset selection
+    // when users toggle filter checkboxes, only when the slot changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemSlot, editEntry]);
+
+  // When filter checkboxes change, ensure selected player is still visible
+  // If not visible, keep selection (they can still submit) but show warning state
+  useEffect(() => {
+    if (editEntry) return;
+    if (!recipientPlayerId) return;
+
+    // Check if current selection is in visible list
+    const isVisible = visibleRecipients.some(r => r.player.id === recipientPlayerId);
+    if (!isVisible && visibleRecipients.length > 0) {
+      // Current selection is not visible - auto-select first visible
+      setRecipientPlayerId(visibleRecipients[0].player.id);
+    }
+  }, [visibleRecipients, recipientPlayerId, editEntry]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {

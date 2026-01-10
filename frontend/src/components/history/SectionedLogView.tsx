@@ -751,6 +751,7 @@ export function SectionedLogView({
                 <span className={`font-medium ${
                   entry.materialType === 'twine' ? 'text-material-twine' :
                   entry.materialType === 'glaze' ? 'text-material-glaze' :
+                  entry.materialType === 'universal_tomestone' ? 'text-material-tomestone' :
                   'text-material-solvent'
                 }`}>
                   {MATERIAL_LABELS[entry.materialType]}
