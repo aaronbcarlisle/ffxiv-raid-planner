@@ -161,10 +161,10 @@ function WeaponSlotRow({
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-medium ${disabled ? 'opacity-50' : ''}`}>
               Raid
             </span>
-            {/* +Tome is a toggle for interim tome weapon */}
+            {/* + is a toggle for interim tome weapon */}
             <button
               onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium transition-colors ${
                 tomeWeapon.pursuing
                   ? 'bg-gear-tome/20 text-gear-tome'
                   : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
@@ -172,7 +172,7 @@ function WeaponSlotRow({
               title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
               disabled={disabled}
             >
-              +Tome
+              +
             </button>
           </div>
         </td>
@@ -444,7 +444,7 @@ export function GearTable({
                   <div className="flex justify-center">
                     <button
                       onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${
                         status.bisSource === 'raid'
                           ? 'bg-gear-raid/20 text-gear-raid'
                           : 'bg-gear-tome/20 text-gear-tome'
