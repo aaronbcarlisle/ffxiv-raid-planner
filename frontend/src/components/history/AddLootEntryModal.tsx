@@ -188,22 +188,22 @@ export function AddLootEntryModal({
       result = sortedRecipients.filter(r => r.needsItem);
     }
 
-    // In edit mode, ensure the current recipient is always in the list
+    // In edit mode, ALWAYS ensure the current recipient is in the list
     // (they may no longer need the item if they already received it)
-    if (isEditMode && editEntry) {
+    if (isEditMode && editEntry?.recipientPlayerId) {
       const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
       if (!currentRecipientInList) {
-        // Find the recipient in the full list and add them
-        const currentRecipient = sortedRecipients.find(r => r.player.id === editEntry.recipientPlayerId);
-        if (currentRecipient) {
-          result = [currentRecipient, ...result];
-        } else {
-          // Recipient might be filtered out entirely (e.g., not configured)
-          // Try to find them in players directly
-          const player = players.find(p => p.id === editEntry.recipientPlayerId);
-          if (player) {
-            result = [{ player, priority: 999, score: 0, needsItem: false }, ...result];
-          }
+        // Find the recipient directly from players prop (unfiltered)
+        const player = players.find(p => p.id === editEntry.recipientPlayerId);
+        if (player) {
+          // Check if they're in sortedRecipients for priority info
+          const sortedEntry = sortedRecipients.find(r => r.player.id === editEntry.recipientPlayerId);
+          result = [{
+            player,
+            priority: sortedEntry?.priority ?? 999,
+            score: sortedEntry?.score ?? 0,
+            needsItem: sortedEntry?.needsItem ?? false,
+          }, ...result];
         }
       }
     }
