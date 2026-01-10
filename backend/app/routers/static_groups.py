@@ -610,9 +610,10 @@ async def duplicate_group(
     in a single database transaction, avoiding the N+1 query problem of multiple
     sequential API calls.
     """
-    # Verify permission - must be member of source group
+    # Verify permission - must be member of source group (or admin)
+    user_is_admin = await is_user_admin(session, current_user.id)
     membership = await get_user_membership(session, current_user.id, group_id)
-    if not membership:
+    if not membership and not user_is_admin:
         raise NotFound("Group not found or you don't have access")
 
     # Load source group with all tiers and players

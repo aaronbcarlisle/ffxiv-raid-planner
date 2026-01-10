@@ -21,6 +21,7 @@ from ..permissions import (
     check_view_permission,
     get_static_group,
     get_user_membership,
+    is_user_admin,
     require_can_edit_roster,
 )
 from ..schemas import (
@@ -624,9 +625,12 @@ async def update_snapshot_player(
 ) -> SnapshotPlayerResponse:
     """Update a player in a tier snapshot"""
     group = await get_static_group(session, group_id)
+
+    # Check if user is admin (grants full access)
+    user_is_admin = await is_user_admin(session, current_user.id)
     membership = await get_user_membership(session, current_user.id, group_id)
 
-    if not membership:
+    if not membership and not user_is_admin:
         raise PermissionDenied("You are not a member of this static group")
 
     # Get player with user relationship
@@ -645,8 +649,8 @@ async def update_snapshot_player(
     if not player:
         raise NotFound("Player not found")
 
-    # Check permissions: leads/owners can edit anyone, members can only edit their own
-    can_edit_all = membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+    # Check permissions: admins and leads/owners can edit anyone, members can only edit their own
+    can_edit_all = user_is_admin or (membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value))
     is_own_player = player.user_id == current_user.id
 
     if not can_edit_all and not is_own_player:
@@ -839,12 +843,13 @@ async def release_player(
             detail="This player is not linked to any user",
         )
 
-    # Check permissions: user can release self, owner can release anyone
+    # Check permissions: user can release self, owner/admin can release anyone
     is_self = player.user_id == current_user.id
+    user_is_admin = await is_user_admin(session, current_user.id)
     membership = await get_user_membership(session, current_user.id, group_id)
     is_owner = membership and membership.role == MemberRole.OWNER.value
 
-    if not is_self and not is_owner:
+    if not is_self and not is_owner and not user_is_admin:
         raise PermissionDenied("You can only unlink yourself or you must be the group owner")
 
     # Unlink the user
@@ -881,9 +886,12 @@ async def update_weapon_priorities(
 ) -> SnapshotPlayerResponse:
     """Update a player's weapon priority list"""
     await get_static_group(session, group_id)
+
+    # Check if user is admin (grants full access)
+    user_is_admin = await is_user_admin(session, current_user.id)
     membership = await get_user_membership(session, current_user.id, group_id)
 
-    if not membership:
+    if not membership and not user_is_admin:
         raise PermissionDenied("You are not a member of this static group")
 
     # Get player and tier snapshot
@@ -909,7 +917,7 @@ async def update_weapon_priorities(
     tier = tier_result.scalar_one()
 
     # Check if locked
-    can_edit_all = membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+    can_edit_all = user_is_admin or (membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value))
     is_own_player = player.user_id == current_user.id
 
     # Determine if locked
