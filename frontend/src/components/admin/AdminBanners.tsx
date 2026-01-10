@@ -7,17 +7,11 @@
  */
 
 import { ShieldAlert, Eye } from 'lucide-react';
-
-interface ViewAsUser {
-  userId: string;
-  displayName?: string;
-  discordUsername?: string;
-  role?: string;
-}
+import type { ViewAsUserInfo } from '../../stores/viewAsStore';
 
 export interface AdminBannersProps {
   isAdminAccess: boolean;
-  viewAsUser: ViewAsUser | null;
+  viewAsUser: ViewAsUserInfo | null;
   onExitViewAs: () => void;
 }
 
