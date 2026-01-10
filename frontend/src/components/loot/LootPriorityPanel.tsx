@@ -472,7 +472,7 @@ export function LootPriorityPanel({
 
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
-        <div>
+        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden p-4">
           <WeaponPriorityList
             players={players}
             settings={settings}

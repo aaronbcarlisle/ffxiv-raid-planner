@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Modal, Select, Checkbox, Label, Input } from '../ui';
+import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate } from '../../types';
@@ -211,24 +211,52 @@ export function LogMaterialModal({
     return [...playersWithPriority, ...playersWithoutNeed];
   }, [players, selectedMaterial, settings, materialLog, includeSubs]);
 
-  // Filter to only show players who need the material (unless showAllRecipients)
+  // Filter recipients based on checkbox states
+  // Logic:
+  // - Neither checked: Main roster who need material only
+  // - Include Subs only: Main roster who need material + subs who need material.
+  //                      If NO ONE needs it, show ONLY subs (fallback)
+  // - Show All Players only: All main roster (excluding subs), regardless of need
+  // - Both checked: Everyone (all main roster + all subs)
   const visibleRecipients = useMemo(() => {
-    if (showAllRecipients) return sortedPlayersWithPriority;
+    if (showAllRecipients && includeSubs) {
+      // Both checked: show everyone
+      return sortedPlayersWithPriority;
+    }
+
+    if (showAllRecipients && !includeSubs) {
+      // Show all main roster (already filtered out subs in sortedPlayersWithPriority when includeSubs is false)
+      return sortedPlayersWithPriority;
+    }
+
+    if (includeSubs && !showAllRecipients) {
+      // Include Subs mode: show those who need + fallback to subs if none need
+      const needsMaterial = sortedPlayersWithPriority.filter(r => r.needsMaterial);
+      if (needsMaterial.length > 0) {
+        return needsMaterial;
+      }
+      // No one needs it - show only subs as fallback
+      return sortedPlayersWithPriority.filter(r => r.player.isSubstitute);
+    }
+
+    // Default: only those who need the material
     return sortedPlayersWithPriority.filter(r => r.needsMaterial);
-  }, [sortedPlayersWithPriority, showAllRecipients]);
+  }, [sortedPlayersWithPriority, showAllRecipients, includeSubs]);
 
   // Auto-select top priority recipient when material changes
+  // Skip auto-selection in edit mode to preserve original recipient
   useEffect(() => {
-    if (sortedPlayersWithPriority.length > 0) {
-      const topPriority = sortedPlayersWithPriority.find(r => r.needsMaterial);
-      if (topPriority) {
-        setSelectedPlayer(topPriority.player.id);
-      } else if (sortedPlayersWithPriority.length > 0) {
-        // Fall back to first player if no one needs the material
-        setSelectedPlayer(sortedPlayersWithPriority[0].player.id);
-      }
+    if (editEntry) return; // Don't auto-select in edit mode
+
+    // Use visibleRecipients for auto-selection to match what's shown in dropdown
+    if (visibleRecipients.length > 0) {
+      // Select the first visible recipient (already sorted by priority)
+      setSelectedPlayer(visibleRecipients[0].player.id);
+    } else {
+      // No visible recipients - clear selection
+      setSelectedPlayer('');
     }
-  }, [selectedMaterial, sortedPlayersWithPriority]);
+  }, [selectedMaterial, visibleRecipients, editEntry]);
 
   // Get priority label for a player
   const getPriorityLabel = (rank: number, needsMaterial: boolean): string => {
@@ -347,10 +375,11 @@ export function LogMaterialModal({
         {/* Notes */}
         <div>
           <Label htmlFor="notes">Notes (optional)</Label>
-          <Input
+          <TextArea
             value={notes}
             onChange={setNotes}
             placeholder="Add a note..."
+            rows={2}
           />
         </div>
       </div>

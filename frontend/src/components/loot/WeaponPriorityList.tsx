@@ -295,7 +295,15 @@ function WeaponPriorityCard({
   );
 }
 
-type RoleFilter = 'all' | 'tank' | 'healer' | 'dps';
+// Role section configuration
+type RoleSection = 'tank' | 'healer' | 'melee' | 'ranged';
+
+const ROLE_SECTIONS: { id: RoleSection; label: string; roles: string[]; color: string }[] = [
+  { id: 'tank', label: 'Tanks', roles: ['tank'], color: 'text-role-tank' },
+  { id: 'healer', label: 'Healers', roles: ['healer'], color: 'text-role-healer' },
+  { id: 'melee', label: 'Melee DPS', roles: ['melee'], color: 'text-role-melee' },
+  { id: 'ranged', label: 'Ranged & Caster', roles: ['ranged', 'caster'], color: 'text-role-ranged' },
+];
 
 interface WeaponPriorityListProps {
   players: SnapshotPlayer[];
@@ -314,74 +322,92 @@ export function WeaponPriorityList({
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Role filter: URL param > default
-  const [roleFilter, setRoleFilterState] = useState<RoleFilter>(() => {
-    const urlFilter = searchParams.get('weaponFilter');
-    if (urlFilter === 'all' || urlFilter === 'tank' || urlFilter === 'healer' || urlFilter === 'dps') {
-      return urlFilter;
+  // Visible sections: URL param > default (all visible)
+  const [visibleSections, setVisibleSectionsState] = useState<Set<RoleSection>>(() => {
+    const urlSections = searchParams.get('weaponSections');
+    if (urlSections) {
+      const sections = urlSections.split(',').filter(s =>
+        ['tank', 'healer', 'melee', 'ranged'].includes(s)
+      ) as RoleSection[];
+      if (sections.length > 0) {
+        return new Set(sections);
+      }
     }
-    return 'all';
+    return new Set(['tank', 'healer', 'melee', 'ranged']);
   });
 
-  // Wrapper to update roleFilter and URL
-  const setRoleFilter = useCallback((filter: RoleFilter) => {
-    setRoleFilterState(filter);
-    // Update URL - only include if not default
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (filter === 'all') {
-        params.delete('weaponFilter');
+  // Wrapper to toggle section visibility and update URL
+  const toggleSection = useCallback((section: RoleSection) => {
+    setVisibleSectionsState(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        // Don't allow hiding all sections
+        if (next.size > 1) {
+          next.delete(section);
+        }
       } else {
-        params.set('weaponFilter', filter);
+        next.add(section);
       }
-      return params;
+
+      // Update URL
+      setSearchParams(params => {
+        const newParams = new URLSearchParams(params);
+        if (next.size === 4) {
+          // All visible = default, remove param
+          newParams.delete('weaponSections');
+        } else {
+          newParams.set('weaponSections', Array.from(next).join(','));
+        }
+        return newParams;
+      }, { replace: true });
+
+      return next;
+    });
+  }, [setSearchParams]);
+
+  // Show all sections
+  const showAllSections = useCallback(() => {
+    setVisibleSectionsState(new Set(['tank', 'healer', 'melee', 'ranged']));
+    setSearchParams(params => {
+      const newParams = new URLSearchParams(params);
+      newParams.delete('weaponSections');
+      return newParams;
     }, { replace: true });
   }, [setSearchParams]);
+
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
-  const sortedJobs = useMemo(() => {
-    const allJobs = new Set<string>();
+  const allJobs = useMemo(() => {
+    const jobs = new Set<string>();
     for (const player of players) {
       // Add main job by default
       if (player.job) {
-        allJobs.add(player.job);
+        jobs.add(player.job);
       }
       // Add explicitly set weapon priorities
       for (const wp of player.weaponPriorities || []) {
-        allJobs.add(wp.job);
+        jobs.add(wp.job);
       }
     }
-
-    // Sort jobs by role (tank > healer > melee > ranged > caster)
-    return Array.from(allJobs).sort((a, b) => {
-      const jobA = RAID_JOBS.find((j) => j.abbreviation === a);
-      const jobB = RAID_JOBS.find((j) => j.abbreviation === b);
-      if (!jobA || !jobB) return 0;
-
-      const roleOrder = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-      const indexA = roleOrder.indexOf(jobA.role);
-      const indexB = roleOrder.indexOf(jobB.role);
-
-      return indexA - indexB;
-    });
+    return jobs;
   }, [players]);
 
-  // Filter jobs by selected role
-  const filteredJobs = useMemo(() => {
-    if (roleFilter === 'all') return sortedJobs;
+  // Group jobs by role section
+  const jobsBySection = useMemo(() => {
+    const grouped = new Map<RoleSection, string[]>();
 
-    return sortedJobs.filter((job) => {
-      const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
-      if (!jobInfo) return false;
-
-      if (roleFilter === 'tank') return jobInfo.role === 'tank';
-      if (roleFilter === 'healer') return jobInfo.role === 'healer';
-      if (roleFilter === 'dps') return ['melee', 'ranged', 'caster'].includes(jobInfo.role);
-      return true;
+    ROLE_SECTIONS.forEach(section => {
+      const sectionJobs = Array.from(allJobs).filter(job => {
+        const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+        return jobInfo && section.roles.includes(jobInfo.role);
+      });
+      grouped.set(section.id, sectionJobs);
     });
-  }, [sortedJobs, roleFilter]);
 
-  if (sortedJobs.length === 0) {
+    return grouped;
+  }, [allJobs]);
+
+  if (allJobs.size === 0) {
     return (
       <div className="text-center py-8 text-text-muted">
         <p>No configured players yet.</p>
@@ -389,63 +415,86 @@ export function WeaponPriorityList({
     );
   }
 
-  const filterButtonClass = (filter: RoleFilter) =>
-    `px-3 py-1 text-sm rounded transition-colors font-bold ${
-      roleFilter === filter
-        ? 'bg-accent text-accent-contrast'
-        : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
-    }`;
+  const allVisible = visibleSections.size === 4;
 
   return (
-    <div className="space-y-4">
-      {/* Role filter buttons */}
-      <div className="flex items-center justify-end gap-2">
-        <span className="text-sm text-text-muted mr-1">Filter:</span>
+    <div className="space-y-6">
+      {/* Section filter toggles */}
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <span className="text-sm text-text-muted mr-1">Show:</span>
         <button
-          onClick={() => setRoleFilter('all')}
-          className={filterButtonClass('all')}
+          onClick={showAllSections}
+          className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+            allVisible
+              ? 'bg-accent text-accent-contrast'
+              : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+          }`}
         >
           All
         </button>
-        <button
-          onClick={() => setRoleFilter('tank')}
-          className={filterButtonClass('tank')}
-        >
-          Tank
-        </button>
-        <button
-          onClick={() => setRoleFilter('healer')}
-          className={filterButtonClass('healer')}
-        >
-          Healer
-        </button>
-        <button
-          onClick={() => setRoleFilter('dps')}
-          className={filterButtonClass('dps')}
-        >
-          DPS
-        </button>
-      </div>
-
-      {/* Weapon cards grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredJobs.map((job) => {
-          const priority = getWeaponPriorityForJob(players, job, settings);
-          const jobInfo = RAID_JOBS.find((j) => j.abbreviation === job);
-          const jobName = jobInfo?.name || job;
+        {ROLE_SECTIONS.map(section => {
+          const isVisible = visibleSections.has(section.id);
+          const jobCount = jobsBySection.get(section.id)?.length || 0;
+          if (jobCount === 0) return null;
 
           return (
-            <WeaponPriorityCard
-              key={job}
-              job={job}
-              jobName={jobName}
-              priority={priority}
-              showLogButtons={showLogButtons}
-              onLogClick={onLogClick}
-            />
+            <button
+              key={section.id}
+              onClick={() => toggleSection(section.id)}
+              aria-pressed={isVisible}
+              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                isVisible
+                  ? 'bg-accent text-accent-contrast'
+                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+              }`}
+            >
+              {section.label}
+            </button>
           );
         })}
       </div>
+
+      {/* Role sections */}
+      {ROLE_SECTIONS.map(section => {
+        const sectionJobs = jobsBySection.get(section.id) || [];
+        if (sectionJobs.length === 0) return null;
+        if (!visibleSections.has(section.id)) return null;
+
+        return (
+          <div key={section.id} className="space-y-3">
+            {/* Section header */}
+            <div className="flex items-center gap-3">
+              <h4 className={`text-sm font-semibold ${section.color}`}>
+                {section.label}
+              </h4>
+              <div className="flex-1 h-px bg-border-subtle" />
+              <span className="text-xs text-text-muted">
+                {sectionJobs.length} {sectionJobs.length === 1 ? 'weapon' : 'weapons'}
+              </span>
+            </div>
+
+            {/* Weapon cards grid for this section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sectionJobs.map(job => {
+                const priority = getWeaponPriorityForJob(players, job, settings);
+                const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+                const jobName = jobInfo?.name || job;
+
+                return (
+                  <WeaponPriorityCard
+                    key={job}
+                    job={job}
+                    jobName={jobName}
+                    priority={priority}
+                    showLogButtons={showLogButtons}
+                    onLogClick={onLogClick}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

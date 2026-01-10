@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Modal, Label, Input } from '../ui';
+import { Modal, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 
@@ -92,10 +92,11 @@ export function EditBookBalanceModal({
         {/* Notes */}
         <div>
           <Label htmlFor="notes">Notes (optional)</Label>
-          <Input
+          <TextArea
             value={notes}
             onChange={setNotes}
             placeholder="e.g., Correction for missed clear"
+            rows={2}
           />
         </div>
 

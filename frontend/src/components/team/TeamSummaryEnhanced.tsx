@@ -2,13 +2,14 @@
  * Team Summary Enhanced
  *
  * Combines gear tracking, book tracking, and material tracking into a single
- * comprehensive per-player summary view.
+ * comprehensive per-player summary view with aggregate stats and visual indicators.
  */
 
 import { useEffect, useMemo, memo } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
+import { Users, Target, Wrench, BookOpen } from 'lucide-react';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
 
@@ -223,6 +224,21 @@ export function TeamSummaryEnhanced({
     );
   }
 
+  // Calculate aggregate stats for summary cards
+  const aggregateStats = useMemo(() => {
+    const totalBooksNeeded = totals.booksNeeded.I + totals.booksNeeded.II + totals.booksNeeded.III + totals.booksNeeded.IV;
+    const totalBooksHave = totals.booksBalance.I + totals.booksBalance.II + totals.booksBalance.III + totals.booksBalance.IV;
+    const totalMatsNeeded = totals.matsNeeded.twine + totals.matsNeeded.glaze + totals.matsNeeded.solvent;
+    const totalMatsHave = totals.matsReceived.twine + totals.matsReceived.glaze + totals.matsReceived.solvent;
+
+    return {
+      playerCount: playerSummaries.length,
+      gearPercent: totals.gearPercent,
+      booksProgress: { have: totalBooksHave, need: totalBooksNeeded },
+      matsProgress: { have: totalMatsHave, need: totalMatsNeeded },
+    };
+  }, [totals, playerSummaries.length]);
+
   return (
     <div className="bg-surface-card rounded-lg border border-border-default">
       {/* Header */}
@@ -231,6 +247,96 @@ export function TeamSummaryEnhanced({
         <p className="text-sm text-text-muted mt-1">
           Book and material progress for all players. Values show current balance vs. needed.
         </p>
+      </div>
+
+      {/* Aggregate Stats Cards */}
+      <div className="p-4 border-b border-border-default">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Players */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-accent/10">
+                <Users className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-text-secondary text-sm">Players</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.playerCount}<span className="text-text-muted text-lg">/8</span>
+            </div>
+          </div>
+
+          {/* BiS Completion */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`p-2 rounded-lg ${
+                aggregateStats.gearPercent === 100
+                  ? 'bg-status-success/10'
+                  : aggregateStats.gearPercent >= 50
+                    ? 'bg-accent/10'
+                    : 'bg-surface-elevated'
+              }`}>
+                <Target className={`w-5 h-5 ${
+                  aggregateStats.gearPercent === 100
+                    ? 'text-status-success'
+                    : aggregateStats.gearPercent >= 50
+                      ? 'text-accent'
+                      : 'text-text-secondary'
+                }`} />
+              </div>
+              <span className="text-text-secondary text-sm">BiS Progress</span>
+            </div>
+            <div className={`text-2xl font-bold ${
+              aggregateStats.gearPercent === 100
+                ? 'text-status-success'
+                : aggregateStats.gearPercent >= 50
+                  ? 'text-accent'
+                  : 'text-text-primary'
+            }`}>
+              {aggregateStats.gearPercent}%
+            </div>
+            {/* Progress bar */}
+            <div className="mt-2 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  aggregateStats.gearPercent === 100
+                    ? 'bg-status-success'
+                    : aggregateStats.gearPercent >= 50
+                      ? 'bg-accent'
+                      : 'bg-text-muted'
+                }`}
+                style={{ width: `${aggregateStats.gearPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Books Progress */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-surface-elevated">
+                <BookOpen className="w-5 h-5 text-text-secondary" />
+              </div>
+              <span className="text-text-secondary text-sm">Books Collected</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.booksProgress.have}
+              <span className="text-text-muted text-lg">/{aggregateStats.booksProgress.need}</span>
+            </div>
+          </div>
+
+          {/* Materials Progress */}
+          <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-surface-elevated">
+                <Wrench className="w-5 h-5 text-text-secondary" />
+              </div>
+              <span className="text-text-secondary text-sm">Materials Received</span>
+            </div>
+            <div className="text-2xl font-bold text-text-primary">
+              {aggregateStats.matsProgress.have}
+              <span className="text-text-muted text-lg">/{aggregateStats.matsProgress.need}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Table */}

@@ -156,27 +156,52 @@ export function AddLootEntryModal({
       });
   }, [players, itemSlot, includeSubs]);
 
-  // Filter to only show players who need the item (unless showAllRecipients)
+  // Filter recipients based on checkbox states
+  // Logic:
+  // - Neither checked: Main roster who need item only
+  // - Include Subs only: Main roster who need item + subs who need item.
+  //                      If NO ONE needs it, show ONLY subs (fallback)
+  // - Show All Players only: All main roster (excluding subs), regardless of need
+  // - Both checked: Everyone (all main roster + all subs)
   const visibleRecipients = useMemo(() => {
-    if (showAllRecipients) return sortedRecipients;
+    if (showAllRecipients && includeSubs) {
+      // Both checked: show everyone
+      return sortedRecipients;
+    }
+
+    if (showAllRecipients && !includeSubs) {
+      // Show all main roster (already filtered out subs in sortedRecipients when includeSubs is false)
+      return sortedRecipients;
+    }
+
+    if (includeSubs && !showAllRecipients) {
+      // Include Subs mode: show those who need + fallback to subs if none need
+      const needsItem = sortedRecipients.filter(r => r.needsItem);
+      if (needsItem.length > 0) {
+        return needsItem;
+      }
+      // No one needs it - show only subs as fallback
+      return sortedRecipients.filter(r => r.player.isSubstitute);
+    }
+
+    // Default: only those who need the item
     return sortedRecipients.filter(r => r.needsItem);
-  }, [sortedRecipients, showAllRecipients]);
+  }, [sortedRecipients, showAllRecipients, includeSubs]);
 
   // Auto-select top priority recipient when slot changes (add mode only)
   useEffect(() => {
     // Skip auto-selection in edit mode - preserve the original recipient
     if (isEditMode) return;
 
-    if (sortedRecipients.length > 0) {
-      const topPriority = sortedRecipients.find(r => r.needsItem);
-      if (topPriority) {
-        setRecipientPlayerId(topPriority.player.id);
-      } else if (sortedRecipients.length > 0) {
-        // Fall back to first player if no one needs the item
-        setRecipientPlayerId(sortedRecipients[0].player.id);
-      }
+    // Use visibleRecipients for auto-selection to match what's shown in dropdown
+    if (visibleRecipients.length > 0) {
+      // Select the first visible recipient (already sorted by priority)
+      setRecipientPlayerId(visibleRecipients[0].player.id);
+    } else {
+      // No visible recipients - clear selection
+      setRecipientPlayerId('');
     }
-  }, [itemSlot, sortedRecipients, isEditMode]);
+  }, [itemSlot, visibleRecipients, isEditMode]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {

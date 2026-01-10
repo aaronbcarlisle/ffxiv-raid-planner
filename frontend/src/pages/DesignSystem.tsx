@@ -351,6 +351,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'forms-inputs', label: 'Forms & Inputs' },
       { id: 'menus-navigation', label: 'Menus & Nav' },
+      { id: 'tab-patterns', label: 'Tab Patterns' },
       { id: 'containers', label: 'Containers' },
       { id: 'page-layout', label: 'Page Layout' },
       { id: 'nav-panels', label: 'Nav Panels' },
@@ -1381,6 +1382,145 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/primitives
   );
 }
 
+// Tab Patterns Section
+function TabPatternsSection() {
+  return (
+    <Section id="tab-patterns" title="Tab Patterns">
+      <p className="text-text-secondary mb-6">
+        Different tab structures serve different purposes. Understanding when to use each pattern
+        ensures consistent UX across the application.
+      </p>
+
+      {/* Pattern 1: Content Variant Tabs */}
+      <Subsection title="Content Variant Tabs">
+        <p className="text-sm text-text-muted mb-4">
+          Use for showing the same data in different visualizations. Tabs appear inside the section header.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-text-primary font-medium">Loot Priority</h3>
+            <div className="flex bg-surface-base rounded-lg p-0.5">
+              <button className="px-3 py-1 text-sm rounded bg-accent text-accent-contrast font-bold">
+                Who Needs It
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary">
+                Gear Priority
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary">
+                Weapon Priority
+              </button>
+            </div>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Content area - same data, different view
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Loot tab subtabs (Who Needs It, Gear Priority, Weapon Priority)
+        </div>
+      </Subsection>
+
+      {/* Pattern 2: Layout Mode Toggles */}
+      <Subsection title="Layout Mode Toggles">
+        <p className="text-sm text-text-muted mb-4">
+          Use for fundamentally different UI layouts. Toggles appear at the top level, separate from content.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex bg-surface-base rounded-lg p-0.5">
+              <button className="px-3 py-1 text-sm rounded bg-accent text-accent-contrast font-bold flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+                Grid
+              </button>
+              <button className="px-3 py-1 text-sm rounded text-text-secondary flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+                List
+              </button>
+            </div>
+            <button className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg flex items-center gap-1.5">
+              Reset
+            </button>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Completely different layout structure
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Log tab Grid/List toggle - the entire UI structure changes
+        </div>
+      </Subsection>
+
+      {/* Pattern 3: View/Filter Subtabs */}
+      <Subsection title="View/Filter Subtabs">
+        <p className="text-sm text-text-muted mb-4">
+          Use for sorting, filtering, or grouping within a layout. Appears inside the content area, smaller than layout toggles.
+        </p>
+        <div className="bg-surface-elevated p-4 rounded-lg border border-border-default mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-text-primary font-medium">Loot Log</span>
+            <div className="flex bg-surface-base rounded p-0.5">
+              <button className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold">
+                By Floor
+              </button>
+              <button className="px-2 py-0.5 text-xs rounded text-text-secondary">
+                Timeline
+              </button>
+            </div>
+          </div>
+          <div className="h-24 bg-surface-base rounded border border-border-subtle flex items-center justify-center text-text-muted">
+            Same list, different grouping/sorting
+          </div>
+        </div>
+        <div className="text-sm text-text-muted">
+          <strong className="text-text-primary">Use cases:</strong> Log List view (By Floor vs Timeline) - same entries, different organization
+        </div>
+      </Subsection>
+
+      {/* Pattern 4: Context-Appropriate Sizing */}
+      <Subsection title="Context-Appropriate Sizing">
+        <p className="text-sm text-text-muted mb-4">
+          Element sizes should reflect their importance. Primary interaction areas get prominence, summaries stay compact.
+        </p>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-surface-elevated p-4 rounded-lg border border-border-default">
+            <div className="text-sm text-text-primary font-medium mb-2">Grid View (Primary)</div>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {['T1', 'T2', 'H1', 'H2'].map(pos => (
+                <div key={pos} className="bg-surface-base rounded p-2 text-center">
+                  <div className="text-lg font-bold text-accent">{pos}</div>
+                  <div className="text-xs text-text-muted">Name</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-text-muted">Large player badges - this is the primary editing interface</div>
+          </div>
+          <div className="bg-surface-elevated p-4 rounded-lg border border-border-default">
+            <div className="text-sm text-text-primary font-medium mb-2">List Header (Summary)</div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-text-muted">Week 1 Drops:</span>
+              {['T1', 'H1', 'M1', 'R1'].map(pos => (
+                <span key={pos} className="px-1.5 py-0.5 text-xs bg-surface-base rounded text-text-secondary">
+                  {pos}
+                </span>
+              ))}
+            </div>
+            <div className="text-xs text-text-muted">Tiny badges - just a summary, not for editing</div>
+          </div>
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
 // Container System Section
 function ContainersSection() {
   return (
@@ -2247,6 +2387,9 @@ export function DesignSystem() {
 
         {/* Menus & Navigation */}
         <MenusSection />
+
+        {/* Tab Patterns */}
+        <TabPatternsSection />
 
         {/* Container System */}
         <ContainersSection />
