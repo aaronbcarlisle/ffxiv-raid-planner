@@ -28,7 +28,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        e.stopPropagation();
+        // Use stopImmediatePropagation to prevent other modal escape handlers from firing
+        // This ensures only the topmost modal closes when Escape is pressed
+        e.stopImmediatePropagation();
         onClose();
       }
     };

@@ -180,9 +180,9 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
               <Label htmlFor="invite-max-uses">Max Uses (optional)</Label>
               <NumberInput
                 id="invite-max-uses"
-                value={maxUses ?? 0}
-                onChange={(val) => setMaxUses(val === 0 ? null : val)}
-                min={0}
+                value={maxUses}
+                onChange={setMaxUses}
+                min={1}
                 max={100}
                 placeholder="Unlimited"
               />

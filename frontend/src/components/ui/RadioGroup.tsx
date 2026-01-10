@@ -124,7 +124,7 @@ export function RadioGroup({
                   {option.label}
                 </span>
                 {option.description && (
-                  <span className="text-xs text-text-muted mt-0.5">
+                  <span className="text-xs text-text-muted mt-0.5 whitespace-pre-line">
                     {option.description}
                   </span>
                 )}

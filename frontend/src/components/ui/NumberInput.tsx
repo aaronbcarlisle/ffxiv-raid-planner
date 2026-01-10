@@ -18,10 +18,10 @@ import { Minus, Plus } from 'lucide-react';
 export interface NumberInputProps {
   /** Input element id for label association */
   id?: string;
-  /** Current value */
-  value: number;
-  /** Change handler */
-  onChange: (value: number) => void;
+  /** Current value (null shows placeholder) */
+  value: number | null;
+  /** Change handler (null when input is empty) */
+  onChange: (value: number | null) => void;
   /** Minimum value */
   min?: number;
   /** Maximum value */
@@ -62,9 +62,11 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
   ) => {
     const hasError = Boolean(error);
 
+    const currentValue = value ?? 0;
+
     const handleIncrement = () => {
       if (disabled) return;
-      const newValue = value + step;
+      const newValue = currentValue + step;
       if (max === undefined || newValue <= max) {
         onChange(newValue);
       }
@@ -72,14 +74,19 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
     const handleDecrement = () => {
       if (disabled) return;
-      const newValue = value - step;
+      const newValue = currentValue - step;
       if (min === undefined || newValue >= min) {
         onChange(newValue);
       }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = parseFloat(e.target.value);
+      const inputValue = e.target.value;
+      if (inputValue === '') {
+        onChange(null);
+        return;
+      }
+      const newValue = parseFloat(inputValue);
       if (!isNaN(newValue)) {
         if (min !== undefined && newValue < min) {
           onChange(min);
@@ -108,7 +115,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             <button
               type="button"
               onClick={handleDecrement}
-              disabled={disabled || (min !== undefined && value <= min)}
+              disabled={disabled || (min !== undefined && currentValue <= min)}
               className={`
                 ${buttonSizeStyles[size]}
                 flex items-center justify-center
@@ -127,7 +134,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             ref={ref}
             id={id}
             type="number"
-            value={value}
+            value={value ?? ''}
             onChange={handleChange}
             disabled={disabled}
             min={min}
@@ -151,7 +158,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             <button
               type="button"
               onClick={handleIncrement}
-              disabled={disabled || (max !== undefined && value >= max)}
+              disabled={disabled || (max !== undefined && currentValue >= max)}
               className={`
                 ${buttonSizeStyles[size]}
                 flex items-center justify-center
