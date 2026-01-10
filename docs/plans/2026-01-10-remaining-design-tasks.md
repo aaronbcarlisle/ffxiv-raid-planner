@@ -12,7 +12,7 @@
 |------|-------------|--------|
 | ✅ 4.1 | Hotkeys in tooltips | `2dfb00a` |
 | ✅ 3.5 | Gear slot icons in Who Needs It | `0512819` |
-| ✅ 2.4 | Item name column in GearTable | `d332075` |
+| ⏪ 2.4 | Item name column in GearTable | `20ec24d` (reverted) |
 | ✅ 2.3 | BiS source compact toggle | `d52265d` |
 | ✅ 2.5 | CurrentSource column in GearTable | `116cc35` |
 
@@ -49,11 +49,10 @@
 **Files modified:**
 - `components/loot/WhoNeedsItMatrix.tsx`
 
-### Task 2.4: Item Name Column in GearTable
-- Added "Item" column between Slot and BiS Source
-- Shows item name from BiS import when available
-- Responsive: hidden on small screens (`hidden md:table-cell`)
-- Includes truncation with tooltip for long names
+### Task 2.4: Item Name Column in GearTable (REVERTED)
+- Initially added "Item" column between Slot and BiS Source
+- Column made the table too cramped on smaller screens
+- **Reverted in `20ec24d`** - item names still visible via hover card on slot icon
 
 **Files modified:**
 - `components/player/GearTable.tsx`
@@ -70,12 +69,14 @@
 
 ### Task 2.5: CurrentSource Column in GearTable
 - Added "Current" column showing equipped gear source category
-- Uses GEAR_SOURCE_NAMES and GEAR_SOURCE_COLORS
-- Responsive: only shown on lg+ screens
+- Uses shorthand names: Tome, Craft, Aug, Catch, Prev, Norm, Savage
+- Savage uses same color as Raid (`text-gear-raid`)
+- Responsive: shown on md+ screens (`hidden md:table-cell`)
 - Color-coded per source category
 
 **Files modified:**
 - `components/player/GearTable.tsx`
+- `types/index.ts` (GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS)
 
 ---
 
