@@ -984,12 +984,9 @@ export function GroupView() {
             Create your first tier snapshot to start tracking gear progress.
           </p>
           {canEdit && (
-            <button
-              onClick={() => setShowCreateTierModal(true)}
-              className="bg-accent text-bg-primary px-6 py-2 rounded font-medium hover:bg-accent-bright"
-            >
+            <Button onClick={() => setShowCreateTierModal(true)}>
               Create First Tier
-            </button>
+            </Button>
           )}
         </div>
       )}
