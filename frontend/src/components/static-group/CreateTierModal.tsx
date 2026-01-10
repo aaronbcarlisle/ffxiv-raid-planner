@@ -5,6 +5,8 @@
  */
 
 import { useState } from 'react';
+import { Modal, Select, Label } from '../ui';
+import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
 import { RAID_TIERS } from '../../gamedata';
 
@@ -33,46 +35,41 @@ export function CreateTierModal({ groupId, existingTierIds, onClose, onCreate }:
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
-      <div className="bg-surface-card rounded-lg border border-border-default p-6 w-full max-w-md mx-4">
-        <h2 className="text-xl font-display text-accent mb-4">Create New Tier</h2>
+  // Build tier options for Select
+  const tierOptions = [
+    { value: '', label: 'Choose a tier...' },
+    ...availableTiers.map((tier) => ({
+      value: tier.id,
+      label: `${tier.name} (${tier.shortName})`,
+    })),
+  ];
 
-        <div className="mb-4">
-          <label className="block text-sm text-text-secondary mb-2">
-            Select Raid Tier
-          </label>
-          <select
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Create New Tier">
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="tierSelect">Select Raid Tier</Label>
+          <Select
+            id="tierSelect"
             value={selectedTierId}
-            onChange={(e) => setSelectedTierId(e.target.value)}
-            className="w-full bg-surface-elevated border border-border-default rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
-          >
-            <option value="">Choose a tier...</option>
-            {availableTiers.map((tier) => (
-              <option key={tier.id} value={tier.id}>
-                {tier.name} ({tier.shortName})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedTierId}
+            options={tierOptions}
+          />
         </div>
 
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-text-secondary hover:text-text-primary"
-          >
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleCreate}
-            disabled={!selectedTierId || isSaving}
-            className="bg-accent text-bg-primary px-4 py-2 rounded font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!selectedTierId}
+            loading={isSaving}
           >
-            {isSaving ? 'Creating...' : 'Create'}
-          </button>
+            Create
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

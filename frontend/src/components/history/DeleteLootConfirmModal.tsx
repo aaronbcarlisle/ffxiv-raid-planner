@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Checkbox } from '../ui';
+import { Button } from '../primitives';
 import type { LootLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
@@ -69,17 +70,11 @@ export function DeleteLootConfirmModal({
 
         {/* Revert gear option - only for drops */}
         {isDrop && (
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={revertGear}
-              onChange={(e) => setRevertGear(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
-            />
-            <span className="text-sm text-text-primary">
-              Also uncheck {slotName.toLowerCase()} as acquired for {playerName}
-            </span>
-          </label>
+          <Checkbox
+            checked={revertGear}
+            onChange={setRevertGear}
+            label={`Also uncheck ${slotName.toLowerCase()} as acquired for ${playerName}`}
+          />
         )}
 
         {/* Preview */}
@@ -95,21 +90,17 @@ export function DeleteLootConfirmModal({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="danger"
             onClick={handleConfirm}
-            disabled={isDeleting}
-            className="px-4 py-2 rounded bg-status-error text-white hover:bg-status-error/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={isDeleting}
           >
-            {isDeleting ? 'Deleting...' : 'Delete Entry'}
-          </button>
+            Delete Entry
+          </Button>
         </div>
       </div>
     </Modal>

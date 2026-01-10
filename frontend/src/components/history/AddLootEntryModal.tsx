@@ -10,7 +10,9 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
+import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
+import { NumberInput } from '../ui/NumberInput';
+import { Button } from '../primitives';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -246,52 +248,65 @@ export function AddLootEntryModal({
     ? 'Ring'
     : GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
 
+  // Build floor options for Select
+  const floorOptions = floors.map(f => ({ value: f, label: f }));
+
+  // Build slot options for Select
+  const slotOptions = availableSlots.map(slot => ({
+    value: slot,
+    label: slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot],
+  }));
+
+  // Build recipient options for Select
+  const recipientOptions = [
+    { value: '', label: 'Select player...' },
+    ...visibleRecipients.map(({ player, priority, needsItem }) => ({
+      value: player.id,
+      label: `${player.name} (${player.job})${getPriorityLabel(priority, needsItem)}`,
+    })),
+  ];
+
+  // Build method options for RadioGroup
+  const methodOptions = [
+    { value: 'drop', label: 'Drop' },
+    { value: 'book', label: 'Book' },
+  ];
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Week and Floor */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Week</label>
-            <input
-              type="number"
-              min={1}
+            <Label htmlFor="week">Week</Label>
+            <NumberInput
               value={weekNumber}
-              onChange={(e) => setWeekNumber(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
+              onChange={setWeekNumber}
+              min={1}
+              size="sm"
+              showButtons={false}
             />
           </div>
           <div>
-            <label className="block text-sm text-text-secondary mb-1">Floor</label>
-            <select
+            <Label htmlFor="floor">Floor</Label>
+            <Select
+              id="floor"
               value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-            >
-              {floors.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setFloor}
+              options={floorOptions}
+            />
           </div>
         </div>
 
         {/* Item Slot - filtered by floor */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Item Slot</label>
-          <select
+          <Label htmlFor="slot">Item Slot</Label>
+          <Select
+            id="slot"
             value={itemSlot}
-            onChange={(e) => setItemSlot(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            {availableSlots.map((slot) => (
-              <option key={slot} value={slot}>
-                {/* Show "Ring" for ring1 on floor 1 since it's a generic ring drop */}
-                {slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot]}
-              </option>
-            ))}
-          </select>
+            onChange={setItemSlot}
+            options={slotOptions}
+          />
           <div className="text-xs text-text-muted mt-1">
             Showing items that drop from {floor}
           </div>
@@ -300,41 +315,28 @@ export function AddLootEntryModal({
         {/* Recipient - sorted by priority */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm text-text-secondary">Recipient</label>
+            <Label htmlFor="recipient" className="mb-0">Recipient</Label>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeSubs}
-                  onChange={(e) => setIncludeSubs(e.target.checked)}
-                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                />
-                <span className="text-xs text-text-muted">Include Subs</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showAllRecipients}
-                  onChange={(e) => setShowAllRecipients(e.target.checked)}
-                  className="w-3 h-3 rounded border-border-default text-accent cursor-pointer"
-                />
-                <span className="text-xs text-text-muted">Show all players</span>
-              </label>
+              <Checkbox
+                checked={includeSubs}
+                onChange={setIncludeSubs}
+                label="Include Subs"
+                className="text-xs"
+              />
+              <Checkbox
+                checked={showAllRecipients}
+                onChange={setShowAllRecipients}
+                label="Show all players"
+                className="text-xs"
+              />
             </div>
           </div>
-          <select
+          <Select
+            id="recipient"
             value={recipientPlayerId}
-            onChange={(e) => setRecipientPlayerId(e.target.value)}
-            required
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none"
-          >
-            <option value="">Select player...</option>
-            {visibleRecipients.map(({ player, priority, needsItem }) => (
-              <option key={player.id} value={player.id}>
-                {player.name} ({player.job}){getPriorityLabel(priority, needsItem)}
-              </option>
-            ))}
-          </select>
+            onChange={setRecipientPlayerId}
+            options={recipientOptions}
+          />
           {visibleRecipients.length === 0 && !showAllRecipients && (
             <div className="text-xs text-status-success mt-1">
               No one needs this item! Enable "Show all players" to assign anyway.
@@ -344,74 +346,48 @@ export function AddLootEntryModal({
 
         {/* Method */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Method</label>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="drop"
-                checked={method === 'drop'}
-                onChange={() => setMethod('drop')}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-text-primary">Drop</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                value="book"
-                checked={method === 'book'}
-                onChange={() => setMethod('book')}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-text-primary">Book</span>
-            </label>
-          </div>
+          <Label>Method</Label>
+          <RadioGroup
+            name="method"
+            value={method}
+            onChange={(value) => setMethod(value as LootMethod)}
+            options={methodOptions}
+            orientation="horizontal"
+          />
         </div>
 
         {/* Update gear checkbox - for drops and books in add mode */}
         {!isEditMode && (method === 'drop' || method === 'book') && (
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={updateGear}
-              onChange={(e) => setUpdateGear(e.target.checked)}
-              className="w-4 h-4 rounded border-border-default text-accent focus:ring-accent cursor-pointer"
-            />
-            <span className="text-sm text-text-primary">
-              Also mark {slotName.toLowerCase()} as acquired for {selectedPlayer?.name || 'player'}
-            </span>
-          </label>
+          <Checkbox
+            checked={updateGear}
+            onChange={setUpdateGear}
+            label={`Also mark ${slotName.toLowerCase()} as acquired for ${selectedPlayer?.name || 'player'}`}
+          />
         )}
 
         {/* Notes */}
         <div>
-          <label className="block text-sm text-text-secondary mb-1">Notes (optional)</label>
-          <textarea
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <TextArea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g., Traded for tomestone piece"
             rows={2}
-            className="w-full px-3 py-2 rounded bg-surface-interactive border border-border-default text-text-primary focus:border-accent focus:outline-none resize-none"
           />
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={!recipientPlayerId || isSaving}
-            className="px-4 py-2 rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!recipientPlayerId}
+            loading={isSaving}
           >
-            {isSaving ? (isEditMode ? 'Saving...' : 'Logging...') : (isEditMode ? 'Save Changes' : 'Log Loot')}
-          </button>
+            {isEditMode ? 'Save Changes' : 'Log Loot'}
+          </Button>
         </div>
       </form>
     </Modal>

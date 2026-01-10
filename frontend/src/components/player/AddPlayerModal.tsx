@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Modal } from '../ui/Modal';
-import { Checkbox } from '../ui/Checkbox';
+import { Modal, Checkbox, Label, Input } from '../ui';
+import { Button } from '../primitives';
 import { JobPicker } from './JobPicker';
 import { getRoleForJob } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus } from '../../types';
@@ -63,39 +63,30 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
     <Modal isOpen={isOpen} onClose={onClose} title="Add Player">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="playerName" className="block text-text-secondary mb-1 text-sm">
-            Player Name
-          </label>
-          <input
+          <Label htmlFor="playerName">Player Name</Label>
+          <Input
             id="playerName"
-            type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={setName}
             placeholder="e.g., Cloud Strife"
-            className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-            required
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-text-secondary mb-1 text-sm">
-            Job
-          </label>
+          <Label>Job</Label>
           <JobPicker selectedJob={job} onJobSelect={setJob} />
         </div>
 
         <div>
-          <label htmlFor="playerNotes" className="block text-text-secondary mb-1 text-sm">
+          <Label htmlFor="playerNotes">
             Notes <span className="text-text-muted">(optional)</span>
-          </label>
-          <input
+          </Label>
+          <Input
             id="playerNotes"
-            type="text"
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g., Out Dec 28-Jan 2"
-            className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
           />
         </div>
 
@@ -106,20 +97,12 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
         />
 
         <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-          >
+          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name.trim() || !job}
-            className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          </Button>
+          <Button type="submit" disabled={!name.trim() || !job} className="flex-1">
             Add Player
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

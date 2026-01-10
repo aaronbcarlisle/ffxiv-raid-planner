@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
-import { Checkbox } from '../ui/Checkbox';
+import { Modal, Checkbox, Label, Select, Input } from '../ui';
+import { Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
 import {
   fetchBiSFromXIVGear,
@@ -83,13 +83,13 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   // Preset state
   const [presets, setPresets] = useState<BiSPreset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
-  const [selectedPresetIndex, setSelectedPresetIndex] = useState<number | null>(null);
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');
 
   // Fetch presets when modal opens (category determined by tier's contentType)
   useEffect(() => {
     if (isOpen && player.job && player.configured) {
       setPresetsLoading(true);
-      setSelectedPresetIndex(null);
+      setSelectedPresetIndex('');
       fetchBiSPresets(player.job, contentType)
         .then((response) => {
           setPresets(response.presets);
@@ -120,7 +120,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     setChanges([]);
     setResetHaveStatus(true);
     setJobMismatch(false);
-    setSelectedPresetIndex(null);
+    setSelectedPresetIndex('');
   }, [player.bisLink]);
 
   const handleClose = () => {
@@ -130,16 +130,17 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
   const handlePreview = async () => {
     // Need either a preset selected or a URL entered
-    if (selectedPresetIndex === null && !inputValue.trim()) return;
+    if (selectedPresetIndex === '' && !inputValue.trim()) return;
 
     setState('loading');
     setError('');
 
     try {
       let data: BiSImportData;
+      const presetIdx = selectedPresetIndex !== '' ? parseInt(selectedPresetIndex, 10) : null;
 
-      if (selectedPresetIndex !== null) {
-        const selectedPreset = presets[selectedPresetIndex];
+      if (presetIdx !== null) {
+        const selectedPreset = presets[presetIdx];
         if (selectedPreset?.uuid) {
           // Shortlink preset with direct XIVGear UUID
           data = await fetchBiSFromXIVGear(selectedPreset.uuid, selectedPreset.setIndex ?? 0);
@@ -150,7 +151,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         } else {
           // Fallback for presets without githubTier (legacy)
           const bisUrl = `bis|${player.job.toLowerCase()}|current`;
-          data = await fetchBiSFromXIVGear(bisUrl, selectedPresetIndex);
+          data = await fetchBiSFromXIVGear(bisUrl, presetIdx);
         }
       } else {
         // Detect source and call appropriate API
@@ -218,6 +219,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
   const handleImport = () => {
     if (!previewData) return;
+    const presetIdx = selectedPresetIndex !== '' ? parseInt(selectedPresetIndex, 10) : null;
 
     // Build new gear array
     const newGear = player.gear.map((currentSlot) => {
@@ -266,8 +268,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
     // Determine what to store as bisLink
     let bisLink: string;
-    if (selectedPresetIndex !== null) {
-      const selectedPreset = presets[selectedPresetIndex];
+    if (presetIdx !== null) {
+      const selectedPreset = presets[presetIdx];
       if (selectedPreset?.uuid) {
         // Shortlink preset - store the XIVGear shortlink format
         bisLink = `sl|${selectedPreset.uuid}`;
@@ -299,6 +301,24 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
   const modalTitle = player.bisLink ? 'Update BiS' : 'Import BiS';
 
+  // Build preset options for Select
+  const presetOptions = [
+    {
+      value: '',
+      label: presetsLoading
+        ? 'Loading presets...'
+        : presets.length === 0
+          ? `No presets for ${player.job}`
+          : 'Choose a preset...',
+    },
+    ...presets.map((preset, idx) => ({
+      value: String(idx),
+      label: preset.name,
+    })),
+  ];
+
+  const selectedPreset = selectedPresetIndex !== '' ? presets[parseInt(selectedPresetIndex, 10)] : null;
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
       {state === 'input' && (
@@ -307,67 +327,51 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           {player.configured && (
             <div className="space-y-3">
               <div>
-                <label htmlFor="bisPreset" className="block text-text-secondary mb-1 text-sm">
-                  Select a preset
-                </label>
-                <select
-                id="bisPreset"
-                value={selectedPresetIndex ?? ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedPresetIndex(value === '' ? null : parseInt(value, 10));
-                  // Clear manual input when preset selected
-                  if (value !== '') {
-                    setInputValue('');
-                  }
-                }}
-                disabled={presetsLoading || presets.length === 0}
-                className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-50"
-              >
-                <option value="">
-                  {presetsLoading
-                    ? 'Loading presets...'
-                    : presets.length === 0
-                      ? `No presets for ${player.job}`
-                      : 'Choose a preset...'}
-                </option>
-                {presets.map((preset, idx) => (
-                  <option key={preset.index} value={idx}>
-                    {preset.name}
-                  </option>
-                ))}
-              </select>
-              {/* Description for selected preset */}
-              {selectedPresetIndex !== null && presets[selectedPresetIndex]?.description && (
-                <p className="mt-1.5 text-xs text-text-muted italic">
-                  {presets[selectedPresetIndex].description}
-                </p>
-              )}
-              {/* Attribution line - only show when presets loaded */}
-              {!presetsLoading && presets.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted">
-                  <span>Presets curated by</span>
-                  <a
-                    href={getBalanceGuideUrl(player.job)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent-bright hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    The Balance
-                  </a>
-                  <span className="text-text-muted/50">→</span>
-                  <a
-                    href={getBalanceGuideUrl(player.job)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent-bright hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View {player.job} guide
-                  </a>
-                </div>
-              )}
+                <Label htmlFor="bisPreset">Select a preset</Label>
+                <Select
+                  id="bisPreset"
+                  value={selectedPresetIndex}
+                  onChange={(value) => {
+                    setSelectedPresetIndex(value);
+                    // Clear manual input when preset selected
+                    if (value !== '') {
+                      setInputValue('');
+                    }
+                  }}
+                  options={presetOptions}
+                  disabled={presetsLoading || presets.length === 0}
+                />
+                {/* Description for selected preset */}
+                {selectedPreset?.description && (
+                  <p className="mt-1.5 text-xs text-text-muted italic">
+                    {selectedPreset.description}
+                  </p>
+                )}
+                {/* Attribution line - only show when presets loaded */}
+                {!presetsLoading && presets.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1.5 text-xs text-text-muted">
+                    <span>Presets curated by</span>
+                    <a
+                      href={getBalanceGuideUrl(player.job)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-bright hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      The Balance
+                    </a>
+                    <span className="text-text-muted/50">→</span>
+                    <a
+                      href={getBalanceGuideUrl(player.job)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-bright hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      View {player.job} guide
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -383,45 +387,39 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
           {/* Manual URL input */}
           <div>
-            <label htmlFor="bisLink" className="block text-text-secondary mb-1 text-sm">
+            <Label htmlFor="bisLink">
               {player.configured && presets.length > 0
                 ? 'Etro or XIVGear link'
                 : 'Paste Etro or XIVGear link'}
-            </label>
-            <input
+            </Label>
+            <Input
               id="bisLink"
-              type="text"
               value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
+              onChange={(value) => {
+                setInputValue(value);
                 // Clear preset selection when typing
-                if (e.target.value) {
-                  setSelectedPresetIndex(null);
+                if (value) {
+                  setSelectedPresetIndex('');
                 }
               }}
               onKeyDown={handleKeyDown}
               placeholder="https://etro.gg/gearset/..."
-              className="w-full bg-surface-base border border-border-default rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               autoFocus={!player.configured || presets.length === 0}
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handlePreview}
-              disabled={selectedPresetIndex === null && !inputValue.trim()}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={selectedPresetIndex === '' && !inputValue.trim()}
+              className="flex-1"
             >
               Preview
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -439,20 +437,12 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             <p className="text-status-error">{error}</p>
           </div>
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => setState('input')}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright"
-            >
+            </Button>
+            <Button type="button" onClick={() => setState('input')} className="flex-1">
               Try Again
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -522,20 +512,12 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 bg-surface-base border border-border-default px-4 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:border-text-muted"
-            >
+            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleImport}
-              className="flex-1 bg-accent text-bg-primary px-4 py-2 rounded-lg font-medium hover:bg-accent-bright"
-            >
+            </Button>
+            <Button type="button" onClick={handleImport} className="flex-1">
               Import
-            </button>
+            </Button>
           </div>
         </div>
       )}
