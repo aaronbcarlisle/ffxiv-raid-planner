@@ -143,7 +143,6 @@ export function WeekSelector({
             value: String(week),
             label: getWeekLabel(week),
           }))}
-          size="sm"
         />
       </div>
 
