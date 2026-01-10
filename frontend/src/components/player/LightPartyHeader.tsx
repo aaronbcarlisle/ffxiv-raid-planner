@@ -17,65 +17,30 @@ interface LightPartyHeaderProps {
   players: SnapshotPlayer[];
 }
 
-// Role icons as simple SVG shapes
-const RoleIcon = ({ role, filled }: { role: Role; filled: boolean }) => {
-  const color = filled ? getRoleColor(role) : 'var(--color-text-muted)';
-  const opacity = filled ? 1 : 0.3;
+// Role labels for tooltips
+const ROLE_LABELS: Record<Role, string> = {
+  tank: 'Tank',
+  healer: 'Healer',
+  melee: 'Melee DPS',
+  ranged: 'Physical Ranged',
+  caster: 'Magical Ranged',
+};
 
-  // Simple geometric shapes for each role
-  const shapes: Record<Role, JSX.Element> = {
-    tank: (
-      <rect
-        x="2"
-        y="2"
-        width="12"
-        height="12"
-        rx="2"
-        fill={color}
-        opacity={opacity}
-      />
-    ),
-    healer: (
-      <path
-        d="M8 2v12M2 8h12"
-        stroke={color}
-        strokeWidth="3"
-        strokeLinecap="round"
-        opacity={opacity}
-      />
-    ),
-    melee: (
-      <path
-        d="M3 13L13 3M10 3h3v3"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={opacity}
-      />
-    ),
-    ranged: (
-      <circle cx="8" cy="8" r="5" fill={color} opacity={opacity} />
-    ),
-    caster: (
-      <polygon
-        points="8,2 14,14 2,14"
-        fill={color}
-        opacity={opacity}
-      />
-    ),
-  };
+// Simple color-coded circle for each role
+const RoleCircle = ({ role, filled }: { role: Role; filled: boolean }) => {
+  const color = getRoleColor(role);
+  const label = ROLE_LABELS[role];
 
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      className="flex-shrink-0"
-      aria-label={filled ? `${role} present` : `${role} missing`}
-    >
-      {shapes[role]}
-    </svg>
+    <div
+      className="w-3 h-3 rounded-full flex-shrink-0 transition-opacity"
+      style={{
+        backgroundColor: color,
+        opacity: filled ? 1 : 0.25,
+      }}
+      title={filled ? label : `${label} (missing)`}
+      aria-label={filled ? `${label} present` : `${label} missing`}
+    />
   );
 };
 
@@ -140,9 +105,9 @@ export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps
       </div>
 
       {/* Role composition indicators */}
-      <div className="flex items-center gap-1" title="Role composition">
+      <div className="flex items-center gap-1.5">
         {roleComposition.map(({ role, present }) => (
-          <RoleIcon key={role} role={role} filled={present} />
+          <RoleCircle key={role} role={role} filled={present} />
         ))}
       </div>
 
