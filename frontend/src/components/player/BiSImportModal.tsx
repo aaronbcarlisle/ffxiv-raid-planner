@@ -353,11 +353,11 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     }
   };
 
-  // Modal title with job icon
+  // Modal title with job icon and player name
   const modalTitle = (
     <span className="flex items-center gap-2">
       <JobIcon job={player.job} size="sm" />
-      <span>{player.bisLink ? 'Update BiS' : 'Import BiS'}</span>
+      <span>{player.bisLink ? 'Update' : 'Import'} BiS for {player.name}</span>
     </span>
   );
 

@@ -101,7 +101,9 @@ export const PlayerCard = memo(function PlayerCard({
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
-  const [showBiSReimportPrompt, setShowBiSReimportPrompt] = useState(false);
+  const [showJobChangeConfirm, setShowJobChangeConfirm] = useState(false);
+  const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
+  const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Get role color for left border
@@ -121,7 +123,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showBiSReimportPrompt;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -130,7 +132,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showBiSReimportPrompt, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -202,18 +204,51 @@ export const PlayerCard = memo(function PlayerCard({
     }
   };
 
-  const handleJobChange = async (newJob: string) => {
-    const newRole = getRoleForJob(newJob);
+  // When job is selected from picker, store it and show confirmation
+  const handleJobChange = (newJob: string) => {
+    // Don't prompt if selecting the same job
+    if (newJob === player.job) return;
+    setPendingJobChange(newJob);
+    setShowJobChangeConfirm(true);
+  };
+
+  // Actually apply the job change after confirmation
+  const confirmJobChange = async (updateBiS: boolean) => {
+    if (!pendingJobChange) return;
+    const newRole = getRoleForJob(pendingJobChange);
     if (newRole) {
       try {
-        await onUpdate({ job: newJob, role: newRole });
-        // Prompt to reimport BiS after successful job change
-        setShowBiSReimportPrompt(true);
+        await onUpdate({ job: pendingJobChange, role: newRole });
+        setShowJobChangeConfirm(false);
+        setPendingJobChange(null);
+        // Trigger highlight and scroll
+        triggerHighlight();
+        // Open BiS import if requested
+        if (updateBiS) {
+          setShowBiSImport(true);
+        }
       } catch (error) {
         // Error already handled by api.ts (toast shown)
-        // Just prevent unhandled promise rejection
       }
     }
+  };
+
+  // Cancel job change - close modal and clear pending
+  const cancelJobChange = () => {
+    setShowJobChangeConfirm(false);
+    setPendingJobChange(null);
+  };
+
+  // Trigger highlight animation and scroll to card
+  const triggerHighlight = () => {
+    setLocalHighlight(true);
+    // Scroll the card into view
+    const cardElement = document.getElementById(`player-card-${player.id}`);
+    if (cardElement) {
+      cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Clear highlight after animation
+    setTimeout(() => setLocalHighlight(false), 2000);
   };
 
   const handleNameChange = async (name: string) => {
@@ -373,7 +408,7 @@ export const PlayerCard = memo(function PlayerCard({
   return (
     <div
       id={`player-card-${player.id}`}
-      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 ${isHighlighted ? 'highlight-pulse' : ''}`}
+      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
     >
@@ -549,7 +584,10 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowBiSImport(false)}
         player={player}
         contentType={contentType}
-        onImport={(updates) => onUpdate(updates)}
+        onImport={(updates) => {
+          onUpdate(updates);
+          triggerHighlight();
+        }}
       />
 
       {/* Weapon Priority Modal */}
@@ -562,33 +600,44 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowWeaponPriorityModal(false)}
       />
 
-      {/* BiS Reimport Prompt */}
+      {/* Job Change Confirmation Modal */}
       <Modal
-        isOpen={showBiSReimportPrompt}
-        onClose={() => setShowBiSReimportPrompt(false)}
-        title="Import BiS for New Job?"
+        isOpen={showJobChangeConfirm}
+        onClose={cancelJobChange}
+        title={`Change ${player.name}'s Job?`}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-text-secondary">
-            You've changed {player.name}'s job. Would you like to import a new BiS set for this job?
+            Change job from <span className="text-text-primary font-medium">{player.job}</span> to{' '}
+            <span className="text-text-primary font-medium">{pendingJobChange}</span>?
           </p>
-          <div className="flex justify-end gap-3">
+          <p className="text-text-muted text-sm">
+            Would you like to update BiS for the new job?
+          </p>
+          <div className="flex flex-col gap-2">
             <Button
               type="button"
-              variant="secondary"
-              onClick={() => setShowBiSReimportPrompt(false)}
+              onClick={() => confirmJobChange(true)}
+              className="w-full"
             >
-              No, Keep Current
+              Change Job & Update BiS
             </Button>
             <Button
               type="button"
-              onClick={() => {
-                setShowBiSReimportPrompt(false);
-                setShowBiSImport(true);
-              }}
+              variant="secondary"
+              onClick={() => confirmJobChange(false)}
+              className="w-full"
             >
-              Yes, Import BiS
+              Change Job Only
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={cancelJobChange}
+              className="w-full"
+            >
+              Cancel
             </Button>
           </div>
         </div>
