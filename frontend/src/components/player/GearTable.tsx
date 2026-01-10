@@ -146,14 +146,6 @@ function WeaponSlotRow({
             <span className="font-medium">{GEAR_SLOT_NAMES.weapon}</span>
           </div>
         </td>
-        <td className="py-1 hidden xl:table-cell">
-          <span
-            className="text-xs text-text-muted truncate block max-w-[140px]"
-            title={status.itemName}
-          >
-            {status.itemName || '—'}
-          </span>
-        </td>
         <td className="py-1 hidden md:table-cell text-center">
           {status.currentSource && status.currentSource !== 'unknown' ? (
             <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
@@ -214,9 +206,6 @@ function WeaponSlotRow({
             }`}
           >
             └ Tome Weapon
-          </td>
-          <td className="py-1 hidden xl:table-cell">
-            {/* Empty cell for Item column alignment */}
           </td>
           <td className="py-1 hidden md:table-cell">
             {/* Empty cell for Current column alignment */}
@@ -406,7 +395,6 @@ export function GearTable({
         <thead>
           <tr className="text-text-muted text-xs">
             <th className="text-left py-1 font-medium">Slot</th>
-            <th className="text-left py-1 font-medium hidden xl:table-cell">Item</th>
             <th className="text-center py-1 font-medium hidden md:table-cell">Current</th>
             <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">Have</th>
@@ -442,14 +430,6 @@ export function GearTable({
                     <SlotIcon slot={slot} status={status} size={24} showHover />
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>
-                </td>
-                <td className="py-1 hidden xl:table-cell">
-                  <span
-                    className="text-xs text-text-muted truncate block max-w-[140px]"
-                    title={status.itemName}
-                  >
-                    {status.itemName || '—'}
-                  </span>
                 </td>
                 <td className="py-1 hidden md:table-cell text-center">
                   {status.currentSource && status.currentSource !== 'unknown' ? (
