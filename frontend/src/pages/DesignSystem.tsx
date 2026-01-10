@@ -351,6 +351,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'forms-inputs', label: 'Forms & Inputs' },
       { id: 'menus-navigation', label: 'Menus & Nav' },
+      { id: 'containers', label: 'Containers' },
       { id: 'page-layout', label: 'Page Layout' },
       { id: 'nav-panels', label: 'Nav Panels' },
     ],
@@ -1380,6 +1381,88 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/primitives
   );
 }
 
+// Container System Section
+function ContainersSection() {
+  return (
+    <Section id="containers" title="Container System">
+      <p className="text-text-secondary mb-6">
+        A 5-tier container system for consistent width constraints across page types.
+        Prevents content from stretching infinitely on ultrawide monitors (3440px+).
+      </p>
+
+      {/* Container Tiers */}
+      <Subsection title="Container Tiers">
+        <p className="text-sm text-text-muted mb-4">
+          Each tier serves a specific purpose. Use the PageContainer component or apply classes directly.
+        </p>
+        <div className="space-y-3">
+          {[
+            { name: 'data', width: '160rem (2560px)', desc: 'Data-dense grids, player cards', example: 'GroupView' },
+            { name: 'wide', width: '120rem (1920px)', desc: 'Documentation with sidebar', example: 'API Docs, Guides' },
+            { name: 'focus', width: '80rem (1280px)', desc: 'Focused content, simple docs', example: 'Release Notes' },
+            { name: 'narrow', width: 'max-w-6xl (1152px)', desc: 'Card grids, dashboards', example: 'Dashboard' },
+            { name: 'compact', width: 'max-w-4xl (896px)', desc: 'Marketing, landing pages', example: 'Home page' },
+          ].map(tier => (
+            <div key={tier.name} className="flex items-center gap-4 p-3 bg-surface-elevated rounded-lg border border-border-default">
+              <code className="px-2 py-1 bg-accent/10 text-accent rounded text-sm font-mono min-w-[80px]">
+                {tier.name}
+              </code>
+              <div className="flex-1">
+                <div className="text-text-primary text-sm font-medium">{tier.width}</div>
+                <div className="text-text-muted text-xs">{tier.desc}</div>
+              </div>
+              <div className="text-text-secondary text-xs">{tier.example}</div>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+
+      {/* Usage */}
+      <Subsection title="Usage">
+        <p className="text-sm text-text-muted mb-4">
+          Import PageContainer from layout or use Tailwind classes directly.
+        </p>
+        <div className="bg-surface-overlay rounded-lg p-4 border border-border-default">
+          <pre className="text-sm text-text-secondary overflow-x-auto">
+            <code>{`// Using PageContainer component
+import { PageContainer } from '../components/layout';
+
+<PageContainer variant="data">
+  <PlayerGrid />
+</PageContainer>
+
+// Or use Tailwind classes directly
+<div className="max-w-[160rem] mx-auto">
+  <PlayerGrid />
+</div>`}</code>
+          </pre>
+        </div>
+      </Subsection>
+
+      {/* Grid Breakpoints */}
+      <Subsection title="Grid Breakpoints">
+        <p className="text-sm text-text-muted mb-4">
+          Custom grid breakpoints for ultrawide scaling. Player grids scale from 1-6 columns.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { breakpoint: 'sm (640px)', cols: '2 columns' },
+            { breakpoint: 'lg (1024px)', cols: '3 columns' },
+            { breakpoint: 'grid-4xl (1400px)', cols: '4 columns' },
+            { breakpoint: 'grid-5xl (1600px)', cols: '5 columns' },
+            { breakpoint: 'grid-6xl (2000px)', cols: '6 columns' },
+          ].map(bp => (
+            <div key={bp.breakpoint} className="p-3 bg-surface-elevated rounded border border-border-default">
+              <div className="text-xs text-text-muted">{bp.breakpoint}</div>
+              <div className="text-sm text-text-primary font-medium">{bp.cols}</div>
+            </div>
+          ))}
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
 // Sidebar Navigation Component
 function NavSidebar({
   activeSection,
@@ -2164,6 +2247,9 @@ export function DesignSystem() {
 
         {/* Menus & Navigation */}
         <MenusSection />
+
+        {/* Container System */}
+        <ContainersSection />
 
         {/* Page Layout */}
         <Section id="page-layout" title="Page Layout">

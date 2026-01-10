@@ -46,7 +46,7 @@ export function ViewAsBanner() {
 
   return (
     <div className="bg-status-warning/20 border-b border-status-warning/30">
-      <div className="max-w-[120rem] mx-auto px-4 py-2 flex items-center justify-between">
+      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Eye className="w-4 h-4 text-status-warning" />
           <span className="text-status-warning text-sm">

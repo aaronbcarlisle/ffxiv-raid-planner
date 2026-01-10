@@ -177,7 +177,7 @@ export function Header() {
 
   return (
     <header className="bg-surface-raised border-b border-border-default">
-      <div className="max-w-[120rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
+      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo */}

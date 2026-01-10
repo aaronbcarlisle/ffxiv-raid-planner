@@ -481,6 +481,20 @@ dialog input[type="radio"] {
   }
 }
 
+/* Custom 5-column breakpoint for ultrawide screens */
+@media (min-width: 1600px) {
+  .grid-5xl {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Custom 6-column breakpoint for ultrawide screens */
+@media (min-width: 2000px) {
+  .grid-6xl {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 /* Highlight pulse animation for deep-linked elements */
 @keyframes highlight-pulse {
   0% {

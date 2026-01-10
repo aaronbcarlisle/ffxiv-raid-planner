@@ -940,7 +940,7 @@ export function GroupView() {
   }
 
   return (
-    <>
+    <div className="max-w-[160rem] mx-auto">
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -1269,6 +1269,6 @@ export function GroupView() {
         isOpen={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
       />
-    </>
+    </div>
   );
 }
