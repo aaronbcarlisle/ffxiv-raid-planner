@@ -17,8 +17,23 @@ import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode } from '../../types';
-import { CONTEXT_MENU_ICONS } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
+import {
+  Copy,
+  ClipboardPaste,
+  CopyPlus,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  Swords,
+  RotateCcw,
+  UserCheck,
+  UserX,
+  FileDown,
+  MoreVertical,
+  Link2Off,
+  Link2,
+} from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
 interface PlayerCardProps {
@@ -252,19 +267,14 @@ export const PlayerCard = memo(function PlayerCard({
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
-      icon: CONTEXT_MENU_ICONS.importBis,
+      icon: <FileDown className="w-4 h-4" />,
       onClick: () => setShowBiSImport(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
     ...(player.bisLink ? [{
       label: 'Unlink BiS',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6" />
-        </svg>
-      ),
+      icon: <Link2Off className="w-4 h-4" />,
       onClick: () => setShowUnlinkBiSConfirm(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -272,7 +282,7 @@ export const PlayerCard = memo(function PlayerCard({
     { separator: true },
     {
       label: 'Weapon Priorities',
-      icon: CONTEXT_MENU_ICONS.weaponPriority,
+      icon: <Swords className="w-4 h-4" />,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -280,37 +290,33 @@ export const PlayerCard = memo(function PlayerCard({
     { separator: true },
     {
       label: 'Copy Player',
-      icon: CONTEXT_MENU_ICONS.copy,
+      icon: <Copy className="w-4 h-4" />,
       onClick: onCopy,
       // Copy is always allowed (read-only operation)
     },
     ...(onCopyUrl ? [{
       label: 'Copy URL',
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-      ),
+      icon: <Link2 className="w-4 h-4" />,
       onClick: onCopyUrl,
       // Copy URL is always allowed (read-only operation)
     }] : []),
     {
       label: 'Paste Player',
-      icon: CONTEXT_MENU_ICONS.paste,
+      icon: <ClipboardPaste className="w-4 h-4" />,
       onClick: () => setShowPasteConfirm(true),
       disabled: !clipboardPlayer || !editPermission.allowed,
       tooltip: !clipboardPlayer ? 'No player copied' : !editPermission.allowed ? editPermission.reason : undefined,
     },
     {
       label: 'Duplicate Player',
-      icon: CONTEXT_MENU_ICONS.duplicate,
+      icon: <CopyPlus className="w-4 h-4" />,
       onClick: () => onDuplicate(),
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
-      icon: CONTEXT_MENU_ICONS.substitute,
+      icon: player.isSubstitute ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />,
       onClick: () => onUpdate({ isSubstitute: !player.isSubstitute }),
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
@@ -318,25 +324,25 @@ export const PlayerCard = memo(function PlayerCard({
     { separator: true },
     ...(canClaim ? [{
       label: 'Take Ownership',
-      icon: CONTEXT_MENU_ICONS.takeOwnership,
+      icon: <UserCheck className="w-4 h-4" />,
       onClick: onClaimPlayer,
     }] : []),
     ...(canRelease ? [{
       label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
-      icon: CONTEXT_MENU_ICONS.releaseOwnership,
+      icon: <UserX className="w-4 h-4" />,
       onClick: onReleasePlayer,
     }] : []),
     { separator: true },
     {
       label: 'Reset Gear',
-      icon: CONTEXT_MENU_ICONS.resetGear,
+      icon: <RotateCcw className="w-4 h-4" />,
       onClick: () => setShowResetConfirm(true),
       disabled: !onResetGear || !resetPermission.allowed,
       tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
     },
     {
       label: 'Remove Player',
-      icon: CONTEXT_MENU_ICONS.remove,
+      icon: <Trash2 className="w-4 h-4" />,
       onClick: () => setShowRemoveConfirm(true),
       danger: true,
       disabled: !rosterPermission.allowed,

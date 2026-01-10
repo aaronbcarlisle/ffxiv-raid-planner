@@ -19,6 +19,7 @@ import { DroppablePlayerCard } from '../components/player/DroppablePlayerCard';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { EmptySlotCard } from '../components/player/EmptySlotCard';
 import { InlinePlayerEdit } from '../components/player/InlinePlayerEdit';
+import { LightPartyHeader } from '../components/player/LightPartyHeader';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
@@ -1073,10 +1074,7 @@ export function GroupView() {
                   {/* Group 1 */}
                   {groupedPlayers.group1.length > 0 && (
                     <div>
-                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                        <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-bold border border-blue-500/30">G1</span>
-                        Light Party 1
-                      </h3>
+                      <LightPartyHeader groupNumber={1} players={groupedPlayers.group1} />
                       <div className={gridClasses}>
                         {groupedPlayers.group1.map((player) => renderPlayerCard(player))}
                       </div>
@@ -1086,10 +1084,7 @@ export function GroupView() {
                   {/* Group 2 */}
                   {groupedPlayers.group2.length > 0 && (
                     <div>
-                      <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-                        <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-bold border border-red-500/30">G2</span>
-                        Light Party 2
-                      </h3>
+                      <LightPartyHeader groupNumber={2} players={groupedPlayers.group2} />
                       <div className={gridClasses}>
                         {groupedPlayers.group2.map((player) => renderPlayerCard(player))}
                       </div>

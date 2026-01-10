@@ -423,14 +423,16 @@ export function WeaponPriorityList({
   const anyVisible = visibleSections.size > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Section filter toggles - role-colored */}
-      <FilterBar
-        type="role"
-        visibleRoles={visibleSections}
-        onRoleToggle={toggleSection}
-        hiddenRoles={hiddenRoles}
-      />
+    <div className="space-y-4">
+      {/* Section filter toggles - role-colored, matching Gear Priority header style */}
+      <div className="-mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated/50">
+        <FilterBar
+          type="role"
+          visibleRoles={visibleSections}
+          onRoleToggle={toggleSection}
+          hiddenRoles={hiddenRoles}
+        />
+      </div>
 
       {/* Empty state when no sections visible */}
       {!anyVisible && (

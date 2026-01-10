@@ -6,7 +6,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
+import { ProgressRing } from '../ui/ProgressRing';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
 import {
@@ -234,13 +236,16 @@ export function PlayerCardHeader({
         </div>
       </div>
 
-      {/* Completion count, iLv, + menu button */}
+      {/* Progress ring, iLv, + menu button */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-3">
-          {/* Completion count */}
-          <div className="text-lg font-bold text-text-primary">
-            {completedSlots}/{totalSlots}
-          </div>
+          {/* Progress ring */}
+          <ProgressRing
+            value={completedSlots}
+            max={totalSlots}
+            size="md"
+            showLabel
+          />
           {/* Average iLv */}
           {averageILv > 0 && (
             <div
@@ -254,15 +259,11 @@ export function PlayerCardHeader({
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="p-0.5 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
+            className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
             title="Player options"
             aria-label="Player options menu"
           >
-            <img
-              src="/icons/player-options.png"
-              alt="Player options"
-              className="w-6 h-6"
-            />
+            <MoreVertical className="w-5 h-5 text-text-secondary" />
           </button>
         )}
       </div>

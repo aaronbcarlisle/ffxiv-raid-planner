@@ -76,7 +76,7 @@ export function RoleSection({
       </button>
       {/* Content - collapsible */}
       {isExpanded && (
-        <div className="bg-surface-elevated/30 border border-t-0 border-border-default rounded-b-lg p-3">
+        <div className={`bg-surface-elevated/30 border border-t-0 ${role.borderColor}/30 rounded-b-lg p-3`}>
           {children}
         </div>
       )}
