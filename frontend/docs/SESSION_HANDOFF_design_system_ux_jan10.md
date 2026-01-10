@@ -63,6 +63,8 @@ All 285 tests passing.
 ## Git Log (This Session)
 
 ```
+1ac5423 Add job and gear icons to BiS Import modal
+cdaec60 Update documentation: CurrentSource column now hidden
 40496cd Hide CurrentSource column (kept in code for future re-enable)
 d5e06a1 Improve GearTable UI: fixed-width BiS toggles, compact + button
 6f72dd9 Update documentation to reflect Item column removal
@@ -94,3 +96,8 @@ d332075 Add Item name column to GearTable (Task 2.4) - REVERTED
 - Tab hotkeys in tooltips (1-4)
 - View/Group toggles show (V)/(G)
 - Added 'S' for subs toggle
+
+**BiS Import Modal:**
+- Job icon in modal header and preset dropdown
+- Large job icon in preview section
+- Gear slot icons with item hover tooltips in changes list
