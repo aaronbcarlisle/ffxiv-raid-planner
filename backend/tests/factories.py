@@ -121,8 +121,14 @@ async def create_snapshot_player(
     position: str | None = "M1",
     sort_order: int = 0,
     configured: bool = True,
+    gear: list | None = None,
+    tome_weapon: dict | None = None,
 ) -> SnapshotPlayer:
     """Create a player in a tier snapshot.
+
+    Args:
+        gear: Optional pre-populated gear array. Defaults to empty list.
+        tome_weapon: Optional tome weapon status dict. Defaults to unpursued state.
 
     Note: gear and tome_weapon use native Python types (list/dict) rather than
     JSON strings because SQLAlchemy's JSON column type handles serialization
@@ -137,8 +143,8 @@ async def create_snapshot_player(
         position=position,
         sort_order=sort_order,
         configured=configured,
-        gear=[],  # Empty gear array
-        tome_weapon={"pursuing": False, "hasItem": False, "isAugmented": False},
+        gear=gear if gear is not None else [],
+        tome_weapon=tome_weapon if tome_weapon is not None else {"pursuing": False, "hasItem": False, "isAugmented": False},
         is_substitute=False,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
