@@ -77,7 +77,7 @@ function SlotIcon({
 
   const contextMenuItems: ContextMenuItem[] = hasLootEntry && onNavigateToLootEntry
     ? [{
-        label: 'Go to Loot Entry',
+        label: 'Jump to Loot Entry',
         icon: <FileSearch className="w-4 h-4" />,
         onClick: () => onNavigateToLootEntry(slot),
       }]
