@@ -211,7 +211,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
                 placeholder="Search jobs..."
-                className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setShowFullPicker(false);

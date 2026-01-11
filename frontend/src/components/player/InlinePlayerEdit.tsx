@@ -233,7 +233,7 @@ export function InlinePlayerEdit({ player, userRole, onSave, onCancel }: InlineP
             placeholder="Enter player name"
             className={`w-full bg-surface-base border rounded px-3 py-2 text-text-primary placeholder:text-text-muted focus:outline-none transition-colors ${
               showNameError
-                ? 'border-status-error focus:border-status-error'
+                ? 'border-status-error focus-visible:border-status-error'
                 : 'border-border-default'
             }`}
             style={{
@@ -298,7 +298,7 @@ export function InlinePlayerEdit({ player, userRole, onSave, onCancel }: InlineP
               <button
                 type="button"
                 onClick={() => setIsJobPickerOpen(!isJobPickerOpen)}
-                className="w-full bg-surface-base border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus:border-accent focus:outline-none hover:border-text-muted"
+                className="w-full bg-surface-base border border-border-default rounded px-3 py-2 text-left flex items-center gap-3 focus-visible:border-accent focus:outline-none hover:border-text-muted"
               >
                 {selectedJobInfo ? (
                   <>
@@ -324,7 +324,7 @@ export function InlinePlayerEdit({ player, userRole, onSave, onCancel }: InlineP
                       value={jobSearch}
                       onChange={(e) => setJobSearch(e.target.value)}
                       placeholder="Search jobs..."
-                      className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                      className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
                     />
                   </div>
 

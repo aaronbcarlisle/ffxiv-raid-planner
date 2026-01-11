@@ -161,7 +161,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
                       value={membership.role}
                       onChange={(e) => handleRoleChange(member.id, e.target.value as MemberRole)}
                       disabled={isSaving}
-                      className="bg-surface-base border border-border-default rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:border-accent"
+                      className="bg-surface-base border border-border-default rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus-visible:border-accent"
                     >
                       {isOwner && <option value="lead">Lead</option>}
                       <option value="member">Member</option>

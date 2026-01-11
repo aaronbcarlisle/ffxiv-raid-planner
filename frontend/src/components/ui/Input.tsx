@@ -101,14 +101,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               bg-surface-elevated
               text-text-primary placeholder:text-text-muted
               transition-colors duration-fast
-              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-base
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
               disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-card
               ${sizeStyles[size]}
               ${leftIcon ? iconSizeStyles[size] : ''}
               ${rightIcon ? rightIconSizeStyles[size] : ''}
               ${hasError
-                ? 'border-status-error focus:border-status-error focus:ring-status-error/30'
-                : 'border-border-default focus:border-accent focus:ring-accent/30 hover:border-border-subtle'
+                ? 'border-status-error focus-visible:border-status-error focus-visible:ring-status-error/30'
+                : 'border-border-default focus-visible:border-accent focus-visible:ring-accent/30 hover:border-border-subtle'
               }
               ${className}
             `}
