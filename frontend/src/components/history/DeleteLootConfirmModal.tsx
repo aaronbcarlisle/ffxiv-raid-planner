@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Modal, Checkbox } from '../ui';
 import { Button } from '../primitives';
 import type { LootLogEntry } from '../../types';
@@ -41,7 +42,16 @@ export function DeleteLootConfirmModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Delete Loot Entry">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Trash2 className="w-5 h-5 text-status-error" />
+          Delete Loot Entry
+        </span>
+      }
+    >
       <div className="space-y-4">
         {/* Entry info */}
         <div className="bg-surface-base rounded-lg p-3 space-y-1">

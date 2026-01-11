@@ -24,7 +24,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Settings } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Trash2 } from 'lucide-react';
 import { Modal, Checkbox, Label, Input } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -210,42 +210,46 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
         <div className="flex border-b border-border-default -mx-6 px-6">
           <button
             onClick={() => setActiveTab('general')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'general'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
+            <Settings className="w-4 h-4" />
             General
           </button>
           <button
             onClick={() => setActiveTab('priority')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'priority'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
+            <ListOrdered className="w-4 h-4" />
             Priority
           </button>
           <button
             onClick={() => setActiveTab('members')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'members'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
+            <Users className="w-4 h-4" />
             Members
           </button>
           <button
             onClick={() => setActiveTab('invitations')}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'invitations'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
+            <Mail className="w-4 h-4" />
             Invitations
           </button>
         </div>
@@ -314,10 +318,10 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
                   {isOwner && (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="danger"
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="text-status-error hover:text-status-error/80"
                     >
+                      <Trash2 className="w-4 h-4 mr-1.5" />
                       Delete Static
                     </Button>
                   )}

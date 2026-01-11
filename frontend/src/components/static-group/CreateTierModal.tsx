@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { FolderPlus } from 'lucide-react';
 import { Modal, Select, Label } from '../ui';
 import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
@@ -45,7 +46,16 @@ export function CreateTierModal({ groupId, existingTierIds, onClose, onCreate }:
   ];
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Create New Tier">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <FolderPlus className="w-5 h-5" />
+          Create New Tier
+        </span>
+      }
+    >
       <div className="space-y-4">
         <div>
           <Label htmlFor="tierSelect">Select Raid Tier</Label>

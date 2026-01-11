@@ -4,6 +4,7 @@
  * Confirmation modal for deleting a tier snapshot.
  */
 
+import { Trash2 } from 'lucide-react';
 import { Modal } from '../ui';
 import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
@@ -35,7 +36,16 @@ export function DeleteTierModal({ groupId, tierSnapshotId, tierId, onClose, onDe
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Delete Tier">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Trash2 className="w-5 h-5 text-status-error" />
+          Delete Tier
+        </span>
+      }
+    >
       <div className="space-y-4">
         <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">
           <p className="text-text-secondary">

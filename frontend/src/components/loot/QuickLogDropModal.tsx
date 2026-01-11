@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -157,17 +158,23 @@ export function QuickLogDropModal({
     label: `Week ${i + 1}`,
   }));
 
-  // Build recipient options
+  // Build recipient options with job icons
   const recipientOptions = sortedRecipients.map(({ player, priority, needsItem }) => ({
     value: player.id,
-    label: `${player.name} (${player.job})${getPriorityLabel(priority, needsItem)}`,
+    label: `${player.name}${getPriorityLabel(priority, needsItem)}`,
+    icon: <JobIcon job={player.job} size="sm" />,
   }));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Log ${slotName} Drop`}
+      title={
+        <span className="flex items-center gap-2">
+          <Package className="w-5 h-5" />
+          Log {slotName} Drop
+        </span>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}

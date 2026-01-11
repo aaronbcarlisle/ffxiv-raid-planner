@@ -2,8 +2,8 @@
  * Invitations Panel - Manage invitations for a static group
  */
 
-import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { X, XCircle, Check } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { Select, Label, NumberInput } from '../ui';
 import { Button, IconButton } from '../primitives';
@@ -69,11 +69,44 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
     }
   };
 
-  const handleRevoke = async (invitationId: string) => {
-    if (confirm('Are you sure you want to revoke this invitation?')) {
+  // Double-click confirm state for revoke
+  const [armedRevokeId, setArmedRevokeId] = useState<string | null>(null);
+  const armedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear armed state after timeout or on click outside
+  const clearArmedState = useCallback(() => {
+    setArmedRevokeId(null);
+    if (armedTimeoutRef.current) {
+      clearTimeout(armedTimeoutRef.current);
+      armedTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Handle revoke button click - first click arms, second click confirms
+  const handleRevokeClick = async (invitationId: string) => {
+    if (armedRevokeId === invitationId) {
+      // Second click - execute revoke
+      clearArmedState();
       await revokeInvitation(groupId, invitationId);
+    } else {
+      // First click - arm the button
+      clearArmedState();
+      setArmedRevokeId(invitationId);
+      // Auto-reset after 3 seconds
+      armedTimeoutRef.current = setTimeout(() => {
+        setArmedRevokeId(null);
+      }, 3000);
     }
   };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (armedTimeoutRef.current) {
+        clearTimeout(armedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const copyInviteLink = async (code: string) => {
     const url = `${window.location.origin}/invite/${code}`;
@@ -252,13 +285,28 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
                   )}
                   {inv.isActive && (
                     <Button
-                      variant="ghost"
+                      variant={armedRevokeId === inv.id ? 'warning' : 'danger'}
                       size="sm"
-                      onClick={() => handleRevoke(inv.id)}
-                      title="Revoke invitation"
-                      className="text-status-error hover:text-status-error/80"
+                      onClick={() => handleRevokeClick(inv.id)}
+                      onBlur={() => {
+                        // Reset if user tabs away
+                        if (armedRevokeId === inv.id) {
+                          setTimeout(() => setArmedRevokeId(null), 100);
+                        }
+                      }}
+                      title={armedRevokeId === inv.id ? 'Click again to confirm' : 'Revoke invitation'}
                     >
-                      Revoke
+                      {armedRevokeId === inv.id ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1" />
+                          Confirm?
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Revoke
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>

@@ -32,6 +32,7 @@ import {
   FileDown,
   Link2Off,
   Link2,
+  RefreshCw,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
@@ -444,7 +445,12 @@ export const PlayerCard = memo(function PlayerCard({
       <Modal
         isOpen={showRemoveConfirm}
         onClose={() => setShowRemoveConfirm(false)}
-        title="Remove Player"
+        title={
+          <span className="flex items-center gap-2">
+            <UserMinus className="w-5 h-5 text-status-error" />
+            Remove Player
+          </span>
+        }
       >
         <p className="text-text-secondary mb-6">
           Are you sure you want to remove <span className="text-text-primary font-medium">{player.name}</span> from the static?
@@ -474,7 +480,12 @@ export const PlayerCard = memo(function PlayerCard({
       <Modal
         isOpen={showResetConfirm}
         onClose={() => setShowResetConfirm(false)}
-        title="Reset Gear Progress"
+        title={
+          <span className="flex items-center gap-2">
+            <RotateCcw className="w-5 h-5 text-status-warning" />
+            Reset Gear Progress
+          </span>
+        }
       >
         <div className="mb-6">
           <p className="text-text-secondary mb-4">
@@ -532,7 +543,12 @@ export const PlayerCard = memo(function PlayerCard({
       <Modal
         isOpen={showUnlinkBiSConfirm}
         onClose={() => setShowUnlinkBiSConfirm(false)}
-        title="Unlink BiS"
+        title={
+          <span className="flex items-center gap-2">
+            <Link2Off className="w-5 h-5 text-status-warning" />
+            Unlink BiS
+          </span>
+        }
         size="sm"
       >
         <p className="text-text-secondary mb-4">
@@ -566,7 +582,12 @@ export const PlayerCard = memo(function PlayerCard({
       <Modal
         isOpen={showPasteConfirm}
         onClose={() => setShowPasteConfirm(false)}
-        title="Paste Player"
+        title={
+          <span className="flex items-center gap-2">
+            <ClipboardPaste className="w-5 h-5" />
+            Paste Player
+          </span>
+        }
         size="sm"
       >
         <p className="text-text-secondary mb-4">
@@ -622,7 +643,12 @@ export const PlayerCard = memo(function PlayerCard({
       <Modal
         isOpen={showJobChangeConfirm}
         onClose={cancelJobChange}
-        title={`Change ${player.name}'s Job?`}
+        title={
+          <span className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Change {player.name}'s Job?
+          </span>
+        }
         size="sm"
       >
         <div className="space-y-4">

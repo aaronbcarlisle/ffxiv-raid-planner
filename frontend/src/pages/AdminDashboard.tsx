@@ -423,7 +423,8 @@ export function AdminDashboard() {
           />
           <div className="relative bg-surface-card border border-border-default rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-4 border-b border-border-subtle">
-              <h3 className="text-lg font-semibold text-text-primary">
+              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <Eye className="w-5 h-5 text-status-warning" />
                 View As Member
               </h3>
               <p className="text-sm text-text-muted mt-1">

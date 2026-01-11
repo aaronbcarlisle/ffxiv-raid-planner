@@ -7,9 +7,11 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Swords, RotateCcw } from 'lucide-react';
 import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import { WeaponPriorityGrid } from './WeaponPriorityGrid';
 import { JobSelectorPanel } from './JobSelectorPanel';
 import { useTierStore } from '../../stores/tierStore';
@@ -234,7 +236,12 @@ export function WeaponPriorityModal({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={`${player.name || 'Player'} - Weapon Priorities`}
+        title={
+          <span className="flex items-center gap-2">
+            <JobIcon job={player.job} size="md" />
+            {player.name || 'Player'} - Weapon Priorities
+          </span>
+        }
         size={modalSize}
       >
         <div className="flex flex-col max-h-[70vh] overflow-hidden">
@@ -349,7 +356,12 @@ export function WeaponPriorityModal({
         <Modal
           isOpen={showResetConfirm}
           onClose={handleCancelReset}
-          title="Confirm Reset"
+          title={
+            <span className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-status-warning" />
+              Confirm Reset
+            </span>
+          }
         >
           <div className="space-y-4">
             <p className="text-sm text-text-secondary">

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { Modal } from './Modal';
 import { Label } from './Label';
 import { Input } from './Input';
@@ -59,7 +60,12 @@ export function ResetConfirmModal({
     <Modal
       isOpen={isOpen}
       onClose={onCancel}
-      title="Confirm Reset"
+      title={
+        <span className="flex items-center gap-2">
+          <RotateCcw className="w-5 h-5 text-status-error" />
+          Confirm Reset
+        </span>
+      }
       size="md"
     >
       <div className="space-y-4">

@@ -6,8 +6,10 @@
  * don't require type-to-confirm.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Trash2, AlertTriangle, Info } from 'lucide-react';
 import { Modal } from './Modal';
+import { Button } from '../primitives';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -16,6 +18,8 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'default';
+  /** Optional custom icon for the title. If not provided, uses variant-based default. */
+  icon?: ReactNode;
   onConfirm: () => Promise<void> | void;
   onCancel: () => void;
 }
@@ -27,6 +31,7 @@ export function ConfirmModal({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'danger',
+  icon,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -45,27 +50,45 @@ export function ConfirmModal({
     danger: {
       icon: 'text-status-error',
       bg: 'bg-status-error/10 border-status-error/30',
-      button: 'bg-status-error text-white hover:bg-status-error/90',
     },
     warning: {
       icon: 'text-status-warning',
       bg: 'bg-status-warning/10 border-status-warning/30',
-      button: 'bg-status-warning text-status-warning-contrast font-bold hover:brightness-110',
     },
     default: {
       icon: 'text-accent',
       bg: 'bg-accent/10 border-accent/30',
-      button: 'bg-accent text-accent-contrast font-bold hover:bg-accent-hover',
     },
   };
 
   const styles = variantStyles[variant];
 
+  // Map ConfirmModal variant to Button variant
+  const buttonVariant = variant === 'default' ? 'primary' : variant;
+
+  // Determine the icon: use provided icon, or default based on variant
+  const getDefaultIcon = () => {
+    if (variant === 'danger') {
+      return <Trash2 className="w-5 h-5 text-status-error" />;
+    }
+    if (variant === 'warning') {
+      return <AlertTriangle className="w-5 h-5 text-status-warning" />;
+    }
+    return <Info className="w-5 h-5 text-accent" />;
+  };
+
+  const titleIcon = icon ?? getDefaultIcon();
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onCancel}
-      title={title}
+      title={
+        <span className="flex items-center gap-2">
+          {titleIcon}
+          {title}
+        </span>
+      }
       size="sm"
     >
       <div className="space-y-4">
@@ -85,31 +108,22 @@ export function ConfirmModal({
 
         {/* Buttons */}
         <div className="flex justify-end gap-3">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onCancel}
             disabled={isConfirming}
-            className="px-4 py-2 text-sm font-medium text-text-secondary bg-surface-interactive
-                       rounded-lg hover:bg-surface-elevated transition-colors disabled:opacity-50"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant={buttonVariant}
             onClick={handleConfirm}
-            disabled={isConfirming}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${styles.button}`}
+            loading={isConfirming}
           >
-            {isConfirming ? (
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              confirmLabel
-            )}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </Modal>

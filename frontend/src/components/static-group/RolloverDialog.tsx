@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { Copy } from 'lucide-react';
 import { Modal, Select, RadioGroup, Label } from '../ui';
 import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
@@ -66,7 +67,16 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
   ];
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Roll Over to New Tier">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Copy className="w-5 h-5" />
+          Roll Over to New Tier
+        </span>
+      }
+    >
       <div className="space-y-4">
         {error && (
           <div className="p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">

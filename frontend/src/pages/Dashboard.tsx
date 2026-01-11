@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
+import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List, Users } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
@@ -603,7 +603,12 @@ export function Dashboard() {
             setNewGroupName('');
             setNewGroupPublic(false);
           }}
-          title="Create Static Group"
+          title={
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Create Static Group
+            </span>
+          }
         >
           <form onSubmit={handleCreateGroup} className="space-y-4">
             <div>
@@ -668,7 +673,12 @@ export function Dashboard() {
             setShowDeleteConfirm(false);
             setDeleteConfirmText('');
           }}
-          title="Delete Static"
+          title={
+            <span className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-status-error" />
+              Delete Static
+            </span>
+          }
         >
           <div className="space-y-4">
             <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">

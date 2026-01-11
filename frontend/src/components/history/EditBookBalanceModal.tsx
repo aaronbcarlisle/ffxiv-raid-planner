@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { BookOpen } from 'lucide-react';
 import { Modal, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -53,7 +54,16 @@ export function EditBookBalanceModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Edit ${bookLabel}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5" />
+          Edit {bookLabel}
+        </span>
+      }
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="text-sm text-text-secondary">
           Adjusting {bookLabel} balance for <span className="font-medium text-text-primary">{playerName}</span>

@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { BookCheck } from 'lucide-react';
 import { Modal, Select, Checkbox, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -105,7 +106,16 @@ export function MarkFloorClearedModal({
   const floorOptions = floors.map((f) => ({ value: f, label: f }));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Mark Floor Cleared">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <BookCheck className="w-5 h-5" />
+          Mark Floor Cleared
+        </span>
+      }
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Week and Floor */}
         <div className="grid grid-cols-2 gap-4">
