@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 11, 2026 (v1.0.7 Released - Audit Complete)
+**Last Updated:** January 11, 2026 (v1.0.8 In Progress - Modal Polish)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -36,6 +36,16 @@
 | **Design System V2** | 6.6 | ✅ Complete | Semantic tokens, 5-tier containers, new primitives |
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
+
+### 🔨 In Progress: v1.0.8 - Modal Polish (January 11, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Modal Header Icons** | ✅ Complete | All modals have contextual icons in headers |
+| **ConfirmModal Improvements** | ✅ Complete | Uses Button component, auto-adds icons by variant |
+| **Double-Click Confirm** | ✅ Complete | Revoke/Clear actions use arm-then-confirm pattern |
+| **Job Icons in Dropdowns** | ✅ Complete | Recipient selects show job icons |
+| **Static Settings Polish** | ✅ Complete | Tab icons, proper danger button styling |
 
 ### ✅ Completed: v1.0.7 - Audit Complete (January 11, 2026)
 

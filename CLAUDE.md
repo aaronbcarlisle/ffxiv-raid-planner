@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.7 Released (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.8 In Progress (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -99,6 +99,7 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `components/ui/KeyboardShortcutsHelp.tsx` | Keyboard shortcuts help modal |
 | `components/ui/ErrorMessage.tsx` | Error display with retry support (v1.0.7) |
 | `components/ui/Skeleton.tsx` | Skeleton loaders for loading states (v1.0.7) |
+| `components/ui/ConfirmModal.tsx` | Generic confirm dialog with auto-icons (v1.0.8) |
 | `config.ts` | API URL and environment configuration |
 
 ---
@@ -113,6 +114,13 @@ All actionable audit items have been resolved. Only R-002 (props drilling) remai
 
 ### Deferred Items
 - **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
+
+### In Progress: v1.0.8
+- Modal header icons - All modals now have contextual icons in their headers
+- Double-click confirm pattern - Dangerous actions require click-to-arm, click-to-confirm
+- ConfirmModal improvements - Uses Button component with proper variants, auto-adds icons
+- Job icons in dropdowns - Recipient selects show job icons
+- Static Settings polish - Tab icons, proper danger button styling
 
 ### Resolved in v1.0.7
 - ~~**U-001:** Missing skeleton loaders~~ - StaticGridSkeleton, StaticListSkeleton added (PR #21)
@@ -373,6 +381,35 @@ Dragging between G1/G2 auto-swaps position (T1↔T2, H1↔H2, etc.)
 
 ### Modal + DnD
 When modals open, set drag sensor distance to 999999 to disable dragging.
+
+### Modal Header Icons (v1.0.8)
+All modals have contextual icons in their headers for visual consistency:
+- Danger modals: Trash2 (red) for delete, RotateCcw (warning) for reset
+- Action modals: Contextual icons (Package for loot, Gem for materials, Users for groups)
+- ConfirmModal auto-adds icons based on variant (danger/warning/default)
+
+### Double-Click Confirm Pattern (v1.0.8)
+For destructive actions that don't need type-to-confirm but should prevent accidents:
+1. First click: Button changes to "Confirm?" with warning styling
+2. Second click: Action executes
+3. Auto-resets after 3 seconds if not confirmed
+4. Resets on blur (click away or tab out)
+
+Used in: Revoke invitation, Clear book history
+
+```tsx
+const [isArmed, setIsArmed] = useState(false);
+const handleClick = async () => {
+  if (isArmed) {
+    // Execute action
+    await doDestructiveAction();
+    setIsArmed(false);
+  } else {
+    setIsArmed(true);
+    setTimeout(() => setIsArmed(false), 3000);
+  }
+};
+```
 
 ### UI State Persistence (localStorage)
 - `group-view-tab`, `loot-priority-subtab`, `party-view-mode`
