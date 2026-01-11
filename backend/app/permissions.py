@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,10 +43,11 @@ async def create_membership_for_assignment(
     role: MemberRole,
 ) -> Membership:
     """
-    Create a new membership when assigning a user to a player card.
+    Create or get membership when assigning a user to a player card.
 
     Used by owner assignment and admin assignment flows.
-    Validates that membership doesn't already exist.
+    If membership already exists, returns the existing one (no-op).
+    Handles race conditions gracefully with IntegrityError catch.
 
     Args:
         session: Database session
@@ -54,18 +56,15 @@ async def create_membership_for_assignment(
         role: Role to assign (must be MEMBER or LEAD)
 
     Returns:
-        Created membership
+        Existing or newly created membership
 
     Raises:
-        HTTPException: If membership already exists or invalid role
+        HTTPException: If invalid role provided
     """
-    # Check if membership already exists
+    # Check if membership already exists - if so, return it (no-op)
     existing = await get_user_membership(session, user_id, group_id)
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is already a member of this group",
-        )
+        return existing
 
     # Validate role is member or lead only
     if role not in [MemberRole.MEMBER, MemberRole.LEAD]:
@@ -74,7 +73,7 @@ async def create_membership_for_assignment(
             detail="Can only assign member or lead role",
         )
 
-    # Create membership
+    # Create membership with race condition handling
     now = datetime.now(timezone.utc).isoformat()
     membership = Membership(
         id=str(uuid.uuid4()),
@@ -84,8 +83,19 @@ async def create_membership_for_assignment(
         joined_at=now,
         updated_at=now,
     )
-    session.add(membership)
-    await session.flush()
+
+    try:
+        session.add(membership)
+        await session.flush()
+    except IntegrityError:
+        # Race condition - another request created the membership first
+        # Roll back and return the existing membership
+        await session.rollback()
+        existing = await get_user_membership(session, user_id, group_id)
+        if existing:
+            return existing
+        # Re-raise if we still can't find it (shouldn't happen)
+        raise
 
     return membership
 

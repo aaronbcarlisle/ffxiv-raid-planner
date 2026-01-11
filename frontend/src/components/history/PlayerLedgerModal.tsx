@@ -5,7 +5,7 @@
  * Shows date/time, week, floor, book type, transaction type, quantity, and notes.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { History, Trash2, Check } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
@@ -51,11 +51,9 @@ export function PlayerLedgerModal({
   onHistoryCleared,
 }: PlayerLedgerModalProps) {
   const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
-  const [isClearing, setIsClearing] = useState(false);
 
   // Handle the actual clear action
   const handleClearHistory = useCallback(async () => {
-    setIsClearing(true);
     try {
       await deletePlayerLedger(groupId, tierId, playerId);
       toast.success(`Cleared history for ${playerName}`);
@@ -63,20 +61,18 @@ export function PlayerLedgerModal({
       onClose();
     } catch {
       toast.error('Failed to clear history');
-    } finally {
-      setIsClearing(false);
     }
   }, [deletePlayerLedger, groupId, tierId, playerId, playerName, onHistoryCleared, onClose]);
 
-  // Double-click confirm for clear history
+  // Double-click confirm for clear history (hook handles loading state)
   const {
     isArmed: isClearArmed,
+    isLoading: isClearing,
     handleClick: handleClearClick,
     handleBlur: handleClearBlur,
     resetArmed: clearArmedState,
   } = useDoubleClickConfirm({
     onConfirm: handleClearHistory,
-    timeout: 3000,
   });
 
   // Fetch ledger entries when modal opens

@@ -852,22 +852,21 @@ class TestCreateMembershipForAssignment:
         assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_cannot_create_duplicate_membership(
+    async def test_returns_existing_membership_on_duplicate(
         self, session: AsyncSession, test_user: User, test_group
     ):
-        """Test that duplicate memberships are prevented."""
-        from fastapi import HTTPException
-
+        """Test that duplicate membership requests return the existing membership (no-op)."""
         # Create first membership
-        await create_membership_for_assignment(
+        first_membership = await create_membership_for_assignment(
             session, test_user.id, test_group.id, MemberRole.MEMBER
         )
 
-        # Try to create duplicate
-        with pytest.raises(HTTPException) as exc_info:
-            await create_membership_for_assignment(
-                session, test_user.id, test_group.id, MemberRole.LEAD
-            )
+        # Try to create duplicate - should return existing membership
+        second_membership = await create_membership_for_assignment(
+            session, test_user.id, test_group.id, MemberRole.LEAD  # Different role intentionally
+        )
 
-        assert exc_info.value.status_code == 400
-        assert "already a member" in exc_info.value.detail.lower()
+        # Should return the same membership (not create a new one)
+        assert second_membership.id == first_membership.id
+        # Original role should be preserved
+        assert second_membership.role == MemberRole.MEMBER.value

@@ -16,6 +16,19 @@ import { parseApiError } from '../../lib/errorHandler';
 
 const log = logger.scope('AssignUserModal');
 
+// Discord IDs are 17-19 digit snowflakes
+const DISCORD_ID_REGEX = /^\d{17,19}$/;
+// UUID v4 format
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Validate a user ID (Discord ID or internal UUID)
+ */
+function isValidUserId(id: string): boolean {
+  if (!id.trim()) return true; // Empty is valid (for unassign)
+  return DISCORD_ID_REGEX.test(id) || UUID_REGEX.test(id);
+}
+
 interface AssignUserModalProps {
   player: SnapshotPlayer;
   groupId: string;
@@ -34,6 +47,7 @@ export function AssignUserModal({
   const [useManualInput, setUseManualInput] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>(player.userId || '');
   const [manualId, setManualId] = useState('');
+  const [manualIdError, setManualIdError] = useState<string | null>(null);
   const [createMembership, setCreateMembership] = useState(false);
   const [membershipRole, setMembershipRole] = useState<'member' | 'lead'>('member');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +106,13 @@ export function AssignUserModal({
   const hasChanged = effectiveUserId !== (player.userId || '');
 
   const handleAssign = async () => {
+    // Validate manual ID if using manual input
+    if (useManualInput && effectiveUserId && !isValidUserId(effectiveUserId)) {
+      setManualIdError('Please enter a valid Discord ID (17-19 digits) or internal user ID (UUID format)');
+      return;
+    }
+    setManualIdError(null);
+
     setIsSubmitting(true);
     try {
       const data: AssignPlayerRequest = {
@@ -203,14 +224,21 @@ export function AssignUserModal({
             <Input
               type="text"
               value={manualId}
-              onChange={setManualId}
+              onChange={(value) => {
+                setManualId(value);
+                setManualIdError(null); // Clear error on change
+              }}
               placeholder="Enter Discord User ID or internal user ID"
-              className="w-full"
+              className={`w-full ${manualIdError ? 'border-status-error' : ''}`}
               disabled={isSubmitting}
             />
-            <p className="text-xs text-text-muted mt-1">
-              Enter the 18-digit Discord User ID or internal user ID.
-            </p>
+            {manualIdError ? (
+              <p className="text-xs text-status-error mt-1">{manualIdError}</p>
+            ) : (
+              <p className="text-xs text-text-muted mt-1">
+                Enter a Discord User ID (17-19 digits) or internal user ID (UUID).
+              </p>
+            )}
           </div>
         )}
 

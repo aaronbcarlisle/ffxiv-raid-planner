@@ -8,7 +8,7 @@
  * 4. Resets on blur (click away or tab out)
  *
  * @example
- * const { isArmed, handleClick, handleBlur, resetArmed } = useDoubleClickConfirm({
+ * const { isArmed, isLoading, handleClick, handleBlur, resetArmed } = useDoubleClickConfirm({
  *   onConfirm: async () => { await deleteItem(); },
  *   timeout: 3000,
  * });
@@ -18,14 +18,20 @@
  *   onBlur={handleBlur}
  *   disabled={isLoading}
  * >
- *   {isArmed ? 'Confirm?' : 'Delete'}
+ *   {isLoading ? 'Deleting...' : isArmed ? 'Confirm?' : 'Delete'}
  * </button>
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+/** Default timeout before auto-resetting armed state (ms) */
+const DEFAULT_ARMED_TIMEOUT = 3000;
+
+/** Default delay before resetting on blur (ms) */
+const DEFAULT_BLUR_DELAY = 100;
+
 interface UseDoubleClickConfirmOptions {
-  /** Callback when user confirms (second click) */
+  /** Callback when user confirms (second click). Can be async. */
   onConfirm: () => void | Promise<void>;
   /** Timeout in ms before auto-resetting (default: 3000) */
   timeout?: number;
@@ -36,6 +42,8 @@ interface UseDoubleClickConfirmOptions {
 interface UseDoubleClickConfirmReturn {
   /** Whether the action is armed (waiting for confirmation) */
   isArmed: boolean;
+  /** Whether the confirm action is currently executing */
+  isLoading: boolean;
   /** Click handler - first click arms, second click confirms */
   handleClick: () => void;
   /** Blur handler - resets armed state with small delay */
@@ -46,10 +54,11 @@ interface UseDoubleClickConfirmReturn {
 
 export function useDoubleClickConfirm({
   onConfirm,
-  timeout = 3000,
-  blurDelay = 100,
+  timeout = DEFAULT_ARMED_TIMEOUT,
+  blurDelay = DEFAULT_BLUR_DELAY,
 }: UseDoubleClickConfirmOptions): UseDoubleClickConfirmReturn {
   const [isArmed, setIsArmed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const armedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetArmed = useCallback(() => {
@@ -60,11 +69,18 @@ export function useDoubleClickConfirm({
     }
   }, []);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback(async () => {
+    if (isLoading) return; // Prevent clicks while loading
+
     if (isArmed) {
       // Second click - execute action
       resetArmed();
-      onConfirm();
+      setIsLoading(true);
+      try {
+        await onConfirm();
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       // First click - arm the button
       setIsArmed(true);
@@ -72,14 +88,14 @@ export function useDoubleClickConfirm({
         setIsArmed(false);
       }, timeout);
     }
-  }, [isArmed, onConfirm, resetArmed, timeout]);
+  }, [isArmed, isLoading, onConfirm, resetArmed, timeout]);
 
   const handleBlur = useCallback(() => {
-    if (isArmed) {
+    if (isArmed && !isLoading) {
       // Small delay to allow click to register first
       setTimeout(() => setIsArmed(false), blurDelay);
     }
-  }, [isArmed, blurDelay]);
+  }, [isArmed, isLoading, blurDelay]);
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -92,6 +108,7 @@ export function useDoubleClickConfirm({
 
   return {
     isArmed,
+    isLoading,
     handleClick,
     handleBlur,
     resetArmed,
