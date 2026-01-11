@@ -292,9 +292,6 @@ export function PlayerGrid({
   onEditPlayer,
   onCancelEdit,
 }: PlayerGridProps) {
-  // DEBUG: Log isAdmin value received
-  console.log('[PlayerGrid] isAdmin prop:', isAdmin, 'isAdminAccess:', isAdminAccess);
-
   // Memoize common props for PlayerCardRenderer to prevent unnecessary re-renders
   const renderCardProps = useMemo(() => ({
     editingPlayerId,
@@ -307,6 +304,7 @@ export function PlayerGrid({
     userRole,
     userHasClaimedPlayer,
     isAdminAccess,
+    isAdmin,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -337,6 +335,7 @@ export function PlayerGrid({
     userRole,
     userHasClaimedPlayer,
     isAdminAccess,
+    isAdmin,
     groupId,
     tierId,
     highlightedPlayerId,
