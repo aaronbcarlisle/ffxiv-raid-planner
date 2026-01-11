@@ -411,6 +411,14 @@ export const PlayerCard = memo(function PlayerCard({
     onReleasePlayer,
   ]);
 
+  // Prevent focus flash when Shift+Click starts
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.shiftKey && onCopyUrl) {
+      // Prevent the mousedown from causing focus
+      e.preventDefault();
+    }
+  };
+
   // Handle Shift+Click to copy URL
   const handleCardClick = (e: React.MouseEvent) => {
     if (e.shiftKey && onCopyUrl) {
@@ -432,6 +440,7 @@ export const PlayerCard = memo(function PlayerCard({
       className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 select-none ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
       style={{ borderLeftColor: roleColor }}
       onContextMenu={handleContextMenu}
+      onMouseDown={handleMouseDown}
       onClick={handleCardClick}
       title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
     >
