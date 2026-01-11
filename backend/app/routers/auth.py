@@ -281,8 +281,15 @@ async def refresh_access_token(
 
 
 @router.post("/logout")
-async def logout(response: Response) -> dict:
-    """Logout user by clearing httpOnly cookies."""
+async def logout(
+    response: Response,
+    _user: User = Depends(get_current_user),  # Require auth to prevent CSRF
+) -> dict:
+    """Logout user by clearing httpOnly cookies.
+
+    Requires authentication to prevent CSRF attacks where an attacker
+    could force a user to logout by making a cross-origin POST request.
+    """
     # Clear cookies with matching attributes for proper deletion across all browsers
     response.delete_cookie(key="access_token", path="/", samesite="lax")
     response.delete_cookie(key="refresh_token", path="/", samesite="lax")

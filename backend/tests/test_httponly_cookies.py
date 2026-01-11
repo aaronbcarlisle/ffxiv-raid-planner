@@ -339,13 +339,24 @@ class TestLogoutClearsCookies:
         assert refresh_token_cleared, "refresh_token cookie was not cleared"
 
     @pytest.mark.asyncio
-    async def test_logout_returns_success_message(self, client):
-        """POST /api/auth/logout should return success message."""
+    async def test_logout_returns_success_message(self, client, test_user: User):
+        """POST /api/auth/logout should return success message when authenticated."""
+        access_token = create_access_token(test_user.id)
+        client.cookies.set("access_token", access_token)
+
         response = await client.post("/api/auth/logout")
 
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "Logged out successfully"
+
+    @pytest.mark.asyncio
+    async def test_logout_requires_authentication(self, client):
+        """POST /api/auth/logout should reject unauthenticated requests (CSRF protection)."""
+        response = await client.post("/api/auth/logout")
+
+        # Should reject unauthenticated logout to prevent CSRF attacks
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_api_call_after_logout_fails(self, client, test_user: User):
