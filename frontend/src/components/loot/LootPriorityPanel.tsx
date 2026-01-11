@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { FLOOR_LOOT_TABLES, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
@@ -23,6 +23,77 @@ import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
+
+interface EnhancedPriorityEntry extends PriorityEntry {
+  enhancedScore?: number;
+  droughtBonus?: number;
+  balancePenalty?: number;
+}
+
+// Memoized priority entry component to prevent unnecessary re-renders
+interface LootPriorityEntryProps {
+  entry: EnhancedPriorityEntry;
+  index: number;
+  isFirst: boolean;
+  showEnhanced: boolean;
+  showLogButton: boolean;
+  onLogClick?: (player: SnapshotPlayer) => void;
+}
+
+const LootPriorityEntry = memo(function LootPriorityEntry({
+  entry,
+  index,
+  isFirst,
+  showEnhanced,
+  showLogButton,
+  onLogClick,
+}: LootPriorityEntryProps) {
+  const roleColor = getRoleColor(entry.player.role as any);
+  const displayScore = showEnhanced && entry.enhancedScore !== undefined
+    ? entry.enhancedScore
+    : entry.score;
+
+  // Build tooltip for enhanced score breakdown with intuitive labels
+  const tooltipText = showEnhanced && entry.enhancedScore !== undefined
+    ? `Role Priority: ${entry.score} | No Drops Bonus: +${entry.droughtBonus ?? 0} | Fair Share Adj: -${entry.balancePenalty ?? 0}`
+    : undefined;
+
+  return (
+    <div
+      className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
+        isFirst ? 'bg-accent/20' : ''
+      }`}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+          {index + 1}.
+        </span>
+        <JobIcon job={entry.player.job} size="xs" />
+        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+          {entry.player.name}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {/* Log button - shows on hover for any entry */}
+        {showLogButton && onLogClick && (
+          <button
+            onClick={() => onLogClick(entry.player)}
+            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+          >
+            Log
+          </button>
+        )}
+        <span
+          className="text-xs px-1.5 py-0.5 rounded cursor-help"
+          style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+          title={tooltipText}
+        >
+          {displayScore}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 type MatrixFloorFilter = FloorNumber | 'all';
 
@@ -50,12 +121,6 @@ interface LootPriorityPanelProps {
   // Optional props for URL-controlled subtab (for deep linking)
   activeSubTab?: LootSubTabType;
   onSubTabChange?: (tab: LootSubTabType) => void;
-}
-
-interface EnhancedPriorityEntry extends PriorityEntry {
-  enhancedScore?: number;
-  droughtBonus?: number;
-  balancePenalty?: number;
 }
 
 interface PriorityListProps {
@@ -86,55 +151,17 @@ function PriorityList({
 
   return (
     <div className="space-y-1">
-      {visibleEntries.map((entry, index) => {
-        const roleColor = getRoleColor(entry.player.role as any);
-        const isFirst = index === 0;
-        const displayScore = showEnhanced && entry.enhancedScore !== undefined
-          ? entry.enhancedScore
-          : entry.score;
-
-        // Build tooltip for enhanced score breakdown with intuitive labels
-        const tooltipText = showEnhanced && entry.enhancedScore !== undefined
-          ? `Role Priority: ${entry.score} | No Drops Bonus: +${entry.droughtBonus ?? 0} | Fair Share Adj: -${entry.balancePenalty ?? 0}`
-          : undefined;
-
-        return (
-          <div
-            key={entry.player.id}
-            className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
-              isFirst ? 'bg-accent/20' : ''
-            }`}
-          >
-            <div className="flex items-center gap-1.5">
-              <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
-                {index + 1}.
-              </span>
-              <JobIcon job={entry.player.job} size="xs" />
-              <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
-                {entry.player.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Log button - shows on hover for any entry */}
-              {showLogButton && onLogClick && (
-                <button
-                  onClick={() => onLogClick(entry.player)}
-                  className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                >
-                  Log
-                </button>
-              )}
-              <span
-                className="text-xs px-1.5 py-0.5 rounded cursor-help"
-                style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-                title={tooltipText}
-              >
-                {displayScore}
-              </span>
-            </div>
-          </div>
-        );
-      })}
+      {visibleEntries.map((entry, index) => (
+        <LootPriorityEntry
+          key={entry.player.id}
+          entry={entry}
+          index={index}
+          isFirst={index === 0}
+          showEnhanced={showEnhanced}
+          showLogButton={showLogButton}
+          onLogClick={onLogClick}
+        />
+      ))}
       {hasMore && (
         <button
           onClick={() => setExpanded(!expanded)}

@@ -4,6 +4,7 @@
  * Sortable list item for displaying and editing a single weapon priority entry.
  */
 
+import { memo, useCallback } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WeaponPriority } from '../../types';
@@ -16,11 +17,11 @@ interface WeaponPriorityListItemProps {
   index: number;
   isMainJob: boolean;
   disabled?: boolean;
-  onRemove: () => void;
-  onToggleReceived: () => void;
+  onRemove: (job: string) => void;
+  onToggleReceived: (job: string) => void;
 }
 
-export function WeaponPriorityListItem({
+export const WeaponPriorityListItem = memo(function WeaponPriorityListItem({
   id,
   priority,
   index,
@@ -45,6 +46,15 @@ export function WeaponPriorityListItem({
 
   const jobInfo = RAID_JOBS.find((j) => j.abbreviation === priority.job);
   const jobName = jobInfo?.name || priority.job;
+
+  // Stable callbacks that pass job to parent
+  const handleRemove = useCallback(() => {
+    onRemove(priority.job);
+  }, [onRemove, priority.job]);
+
+  const handleToggleReceived = useCallback(() => {
+    onToggleReceived(priority.job);
+  }, [onToggleReceived, priority.job]);
 
   return (
     <div
@@ -99,14 +109,14 @@ export function WeaponPriorityListItem({
       {/* Received checkbox */}
       <Checkbox
         checked={priority.received}
-        onChange={onToggleReceived}
+        onChange={handleToggleReceived}
         disabled={disabled}
         label="Received"
       />
 
       {/* Remove button */}
       <button
-        onClick={onRemove}
+        onClick={handleRemove}
         disabled={disabled}
         className="flex-shrink-0 p-2 rounded hover:bg-surface-hover text-status-error hover:text-status-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Remove job"
@@ -117,4 +127,4 @@ export function WeaponPriorityListItem({
       </button>
     </div>
   );
-}
+});
