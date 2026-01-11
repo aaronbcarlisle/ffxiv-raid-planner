@@ -6,7 +6,7 @@ Hey everyone! Here's a roundup of all the recent updates to the raid planner:
 
 ---
 
-## **v1.0.6 - Security Hardening** (Latest)
+## [**v1.0.6 - Security Hardening**](https://www.xivraidplanner.app/docs/release-notes#v1.0.6) (Latest)
 
 ### What's New
 Your login is now more secure! Authentication tokens are stored in **httpOnly cookies** instead of localStorage, protecting against XSS attacks.
@@ -23,7 +23,7 @@ Your login is now more secure! Authentication tokens are stored in **httpOnly co
 
 ---
 
-## **v1.0.5 - Shortcuts & Polish**
+## [**v1.0.5 - Shortcuts & Polish**](https://www.xivraidplanner.app/docs/release-notes#v1.0.5)
 
 ### What's New
 Keyboard shortcuts got a complete overhaul! They now work reliably across all browsers.
@@ -42,7 +42,7 @@ Keyboard shortcuts got a complete overhaul! They now work reliably across all br
 
 ---
 
-## **v1.0.4 - Design System & UX**
+## [**v1.0.4 - Design System & UX**](https://www.xivraidplanner.app/docs/release-notes#v1.0.4)
 
 ### What's New
 Major UX improvements for power users and better cross-week navigation!
@@ -75,7 +75,9 @@ Major UX improvements for power users and better cross-week navigation!
 
 ---
 
-## **Quick Reference - Keyboard Shortcuts**
+## [**Quick Reference - Keyboard Shortcuts**](https://www.xivraidplanner.app/docs/member-guide#keyboard-shortcuts)
+
+Press `Shift+?` in-app to open the shortcuts modal!
 
 | Key | Action |
 |-----|--------|
@@ -93,8 +95,9 @@ Major UX improvements for power users and better cross-week navigation!
 
 ## **Links**
 
-- **PR #18 (Security):** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/18
-- **Full Release Notes:** https://www.xivraidplanner.app/docs/release-notes
+- [Full Release Notes](https://www.xivraidplanner.app/docs/release-notes)
+- [Member Guide](https://www.xivraidplanner.app/docs/member-guide)
+- [PR #18 (Security)](https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/18)
 
 ---
 
