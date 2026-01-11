@@ -110,11 +110,23 @@ async def get_static_group(
     session: AsyncSession,
     group_id: str,
     load_memberships: bool = False,
+    load_membership_users: bool = False,
 ) -> StaticGroup:
-    """Get a static group by ID, raising NotFound if it doesn't exist"""
+    """Get a static group by ID, raising NotFound if it doesn't exist
+
+    Args:
+        session: Database session
+        group_id: The group ID to fetch
+        load_memberships: Whether to eager-load memberships
+        load_membership_users: Whether to also eager-load the user for each membership
+                               (only applies when load_memberships=True)
+    """
     query = select(StaticGroup).where(StaticGroup.id == group_id)
     if load_memberships:
-        query = query.options(selectinload(StaticGroup.memberships))
+        if load_membership_users:
+            query = query.options(selectinload(StaticGroup.memberships).selectinload(Membership.user))
+        else:
+            query = query.options(selectinload(StaticGroup.memberships))
 
     result = await session.execute(query)
     group = result.scalar_one_or_none()

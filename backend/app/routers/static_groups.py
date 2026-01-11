@@ -852,7 +852,7 @@ async def list_interacted_users(
     if not is_admin:
         await require_owner(session, current_user.id, group_id)
 
-    group = await get_static_group(session, group_id, load_memberships=True)
+    group = await get_static_group(session, group_id, load_memberships=True, load_membership_users=True)
 
     # Build user map from members
     user_map: dict[str, InteractedUserInfo] = {}

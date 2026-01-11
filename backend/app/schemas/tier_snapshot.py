@@ -80,7 +80,7 @@ class LinkedUserInfo(CamelModel):
     discord_avatar: str | None = None
     avatar_url: str | None = None
     display_name: str | None = None
-    membership_role: str | None = None  # The user's role in the static group (owner/lead/member/viewer)
+    membership_role: Literal["owner", "lead", "member", "viewer"] | None = None  # The user's role in the static group
 
 
 class LinkedPlayerInfo(CamelModel):
@@ -147,9 +147,9 @@ class SnapshotPlayerUpdate(CamelModel):
 class AssignPlayerRequest(CamelModel):
     """Schema for owner/admin assigning a user to a player"""
 
-    user_id: str | None = Field(..., description="Discord user ID or internal user ID (null to unassign)")
+    user_id: str | None = Field(None, description="Discord user ID or internal user ID (null to unassign)")
     create_membership: bool = Field(False, description="Create membership if user is not a member")
-    membership_role: str | None = Field(None, description="Role for new membership (member or lead)")
+    membership_role: Literal["member", "lead"] | None = Field(None, description="Role for new membership (member or lead)")
 
 
 class SnapshotPlayerResponse(CamelModel):

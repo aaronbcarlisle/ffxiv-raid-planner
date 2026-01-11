@@ -1064,7 +1064,13 @@ async def admin_assign_player(
         if data.create_membership:
             existing_membership = await get_user_membership(session, target_user.id, group_id)
             if not existing_membership and data.membership_role:
-                role = MemberRole(data.membership_role)
+                try:
+                    role = MemberRole(data.membership_role)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
+                    )
                 await create_membership_for_assignment(session, target_user.id, group_id, role)
 
         # Assign the user
@@ -1157,7 +1163,13 @@ async def owner_assign_player(
         if data.create_membership:
             existing_membership = await get_user_membership(session, target_user.id, group_id)
             if not existing_membership and data.membership_role:
-                role = MemberRole(data.membership_role)
+                try:
+                    role = MemberRole(data.membership_role)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
+                    )
                 await create_membership_for_assignment(session, target_user.id, group_id, role)
 
         # Assign the user
