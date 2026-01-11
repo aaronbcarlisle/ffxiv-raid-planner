@@ -3,7 +3,7 @@
  */
 
 export { Badge } from './Badge';
-export { Button } from './Button';
+export { Button, type ButtonVariant, type ButtonSize } from './Button';
 export {
   Dropdown,
   DropdownCheckboxItem,

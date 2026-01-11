@@ -182,3 +182,82 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+/**
+ * Skeleton for a static group card (Dashboard grid view)
+ */
+export function StaticCardSkeleton() {
+  return (
+    <div className="bg-surface-card rounded-lg border border-border-default p-4 space-y-3">
+      {/* Header: name + role badge */}
+      <div className="flex items-start justify-between">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-5 w-14 rounded" />
+      </div>
+
+      {/* Meta: member count + visibility */}
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+
+      {/* Footer: share code + copy button */}
+      <div className="pt-3 border-t border-border-subtle flex items-center justify-between">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-6 w-6 rounded" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skeleton for static group cards in grid view
+ */
+export function StaticGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <StaticCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Skeleton for a static group list item (Dashboard list view)
+ */
+export function StaticListItemSkeleton() {
+  return (
+    <div className="flex items-center justify-between p-4">
+      {/* Left: name + role */}
+      <div className="flex items-center gap-4 min-w-0 flex-1">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-5 w-14 rounded" />
+      </div>
+
+      {/* Right: meta info */}
+      <div className="flex items-center gap-6 flex-shrink-0">
+        <Skeleton className="h-4 w-8" />
+        <Skeleton className="h-4 w-16" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-6 w-6 rounded" />
+        </div>
+        <Skeleton className="h-4 w-20" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skeleton for static groups in list view
+ */
+export function StaticListSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="bg-surface-card rounded-lg border border-border-default divide-y divide-border-subtle">
+      {Array.from({ length: count }).map((_, i) => (
+        <StaticListItemSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
