@@ -41,6 +41,7 @@ from .static_group import (
     StaticSettingsSchema,
 )
 from .tier_snapshot import (
+    AssignPlayerRequest,
     GearSlotStatus,
     LinkedPlayerInfo,
     LinkedUserInfo,
@@ -111,6 +112,7 @@ __all__ = [
     "StaticGroupWithMembers",
     "StaticSettingsSchema",
     # Tier Snapshot
+    "AssignPlayerRequest",
     "RolloverRequest",
     "RolloverResponse",
     "SnapshotPlayerCreate",

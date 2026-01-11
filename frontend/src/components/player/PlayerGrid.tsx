@@ -40,6 +40,7 @@ interface PlayerCardRendererProps {
   onResetGear: (playerId: string, mode: ResetMode) => Promise<void>;
   onClaimPlayer: (playerId: string) => Promise<void>;
   onReleasePlayer: (playerId: string) => Promise<void>;
+  onAdminAssignPlayer: (playerId: string, userId: string | null) => Promise<void>;
   onCopyPlayer: (player: SnapshotPlayer) => void;
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
@@ -73,6 +74,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   onResetGear,
   onClaimPlayer,
   onReleasePlayer,
+  onAdminAssignPlayer,
   onCopyPlayer,
   onPastePlayer,
   onCopyUrl,
@@ -122,6 +124,10 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   const handleReleasePlayer = useCallback(() => {
     onReleasePlayer(player.id);
   }, [onReleasePlayer, player.id]);
+
+  const handleAdminAssignPlayer = useCallback((userId: string | null) => {
+    onAdminAssignPlayer(player.id, userId);
+  }, [onAdminAssignPlayer, player.id]);
 
   const handleCopyUrl = useCallback(() => {
     onCopyUrl(player.id);
@@ -177,6 +183,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         onResetGear={resetPermission.allowed ? handleResetGear : undefined}
         onClaimPlayer={handleClaimPlayer}
         onReleasePlayer={handleReleasePlayer}
+        onAdminAssignPlayer={handleAdminAssignPlayer}
         onModalOpen={onModalOpen}
         onModalClose={onModalClose}
         onCopyUrl={handleCopyUrl}
@@ -231,6 +238,7 @@ export interface PlayerGridProps {
   onResetGear: (playerId: string, mode: ResetMode) => Promise<void>;
   onClaimPlayer: (playerId: string) => Promise<void>;
   onReleasePlayer: (playerId: string) => Promise<void>;
+  onAdminAssignPlayer: (playerId: string, userId: string | null) => Promise<void>;
   onCopyPlayer: (player: SnapshotPlayer) => void;
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
@@ -301,6 +309,7 @@ export function PlayerGrid({
     onResetGear,
     onClaimPlayer,
     onReleasePlayer,
+    onAdminAssignPlayer,
     onCopyPlayer,
     onPastePlayer,
     onCopyUrl,
@@ -330,6 +339,7 @@ export function PlayerGrid({
     onResetGear,
     onClaimPlayer,
     onReleasePlayer,
+    onAdminAssignPlayer,
     onCopyPlayer,
     onPastePlayer,
     onCopyUrl,

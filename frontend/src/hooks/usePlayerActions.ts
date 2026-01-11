@@ -23,6 +23,7 @@ export interface UsePlayerActionsReturn {
   handleRemovePlayer: (playerId: string) => Promise<void>;
   handleClaimPlayer: (playerId: string) => Promise<void>;
   handleReleasePlayer: (playerId: string) => Promise<void>;
+  handleAdminAssignPlayer: (playerId: string, userId: string | null) => Promise<void>;
   handleConfigurePlayer: (playerId: string, name: string, job: string, role: string) => Promise<void>;
   handleAddPlayer: () => Promise<void>;
   handleDuplicatePlayer: (sourcePlayer: SnapshotPlayer) => Promise<void>;
@@ -44,6 +45,7 @@ export function usePlayerActions({
     reorderPlayers,
     claimPlayer,
     releasePlayer,
+    adminAssignPlayer,
   } = useTierStore();
 
   // Player update handler
@@ -69,6 +71,12 @@ export function usePlayerActions({
     if (!groupId || !tierId) return;
     await releasePlayer(groupId, tierId, playerId);
   }, [groupId, tierId, releasePlayer]);
+
+  // Admin assign player handler (admin-only)
+  const handleAdminAssignPlayer = useCallback(async (playerId: string, userId: string | null) => {
+    if (!groupId || !tierId) return;
+    await adminAssignPlayer(groupId, tierId, playerId, userId);
+  }, [groupId, tierId, adminAssignPlayer]);
 
   // Configure player (set name, job, role)
   const handleConfigurePlayer = useCallback(async (playerId: string, name: string, job: string, role: string) => {
@@ -201,6 +209,7 @@ export function usePlayerActions({
     handleRemovePlayer,
     handleClaimPlayer,
     handleReleasePlayer,
+    handleAdminAssignPlayer,
     handleConfigurePlayer,
     handleAddPlayer,
     handleDuplicatePlayer,

@@ -648,6 +648,7 @@ export function GroupView() {
                   onResetGear={playerActions.handleResetGear}
                   onClaimPlayer={playerActions.handleClaimPlayer}
                   onReleasePlayer={playerActions.handleReleasePlayer}
+                  onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
                   onCopyPlayer={handleCopyPlayer}
                   onPastePlayer={handlePastePlayer}
                   onCopyUrl={handleCopyUrl}

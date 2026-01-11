@@ -143,6 +143,12 @@ class SnapshotPlayerUpdate(CamelModel):
     page_adjustments: dict[str, int] | None = None
 
 
+class AssignPlayerRequest(CamelModel):
+    """Schema for admin assigning a user to a player"""
+
+    user_id: str | None = Field(..., description="Discord user ID to assign (null to unassign)")
+
+
 class SnapshotPlayerResponse(CamelModel):
     """Schema for snapshot player response"""
 

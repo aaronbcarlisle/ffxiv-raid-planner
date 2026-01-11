@@ -47,6 +47,7 @@ interface TierState {
   // Ownership actions
   claimPlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
   releasePlayer: (groupId: string, tierId: string, playerId: string) => Promise<SnapshotPlayer>;
+  adminAssignPlayer: (groupId: string, tierId: string, playerId: string, userId: string | null) => Promise<SnapshotPlayer>;
 
   // Weapon priority actions
   updateWeaponPriorities: (groupId: string, tierId: string, playerId: string, weaponPriorities: import('../types').WeaponPriority[]) => Promise<SnapshotPlayer>;
@@ -516,6 +517,47 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to release player',
+        isSaving: false,
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Admin-only: Assign any user to a player card
+   */
+  adminAssignPlayer: async (groupId: string, tierId: string, playerId: string, userId: string | null) => {
+    set({ isSaving: true, error: null });
+
+    try {
+      const updatedPlayer = await authRequest<SnapshotPlayer>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/admin-assign`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      // Update player in current tier
+      set((state) => {
+        if (state.currentTier?.players) {
+          return {
+            currentTier: {
+              ...state.currentTier,
+              players: state.currentTier.players.map(p =>
+                p.id === playerId ? updatedPlayer : p
+              ),
+            },
+            isSaving: false,
+          };
+        }
+        return { isSaving: false };
+      });
+
+      return updatedPlayer;
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to assign player',
         isSaving: false,
       });
       throw error;

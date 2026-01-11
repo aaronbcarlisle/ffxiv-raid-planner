@@ -24,6 +24,7 @@ from ..permissions import (
     is_user_admin,
     require_can_edit_roster,
 )
+from .. import schemas
 from ..schemas import (
     LinkedUserInfo,
     RolloverRequest,
@@ -868,6 +869,87 @@ async def release_player(
     await session.commit()
 
     # Reload to get fresh state (user relationship now None)
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    return player_to_response(player)
+
+
+@router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/admin-assign", response_model=SnapshotPlayerResponse)
+async def admin_assign_player(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    data: schemas.AssignPlayerRequest = Body(...),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Admin-only endpoint to assign any user to a player card, bypassing normal claim restrictions"""
+    # Check if current user is an admin
+    if not await is_user_admin(session, current_user.id):
+        raise PermissionDenied("Only admins can use this endpoint")
+
+    group = await get_static_group(session, group_id)
+
+    # Verify admin has view permission (should always pass for admins, but check anyway)
+    await check_view_permission(session, group, current_user)
+
+    # Get player
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # If assigning a user, verify the user exists
+    if data.user_id:
+        user_result = await session.execute(
+            select(User).where(User.discord_id == data.user_id)
+        )
+        target_user = user_result.scalar_one_or_none()
+        if not target_user:
+            raise NotFound(f"User with Discord ID {data.user_id} not found")
+
+        # Check if target user is already linked to another player in this tier
+        existing_link = await session.execute(
+            select(SnapshotPlayer)
+            .where(
+                SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
+                SnapshotPlayer.user_id == target_user.id,
+                SnapshotPlayer.id != player_id,
+            )
+        )
+        if existing_link.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User is already linked to another player in this tier",
+            )
+
+        # Assign the user
+        player.user_id = target_user.id
+    else:
+        # Unassign (null user_id)
+        player.user_id = None
+
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Reload with user relationship
     result = await session.execute(
         select(SnapshotPlayer)
         .where(SnapshotPlayer.id == player_id)
