@@ -2,9 +2,9 @@
 
 ## Project Context
 
-You are implementing parity features for the FFXIV Raid Planner web application. This is a React + TypeScript frontend with a FastAPI + SQLAlchemy backend. The app helps Final Fantasy XIV raid teams coordinate gear progression and loot distribution.
+You are implementing parity features for the FFXIV Raid Planner web application. This is a React 19 + TypeScript frontend with a FastAPI + SQLAlchemy backend. The app helps Final Fantasy XIV raid teams coordinate gear progression and loot distribution.
 
-**Repository:** ffxiv-raid-planner (dev branch)
+**Repository:** ffxiv-raid-planner (`feature/parity-features` dev branch)
 **Key directories:**
 - `frontend/src/components/` - React components
 - `frontend/src/types/index.ts` - TypeScript types
