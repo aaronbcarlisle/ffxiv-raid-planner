@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Swords, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';

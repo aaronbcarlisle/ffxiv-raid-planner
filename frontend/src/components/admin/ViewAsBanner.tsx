@@ -7,7 +7,16 @@
 
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
+import type { MemberInfo, LinkedPlayerInfo, MemberRole } from '../../types';
+
+// Extended member info with role for user swapping
+interface SwapUserInfo extends MemberInfo {
+  role?: MemberRole;
+  isLinkedPlayer?: boolean;
+}
 
 // Role badge colors - using semantic membership tokens
 const ROLE_COLORS: Record<string, string> = {
@@ -18,9 +27,70 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export function ViewAsBanner() {
-  const { viewAsUser, stopViewAs } = useViewAsStore();
+  const { viewAsUser, stopViewAs, startViewAs } = useViewAsStore();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [availableUsers, setAvailableUsers] = useState<SwapUserInfo[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Fetch available users when component mounts or groupId changes
+  // MUST be called before any early returns (Rules of Hooks)
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!viewAsUser?.groupId) return;
+
+      setIsLoadingUsers(true);
+      try {
+        const [membersResponse, linkedPlayersResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/static-groups/${viewAsUser.groupId}/members`, { credentials: 'include' }),
+          fetch(`${API_BASE_URL}/api/static-groups/${viewAsUser.groupId}/linked-players`, { credentials: 'include' }),
+        ]);
+
+        const allUsers: SwapUserInfo[] = [];
+        const seenIds = new Set<string>();
+
+        // Add group members (with role information)
+        if (membersResponse.ok) {
+          const members = await membersResponse.json();
+          for (const m of members) {
+            if (m.user && !seenIds.has(m.user.id)) {
+              allUsers.push({
+                ...m.user,
+                role: m.role,
+                isLinkedPlayer: false,
+              });
+              seenIds.add(m.user.id);
+            }
+          }
+        }
+
+        // Add linked players (users who have player cards but aren't members)
+        if (linkedPlayersResponse.ok) {
+          const linkedPlayers: LinkedPlayerInfo[] = await linkedPlayersResponse.json();
+          for (const lp of linkedPlayers) {
+            if (lp.user && !seenIds.has(lp.user.id)) {
+              allUsers.push({
+                ...lp.user,
+                role: undefined,
+                isLinkedPlayer: true,
+              });
+              seenIds.add(lp.user.id);
+            }
+          }
+        }
+
+        setAvailableUsers(allUsers);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, [viewAsUser?.groupId]);
 
   if (!viewAsUser) {
     return null;
@@ -36,6 +106,23 @@ export function ViewAsBanner() {
 
     // Clear the viewAs state
     stopViewAs();
+  };
+
+  const handleSwitchUser = async (newUserId: string) => {
+    if (newUserId === viewAsUser.userId) {
+      setShowDropdown(false);
+      return;
+    }
+
+    // Update URL with new viewAs param
+    const params = new URLSearchParams(location.search);
+    params.set('viewAs', newUserId);
+    const newPath = `${location.pathname}?${params.toString()}`;
+    navigate(newPath, { replace: true });
+
+    // Update viewAs state
+    await startViewAs(viewAsUser.groupId, newUserId);
+    setShowDropdown(false);
   };
 
   const displayName = viewAsUser.displayName || viewAsUser.discordUsername;
@@ -67,6 +154,87 @@ export function ViewAsBanner() {
               (linked to {viewAsUser.linkedPlayerName})
             </span>
           )}
+
+          {/* User swap dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-status-warning hover:bg-status-warning/20 rounded transition-colors border border-status-warning/30"
+              title="Switch to another user"
+            >
+              <ChevronDown className="w-3 h-3" />
+              Switch User
+            </button>
+
+            {showDropdown && (
+              <>
+                {/* Backdrop to close dropdown */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowDropdown(false)}
+                />
+
+                {/* Dropdown menu */}
+                <div className="absolute left-0 top-full mt-1 w-64 bg-surface-overlay border border-border-default rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {isLoadingUsers ? (
+                    <div className="p-4 text-center text-text-muted text-sm">
+                      Loading users...
+                    </div>
+                  ) : availableUsers.length === 0 ? (
+                    <div className="p-4 text-center text-text-muted text-sm">
+                      No other users available
+                    </div>
+                  ) : (
+                    <div className="p-1">
+                      {availableUsers.map((user) => {
+                        const isCurrentUser = user.id === viewAsUser.userId;
+                        const userRoleColor = user.role ? ROLE_COLORS[user.role] : 'bg-membership-linked/20 text-membership-linked border-membership-linked/30';
+                        const userRoleLabel = user.role
+                          ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+                          : 'Linked';
+
+                        return (
+                          <button
+                            key={user.id}
+                            onClick={() => handleSwitchUser(user.id)}
+                            className={`w-full flex items-center gap-2 p-2 rounded text-left transition-colors ${
+                              isCurrentUser
+                                ? 'bg-status-warning/20 cursor-default'
+                                : 'hover:bg-surface-interactive'
+                            }`}
+                            disabled={isCurrentUser}
+                          >
+                            {user.avatarUrl ? (
+                              <img
+                                src={user.avatarUrl}
+                                alt=""
+                                className="w-6 h-6 rounded-full flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-xs text-text-muted flex-shrink-0">
+                                ?
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-text-primary truncate">
+                                {user.displayName || user.discordUsername}
+                                {isCurrentUser && (
+                                  <span className="ml-1 text-status-warning">(current)</span>
+                                )}
+                              </p>
+                            </div>
+                            <span className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${userRoleColor}`}>
+                              {userRoleLabel}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <button

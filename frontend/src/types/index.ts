@@ -381,6 +381,7 @@ export interface LinkedUserInfo {
   discordAvatar?: string;
   avatarUrl?: string;
   displayName?: string;
+  membershipRole?: string; // owner/lead/member/viewer
 }
 
 // Linked player info (for members panel)
@@ -390,6 +391,20 @@ export interface LinkedPlayerInfo {
   playerJob: string;
   tierId: string;
   user: LinkedUserInfo;
+}
+
+// Interacted user info (for assignment modals - combines members and linked players)
+export interface InteractedUser {
+  user: LinkedUserInfo;
+  isMember: boolean;
+  memberRole?: MemberRole;
+}
+
+// Player assignment request (for admin/owner assign endpoints)
+export interface AssignPlayerRequest {
+  userId: string | null;
+  createMembership?: boolean;
+  membershipRole?: 'member' | 'lead';
 }
 
 // Tier snapshot (roster for a specific raid tier)

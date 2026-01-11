@@ -19,6 +19,7 @@ from ..permissions import (
     NotFound,
     PermissionDenied,
     check_view_permission,
+    create_membership_for_assignment,
     get_static_group,
     get_user_membership,
     is_user_admin,
@@ -78,8 +79,35 @@ def create_template_players(snapshot_id: str) -> list[SnapshotPlayer]:
     return players
 
 
-def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
-    """Convert SnapshotPlayer model to response schema"""
+async def get_user_membership_role(session: AsyncSession, user_id: str, group_id: str) -> str | None:
+    """Get the membership role for a user in a group
+
+    Args:
+        session: Database session
+        user_id: The user ID to look up
+        group_id: The static group ID
+
+    Returns:
+        The membership role (owner/lead/member/viewer) or None if not a member
+    """
+    from ..models import Membership
+    result = await session.execute(
+        select(Membership).where(
+            Membership.user_id == user_id,
+            Membership.static_group_id == group_id
+        )
+    )
+    membership = result.scalar_one_or_none()
+    return membership.role if membership else None
+
+
+def player_to_response(player: SnapshotPlayer, membership_role: str | None = None) -> SnapshotPlayerResponse:
+    """Convert SnapshotPlayer model to response schema
+
+    Args:
+        player: The snapshot player to convert
+        membership_role: Optional membership role for the linked user (owner/lead/member/viewer)
+    """
     gear = [
         GearSlotStatus(
             slot=g["slot"],
@@ -112,6 +140,7 @@ def player_to_response(player: SnapshotPlayer) -> SnapshotPlayerResponse:
             discord_avatar=player.user.discord_avatar,
             avatar_url=player.user.avatar_url,
             display_name=player.user.display_name,
+            membership_role=membership_role,
         )
 
     # Build weapon priorities
@@ -178,9 +207,15 @@ def snapshot_to_response(snapshot: TierSnapshot) -> TierSnapshotResponse:
     )
 
 
-def snapshot_to_response_with_players(snapshot: TierSnapshot) -> TierSnapshotWithPlayers:
-    """Convert TierSnapshot model to response schema with players"""
-    players = [player_to_response(p) for p in (snapshot.players or [])]
+def snapshot_to_response_with_players(snapshot: TierSnapshot, membership_map: dict[str, str] | None = None) -> TierSnapshotWithPlayers:
+    """Convert TierSnapshot model to response schema with players
+
+    Args:
+        snapshot: The tier snapshot to convert
+        membership_map: Optional dict mapping user_id to membership role
+    """
+    membership_map = membership_map or {}
+    players = [player_to_response(p, membership_map.get(p.user_id)) for p in (snapshot.players or [])]
 
     return TierSnapshotWithPlayers(
         id=snapshot.id,
@@ -297,7 +332,23 @@ async def create_tier_snapshot(
     )
     snapshot = result.scalar_one()
 
-    return snapshot_to_response_with_players(snapshot)
+    # Build membership role map for linked users
+    user_ids = [p.user_id for p in snapshot.players if p.user_id]
+    membership_map: dict[str, str] = {}
+
+    if user_ids:
+        # Fetch memberships for all users in one query
+        from ..models import Membership
+        result = await session.execute(
+            select(Membership).where(
+                Membership.static_group_id == group_id,
+                Membership.user_id.in_(user_ids)
+            )
+        )
+        memberships = result.scalars().all()
+        membership_map = {m.user_id: m.role for m in memberships}
+
+    return snapshot_to_response_with_players(snapshot, membership_map)
 
 
 @router.get("/{group_id}/tiers/{tier_id}", response_model=TierSnapshotWithPlayers)
@@ -328,7 +379,23 @@ async def get_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    return snapshot_to_response_with_players(snapshot)
+    # Build membership role map for linked users
+    user_ids = [p.user_id for p in snapshot.players if p.user_id]
+    membership_map: dict[str, str] = {}
+
+    if user_ids:
+        # Fetch memberships for all users in one query
+        from ..models import Membership
+        result = await session.execute(
+            select(Membership).where(
+                Membership.static_group_id == group_id,
+                Membership.user_id.in_(user_ids)
+            )
+        )
+        memberships = result.scalars().all()
+        membership_map = {m.user_id: m.role for m in memberships}
+
+    return snapshot_to_response_with_players(snapshot, membership_map)
 
 
 @router.put("/{group_id}/tiers/{tier_id}", response_model=TierSnapshotResponse)
@@ -514,9 +581,25 @@ async def rollover_tier(
     )
     target_snapshot = result.scalar_one()
 
+    # Build membership role map for linked users
+    user_ids = [p.user_id for p in target_snapshot.players if p.user_id]
+    membership_map: dict[str, str] = {}
+
+    if user_ids:
+        # Fetch memberships for all users in one query
+        from ..models import Membership
+        result = await session.execute(
+            select(Membership).where(
+                Membership.static_group_id == group_id,
+                Membership.user_id.in_(user_ids)
+            )
+        )
+        memberships = result.scalars().all()
+        membership_map = {m.user_id: m.role for m in memberships}
+
     return RolloverResponse(
         source_snapshot=snapshot_to_response(source_snapshot),
-        target_snapshot=snapshot_to_response_with_players(target_snapshot),
+        target_snapshot=snapshot_to_response_with_players(target_snapshot, membership_map),
         players_copied=players_copied,
     )
 
@@ -548,7 +631,23 @@ async def list_snapshot_players(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
-    return [player_to_response(p) for p in snapshot.players]
+    # Build membership role map for linked users
+    user_ids = [p.user_id for p in snapshot.players if p.user_id]
+    membership_map: dict[str, str] = {}
+
+    if user_ids:
+        # Fetch memberships for all users in one query
+        from ..models import Membership
+        result = await session.execute(
+            select(Membership).where(
+                Membership.static_group_id == group_id,
+                Membership.user_id.in_(user_ids)
+            )
+        )
+        memberships = result.scalars().all()
+        membership_map = {m.user_id: m.role for m in memberships}
+
+    return [player_to_response(p, membership_map.get(p.user_id)) for p in snapshot.players]
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players", response_model=SnapshotPlayerResponse, status_code=status.HTTP_201_CREATED)
@@ -719,7 +818,12 @@ async def update_snapshot_player(
     await session.flush()
     await session.commit()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.delete("/{group_id}/tiers/{tier_id}/players/{player_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -769,6 +873,17 @@ async def claim_player(
     # User must have at least viewer access to the group
     await check_view_permission(session, group, current_user)
 
+    # User must be a member (not just have view access via share code)
+    # Admins bypass this check
+    is_admin = await is_user_admin(session, current_user.id)
+    if not is_admin:
+        membership = await get_user_membership(session, current_user.id, group_id)
+        if not membership:
+            raise PermissionDenied(
+                "Only group members can claim player cards. "
+                "Share code access is read-only. Ask the owner for an invitation."
+            )
+
     # Get player with user relationship
     result = await session.execute(
         select(SnapshotPlayer)
@@ -816,7 +931,12 @@ async def claim_player(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.delete("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)
@@ -876,7 +996,8 @@ async def release_player(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # No membership role since we just released (user_id is None)
+    return player_to_response(player, None)
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/admin-assign", response_model=SnapshotPlayerResponse)
@@ -916,12 +1037,13 @@ async def admin_assign_player(
 
     # If assigning a user, verify the user exists
     if data.user_id:
+        # Support both Discord ID and internal user ID
         user_result = await session.execute(
-            select(User).where(User.discord_id == data.user_id)
+            select(User).where((User.discord_id == data.user_id) | (User.id == data.user_id))
         )
         target_user = user_result.scalar_one_or_none()
         if not target_user:
-            raise NotFound(f"User with Discord ID {data.user_id} not found")
+            raise NotFound(f"User with ID {data.user_id} not found")
 
         # Check if target user is already linked to another player in this tier
         existing_link = await session.execute(
@@ -938,6 +1060,13 @@ async def admin_assign_player(
                 detail=f"User is already linked to another player in this tier",
             )
 
+        # Create membership if requested and user is not a member
+        if data.create_membership:
+            existing_membership = await get_user_membership(session, target_user.id, group_id)
+            if not existing_membership and data.membership_role:
+                role = MemberRole(data.membership_role)
+                await create_membership_for_assignment(session, target_user.id, group_id, role)
+
         # Assign the user
         player.user_id = target_user.id
     else:
@@ -949,6 +1078,9 @@ async def admin_assign_player(
     await session.flush()
     await session.commit()
 
+    # Clear session cache to ensure fresh data
+    session.expire_all()
+
     # Reload with user relationship
     result = await session.execute(
         select(SnapshotPlayer)
@@ -957,7 +1089,105 @@ async def admin_assign_player(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the newly assigned user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
+
+
+@router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/owner-assign", response_model=SnapshotPlayerResponse)
+async def owner_assign_player(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    data: schemas.AssignPlayerRequest = Body(...),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> SnapshotPlayerResponse:
+    """Owner-only endpoint to assign members to player cards with optional membership creation"""
+    # Check if current user is owner (or admin, which bypasses to owner-level)
+    await require_owner(session, current_user.id, group_id)
+
+    group = await get_static_group(session, group_id)
+
+    # Get player
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # If assigning a user, verify the user exists
+    if data.user_id:
+        # Support both Discord ID and internal user ID
+        user_result = await session.execute(
+            select(User).where((User.discord_id == data.user_id) | (User.id == data.user_id))
+        )
+        target_user = user_result.scalar_one_or_none()
+        if not target_user:
+            raise NotFound(f"User with ID {data.user_id} not found")
+
+        # Check if target user is already linked to another player in this tier
+        existing_link = await session.execute(
+            select(SnapshotPlayer)
+            .where(
+                SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
+                SnapshotPlayer.user_id == target_user.id,
+                SnapshotPlayer.id != player_id,
+            )
+        )
+        if existing_link.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User is already linked to another player in this tier",
+            )
+
+        # Create membership if requested and user is not a member
+        if data.create_membership:
+            existing_membership = await get_user_membership(session, target_user.id, group_id)
+            if not existing_membership and data.membership_role:
+                role = MemberRole(data.membership_role)
+                await create_membership_for_assignment(session, target_user.id, group_id, role)
+
+        # Assign the user
+        player.user_id = target_user.id
+    else:
+        # Unassign (null user_id)
+        player.user_id = None
+
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Clear session cache to ensure fresh data
+    session.expire_all()
+
+    # Reload with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    # Look up membership role for the newly assigned user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 # --- Weapon Priority Endpoints ---
@@ -1059,7 +1289,12 @@ async def update_weapon_priorities(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.post(
@@ -1110,7 +1345,12 @@ async def lock_player_weapon_priorities(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.delete(
@@ -1161,7 +1401,12 @@ async def unlock_player_weapon_priorities(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.put(

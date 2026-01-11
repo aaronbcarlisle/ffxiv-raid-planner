@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
 // Navigation items grouped by category
@@ -326,6 +326,7 @@ function NavSidebar({
 
 export default function ApiDocs() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('overview');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
@@ -347,7 +348,9 @@ export default function ApiDocs() {
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);
     isScrollingRef.current = true;
-  }, []);
+    // Update URL hash
+    navigate(`#${sectionId}`, { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -398,7 +401,13 @@ export default function ApiDocs() {
         bestSection = sections[0]?.id || 'overview';
       }
 
-      setActiveSection(bestSection);
+      setActiveSection(prev => {
+        if (prev !== bestSection) {
+          // Update URL hash when active section changes from scroll
+          window.history.replaceState(null, '', `#${bestSection}`);
+        }
+        return bestSection;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

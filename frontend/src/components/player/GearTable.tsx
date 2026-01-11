@@ -346,6 +346,7 @@ interface GearTableProps {
   userRole?: MemberRole | null;
   currentUserId?: string;
   isAdmin?: boolean;
+  isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
@@ -361,12 +362,12 @@ export function GearTable({
   player,
   userRole,
   currentUserId,
-  isAdmin,
+  isAdminAccess,
   slotsWithLootEntries,
   onNavigateToLootEntry,
 }: GearTableProps) {
-  // Check gear edit permission
-  const gearPermission = canEditGear(userRole, player, currentUserId, isAdmin);
+  // Check gear edit permission - use isAdminAccess to respect View As context
+  const gearPermission = canEditGear(userRole, player, currentUserId, isAdminAccess);
   const getSlotStatus = (slot: string): GearSlotStatus => {
     return gear.find((g) => g.slot === slot) ?? {
       slot: slot as GearSlotStatus['slot'],

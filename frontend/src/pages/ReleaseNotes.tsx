@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   Bug,
@@ -443,6 +443,7 @@ function ReleaseCard({
 
 export default function ReleaseNotes() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeVersion, setActiveVersion] = useState(RELEASES[0]?.version || '');
   const [shouldScrollNav, setShouldScrollNav] = useState(false);
   const isScrollingRef = useRef(false);
@@ -478,7 +479,9 @@ export default function ReleaseNotes() {
     // Collapse all others, expand only the clicked version
     setExpandedVersions(new Set([version]));
     isScrollingRef.current = true;
-  }, []);
+    // Update URL hash
+    navigate(`#v${version}`, { replace: true });
+  }, [navigate]);
 
   // Scroll-based active version tracking
   useEffect(() => {
@@ -537,7 +540,13 @@ export default function ReleaseNotes() {
 
       if (bestVersion) {
         setShouldScrollNav(true); // Scroll nav when active version changes from scrolling
-        setActiveVersion(bestVersion);
+        setActiveVersion(prev => {
+          if (prev !== bestVersion) {
+            // Update URL hash when active version changes from scroll
+            window.history.replaceState(null, '', `#v${bestVersion}`);
+          }
+          return bestVersion;
+        });
       }
     };
 

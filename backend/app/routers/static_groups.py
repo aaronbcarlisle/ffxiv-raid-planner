@@ -34,6 +34,7 @@ from ..schemas import (
     AdminStaticGroupListResponse,
     DuplicateGroupRequest,
     GroupSourceEnum,
+    InteractedUserInfo,
     LinkedPlayerInfo,
     LinkedUserInfo,
     MemberInfo,
@@ -834,6 +835,107 @@ async def list_linked_players(
             )
 
     return linked_players
+
+
+@router.get("/{group_id}/interacted-users", response_model=list[InteractedUserInfo])
+async def list_interacted_users(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[InteractedUserInfo]:
+    """List all users who have interacted with this group (members + linked players)
+
+    Owner or admin only. Used for assignment modals to show all possible users.
+    """
+    # Require owner or admin permission
+    is_admin = await is_user_admin(session, current_user.id)
+    if not is_admin:
+        await require_owner(session, current_user.id, group_id)
+
+    group = await get_static_group(session, group_id, load_memberships=True)
+
+    # Build user map from members
+    user_map: dict[str, InteractedUserInfo] = {}
+
+    # Add all members
+    for membership in group.memberships:
+        if membership.user:
+            user_map[membership.user.id] = InteractedUserInfo(
+                user=MemberInfo(
+                    id=membership.user.id,
+                    discord_id=membership.user.discord_id,
+                    discord_username=membership.user.discord_username,
+                    discord_avatar=membership.user.discord_avatar,
+                    avatar_url=membership.user.avatar_url,
+                    display_name=membership.user.display_name,
+                ),
+                is_member=True,
+                member_role=membership.role,
+            )
+
+    # Add all linked players (if not already in map as members)
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(TierSnapshot.static_group_id == group_id)
+        .where(SnapshotPlayer.user_id.isnot(None))
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    players = result.scalars().all()
+
+    for player in players:
+        if player.user_id and player.user_id not in user_map and player.user:
+            user_map[player.user_id] = InteractedUserInfo(
+                user=MemberInfo(
+                    id=player.user.id,
+                    discord_id=player.user.discord_id,
+                    discord_username=player.user.discord_username,
+                    discord_avatar=player.user.discord_avatar,
+                    avatar_url=player.user.avatar_url,
+                    display_name=player.user.display_name,
+                ),
+                is_member=False,
+                member_role=None,
+            )
+
+    # Return sorted by username
+    return sorted(user_map.values(), key=lambda u: u.user.discord_username.lower())
+
+
+@router.get("/admin/all-users", response_model=list[InteractedUserInfo])
+async def list_all_users_admin(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[InteractedUserInfo]:
+    """List ALL users in the database (admin only)
+
+    Used by admins in assignment modals to assign any user to a player card.
+    """
+    # Require admin permission
+    is_admin = await is_user_admin(session, current_user.id)
+    if not is_admin:
+        raise PermissionDenied("Only admins can view all users")
+
+    # Fetch all users
+    result = await session.execute(select(User).order_by(User.discord_username))
+    users = result.scalars().all()
+
+    # Convert to InteractedUserInfo format (all marked as non-members since no group context)
+    return [
+        InteractedUserInfo(
+            user=MemberInfo(
+                id=user.id,
+                discord_id=user.discord_id,
+                discord_username=user.discord_username,
+                discord_avatar=user.discord_avatar,
+                avatar_url=user.avatar_url,
+                display_name=user.display_name,
+            ),
+            is_member=False,  # No group context, so always false
+            member_role=None,
+        )
+        for user in users
+    ]
 
 
 @router.post("/{group_id}/members", response_model=MembershipResponse, status_code=status.HTTP_201_CREATED)

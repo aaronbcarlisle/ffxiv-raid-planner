@@ -8,11 +8,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { authRequest } from '../../services/api';
 import { JobIcon } from '../ui/JobIcon';
+import { Select, type SelectOption } from '../ui/Select';
 import type { Membership, MemberRole, LinkedPlayerInfo } from '../../types';
 
 interface MembersPanelProps {
   groupId: string;
   currentUserRole?: MemberRole;
+  isAdmin?: boolean;
 }
 
 const ROLE_COLORS: Record<MemberRole, string> = {
@@ -29,7 +31,7 @@ const ROLE_LABELS: Record<MemberRole, string> = {
   viewer: 'Viewer',
 };
 
-export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
+export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanelProps) {
   const [members, setMembers] = useState<Membership[]>([]);
   const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +40,7 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const isOwner = currentUserRole === 'owner';
-  const canManage = currentUserRole === 'owner' || currentUserRole === 'lead';
+  const canManage = currentUserRole === 'owner' || currentUserRole === 'lead' || isAdmin;
 
   const fetchData = useCallback(async () => {
     try {
@@ -124,7 +126,15 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
             if (!member) return null;
 
             const isEditing = editingMember === member.id;
-            const canEditThis = canManage && membership.role !== 'owner' && (isOwner || membership.role !== 'lead');
+            // Admins and owners can edit all non-owner members; leads can only edit non-owner, non-lead members
+            const canEditThis = canManage && membership.role !== 'owner' && (isAdmin || isOwner || membership.role !== 'lead');
+
+            // Role options for the dropdown
+            const roleOptions: SelectOption[] = [
+              ...(isOwner || isAdmin ? [{ value: 'lead', label: 'Lead' }] : []),
+              { value: 'member', label: 'Member' },
+              { value: 'viewer', label: 'Viewer' },
+            ];
 
             return (
               <div
@@ -157,16 +167,13 @@ export function MembersPanel({ groupId, currentUserRole }: MembersPanelProps) {
 
                 <div className="flex items-center gap-2">
                   {isEditing ? (
-                    <select
+                    <Select
                       value={membership.role}
-                      onChange={(e) => handleRoleChange(member.id, e.target.value as MemberRole)}
+                      onChange={(value) => handleRoleChange(member.id, value as MemberRole)}
+                      options={roleOptions}
                       disabled={isSaving}
-                      className="bg-surface-base border border-border-default rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus-visible:border-accent"
-                    >
-                      {isOwner && <option value="lead">Lead</option>}
-                      <option value="member">Member</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
+                      className="w-32"
+                    />
                   ) : (
                     <span className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[membership.role]}`}>
                       {ROLE_LABELS[membership.role]}

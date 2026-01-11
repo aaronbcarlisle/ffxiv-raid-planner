@@ -1,5 +1,6 @@
 """Permission utilities for static group access control"""
 
+import uuid
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -32,6 +33,61 @@ def create_admin_membership(user_id: str, group_id: str) -> Membership:
         joined_at=now,
         updated_at=now,
     )
+
+
+async def create_membership_for_assignment(
+    session: AsyncSession,
+    user_id: str,
+    group_id: str,
+    role: MemberRole,
+) -> Membership:
+    """
+    Create a new membership when assigning a user to a player card.
+
+    Used by owner assignment and admin assignment flows.
+    Validates that membership doesn't already exist.
+
+    Args:
+        session: Database session
+        user_id: User ID to create membership for
+        group_id: Static group ID
+        role: Role to assign (must be MEMBER or LEAD)
+
+    Returns:
+        Created membership
+
+    Raises:
+        HTTPException: If membership already exists or invalid role
+    """
+    # Check if membership already exists
+    existing = await get_user_membership(session, user_id, group_id)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a member of this group",
+        )
+
+    # Validate role is member or lead only
+    if role not in [MemberRole.MEMBER, MemberRole.LEAD]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only assign member or lead role",
+        )
+
+    # Create membership
+    now = datetime.now(timezone.utc).isoformat()
+    membership = Membership(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        static_group_id=group_id,
+        role=role.value,
+        joined_at=now,
+        updated_at=now,
+    )
+    session.add(membership)
+    await session.flush()
+
+    return membership
 
 
 async def is_user_admin(session: AsyncSession, user_id: str) -> bool:

@@ -8,7 +8,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import { IconButton } from '../components/primitives/IconButton';
@@ -1748,6 +1748,7 @@ function NavSidebar({
 
 export function DesignSystem() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('design-principles');
   // Track programmatic scroll to prevent scroll handler from overwriting clicked section
   const isScrollingRef = useRef(false);
@@ -1773,7 +1774,9 @@ export function DesignSystem() {
     setActiveSection(sectionId);
     // Lock scroll tracking during programmatic scroll
     isScrollingRef.current = true;
-  }, []);
+    // Update URL hash
+    navigate(`#${sectionId}`, { replace: true });
+  }, [navigate]);
 
   // Track active section on scroll - finds section most visible in viewport
   useEffect(() => {
@@ -1836,7 +1839,13 @@ export function DesignSystem() {
         bestSection = sections[0]?.id || 'design-principles';
       }
 
-      setActiveSection(bestSection);
+      setActiveSection(prev => {
+        if (prev !== bestSection) {
+          // Update URL hash when active section changes from scroll
+          window.history.replaceState(null, '', `#${bestSection}`);
+        }
+        return bestSection;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

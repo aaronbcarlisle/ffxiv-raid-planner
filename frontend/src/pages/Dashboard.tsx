@@ -54,7 +54,7 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -662,6 +662,7 @@ export function Dashboard() {
             setShowSettingsModal(false);
             fetchGroups(); // Refresh list in case name/visibility changed
           }}
+          isAdmin={user?.isAdmin}
         />
       )}
 

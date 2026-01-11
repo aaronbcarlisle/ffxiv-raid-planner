@@ -23,7 +23,7 @@ interface PlayerCardGearProps {
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   currentUserId?: string;
-  isAdmin?: boolean;
+  isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
   onGearChange: (slot: string, updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
@@ -39,7 +39,7 @@ export function PlayerCardGear({
   player,
   userRole,
   currentUserId,
-  isAdmin,
+  isAdminAccess,
   onGearChange,
   onTomeWeaponChange,
   slotsWithLootEntries,
@@ -56,7 +56,7 @@ export function PlayerCardGear({
           player={player}
           userRole={userRole}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdminAccess={isAdminAccess}
           slotsWithLootEntries={slotsWithLootEntries}
           onNavigateToLootEntry={onNavigateToLootEntry}
         />

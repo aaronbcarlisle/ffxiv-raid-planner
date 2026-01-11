@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { CodeBlock, DualCodeBlock } from '../components/docs';
 
@@ -224,14 +225,32 @@ function NavSidebar({
 }
 
 export default function ApiCookbook() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('intro');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
 
+  // Handle URL hash anchor on mount/change
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.slice(1); // Remove #
+      const element = document.getElementById(id);
+      if (element) {
+        setActiveSection(id);
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location.hash]);
+
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);
     isScrollingRef.current = true;
-  }, []);
+    // Update URL hash
+    navigate(`#${sectionId}`, { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -282,7 +301,13 @@ export default function ApiCookbook() {
         bestSection = sections[0]?.id || 'intro';
       }
 
-      setActiveSection(bestSection);
+      setActiveSection(prev => {
+        if (prev !== bestSection) {
+          // Update URL hash when active section changes from scroll
+          window.history.replaceState(null, '', `#${bestSection}`);
+        }
+        return bestSection;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

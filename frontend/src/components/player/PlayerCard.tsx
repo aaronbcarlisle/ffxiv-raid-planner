@@ -12,12 +12,12 @@ import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
-import { AdminAssignUserModal } from './AdminAssignUserModal';
+import { AssignUserModal } from './AssignUserModal';
 import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
 import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 import {
   Copy,
@@ -48,6 +48,7 @@ interface PlayerCardProps {
   userRole?: MemberRole | null;
   userHasClaimedPlayer?: boolean;
   isAdmin?: boolean;
+  isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -61,7 +62,8 @@ interface PlayerCardProps {
   onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
-  onAdminAssignPlayer?: (userId: string | null) => void;
+  onAdminAssignPlayer?: (data: AssignPlayerRequest) => void;
+  onOwnerAssignPlayer?: (data: AssignPlayerRequest) => void;
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
@@ -82,6 +84,7 @@ export const PlayerCard = memo(function PlayerCard({
   userRole,
   userHasClaimedPlayer,
   isAdmin,
+  isAdminAccess,
   groupId,
   tierId,
   isHighlighted,
@@ -96,6 +99,7 @@ export const PlayerCard = memo(function PlayerCard({
   onClaimPlayer,
   onReleasePlayer,
   onAdminAssignPlayer,
+  onOwnerAssignPlayer,
   onModalOpen,
   onModalClose,
   onCopyUrl,
@@ -113,6 +117,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [showJobChangeConfirm, setShowJobChangeConfirm] = useState(false);
   const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
   const [showAdminAssignModal, setShowAdminAssignModal] = useState(false);
+  const [showOwnerAssignModal, setShowOwnerAssignModal] = useState(false);
   const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -133,7 +138,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -142,7 +147,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -303,10 +308,10 @@ export const PlayerCard = memo(function PlayerCard({
   const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
-  // Permission checks
-  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
-  const rosterPermission = canManageRoster(userRole, isAdmin);
-  const resetPermission = canResetGear(userRole, player, currentUserId, isAdmin);
+  // Permission checks - use isAdminAccess (not isAdmin) to respect View As context
+  const editPermission = canEditPlayer(userRole, player, currentUserId, isAdminAccess);
+  const rosterPermission = canManageRoster(userRole, isAdminAccess);
+  const resetPermission = canResetGear(userRole, player, currentUserId, isAdminAccess);
 
   // Memoized context menu items to prevent recreation on every render
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
@@ -377,7 +382,15 @@ export const PlayerCard = memo(function PlayerCard({
       icon: <UserX className="w-4 h-4" />,
       onClick: onReleasePlayer,
     }] : []),
-    ...(isAdmin && onAdminAssignPlayer ? [{
+    ...(isGroupOwner && !isAdminAccess && onOwnerAssignPlayer ? [{
+      label: 'Assign User (Owner)',
+      icon: <Link2 className="w-4 h-4 text-accent" />,
+      onClick: () => {
+        setShowOwnerAssignModal(true);
+        setContextMenu(null);
+      },
+    }] : []),
+    ...(isAdminAccess && onAdminAssignPlayer ? [{
       label: 'Assign User (Admin)',
       icon: <Link2 className="w-4 h-4 text-status-warning" />,
       onClick: () => {
@@ -454,7 +467,6 @@ export const PlayerCard = memo(function PlayerCard({
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
       onClick={handleCardClick}
-      title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
     >
       {/* Context Menu */}
       {contextMenu && (
@@ -714,13 +726,31 @@ export const PlayerCard = memo(function PlayerCard({
 
       {/* Admin Assign User Modal */}
       {showAdminAssignModal && (
-        <AdminAssignUserModal
+        <AssignUserModal
           player={player}
+          groupId={groupId}
+          isAdmin={isAdmin || false}
           onClose={() => setShowAdminAssignModal(false)}
-          onAssign={(userId) => {
+          onAssign={async (data) => {
             if (onAdminAssignPlayer) {
-              onAdminAssignPlayer(userId);
+              await onAdminAssignPlayer(data);
               setShowAdminAssignModal(false);
+            }
+          }}
+        />
+      )}
+
+      {/* Owner Assign User Modal */}
+      {showOwnerAssignModal && (
+        <AssignUserModal
+          player={player}
+          groupId={groupId}
+          isAdmin={false}
+          onClose={() => setShowOwnerAssignModal(false)}
+          onAssign={async (data) => {
+            if (onOwnerAssignPlayer) {
+              await onOwnerAssignPlayer(data);
+              setShowOwnerAssignModal(false);
             }
           }}
         />
@@ -729,6 +759,7 @@ export const PlayerCard = memo(function PlayerCard({
       {/* Header - drag handle area */}
       <div
         className={`p-3 transition-colors ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
         {...dragAttributes}
         {...dragListeners}
       >
@@ -779,7 +810,7 @@ export const PlayerCard = memo(function PlayerCard({
         player={player}
         userRole={userRole}
         currentUserId={currentUserId}
-        isAdmin={isAdmin}
+        isAdminAccess={isAdminAccess}
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
         slotsWithLootEntries={slotsWithLootEntries}

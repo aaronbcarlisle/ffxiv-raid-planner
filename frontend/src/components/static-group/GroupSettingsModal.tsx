@@ -85,9 +85,10 @@ function SortableRoleItem({ role, index }: { role: string; index: number }) {
 interface GroupSettingsModalProps {
   group: StaticGroup;
   onClose: () => void;
+  isAdmin?: boolean;
 }
 
-export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) {
+export function GroupSettingsModal({ group, onClose, isAdmin }: GroupSettingsModalProps) {
   const navigate = useNavigate();
   const { updateGroup, deleteGroup } = useStaticGroupStore();
 
@@ -442,7 +443,7 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
           )}
 
           {activeTab === 'members' && (
-            <MembersPanel groupId={group.id} currentUserRole={group.userRole} />
+            <MembersPanel groupId={group.id} currentUserRole={group.userRole} isAdmin={isAdmin} />
           )}
 
           {activeTab === 'invitations' && (

@@ -376,16 +376,16 @@ describe('UI helpers', () => {
   });
 
   describe('getRoleColorClasses', () => {
-    it('returns color classes for each role', () => {
-      expect(getRoleColorClasses('owner')).toContain('purple');
-      expect(getRoleColorClasses('lead')).toContain('blue');
-      expect(getRoleColorClasses('member')).toContain('green');
-      expect(getRoleColorClasses('viewer')).toContain('gray');
+    it('returns semantic membership color classes for each role', () => {
+      expect(getRoleColorClasses('owner')).toContain('membership-owner');
+      expect(getRoleColorClasses('lead')).toContain('membership-lead');
+      expect(getRoleColorClasses('member')).toContain('membership-member');
+      expect(getRoleColorClasses('viewer')).toContain('membership-viewer');
     });
 
-    it('returns gray for null/undefined', () => {
-      expect(getRoleColorClasses(null)).toContain('gray');
-      expect(getRoleColorClasses(undefined)).toContain('gray');
+    it('returns viewer color for null/undefined', () => {
+      expect(getRoleColorClasses(null)).toContain('membership-viewer');
+      expect(getRoleColorClasses(undefined)).toContain('membership-viewer');
     });
   });
 });

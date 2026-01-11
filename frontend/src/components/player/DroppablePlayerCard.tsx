@@ -3,7 +3,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
 import type { DragState } from '../dnd/useDragAndDrop';
-import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode, GearSlot } from '../../types';
+import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Export types for drag handle
@@ -23,6 +23,7 @@ interface DroppablePlayerCardProps {
   userRole?: MemberRole | null;
   userHasClaimedPlayer?: boolean;
   isAdmin?: boolean;
+  isAdminAccess?: boolean;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -34,7 +35,8 @@ interface DroppablePlayerCardProps {
   onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
-  onAdminAssignPlayer?: (userId: string | null) => void;
+  onAdminAssignPlayer?: (data: AssignPlayerRequest) => void;
+  onOwnerAssignPlayer?: (data: AssignPlayerRequest) => void;
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;

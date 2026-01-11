@@ -141,12 +141,22 @@ export function canClaimPlayer(
   userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  hasMembership?: boolean
 ): PermissionCheck {
   const effectiveRole = getEffectiveRole(userRole, isAdmin);
 
   if (!effectiveRole || !currentUserId) {
     return { allowed: false, reason: 'You must be logged in to claim cards' };
+  }
+
+  // Check for actual membership (not just share code access)
+  // Admins bypass this check
+  if (!isAdmin && !hasMembership) {
+    return {
+      allowed: false,
+      reason: 'Only group members can claim player cards. Share code access is read-only.'
+    };
   }
 
   // Can't claim if already owned by someone else
@@ -290,15 +300,16 @@ export function getRoleDisplayName(role: MemberRole | null | undefined): string 
 
 /**
  * Get role color classes for Tailwind styling.
+ * Uses semantic membership color tokens from the design system.
  */
 export function getRoleColorClasses(role: MemberRole | null | undefined): string {
-  if (!role) return 'bg-gray-500/10 border-gray-500/30 text-gray-400';
+  if (!role) return 'bg-membership-viewer/20 border-membership-viewer/30 text-membership-viewer';
 
   const colorClasses: Record<MemberRole, string> = {
-    owner: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
-    lead: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
-    member: 'bg-green-500/10 border-green-500/30 text-green-400',
-    viewer: 'bg-gray-500/10 border-gray-500/30 text-gray-400',
+    owner: 'bg-membership-owner/20 border-membership-owner/30 text-membership-owner',
+    lead: 'bg-membership-lead/20 border-membership-lead/30 text-membership-lead',
+    member: 'bg-membership-member/20 border-membership-member/30 text-membership-member',
+    viewer: 'bg-membership-viewer/20 border-membership-viewer/30 text-membership-viewer',
   };
 
   return colorClasses[role];

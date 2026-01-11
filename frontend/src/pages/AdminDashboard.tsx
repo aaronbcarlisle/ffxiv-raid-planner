@@ -13,11 +13,32 @@ import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from '
 import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage } from '../components/ui';
 import { Button } from '../components/primitives';
-import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
+import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole } from '../types';
+
+// Extended member info with role for View As modal
+interface ViewAsMemberInfo extends MemberInfo {
+  role?: MemberRole;
+  isLinkedPlayer?: boolean;
+}
 
 // Sortable columns
 type SortField = 'name' | 'owner' | 'memberCount' | 'tierCount' | 'isPublic' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
+
+// Role badge colors - using semantic membership tokens
+const ROLE_COLORS: Record<MemberRole, string> = {
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
+};
+
+const ROLE_LABELS: Record<MemberRole, string> = {
+  owner: 'Owner',
+  lead: 'Lead',
+  member: 'Member',
+  viewer: 'Viewer',
+};
 
 interface SortableHeaderProps {
   field: SortField;
@@ -84,24 +105,54 @@ export function AdminDashboard() {
 
   // View As modal state
   const [viewAsGroup, setViewAsGroup] = useState<AdminStaticGroupListItem | null>(null);
-  const [viewAsMembers, setViewAsMembers] = useState<MemberInfo[]>([]);
+  const [viewAsMembers, setViewAsMembers] = useState<ViewAsMemberInfo[]>([]);
   const [viewAsMembersLoading, setViewAsMembersLoading] = useState(false);
 
-  // Fetch members for View As modal
+  // Fetch members and linked players for View As modal
   const fetchMembers = useCallback(async (groupId: string) => {
     if (!isAuthenticated) return;
     setViewAsMembersLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/static-groups/${groupId}/members`,
-        { credentials: 'include' }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setViewAsMembers(data.map((m: { user: MemberInfo }) => m.user).filter(Boolean));
-      } else {
-        setViewAsMembers([]);
+      // Fetch both members and linked players
+      const [membersResponse, linkedPlayersResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/static-groups/${groupId}/members`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/api/static-groups/${groupId}/linked-players`, { credentials: 'include' }),
+      ]);
+
+      const allUsers: ViewAsMemberInfo[] = [];
+      const seenIds = new Set<string>();
+
+      // Add group members (with role information)
+      if (membersResponse.ok) {
+        const members = await membersResponse.json();
+        for (const m of members) {
+          if (m.user && !seenIds.has(m.user.id)) {
+            allUsers.push({
+              ...m.user,
+              role: m.role,
+              isLinkedPlayer: false,
+            });
+            seenIds.add(m.user.id);
+          }
+        }
       }
+
+      // Add linked players (users who have player cards but aren't members)
+      if (linkedPlayersResponse.ok) {
+        const linkedPlayers: LinkedPlayerInfo[] = await linkedPlayersResponse.json();
+        for (const lp of linkedPlayers) {
+          if (lp.user && !seenIds.has(lp.user.id)) {
+            allUsers.push({
+              ...lp.user,
+              role: undefined,
+              isLinkedPlayer: true,
+            });
+            seenIds.add(lp.user.id);
+          }
+        }
+      }
+
+      setViewAsMembers(allUsers);
     } catch (error) {
       console.error('Failed to fetch members:', error);
       setViewAsMembers([]);
@@ -120,7 +171,7 @@ export function AdminDashboard() {
   // Handle View As selection
   const handleViewAs = useCallback((userId: string) => {
     if (!viewAsGroup) return;
-    navigate(`/group/${viewAsGroup.shareCode}?viewAs=${userId}`);
+    navigate(`/group/${viewAsGroup.shareCode}?adminMode=true&viewAs=${userId}`);
     setViewAsGroup(null);
   }, [viewAsGroup, navigate]);
 
@@ -310,7 +361,7 @@ export function AdminDashboard() {
                 {groups.map((group) => (
                   <tr
                     key={group.id}
-                    onClick={() => navigate(`/group/${group.shareCode}`)}
+                    onClick={() => navigate(`/group/${group.shareCode}?adminMode=true`)}
                     className="hover:bg-surface-interactive transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3">
@@ -470,6 +521,16 @@ export function AdminDashboard() {
                           </p>
                         )}
                       </div>
+                      {/* Role badge */}
+                      {member.role ? (
+                        <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[member.role]}`}>
+                          {ROLE_LABELS[member.role]}
+                        </span>
+                      ) : member.isLinkedPlayer ? (
+                        <span className="text-xs px-2 py-0.5 rounded border flex-shrink-0 bg-membership-linked/20 text-membership-linked border-membership-linked/30">
+                          Linked
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>

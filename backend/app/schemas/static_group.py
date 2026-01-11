@@ -210,3 +210,11 @@ class AdminStaticGroupListResponse(CamelModel):
     total: int
     limit: int
     offset: int
+
+
+class InteractedUserInfo(CamelModel):
+    """User who has interacted with a group (member or linked player)"""
+
+    user: MemberInfo  # Reuse MemberInfo since it has the same structure as LinkedUserInfo
+    is_member: bool
+    member_role: str | None = None  # Only present if is_member=True
