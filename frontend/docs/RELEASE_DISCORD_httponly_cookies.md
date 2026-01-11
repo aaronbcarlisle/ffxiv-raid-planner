@@ -1,58 +1,101 @@
-# Security Update Release
+# FFXIV Raid Planner Updates
 
-## **v1.0.6 - Authentication Security Hardening**
+## **v1.0.4 → v1.0.6 Release Notes**
 
-Hey everyone! Just pushed a major security update to the raid planner. Here's what's new:
-
----
-
-### **What Changed**
-
-**Authentication is now more secure!**
-
-Your login tokens are no longer stored in the browser's localStorage (which could be vulnerable to XSS attacks). Instead, they're now stored in **httpOnly cookies** that JavaScript can't access directly.
+Hey everyone! Here's a roundup of all the recent updates to the raid planner:
 
 ---
 
-### **Technical Details** (for the nerds)
+## **v1.0.6 - Security Hardening** (Latest)
 
+### What's New
+Your login is now more secure! Authentication tokens are stored in **httpOnly cookies** instead of localStorage, protecting against XSS attacks.
+
+### Security Improvements
 - **httpOnly Cookies** - Tokens stored server-side, invisible to browser scripts
 - **SameSite=Lax** - Prevents cross-site request forgery (CSRF) attacks
 - **Secure Flag** - Cookies only sent over HTTPS in production
-- **Protected Logout** - Requires authentication to prevent forced logout attacks
-- **Token Refresh** - Logout now properly clears cookies even with expired access tokens
+- **Protected Logout** - Requires auth to prevent forced logout attacks
+
+### Bug Fixes
+- Logout now works even with expired access tokens (auto-refreshes first)
+- Fixed stale auth state when cookies expire
 
 ---
 
-### **What You Need to Do**
+## **v1.0.5 - Shortcuts & Polish**
 
-**Nothing!** Just log out and log back in, and you'll automatically use the new secure authentication.
+### What's New
+Keyboard shortcuts got a complete overhaul! They now work reliably across all browsers.
 
----
+### Improvements
+- **Redesigned keyboard shortcuts** - No more conflicts with browser defaults
+  - Management: `Alt+Shift+P` (Add Player), `Alt+Shift+N` (New Tier), etc.
+  - Week nav: `Alt+Arrow` instead of `Ctrl+Arrow`
+- **Shortcut hints in menus** - Gear dropdown now shows keyboard shortcuts
+- **Readable notation** - Shows `Ctrl+S` instead of `⌃S` symbols
+- **Tips carousel** - Rotating helpful hints in the header bar
 
-### **Why This Matters**
-
-This update protects your Discord account connection from potential XSS vulnerabilities. Even if a malicious script somehow ran on the page, it couldn't steal your authentication tokens.
-
----
-
-### **Files Changed**
-```
-Backend:
-  - app/routers/auth.py (cookie handling)
-  - app/dependencies.py (token extraction)
-
-Frontend:
-  - stores/authStore.ts (auth state management)
-  - services/api.ts (API client)
-  - components/auth/ProtectedRoute.tsx
-```
+### Bug Fixes
+- `V` key now works on Weapon Priorities tab
+- Week navigation shortcuts fixed on Log tab
 
 ---
 
-### **PR Link**
-https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/18
+## **v1.0.4 - Design System & UX**
+
+### What's New
+Major UX improvements for power users and better cross-week navigation!
+
+### New Features
+- **Cross-week loot navigation** - Jump to loot entries in any week from player cards
+- **Enhanced keyboard shortcuts**
+  - `Alt+L` - Log Loot
+  - `Alt+M` - Log Material
+  - `Alt+B` - Mark Floor Cleared
+  - `Shift+S` - Go to My Statics
+  - `Shift+?` - Keyboard shortcuts help
+- **Shift+Click to copy links** - Quick link copying from player cards and loot entries
+- **Keyboard Shortcuts in user menu** - Quick access from dropdown
+
+### Improvements
+- Hotkey hints shown in tooltips and action buttons
+- GearTable UI cleanup - better small-screen support
+- BiS Import modal shows job icons and gear slot icons
+
+### Bug Fixes
+- Week switching visual bug fixed - entries appear immediately
+- Job change now shows confirmation dialog
 
 ---
 
-*Questions? Let me know!*
+## **What You Need to Do**
+
+**Nothing!** All updates are automatic. For the security update, just log out and back in to use the new secure authentication.
+
+---
+
+## **Quick Reference - Keyboard Shortcuts**
+
+| Key | Action |
+|-----|--------|
+| `1-4` | Switch tabs (Players/Loot/Log/Summary) |
+| `V` | Expand/collapse all |
+| `G` | Toggle G1/G2 or Grid/List view |
+| `S` | Toggle substitutes |
+| `Shift+?` | Show all shortcuts |
+| `Alt+L` | Log Loot |
+| `Alt+M` | Log Material |
+| `Alt+B` | Mark Floor Cleared |
+| `Shift+Click` | Copy link to clipboard |
+
+---
+
+## **Links**
+
+- **PR #18 (Security):** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/18
+- **Full Release Notes:** https://www.xivraidplanner.app/docs/release-notes
+
+---
+
+*Questions or feedback? Let me know!*
