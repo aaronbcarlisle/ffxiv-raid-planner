@@ -47,9 +47,9 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
   error: null,
 
   startViewAs: async (groupId: string, userId: string) => {
-    const { accessToken, user } = useAuthStore.getState();
+    const { isAuthenticated, user } = useAuthStore.getState();
 
-    if (!accessToken || !user?.isAdmin) {
+    if (!isAuthenticated || !user?.isAdmin) {
       set({ error: 'Admin access required' });
       return;
     }
@@ -59,11 +59,7 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/static-groups/admin/user-role/${groupId}/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+        { credentials: 'include' }
       );
 
       if (!response.ok) {

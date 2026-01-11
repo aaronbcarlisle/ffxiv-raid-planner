@@ -62,7 +62,7 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
 
 export function AdminDashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading, accessToken } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
 
   const [groups, setGroups] = useState<AdminStaticGroupListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -89,14 +89,12 @@ export function AdminDashboard() {
 
   // Fetch members for View As modal
   const fetchMembers = useCallback(async (groupId: string) => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
     setViewAsMembersLoading(true);
     try {
       const response = await fetch(
         `${API_BASE_URL}/api/static-groups/${groupId}/members`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
+        { credentials: 'include' }
       );
       if (response.ok) {
         const data = await response.json();
@@ -110,7 +108,7 @@ export function AdminDashboard() {
     } finally {
       setViewAsMembersLoading(false);
     }
-  }, [accessToken]);
+  }, [isAuthenticated]);
 
   // Open View As modal for a group
   const handleOpenViewAs = useCallback((group: AdminStaticGroupListItem, e: React.MouseEvent) => {
@@ -148,7 +146,7 @@ export function AdminDashboard() {
 
   // Fetch groups
   const fetchGroups = useCallback(async () => {
-    if (!accessToken) return;
+    if (!isAuthenticated) return;
 
     setIsLoading(true);
     setError(null);
@@ -166,11 +164,7 @@ export function AdminDashboard() {
 
       const response = await fetch(
         `${API_BASE_URL}/api/static-groups/admin/all?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+        { credentials: 'include' }
       );
 
       if (!response.ok) {
@@ -190,7 +184,7 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, page, debouncedSearch, sortField, sortDirection]);
+  }, [isAuthenticated, page, debouncedSearch, sortField, sortDirection]);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
