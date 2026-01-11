@@ -98,14 +98,14 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   const handleCopy = useCallback(() => {
     onCopyPlayer(player);
     toast.info(`Copied ${player.name}`);
-  }, [onCopyPlayer, player, player.name]);
+  }, [onCopyPlayer, player, toast]);
 
   const handlePaste = useCallback(() => {
     if (clipboardPlayer) {
       onPastePlayer(player.id, clipboardPlayer);
       toast.success(`Pasted ${clipboardPlayer.name}'s data`);
     }
-  }, [onPastePlayer, player.id, clipboardPlayer]);
+  }, [onPastePlayer, player.id, clipboardPlayer, toast]);
 
   const handleDuplicate = useCallback(() => {
     onDuplicatePlayer(player);

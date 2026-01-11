@@ -696,16 +696,6 @@ export function SectionedLogView({
     handleCopyEntryUrl(String(entryId), entryType);
   }, [handleCopyEntryUrl]);
 
-  // Handle right-click on list view entries
-  const handleListContextMenu = useCallback((
-    e: React.MouseEvent,
-    entry: LootLogEntry | MaterialLogEntry,
-    type: 'loot' | 'material'
-  ) => {
-    e.preventDefault();
-    setListContextMenu({ x: e.clientX, y: e.clientY, entry, type });
-  }, []);
-
   // Get context menu items for list view entries
   const getListContextMenuItems = useCallback((): ContextMenuItem[] => {
     if (!listContextMenu) return [];
