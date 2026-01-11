@@ -38,12 +38,17 @@ export interface LootLogModalsProps {
     options: { updateGear: boolean }
   ) => Promise<void>;
   onUpdateLoot: (updates: LootLogEntryUpdate) => Promise<void>;
-  lootModalKey: string;
+  lootModalKey: number;
   entryToEdit?: LootLogEntry;
   players: SnapshotPlayer[];
   floors: string[];
   currentWeek: number;
-  gridModalState: { floor?: number; slot?: string; materialType?: MaterialType } | null;
+  gridModalState: {
+    type: 'loot' | 'material';
+    floor: number;
+    slot?: string;
+    materialType?: string;
+  } | null;
 
   // Material Modal
   showMaterialModal: boolean;
