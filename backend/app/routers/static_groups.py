@@ -514,6 +514,42 @@ async def get_user_role_in_group_admin(
     }
 
 
+@router.get("/admin/all-users", response_model=list[InteractedUserInfo])
+async def list_all_users_admin(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[InteractedUserInfo]:
+    """List ALL users in the database (admin only)
+
+    Used by admins in assignment modals to assign any user to a player card.
+    """
+    # Require admin permission
+    is_admin = await is_user_admin(session, current_user.id)
+    if not is_admin:
+        raise PermissionDenied("Only admins can view all users")
+
+    # Fetch all users
+    result = await session.execute(select(User).order_by(User.discord_username))
+    users = result.scalars().all()
+
+    # Convert to InteractedUserInfo format (all marked as non-members since no group context)
+    return [
+        InteractedUserInfo(
+            user=MemberInfo(
+                id=user.id,
+                discord_id=user.discord_id,
+                discord_username=user.discord_username,
+                discord_avatar=user.discord_avatar,
+                avatar_url=user.avatar_url,
+                display_name=user.display_name,
+            ),
+            is_member=False,  # No group context, so always false
+            member_role=None,
+        )
+        for user in users
+    ]
+
+
 @router.get("/{group_id}", response_model=StaticGroupWithMembers)
 async def get_static_group_by_id(
     group_id: str,
@@ -900,42 +936,6 @@ async def list_interacted_users(
 
     # Return sorted by username
     return sorted(user_map.values(), key=lambda u: u.user.discord_username.lower())
-
-
-@router.get("/admin/all-users", response_model=list[InteractedUserInfo])
-async def list_all_users_admin(
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> list[InteractedUserInfo]:
-    """List ALL users in the database (admin only)
-
-    Used by admins in assignment modals to assign any user to a player card.
-    """
-    # Require admin permission
-    is_admin = await is_user_admin(session, current_user.id)
-    if not is_admin:
-        raise PermissionDenied("Only admins can view all users")
-
-    # Fetch all users
-    result = await session.execute(select(User).order_by(User.discord_username))
-    users = result.scalars().all()
-
-    # Convert to InteractedUserInfo format (all marked as non-members since no group context)
-    return [
-        InteractedUserInfo(
-            user=MemberInfo(
-                id=user.id,
-                discord_id=user.discord_id,
-                discord_username=user.discord_username,
-                discord_avatar=user.discord_avatar,
-                avatar_url=user.avatar_url,
-                display_name=user.display_name,
-            ),
-            is_member=False,  # No group context, so always false
-            member_role=None,
-        )
-        for user in users
-    ]
 
 
 @router.post("/{group_id}/members", response_model=MembershipResponse, status_code=status.HTTP_201_CREATED)
