@@ -832,9 +832,14 @@ async def list_linked_players(
     current_user: User | None = Depends(get_current_user_optional),
 ) -> list[LinkedPlayerInfo]:
     """List all users who have claimed player cards in this group (across all tiers)"""
-    # Check group exists and user has view permission
-    group = await get_static_group(session, group_id, load_memberships=False)
+    # Check group exists and user has view permission (also loads memberships for role lookup)
+    group = await get_static_group(session, group_id, load_memberships=True)
     await check_view_permission(session, group, current_user)
+
+    # Build membership role lookup (user_id -> role)
+    membership_roles: dict[str, str] = {
+        m.user_id: m.role for m in group.memberships
+    }
 
     # Get all linked players across all tiers for this group
     result = await session.execute(
@@ -866,6 +871,7 @@ async def list_linked_players(
                         discord_avatar=player.user.discord_avatar,
                         avatar_url=player.user.avatar_url,
                         display_name=player.user.display_name,
+                        membership_role=membership_roles.get(player.user_id),
                     ),
                 )
             )
