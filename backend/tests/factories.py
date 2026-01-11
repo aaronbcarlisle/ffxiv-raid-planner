@@ -132,7 +132,7 @@ async def create_snapshot_player(
         position=position,
         sort_order=sort_order,
         configured=configured,
-        gear=[],  # Empty gear array as JSON
+        gear=[],  # Empty gear array
         tome_weapon={"pursuing": False, "hasItem": False, "isAugmented": False},
         is_substitute=False,
         created_at=datetime.now(timezone.utc).isoformat(),
