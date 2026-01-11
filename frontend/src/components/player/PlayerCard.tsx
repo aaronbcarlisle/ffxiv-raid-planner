@@ -308,6 +308,14 @@ export const PlayerCard = memo(function PlayerCard({
   const rosterPermission = canManageRoster(userRole, isAdmin);
   const resetPermission = canResetGear(userRole, player, currentUserId, isAdmin);
 
+  // DEBUG: Log admin status
+  console.log('[PlayerCard] Debug:', {
+    playerName: player.name,
+    isAdmin,
+    onAdminAssignPlayer: !!onAdminAssignPlayer,
+    shouldShowAdminAssign: isAdmin && !!onAdminAssignPlayer
+  });
+
   // Memoized context menu items to prevent recreation on every render
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
     {
