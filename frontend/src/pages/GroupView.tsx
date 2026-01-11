@@ -557,12 +557,8 @@ export function GroupView() {
         </div>
       )}
 
-      {/* Admin banners */}
-      <AdminBanners
-        isAdminAccess={isAdminAccess}
-        viewAsUser={viewAsUser}
-        onExitViewAs={handleExitViewAs}
-      />
+      {/* Admin access banner (View As banner is in Layout) */}
+      <AdminBanners isAdminAccess={isAdminAccess} />
 
       {/* Content when tier exists */}
       {currentTier && (

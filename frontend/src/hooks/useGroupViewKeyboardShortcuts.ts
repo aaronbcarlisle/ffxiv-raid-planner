@@ -157,7 +157,7 @@ export function useGroupViewKeyboardShortcuts(
       }, requireAlt: true },
 
       // ===== Navigation (Shift modifiers) =====
-      { key: 's', description: 'My Statics', action: () => navigate('/'), requireShift: true },
+      { key: 's', description: 'My Statics', action: () => navigate('/dashboard'), requireShift: true },
       { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
 
       // ===== Static/Tier navigation (brackets) =====
