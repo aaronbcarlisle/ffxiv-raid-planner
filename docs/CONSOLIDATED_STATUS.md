@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 11, 2026 (v1.0.6 Released)
+**Last Updated:** January 11, 2026 (v1.0.7 Released - Audit Complete)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -37,34 +37,18 @@
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
 
-### ✅ Completed: v1.0.0 Release (January 2026)
+### ✅ Completed: v1.0.7 - Audit Complete (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Gear Category Tracking** | ✅ Complete | 9 categories for current gear (vs 2 for BiS) |
-| **iLv Calculation** | ✅ Complete | Per-slot iLv, average iLv display |
-| **Roster Adjustments** | ✅ Complete | lootAdjustment + pageAdjustments for mid-tier joins |
-| **Weapon Job Tracking** | ✅ Complete | Track which job's weapon was logged, display with job icon |
-| **Extra Loot Tagging** | ✅ Complete | Mark loot as "extra" vs BiS priority |
-| **Universal Tomestone** | ✅ Complete | Fourth material type for weapon augmentation |
-| **Weapon Priority Ties** | ✅ Complete | Roll button for tied players, auto-expand on roll |
-| **Release Notes System** | ✅ Complete | In-app release notes with version notification |
-| **Auth Persistence** | ✅ Complete | Proactive token refresh, production detection |
+| **Skeleton Loaders** | ✅ Complete | StaticGridSkeleton, StaticListSkeleton for Dashboard |
+| **useModal Hook** | ✅ Complete | Reusable modal state management (useModal, useModalWithData) |
+| **useDebounce Hook** | ✅ Complete | Debounce utilities (useDebounce, useDebouncedCallback) |
+| **ErrorMessage Component** | ✅ Complete | Error display with retry button, InlineError variant |
+| **Button Variants** | ✅ Complete | Added success and link variants (7 total) |
+| **Audit Resolution** | ✅ Complete | All actionable audit items resolved |
 
-### ✅ Completed: v1.0.1 Audit Improvements (January 2026)
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Bulk Group Duplication** | ✅ Complete | Single endpoint replaces 40+ API calls |
-| **Database Indexes** | ✅ Complete | 6 indexes for query performance |
-| **Frontend Utilities** | ✅ Complete | errorHandler, logger, eventBus libraries |
-| **Zustand Selectors** | ✅ Complete | 11 selector hooks for optimized re-renders |
-| **Bundle Optimization** | ✅ Complete | Vite manual chunks for vendor splitting |
-| **Production Config Validation** | ✅ Complete | JWT strength, debug mode, SQLite rejection |
-| **Comprehensive Test Suite** | ✅ Complete | 321 tests (95 backend + 226 frontend) |
-| **Skeleton Components** | ✅ Complete | Loading placeholder components |
-
-### ✅ Completed: v1.0.6 (January 2026)
+### ✅ Completed: v1.0.6 (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -75,7 +59,7 @@
 | **React.memo Optimization** | ✅ Complete | List item components memoized (PR #20) |
 | **LogEntryItems Extraction** | ✅ Complete | LootLogEntryItem and MaterialLogEntryItem extracted |
 
-### ✅ Completed: v1.0.5 (January 2026)
+### ✅ Completed: v1.0.5 (January 10, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -98,6 +82,31 @@
 | **Design System Migration** | ✅ Complete | 57 CSS tokens, semantic colors, new primitives |
 | **Admin Dashboard** | ✅ Complete | Super-user static browser with View As |
 
+### ✅ Completed: v1.0.1 Audit Improvements (January 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Bulk Group Duplication** | ✅ Complete | Single endpoint replaces 40+ API calls |
+| **Database Indexes** | ✅ Complete | 6 indexes for query performance |
+| **Frontend Utilities** | ✅ Complete | errorHandler, logger, eventBus libraries |
+| **Zustand Selectors** | ✅ Complete | 11 selector hooks for optimized re-renders |
+| **Bundle Optimization** | ✅ Complete | Vite manual chunks for vendor splitting |
+| **Production Config Validation** | ✅ Complete | JWT strength, debug mode, SQLite rejection |
+
+### ✅ Completed: v1.0.0 Release (January 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Gear Category Tracking** | ✅ Complete | 9 categories for current gear (vs 2 for BiS) |
+| **iLv Calculation** | ✅ Complete | Per-slot iLv, average iLv display |
+| **Roster Adjustments** | ✅ Complete | lootAdjustment + pageAdjustments for mid-tier joins |
+| **Weapon Job Tracking** | ✅ Complete | Track which job's weapon was logged, display with job icon |
+| **Extra Loot Tagging** | ✅ Complete | Mark loot as "extra" vs BiS priority |
+| **Universal Tomestone** | ✅ Complete | Fourth material type for weapon augmentation |
+| **Weapon Priority Ties** | ✅ Complete | Roll button for tied players, auto-expand on roll |
+| **Release Notes System** | ✅ Complete | In-app release notes with version notification |
+| **Auth Persistence** | ✅ Complete | Proactive token refresh, production detection |
+
 ---
 
 ## Critical Issues (Blockers)
@@ -108,18 +117,20 @@
 |-------|----------|--------|
 | **Database migrations** | Backend | ✅ Done (Alembic) |
 | **Rate limiting** | Backend API | ✅ Done (slowapi) |
-| **Test coverage** | Frontend + Backend | ✅ Done (321 tests) |
+| **Test coverage** | Frontend + Backend | ✅ Done (456 tests) |
 | **Error boundaries** | Frontend | ✅ Done (react-error-boundary) |
 | **ARIA labels** | UI components | ✅ Done (v1.0.4) |
-| **Loading skeletons** | All pages | ✅ Done |
+| **Loading skeletons** | Dashboard | ✅ Done (v1.0.7) |
 | **Security headers** | Backend API | ✅ Done |
 | **Design system** | All components | ✅ Done (PR #15) |
+| **Modal boilerplate** | Hooks | ✅ Done (v1.0.7) |
+| **Error retry** | ErrorMessage | ✅ Done (v1.0.7) |
 
-### 🟡 Low Priority / Nice to Have
+### 🟡 Deferred / Nice to Have
 
 | Issue | Location | Status |
 |-------|----------|--------|
-| ~~**Large component files**~~ | ~~GroupView (1267 lines)~~ | ✅ Fixed - Refactored to 788 lines (v1.0.5) |
+| **Props drilling** | GroupView | Deferred - hooks mitigate (R-002) |
 | **Materia in tooltips** | GearTable | Future - requires backend changes |
 | **Onboarding tooltips** | First-run experience | Future |
 | **Alt Job Linking** | Multi-job players | Future |
@@ -128,9 +139,9 @@
 
 ## Test Coverage
 
-**Total: 380 tests (95 backend + 285 frontend)**
+**Total: 456 tests (137 backend + 319 frontend)**
 
-### Backend (95 tests)
+### Backend (137 tests)
 - `test_auth.py` - Authentication endpoints
 - `test_auth_utils.py` - JWT token creation/verification
 - `test_config_validation.py` - Production config validation
@@ -138,7 +149,7 @@
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests
 
-### Frontend (226 tests)
+### Frontend (319 tests)
 - `errorHandler.test.ts` - Error parsing utilities
 - `logger.test.ts` - Logging utility
 - `eventBus.test.ts` - Event bus pub/sub
@@ -148,6 +159,8 @@
 - `releaseNotes.test.ts` - Release notes data validation
 - `uxHelpers.test.ts` - UX patterns and accessibility
 - `lootCoordination.test.ts` - Loot stats and gear sync
+- `useModal.test.ts` - Modal state hooks (v1.0.7)
+- `useDebounce.test.ts` - Debounce utilities (v1.0.7)
 
 ---
 
@@ -173,7 +186,7 @@ docs/
 ├── GEARING_MATH.md           # Gearing mechanics and formulas
 ├── GEARING_REFERENCE.md      # FFXIV gearing data
 ├── audits/
-│   ├── 2026-01-01-comprehensive-audit.md
+│   ├── 2026-01-01-comprehensive-audit.md  # Main audit (v1.0.7 complete)
 │   ├── 2026-01-02-ffxiv-raid-planner-parity-audit.md
 │   └── 2026-01-10-comprehensive-ux-audit.md
 └── archive/

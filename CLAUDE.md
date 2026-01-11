@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.6 Released (Phase 1-6.5 + Parity + Audit + UX + Design System Migration + Security Hardening) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.7 Released (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -94,7 +94,11 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `lib/logger.ts` | Development-aware logging with scoping |
 | `lib/eventBus.ts` | Pub/sub for cross-component communication |
 | `hooks/useKeyboardShortcuts.ts` | Global keyboard shortcuts hook |
+| `hooks/useModal.ts` | Modal state management hooks (v1.0.7) |
+| `hooks/useDebounce.ts` | Debounce utilities for values and callbacks (v1.0.7) |
 | `components/ui/KeyboardShortcutsHelp.tsx` | Keyboard shortcuts help modal |
+| `components/ui/ErrorMessage.tsx` | Error display with retry support (v1.0.7) |
+| `components/ui/Skeleton.tsx` | Skeleton loaders for loading states (v1.0.7) |
 | `config.ts` | API URL and environment configuration |
 
 ---
@@ -103,9 +107,19 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 
 See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
 
-### Open Items
-- **U-001:** Missing skeleton loaders - Dashboard uses spinner instead of skeleton UI
-- **D-001:** Modal pattern duplication - Create useModal hook or higher-order component
+### Audit Status: Complete ✅
+
+All actionable audit items have been resolved. Only R-002 (props drilling) remains as intentionally deferred.
+
+### Deferred Items
+- **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
+
+### Resolved in v1.0.7
+- ~~**U-001:** Missing skeleton loaders~~ - StaticGridSkeleton, StaticListSkeleton added (PR #21)
+- ~~**D-001:** Modal pattern duplication~~ - useModal, useModalWithData hooks (PR #21)
+- ~~**R-008:** No debounce~~ - useDebounce, useDebouncedCallback hooks (PR #21)
+- ~~**U-004:** No retry on errors~~ - ErrorMessage component with retry (PR #21)
+- ~~**U-011:** Inconsistent buttons~~ - Button component with 7 variants (PR #21)
 
 ### Resolved in v1.0.6
 - ~~**S-001:** JWT Token Storage~~ - Migrated to httpOnly cookies (PR #18)
@@ -116,7 +130,7 @@ See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-a
 
 ### Resolved in v1.0.1
 - ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
-- ~~**T-001:** Low test coverage~~ - Now 380 tests (95 backend + 285 frontend)
+- ~~**T-001:** Low test coverage~~ - Now 456 tests (137 backend + 319 frontend)
 
 ---
 
@@ -159,9 +173,9 @@ interface SnapshotPlayer {
 }
 ```
 
-### Tests (380 Total)
+### Tests (456 Total)
 
-**Backend (95 tests):**
+**Backend (137 tests):**
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
@@ -172,7 +186,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests for PR features
 
-**Frontend (285 tests):**
+**Frontend (319 tests):**
 ```bash
 pnpm test
 ```
@@ -185,6 +199,8 @@ pnpm test
 - `releaseNotes.test.ts` - Release notes data validation (v1.0.2)
 - `uxHelpers.test.ts` - UX patterns and accessibility (v1.0.2)
 - `lootCoordination.test.ts` - Loot stats and gear sync (v1.0.2)
+- `useModal.test.ts` - Modal state hooks (v1.0.7)
+- `useDebounce.test.ts` - Debounce utilities (v1.0.7)
 
 ### Optional Future Enhancements
 - Add currentSource dropdown to GearTable (manual override per slot)
