@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.8 In Progress (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.8 Complete (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish + Admin Assignment) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -100,6 +100,8 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `components/ui/ErrorMessage.tsx` | Error display with retry support (v1.0.7) |
 | `components/ui/Skeleton.tsx` | Skeleton loaders for loading states (v1.0.7) |
 | `components/ui/ConfirmModal.tsx` | Generic confirm dialog with auto-icons (v1.0.8) |
+| `components/player/AssignUserModal.tsx` | Admin player assignment modal (v1.0.8) |
+| `hooks/useDoubleClickConfirm.ts` | Double-click confirmation pattern hook (v1.0.8) |
 | `config.ts` | API URL and environment configuration |
 
 ---
@@ -115,12 +117,15 @@ All actionable audit items from v1.0.1-v1.0.7 have been resolved. R-002 (props d
 ### Deferred Items
 - **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
 
-### In Progress: v1.0.8
-- Modal header icons - All modals now have contextual icons in their headers
-- Double-click confirm pattern - Dangerous actions require click-to-arm, click-to-confirm
-- ConfirmModal improvements - Uses Button component with proper variants, auto-adds icons
-- Job icons in dropdowns - Recipient selects show job icons
-- Static Settings polish - Tab icons, proper danger button styling
+### Resolved in v1.0.8
+- ~~Modal header icons~~ - All modals have contextual icons in headers
+- ~~Double-click confirm pattern~~ - useDoubleClickConfirm hook with arm/confirm/timeout
+- ~~ConfirmModal improvements~~ - Uses Button component with proper variants, auto-adds icons
+- ~~Job icons in dropdowns~~ - Recipient selects show job icons
+- ~~Static Settings polish~~ - Tab icons, proper danger button styling
+- ~~Admin player assignment~~ - Owners/admins can assign users to player cards with badge colors
+- ~~Race condition handling~~ - Membership creation handles concurrent requests gracefully
+- ~~Input validation~~ - Discord ID and UUID format validation in assignment modal
 
 ### Resolved in v1.0.7
 - ~~**U-001:** Missing skeleton loaders~~ - StaticGridSkeleton, StaticListSkeleton added (PR #21)
@@ -138,7 +143,7 @@ All actionable audit items from v1.0.1-v1.0.7 have been resolved. R-002 (props d
 
 ### Resolved in v1.0.1
 - ~~**P-001:** N+1 in duplicateGroup~~ - Now uses bulk `/duplicate` endpoint
-- ~~**T-001:** Low test coverage~~ - Now 456 tests (137 backend + 319 frontend)
+- ~~**T-001:** Low test coverage~~ - Now 479 tests (160 backend + 319 frontend)
 
 ---
 
@@ -178,9 +183,9 @@ interface SnapshotPlayer {
 }
 ```
 
-### Tests (456 Total)
+### Tests (479 Total)
 
-**Backend (137 tests):**
+**Backend (160 tests):**
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
@@ -190,6 +195,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_duplicate_group.py` - Bulk duplication endpoint
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests for PR features
+- `test_player_assignment.py` - Admin player assignment endpoints (v1.0.8)
 
 **Frontend (319 tests):**
 ```bash
@@ -270,6 +276,7 @@ ffxiv-raid-planner/
 - `PUT/DELETE .../tiers/{tierId}/players/{playerId}` - Update/Remove
 - `POST .../tiers/{tierId}/players` - Add player
 - `POST/DELETE .../players/{playerId}/claim` - Take/Release ownership
+- `POST .../players/{playerId}/assign` - Admin/Owner assign user to player (v1.0.8)
 
 ### Invitations
 - `GET/POST /api/static-groups/{id}/invitations` - List/Create
@@ -395,18 +402,43 @@ For destructive actions that don't need type-to-confirm but should prevent accid
 Used in: Revoke invitation, Clear book history
 
 ```tsx
-const [isArmed, setIsArmed] = useState(false);
-const handleClick = async () => {
-  if (isArmed) {
-    // Execute action
-    await doDestructiveAction();
-    setIsArmed(false);
-  } else {
-    setIsArmed(true);
-    setTimeout(() => setIsArmed(false), 3000);
-  }
-};
+import { useDoubleClickConfirm } from '../hooks/useDoubleClickConfirm';
+
+const { isArmed, isLoading, handleClick, handleBlur, resetArmed } = useDoubleClickConfirm({
+  onConfirm: async () => { await deleteItem(); },
+  timeout: 3000,  // Default: 3000ms
+});
+
+<Button
+  variant={isArmed ? 'warning' : 'danger'}
+  onClick={handleClick}
+  onBlur={handleBlur}
+  disabled={isLoading}
+  loading={isLoading}
+>
+  {isArmed ? 'Confirm?' : 'Delete'}
+</Button>
 ```
+
+### Admin Player Assignment (v1.0.8)
+Owners and admins can assign Discord users to player cards for groups they manage.
+
+**How it works:**
+- Player card context menu shows "Assign Player" option for owners/admins
+- Modal shows two tabs: Members (existing group members) and Manual (enter user ID)
+- Selecting a member auto-fills their user ID
+- Manual tab validates Discord ID (17-19 digits) or UUID format
+- Assignment creates membership if user not already a member (with MEMBER role)
+- Race conditions handled gracefully - returns existing membership if already exists
+
+**Badge Colors:**
+- Linked users show role-colored badges on player cards
+- Owner: teal, Lead: purple, Member: blue, Viewer: zinc, Linked (no membership): amber
+
+**Files:**
+- `components/player/AssignUserModal.tsx` - Assignment modal with tabs
+- `backend/app/routers/tiers.py` - `POST .../players/{id}/assign` endpoint
+- `backend/app/permissions.py` - `create_membership_for_assignment()` helper
 
 ### UI State Persistence (localStorage)
 - `group-view-tab`, `loot-priority-subtab`, `party-view-mode`

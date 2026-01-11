@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 11, 2026 (v1.0.8 In Progress - Modal Polish)
+**Last Updated:** January 11, 2026 (v1.0.8 Complete - Admin Assignment & Modal Polish)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -37,15 +37,20 @@
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
 
-### 🔨 In Progress: v1.0.8 - Modal Polish (January 11, 2026)
+### ✅ Completed: v1.0.8 - Admin Assignment & Modal Polish (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Modal Header Icons** | ✅ Complete | All modals have contextual icons in headers |
 | **ConfirmModal Improvements** | ✅ Complete | Uses Button component, auto-adds icons by variant |
-| **Double-Click Confirm** | ✅ Complete | Revoke/Clear actions use arm-then-confirm pattern |
+| **Double-Click Confirm** | ✅ Complete | useDoubleClickConfirm hook with arm/confirm/timeout |
 | **Job Icons in Dropdowns** | ✅ Complete | Recipient selects show job icons |
 | **Static Settings Polish** | ✅ Complete | Tab icons, proper danger button styling |
+| **Admin Player Assignment** | ✅ Complete | Owners/admins can assign users to player cards |
+| **Player Badge Colors** | ✅ Complete | Role-colored badges for linked users on player cards |
+| **Race Condition Handling** | ✅ Complete | Membership creation handles concurrent requests |
+| **Input Validation** | ✅ Complete | Discord ID (17-19 digits) and UUID format validation |
+| **23 New Backend Tests** | ✅ Complete | Comprehensive player assignment test coverage |
 
 ### ✅ Completed: v1.0.7 - Audit Complete (January 11, 2026)
 
@@ -149,15 +154,16 @@
 
 ## Test Coverage
 
-**Total: 456 tests (137 backend + 319 frontend)**
+**Total: 479 tests (160 backend + 319 frontend)**
 
-### Backend (137 tests)
+### Backend (160 tests)
 - `test_auth.py` - Authentication endpoints
 - `test_auth_utils.py` - JWT token creation/verification
 - `test_config_validation.py` - Production config validation
 - `test_duplicate_group.py` - Bulk duplication endpoint
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests
+- `test_player_assignment.py` - Admin player assignment endpoints (v1.0.8)
 
 ### Frontend (319 tests)
 - `errorHandler.test.ts` - Error parsing utilities
