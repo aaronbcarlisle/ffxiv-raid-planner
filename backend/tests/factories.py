@@ -122,7 +122,12 @@ async def create_snapshot_player(
     sort_order: int = 0,
     configured: bool = True,
 ) -> SnapshotPlayer:
-    """Create a player in a tier snapshot."""
+    """Create a player in a tier snapshot.
+
+    Note: gear and tome_weapon use native Python types (list/dict) rather than
+    JSON strings because SQLAlchemy's JSON column type handles serialization
+    automatically.
+    """
     player = SnapshotPlayer(
         id=str(uuid.uuid4()),
         tier_snapshot_id=tier_snapshot.id,
