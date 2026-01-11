@@ -5,8 +5,8 @@
  */
 
 import { useState } from 'react';
-import { Modal } from '../ui';
-import { Button, Input } from '../primitives';
+import { Modal, Input } from '../ui';
+import { Button } from '../primitives';
 import { Link2, X } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 
