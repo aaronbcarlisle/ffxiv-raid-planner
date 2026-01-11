@@ -291,8 +291,10 @@ async def logout(
     could force a user to logout by making a cross-origin POST request.
     """
     # Clear cookies with matching attributes for proper deletion across all browsers
-    response.delete_cookie(key="access_token", path="/", samesite="lax")
-    response.delete_cookie(key="refresh_token", path="/", samesite="lax")
+    # Must match secure flag used when setting cookies for proper browser deletion
+    is_secure = settings.environment == "production"
+    response.delete_cookie(key="access_token", path="/", samesite="lax", secure=is_secure)
+    response.delete_cookie(key="refresh_token", path="/", samesite="lax", secure=is_secure)
 
     return {"message": "Logged out successfully"}
 

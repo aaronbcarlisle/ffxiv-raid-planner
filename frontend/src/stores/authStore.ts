@@ -141,14 +141,32 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /**
-       * Logout user by calling backend to clear httpOnly cookies
+       * Logout user by calling backend to clear httpOnly cookies.
+       * Attempts to refresh token if access token is expired to ensure
+       * cookies are properly cleared on the server.
        */
       logout: async () => {
         try {
-          // Call logout endpoint to clear httpOnly cookies
-          await authRequest('/api/auth/logout', { method: 'POST' }).catch(() => {
-            // Ignore errors - we're logging out anyway
+          // First attempt to logout
+          const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
           });
+
+          // If access token expired (401), try refreshing then retry logout
+          if (response.status === 401) {
+            const refreshed = await get().refreshAccessToken();
+            if (refreshed) {
+              // Retry logout with new access token
+              await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+              });
+            }
+            // If refresh fails, cookies may remain but we clear local state anyway
+          }
+        } catch {
+          // Network error - cookies may remain but we clear local state
         } finally {
           // Clear local state regardless of API result
           set({
