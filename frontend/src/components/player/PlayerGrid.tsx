@@ -278,6 +278,7 @@ export function PlayerGrid({
   onResetGear,
   onClaimPlayer,
   onReleasePlayer,
+  onAdminAssignPlayer,
   onCopyPlayer,
   onPastePlayer,
   onCopyUrl,
