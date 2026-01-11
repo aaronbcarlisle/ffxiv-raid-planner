@@ -10,6 +10,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
+// TODO: Integrate extracted components
+// import { LootLogFilters } from './LootLogFilters';
+// import { LootLogModals } from './LootLogModals';
 import { AddLootEntryModal } from './AddLootEntryModal';
 import { LogMaterialModal } from './LogMaterialModal';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';

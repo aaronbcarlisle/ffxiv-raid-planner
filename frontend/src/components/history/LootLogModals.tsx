@@ -53,7 +53,6 @@ export interface LootLogModalsProps {
     floor: string;
     materialType: MaterialType;
     recipientPlayerId: string;
-    recipientPlayerName: string;
     notes?: string;
   }) => Promise<void>;
   onUpdateMaterial: (updates: MaterialLogEntryUpdate) => Promise<void>;
@@ -88,11 +87,10 @@ export interface LootLogModalsProps {
   tierId: string;
   canEdit: boolean;
   onHistoryCleared: () => void;
-  getBalanceWeekParam: () => number | undefined;
 
   // Reset Confirmation Modal
   resetModalType: ResetType | null;
-  onResetConfirm: (type: ResetType) => Promise<void>;
+  onResetConfirm: () => Promise<void>;
   onCancelReset: () => void;
 
   // Generic Confirmation Modal
@@ -147,7 +145,6 @@ export function LootLogModals({
   tierId,
   canEdit,
   onHistoryCleared,
-  getBalanceWeekParam,
 
   // Reset Confirmation Modal
   resetModalType,

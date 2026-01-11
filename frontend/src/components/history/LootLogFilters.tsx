@@ -7,7 +7,6 @@
  * - Action buttons (Log Loot, Log Material)
  */
 
-import { type ResetType } from '../ui/ResetConfirmModal';
 import {
   Dropdown,
   DropdownTrigger,
