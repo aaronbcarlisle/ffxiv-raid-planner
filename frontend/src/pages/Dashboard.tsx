@@ -10,7 +10,7 @@ import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-rea
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
-import { ContextMenu, Select, Input, Label, Checkbox, Modal, Spinner } from '../components/ui';
+import { ContextMenu, Select, Input, Label, Checkbox, Modal, Spinner, StaticGridSkeleton, StaticListSkeleton, ErrorMessage } from '../components/ui';
 import { Button, IconButton } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
@@ -55,7 +55,7 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 export function Dashboard() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup } = useStaticGroupStore();
+  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -320,16 +320,22 @@ export function Dashboard() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 p-4 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error">
-          {error}
-        </div>
+        <ErrorMessage
+          message={error}
+          onRetry={fetchGroups}
+          onDismiss={clearError}
+          retrying={isLoading}
+          className="mb-6"
+        />
       )}
 
       {/* Loading */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Spinner size="lg" label="Loading statics" />
-        </div>
+        viewMode === 'grid' ? (
+          <StaticGridSkeleton count={6} />
+        ) : (
+          <StaticListSkeleton count={6} />
+        )
       ) : groups.length === 0 ? (
         /* Empty state with onboarding guidance */
         <div className="bg-surface-card rounded-lg border border-border-default p-8">

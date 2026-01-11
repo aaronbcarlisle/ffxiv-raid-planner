@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../config';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
-import { Input } from '../components/ui';
+import { Input, ErrorMessage } from '../components/ui';
 import { Button } from '../components/primitives';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo } from '../types';
 
@@ -269,9 +269,13 @@ export function AdminDashboard() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 p-4 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error">
-          {error}
-        </div>
+        <ErrorMessage
+          message={error}
+          onRetry={fetchGroups}
+          onDismiss={() => setError(null)}
+          retrying={isLoading}
+          className="mb-6"
+        />
       )}
 
       {/* Loading */}
