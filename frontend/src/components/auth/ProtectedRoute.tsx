@@ -29,14 +29,15 @@ export function ProtectedRoute({
   showLoginPrompt = true,
 }: ProtectedRouteProps) {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, user, fetchUser, accessToken } = useAuthStore();
+  const { isAuthenticated, isLoading, user, fetchUser } = useAuthStore();
 
-  // Check auth status on mount if we have a token but no user
+  // Check auth status on mount if we have a persisted user but haven't verified yet
+  // With httpOnly cookies, we verify by calling the API
   useEffect(() => {
-    if (accessToken && !user && !isLoading) {
+    if (user && !isAuthenticated && !isLoading) {
       fetchUser();
     }
-  }, [accessToken, user, isLoading, fetchUser]);
+  }, [isAuthenticated, user, isLoading, fetchUser]);
 
   // Store intended destination for post-login redirect
   useEffect(() => {
@@ -45,8 +46,9 @@ export function ProtectedRoute({
     }
   }, [isAuthenticated, isLoading, redirectTo]);
 
-  // Loading state
-  if (isLoading || (accessToken && !user)) {
+  // Loading state - show spinner while verifying session
+  // Also show spinner if we have a persisted user but haven't verified yet
+  if (isLoading || (user && !isAuthenticated)) {
     if (!showLoading) return null;
 
     return (

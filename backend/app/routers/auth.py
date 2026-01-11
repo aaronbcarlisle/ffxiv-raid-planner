@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,6 +66,7 @@ async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
 @limiter.limit(RATE_LIMITS["auth"])
 async def discord_callback(
     request: Request,
+    response: Response,
     data: DiscordCallback,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
@@ -172,6 +173,31 @@ async def discord_callback(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    # Set httpOnly cookies (secure, SameSite=Lax for CSRF protection)
+    # In production, secure=True requires HTTPS
+    is_secure = settings.environment == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.jwt_access_token_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        path="/",
+    )
+
+    # Still return tokens in body for backward compatibility during transition
+    # TODO: Remove after all clients migrate to cookie-based auth
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -183,11 +209,28 @@ async def discord_callback(
 @limiter.limit(RATE_LIMITS["auth"])
 async def refresh_access_token(
     request: Request,
-    data: RefreshTokenRequest,
+    response: Response,
+    data: RefreshTokenRequest | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
-    """Refresh access token using refresh token"""
-    user_id = verify_token(data.refresh_token, token_type="refresh")
+    """Refresh access token using refresh token.
+
+    Accepts refresh token from either:
+    1. Request body (legacy: { refreshToken: "..." })
+    2. httpOnly cookie (preferred)
+    """
+    # Try to get refresh token from cookie first, then body
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value and data:
+        refresh_token_value = data.refresh_token
+
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token provided",
+        )
+
+    user_id = verify_token(refresh_token_value, token_type="refresh")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -205,18 +248,54 @@ async def refresh_access_token(
 
     # Create new tokens
     access_token = create_access_token(user.id)
-    refresh_token = create_refresh_token(user.id)
+    new_refresh_token = create_refresh_token(user.id)
 
+    # Set httpOnly cookies
+    is_secure = settings.environment == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.jwt_access_token_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        path="/",
+    )
+
+    # Return tokens in body for backward compatibility
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token,
+        refresh_token=new_refresh_token,
         expires_in=settings.jwt_access_token_expire_minutes * 60,
     )
 
 
 @router.post("/logout")
-async def logout() -> dict:
-    """Logout user (client should discard tokens)"""
+async def logout(
+    response: Response,
+    _user: User = Depends(get_current_user),  # Require auth to prevent CSRF
+) -> dict:
+    """Logout user by clearing httpOnly cookies.
+
+    Requires authentication to prevent CSRF attacks where an attacker
+    could force a user to logout by making a cross-origin POST request.
+    """
+    # Clear cookies with matching attributes for proper deletion across all browsers
+    # Must match secure flag used when setting cookies for proper browser deletion
+    is_secure = settings.environment == "production"
+    response.delete_cookie(key="access_token", path="/", samesite="lax", secure=is_secure)
+    response.delete_cookie(key="refresh_token", path="/", samesite="lax", secure=is_secure)
+
     return {"message": "Logged out successfully"}
 
 

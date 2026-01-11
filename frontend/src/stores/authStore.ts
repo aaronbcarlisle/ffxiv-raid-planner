@@ -1,12 +1,14 @@
 /**
  * Auth Store - Manages user authentication state
  *
- * Handles Discord OAuth, JWT token management, and user session.
+ * Handles Discord OAuth and user session.
+ * JWT tokens are stored in httpOnly cookies (set by backend) for XSS protection.
+ * The frontend never has direct access to tokens - they're sent automatically via cookies.
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, AuthTokens, DiscordAuthUrl } from '../types';
+import type { User, DiscordAuthUrl } from '../types';
 import { API_BASE_URL, isProduction, isLocalhostApi } from '../config';
 
 if (isProduction && isLocalhostApi) {
@@ -18,47 +20,12 @@ if (isProduction && isLocalhostApi) {
   );
 }
 
-/**
- * Decode JWT payload (without verification - just for expiration check)
- * Returns null if token is invalid/malformed
- */
-function decodeJwtPayload(token: string): { exp?: number } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(payload);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Check if JWT token is expired or expiring soon
- * @param token JWT token string
- * @param bufferSeconds Seconds before actual expiry to consider it "expired" (default: 60)
- */
-function isTokenExpired(token: string, bufferSeconds = 60): boolean {
-  const payload = decodeJwtPayload(token);
-  if (!payload?.exp) return true; // Invalid token = treat as expired
-
-  const expiresAt = payload.exp * 1000; // Convert to milliseconds
-  const now = Date.now();
-  const bufferMs = bufferSeconds * 1000;
-
-  return now >= expiresAt - bufferMs;
-}
-
 interface AuthState {
   // User state
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-
-  // Token management (stored in localStorage via persist middleware)
-  accessToken: string | null;
-  refreshToken: string | null;
 
   // Actions
   login: () => Promise<void>;
@@ -70,24 +37,21 @@ interface AuthState {
 }
 
 /**
- * Make an authenticated API request
+ * Make an API request with credentials (cookies).
+ * Tokens are stored in httpOnly cookies and sent automatically.
  */
 async function authRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
-  accessToken?: string | null
+  options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
   const response = await fetch(url, {
     ...options,
+    credentials: 'include', // Send httpOnly cookies
     headers: {
       ...headers,
       ...options.headers,
@@ -120,8 +84,6 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      accessToken: null,
-      refreshToken: null,
 
       /**
        * Initiate Discord OAuth login
@@ -159,17 +121,13 @@ export const useAuthStore = create<AuthState>()(
           }
           sessionStorage.removeItem('oauth_state');
 
-          // Exchange code for tokens
-          const tokens = await authRequest<AuthTokens>('/api/auth/discord/callback', {
+          // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
+          await authRequest('/api/auth/discord/callback', {
             method: 'POST',
             body: JSON.stringify({ code, state }),
           });
 
-          set({
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            isAuthenticated: true,
-          });
+          set({ isAuthenticated: true });
 
           // Fetch user info
           await get().fetchUser();
@@ -178,57 +136,65 @@ export const useAuthStore = create<AuthState>()(
             error: error instanceof Error ? error.message : 'Failed to complete login',
             isLoading: false,
             isAuthenticated: false,
-            accessToken: null,
-            refreshToken: null,
           });
         }
       },
 
       /**
-       * Logout user
+       * Logout user by calling backend to clear httpOnly cookies.
+       * Attempts to refresh token if access token is expired to ensure
+       * cookies are properly cleared on the server.
        */
       logout: async () => {
         try {
-          // Call logout endpoint (optional - just discards tokens on server side if implemented)
-          const { accessToken } = get();
-          if (accessToken) {
-            await authRequest('/api/auth/logout', { method: 'POST' }, accessToken).catch(
-              () => {
-                // Ignore errors - we're logging out anyway
-              }
-            );
+          // First attempt to logout
+          const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+          });
+
+          // If access token expired (401), try refreshing then retry logout
+          if (response.status === 401) {
+            const refreshed = await get().refreshAccessToken();
+            if (refreshed) {
+              // Retry logout with new access token
+              await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+              });
+            }
+            // If refresh fails, cookies may remain but we clear local state anyway
           }
+        } catch {
+          // Network error - cookies may remain but we clear local state
         } finally {
           // Clear local state regardless of API result
           set({
             user: null,
             isAuthenticated: false,
-            accessToken: null,
-            refreshToken: null,
             error: null,
           });
         }
       },
 
       /**
-       * Refresh access token using refresh token
+       * Refresh access token using refresh token cookie.
+       * The refresh token is sent automatically via httpOnly cookie.
+       *
+       * Note: Uses fetch directly instead of authRequest to prevent infinite
+       * recursion (authRequest calls refreshAccessToken on 401).
        */
       refreshAccessToken: async () => {
-        const { refreshToken } = get();
-        if (!refreshToken) {
-          return false;
-        }
-
         try {
-          const tokens = await authRequest<AuthTokens>('/api/auth/refresh', {
+          // Call refresh endpoint directly - avoid authRequest to prevent infinite loop
+          const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
             method: 'POST',
-            body: JSON.stringify({ refreshToken }),
+            credentials: 'include',
           });
 
-          set({
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-          });
+          if (!response.ok) {
+            throw new Error('Refresh failed');
+          }
 
           return true;
         } catch {
@@ -236,39 +202,31 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             isAuthenticated: false,
-            accessToken: null,
-            refreshToken: null,
           });
           return false;
         }
       },
 
       /**
-       * Fetch current user info
+       * Fetch current user info using httpOnly cookie authentication
        */
       fetchUser: async () => {
-        const { accessToken } = get();
-        if (!accessToken) {
-          return;
-        }
-
         set({ isLoading: true });
 
         try {
-          const user = await authRequest<User>('/api/auth/me', {}, accessToken);
+          const user = await authRequest<User>('/api/auth/me');
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch (error) {
+        } catch {
           // Token might be expired - try refreshing
           const refreshed = await get().refreshAccessToken();
           if (refreshed) {
-            // Retry with new token
-            const newAccessToken = get().accessToken;
+            // Retry with new cookies
             try {
-              const user = await authRequest<User>('/api/auth/me', {}, newAccessToken);
+              const user = await authRequest<User>('/api/auth/me');
               set({
                 user,
                 isAuthenticated: true,
@@ -300,31 +258,27 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // Only persist user data - tokens are now in httpOnly cookies
+      // isAuthenticated is derived from API responses, not persisted
+      // (prevents stale auth state when cookies expire)
       partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
+        user: state.user,
       }),
     }
   )
 );
 
 /**
- * Hook to get the current access token (for use in API calls)
- */
-export function getAccessToken(): string | null {
-  return useAuthStore.getState().accessToken;
-}
-
-/**
- * Initialize auth on app load
- * Call this once when the app starts to check for existing session
+ * Initialize auth on app load.
+ * Call this once when the app starts to check for existing session.
  *
- * This function proactively refreshes the access token if it's expired,
- * preventing unnecessary 401 errors on first API call.
+ * With httpOnly cookies, we can't check token expiration client-side.
+ * Instead, we simply try to fetch the user - if cookies are valid, it works.
+ * If not, the backend will return 401 and we'll try to refresh.
  */
 export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  const { accessToken, refreshToken, refreshAccessToken, fetchUser } = state;
+  const { user, fetchUser } = state;
 
   // Warn in console if in production with localhost API
   if (isProduction && isLocalhostApi) {
@@ -334,33 +288,9 @@ export async function initializeAuth(): Promise<void> {
     );
   }
 
-  if (!accessToken && !refreshToken) {
-    // No tokens at all - user needs to login
-    return;
-  }
-
-  if (accessToken && !isTokenExpired(accessToken)) {
-    // Access token exists and is still valid - fetch user
+  // If we have a persisted user, verify session is still valid with backend
+  // This handles the case where httpOnly cookies have expired
+  if (user) {
     await fetchUser();
-    return;
   }
-
-  // Access token is missing or expired - try to refresh first
-  if (refreshToken && !isTokenExpired(refreshToken, 0)) {
-    // Refresh token exists and is valid - refresh access token
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      // Successfully refreshed - now fetch user
-      await fetchUser();
-      return;
-    }
-  }
-
-  // Refresh failed or refresh token expired - clear state and require re-login
-  useAuthStore.setState({
-    user: null,
-    isAuthenticated: false,
-    accessToken: null,
-    refreshToken: null,
-  });
 }
