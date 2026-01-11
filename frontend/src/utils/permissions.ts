@@ -5,7 +5,23 @@
  * throughout the application. These are UX helpers only - the backend
  * always enforces actual permissions.
  *
- * Admin users (isAdmin=true) automatically have owner-level access to all groups.
+ * ## Key Distinction: isAdmin vs isAdminAccess
+ *
+ * - **isAdmin** (User.isAdmin): Boolean property on the User object indicating the user
+ *   is a super-user/admin. Admins have owner-level access to ALL static groups in the
+ *   system, regardless of membership. This is used as a parameter in permission checks.
+ *
+ * - **isAdminAccess** (StaticGroup.isAdminAccess): Boolean property on the StaticGroup
+ *   object returned by the API. When true, it indicates the user's role on this group
+ *   was granted via admin privileges rather than actual membership. Used for UI display
+ *   purposes (e.g., showing an "Admin Access" indicator).
+ *
+ * @example
+ * // isAdmin: Passed to permission checks
+ * const canEdit = canEditPlayer(userRole, player, userId, user.isAdmin);
+ *
+ * // isAdminAccess: Used for UI indicators
+ * {group.isAdminAccess && <AdminAccessBadge />}
  */
 
 import type { SnapshotPlayer } from '../types';
@@ -24,6 +40,11 @@ export interface PermissionCheck {
 /**
  * Get the effective role for a user, accounting for admin status.
  * Admins are treated as owners for all permission checks.
+ *
+ * @param userRole - The user's actual membership role for the group
+ * @param isAdmin - Whether the user has admin privileges (User.isAdmin).
+ *                  NOT to be confused with isAdminAccess which is a group property.
+ * @returns The effective role for permission checks ('owner' for admins, otherwise userRole)
  */
 export function getEffectiveRole(
   userRole: MemberRole | null | undefined,
@@ -141,12 +162,22 @@ export function canClaimPlayer(
   userRole: MemberRole | null | undefined,
   player: SnapshotPlayer,
   currentUserId?: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  hasMembership?: boolean
 ): PermissionCheck {
   const effectiveRole = getEffectiveRole(userRole, isAdmin);
 
   if (!effectiveRole || !currentUserId) {
     return { allowed: false, reason: 'You must be logged in to claim cards' };
+  }
+
+  // Check for actual membership (not just share code access)
+  // Admins bypass this check
+  if (!isAdmin && !hasMembership) {
+    return {
+      allowed: false,
+      reason: 'Only group members can claim player cards. Share code access is read-only.'
+    };
   }
 
   // Can't claim if already owned by someone else
@@ -290,15 +321,16 @@ export function getRoleDisplayName(role: MemberRole | null | undefined): string 
 
 /**
  * Get role color classes for Tailwind styling.
+ * Uses semantic membership color tokens from the design system.
  */
 export function getRoleColorClasses(role: MemberRole | null | undefined): string {
-  if (!role) return 'bg-gray-500/10 border-gray-500/30 text-gray-400';
+  if (!role) return 'bg-membership-viewer/20 border-membership-viewer/30 text-membership-viewer';
 
   const colorClasses: Record<MemberRole, string> = {
-    owner: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
-    lead: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
-    member: 'bg-green-500/10 border-green-500/30 text-green-400',
-    viewer: 'bg-gray-500/10 border-gray-500/30 text-gray-400',
+    owner: 'bg-membership-owner/20 border-membership-owner/30 text-membership-owner',
+    lead: 'bg-membership-lead/20 border-membership-lead/30 text-membership-lead',
+    member: 'bg-membership-member/20 border-membership-member/30 text-membership-member',
+    viewer: 'bg-membership-viewer/20 border-membership-viewer/30 text-membership-viewer',
   };
 
   return colorClasses[role];

@@ -124,13 +124,13 @@ export function WeeklyLootGrid({
       });
     }
 
-    // Go to Player - navigate to recipient's player card
+    // Jump to Player - navigate to recipient's player card
     if (onNavigateToPlayer) {
       const recipientName = 'recipientPlayerName' in entry ? entry.recipientPlayerName : '';
       const recipientId = 'recipientPlayerId' in entry ? entry.recipientPlayerId : '';
       if (recipientId) {
         items.push({
-          label: `Go to ${recipientName}`,
+          label: `Jump to ${recipientName}`,
           icon: <UserRound className="w-4 h-4" />,
           onClick: () => onNavigateToPlayer(recipientId),
         });
@@ -429,7 +429,13 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      onMouseDown={(e) => {
+                        // Prevent focus flash when Shift+Click
+                        if (e.shiftKey && lootEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                        }
+                      }}
                       onClick={(e) => {
                         // Shift+Click copies entry URL
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
@@ -485,7 +491,13 @@ export function WeeklyLootGrid({
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      onMouseDown={(e) => {
+                        // Prevent focus flash when Shift+Click
+                        if (e.shiftKey && matEntry && onCopyEntryUrl) {
+                          e.preventDefault();
+                        }
+                      }}
                       onClick={(e) => {
                         // Shift+Click copies entry URL
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {

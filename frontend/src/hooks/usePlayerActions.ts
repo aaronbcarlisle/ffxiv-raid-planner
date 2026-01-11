@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 import { useTierStore } from '../stores/tierStore';
-import type { SnapshotPlayer, GearSlotStatus, ResetMode, SortPreset } from '../types';
+import type { SnapshotPlayer, GearSlotStatus, ResetMode, SortPreset, AssignPlayerRequest } from '../types';
 import { GEAR_SLOTS } from '../types';
 
 interface UsePlayerActionsParams {
@@ -23,6 +23,8 @@ export interface UsePlayerActionsReturn {
   handleRemovePlayer: (playerId: string) => Promise<void>;
   handleClaimPlayer: (playerId: string) => Promise<void>;
   handleReleasePlayer: (playerId: string) => Promise<void>;
+  handleAdminAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
+  handleOwnerAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
   handleConfigurePlayer: (playerId: string, name: string, job: string, role: string) => Promise<void>;
   handleAddPlayer: () => Promise<void>;
   handleDuplicatePlayer: (sourcePlayer: SnapshotPlayer) => Promise<void>;
@@ -44,6 +46,8 @@ export function usePlayerActions({
     reorderPlayers,
     claimPlayer,
     releasePlayer,
+    adminAssignPlayer,
+    ownerAssignPlayer,
   } = useTierStore();
 
   // Player update handler
@@ -69,6 +73,18 @@ export function usePlayerActions({
     if (!groupId || !tierId) return;
     await releasePlayer(groupId, tierId, playerId);
   }, [groupId, tierId, releasePlayer]);
+
+  // Admin assign player handler (admin-only)
+  const handleAdminAssignPlayer = useCallback(async (playerId: string, data: AssignPlayerRequest) => {
+    if (!groupId || !tierId) return;
+    await adminAssignPlayer(groupId, tierId, playerId, data);
+  }, [groupId, tierId, adminAssignPlayer]);
+
+  // Owner assign player handler (owner-only)
+  const handleOwnerAssignPlayer = useCallback(async (playerId: string, data: AssignPlayerRequest) => {
+    if (!groupId || !tierId) return;
+    await ownerAssignPlayer(groupId, tierId, playerId, data);
+  }, [groupId, tierId, ownerAssignPlayer]);
 
   // Configure player (set name, job, role)
   const handleConfigurePlayer = useCallback(async (playerId: string, name: string, job: string, role: string) => {
@@ -201,6 +217,8 @@ export function usePlayerActions({
     handleRemovePlayer,
     handleClaimPlayer,
     handleReleasePlayer,
+    handleAdminAssignPlayer,
+    handleOwnerAssignPlayer,
     handleConfigurePlayer,
     handleAddPlayer,
     handleDuplicatePlayer,

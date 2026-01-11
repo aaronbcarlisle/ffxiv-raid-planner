@@ -10,6 +10,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { Package, Pencil } from 'lucide-react';
 import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -355,7 +356,16 @@ export function AddLootEntryModal({
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          {isEditMode ? <Pencil className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+          {isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}
+        </span>
+      }
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Week and Floor */}
         <div className="grid grid-cols-2 gap-4">

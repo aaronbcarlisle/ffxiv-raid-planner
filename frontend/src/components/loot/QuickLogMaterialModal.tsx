@@ -6,8 +6,10 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { Gem } from 'lucide-react';
 import { Modal, Select, Label } from '../ui';
 import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone, type PriorityEntry } from '../../utils/priority';
@@ -131,17 +133,23 @@ export function QuickLogMaterialModal({
     label: `Week ${i + 1}`,
   }));
 
-  // Build recipient options
+  // Build recipient options with job icons
   const recipientOptions = sortedRecipients.map(({ player, priority, needsMaterial }) => ({
     value: player.id,
-    label: `${player.name} (${player.job})${getPriorityLabel(priority, needsMaterial)}`,
+    label: `${player.name}${getPriorityLabel(priority, needsMaterial)}`,
+    icon: <JobIcon job={player.job} size="sm" />,
   }));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Log ${UPGRADE_MATERIAL_DISPLAY_NAMES[material]}`}
+      title={
+        <span className="flex items-center gap-2">
+          <Gem className="w-5 h-5" />
+          Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}
+        </span>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}

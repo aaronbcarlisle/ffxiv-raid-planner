@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ExternalLink, Check } from 'lucide-react';
 
 // Navigation items
@@ -223,6 +223,7 @@ function NavSidebar({ activeSection, onSectionClick }: { activeSection: string; 
 
 export default function CommonTasksDocs() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('bis-import');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
@@ -244,7 +245,9 @@ export default function CommonTasksDocs() {
   const handleNavClick = useCallback((sectionId: string) => {
     setActiveSection(sectionId);
     isScrollingRef.current = true;
-  }, []);
+    // Update URL hash
+    navigate(`#${sectionId}`, { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -281,7 +284,14 @@ export default function CommonTasksDocs() {
         }
       }
 
-      setActiveSection(bestSection || 'bis-import');
+      setActiveSection(prev => {
+        const newSection = bestSection || 'bis-import';
+        if (prev !== newSection) {
+          // Update URL hash when active section changes from scroll
+          window.history.replaceState(null, '', `#${newSection}`);
+        }
+        return newSection;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

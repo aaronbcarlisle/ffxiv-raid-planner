@@ -426,7 +426,7 @@ body[data-scroll-locked][style] {
   transition: border-color 0.2s ease;
 }
 
-.input:focus {
+.input:focus-visible {
   outline: none;
   border-color: rgba(20, 184, 166, 0.5);
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);

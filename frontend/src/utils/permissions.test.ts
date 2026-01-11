@@ -306,24 +306,35 @@ describe('canClaimPlayer', () => {
   const claimedPlayer = createMockPlayer({ userId: 'owner-123' });
 
   it('allows members to claim unclaimed players', () => {
-    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456');
+    // hasMembership=true since members have actual membership
+    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(true);
   });
 
   it("denies members from claiming others' claimed players", () => {
-    const result = canClaimPlayer('member', claimedPlayer, 'user-456');
+    // hasMembership=true since members have actual membership
+    const result = canClaimPlayer('member', claimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain('claimed by another');
   });
 
   it("allows owners to unclaim others' players", () => {
-    const result = canClaimPlayer('owner', claimedPlayer, 'user-456');
+    // hasMembership=true since owners have actual membership
+    const result = canClaimPlayer('owner', claimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(true);
   });
 
   it('denies viewers from claiming', () => {
-    const result = canClaimPlayer('viewer', unclaimedPlayer, 'user-456');
+    // Viewers have share code access but not membership
+    const result = canClaimPlayer('viewer', unclaimedPlayer, 'user-456', false, false);
     expect(result.allowed).toBe(false);
+  });
+
+  it('denies share code users without membership', () => {
+    // Member role via share code but no actual membership
+    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456', false, false);
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('Only group members');
   });
 });
 
@@ -376,16 +387,16 @@ describe('UI helpers', () => {
   });
 
   describe('getRoleColorClasses', () => {
-    it('returns color classes for each role', () => {
-      expect(getRoleColorClasses('owner')).toContain('purple');
-      expect(getRoleColorClasses('lead')).toContain('blue');
-      expect(getRoleColorClasses('member')).toContain('green');
-      expect(getRoleColorClasses('viewer')).toContain('gray');
+    it('returns semantic membership color classes for each role', () => {
+      expect(getRoleColorClasses('owner')).toContain('membership-owner');
+      expect(getRoleColorClasses('lead')).toContain('membership-lead');
+      expect(getRoleColorClasses('member')).toContain('membership-member');
+      expect(getRoleColorClasses('viewer')).toContain('membership-viewer');
     });
 
-    it('returns gray for null/undefined', () => {
-      expect(getRoleColorClasses(null)).toContain('gray');
-      expect(getRoleColorClasses(undefined)).toContain('gray');
+    it('returns viewer color for null/undefined', () => {
+      expect(getRoleColorClasses(null)).toContain('membership-viewer');
+      expect(getRoleColorClasses(undefined)).toContain('membership-viewer');
     });
   });
 });

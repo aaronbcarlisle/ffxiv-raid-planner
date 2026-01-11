@@ -6,12 +6,14 @@
  * Uses Radix Dropdown for accessibility.
  */
 
+import { Keyboard } from 'lucide-react';
 import {
   Dropdown,
   DropdownContent,
   DropdownItem,
   DropdownSeparator,
   DropdownTrigger,
+  Tooltip,
 } from '../primitives';
 
 interface PopoverAction {
@@ -78,9 +80,11 @@ export function SettingsPopover({ actions }: SettingsPopoverProps) {
                 </span>
               )}
               {action.shortcut && (
-                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">
-                  {action.shortcut}
-                </kbd>
+                <Tooltip content={action.shortcut} side="right" delayDuration={100}>
+                  <span className="ml-2 text-text-muted hover:text-text-secondary">
+                    <Keyboard className="w-3.5 h-3.5" />
+                  </span>
+                </Tooltip>
               )}
             </DropdownItem>
           </div>

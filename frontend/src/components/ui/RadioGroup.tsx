@@ -108,7 +108,7 @@ export function RadioGroup({
                         : 'border-border-default bg-surface-elevated'
                     }
                     ${!isDisabled && !isSelected ? 'hover:border-accent/50' : ''}
-                    peer-focus:ring-2 peer-focus:ring-accent/30 peer-focus:ring-offset-2 peer-focus:ring-offset-surface-base
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
                   `}
                   >
                     {isSelected && (

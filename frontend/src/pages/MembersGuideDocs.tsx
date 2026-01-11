@@ -253,7 +253,14 @@ export default function MembersGuideDocs() {
         }
       }
 
-      setActiveSection(bestSection || 'overview');
+      setActiveSection(prev => {
+        const newSection = bestSection || 'overview';
+        if (prev !== newSection) {
+          // Update URL hash when active section changes from scroll
+          window.history.replaceState(null, '', `#${newSection}`);
+        }
+        return newSection;
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });

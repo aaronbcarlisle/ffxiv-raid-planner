@@ -40,13 +40,32 @@ function isInputElement(target: EventTarget | null): boolean {
   );
 }
 
+/** localStorage key for global shortcut enable/disable */
+export const SHORTCUTS_ENABLED_KEY = 'shortcuts-enabled';
+
+/**
+ * Check if shortcuts are globally enabled
+ */
+export function areShortcutsEnabled(): boolean {
+  return localStorage.getItem(SHORTCUTS_ENABLED_KEY) !== 'false';
+}
+
+/**
+ * Set global shortcut enabled state
+ */
+export function setShortcutsEnabled(enabled: boolean): void {
+  localStorage.setItem(SHORTCUTS_ENABLED_KEY, enabled ? 'true' : 'false');
+  // Dispatch event so components can react to the change
+  window.dispatchEvent(new CustomEvent('shortcuts-enabled-change', { detail: enabled }));
+}
+
 /**
  * Hook to register keyboard shortcuts
  */
 export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboardShortcutsOptions) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Skip if disabled or typing in an input
-    if (disabled || isInputElement(event.target)) return;
+    // Skip if globally disabled, locally disabled, or typing in an input
+    if (!areShortcutsEnabled() || disabled || isInputElement(event.target)) return;
 
     // Find matching shortcut
     const shortcut = shortcuts.find(s => {

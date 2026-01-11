@@ -26,11 +26,11 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-accent hover:bg-active-bg active:bg-accent/20',
   danger:
-    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40 focus:ring-status-error/50',
+    'bg-status-error/20 text-status-error border border-status-error/40 hover:bg-status-error/30 active:bg-status-error/40 focus-visible:ring-status-error/50',
   warning:
-    'bg-status-warning/20 text-status-warning border border-status-warning/40 hover:bg-status-warning/30 active:bg-status-warning/40 focus:ring-status-warning/50',
+    'bg-status-warning/20 text-status-warning border border-status-warning/40 hover:bg-status-warning/30 active:bg-status-warning/40 focus-visible:ring-status-warning/50',
   success:
-    'bg-status-success/20 text-status-success border border-status-success/40 hover:bg-status-success/30 active:bg-status-success/40 focus:ring-status-success/50',
+    'bg-status-success/20 text-status-success border border-status-success/40 hover:bg-status-success/30 active:bg-status-success/40 focus-visible:ring-status-success/50',
   link:
     'bg-transparent text-accent text-sm underline-offset-4 hover:underline active:text-accent-hover',
 };
@@ -65,7 +65,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={`
           inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
           transition-all duration-fast
-          focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-surface-base
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
           ${variantStyles[variant]}
           ${variant !== 'link' ? sizeStyles[size] : ''}

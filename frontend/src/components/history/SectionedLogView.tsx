@@ -730,13 +730,13 @@ export function SectionedLogView({
       onClick: () => handleCopyEntryUrl(String(entry.id), type),
     });
 
-    // Go to Player - navigate to recipient's player card
+    // Jump to Player - navigate to recipient's player card
     if (onNavigateToPlayer) {
       const recipientName = 'recipientPlayerName' in entry ? entry.recipientPlayerName : '';
       const recipientId = 'recipientPlayerId' in entry ? entry.recipientPlayerId : '';
       if (recipientId) {
         items.push({
-          label: `Go to ${recipientName}`,
+          label: `Jump to ${recipientName}`,
           icon: <UserRound className="w-4 h-4" />,
           onClick: () => onNavigateToPlayer(recipientId),
         });

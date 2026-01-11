@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
+import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List, Users } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
@@ -54,7 +54,7 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -603,7 +603,12 @@ export function Dashboard() {
             setNewGroupName('');
             setNewGroupPublic(false);
           }}
-          title="Create Static Group"
+          title={
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Create Static Group
+            </span>
+          }
         >
           <form onSubmit={handleCreateGroup} className="space-y-4">
             <div>
@@ -657,6 +662,7 @@ export function Dashboard() {
             setShowSettingsModal(false);
             fetchGroups(); // Refresh list in case name/visibility changed
           }}
+          isAdmin={user?.isAdmin}
         />
       )}
 
@@ -668,7 +674,12 @@ export function Dashboard() {
             setShowDeleteConfirm(false);
             setDeleteConfirmText('');
           }}
-          title="Delete Static"
+          title={
+            <span className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-status-error" />
+              Delete Static
+            </span>
+          }
         >
           <div className="space-y-4">
             <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">

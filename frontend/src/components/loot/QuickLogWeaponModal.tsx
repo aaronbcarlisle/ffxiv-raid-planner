@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { Swords } from 'lucide-react';
 import { Modal, Select, Checkbox, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -151,17 +152,23 @@ export function QuickLogWeaponModal({
     label: `Week ${i + 1}`,
   }));
 
-  // Build recipient options
+  // Build recipient options with job icons
   const recipientOptions = sortedRecipients.map(({ player, priority, needsWeapon, isMainJob }) => ({
     value: player.id,
-    label: `${player.name} (${player.job})${getPriorityLabel(priority, needsWeapon, isMainJob)}`,
+    label: `${player.name}${getPriorityLabel(priority, needsWeapon, isMainJob)}`,
+    icon: <JobIcon job={player.job} size="sm" />,
   }));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Log ${jobName} Weapon`}
+      title={
+        <span className="flex items-center gap-2">
+          <Swords className="w-5 h-5" />
+          Log {jobName} Weapon
+        </span>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Pre-filled info */}

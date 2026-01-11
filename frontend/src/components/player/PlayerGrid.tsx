@@ -13,7 +13,7 @@ import { LightPartyHeader } from './LightPartyHeader';
 import { toast } from '../../stores/toastStore';
 import { canResetGear } from '../../utils/permissions';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import type { SnapshotPlayer, ViewMode, ResetMode, GearSlot, MemberRole, ContentType } from '../../types';
+import type { SnapshotPlayer, ViewMode, ResetMode, GearSlot, MemberRole, ContentType, AssignPlayerRequest } from '../../types';
 import type { DragState } from '../dnd/useDragAndDrop';
 
 // Memoized player card renderer to prevent unnecessary re-renders
@@ -29,6 +29,7 @@ interface PlayerCardRendererProps {
   userRole: MemberRole | null | undefined;
   userHasClaimedPlayer: boolean;
   isAdminAccess: boolean;
+  isAdmin: boolean;
   groupId: string;
   tierId: string;
   highlightedPlayerId: string | null;
@@ -40,6 +41,8 @@ interface PlayerCardRendererProps {
   onResetGear: (playerId: string, mode: ResetMode) => Promise<void>;
   onClaimPlayer: (playerId: string) => Promise<void>;
   onReleasePlayer: (playerId: string) => Promise<void>;
+  onAdminAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
+  onOwnerAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
   onCopyPlayer: (player: SnapshotPlayer) => void;
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
@@ -62,6 +65,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   userRole,
   userHasClaimedPlayer,
   isAdminAccess,
+  isAdmin,
   groupId,
   tierId,
   highlightedPlayerId,
@@ -73,6 +77,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   onResetGear,
   onClaimPlayer,
   onReleasePlayer,
+  onAdminAssignPlayer,
+  onOwnerAssignPlayer,
   onCopyPlayer,
   onPastePlayer,
   onCopyUrl,
@@ -123,6 +129,14 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
     onReleasePlayer(player.id);
   }, [onReleasePlayer, player.id]);
 
+  const handleAdminAssignPlayer = useCallback((data: AssignPlayerRequest) => {
+    onAdminAssignPlayer(player.id, data);
+  }, [onAdminAssignPlayer, player.id]);
+
+  const handleOwnerAssignPlayer = useCallback((data: AssignPlayerRequest) => {
+    onOwnerAssignPlayer(player.id, data);
+  }, [onOwnerAssignPlayer, player.id]);
+
   const handleCopyUrl = useCallback(() => {
     onCopyUrl(player.id);
   }, [onCopyUrl, player.id]);
@@ -165,7 +179,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         isGroupOwner={userRole === 'owner'}
         userRole={userRole}
         userHasClaimedPlayer={userHasClaimedPlayer}
-        isAdmin={isAdminAccess}
+        isAdmin={isAdmin}
+        isAdminAccess={isAdminAccess}
         groupId={groupId}
         tierId={tierId}
         isHighlighted={highlightedPlayerId === player.id}
@@ -177,6 +192,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         onResetGear={resetPermission.allowed ? handleResetGear : undefined}
         onClaimPlayer={handleClaimPlayer}
         onReleasePlayer={handleReleasePlayer}
+        onAdminAssignPlayer={handleAdminAssignPlayer}
+        onOwnerAssignPlayer={handleOwnerAssignPlayer}
         onModalOpen={onModalOpen}
         onModalClose={onModalClose}
         onCopyUrl={handleCopyUrl}
@@ -220,6 +237,7 @@ export interface PlayerGridProps {
   userRole: MemberRole | null | undefined;
   userHasClaimedPlayer: boolean;
   isAdminAccess: boolean;
+  isAdmin: boolean;
   groupId: string;
   tierId: string;
   playerSlotsWithLootEntries: Map<string, Set<GearSlot>>;
@@ -231,6 +249,8 @@ export interface PlayerGridProps {
   onResetGear: (playerId: string, mode: ResetMode) => Promise<void>;
   onClaimPlayer: (playerId: string) => Promise<void>;
   onReleasePlayer: (playerId: string) => Promise<void>;
+  onAdminAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
+  onOwnerAssignPlayer: (playerId: string, data: AssignPlayerRequest) => Promise<void>;
   onCopyPlayer: (player: SnapshotPlayer) => void;
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
@@ -260,6 +280,7 @@ export function PlayerGrid({
   userRole,
   userHasClaimedPlayer,
   isAdminAccess,
+  isAdmin,
   groupId,
   tierId,
   playerSlotsWithLootEntries,
@@ -270,6 +291,8 @@ export function PlayerGrid({
   onResetGear,
   onClaimPlayer,
   onReleasePlayer,
+  onAdminAssignPlayer,
+  onOwnerAssignPlayer,
   onCopyPlayer,
   onPastePlayer,
   onCopyUrl,
@@ -291,6 +314,7 @@ export function PlayerGrid({
     userRole,
     userHasClaimedPlayer,
     isAdminAccess,
+    isAdmin,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -301,6 +325,8 @@ export function PlayerGrid({
     onResetGear,
     onClaimPlayer,
     onReleasePlayer,
+    onAdminAssignPlayer,
+    onOwnerAssignPlayer,
     onCopyPlayer,
     onPastePlayer,
     onCopyUrl,
@@ -320,6 +346,7 @@ export function PlayerGrid({
     userRole,
     userHasClaimedPlayer,
     isAdminAccess,
+    isAdmin,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -330,6 +357,8 @@ export function PlayerGrid({
     onResetGear,
     onClaimPlayer,
     onReleasePlayer,
+    onAdminAssignPlayer,
+    onOwnerAssignPlayer,
     onCopyPlayer,
     onPastePlayer,
     onCopyUrl,

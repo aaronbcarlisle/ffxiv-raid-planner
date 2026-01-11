@@ -282,7 +282,10 @@ export function GroupView() {
   // When viewing as another user, use their role instead of actual role
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
-  const isAdminAccess = !viewAsUser && (currentGroup?.isAdminAccess ?? false);
+  // Admin access only when navigating from Admin Dashboard with adminMode=true
+  const adminModeParam = searchParams.get('adminMode') === 'true';
+  const isAdminAccess = !viewAsUser && (user?.isAdmin ?? false) && adminModeParam;
+  const isAdmin = user?.isAdmin ?? false; // Separate flag for admin features (always true for admins)
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
@@ -477,15 +480,6 @@ export function GroupView() {
     toast.success('Link copied to clipboard');
   }, []);
 
-  const handleExitViewAs = useCallback(() => {
-    stopViewAs();
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      params.delete('viewAs');
-      return params;
-    }, { replace: true });
-  }, [stopViewAs, setSearchParams]);
-
   // Loading state
   if (isLoading && !currentGroup) {
     return (
@@ -557,12 +551,8 @@ export function GroupView() {
         </div>
       )}
 
-      {/* Admin banners */}
-      <AdminBanners
-        isAdminAccess={isAdminAccess}
-        viewAsUser={viewAsUser}
-        onExitViewAs={handleExitViewAs}
-      />
+      {/* Admin access banner (View As banner is in Layout) */}
+      <AdminBanners isAdminAccess={isAdminAccess} />
 
       {/* Content when tier exists */}
       {currentTier && (
@@ -607,17 +597,6 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
-              {!rosterPermission.allowed && sortPreset === 'custom' && (
-                <div className="mb-3 p-3 bg-surface-card border border-border-subtle rounded-lg">
-                  <p className="text-sm text-text-muted flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Player reordering is disabled. {rosterPermission.reason}
-                  </p>
-                </div>
-              )}
-
               <DndContext
                 sensors={dnd.sensors}
                 collisionDetection={pointerWithin}
@@ -642,6 +621,7 @@ export function GroupView() {
                   userRole={userRole}
                   userHasClaimedPlayer={userHasClaimedPlayer}
                   isAdminAccess={isAdminAccess}
+                  isAdmin={isAdmin}
                   groupId={currentGroup!.id}
                   tierId={currentTier!.tierId}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries}
@@ -652,6 +632,8 @@ export function GroupView() {
                   onResetGear={playerActions.handleResetGear}
                   onClaimPlayer={playerActions.handleClaimPlayer}
                   onReleasePlayer={playerActions.handleReleasePlayer}
+                  onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
+                  onOwnerAssignPlayer={playerActions.handleOwnerAssignPlayer}
                   onCopyPlayer={handleCopyPlayer}
                   onPastePlayer={handlePastePlayer}
                   onCopyUrl={handleCopyUrl}
@@ -763,6 +745,7 @@ export function GroupView() {
         <GroupSettingsModal
           group={currentGroup}
           onClose={() => setShowSettingsModal(false)}
+          isAdmin={isAdmin}
         />
       )}
 

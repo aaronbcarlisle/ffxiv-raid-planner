@@ -5,10 +5,13 @@
  * Shows date/time, week, floor, book type, transaction type, quantity, and notes.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { History, Trash2, Check } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { Button } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
+import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 
 interface PlayerLedgerModalProps {
   isOpen: boolean;
@@ -48,7 +51,29 @@ export function PlayerLedgerModal({
   onHistoryCleared,
 }: PlayerLedgerModalProps) {
   const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
-  const [isClearing, setIsClearing] = useState(false);
+
+  // Handle the actual clear action
+  const handleClearHistory = useCallback(async () => {
+    try {
+      await deletePlayerLedger(groupId, tierId, playerId);
+      toast.success(`Cleared history for ${playerName}`);
+      onHistoryCleared?.();
+      onClose();
+    } catch {
+      toast.error('Failed to clear history');
+    }
+  }, [deletePlayerLedger, groupId, tierId, playerId, playerName, onHistoryCleared, onClose]);
+
+  // Double-click confirm for clear history (hook handles loading state)
+  const {
+    isArmed: isClearArmed,
+    isLoading: isClearing,
+    handleClick: handleClearClick,
+    handleBlur: handleClearBlur,
+    resetArmed: clearArmedState,
+  } = useDoubleClickConfirm({
+    onConfirm: handleClearHistory,
+  });
 
   // Fetch ledger entries when modal opens
   useEffect(() => {
@@ -58,30 +83,20 @@ export function PlayerLedgerModal({
     return () => {
       // Clear when modal closes
       clearPlayerLedger();
+      clearArmedState();
     };
-  }, [isOpen, groupId, tierId, playerId, fetchPlayerLedger, clearPlayerLedger]);
-
-  const handleClearHistory = async () => {
-    if (!confirm(`Clear all book history for ${playerName}? This cannot be undone.`)) return;
-
-    setIsClearing(true);
-    try {
-      await deletePlayerLedger(groupId, tierId, playerId);
-      toast.success(`Cleared history for ${playerName}`);
-      onHistoryCleared?.();
-      onClose();
-    } catch {
-      toast.error('Failed to clear history');
-    } finally {
-      setIsClearing(false);
-    }
-  };
+  }, [isOpen, groupId, tierId, playerId, fetchPlayerLedger, clearPlayerLedger, clearArmedState]);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Book History: ${playerName}`}
+      title={
+        <span className="flex items-center gap-2">
+          <History className="w-5 h-5" />
+          Book History: {playerName}
+        </span>
+      }
       size="3xl"
     >
       <div className="space-y-4">
@@ -165,21 +180,32 @@ export function PlayerLedgerModal({
         <div className="flex justify-between pt-4 border-t border-border-default">
           <div>
             {canEdit && playerLedger.length > 0 && (
-              <button
-                onClick={handleClearHistory}
+              <Button
+                variant={isClearArmed ? 'warning' : 'danger'}
+                size="sm"
+                onClick={handleClearClick}
+                onBlur={handleClearBlur}
                 disabled={isClearing}
-                className="px-3 py-2 rounded text-sm bg-status-error/20 text-status-error hover:bg-status-error/30 transition-colors disabled:opacity-50"
+                loading={isClearing}
+                title={isClearArmed ? 'Click again to confirm' : 'Clear all history'}
               >
-                {isClearing ? 'Clearing...' : 'Clear History'}
-              </button>
+                {isClearArmed ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Confirm?
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Clear History
+                  </>
+                )}
+              </Button>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-surface-interactive text-text-secondary hover:bg-surface-hover transition-colors"
-          >
+          <Button variant="secondary" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

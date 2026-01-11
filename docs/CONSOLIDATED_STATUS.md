@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 11, 2026 (v1.0.7 Released - Audit Complete)
+**Last Updated:** January 11, 2026 (v1.0.8 In Progress - Modal Polish)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -36,6 +36,16 @@
 | **Design System V2** | 6.6 | ✅ Complete | Semantic tokens, 5-tier containers, new primitives |
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
+
+### 🔨 In Progress: v1.0.8 - Modal Polish (January 11, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Modal Header Icons** | ✅ Complete | All modals have contextual icons in headers |
+| **ConfirmModal Improvements** | ✅ Complete | Uses Button component, auto-adds icons by variant |
+| **Double-Click Confirm** | ✅ Complete | Revoke/Clear actions use arm-then-confirm pattern |
+| **Job Icons in Dropdowns** | ✅ Complete | Recipient selects show job icons |
+| **Static Settings Polish** | ✅ Complete | Tab icons, proper danger button styling |
 
 ### ✅ Completed: v1.0.7 - Audit Complete (January 11, 2026)
 
@@ -182,22 +192,13 @@
 
 ```
 docs/
-├── CONSOLIDATED_STATUS.md    # This file - project status
+├── CONSOLIDATED_STATUS.md    # This file - project status and version history
+├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
 ├── GEARING_MATH.md           # Gearing mechanics and formulas
-├── GEARING_REFERENCE.md      # FFXIV gearing data
-├── audits/
-│   ├── 2026-01-01-comprehensive-audit.md  # Main audit (v1.0.7 complete)
-│   ├── 2026-01-02-ffxiv-raid-planner-parity-audit.md
-│   └── 2026-01-10-comprehensive-ux-audit.md
-└── archive/
-    ├── 2025-12-audits/       # Historical audit snapshots
-    ├── 2025-12-planning/     # Initial planning docs
-    ├── 2026-01-audits/       # Superseded UX audits
-    ├── plans/                # Completed implementation plans
-    ├── redesign/             # Historical redesign docs
-    └── session-handoffs/     # Development session context
-        └── auto/             # Auto-generated handoffs
+└── GEARING_REFERENCE.md      # FFXIV gearing data
 ```
+
+**Note:** All historical audits, plans, and session handoffs have been consolidated into OUTSTANDING_WORK.md. The archive folder has been removed.
 
 ---
 

@@ -59,7 +59,7 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
           }
           ${disabled
             ? 'cursor-not-allowed'
-            : 'cursor-pointer hover:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-0'
+            : 'cursor-pointer hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-0'
           }
         `}
       >

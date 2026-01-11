@@ -38,6 +38,14 @@ interface PlayerCardStatusProps {
   onTankRoleChange: (tankRole: TankRole | undefined) => void;
 }
 
+// Role-based badge colors for linked users
+const ROLE_COLORS: Record<string, string> = {
+  owner: 'bg-membership-owner/20 text-membership-owner',
+  lead: 'bg-membership-lead/20 text-membership-lead',
+  member: 'bg-membership-member/20 text-membership-member',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer',
+};
+
 export function PlayerCardStatus({
   role,
   isSubstitute,
@@ -53,6 +61,14 @@ export function PlayerCardStatus({
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
   const isLinkedToOther = userId && userId !== currentUserId;
+
+  // Determine badge color based on membership role
+  const roleColor = linkedUser?.membershipRole
+    ? ROLE_COLORS[linkedUser.membershipRole]
+    : 'bg-membership-linked/20 text-membership-linked';
+
+  // Always show username (role is indicated by color)
+  const roleLabel = linkedUser?.displayName || linkedUser?.discordUsername || '';
 
   // Don't render if nothing to show
   const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther || role === 'tank';
@@ -95,8 +111,8 @@ export function PlayerCardStatus({
       {/* Linked user badge */}
       {isLinkedToOther && linkedUser && (
         <span
-          className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium flex items-center gap-1"
-          title={`Linked to ${linkedUser.displayName || linkedUser.discordUsername}`}
+          className={`text-xs ${roleColor} px-1.5 py-0.5 rounded font-medium flex items-center gap-1`}
+          title={`Linked to ${linkedUser.displayName || linkedUser.discordUsername}${linkedUser.membershipRole ? ` (${linkedUser.membershipRole})` : ''}`}
         >
           {linkedUser.avatarUrl ? (
             <img
@@ -106,7 +122,7 @@ export function PlayerCardStatus({
             />
           ) : null}
           <span className="max-w-16 truncate">
-            {linkedUser.displayName || linkedUser.discordUsername}
+            {roleLabel}
           </span>
         </span>
       )}

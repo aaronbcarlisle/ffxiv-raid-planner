@@ -1,8 +1,10 @@
 """Permission utilities for static group access control"""
 
+import uuid
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -34,6 +36,70 @@ def create_admin_membership(user_id: str, group_id: str) -> Membership:
     )
 
 
+async def create_membership_for_assignment(
+    session: AsyncSession,
+    user_id: str,
+    group_id: str,
+    role: MemberRole,
+) -> Membership:
+    """
+    Create or get membership when assigning a user to a player card.
+
+    Used by owner assignment and admin assignment flows.
+    If membership already exists, returns the existing one (no-op).
+    Handles race conditions gracefully with IntegrityError catch.
+
+    Args:
+        session: Database session
+        user_id: User ID to create membership for
+        group_id: Static group ID
+        role: Role to assign (must be MEMBER or LEAD)
+
+    Returns:
+        Existing or newly created membership
+
+    Raises:
+        HTTPException: If invalid role provided
+    """
+    # Check if membership already exists - if so, return it (no-op)
+    existing = await get_user_membership(session, user_id, group_id)
+    if existing:
+        return existing
+
+    # Validate role is member or lead only
+    if role not in [MemberRole.MEMBER, MemberRole.LEAD]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only assign member or lead role",
+        )
+
+    # Create membership with race condition handling
+    now = datetime.now(timezone.utc).isoformat()
+    membership = Membership(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        static_group_id=group_id,
+        role=role.value,
+        joined_at=now,
+        updated_at=now,
+    )
+
+    try:
+        session.add(membership)
+        await session.flush()
+    except IntegrityError:
+        # Race condition - another request created the membership first
+        # Roll back and return the existing membership
+        await session.rollback()
+        existing = await get_user_membership(session, user_id, group_id)
+        if existing:
+            return existing
+        # Re-raise if we still can't find it (shouldn't happen)
+        raise
+
+    return membership
+
+
 async def is_user_admin(session: AsyncSession, user_id: str) -> bool:
     """Check if a user has admin privileges."""
     result = await session.execute(
@@ -54,11 +120,23 @@ async def get_static_group(
     session: AsyncSession,
     group_id: str,
     load_memberships: bool = False,
+    load_membership_users: bool = False,
 ) -> StaticGroup:
-    """Get a static group by ID, raising NotFound if it doesn't exist"""
+    """Get a static group by ID, raising NotFound if it doesn't exist
+
+    Args:
+        session: Database session
+        group_id: The group ID to fetch
+        load_memberships: Whether to eager-load memberships
+        load_membership_users: Whether to also eager-load the user for each membership
+                               (only applies when load_memberships=True)
+    """
     query = select(StaticGroup).where(StaticGroup.id == group_id)
     if load_memberships:
-        query = query.options(selectinload(StaticGroup.memberships))
+        if load_membership_users:
+            query = query.options(selectinload(StaticGroup.memberships).selectinload(Membership.user))
+        else:
+            query = query.options(selectinload(StaticGroup.memberships))
 
     result = await session.execute(query)
     group = result.scalar_one_or_none()

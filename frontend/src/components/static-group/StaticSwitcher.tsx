@@ -15,14 +15,14 @@ import {
   DropdownSeparator,
   DropdownTrigger,
 } from '../primitives';
-import { Badge, Tooltip } from '../primitives';
+import { Tooltip } from '../primitives';
 
-// Role badge variants
-const ROLE_VARIANTS: Record<MemberRole, 'info' | 'caster' | 'tank' | 'default'> = {
-  owner: 'info',
-  lead: 'caster',
-  member: 'tank',
-  viewer: 'default',
+// Role badge colors using semantic membership tokens
+const ROLE_COLORS: Record<MemberRole, string> = {
+  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
+  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
+  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
+  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
 interface StaticSwitcherProps {
@@ -97,13 +97,13 @@ export function StaticSwitcher({
                       </span>
                     </Tooltip>
                     {group.userRole ? (
-                      <Badge variant={ROLE_VARIANTS[group.userRole]} size="sm">
+                      <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}>
                         {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
-                      </Badge>
+                      </span>
                     ) : group.source === 'linked' ? (
-                      <Badge variant="warning" size="sm">
+                      <span className="text-xs px-1.5 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">
                         Linked
-                      </Badge>
+                      </span>
                     ) : null}
                   </div>
                 </DropdownItem>

@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.7 Released (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.8 In Progress (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -99,20 +99,28 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `components/ui/KeyboardShortcutsHelp.tsx` | Keyboard shortcuts help modal |
 | `components/ui/ErrorMessage.tsx` | Error display with retry support (v1.0.7) |
 | `components/ui/Skeleton.tsx` | Skeleton loaders for loading states (v1.0.7) |
+| `components/ui/ConfirmModal.tsx` | Generic confirm dialog with auto-icons (v1.0.8) |
 | `config.ts` | API URL and environment configuration |
 
 ---
 
-## Known Issues (from Audit)
+## Known Issues
 
-See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
+See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for the complete prioritized list of remaining work.
 
 ### Audit Status: Complete ✅
 
-All actionable audit items have been resolved. Only R-002 (props drilling) remains as intentionally deferred.
+All actionable audit items from v1.0.1-v1.0.7 have been resolved. R-002 (props drilling) is intentionally deferred.
 
 ### Deferred Items
 - **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
+
+### In Progress: v1.0.8
+- Modal header icons - All modals now have contextual icons in their headers
+- Double-click confirm pattern - Dangerous actions require click-to-arm, click-to-confirm
+- ConfirmModal improvements - Uses Button component with proper variants, auto-adds icons
+- Job icons in dropdowns - Recipient selects show job icons
+- Static Settings polish - Tab icons, proper danger button styling
 
 ### Resolved in v1.0.7
 - ~~**U-001:** Missing skeleton loaders~~ - StaticGridSkeleton, StaticListSkeleton added (PR #21)
@@ -135,9 +143,6 @@ All actionable audit items have been resolved. Only R-002 (props drilling) remai
 ---
 
 ## Parity Implementation (Phases 1-4 Complete)
-
-**Plan:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
-**Audit:** `docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md`
 
 ### Completed Features
 
@@ -373,6 +378,35 @@ Dragging between G1/G2 auto-swaps position (T1↔T2, H1↔H2, etc.)
 
 ### Modal + DnD
 When modals open, set drag sensor distance to 999999 to disable dragging.
+
+### Modal Header Icons (v1.0.8)
+All modals have contextual icons in their headers for visual consistency:
+- Danger modals: Trash2 (red) for delete, RotateCcw (warning) for reset
+- Action modals: Contextual icons (Package for loot, Gem for materials, Users for groups)
+- ConfirmModal auto-adds icons based on variant (danger/warning/default)
+
+### Double-Click Confirm Pattern (v1.0.8)
+For destructive actions that don't need type-to-confirm but should prevent accidents:
+1. First click: Button changes to "Confirm?" with warning styling
+2. Second click: Action executes
+3. Auto-resets after 3 seconds if not confirmed
+4. Resets on blur (click away or tab out)
+
+Used in: Revoke invitation, Clear book history
+
+```tsx
+const [isArmed, setIsArmed] = useState(false);
+const handleClick = async () => {
+  if (isArmed) {
+    // Execute action
+    await doDestructiveAction();
+    setIsArmed(false);
+  } else {
+    setIsArmed(true);
+    setTimeout(() => setIsArmed(false), 3000);
+  }
+};
+```
 
 ### UI State Persistence (localStorage)
 - `group-view-tab`, `loot-priority-subtab`, `party-view-mode`
@@ -747,44 +781,31 @@ useGroupTiers()          // All tiers for current group
 
 ## Additional Documentation
 
-- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, roadmap
-- **[2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md)** - Codebase audit
-- **[2026-01-02-ffxiv-raid-planner-parity-audit.md](./docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md)** - Spreadsheet parity audit
-- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data (floor drops, tome costs)
-- **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - Gearing mechanics and formulas
+```
+docs/
+├── CONSOLIDATED_STATUS.md    # Project status, version history, roadmap
+├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
+├── GEARING_REFERENCE.md      # FFXIV gearing data (floor drops, tome costs)
+└── GEARING_MATH.md           # Gearing mechanics and formulas
+```
 
-### Implementation Plans
-- **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
-- **Design System Remaining Tasks:** `docs/plans/2026-01-10-remaining-design-tasks.md`
-- **Design System Full Plan:** `docs/plans/2026-01-10-design-system-ux-improvements.md`
+- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, version history
+- **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - All remaining work items, prioritized
+- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
+- **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - Gearing mechanics and formulas
 
 ---
 
 ## Context Management
 
-This project has automated context management via Claude Code PreCompact hooks.
-
-### Automatic Handoff Generation
-When context auto-compacts, a SESSION_HANDOFF document is automatically created at:
-`frontend/docs/SESSION_HANDOFF_AUTO_{date}_{session-id}.md`
-
-The handoff includes:
-- Session ID for resuming (`claude --resume {id}`)
-- Prompt for starting fresh with context
-- Quick reference commands
-
-### Manual Handoff
-For complex work, create manual handoffs at `frontend/docs/SESSION_HANDOFF_{description}.md` with:
-1. What was done (files changed, key decisions)
-2. What's next (pending tasks, blockers)
-3. Key code locations with line numbers
-
 ### Low Context Warning
 When context reaches ~15-20% remaining, proactively:
-1. Create a SESSION_HANDOFF summarizing progress
+1. Update OUTSTANDING_WORK.md with current progress
 2. List in-progress tasks and next steps
 3. Notify the user that context is low
 
-### Hook Configuration
-- Hook script: `.claude/hooks/generate-handoff.sh`
-- Settings: `.claude/settings.json`
+### Session Continuity
+For complex work spanning multiple sessions:
+1. Update OUTSTANDING_WORK.md to reflect progress
+2. Mark completed items and add new discoveries
+3. Reference specific file paths and line numbers

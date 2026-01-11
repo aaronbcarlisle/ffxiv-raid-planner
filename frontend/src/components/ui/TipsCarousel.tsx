@@ -9,15 +9,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Lightbulb, X } from 'lucide-react';
 
+type MembershipRole = 'owner' | 'lead' | 'member' | 'viewer';
+
 interface Tip {
   id: string;
   text: string;
   /** Context where this tip is most relevant (optional filter) */
   context?: 'roster' | 'loot' | 'log' | 'summary' | 'global';
+  /** Minimum role required to see this tip (defaults to showing to all) */
+  requiredRole?: MembershipRole;
 }
 
 const TIPS: Tip[] = [
-  // Navigation tips
+  // Navigation tips (available to all)
   { id: 'shortcuts', text: 'Press Shift+? to see all keyboard shortcuts', context: 'global' },
   { id: 'tabs', text: 'Press 1-4 to switch tabs', context: 'global' },
   { id: 'statics', text: 'Press Shift+S to return to My Statics', context: 'global' },
@@ -25,27 +29,27 @@ const TIPS: Tip[] = [
   { id: 'tier-nav', text: 'Press Alt+[ or Alt+] to switch tiers', context: 'global' },
 
   // Roster tips
-  { id: 'add-player', text: 'Press Alt+Shift+P to add a new player', context: 'roster' },
+  { id: 'add-player', text: 'Press Alt+Shift+P to add a new player', context: 'roster', requiredRole: 'lead' },
   { id: 'copy-link', text: 'Shift+Click a player card to copy link', context: 'roster' },
   { id: 'group-view', text: 'Press G to toggle G1/G2 view', context: 'roster' },
   { id: 'expand', text: 'Press V to toggle compact/expanded', context: 'roster' },
 
-  // Loot tips
-  { id: 'log-loot', text: 'Press Alt+L to log a loot drop', context: 'loot' },
-  { id: 'floor-cleared', text: 'Press Alt+B to mark floor cleared', context: 'loot' },
+  // Loot tips (requires edit permission)
+  { id: 'log-loot', text: 'Press Alt+L to log a loot drop', context: 'loot', requiredRole: 'member' },
+  { id: 'floor-cleared', text: 'Press Alt+B to mark floor cleared', context: 'loot', requiredRole: 'member' },
   { id: 'loot-subtabs', text: 'Press Alt+1-3 to switch sub tabs', context: 'loot' },
 
   // Log tips
-  { id: 'log-material', text: 'Press Alt+M to log material', context: 'log' },
+  { id: 'log-material', text: 'Press Alt+M to log material', context: 'log', requiredRole: 'member' },
   { id: 'copy-entry', text: 'Shift+Click entry to copy link', context: 'log' },
   { id: 'go-player', text: 'Alt+Click entry to jump to player', context: 'log' },
   { id: 'grid-toggle', text: 'Press G to toggle grid/list view', context: 'log' },
   { id: 'week-nav', text: 'Press Alt+← or Alt+→ to change week', context: 'log' },
   { id: 'expand-all', text: 'Press V to expand/collapse all', context: 'log' },
 
-  // Management tips
-  { id: 'new-tier', text: 'Press Alt+Shift+N to create a new tier', context: 'global' },
-  { id: 'settings', text: 'Press Alt+Shift+S for static settings', context: 'global' },
+  // Management tips (requires elevated permissions)
+  { id: 'new-tier', text: 'Press Alt+Shift+N to create a new tier', context: 'global', requiredRole: 'lead' },
+  { id: 'settings', text: 'Press Alt+Shift+S for static settings', context: 'global', requiredRole: 'lead' },
 ];
 
 const STORAGE_KEY = 'tips-dismissed';
@@ -54,11 +58,16 @@ const CYCLE_INTERVAL = 15000; // 15 seconds
 interface TipsCarouselProps {
   /** Current page context for filtering tips */
   context?: 'roster' | 'loot' | 'log' | 'summary';
+  /** User's current role for permission-aware filtering */
+  userRole?: MembershipRole;
   /** Custom class name */
   className?: string;
 }
 
-export function TipsCarousel({ context, className = '' }: TipsCarouselProps) {
+// Role hierarchy for permission comparison
+const ROLE_HIERARCHY: MembershipRole[] = ['viewer', 'member', 'lead', 'owner'];
+
+export function TipsCarousel({ context, userRole, className = '' }: TipsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(() => {
     try {
@@ -69,10 +78,21 @@ export function TipsCarousel({ context, className = '' }: TipsCarouselProps) {
   });
   const [isVisible, setIsVisible] = useState(true);
 
-  // Filter tips based on context - show context-specific tips + global tips
-  const relevantTips = TIPS.filter(
-    tip => !tip.context || tip.context === 'global' || tip.context === context
-  );
+  // Filter tips based on context and user role
+  const relevantTips = TIPS.filter(tip => {
+    // Context filter: show context-specific tips + global tips
+    const contextMatch = !tip.context || tip.context === 'global' || tip.context === context;
+    if (!contextMatch) return false;
+
+    // Permission filter: check if user has required role
+    if (tip.requiredRole) {
+      const requiredLevel = ROLE_HIERARCHY.indexOf(tip.requiredRole);
+      const userLevel = userRole ? ROLE_HIERARCHY.indexOf(userRole) : -1;
+      if (userLevel < requiredLevel) return false;
+    }
+
+    return true;
+  });
 
   // Cycle through tips
   useEffect(() => {

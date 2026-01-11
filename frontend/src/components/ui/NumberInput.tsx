@@ -147,9 +147,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               w-full px-3 text-center
               bg-surface-elevated border border-border-default
               text-text-primary placeholder:text-text-muted
-              focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2 focus:ring-offset-surface-base
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${hasError ? 'border-status-error focus:ring-status-error/30' : 'focus:border-accent'}
+              ${hasError ? 'border-status-error focus-visible:ring-status-error/30' : 'focus-visible:border-accent'}
               [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
             `}
           />

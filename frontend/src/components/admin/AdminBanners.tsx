@@ -1,63 +1,55 @@
 /**
  * AdminBanners Component
  *
- * Displays admin access and "View As" indicators at the top of GroupView.
- * Shows when admin is viewing a static they're not a member of,
- * or when admin is impersonating another user.
+ * Displays admin access indicator at the top of GroupView.
+ * Shows when admin is viewing a static via Admin Dashboard (adminMode=true).
+ *
+ * Note: "View As" banner is handled globally by ViewAsBanner in Layout.
  */
 
-import { ShieldAlert, Eye } from 'lucide-react';
-import type { ViewAsUserInfo } from '../../stores/viewAsStore';
+import { ShieldAlert, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export interface AdminBannersProps {
   isAdminAccess: boolean;
-  viewAsUser: ViewAsUserInfo | null;
-  onExitViewAs: () => void;
 }
 
-export function AdminBanners({
-  isAdminAccess,
-  viewAsUser,
-  onExitViewAs,
-}: AdminBannersProps) {
-  return (
-    <>
-      {/* Admin viewing indicator - shows when admin is viewing a static they're not a member of */}
-      {isAdminAccess && (
-        <div className="mb-3 p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-status-warning" />
-            <span className="text-sm text-status-warning">
-              <span className="font-medium">Admin Access:</span>{' '}
-              You're viewing this static as an administrator. You have owner-level permissions but are not a member.
-            </span>
-          </div>
-        </div>
-      )}
+export function AdminBanners({ isAdminAccess }: AdminBannersProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-      {/* View As indicator - shows when admin is viewing as another user */}
-      {viewAsUser && (
-        <div className="mb-3 p-3 bg-membership-lead/10 border border-membership-lead/30 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Eye className="w-5 h-5 text-membership-lead" />
-              <span className="text-sm text-membership-lead">
-                <span className="font-medium">Viewing as:</span>{' '}
-                {viewAsUser.displayName || viewAsUser.discordUsername}
-                <span className="ml-1 text-membership-lead/70">
-                  ({viewAsUser.role || 'no membership'})
-                </span>
-              </span>
-            </div>
-            <button
-              onClick={onExitViewAs}
-              className="text-sm text-membership-lead hover:text-membership-lead/80 px-3 py-1 rounded bg-membership-lead/20 hover:bg-membership-lead/30 transition-colors"
-            >
-              Exit View As
-            </button>
-          </div>
+  if (!isAdminAccess) {
+    return null;
+  }
+
+  const handleExitAdminMode = () => {
+    // Remove adminMode param from URL
+    const params = new URLSearchParams(location.search);
+    params.delete('adminMode');
+    params.delete('viewAs'); // Also clear viewAs if present
+    const newSearch = params.toString();
+    const newPath = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+    navigate(newPath, { replace: true });
+  };
+
+  return (
+    <div className="mb-3 p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5 text-status-warning" />
+          <span className="text-sm text-status-warning">
+            <span className="font-medium">Admin Mode:</span>{' '}
+            You have owner-level permissions for this static.
+          </span>
         </div>
-      )}
-    </>
+        <button
+          onClick={handleExitAdminMode}
+          className="flex items-center gap-1.5 px-3 py-1 text-sm text-status-warning hover:text-status-warning/80 hover:bg-status-warning/20 rounded transition-colors"
+        >
+          <X className="w-4 h-4" />
+          Exit Admin Mode
+        </button>
+      </div>
+    </div>
   );
 }

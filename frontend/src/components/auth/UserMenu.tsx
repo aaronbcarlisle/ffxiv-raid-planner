@@ -84,11 +84,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             </svg>
           }
           onSelect={() => navigate('/dashboard')}
+          shortcut="Shift+S"
         >
-          <span className="flex items-center justify-between w-full">
-            My Statics
-            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">Shift+S</kbd>
-          </span>
+          My Statics
         </DropdownItem>
 
         {/* Admin Dashboard - only for admins */}
@@ -147,11 +145,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         <DropdownItem
           icon={<Keyboard className="w-4 h-4" />}
           onSelect={() => window.dispatchEvent(new CustomEvent('show-keyboard-shortcuts'))}
+          shortcut="Shift+?"
         >
-          <span className="flex items-center justify-between w-full">
-            Shortcuts
-            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-surface-elevated/50 border border-border-default rounded text-text-secondary">Shift+?</kbd>
-          </span>
+          Shortcuts
         </DropdownItem>
 
         <DropdownSeparator />
