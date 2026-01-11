@@ -717,7 +717,12 @@ async def create_snapshot_player(
     )
     player = result.scalar_one()
 
-    return player_to_response(player)
+    # Look up membership role for the linked user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
 
 
 @router.put("/{group_id}/tiers/{tier_id}/players/{player_id}", response_model=SnapshotPlayerResponse)
