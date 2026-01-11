@@ -236,10 +236,10 @@ export function SectionedLogView({
     return bookViewMode === 'week' ? currentWeek : undefined;
   }, [bookViewMode, currentWeek]);
 
-  const getPlayerName = (playerId: string) => {
+  const getPlayerName = useCallback((playerId: string) => {
     const player = players.find(p => p.id === playerId);
     return player?.name || 'Unknown';
-  };
+  }, [players]);
 
   // Handler for MarkFloorClearedModal
   const handleMarkFloorCleared = useCallback(async (request: import('../../types').MarkFloorClearedRequest) => {
