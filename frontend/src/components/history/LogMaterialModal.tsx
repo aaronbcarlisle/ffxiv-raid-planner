@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { Gem, Pencil } from 'lucide-react';
 import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -311,7 +312,16 @@ export function LogMaterialModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Material Entry' : 'Log Material'}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          {isEditMode ? <Pencil className="w-5 h-5" /> : <Gem className="w-5 h-5" />}
+          {isEditMode ? 'Edit Material Entry' : 'Log Material'}
+        </span>
+      }
+    >
       <div className="space-y-4">
         {/* Week + Floor row (matching loot modal layout) */}
         <div className="grid grid-cols-2 gap-4">

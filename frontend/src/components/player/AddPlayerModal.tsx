@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UserPlus } from 'lucide-react';
 import { Modal, Checkbox, Label, Input } from '../ui';
 import { Button } from '../primitives';
 import { JobPicker } from './JobPicker';
@@ -60,7 +61,16 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Player">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <UserPlus className="w-5 h-5" />
+          Add Player
+        </span>
+      }
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Label htmlFor="playerName">Player Name</Label>

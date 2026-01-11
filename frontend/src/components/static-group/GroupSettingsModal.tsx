@@ -24,6 +24,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Settings } from 'lucide-react';
 import { Modal, Checkbox, Label, Input } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -193,7 +194,17 @@ export function GroupSettingsModal({ group, onClose }: GroupSettingsModalProps) 
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Static Settings" size="lg">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Static Settings
+        </span>
+      }
+      size="lg"
+    >
       <div className="flex flex-col h-full">
         {/* Tabs */}
         <div className="flex border-b border-border-default -mx-6 px-6">
