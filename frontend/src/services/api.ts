@@ -134,12 +134,10 @@ export interface HealthResponse {
 }
 
 /**
- * Check API health
+ * Check API health (public endpoint - no auth required)
  */
 export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`, {
-    credentials: 'include',
-  });
+  const response = await fetch(`${API_BASE_URL}/health`);
   if (!response.ok) {
     throw new ApiError(response.status, 'Health check failed');
   }
