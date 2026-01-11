@@ -20,9 +20,11 @@ import { PlayerLedgerModal } from './PlayerLedgerModal';
 import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
   SnapshotPlayer,
   LootLogEntry,
+  LootLogEntryCreate,
   LootLogEntryUpdate,
   MaterialLogEntry,
   MaterialLogEntryUpdate,
@@ -33,10 +35,7 @@ export interface LootLogModalsProps {
   // Loot Entry Modal
   showLootModal: boolean;
   onCloseLootModal: () => void;
-  onAddLoot: (
-    entry: Parameters<typeof AddLootEntryModal>[0]['onSubmit'] extends (entry: infer E, options: any) => any ? E : never,
-    options: { updateGear: boolean }
-  ) => Promise<void>;
+  onAddLoot: (entry: LootLogEntryCreate, options: { updateGear: boolean }) => Promise<void>;
   onUpdateLoot: (updates: LootLogEntryUpdate) => Promise<void>;
   lootModalKey: number;
   entryToEdit?: LootLogEntry;
@@ -45,7 +44,7 @@ export interface LootLogModalsProps {
   currentWeek: number;
   gridModalState: {
     type: 'loot' | 'material';
-    floor: number;
+    floor: FloorNumber;
     slot?: string;
     materialType?: string;
   } | null;
