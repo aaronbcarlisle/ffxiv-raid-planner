@@ -5,8 +5,8 @@
  * authenticated requests with automatic token refresh.
  */
 
-import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
+import { useAuthStore } from '../stores/authStore';
 import type { BiSImportData, BiSPresetsResponse } from '../types';
 import { API_BASE_URL } from '../config';
 
@@ -48,25 +48,24 @@ function extractErrorMessage(response: Response, fallback: string): Promise<stri
 // ==================== Authenticated Request ====================
 
 /**
- * Make an authenticated API request with automatic token refresh on 401
+ * Make an authenticated API request with automatic token refresh on 401.
+ *
+ * Authentication is handled via httpOnly cookies (set by backend).
+ * Cookies are automatically sent with credentials: 'include'.
  */
 export async function authRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  const accessToken = useAuthStore.getState().accessToken;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
   const response = await fetch(url, {
     ...options,
+    credentials: 'include', // Send httpOnly cookies
     headers: {
       ...headers,
       ...options.headers,
@@ -80,11 +79,10 @@ export async function authRequest<T>(
     if (response.status === 401) {
       const refreshed = await useAuthStore.getState().refreshAccessToken();
       if (refreshed) {
-        // Retry with new token
-        const newAccessToken = useAuthStore.getState().accessToken;
-        headers['Authorization'] = `Bearer ${newAccessToken}`;
+        // Retry with cookies (new tokens set by refresh endpoint)
         const retryResponse = await fetch(url, {
           ...options,
+          credentials: 'include',
           headers: {
             ...headers,
             ...options.headers,
@@ -139,7 +137,9 @@ export interface HealthResponse {
  * Check API health
  */
 export async function checkHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`);
+  const response = await fetch(`${API_BASE_URL}/health`, {
+    credentials: 'include',
+  });
   if (!response.ok) {
     throw new ApiError(response.status, 'Health check failed');
   }
