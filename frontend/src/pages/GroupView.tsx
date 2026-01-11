@@ -283,6 +283,7 @@ export function GroupView() {
   const actualUserRole = currentGroup?.userRole;
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   const isAdminAccess = !viewAsUser && (currentGroup?.isAdminAccess ?? false);
+  const isAdmin = user?.isAdmin ?? false; // Separate flag for admin features (always true for admins)
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
@@ -638,6 +639,7 @@ export function GroupView() {
                   userRole={userRole}
                   userHasClaimedPlayer={userHasClaimedPlayer}
                   isAdminAccess={isAdminAccess}
+                  isAdmin={isAdmin}
                   groupId={currentGroup!.id}
                   tierId={currentTier!.tierId}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries}
