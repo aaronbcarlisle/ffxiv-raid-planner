@@ -5,7 +5,7 @@
  * Shows which players should receive weapons in what order.
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
@@ -29,7 +29,7 @@ interface WeaponPriorityCardProps {
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
 }
 
-function WeaponPriorityCard({
+const WeaponPriorityCard = memo(function WeaponPriorityCard({
   job,
   jobName,
   priority,
@@ -295,7 +295,7 @@ function WeaponPriorityCard({
       )}
     </div>
   );
-}
+});
 
 // Role section configuration - separate physical ranged and magical ranged (caster)
 type RoleSectionId = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';

@@ -4,6 +4,7 @@
  * Sortable list item for displaying and editing a single weapon priority entry.
  */
 
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { WeaponPriority } from '../../types';
@@ -20,7 +21,7 @@ interface WeaponPriorityListItemProps {
   onToggleReceived: () => void;
 }
 
-export function WeaponPriorityListItem({
+export const WeaponPriorityListItem = memo(function WeaponPriorityListItem({
   id,
   priority,
   index,
@@ -117,4 +118,4 @@ export function WeaponPriorityListItem({
       </button>
     </div>
   );
-}
+});
