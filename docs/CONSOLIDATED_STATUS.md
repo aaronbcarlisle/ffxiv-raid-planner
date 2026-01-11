@@ -192,22 +192,13 @@
 
 ```
 docs/
-├── CONSOLIDATED_STATUS.md    # This file - project status
+├── CONSOLIDATED_STATUS.md    # This file - project status and version history
+├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
 ├── GEARING_MATH.md           # Gearing mechanics and formulas
-├── GEARING_REFERENCE.md      # FFXIV gearing data
-├── audits/
-│   ├── 2026-01-01-comprehensive-audit.md  # Main audit (v1.0.7 complete)
-│   ├── 2026-01-02-ffxiv-raid-planner-parity-audit.md
-│   └── 2026-01-10-comprehensive-ux-audit.md
-└── archive/
-    ├── 2025-12-audits/       # Historical audit snapshots
-    ├── 2025-12-planning/     # Initial planning docs
-    ├── 2026-01-audits/       # Superseded UX audits
-    ├── plans/                # Completed implementation plans
-    ├── redesign/             # Historical redesign docs
-    └── session-handoffs/     # Development session context
-        └── auto/             # Auto-generated handoffs
+└── GEARING_REFERENCE.md      # FFXIV gearing data
 ```
+
+**Note:** All historical audits, plans, and session handoffs have been consolidated into OUTSTANDING_WORK.md. The archive folder has been removed.
 
 ---
 

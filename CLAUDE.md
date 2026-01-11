@@ -104,13 +104,13 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 
 ---
 
-## Known Issues (from Audit)
+## Known Issues
 
-See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
+See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for the complete prioritized list of remaining work.
 
 ### Audit Status: Complete ✅
 
-All actionable audit items have been resolved. Only R-002 (props drilling) remains as intentionally deferred.
+All actionable audit items from v1.0.1-v1.0.7 have been resolved. R-002 (props drilling) is intentionally deferred.
 
 ### Deferred Items
 - **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
@@ -143,9 +143,6 @@ All actionable audit items have been resolved. Only R-002 (props drilling) remai
 ---
 
 ## Parity Implementation (Phases 1-4 Complete)
-
-**Plan:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
-**Audit:** `docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md`
 
 ### Completed Features
 
@@ -784,44 +781,31 @@ useGroupTiers()          // All tiers for current group
 
 ## Additional Documentation
 
-- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, roadmap
-- **[2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md)** - Codebase audit
-- **[2026-01-02-ffxiv-raid-planner-parity-audit.md](./docs/audits/2026-01-02-ffxiv-raid-planner-parity-audit.md)** - Spreadsheet parity audit
-- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data (floor drops, tome costs)
-- **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - Gearing mechanics and formulas
+```
+docs/
+├── CONSOLIDATED_STATUS.md    # Project status, version history, roadmap
+├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
+├── GEARING_REFERENCE.md      # FFXIV gearing data (floor drops, tome costs)
+└── GEARING_MATH.md           # Gearing mechanics and formulas
+```
 
-### Implementation Plans
-- **Parity Implementation:** `/home/serapis/.claude/plans/nifty-pondering-summit.md`
-- **Design System Remaining Tasks:** `docs/plans/2026-01-10-remaining-design-tasks.md`
-- **Design System Full Plan:** `docs/plans/2026-01-10-design-system-ux-improvements.md`
+- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, version history
+- **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - All remaining work items, prioritized
+- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
+- **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - Gearing mechanics and formulas
 
 ---
 
 ## Context Management
 
-This project has automated context management via Claude Code PreCompact hooks.
-
-### Automatic Handoff Generation
-When context auto-compacts, a SESSION_HANDOFF document is automatically created at:
-`frontend/docs/SESSION_HANDOFF_AUTO_{date}_{session-id}.md`
-
-The handoff includes:
-- Session ID for resuming (`claude --resume {id}`)
-- Prompt for starting fresh with context
-- Quick reference commands
-
-### Manual Handoff
-For complex work, create manual handoffs at `frontend/docs/SESSION_HANDOFF_{description}.md` with:
-1. What was done (files changed, key decisions)
-2. What's next (pending tasks, blockers)
-3. Key code locations with line numbers
-
 ### Low Context Warning
 When context reaches ~15-20% remaining, proactively:
-1. Create a SESSION_HANDOFF summarizing progress
+1. Update OUTSTANDING_WORK.md with current progress
 2. List in-progress tasks and next steps
 3. Notify the user that context is low
 
-### Hook Configuration
-- Hook script: `.claude/hooks/generate-handoff.sh`
-- Settings: `.claude/settings.json`
+### Session Continuity
+For complex work spanning multiple sessions:
+1. Update OUTSTANDING_WORK.md to reflect progress
+2. Mark completed items and add new discoveries
+3. Reference specific file paths and line numbers
