@@ -166,6 +166,7 @@ async def discord_callback(
             logger.info("admin_status_granted", discord_id=discord_id)
 
     await session.flush()
+    await session.commit()
 
     # Create tokens
     access_token = create_access_token(user.id)

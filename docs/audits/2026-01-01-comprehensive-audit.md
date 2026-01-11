@@ -67,6 +67,8 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 | Lines of Code (Frontend) | ~14,000 |
 | Lines of Code (Backend) | ~5,500 |
 
+_Note: Frontend test suites make heavy use of parameterized/looped test cases, so 10 frontend test files legitimately produce more individual tests than the 6 backend files._
+
 ---
 
 ## Findings Status Summary
