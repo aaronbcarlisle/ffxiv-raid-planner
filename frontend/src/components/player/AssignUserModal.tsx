@@ -11,6 +11,8 @@ import { X, Users } from 'lucide-react';
 import type { SnapshotPlayer, InteractedUser, AssignPlayerRequest } from '../../types';
 import { authRequest } from '../../services/api';
 import { logger } from '../../lib/logger';
+import { toast } from '../../stores/toastStore';
+import { parseApiError } from '../../lib/errorHandler';
 
 const log = logger.scope('AssignUserModal');
 
@@ -53,6 +55,8 @@ export function AssignUserModal({
         log.debug(`Fetched ${users.length} users (admin: ${isAdmin})`);
       } catch (error) {
         log.error('Failed to fetch users:', error);
+        const apiError = parseApiError(error);
+        toast.error(apiError.message || 'Failed to load users');
       } finally {
         setIsLoading(false);
       }
@@ -98,6 +102,8 @@ export function AssignUserModal({
       await onAssign(data);
     } catch (error) {
       log.error('Failed to assign user:', error);
+      const apiError = parseApiError(error);
+      toast.error(apiError.message || 'Failed to assign user');
     } finally {
       setIsSubmitting(false);
     }
@@ -109,6 +115,8 @@ export function AssignUserModal({
       await onAssign({ userId: null });
     } catch (error) {
       log.error('Failed to unassign user:', error);
+      const apiError = parseApiError(error);
+      toast.error(apiError.message || 'Failed to unassign user');
     } finally {
       setIsSubmitting(false);
     }

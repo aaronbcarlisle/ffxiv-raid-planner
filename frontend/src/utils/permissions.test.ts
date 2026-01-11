@@ -306,24 +306,35 @@ describe('canClaimPlayer', () => {
   const claimedPlayer = createMockPlayer({ userId: 'owner-123' });
 
   it('allows members to claim unclaimed players', () => {
-    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456');
+    // hasMembership=true since members have actual membership
+    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(true);
   });
 
   it("denies members from claiming others' claimed players", () => {
-    const result = canClaimPlayer('member', claimedPlayer, 'user-456');
+    // hasMembership=true since members have actual membership
+    const result = canClaimPlayer('member', claimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain('claimed by another');
   });
 
   it("allows owners to unclaim others' players", () => {
-    const result = canClaimPlayer('owner', claimedPlayer, 'user-456');
+    // hasMembership=true since owners have actual membership
+    const result = canClaimPlayer('owner', claimedPlayer, 'user-456', false, true);
     expect(result.allowed).toBe(true);
   });
 
   it('denies viewers from claiming', () => {
-    const result = canClaimPlayer('viewer', unclaimedPlayer, 'user-456');
+    // Viewers have share code access but not membership
+    const result = canClaimPlayer('viewer', unclaimedPlayer, 'user-456', false, false);
     expect(result.allowed).toBe(false);
+  });
+
+  it('denies share code users without membership', () => {
+    // Member role via share code but no actual membership
+    const result = canClaimPlayer('member', unclaimedPlayer, 'user-456', false, false);
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('Only group members');
   });
 });
 

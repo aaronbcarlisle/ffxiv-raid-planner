@@ -5,12 +5,13 @@
  * Shows date/time, week, floor, book type, transaction type, quantity, and notes.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { History, Trash2, Check } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
+import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 
 interface PlayerLedgerModalProps {
   isOpen: boolean;
@@ -52,17 +53,31 @@ export function PlayerLedgerModal({
   const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
   const [isClearing, setIsClearing] = useState(false);
 
-  // Double-click confirm state for clear history
-  const [isClearArmed, setIsClearArmed] = useState(false);
-  const armedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearArmedState = useCallback(() => {
-    setIsClearArmed(false);
-    if (armedTimeoutRef.current) {
-      clearTimeout(armedTimeoutRef.current);
-      armedTimeoutRef.current = null;
+  // Handle the actual clear action
+  const handleClearHistory = useCallback(async () => {
+    setIsClearing(true);
+    try {
+      await deletePlayerLedger(groupId, tierId, playerId);
+      toast.success(`Cleared history for ${playerName}`);
+      onHistoryCleared?.();
+      onClose();
+    } catch {
+      toast.error('Failed to clear history');
+    } finally {
+      setIsClearing(false);
     }
-  }, []);
+  }, [deletePlayerLedger, groupId, tierId, playerId, playerName, onHistoryCleared, onClose]);
+
+  // Double-click confirm for clear history
+  const {
+    isArmed: isClearArmed,
+    handleClick: handleClearClick,
+    handleBlur: handleClearBlur,
+    resetArmed: clearArmedState,
+  } = useDoubleClickConfirm({
+    onConfirm: handleClearHistory,
+    timeout: 3000,
+  });
 
   // Fetch ledger entries when modal opens
   useEffect(() => {
@@ -75,39 +90,6 @@ export function PlayerLedgerModal({
       clearArmedState();
     };
   }, [isOpen, groupId, tierId, playerId, fetchPlayerLedger, clearPlayerLedger, clearArmedState]);
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (armedTimeoutRef.current) {
-        clearTimeout(armedTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleClearClick = async () => {
-    if (isClearArmed) {
-      // Second click - execute clear
-      clearArmedState();
-      setIsClearing(true);
-      try {
-        await deletePlayerLedger(groupId, tierId, playerId);
-        toast.success(`Cleared history for ${playerName}`);
-        onHistoryCleared?.();
-        onClose();
-      } catch {
-        toast.error('Failed to clear history');
-      } finally {
-        setIsClearing(false);
-      }
-    } else {
-      // First click - arm the button
-      setIsClearArmed(true);
-      armedTimeoutRef.current = setTimeout(() => {
-        setIsClearArmed(false);
-      }, 3000);
-    }
-  };
 
   return (
     <Modal
@@ -206,11 +188,7 @@ export function PlayerLedgerModal({
                 variant={isClearArmed ? 'warning' : 'danger'}
                 size="sm"
                 onClick={handleClearClick}
-                onBlur={() => {
-                  if (isClearArmed) {
-                    setTimeout(() => setIsClearArmed(false), 100);
-                  }
-                }}
+                onBlur={handleClearBlur}
                 disabled={isClearing}
                 loading={isClearing}
                 title={isClearArmed ? 'Click again to confirm' : 'Clear all history'}

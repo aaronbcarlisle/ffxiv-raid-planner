@@ -270,7 +270,13 @@ export interface User {
   avatarUrl?: string;
   displayName?: string;
   email?: string;
-  isAdmin: boolean;  // Super-user access to all statics
+  /**
+   * Super-user flag granting owner-level access to ALL static groups.
+   * Set via ADMIN_DISCORD_IDS env var on backend.
+   * NOT to be confused with isAdminAccess on StaticGroup which indicates
+   * the user's role was granted via admin privileges rather than membership.
+   */
+  isAdmin: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -343,8 +349,12 @@ export interface StaticGroup {
   members?: Membership[];
   memberCount: number;
   userRole?: MemberRole;
-  // True if userRole is granted via admin privileges (not actual membership)
-  // Always returned by API (defaults to false), non-optional for type safety
+  /**
+   * True if userRole was granted via admin privileges rather than actual membership.
+   * Used for UI display purposes (e.g., showing "Admin Access" indicator).
+   * NOT to be confused with User.isAdmin which is the super-user flag.
+   * Always returned by API (defaults to false), non-optional for type safety.
+   */
   isAdminAccess: boolean;
   settings?: StaticGroupSettings;
   createdAt: string;
@@ -360,7 +370,11 @@ export interface StaticGroupListItem {
   ownerId: string;
   memberCount: number;
   userRole?: MemberRole;
-  // Always false for dashboard items (admin uses AdminDashboard with StaticGroupWithMembers)
+  /**
+   * True if userRole was granted via admin privileges rather than actual membership.
+   * Always false for dashboard items (admin uses AdminDashboard with StaticGroupWithMembers).
+   * NOT to be confused with User.isAdmin which is the super-user flag.
+   */
   isAdminAccess: boolean;
   source: GroupSource;
   settings?: StaticGroupSettings;

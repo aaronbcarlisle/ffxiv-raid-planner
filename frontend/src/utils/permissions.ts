@@ -5,7 +5,23 @@
  * throughout the application. These are UX helpers only - the backend
  * always enforces actual permissions.
  *
- * Admin users (isAdmin=true) automatically have owner-level access to all groups.
+ * ## Key Distinction: isAdmin vs isAdminAccess
+ *
+ * - **isAdmin** (User.isAdmin): Boolean property on the User object indicating the user
+ *   is a super-user/admin. Admins have owner-level access to ALL static groups in the
+ *   system, regardless of membership. This is used as a parameter in permission checks.
+ *
+ * - **isAdminAccess** (StaticGroup.isAdminAccess): Boolean property on the StaticGroup
+ *   object returned by the API. When true, it indicates the user's role on this group
+ *   was granted via admin privileges rather than actual membership. Used for UI display
+ *   purposes (e.g., showing an "Admin Access" indicator).
+ *
+ * @example
+ * // isAdmin: Passed to permission checks
+ * const canEdit = canEditPlayer(userRole, player, userId, user.isAdmin);
+ *
+ * // isAdminAccess: Used for UI indicators
+ * {group.isAdminAccess && <AdminAccessBadge />}
  */
 
 import type { SnapshotPlayer } from '../types';
@@ -24,6 +40,11 @@ export interface PermissionCheck {
 /**
  * Get the effective role for a user, accounting for admin status.
  * Admins are treated as owners for all permission checks.
+ *
+ * @param userRole - The user's actual membership role for the group
+ * @param isAdmin - Whether the user has admin privileges (User.isAdmin).
+ *                  NOT to be confused with isAdminAccess which is a group property.
+ * @returns The effective role for permission checks ('owner' for admins, otherwise userRole)
  */
 export function getEffectiveRole(
   userRole: MemberRole | null | undefined,

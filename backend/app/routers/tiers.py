@@ -24,6 +24,7 @@ from ..permissions import (
     get_user_membership,
     is_user_admin,
     require_can_edit_roster,
+    require_owner,
 )
 from .. import schemas
 from ..schemas import (
@@ -1000,6 +1001,116 @@ async def release_player(
     return player_to_response(player, None)
 
 
+async def _assign_player_impl(
+    session: AsyncSession,
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    data: schemas.AssignPlayerRequest,
+) -> SnapshotPlayerResponse:
+    """
+    Common implementation for assigning/unassigning a user to a player card.
+
+    Used by both admin-assign and owner-assign endpoints after their permission checks.
+
+    Args:
+        session: Database session
+        group_id: Static group ID
+        tier_id: Tier identifier (e.g., "aac-lightweight")
+        player_id: Player UUID
+        data: Assignment request data
+
+    Returns:
+        Updated player response
+
+    Raises:
+        NotFound: If player or target user not found
+        HTTPException: If user already linked to another player or invalid role
+    """
+    # Get player
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.tier_id == tier_id,
+        )
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # If assigning a user, verify the user exists
+    if data.user_id:
+        # Support both Discord ID and internal user ID
+        user_result = await session.execute(
+            select(User).where((User.discord_id == data.user_id) | (User.id == data.user_id))
+        )
+        target_user = user_result.scalar_one_or_none()
+        if not target_user:
+            raise NotFound(f"User with ID {data.user_id} not found")
+
+        # Check if target user is already linked to another player in this tier
+        existing_link = await session.execute(
+            select(SnapshotPlayer)
+            .where(
+                SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
+                SnapshotPlayer.user_id == target_user.id,
+                SnapshotPlayer.id != player_id,
+            )
+        )
+        if existing_link.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is already linked to another player in this tier",
+            )
+
+        # Create membership if requested and user is not a member
+        if data.create_membership:
+            existing_membership = await get_user_membership(session, target_user.id, group_id)
+            if not existing_membership and data.membership_role:
+                try:
+                    role = MemberRole(data.membership_role)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
+                    )
+                await create_membership_for_assignment(session, target_user.id, group_id, role)
+
+        # Assign the user
+        player.user_id = target_user.id
+    else:
+        # Unassign (null user_id)
+        player.user_id = None
+
+    player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Clear session cache to ensure fresh data
+    session.expire_all()
+
+    # Reload with user relationship
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .where(SnapshotPlayer.id == player_id)
+        .options(selectinload(SnapshotPlayer.user))
+    )
+    player = result.scalar_one()
+
+    # Look up membership role for the newly assigned user
+    membership_role = None
+    if player.user_id:
+        membership_role = await get_user_membership_role(session, player.user_id, group_id)
+
+    return player_to_response(player, membership_role)
+
+
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/admin-assign", response_model=SnapshotPlayerResponse)
 async def admin_assign_player(
     group_id: str,
@@ -1019,88 +1130,7 @@ async def admin_assign_player(
     # Verify admin has view permission (should always pass for admins, but check anyway)
     await check_view_permission(session, group, current_user)
 
-    # Get player
-    result = await session.execute(
-        select(SnapshotPlayer)
-        .join(TierSnapshot)
-        .where(
-            SnapshotPlayer.id == player_id,
-            TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
-        )
-        .options(selectinload(SnapshotPlayer.user))
-    )
-    player = result.scalar_one_or_none()
-
-    if not player:
-        raise NotFound("Player not found")
-
-    # If assigning a user, verify the user exists
-    if data.user_id:
-        # Support both Discord ID and internal user ID
-        user_result = await session.execute(
-            select(User).where((User.discord_id == data.user_id) | (User.id == data.user_id))
-        )
-        target_user = user_result.scalar_one_or_none()
-        if not target_user:
-            raise NotFound(f"User with ID {data.user_id} not found")
-
-        # Check if target user is already linked to another player in this tier
-        existing_link = await session.execute(
-            select(SnapshotPlayer)
-            .where(
-                SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
-                SnapshotPlayer.user_id == target_user.id,
-                SnapshotPlayer.id != player_id,
-            )
-        )
-        if existing_link.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User is already linked to another player in this tier",
-            )
-
-        # Create membership if requested and user is not a member
-        if data.create_membership:
-            existing_membership = await get_user_membership(session, target_user.id, group_id)
-            if not existing_membership and data.membership_role:
-                try:
-                    role = MemberRole(data.membership_role)
-                except ValueError:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
-                    )
-                await create_membership_for_assignment(session, target_user.id, group_id, role)
-
-        # Assign the user
-        player.user_id = target_user.id
-    else:
-        # Unassign (null user_id)
-        player.user_id = None
-
-    player.updated_at = datetime.now(timezone.utc).isoformat()
-
-    await session.flush()
-    await session.commit()
-
-    # Clear session cache to ensure fresh data
-    session.expire_all()
-
-    # Reload with user relationship
-    result = await session.execute(
-        select(SnapshotPlayer)
-        .where(SnapshotPlayer.id == player_id)
-        .options(selectinload(SnapshotPlayer.user))
-    )
-    player = result.scalar_one()
-
-    # Look up membership role for the newly assigned user
-    membership_role = None
-    if player.user_id:
-        membership_role = await get_user_membership_role(session, player.user_id, group_id)
-
-    return player_to_response(player, membership_role)
+    return await _assign_player_impl(session, group_id, tier_id, player_id, data)
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/owner-assign", response_model=SnapshotPlayerResponse)
@@ -1116,90 +1146,7 @@ async def owner_assign_player(
     # Check if current user is owner (or admin, which bypasses to owner-level)
     await require_owner(session, current_user.id, group_id)
 
-    group = await get_static_group(session, group_id)
-
-    # Get player
-    result = await session.execute(
-        select(SnapshotPlayer)
-        .join(TierSnapshot)
-        .where(
-            SnapshotPlayer.id == player_id,
-            TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
-        )
-        .options(selectinload(SnapshotPlayer.user))
-    )
-    player = result.scalar_one_or_none()
-
-    if not player:
-        raise NotFound("Player not found")
-
-    # If assigning a user, verify the user exists
-    if data.user_id:
-        # Support both Discord ID and internal user ID
-        user_result = await session.execute(
-            select(User).where((User.discord_id == data.user_id) | (User.id == data.user_id))
-        )
-        target_user = user_result.scalar_one_or_none()
-        if not target_user:
-            raise NotFound(f"User with ID {data.user_id} not found")
-
-        # Check if target user is already linked to another player in this tier
-        existing_link = await session.execute(
-            select(SnapshotPlayer)
-            .where(
-                SnapshotPlayer.tier_snapshot_id == player.tier_snapshot_id,
-                SnapshotPlayer.user_id == target_user.id,
-                SnapshotPlayer.id != player_id,
-            )
-        )
-        if existing_link.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User is already linked to another player in this tier",
-            )
-
-        # Create membership if requested and user is not a member
-        if data.create_membership:
-            existing_membership = await get_user_membership(session, target_user.id, group_id)
-            if not existing_membership and data.membership_role:
-                try:
-                    role = MemberRole(data.membership_role)
-                except ValueError:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Invalid membership role: {data.membership_role}. Must be 'member' or 'lead'.",
-                    )
-                await create_membership_for_assignment(session, target_user.id, group_id, role)
-
-        # Assign the user
-        player.user_id = target_user.id
-    else:
-        # Unassign (null user_id)
-        player.user_id = None
-
-    player.updated_at = datetime.now(timezone.utc).isoformat()
-
-    await session.flush()
-    await session.commit()
-
-    # Clear session cache to ensure fresh data
-    session.expire_all()
-
-    # Reload with user relationship
-    result = await session.execute(
-        select(SnapshotPlayer)
-        .where(SnapshotPlayer.id == player_id)
-        .options(selectinload(SnapshotPlayer.user))
-    )
-    player = result.scalar_one()
-
-    # Look up membership role for the newly assigned user
-    membership_role = None
-    if player.user_id:
-        membership_role = await get_user_membership_role(session, player.user_id, group_id)
-
-    return player_to_response(player, membership_role)
+    return await _assign_player_impl(session, group_id, tier_id, player_id, data)
 
 
 # --- Weapon Priority Endpoints ---
