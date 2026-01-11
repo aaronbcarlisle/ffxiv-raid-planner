@@ -283,9 +283,9 @@ async def refresh_access_token(
 @router.post("/logout")
 async def logout(response: Response) -> dict:
     """Logout user by clearing httpOnly cookies."""
-    # Clear cookies by setting them to empty with immediate expiry
-    response.delete_cookie(key="access_token", path="/")
-    response.delete_cookie(key="refresh_token", path="/")
+    # Clear cookies with matching attributes for proper deletion across all browsers
+    response.delete_cookie(key="access_token", path="/", samesite="lax")
+    response.delete_cookie(key="refresh_token", path="/", samesite="lax")
 
     return {"message": "Logged out successfully"}
 

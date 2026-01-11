@@ -162,11 +162,22 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Refresh access token using refresh token cookie.
        * The refresh token is sent automatically via httpOnly cookie.
+       *
+       * Note: Uses fetch directly instead of authRequest to prevent infinite
+       * recursion (authRequest calls refreshAccessToken on 401).
        */
       refreshAccessToken: async () => {
         try {
-          // Call refresh endpoint - cookies are sent automatically
-          await authRequest('/api/auth/refresh', { method: 'POST' });
+          // Call refresh endpoint directly - avoid authRequest to prevent infinite loop
+          const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            throw new Error('Refresh failed');
+          }
+
           return true;
         } catch {
           // Refresh failed - log out user
@@ -230,9 +241,10 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       // Only persist user data - tokens are now in httpOnly cookies
+      // isAuthenticated is derived from API responses, not persisted
+      // (prevents stale auth state when cookies expire)
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
@@ -248,7 +260,7 @@ export const useAuthStore = create<AuthState>()(
  */
 export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  const { isAuthenticated, fetchUser } = state;
+  const { user, fetchUser } = state;
 
   // Warn in console if in production with localhost API
   if (isProduction && isLocalhostApi) {
@@ -258,8 +270,9 @@ export async function initializeAuth(): Promise<void> {
     );
   }
 
-  // If we think we're authenticated (from persisted state), verify with backend
-  if (isAuthenticated) {
+  // If we have a persisted user, verify session is still valid with backend
+  // This handles the case where httpOnly cookies have expired
+  if (user) {
     await fetchUser();
   }
 }

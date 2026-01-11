@@ -31,10 +31,10 @@ export function ProtectedRoute({
   const navigate = useNavigate();
   const { isAuthenticated, isLoading, user, fetchUser } = useAuthStore();
 
-  // Check auth status on mount if we think we're authenticated but have no user
+  // Check auth status on mount if we have a persisted user but haven't verified yet
   // With httpOnly cookies, we verify by calling the API
   useEffect(() => {
-    if (isAuthenticated && !user && !isLoading) {
+    if (user && !isAuthenticated && !isLoading) {
       fetchUser();
     }
   }, [isAuthenticated, user, isLoading, fetchUser]);
@@ -46,8 +46,9 @@ export function ProtectedRoute({
     }
   }, [isAuthenticated, isLoading, redirectTo]);
 
-  // Loading state
-  if (isLoading || (isAuthenticated && !user)) {
+  // Loading state - show spinner while verifying session
+  // Also show spinner if we have a persisted user but haven't verified yet
+  if (isLoading || (user && !isAuthenticated)) {
     if (!showLoading) return null;
 
     return (
