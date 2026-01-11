@@ -419,6 +419,10 @@ export const PlayerCard = memo(function PlayerCard({
       // Clear any text selection caused by Shift+Click
       window.getSelection()?.removeAllRanges();
       onCopyUrl();
+      // Remove focus to prevent focus-visible ring after Shift+Click
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     }
   };
 

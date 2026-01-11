@@ -90,10 +90,18 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       const timer = requestAnimationFrame(() => {
         if (modalRef.current) {
           const focusable = getFocusableElements(modalRef.current);
-          // Focus first focusable element, or the modal itself
-          if (focusable.length > 0) {
-            focusable[0].focus();
+
+          // Prefer focusing form fields over buttons to avoid focus ring on close button
+          const formField = focusable.find(el =>
+            el.tagName === 'INPUT' ||
+            el.tagName === 'SELECT' ||
+            el.tagName === 'TEXTAREA'
+          );
+
+          if (formField) {
+            formField.focus();
           } else {
+            // No form fields - focus modal container itself (with tabindex=-1, no visible ring)
             modalRef.current.focus();
           }
         }
