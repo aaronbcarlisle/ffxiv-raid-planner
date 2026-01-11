@@ -287,6 +287,15 @@ export function GroupView() {
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
+  // DEBUG: Log admin status
+  console.log('[GroupView] Admin status:', {
+    userId: user?.id,
+    userIsAdmin: user?.isAdmin,
+    isAdmin,
+    isAdminAccess,
+    viewAsUser: !!viewAsUser
+  });
+
   // Memoize setSortPreset wrapper to prevent unnecessary re-renders
   const setSortPresetWithTier = useCallback(
     (preset: SortPreset) => setSortPreset(preset, currentTier?.tierId),
