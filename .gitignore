@@ -31,6 +31,9 @@ htmlcov/
 .pytest_cache/
 .nyc_output/
 
+# Local References
+Screenshot*.png
+
 # Logs
 *.log
 npm-debug.log*
