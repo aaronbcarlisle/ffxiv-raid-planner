@@ -275,6 +275,7 @@ async def create_tier_snapshot(
         session.add(player)
 
     await session.flush()
+    await session.commit()
 
     # Log tier creation
     logger.info(
@@ -371,6 +372,7 @@ async def update_tier_snapshot(
     snapshot.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     return snapshot_to_response(snapshot)
 
@@ -402,6 +404,7 @@ async def delete_tier_snapshot(
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
     await session.delete(snapshot)
+    await session.commit()
 
 
 # --- Rollover ---
@@ -500,6 +503,7 @@ async def rollover_tier(
         players_copied += 1
 
     await session.flush()
+    await session.commit()
 
     # Reload target with players
     result = await session.execute(
@@ -602,6 +606,7 @@ async def create_snapshot_player(
     )
     session.add(player)
     await session.flush()
+    await session.commit()
 
     # Reload with user relationship
     result = await session.execute(
@@ -711,6 +716,7 @@ async def update_snapshot_player(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     return player_to_response(player)
 
@@ -742,6 +748,7 @@ async def delete_snapshot_player(
         raise NotFound("Player not found")
 
     await session.delete(player)
+    await session.commit()
 
 
 # --- Player Ownership (Claim/Release) ---
@@ -798,6 +805,7 @@ async def claim_player(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload with user relationship
     result = await session.execute(
@@ -857,6 +865,7 @@ async def release_player(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload to get fresh state (user relationship now None)
     result = await session.execute(
@@ -958,6 +967,7 @@ async def update_weapon_priorities(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload to get fresh state
     result = await session.execute(
@@ -1008,6 +1018,7 @@ async def lock_player_weapon_priorities(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload to get fresh state
     result = await session.execute(
@@ -1058,6 +1069,7 @@ async def unlock_player_weapon_priorities(
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload to get fresh state
     result = await session.execute(
@@ -1116,6 +1128,7 @@ async def update_weapon_priority_settings(
     tier.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload to get fresh state
     result = await session.execute(

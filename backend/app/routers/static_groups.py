@@ -272,6 +272,7 @@ async def create_static_group(
     session.add(membership)
 
     await session.flush()
+    await session.commit()
 
     # Reload with relationships
     result = await session.execute(
@@ -573,6 +574,7 @@ async def update_static_group(
     group.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Get user's role for response (including admin virtual role)
     user_role, is_admin_access = await get_user_role_for_response(
@@ -595,6 +597,7 @@ async def delete_static_group(
     await require_owner(session, current_user.id, group_id)
 
     await session.delete(group)
+    await session.commit()
 
 
 @router.post("/{group_id}/duplicate", response_model=StaticGroupWithMembers, status_code=status.HTTP_201_CREATED)
@@ -733,6 +736,7 @@ async def duplicate_group(
                     session.add(new_player)
 
     await session.flush()
+    await session.commit()
 
     logger.info(
         "static_group_duplicated",
@@ -879,6 +883,7 @@ async def add_member(
     )
     session.add(membership)
     await session.flush()
+    await session.commit()
 
     # Reload with user relationship
     result = await session.execute(
@@ -932,6 +937,7 @@ async def update_member_role(
     target_membership.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
+    await session.commit()
 
     # Reload with user relationship
     result = await session.execute(
@@ -966,6 +972,7 @@ async def remove_member(
         if target_membership.role == MemberRole.OWNER.value:
             raise PermissionDenied("Owner cannot leave the group. Transfer ownership first.")
         await session.delete(target_membership)
+        await session.commit()
         return
 
     # Otherwise, need manage permission
@@ -983,6 +990,7 @@ async def remove_member(
         raise PermissionDenied("Only owners can remove leads")
 
     await session.delete(target_membership)
+    await session.commit()
 
 
 @router.post("/{group_id}/transfer-ownership", response_model=StaticGroupResponse)
@@ -1022,5 +1030,6 @@ async def transfer_ownership(
     current_owner_membership.updated_at = now
 
     await session.flush()
+    await session.commit()
 
     return group_to_response(group, MemberRole.LEAD)

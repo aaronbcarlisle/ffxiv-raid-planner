@@ -142,6 +142,7 @@ async def create_invitation(
     )
     session.add(invitation)
     await session.flush()
+    await session.commit()
 
     return invitation_to_response(invitation, group.name)
 
@@ -175,6 +176,9 @@ async def revoke_invitation(
     # Soft delete - just deactivate
     invitation.is_active = False
     invitation.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
 
 
 # --- Public Invitation Endpoints ---
@@ -294,6 +298,7 @@ async def accept_invitation(
     invitation.updated_at = now
 
     await session.flush()
+    await session.commit()
 
     return InvitationAcceptResponse(
         success=True,

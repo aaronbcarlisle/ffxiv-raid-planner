@@ -45,11 +45,18 @@ async def create_tables() -> None:
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Dependency for getting database sessions"""
+    """Dependency for getting database sessions.
+
+    Note: This does NOT auto-commit. Write operations must explicitly
+    call `await session.commit()` to persist changes to the database.
+    Rollback happens automatically on exceptions.
+    """
     async with async_session_maker() as session:
         try:
             yield session
-            await session.commit()
+            # Don't auto-commit - let endpoints call commit explicitly
         except Exception:
             await session.rollback()
             raise
+        finally:
+            await session.close()
