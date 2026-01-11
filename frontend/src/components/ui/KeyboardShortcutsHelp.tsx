@@ -1,10 +1,13 @@
 /**
  * Keyboard Shortcuts Help Modal
  *
- * Shows available keyboard shortcuts when user presses '?'
+ * Shows available keyboard shortcuts in a grid layout when user presses '?'
  */
 
+import { useState, useEffect } from 'react';
+import { Keyboard } from 'lucide-react';
 import { Modal } from './Modal';
+import { areShortcutsEnabled, setShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
 
 interface ShortcutGroup {
   title: string;
@@ -16,24 +19,24 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'Tab Navigation',
     shortcuts: [
       { key: '1-4', description: 'Switch main tabs' },
-      { key: 'Alt+1-3', description: 'Switch sub tabs (Loot/Log)' },
-      { key: 'Shift+S', description: 'Go to My Statics' },
+      { key: 'Alt+1-3', description: 'Switch sub tabs' },
+      { key: 'Shift+S', description: 'My Statics' },
     ],
   },
   {
-    title: 'Static/Tier Navigation',
+    title: 'Static/Tier',
     shortcuts: [
-      { key: 'Ctrl+[  Ctrl+]', description: 'Previous/next static' },
-      { key: 'Alt+[  Alt+]', description: 'Previous/next tier' },
+      { key: 'Ctrl+[ ]', description: 'Prev/next static' },
+      { key: 'Alt+[ ]', description: 'Prev/next tier' },
     ],
   },
   {
     title: 'View Controls',
     shortcuts: [
-      { key: 'V', description: 'Expand/collapse (all tabs)' },
-      { key: 'G', description: 'G1/G2 view (Players) / Grid/List (Log)' },
-      { key: 'S', description: 'Toggle substitutes (Players)' },
-      { key: 'Alt+←  Alt+→', description: 'Previous/next week (Log)' },
+      { key: 'V', description: 'Expand/collapse' },
+      { key: 'G', description: 'Toggle grid view' },
+      { key: 'S', description: 'Toggle subs' },
+      { key: 'Alt+← →', description: 'Change week' },
     ],
   },
   {
@@ -54,16 +57,16 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Mouse Shortcuts',
+    title: 'Mouse',
     shortcuts: [
-      { key: 'Shift+Click', description: 'Copy link to clipboard' },
-      { key: 'Alt+Click', description: 'Navigate to related item' },
+      { key: 'Shift+Click', description: 'Copy link' },
+      { key: 'Alt+Click', description: 'Navigate to item' },
     ],
   },
   {
     title: 'General',
     shortcuts: [
-      { key: 'Shift+?', description: 'Show this help' },
+      { key: 'Shift+?', description: 'Show shortcuts' },
       { key: 'Esc', description: 'Close modal' },
     ],
   },
@@ -75,17 +78,45 @@ interface KeyboardShortcutsHelpProps {
 }
 
 export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelpProps) {
+  const [enabled, setEnabled] = useState(true);
+
+  // Load initial state from localStorage
+  useEffect(() => {
+    setEnabled(areShortcutsEnabled());
+  }, [isOpen]);
+
+  const handleToggle = () => {
+    const newValue = !enabled;
+    setEnabled(newValue);
+    setShortcutsEnabled(newValue);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Keyboard Shortcuts">
-      <div className="space-y-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Keyboard className="w-5 h-5" />
+          Keyboard Shortcuts
+        </span>
+      }
+      size="3xl"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {SHORTCUT_GROUPS.map((group) => (
-          <div key={group.title}>
-            <h3 className="text-sm font-medium text-text-secondary mb-2">{group.title}</h3>
-            <div className="space-y-1">
+          <div
+            key={group.title}
+            className="bg-surface-elevated rounded-lg p-4 border border-border-default"
+          >
+            <h3 className="text-sm font-bold text-accent mb-3 pb-2 border-b border-border-subtle">
+              {group.title}
+            </h3>
+            <div className="space-y-1.5">
               {group.shortcuts.map((shortcut) => (
-                <div key={shortcut.key} className="flex items-center justify-between py-1">
-                  <span className="text-text-primary">{shortcut.description}</span>
-                  <kbd className="px-2 py-1 text-xs font-mono bg-surface-elevated border border-border-default rounded text-text-secondary">
+                <div key={shortcut.key} className="flex items-center justify-between text-xs">
+                  <span className="text-text-secondary">{shortcut.description}</span>
+                  <kbd className="font-mono px-1.5 py-0.5 bg-surface-card border border-border-default rounded text-text-muted">
                     {shortcut.key}
                   </kbd>
                 </div>
@@ -94,10 +125,32 @@ export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelp
           </div>
         ))}
       </div>
-      <div className="mt-6 pt-4 border-t border-border-default">
+
+      <div className="mt-4 pt-4 border-t border-border-default flex justify-between items-center">
         <p className="text-xs text-text-muted">
-          Shortcuts are disabled when typing in text fields or when a modal is open.
+          Shortcuts disabled when typing or in modals
         </p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-xs text-text-secondary">Enable shortcuts</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={handleToggle}
+            className={`
+              relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+              ${enabled ? 'bg-accent' : 'bg-surface-interactive'}
+            `}
+          >
+            <span
+              className={`
+                inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform
+                ${enabled ? 'translate-x-5' : 'translate-x-1'}
+              `}
+            />
+          </button>
+        </label>
       </div>
     </Modal>
   );

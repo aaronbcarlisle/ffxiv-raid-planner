@@ -10,6 +10,8 @@
 
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { forwardRef, type ReactNode } from 'react';
+import { Keyboard } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 // ============================================================================
 // Root & Trigger
@@ -169,7 +171,11 @@ export const DropdownItem = forwardRef<HTMLDivElement, DropdownItemProps>(
         {icon && <span className="w-4 h-4 flex items-center justify-center">{icon}</span>}
         <span className="flex-1">{children}</span>
         {shortcut && (
-          <span className="ml-auto text-xs text-text-muted">{shortcut}</span>
+          <Tooltip content={shortcut} side="right" delayDuration={100}>
+            <span className="ml-auto text-text-muted hover:text-text-secondary">
+              <Keyboard className="w-3.5 h-3.5" />
+            </span>
+          </Tooltip>
         )}
       </>
     );
