@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.4 Released (Phase 1-6.5 + Parity + Audit + UX + Design System Migration) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.6 Released (Phase 1-6.5 + Parity + Audit + UX + Design System Migration + Security Hardening) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -83,11 +83,12 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `hooks/usePlayerActions.ts` | Player CRUD operations hook (210 lines) |
 | `hooks/useGroupViewKeyboardShortcuts.ts` | GroupView keyboard shortcut config (219 lines) |
 | `hooks/useViewNavigation.ts` | Cross-tab navigation helpers (87 lines) |
-| `components/player/PlayerGrid.tsx` | Player grid with group view and subs (250 lines) |
+| `components/player/PlayerGrid.tsx` | Player grid with group view and subs (467 lines) |
 | `components/admin/AdminBanners.tsx` | Admin access and View As indicators (69 lines) |
 | `components/layout/ReleaseBanner.tsx` | New version notification |
 | `components/history/WeeklyLootGrid.tsx` | Spreadsheet-style loot grid |
-| `components/history/SectionedLogView.tsx` | Log tab with floor filters |
+| `components/history/SectionedLogView.tsx` | Log tab with floor filters (1142 lines) |
+| `components/history/LogEntryItems.tsx` | Memoized loot/material entry components (206 lines) |
 | `components/ui/ContextMenu.tsx` | Reusable context menu |
 | `lib/errorHandler.ts` | Centralized error parsing with HTTP messages |
 | `lib/logger.ts` | Development-aware logging with scoping |
@@ -103,7 +104,12 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 See [2026-01-01-comprehensive-audit.md](./docs/audits/2026-01-01-comprehensive-audit.md) for details.
 
 ### Open Items
-- None - all high/medium priority items resolved
+- **U-001:** Missing skeleton loaders - Dashboard uses spinner instead of skeleton UI
+- **D-001:** Modal pattern duplication - Create useModal hook or higher-order component
+
+### Resolved in v1.0.6
+- ~~**S-001:** JWT Token Storage~~ - Migrated to httpOnly cookies (PR #18)
+- ~~**MEDIUM-002:** List item re-renders~~ - React.memo optimization for all list components (PR #20)
 
 ### Resolved in v1.0.5
 - ~~**P-005:** GroupView.tsx is 811 lines~~ - Refactored to 788 lines with 6 extracted modules (PR #16)
@@ -401,10 +407,13 @@ When modals open, set drag sensor distance to 999999 to disable dragging.
 - Auto-expands list if tie extends beyond visible entries
 - Winner highlighted in green
 
-### Auth Persistence (v1.0.0)
-- Proactive token refresh on app load (60-second buffer)
-- Production misconfiguration detection with console warnings
-- JWT expiration check prevents unnecessary 401 errors
+### Auth Persistence (v1.0.6)
+- **httpOnly Cookies:** Tokens stored in secure httpOnly cookies (not accessible to JavaScript)
+- **SameSite=Lax:** CSRF protection on authentication cookies
+- **Secure Flag:** Cookies only sent over HTTPS in production
+- **Token Refresh:** Proactive refresh on app load (60-second buffer)
+- **Protected Logout:** Logout requires valid access token to prevent CSRF logout attacks
+- **No localStorage Auth:** Auth state not persisted to localStorage to prevent stale state
 
 ### Weekly Loot Grid (v1.0.4)
 - Spreadsheet-style view in Log tab for viewing/logging weekly loot

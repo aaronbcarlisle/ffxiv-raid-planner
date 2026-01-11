@@ -1,13 +1,14 @@
 # FFXIV Raid Planner - Comprehensive Codebase Audit
 
 **Date:** 2026-01-01
-**Last Verified:** 2026-01-10
+**Last Verified:** 2026-01-11
 **Quick Wins Fixed:** 2026-01-02
 **v1.0.1 Fixes:** 2026-01-09
 **v1.0.5 Fixes:** 2026-01-10
+**v1.0.6 Fixes:** 2026-01-11
 **Auditor:** Principal Architect
 **Repository:** ffxiv-raid-planner
-**Status:** v1.0.5 Released
+**Status:** v1.0.6 Released
 
 ---
 
@@ -51,7 +52,7 @@ The FFXIV Raid Planner codebase demonstrates **solid architectural foundations**
 | Priority | Total | Open | Fixed | Invalid |
 |----------|-------|------|-------|---------|
 | High | 8 | 0 | 7 | 1 |
-| Medium | 6 | 3 | 3 | 0 |
+| Medium | 6 | 2 | 4 | 0 |
 | Low | 5 | 3 | 2 | 0 |
 
 ---
@@ -93,8 +94,8 @@ _Note: Frontend test suites make heavy use of parameterized/looped test cases, s
 | P-003 | Unbounded queries | **FIXED** | Pagination with limit=50, max=100 |
 | P-005 | Large GroupView | **FIXED** | Refactored to 788 lines with 6 extracted modules (v1.0.5) |
 | P-006 | Missing useMemo | **FIXED** | LootPriorityPanel uses useMemo |
+| S-001 | Token in localStorage | **FIXED** | Migrated to httpOnly cookies (v1.0.6) |
 | U-001 | Missing skeletons | **OPEN** | Dashboard uses spinner |
-| S-001 | Token in localStorage | **OPEN** | XSS concern |
 | D-001 | Modal duplication | **OPEN** | Pattern extraction needed |
 
 ### Low Priority
@@ -118,11 +119,6 @@ _Note: Frontend test suites make heavy use of parameterized/looped test cases, s
 - **Issue:** Uses simple spinner instead of skeleton UI.
 - **Impact:** Poor perceived performance.
 - **Recommendation:** Add skeleton cards matching final layout.
-
-#### S-001: JWT Token Storage
-- **Location:** `frontend/src/stores/authStore.ts`
-- **Issue:** Tokens stored in localStorage (XSS vulnerability).
-- **Recommendation:** Consider httpOnly cookies for production.
 
 #### D-001: Modal Pattern Duplication
 - **Locations:** CreateTierModal, DeleteTierModal, GroupSettingsModal
@@ -154,6 +150,19 @@ _Note: Frontend test suites make heavy use of parameterized/looped test cases, s
 ---
 
 ## Resolved Issues
+
+### S-001: JWT Token Storage ✅ (v1.0.6)
+- **Resolution:** Migrated authentication from localStorage to httpOnly cookies:
+  - Access and refresh tokens stored in httpOnly cookies (not accessible to JavaScript)
+  - SameSite=Lax attribute prevents CSRF attacks
+  - Secure flag ensures cookies only sent over HTTPS in production
+  - Protected logout endpoint requires valid access token
+  - Removed auth state persistence from localStorage to prevent stale state
+  - Automatic token refresh before logout if access token expired
+- **Files Changed:**
+  - `backend/app/routers/auth.py` - Cookie-based token management
+  - `frontend/src/stores/authStore.ts` - Removed localStorage, added credentials: include
+  - `frontend/src/lib/api.ts` - Global credentials: include for all API calls
 
 ### P-005: Large Component File ✅ (v1.0.5)
 - **Resolution:** Refactored GroupView.tsx from 1468 → 788 lines (46% reduction) by extracting:
@@ -227,4 +236,4 @@ All quick wins have been implemented ✅
 
 ---
 
-*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02, v1.0.1 updates 2026-01-09, v1.0.5 updates 2026-01-10*
+*Report generated 2026-01-01, verified 2026-01-02, quick wins fixed 2026-01-02, v1.0.1 updates 2026-01-09, v1.0.5 updates 2026-01-10, v1.0.6 updates 2026-01-11*

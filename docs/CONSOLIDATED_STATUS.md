@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 10, 2026 (v1.0.5 Released)
+**Last Updated:** January 11, 2026 (v1.0.6 Released)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -64,6 +64,17 @@
 | **Comprehensive Test Suite** | ✅ Complete | 321 tests (95 backend + 226 frontend) |
 | **Skeleton Components** | ✅ Complete | Loading placeholder components |
 
+### ✅ Completed: v1.0.6 (January 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **httpOnly Cookie Auth** | ✅ Complete | Tokens migrated from localStorage to secure httpOnly cookies |
+| **SameSite Protection** | ✅ Complete | CSRF protection via SameSite=Lax |
+| **Secure Flag** | ✅ Complete | Cookies only sent over HTTPS in production |
+| **Protected Logout** | ✅ Complete | Logout requires valid access token |
+| **React.memo Optimization** | ✅ Complete | List item components memoized (PR #20) |
+| **LogEntryItems Extraction** | ✅ Complete | LootLogEntryItem and MaterialLogEntryItem extracted |
+
 ### ✅ Completed: v1.0.5 (January 2026)
 
 | Feature | Status | Description |
@@ -72,7 +83,7 @@
 | **State Management Hooks** | ✅ Complete | useGroupViewState, usePlayerActions extracted |
 | **Keyboard Shortcuts Hook** | ✅ Complete | useGroupViewKeyboardShortcuts extracted |
 | **Navigation Helpers** | ✅ Complete | useViewNavigation for cross-tab nav |
-| **PlayerGrid Component** | ✅ Complete | Grid rendering with group view and subs |
+| **PlayerGrid Component** | ✅ Complete | Grid rendering with group view and subs (467 lines) |
 | **AdminBanners Component** | ✅ Complete | Admin access and View As indicators |
 
 ### ✅ Completed: v1.0.2-v1.0.4 (January 2026)
