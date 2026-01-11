@@ -781,9 +781,12 @@ export function SectionedLogView({
       />
 
       {/* Main Content - Side by Side Layout */}
-      <div className="flex gap-4 items-stretch">
+      <div
+        className="grid gap-4 items-stretch transition-[grid-template-columns] duration-200"
+        style={{ gridTemplateColumns: booksSidebarCollapsed ? '1fr 2.5rem' : '1fr 20rem' }}
+      >
         {/* Loot Log - Main Area */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 overflow-hidden">
           {/* Grid Layout */}
           {layoutMode === 'grid' && (
             <WeeklyLootGrid
@@ -957,8 +960,8 @@ export function SectionedLogView({
         </div>
 
         {/* Book Balances - Sidebar */}
-        <div className={`transition-all duration-200 ${booksSidebarCollapsed ? 'w-10' : 'w-80'} flex-shrink-0`}>
-          <section className="bg-surface-card border border-border-default rounded-lg h-full">
+        <div className="overflow-hidden">
+          <section className="bg-surface-card border border-border-default rounded-lg h-full w-80">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
               {!booksSidebarCollapsed && (

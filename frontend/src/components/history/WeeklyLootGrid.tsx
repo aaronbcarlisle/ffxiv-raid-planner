@@ -357,7 +357,7 @@ export function WeeklyLootGrid({
   return (
     <div className="space-y-4">
       {/* Loot Count Summary Bar */}
-      <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-auto">
+      <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-clip">
         {mainRosterPlayers.map(player => {
           const count = playerLootCounts[player.id] || 0;
           const style = getLootCountStyle(count);
