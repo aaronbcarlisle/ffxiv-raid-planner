@@ -5,7 +5,7 @@
  * Handles both main roster and substitutes sections.
  */
 
-import { memo } from 'react';
+import { memo, useMemo, useCallback } from 'react';
 import { DroppablePlayerCard } from './DroppablePlayerCard';
 import { EmptySlotCard } from './EmptySlotCard';
 import { InlinePlayerEdit } from './InlinePlayerEdit';
@@ -82,13 +82,66 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   onEditPlayer,
   onCancelEdit,
 }: PlayerCardRendererProps) {
+  // Stable callbacks that use player.id
+  const handleSave = useCallback((name: string, job: string, role: string) => {
+    onConfigurePlayer(player.id, name, job, role);
+  }, [onConfigurePlayer, player.id]);
+
+  const handleUpdate = useCallback((updates: Partial<SnapshotPlayer>) => {
+    onUpdatePlayer(player.id, updates);
+  }, [onUpdatePlayer, player.id]);
+
+  const handleRemove = useCallback(() => {
+    onRemovePlayer(player.id);
+  }, [onRemovePlayer, player.id]);
+
+  const handleCopy = useCallback(() => {
+    onCopyPlayer(player);
+    toast.info(`Copied ${player.name}`);
+  }, [onCopyPlayer, player, player.name]);
+
+  const handlePaste = useCallback(() => {
+    if (clipboardPlayer) {
+      onPastePlayer(player.id, clipboardPlayer);
+      toast.success(`Pasted ${clipboardPlayer.name}'s data`);
+    }
+  }, [onPastePlayer, player.id, clipboardPlayer]);
+
+  const handleDuplicate = useCallback(() => {
+    onDuplicatePlayer(player);
+  }, [onDuplicatePlayer, player]);
+
+  const handleResetGear = useCallback((mode: ResetMode) => {
+    onResetGear(player.id, mode);
+  }, [onResetGear, player.id]);
+
+  const handleClaimPlayer = useCallback(() => {
+    onClaimPlayer(player.id);
+  }, [onClaimPlayer, player.id]);
+
+  const handleReleasePlayer = useCallback(() => {
+    onReleasePlayer(player.id);
+  }, [onReleasePlayer, player.id]);
+
+  const handleCopyUrl = useCallback(() => {
+    onCopyUrl(player.id);
+  }, [onCopyUrl, player.id]);
+
+  const handleNavigateToLootEntry = useCallback((slot: GearSlot) => {
+    onNavigateToLootEntry(player.id, slot);
+  }, [onNavigateToLootEntry, player.id]);
+
+  const handleStartEdit = useCallback(() => {
+    onEditPlayer(player.id);
+  }, [onEditPlayer, player.id]);
+
   // If editing this player, show inline edit form
   if (editingPlayerId === player.id) {
     return (
       <InlinePlayerEdit
         player={player}
         userRole={userRole}
-        onSave={(name, job, role) => onConfigurePlayer(player.id, name, job, role)}
+        onSave={handleSave}
         onCancel={onCancelEdit}
       />
     );
@@ -116,27 +169,19 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         groupId={groupId}
         tierId={tierId}
         isHighlighted={highlightedPlayerId === player.id}
-        onUpdate={(updates) => onUpdatePlayer(player.id, updates)}
-        onRemove={() => onRemovePlayer(player.id)}
-        onCopy={() => {
-          onCopyPlayer(player);
-          toast.info(`Copied ${player.name}`);
-        }}
-        onPaste={() => {
-          if (clipboardPlayer) {
-            onPastePlayer(player.id, clipboardPlayer);
-            toast.success(`Pasted ${clipboardPlayer.name}'s data`);
-          }
-        }}
-        onDuplicate={() => onDuplicatePlayer(player)}
-        onResetGear={resetPermission.allowed ? (mode: ResetMode) => { onResetGear(player.id, mode); } : undefined}
-        onClaimPlayer={() => onClaimPlayer(player.id)}
-        onReleasePlayer={() => onReleasePlayer(player.id)}
+        onUpdate={handleUpdate}
+        onRemove={handleRemove}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onDuplicate={handleDuplicate}
+        onResetGear={resetPermission.allowed ? handleResetGear : undefined}
+        onClaimPlayer={handleClaimPlayer}
+        onReleasePlayer={handleReleasePlayer}
         onModalOpen={onModalOpen}
         onModalClose={onModalClose}
-        onCopyUrl={() => onCopyUrl(player.id)}
+        onCopyUrl={handleCopyUrl}
         slotsWithLootEntries={playerSlotsWithLootEntries}
-        onNavigateToLootEntry={(slot) => onNavigateToLootEntry(player.id, slot)}
+        onNavigateToLootEntry={handleNavigateToLootEntry}
       />
     );
   }
@@ -146,8 +191,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
     <EmptySlotCard
       templateRole={player.templateRole}
       position={player.position}
-      onStartEdit={() => onEditPlayer(player.id)}
-      onRemove={canEdit ? () => onRemovePlayer(player.id) : undefined}
+      onStartEdit={handleStartEdit}
+      onRemove={canEdit ? handleRemove : undefined}
     />
   );
 });
@@ -234,8 +279,8 @@ export function PlayerGrid({
   onEditPlayer,
   onCancelEdit,
 }: PlayerGridProps) {
-  // Common props for PlayerCardRenderer
-  const renderCardProps = {
+  // Memoize common props for PlayerCardRenderer to prevent unnecessary re-renders
+  const renderCardProps = useMemo(() => ({
     editingPlayerId,
     viewMode,
     contentType,
@@ -264,7 +309,36 @@ export function PlayerGrid({
     onModalClose,
     onEditPlayer,
     onCancelEdit,
-  };
+  }), [
+    editingPlayerId,
+    viewMode,
+    contentType,
+    clipboardPlayer,
+    dragState,
+    canEdit,
+    effectiveUserId,
+    userRole,
+    userHasClaimedPlayer,
+    isAdminAccess,
+    groupId,
+    tierId,
+    highlightedPlayerId,
+    onUpdatePlayer,
+    onRemovePlayer,
+    onConfigurePlayer,
+    onDuplicatePlayer,
+    onResetGear,
+    onClaimPlayer,
+    onReleasePlayer,
+    onCopyPlayer,
+    onPastePlayer,
+    onCopyUrl,
+    onNavigateToLootEntry,
+    onModalOpen,
+    onModalClose,
+    onEditPlayer,
+    onCancelEdit,
+  ]);
 
   // Grouped View (G1/G2) - G1 on top, G2 below
   if (groupView && groupedPlayers) {

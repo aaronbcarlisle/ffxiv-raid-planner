@@ -641,11 +641,11 @@ export function SectionedLogView({
 
   const handleLootContextMenu = useCallback((e: React.MouseEvent, entry: LootLogEntry) => {
     handleListContextMenu(e, entry, 'loot');
-  }, []);
+  }, [handleListContextMenu]);
 
   const handleMaterialContextMenu = useCallback((e: React.MouseEvent, entry: MaterialLogEntry) => {
     handleListContextMenu(e, entry, 'material');
-  }, []);
+  }, [handleListContextMenu]);
 
   // Handle grid view log clicks
   const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {

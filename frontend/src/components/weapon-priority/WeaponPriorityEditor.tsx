@@ -5,7 +5,7 @@
  * Allows adding/removing jobs and marking weapons as received.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -129,7 +129,10 @@ export function WeaponPriorityEditor({
     updateJobSelectorState(false, 0);
   };
 
-  const handleRemoveJob = (index: number) => {
+  const handleRemoveJob = useCallback((job: string) => {
+    const index = weaponPriorities.findIndex(wp => wp.job === job);
+    if (index === -1) return;
+
     // Check if removing main job
     if (mainJob && weaponPriorities[index].job === mainJob) {
       if (onMainJobRemoveAttempt) {
@@ -141,9 +144,12 @@ export function WeaponPriorityEditor({
     }
 
     onChange(weaponPriorities.filter((_, i) => i !== index));
-  };
+  }, [weaponPriorities, mainJob, onMainJobRemoveAttempt, onChange]);
 
-  const handleToggleReceived = (index: number) => {
+  const handleToggleReceived = useCallback((job: string) => {
+    const index = weaponPriorities.findIndex(wp => wp.job === job);
+    if (index === -1) return;
+
     const updated = [...weaponPriorities];
     updated[index] = {
       ...updated[index],
@@ -151,7 +157,7 @@ export function WeaponPriorityEditor({
       receivedDate: !updated[index].received ? new Date().toISOString() : undefined,
     };
     onChange(updated);
-  };
+  }, [weaponPriorities, onChange]);
 
   return (
     <div className="space-y-3 overflow-x-hidden">
@@ -175,8 +181,8 @@ export function WeaponPriorityEditor({
                   index={index}
                   isMainJob={priority.job === mainJob}
                   disabled={disabled}
-                  onRemove={() => handleRemoveJob(index)}
-                  onToggleReceived={() => handleToggleReceived(index)}
+                  onRemove={handleRemoveJob}
+                  onToggleReceived={handleToggleReceived}
                 />
               ))}
             </div>
