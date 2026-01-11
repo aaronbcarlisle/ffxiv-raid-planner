@@ -48,12 +48,14 @@ export function useModal(initialState = false): UseModalReturn {
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen(prev => !prev), []);
 
+  // Callbacks are stable via useCallback, only re-memoize when isOpen changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => ({
     isOpen,
     open,
     close,
     toggle,
-  }), [isOpen, open, close, toggle]);
+  }), [isOpen]);
 }
 
 export interface UseModalWithDataReturn<T> {
@@ -91,11 +93,13 @@ export function useModalWithData<T>(initialState = false): UseModalWithDataRetur
     setData(null);
   }, []);
 
+  // Callbacks are stable via useCallback, only re-memoize when state changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => ({
     isOpen,
     data,
     open,
     close,
     setData,
-  }), [isOpen, data, open, close]);
+  }), [isOpen, data]);
 }

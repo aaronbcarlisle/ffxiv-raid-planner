@@ -32,7 +32,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   success:
     'bg-status-success/20 text-status-success border border-status-success/40 hover:bg-status-success/30 active:bg-status-success/40 focus:ring-status-success/50',
   link:
-    'bg-transparent text-accent underline-offset-4 hover:underline active:text-accent-hover p-0',
+    'bg-transparent text-accent text-sm underline-offset-4 hover:underline active:text-accent-hover',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -68,7 +68,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2 focus:ring-offset-surface-base
           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
           ${variantStyles[variant]}
-          ${sizeStyles[size]}
+          ${variant !== 'link' ? sizeStyles[size] : ''}
           ${className}
         `}
         {...props}
