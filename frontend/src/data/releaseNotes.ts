@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.5';
+export const CURRENT_VERSION = '1.0.6';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,56 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.6',
+    date: '2026-01-11',
+    title: 'Security Hardening',
+    highlights: ['httpOnly cookie auth', 'XSS protection'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'httpOnly cookie authentication',
+        description: 'Tokens now stored in secure httpOnly cookies instead of localStorage',
+        details:
+          'Authentication tokens are now stored in httpOnly cookies that JavaScript cannot access. This protects against XSS attacks that could steal tokens from localStorage. Cookies are automatically sent with requests via credentials: include.',
+      },
+      {
+        category: 'improvement',
+        title: 'SameSite cookie protection',
+        description: 'Cookies set with SameSite=Lax to prevent CSRF attacks',
+        details:
+          'All authentication cookies use SameSite=Lax attribute, preventing cross-site request forgery attacks. Cookies are only sent with same-site requests or top-level navigation.',
+      },
+      {
+        category: 'improvement',
+        title: 'Secure flag for production',
+        description: 'Cookies only sent over HTTPS in production',
+        details:
+          'Authentication cookies in production are marked with the Secure flag, ensuring they are only transmitted over encrypted HTTPS connections.',
+      },
+      {
+        category: 'improvement',
+        title: 'Protected logout endpoint',
+        description: 'Logout requires authentication to prevent CSRF logout attacks',
+        details:
+          'The logout endpoint now requires a valid access token. This prevents malicious sites from forcing users to logout via cross-site requests.',
+      },
+      {
+        category: 'fix',
+        title: 'Token refresh on logout',
+        description: 'Logout now works even with expired access tokens',
+        details:
+          'If your access token has expired when you click logout, the app now automatically refreshes it first to ensure cookies are properly cleared on the server.',
+      },
+      {
+        category: 'fix',
+        title: 'Auth state persistence',
+        description: 'Fixed stale authentication state after cookie expiry',
+        details:
+          'The app no longer persists isAuthenticated to localStorage, preventing cases where the UI showed you as logged in after cookies expired. Auth state is now verified with the backend on app load.',
+      },
+    ],
+  },
   {
     version: '1.0.5',
     date: '2026-01-10',
