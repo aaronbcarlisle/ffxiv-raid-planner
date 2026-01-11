@@ -41,11 +41,7 @@ The `currentSource` column exists but is hidden. Enable it and add a selector.
 ```tsx
 import { useState } from 'react';
 import { Popover } from '../primitives';
-import { 
-  GEAR_SOURCE_NAMES, 
-  GEAR_SOURCE_COLORS, 
-  type GearSourceCategory 
-} from '../../types';
+import { GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, type GearSourceCategory } from '../../types';
 
 const GEAR_CATEGORIES: GearSourceCategory[] = [
   'savage', 'tome_up', 'catchup', 'tome', 'relic', 'crafted', 'prep', 'normal'
@@ -116,16 +112,20 @@ export function CurrentSourceSelector({ value, onChange, disabled }: CurrentSour
 import { calculateAverageItemLevel } from '../../utils/calculations';
 import { useTierStore } from '../../stores/tierStore';
 
+// Constants for tier and item level thresholds
+const DEFAULT_TIER_ID = 'arcadion-light-heavyweight';
+const AVG_ILV_HIGHLIGHT_THRESHOLD = 780;
+
 // Inside component, get tier and calculate
 const { activeTier } = useTierStore();
-const avgILv = player.gear.length > 0 
-  ? calculateAverageItemLevel(player.gear, activeTier?.tierId || 'arcadion-light-heavyweight')
+const avgILv = player.gear.length > 0
+  ? calculateAverageItemLevel(player.gear, activeTier?.tierId ?? DEFAULT_TIER_ID)
   : 0;
 
 // In JSX, add after existing stats (find the completion display)
 {avgILv > 0 && (
   <span className="text-text-muted text-xs ml-2">
-    iLv <span className={avgILv >= 780 ? 'text-accent font-medium' : ''}>{avgILv}</span>
+    iLv <span className={avgILv >= AVG_ILV_HIGHLIGHT_THRESHOLD ? 'text-accent font-medium' : ''}>{avgILv}</span>
   </span>
 )}
 ```
@@ -649,9 +649,9 @@ const teamAvgILv = useMemo(() => {
 <th className="text-right py-2 px-3 text-xs font-medium text-text-muted">Avg iLv</th>
 <th className="text-right py-2 px-3 text-xs font-medium text-text-muted">Drops</th>
 
-// Add columns to player rows
+// Add columns to player rows (uses AVG_ILV_HIGHLIGHT_THRESHOLD constant defined above)
 <td className="text-right py-2 px-3">
-  <span className={avgILv >= 780 ? 'text-accent font-medium' : 'text-text-primary'}>
+  <span className={avgILv >= AVG_ILV_HIGHLIGHT_THRESHOLD ? 'text-accent font-medium' : 'text-text-primary'}>
     {avgILv}
   </span>
 </td>

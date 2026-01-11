@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.6';
+export const CURRENT_VERSION = '1.0.8';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,127 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.8',
+    date: '2026-01-11',
+    title: 'Admin Assignment & Polish',
+    highlights: ['Assign players to users', 'Role-colored badges'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Admin player assignment',
+        description: 'Owners and admins can assign Discord users to player cards',
+        details:
+          'Right-click a player card and select "Assign Player" to link a Discord user. Choose from existing members or enter a user ID manually. The assigned user can then edit their own player card. If the user isn\'t already a member, they\'ll be added with Member role automatically.',
+      },
+      {
+        category: 'feature',
+        title: 'Role-colored player badges',
+        description: 'Linked users show their membership role with colored badges',
+        details:
+          'Player cards now display the linked user\'s role with color-coded badges: Owner (teal), Lead (purple), Member (blue), and Linked-only (amber for users linked but not members). Makes it easy to see who has what permissions at a glance.',
+      },
+      {
+        category: 'feature',
+        title: 'Double-click confirm pattern',
+        description: 'Dangerous actions require click-to-arm, click-to-confirm',
+        details:
+          'Destructive actions like revoking invitations or clearing history now use a double-click confirmation pattern. First click arms the button (shows "Confirm?"), second click executes. Auto-resets after 3 seconds or when you click away.',
+      },
+      {
+        category: 'improvement',
+        title: 'Modal header icons',
+        description: 'All modals now have contextual icons in their headers',
+        details:
+          'Modals display relevant icons next to their titles for better visual context. Danger modals show trash/reset icons in red/warning colors, action modals show contextual icons like package for loot or gem for materials.',
+      },
+      {
+        category: 'improvement',
+        title: 'Job icons in recipient dropdowns',
+        description: 'Loot recipient selectors show job icons',
+        details:
+          'When selecting a loot recipient, you now see job icons next to player names, making it easier to identify the correct player especially when multiple players have similar names.',
+      },
+      {
+        category: 'improvement',
+        title: 'Static Settings polish',
+        description: 'Tab icons and proper danger button styling',
+        details:
+          'The Static Settings modal now displays icons on each tab and uses proper danger button styling for destructive actions like deleting a static or leaving a group.',
+      },
+      {
+        category: 'fix',
+        title: 'Race condition handling',
+        description: 'Membership creation handles concurrent requests gracefully',
+        details:
+          'When two requests try to create the same membership simultaneously, the system now handles this gracefully by returning the existing membership instead of throwing an error. Prevents "already a member" errors during rapid operations.',
+      },
+      {
+        category: 'fix',
+        title: 'Input validation for user IDs',
+        description: 'Discord ID and UUID format validation in assignment modal',
+        details:
+          'The manual user ID input now validates the format before submission. Accepts Discord IDs (17-19 digit snowflakes) or UUIDs. Shows inline error message for invalid formats.',
+      },
+      {
+        category: 'improvement',
+        title: 'Comprehensive test coverage',
+        description: '23 new backend tests for player assignment',
+        details:
+          'Added comprehensive test coverage for the admin player assignment feature, including permission checks, edge cases, race conditions, and integration tests. Backend now has 160 tests total.',
+      },
+    ],
+  },
+  {
+    version: '1.0.7',
+    date: '2026-01-11',
+    title: 'Audit Complete',
+    highlights: ['Skeleton loaders', 'Reusable hooks'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Skeleton loading states',
+        description: 'Loading placeholders for Dashboard static cards',
+        details:
+          'Dashboard now shows skeleton placeholders while loading your statics instead of a blank screen. Both grid and list views have dedicated skeleton components that match the final layout, improving perceived performance.',
+      },
+      {
+        category: 'feature',
+        title: 'useModal hook',
+        description: 'Reusable modal state management',
+        details:
+          'New useModal and useModalWithData hooks eliminate boilerplate for modal open/close state. useModalWithData also handles passing data to the modal when opening it.',
+      },
+      {
+        category: 'feature',
+        title: 'useDebounce hook',
+        description: 'Debounce utilities for values and callbacks',
+        details:
+          'New useDebounce hook for debouncing values (useful for search inputs) and useDebouncedCallback for debouncing function calls. Prevents excessive API calls and re-renders during rapid input.',
+      },
+      {
+        category: 'feature',
+        title: 'ErrorMessage component',
+        description: 'Error display with retry button',
+        details:
+          'New ErrorMessage component displays errors consistently with an optional retry button. InlineError variant for compact inline display. Both support custom styling and messaging.',
+      },
+      {
+        category: 'improvement',
+        title: 'Button component variants',
+        description: 'Added success and link button variants',
+        details:
+          'Button component now has 7 variants: primary, secondary, danger, warning, success, ghost, and link. All variants support loading states, disabled states, and icon placement.',
+      },
+      {
+        category: 'improvement',
+        title: 'Audit resolution',
+        description: 'All actionable audit items resolved',
+        details:
+          'Completed all P0-P2 audit items from v1.0.1-v1.0.6 audits. Only R-002 (props drilling) remains intentionally deferred as hooks adequately mitigate the issue.',
+      },
+    ],
+  },
   {
     version: '1.0.6',
     date: '2026-01-11',

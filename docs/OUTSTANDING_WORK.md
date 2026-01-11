@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
 **Last Updated:** January 11, 2026 (Validated against codebase)
-**Current Version:** v1.0.8 (Modal Polish Complete)
+**Current Version:** v1.0.8 (Admin Assignment & Modal Polish Complete)
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -267,6 +267,12 @@ The following items were validated against the actual codebase and confirmed as 
 | **Icon Button aria-labels** | FIXED | Dashboard, WeeklyLootGrid buttons have proper labels |
 | **Focus Indicators** | FIXED | WeeklyLootGrid cells have `focus-visible:ring-2` |
 | **Inline Log Buttons** | FIXED | GroupView line 695: `showLogButtons={canEdit}` |
+| **Modal Header Icons** | ADDED | All modals have contextual icons (v1.0.8) |
+| **Double-Click Confirm** | ADDED | useDoubleClickConfirm hook with isLoading, timeout, blur reset |
+| **Admin Player Assignment** | ADDED | Owner/admin can assign users to player cards |
+| **Player Badge Colors** | ADDED | Role-colored badges (owner/lead/member/linked) on player cards |
+| **Race Condition Handling** | FIXED | `create_membership_for_assignment()` handles IntegrityError |
+| **Input Validation** | ADDED | Discord ID (17-19 digits) and UUID format validation |
 
 ---
 
