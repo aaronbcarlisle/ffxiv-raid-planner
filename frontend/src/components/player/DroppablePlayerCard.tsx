@@ -34,6 +34,7 @@ interface DroppablePlayerCardProps {
   onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
+  onAdminAssignPlayer?: (userId: string | null) => void;
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
