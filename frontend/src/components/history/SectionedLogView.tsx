@@ -15,6 +15,7 @@ import { LootLogModals } from './LootLogModals';
 import { LootCountBar } from './LootCountBar';
 import { FloorSection } from './FloorSection';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
+import { LootLogEntryItem, MaterialLogEntryItem } from './LogEntryItems';
 import { type ResetType } from '../ui/ResetConfirmModal';
 import { type ContextMenuItem } from '../ui/ContextMenu';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
@@ -23,18 +24,6 @@ import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
-
-// Format date for display
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
 
 interface SectionedLogViewProps {
   groupId: string;
@@ -59,13 +48,6 @@ interface SectionedLogViewProps {
   openMarkFloorClearedModal?: boolean;
   onMarkFloorClearedModalClose?: () => void;
 }
-
-const MATERIAL_LABELS: Record<string, string> = {
-  twine: 'Twine',
-  glaze: 'Glaze',
-  solvent: 'Solvent',
-  universal_tomestone: 'Universal Tomestone',
-};
 
 export function SectionedLogView({
   groupId,
@@ -646,141 +628,24 @@ export function SectionedLogView({
     toast.success('Link copied to clipboard');
   }, []);
 
-  // Helper to render a single loot or material entry
-  const renderEntry = (entry: CombinedEntry) => {
-    if (entry.entryType === 'loot') {
-      const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
-      const isWeapon = entry.itemSlot === 'weapon';
-      // Compare as strings since highlightedEntryId is string and entry.id is number
-      const isHighlighted = highlightedEntryId === String(entry.id);
-      return (
-        <div
-          key={`loot-${entry.id}`}
-          id={`loot-entry-${entry.id}`}
-          className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isHighlighted ? 'highlight-pulse' : ''}`}
-          onContextMenu={(e) => handleListContextMenu(e, entry, 'loot')}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
-                  {entry.floor}
-                </span>
-                {isWeapon && entry.weaponJob && (
-                  <JobIcon job={entry.weaponJob} size="sm" />
-                )}
-                <span className="text-text-primary font-medium">
-                  {isWeapon && entry.weaponJob ? `Weapon (${entry.weaponJob})` : slotName}
-                </span>
-                <span className="text-text-muted">→</span>
-                <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
-                <span
-                  className={`text-xs px-1.5 py-0.5 rounded ${
-                    entry.method === 'drop'
-                      ? 'bg-status-success/20 text-status-success'
-                      : 'bg-status-warning/20 text-status-warning'
-                  }`}
-                >
-                  {entry.method}
-                </span>
-                {entry.isExtra && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
-                    Extra
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-text-muted mt-1">
-                {formatDate(entry.createdAt)}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 ml-4">
-              <button
-                onClick={() => handleCopyEntryUrl(String(entry.id))}
-                className="text-text-muted hover:text-accent text-sm"
-                title="Copy link to this entry"
-              >
-                Copy URL
-              </button>
-              {canEdit && (
-                <>
-                  <button
-                    onClick={() => { setEntryToEdit(entry); setShowLootModal(true); }}
-                    className="text-text-muted hover:text-accent text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteLoot(entry)}
-                    className="text-status-error hover:text-status-error/80 text-sm"
-                  >
-                    Delete
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    } else {
-      const isMatHighlighted = highlightedEntryId === String(entry.id) && highlightedEntryType === 'material';
-      return (
-        <div
-          key={`mat-${entry.id}`}
-          id={`material-entry-${entry.id}`}
-          className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-          onContextMenu={(e) => handleListContextMenu(e, entry, 'material')}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
-                  {entry.floor}
-                </span>
-                <span className={`font-medium ${
-                  entry.materialType === 'twine' ? 'text-material-twine' :
-                  entry.materialType === 'glaze' ? 'text-material-glaze' :
-                  entry.materialType === 'universal_tomestone' ? 'text-material-tomestone' :
-                  'text-material-solvent'
-                }`}>
-                  {MATERIAL_LABELS[entry.materialType]}
-                </span>
-                <span className="text-text-muted">→</span>
-                <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
-              </div>
-              <div className="text-xs text-text-muted mt-1">
-                {formatDate(entry.createdAt)}
-              </div>
-            </div>
-            <div className="flex items-center gap-3 ml-4">
-              <button
-                onClick={() => handleCopyEntryUrl(String(entry.id), 'material')}
-                className="text-text-muted hover:text-accent text-sm"
-                title="Copy link to this entry"
-              >
-                Copy URL
-              </button>
-              {canEdit && (
-                <>
-                  <button
-                    onClick={() => { setMaterialEntryToEdit(entry); setShowMaterialModal(true); }}
-                    className="text-text-muted hover:text-accent text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMaterial(entry.id)}
-                    className="text-status-error hover:text-status-error/80 text-sm"
-                  >
-                    Delete
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-  };
+  // Stable callbacks for memoized entry components
+  const handleEditLootEntry = useCallback((entry: LootLogEntry) => {
+    setEntryToEdit(entry);
+    setShowLootModal(true);
+  }, []);
+
+  const handleEditMaterialEntry = useCallback((entry: MaterialLogEntry) => {
+    setMaterialEntryToEdit(entry);
+    setShowMaterialModal(true);
+  }, []);
+
+  const handleLootContextMenu = useCallback((e: React.MouseEvent, entry: LootLogEntry) => {
+    handleListContextMenu(e, entry, 'loot');
+  }, []);
+
+  const handleMaterialContextMenu = useCallback((e: React.MouseEvent, entry: MaterialLogEntry) => {
+    handleListContextMenu(e, entry, 'material');
+  }, []);
 
   // Handle grid view log clicks
   const handleGridLogLoot = useCallback((floor: FloorNumber, slot: string) => {
@@ -1024,13 +889,67 @@ export function SectionedLogView({
                         onExpandAll={handleExpandAllFloors}
                         onCollapseAll={handleCollapseAllFloors}
                       >
-                        {floorEntries.map(entry => renderEntry(entry))}
+                        {floorEntries.map(entry =>
+                          entry.entryType === 'loot' ? (
+                            <LootLogEntryItem
+                              key={`loot-${entry.id}`}
+                              entry={entry}
+                              highlightedEntryId={highlightedEntryId}
+                              canEdit={canEdit}
+                              getPlayerName={getPlayerName}
+                              onCopyUrl={handleCopyEntryUrl}
+                              onEdit={handleEditLootEntry}
+                              onDelete={handleDeleteLoot}
+                              onContextMenu={handleLootContextMenu}
+                            />
+                          ) : (
+                            <MaterialLogEntryItem
+                              key={`mat-${entry.id}`}
+                              entry={entry}
+                              highlightedEntryId={highlightedEntryId}
+                              highlightedEntryType={highlightedEntryType}
+                              canEdit={canEdit}
+                              getPlayerName={getPlayerName}
+                              onCopyUrl={handleCopyEntryUrl}
+                              onEdit={handleEditMaterialEntry}
+                              onDelete={handleDeleteMaterial}
+                              onContextMenu={handleMaterialContextMenu}
+                            />
+                          )
+                        )}
                       </FloorSection>
                     );
                   })
                 ) : (
                   /* Chronological view */
-                  combinedEntries.map(entry => renderEntry(entry))
+                  combinedEntries.map(entry =>
+                    entry.entryType === 'loot' ? (
+                      <LootLogEntryItem
+                        key={`loot-${entry.id}`}
+                        entry={entry}
+                        highlightedEntryId={highlightedEntryId}
+                        canEdit={canEdit}
+                        getPlayerName={getPlayerName}
+                        onCopyUrl={handleCopyEntryUrl}
+                        onEdit={handleEditLootEntry}
+                        onDelete={handleDeleteLoot}
+                        onContextMenu={handleLootContextMenu}
+                      />
+                    ) : (
+                      <MaterialLogEntryItem
+                        key={`mat-${entry.id}`}
+                        entry={entry}
+                        highlightedEntryId={highlightedEntryId}
+                        highlightedEntryType={highlightedEntryType}
+                        canEdit={canEdit}
+                        getPlayerName={getPlayerName}
+                        onCopyUrl={handleCopyEntryUrl}
+                        onEdit={handleEditMaterialEntry}
+                        onDelete={handleDeleteMaterial}
+                        onContextMenu={handleMaterialContextMenu}
+                      />
+                    )
+                  )
                 )}
               </div>
             </section>

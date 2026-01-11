@@ -24,9 +24,15 @@ import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 
+interface EnhancedPriorityEntry extends PriorityEntry {
+  enhancedScore?: number;
+  droughtBonus?: number;
+  balancePenalty?: number;
+}
+
 // Memoized priority entry component to prevent unnecessary re-renders
 interface LootPriorityEntryProps {
-  entry: PriorityEntry;
+  entry: EnhancedPriorityEntry;
   index: number;
   isFirst: boolean;
   showEnhanced: boolean;
@@ -115,12 +121,6 @@ interface LootPriorityPanelProps {
   // Optional props for URL-controlled subtab (for deep linking)
   activeSubTab?: LootSubTabType;
   onSubTabChange?: (tab: LootSubTabType) => void;
-}
-
-interface EnhancedPriorityEntry extends PriorityEntry {
-  enhancedScore?: number;
-  droughtBonus?: number;
-  balancePenalty?: number;
 }
 
 interface PriorityListProps {
