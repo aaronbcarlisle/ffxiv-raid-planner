@@ -10,25 +10,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
-import { AddLootEntryModal } from './AddLootEntryModal';
-import { LogMaterialModal } from './LogMaterialModal';
-import { MarkFloorClearedModal } from './MarkFloorClearedModal';
-import { EditBookBalanceModal } from './EditBookBalanceModal';
-import { PlayerLedgerModal } from './PlayerLedgerModal';
+import { LootLogFilters } from './LootLogFilters';
+import { LootLogModals } from './LootLogModals';
 import { LootCountBar } from './LootCountBar';
 import { FloorSection } from './FloorSection';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
-import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
-import { ConfirmModal } from '../ui/ConfirmModal';
-import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-} from '../primitives/Dropdown';
-import { Button } from '../primitives';
+import { type ResetType } from '../ui/ResetConfirmModal';
+import { type ContextMenuItem } from '../ui/ContextMenu';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
@@ -916,113 +904,16 @@ export function SectionedLogView({
   return (
     <div className="space-y-4">
       {/* Header Controls */}
-      <div className="flex items-center justify-between border-b border-border-default pb-3">
-        <div className="flex items-center gap-3">
-          {/* Layout Mode Toggle */}
-          <div className="flex bg-surface-base rounded-lg p-0.5">
-            <button
-              onClick={() => handleLayoutModeChange('grid')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
-                layoutMode === 'grid'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Grid
-            </button>
-            <button
-              onClick={() => handleLayoutModeChange('split')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
-                layoutMode === 'split'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
-              </svg>
-              List
-            </button>
-          </div>
-
-          {/* Reset dropdown */}
-          {canEdit && (
-            <Dropdown>
-              <DropdownTrigger asChild>
-                <button className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
-                                    hover:bg-status-error/20 hover:border-status-error/60 active:bg-status-error/30 transition-colors flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Reset
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </DropdownTrigger>
-              <DropdownContent align="start">
-                <DropdownItem
-                  onSelect={() => setResetModalType('loot')}
-                  className="text-status-error focus:text-status-error"
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    Reset Loot Log
-                  </span>
-                </DropdownItem>
-                <DropdownItem
-                  onSelect={() => setResetModalType('books')}
-                  className="text-status-error focus:text-status-error"
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    Reset Book Balances
-                  </span>
-                </DropdownItem>
-                <DropdownSeparator />
-                <DropdownItem
-                  onSelect={() => setResetModalType('all')}
-                  className="text-status-error focus:text-status-error font-semibold"
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Reset All Data
-                  </span>
-                </DropdownItem>
-              </DropdownContent>
-            </Dropdown>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        {canEdit && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
-              title="Log loot drop (Alt+L)"
-            >
-              + Log Loot
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => { setGridModalState(null); setShowMaterialModal(true); }}
-              title="Log material drop (Alt+M)"
-            >
-              + Log Material
-            </Button>
-          </div>
-        )}
-      </div>
+      <LootLogFilters
+        layoutMode={layoutMode}
+        onLayoutModeChange={handleLayoutModeChange}
+        canEdit={canEdit}
+        onResetLoot={() => setResetModalType('loot')}
+        onResetBooks={() => setResetModalType('books')}
+        onResetAll={() => setResetModalType('all')}
+        onOpenLootModal={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
+        onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
+      />
 
       {/* Main Content - Side by Side Layout */}
       <div className="flex gap-4 items-stretch">
@@ -1279,108 +1170,54 @@ export function SectionedLogView({
       {layoutMode === 'grid' && <LootFairnessLegend />}
 
       {/* Modals */}
-      {showLootModal && (
-        <AddLootEntryModal
-          key={lootModalKey}
-          isOpen={showLootModal}
-          onClose={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); onLogLootModalClose?.(); }}
-          onSubmit={handleAddLoot}
-          onUpdate={handleUpdateLoot}
-          players={players}
-          floors={floors}
-          currentWeek={currentWeek}
-          editEntry={entryToEdit}
-          presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
-          presetSlot={gridModalState?.slot}
-        />
-      )}
-
-      {showMaterialModal && (
-        <LogMaterialModal
-          isOpen={showMaterialModal}
-          onClose={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}
-          onSubmit={handleMaterialSubmit}
-          onUpdate={handleUpdateMaterial}
-          players={players}
-          floors={floors}
-          currentWeek={currentWeek}
-          presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
-          suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
-          editEntry={materialEntryToEdit}
-        />
-      )}
-
-      {showFloorClearedModal && (
-        <MarkFloorClearedModal
-          isOpen={showFloorClearedModal}
-          onClose={() => { setShowFloorClearedModal(false); onMarkFloorClearedModalClose?.(); }}
-          onSubmit={handleMarkFloorCleared}
-          players={players}
-          floors={floors}
-          currentWeek={currentWeek}
-        />
-      )}
-
-      {editBookState && (
-        <EditBookBalanceModal
-          isOpen={!!editBookState}
-          onClose={() => setEditBookState(null)}
-          onSubmit={handleEditBookBalance}
-          playerName={editBookState.playerName}
-          bookType={editBookState.bookType}
-          currentBalance={editBookState.currentValue}
-        />
-      )}
-
-      {ledgerState && (
-        <PlayerLedgerModal
-          isOpen={!!ledgerState}
-          onClose={() => setLedgerState(null)}
-          groupId={groupId}
-          tierId={tierId}
-          playerId={ledgerState.playerId}
-          playerName={ledgerState.playerName}
-          canEdit={canEdit}
-          onHistoryCleared={() => {
-            // Refresh page balances and week data after clearing history
-            fetchPageBalances(groupId, tierId, getBalanceWeekParam());
-            fetchWeekDataTypes(groupId, tierId);
-          }}
-        />
-      )}
-
-      {/* Reset Confirmation Modal */}
-      {resetModalType && (
-        <ResetConfirmModal
-          isOpen={!!resetModalType}
-          resetType={resetModalType}
-          onConfirm={handleResetConfirm}
-          onCancel={() => setResetModalType(null)}
-        />
-      )}
-
-      {/* Generic Confirmation Modal */}
-      {confirmState && (
-        <ConfirmModal
-          isOpen={!!confirmState}
-          title={confirmState.title}
-          message={confirmState.message}
-          confirmLabel={confirmState.type.startsWith('delete') ? 'Delete' : 'Reset'}
-          variant="danger"
-          onConfirm={confirmState.onConfirm}
-          onCancel={() => setConfirmState(null)}
-        />
-      )}
-
-      {/* List View Context Menu */}
-      {listContextMenu && (
-        <ContextMenu
-          x={listContextMenu.x}
-          y={listContextMenu.y}
-          items={getListContextMenuItems()}
-          onClose={() => setListContextMenu(null)}
-        />
-      )}
+      <LootLogModals
+        // Loot Entry Modal
+        showLootModal={showLootModal}
+        onCloseLootModal={() => { setShowLootModal(false); setEntryToEdit(undefined); setGridModalState(null); onLogLootModalClose?.(); }}
+        onAddLoot={handleAddLoot}
+        onUpdateLoot={handleUpdateLoot}
+        lootModalKey={lootModalKey}
+        entryToEdit={entryToEdit}
+        players={players}
+        floors={floors}
+        currentWeek={currentWeek}
+        gridModalState={gridModalState}
+        // Material Modal
+        showMaterialModal={showMaterialModal}
+        onCloseMaterialModal={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}
+        onMaterialSubmit={handleMaterialSubmit}
+        onUpdateMaterial={handleUpdateMaterial}
+        materialEntryToEdit={materialEntryToEdit}
+        // Mark Floor Cleared Modal
+        showFloorClearedModal={showFloorClearedModal}
+        onCloseFloorClearedModal={() => { setShowFloorClearedModal(false); onMarkFloorClearedModalClose?.(); }}
+        onMarkFloorCleared={handleMarkFloorCleared}
+        // Edit Book Balance Modal
+        editBookState={editBookState}
+        onCloseEditBook={() => setEditBookState(null)}
+        onEditBookBalance={handleEditBookBalance}
+        // Player Ledger Modal
+        ledgerState={ledgerState}
+        onCloseLedger={() => setLedgerState(null)}
+        groupId={groupId}
+        tierId={tierId}
+        canEdit={canEdit}
+        onHistoryCleared={() => {
+          fetchPageBalances(groupId, tierId, getBalanceWeekParam());
+          fetchWeekDataTypes(groupId, tierId);
+        }}
+        // Reset Confirmation Modal
+        resetModalType={resetModalType}
+        onResetConfirm={handleResetConfirm}
+        onCancelReset={() => setResetModalType(null)}
+        // Generic Confirmation Modal
+        confirmState={confirmState}
+        onCancelConfirm={() => setConfirmState(null)}
+        // Context Menu
+        listContextMenu={listContextMenu}
+        listContextMenuItems={getListContextMenuItems()}
+        onCloseContextMenu={() => setListContextMenu(null)}
+      />
     </div>
   );
 }
