@@ -117,8 +117,8 @@ def extract_bis_path(url_or_uuid: str) -> tuple[str, str | None]:
         - None for UUID/shortlink
         - "bis" for curated BiS path (e.g., "drg/current")
     """
-    # Check for curated BiS format: bis|job|tier or bis/job/tier
-    bis_match = re.search(r'(?:page=)?bis[|%7C/](\w+)[|%7C/](\w+)', url_or_uuid, re.IGNORECASE)
+    # Check for curated BiS format: bis|job|tier or bis/job/tier (pipe may be URL-encoded as %7C)
+    bis_match = re.search(r'(?:page=)?bis(?:\||%7C|/)(\w+)(?:\||%7C|/)(\w+)', url_or_uuid, re.IGNORECASE)
     if bis_match:
         job = bis_match.group(1).lower()
         tier = bis_match.group(2).lower()
@@ -134,8 +134,8 @@ def extract_bis_path(url_or_uuid: str) -> tuple[str, str | None]:
     if share_match:
         return share_match.group(1), None
 
-    # URL format: https://xivgear.app/?page=sl|{uuid}
-    page_match = re.search(r'page=sl[|%7C]([a-f0-9-]+)', url_or_uuid, re.IGNORECASE)
+    # URL format: https://xivgear.app/?page=sl|{uuid} (pipe may be URL-encoded as %7C)
+    page_match = re.search(r'page=sl(?:\||%7C)([a-f0-9-]+)', url_or_uuid, re.IGNORECASE)
     if page_match:
         return page_match.group(1), None
 

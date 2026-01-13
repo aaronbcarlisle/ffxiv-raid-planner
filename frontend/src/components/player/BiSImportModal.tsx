@@ -144,8 +144,9 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
     if (isXivgear || isEtro) {
       // Basic URL structure check
-      if (isXivgear && !trimmed.includes('/share/') && !trimmed.includes('/sl/')) {
-        return { isValid: false, hint: 'XIVGear links should contain /share/ or /sl/' };
+      // XIVGear supports: /share/{uuid}, ?page=sl|{uuid}, ?page=bis|{job}|{tier}
+      if (isXivgear && !trimmed.includes('/share/') && !trimmed.includes('page=sl') && !trimmed.includes('page=bis')) {
+        return { isValid: false, hint: 'XIVGear links should contain /share/, ?page=sl, or ?page=bis' };
       }
       if (isEtro && !trimmed.includes('/gearset/')) {
         return { isValid: false, hint: 'Etro links should contain /gearset/' };
