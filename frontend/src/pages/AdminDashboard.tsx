@@ -8,7 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage } from '../components/ui';
@@ -121,8 +121,14 @@ export function AdminDashboard() {
     try {
       // Use api wrapper for automatic token refresh on 401
       const [members, linkedPlayers] = await Promise.all([
-        api.get<MemberWithUser[]>(`/api/static-groups/${groupId}/members`).catch(() => [] as MemberWithUser[]),
-        api.get<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`).catch(() => [] as LinkedPlayerInfo[]),
+        api.get<MemberWithUser[]>(`/api/static-groups/${groupId}/members`).catch((error) => {
+          console.error(`Failed to fetch members for group ${groupId}:`, error);
+          return [] as MemberWithUser[];
+        }),
+        api.get<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`).catch((error) => {
+          console.error(`Failed to fetch linked players for group ${groupId}:`, error);
+          return [] as LinkedPlayerInfo[];
+        }),
       ]);
 
       const allUsers: ViewAsMemberInfo[] = [];
@@ -221,8 +227,8 @@ export function AdminDashboard() {
       setGroups(data.items);
       setTotal(data.total);
     } catch (err) {
-      // Check for specific error status
-      if (err instanceof Error && err.message.includes('403')) {
+      // Check for specific error status using ApiError type
+      if (err instanceof ApiError && err.status === 403) {
         setError('Admin access required');
       } else {
         setError('Failed to fetch groups');

@@ -50,8 +50,14 @@ export function ViewAsBanner() {
       try {
         // Use api wrapper for automatic token refresh on 401
         const [members, linkedPlayers] = await Promise.all([
-          api.get<MemberWithUser[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch(() => [] as MemberWithUser[]),
-          api.get<LinkedPlayerInfo[]>(`/api/static-groups/${viewAsUser.groupId}/linked-players`).catch(() => [] as LinkedPlayerInfo[]),
+          api.get<MemberWithUser[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch((error) => {
+            console.error('Failed to fetch group members for ViewAsBanner:', error);
+            return [] as MemberWithUser[];
+          }),
+          api.get<LinkedPlayerInfo[]>(`/api/static-groups/${viewAsUser.groupId}/linked-players`).catch((error) => {
+            console.error('Failed to fetch linked players for ViewAsBanner:', error);
+            return [] as LinkedPlayerInfo[];
+          }),
         ]);
 
         const allUsers: SwapUserInfo[] = [];
