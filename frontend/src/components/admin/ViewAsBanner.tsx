@@ -10,12 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import type { MemberInfo, LinkedPlayerInfo, MemberRole } from '../../types';
-
-interface MemberWithUser {
-  user: MemberInfo;
-  role: MemberRole;
-}
+import type { MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../../types';
 
 // Extended member info with role for user swapping
 interface SwapUserInfo extends MemberInfo {
@@ -50,9 +45,9 @@ export function ViewAsBanner() {
       try {
         // Use api wrapper for automatic token refresh on 401
         const [members, linkedPlayers] = await Promise.all([
-          api.get<MemberWithUser[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch((error) => {
+          api.get<Membership[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch((error) => {
             console.error('Failed to fetch group members for ViewAsBanner:', error);
-            return [] as MemberWithUser[];
+            return [] as Membership[];
           }),
           api.get<LinkedPlayerInfo[]>(`/api/static-groups/${viewAsUser.groupId}/linked-players`).catch((error) => {
             console.error('Failed to fetch linked players for ViewAsBanner:', error);

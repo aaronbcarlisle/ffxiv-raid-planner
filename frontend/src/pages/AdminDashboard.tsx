@@ -13,13 +13,7 @@ import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from '
 import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage } from '../components/ui';
 import { Button } from '../components/primitives';
-import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole } from '../types';
-
-// Type for member API response
-interface MemberWithUser {
-  user: MemberInfo;
-  role: MemberRole;
-}
+import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../types';
 
 // Extended member info with role for View As modal
 interface ViewAsMemberInfo extends MemberInfo {
@@ -121,9 +115,9 @@ export function AdminDashboard() {
     try {
       // Use api wrapper for automatic token refresh on 401
       const [members, linkedPlayers] = await Promise.all([
-        api.get<MemberWithUser[]>(`/api/static-groups/${groupId}/members`).catch((error) => {
+        api.get<Membership[]>(`/api/static-groups/${groupId}/members`).catch((error) => {
           console.error(`Failed to fetch members for group ${groupId}:`, error);
-          return [] as MemberWithUser[];
+          return [] as Membership[];
         }),
         api.get<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`).catch((error) => {
           console.error(`Failed to fetch linked players for group ${groupId}:`, error);
