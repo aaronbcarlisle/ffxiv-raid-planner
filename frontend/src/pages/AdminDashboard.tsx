@@ -8,12 +8,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { API_BASE_URL } from '../config';
+import { api, ApiError } from '../services/api';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage } from '../components/ui';
 import { Button } from '../components/primitives';
-import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole } from '../types';
+import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../types';
 
 // Extended member info with role for View As modal
 interface ViewAsMemberInfo extends MemberInfo {
@@ -113,42 +113,42 @@ export function AdminDashboard() {
     if (!isAuthenticated) return;
     setViewAsMembersLoading(true);
     try {
-      // Fetch both members and linked players
-      const [membersResponse, linkedPlayersResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/static-groups/${groupId}/members`, { credentials: 'include' }),
-        fetch(`${API_BASE_URL}/api/static-groups/${groupId}/linked-players`, { credentials: 'include' }),
+      // Use api wrapper for automatic token refresh on 401
+      const [members, linkedPlayers] = await Promise.all([
+        api.get<Membership[]>(`/api/static-groups/${groupId}/members`).catch((error) => {
+          console.error(`Failed to fetch members for group ${groupId}:`, error);
+          return [] as Membership[];
+        }),
+        api.get<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`).catch((error) => {
+          console.error(`Failed to fetch linked players for group ${groupId}:`, error);
+          return [] as LinkedPlayerInfo[];
+        }),
       ]);
 
       const allUsers: ViewAsMemberInfo[] = [];
       const seenIds = new Set<string>();
 
       // Add group members (with role information)
-      if (membersResponse.ok) {
-        const members = await membersResponse.json();
-        for (const m of members) {
-          if (m.user && !seenIds.has(m.user.id)) {
-            allUsers.push({
-              ...m.user,
-              role: m.role,
-              isLinkedPlayer: false,
-            });
-            seenIds.add(m.user.id);
-          }
+      for (const m of members) {
+        if (m.user && !seenIds.has(m.user.id)) {
+          allUsers.push({
+            ...m.user,
+            role: m.role,
+            isLinkedPlayer: false,
+          });
+          seenIds.add(m.user.id);
         }
       }
 
       // Add linked players (users who have player cards but aren't members)
-      if (linkedPlayersResponse.ok) {
-        const linkedPlayers: LinkedPlayerInfo[] = await linkedPlayersResponse.json();
-        for (const lp of linkedPlayers) {
-          if (lp.user && !seenIds.has(lp.user.id)) {
-            allUsers.push({
-              ...lp.user,
-              role: undefined,
-              isLinkedPlayer: true,
-            });
-            seenIds.add(lp.user.id);
-          }
+      for (const lp of linkedPlayers) {
+        if (lp.user && !seenIds.has(lp.user.id)) {
+          allUsers.push({
+            ...lp.user,
+            role: undefined,
+            isLinkedPlayer: true,
+          });
+          seenIds.add(lp.user.id);
         }
       }
 
@@ -213,25 +213,20 @@ export function AdminDashboard() {
         params.set('search', debouncedSearch);
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/static-groups/admin/all?${params}`,
-        { credentials: 'include' }
+      // Use api wrapper for automatic token refresh on 401
+      const data = await api.get<AdminStaticGroupListResponse>(
+        `/api/static-groups/admin/all?${params}`
       );
 
-      if (!response.ok) {
-        if (response.status === 403) {
-          setError('Admin access required');
-        } else {
-          setError('Failed to fetch groups');
-        }
-        return;
-      }
-
-      const data: AdminStaticGroupListResponse = await response.json();
       setGroups(data.items);
       setTotal(data.total);
-    } catch {
-      setError('Failed to fetch groups');
+    } catch (err) {
+      // Check for specific error status using ApiError type
+      if (err instanceof ApiError && err.status === 403) {
+        setError('Admin access required');
+      } else {
+        setError('Failed to fetch groups');
+      }
     } finally {
       setIsLoading(false);
     }

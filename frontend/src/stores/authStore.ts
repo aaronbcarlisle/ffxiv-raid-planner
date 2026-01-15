@@ -20,6 +20,13 @@ if (isProduction && isLocalhostApi) {
   );
 }
 
+/**
+ * Singleton promise for token refresh.
+ * Prevents multiple concurrent refresh requests when many API calls fail with 401 simultaneously.
+ * All callers share the same refresh promise until it completes.
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
 interface AuthState {
   // User state
   user: User | null;
@@ -181,30 +188,49 @@ export const useAuthStore = create<AuthState>()(
        * Refresh access token using refresh token cookie.
        * The refresh token is sent automatically via httpOnly cookie.
        *
+       * Uses a singleton promise to prevent multiple concurrent refresh requests.
+       * When many API calls fail with 401 simultaneously (e.g., on page load after
+       * token expiration), they all share the same refresh request instead of each
+       * making their own. This prevents rate limiting issues and race conditions.
+       *
        * Note: Uses fetch directly instead of authRequest to prevent infinite
        * recursion (authRequest calls refreshAccessToken on 401).
        */
       refreshAccessToken: async () => {
-        try {
-          // Call refresh endpoint directly - avoid authRequest to prevent infinite loop
-          const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include',
-          });
-
-          if (!response.ok) {
-            throw new Error('Refresh failed');
-          }
-
-          return true;
-        } catch {
-          // Refresh failed - log out user
-          set({
-            user: null,
-            isAuthenticated: false,
-          });
-          return false;
+        // If a refresh is already in progress, return the existing promise
+        // This prevents multiple concurrent refresh requests from hitting rate limits
+        if (refreshPromise) {
+          return refreshPromise;
         }
+
+        // Create and store the refresh promise
+        refreshPromise = (async () => {
+          try {
+            // Call refresh endpoint directly - avoid authRequest to prevent infinite loop
+            const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+              method: 'POST',
+              credentials: 'include',
+            });
+
+            if (!response.ok) {
+              throw new Error('Refresh failed');
+            }
+
+            return true;
+          } catch {
+            // Refresh failed - log out user
+            set({
+              user: null,
+              isAuthenticated: false,
+            });
+            return false;
+          } finally {
+            // Clear the promise so future refreshes can proceed
+            refreshPromise = null;
+          }
+        })();
+
+        return refreshPromise;
       },
 
       /**
