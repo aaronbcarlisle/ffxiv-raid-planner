@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.8';
+export const CURRENT_VERSION = '1.0.9';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,28 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.9',
+    date: '2026-01-15',
+    title: 'Session Stability',
+    highlights: ['Fixed session timeouts', 'Improved token refresh'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Session timeout after 15 minutes',
+        description: 'Fixed 401 errors that occurred after ~15 minutes of active use',
+        details:
+          'The access token expires every 15 minutes and should automatically refresh. However, when multiple API calls failed simultaneously, each tried to refresh independently, hitting rate limits and causing errors. Now uses a singleton pattern where all failing requests share a single refresh, preventing rate limit issues.',
+      },
+      {
+        category: 'improvement',
+        title: 'Admin pages use standard API client',
+        description: 'Admin Dashboard and View As now use the shared API wrapper',
+        details:
+          'Previously, admin pages used raw fetch() calls that bypassed automatic token refresh. Now they use the standard API client with automatic 401 handling, retry logic, and proper error types.',
+      },
+    ],
+  },
   {
     version: '1.0.8',
     date: '2026-01-11',
