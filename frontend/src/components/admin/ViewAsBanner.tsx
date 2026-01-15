@@ -9,8 +9,13 @@ import { useViewAsStore } from '../../stores/viewAsStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
+import { api } from '../../services/api';
 import type { MemberInfo, LinkedPlayerInfo, MemberRole } from '../../types';
+
+interface MemberWithUser {
+  user: MemberInfo;
+  role: MemberRole;
+}
 
 // Extended member info with role for user swapping
 interface SwapUserInfo extends MemberInfo {
@@ -43,41 +48,36 @@ export function ViewAsBanner() {
 
       setIsLoadingUsers(true);
       try {
-        const [membersResponse, linkedPlayersResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/static-groups/${viewAsUser.groupId}/members`, { credentials: 'include' }),
-          fetch(`${API_BASE_URL}/api/static-groups/${viewAsUser.groupId}/linked-players`, { credentials: 'include' }),
+        // Use api wrapper for automatic token refresh on 401
+        const [members, linkedPlayers] = await Promise.all([
+          api.get<MemberWithUser[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch(() => [] as MemberWithUser[]),
+          api.get<LinkedPlayerInfo[]>(`/api/static-groups/${viewAsUser.groupId}/linked-players`).catch(() => [] as LinkedPlayerInfo[]),
         ]);
 
         const allUsers: SwapUserInfo[] = [];
         const seenIds = new Set<string>();
 
         // Add group members (with role information)
-        if (membersResponse.ok) {
-          const members = await membersResponse.json();
-          for (const m of members) {
-            if (m.user && !seenIds.has(m.user.id)) {
-              allUsers.push({
-                ...m.user,
-                role: m.role,
-                isLinkedPlayer: false,
-              });
-              seenIds.add(m.user.id);
-            }
+        for (const m of members) {
+          if (m.user && !seenIds.has(m.user.id)) {
+            allUsers.push({
+              ...m.user,
+              role: m.role,
+              isLinkedPlayer: false,
+            });
+            seenIds.add(m.user.id);
           }
         }
 
         // Add linked players (users who have player cards but aren't members)
-        if (linkedPlayersResponse.ok) {
-          const linkedPlayers: LinkedPlayerInfo[] = await linkedPlayersResponse.json();
-          for (const lp of linkedPlayers) {
-            if (lp.user && !seenIds.has(lp.user.id)) {
-              allUsers.push({
-                ...lp.user,
-                role: undefined,
-                isLinkedPlayer: true,
-              });
-              seenIds.add(lp.user.id);
-            }
+        for (const lp of linkedPlayers) {
+          if (lp.user && !seenIds.has(lp.user.id)) {
+            allUsers.push({
+              ...lp.user,
+              role: undefined,
+              isLinkedPlayer: true,
+            });
+            seenIds.add(lp.user.id);
           }
         }
 
