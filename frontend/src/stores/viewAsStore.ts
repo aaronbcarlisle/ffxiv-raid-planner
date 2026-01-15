@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand';
-import { API_BASE_URL } from '../config';
+import { api } from '../services/api';
 import { useAuthStore } from './authStore';
 import type { MemberRole } from '../types';
 
@@ -57,17 +57,10 @@ export const useViewAsStore = create<ViewAsState>((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/static-groups/admin/user-role/${groupId}/${userId}`,
-        { credentials: 'include' }
+      // Use api wrapper for automatic token refresh on 401
+      const data = await api.get<ViewAsUserInfo>(
+        `/api/static-groups/admin/user-role/${groupId}/${userId}`
       );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Failed to fetch user info');
-      }
-
-      const data: ViewAsUserInfo = await response.json();
       set({ viewAsUser: data, isLoading: false });
     } catch (error) {
       set({
