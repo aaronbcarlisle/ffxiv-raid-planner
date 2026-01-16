@@ -12,6 +12,7 @@ import { WizardNavigation } from './WizardNavigation';
 import { StaticDetailsStep } from './steps/StaticDetailsStep';
 import { RosterSetupStep } from './steps/RosterSetupStep';
 import { INITIAL_ROSTER, type WizardState, type WizardStep } from './types';
+import { RAID_TIERS } from '../../gamedata/raid-tiers';
 
 interface SetupWizardProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
   const [state, setState] = useState<WizardState>({
     step: 1,
     staticName: '',
-    tierId: '',
+    tierId: RAID_TIERS[0]?.id || '', // Default to latest tier
     isPublic: false,
     players: INITIAL_ROSTER,
     inviteCode: null,
@@ -84,7 +85,7 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
       setState({
         step: 1,
         staticName: '',
-        tierId: '',
+        tierId: RAID_TIERS[0]?.id || '', // Default to latest tier
         isPublic: false,
         players: INITIAL_ROSTER,
         inviteCode: null,
@@ -98,39 +99,37 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
         {/* Progress indicator */}
         <WizardProgress currentStep={state.step} />
 
-        {/* Step content */}
-        <div className="min-h-[400px]">
-          {state.step === 1 && (
-            <StaticDetailsStep
-              staticName={state.staticName}
-              tierId={state.tierId}
-              isPublic={state.isPublic}
-              onStaticNameChange={(name) => setState((prev) => ({ ...prev, staticName: name }))}
-              onTierIdChange={(tierId) => setState((prev) => ({ ...prev, tierId }))}
-              onIsPublicChange={(isPublic) => setState((prev) => ({ ...prev, isPublic }))}
-            />
-          )}
+        {/* Step content - each step handles its own scrolling if needed */}
+        {state.step === 1 && (
+          <StaticDetailsStep
+            staticName={state.staticName}
+            tierId={state.tierId}
+            isPublic={state.isPublic}
+            onStaticNameChange={(name) => setState((prev) => ({ ...prev, staticName: name }))}
+            onTierIdChange={(tierId) => setState((prev) => ({ ...prev, tierId }))}
+            onIsPublicChange={(isPublic) => setState((prev) => ({ ...prev, isPublic }))}
+          />
+        )}
 
-          {state.step === 2 && (
-            <RosterSetupStep
-              players={state.players}
-              tierId={state.tierId}
-              onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
-            />
-          )}
+        {state.step === 2 && (
+          <RosterSetupStep
+            players={state.players}
+            tierId={state.tierId}
+            onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
+          />
+        )}
 
-          {state.step === 3 && (
-            <div className="flex items-center justify-center h-[400px]">
-              <p className="text-text-muted">Step 3 (Invite Members) - To be implemented in Session 2</p>
-            </div>
-          )}
+        {state.step === 3 && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-text-muted">Step 3 (Invite Members) - To be implemented in Session 2</p>
+          </div>
+        )}
 
-          {state.step === 4 && (
-            <div className="flex items-center justify-center h-[400px]">
-              <p className="text-text-muted">Step 4 (Review) - To be implemented in Session 2</p>
-            </div>
-          )}
-        </div>
+        {state.step === 4 && (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-text-muted">Step 4 (Review) - To be implemented in Session 2</p>
+          </div>
+        )}
 
         {/* Navigation */}
         <WizardNavigation

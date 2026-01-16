@@ -28,11 +28,12 @@ interface JobPickerProps {
   onJobSelect: (job: string) => void;
   templateRole?: TemplateRole; // Optional - only for template cards
   onRequestClose?: () => void; // Optional - called when picker wants to close (click outside, escape)
+  reverseLayout?: boolean; // Optional - render search at bottom (for dropdowns that open upward)
 }
 
 const roleOrder: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
-export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose }: JobPickerProps) {
+export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose, reverseLayout = false }: JobPickerProps) {
   // For non-template cards, start with picker open; for template cards, start closed
   const [showFullPicker, setShowFullPicker] = useState(!templateRole);
   const [jobSearch, setJobSearch] = useState('');
@@ -202,24 +203,26 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
       {/* Expanded picker dropdown */}
       {showFullPicker && (
         <div className={templateRole ? 'relative' : ''}>
-          <div className={templateRole ? 'absolute z-50 top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
-            {/* Search input */}
-            <div className="p-2 border-b border-border-default">
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={jobSearch}
-                onChange={(e) => setJobSearch(e.target.value)}
-                placeholder="Search jobs..."
-                className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setShowFullPicker(false);
-                    setJobSearch('');
-                  }
-                }}
-              />
-            </div>
+          <div className={templateRole ? 'absolute z-[100] top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
+            {/* Search input - at top normally, at bottom when reversed */}
+            {!reverseLayout && (
+              <div className="p-2 border-b border-border-default">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={jobSearch}
+                  onChange={(e) => setJobSearch(e.target.value)}
+                  placeholder="Search jobs..."
+                  className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setShowFullPicker(false);
+                      setJobSearch('');
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             {/* Job list */}
             <div className="max-h-56 overflow-y-auto">
@@ -281,6 +284,26 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                 })
               )}
             </div>
+
+            {/* Search input at bottom when reversed */}
+            {reverseLayout && (
+              <div className="p-2 border-t border-border-default">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={jobSearch}
+                  onChange={(e) => setJobSearch(e.target.value)}
+                  placeholder="Search jobs..."
+                  className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setShowFullPicker(false);
+                      setJobSearch('');
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -4,20 +4,35 @@
  * Shows position label, name input, job picker, and BiS import button.
  */
 
-import { useState } from 'react';
-import { FileDown, Check, X } from 'lucide-react';
-import { Button } from '../primitives/Button';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { X, MoreHorizontal } from 'lucide-react';
 import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { BiSImportModal } from '../player/BiSImportModal';
-import { getRoleForJob } from '../../gamedata';
+import { getRoleForJob, getJobsByRole, getRoleDisplayName } from '../../gamedata';
 import type { WizardPlayer } from './types';
 import type { SnapshotPlayer, GearSlotStatus } from '../../types';
+
+// Expected role for each position
+const POSITION_EXPECTED_ROLE: Record<string, string> = {
+  T1: 'tank',
+  T2: 'tank',
+  H1: 'healer',
+  H2: 'healer',
+  M1: 'melee',
+  M2: 'melee',
+  R1: 'ranged',
+  R2: 'caster',
+};
 
 interface RosterSlotProps {
   player: WizardPlayer;
   tierId: string; // For BiS import context
+  slotIndex: number; // For keyboard navigation
+  nameInputRef: (el: HTMLInputElement | null) => void; // Callback ref for name input
   onUpdate: (updates: Partial<WizardPlayer>) => void;
+  onFocusNextSlot: () => void; // Callback to focus next slot
 }
 
 // Position labels with role context
@@ -32,30 +47,105 @@ const POSITION_LABELS: Record<string, string> = {
   R2: 'Magical Ranged',
 };
 
-// Role border colors
-const ROLE_BORDER_COLORS: Record<string, string> = {
-  tank: 'border-role-tank',
-  healer: 'border-role-healer',
-  melee: 'border-role-melee',
-  ranged: 'border-role-ranged',
-  caster: 'border-role-caster',
+// Role ring colors for selected job buttons
+const ROLE_RING_COLORS: Record<string, string> = {
+  tank: 'ring-role-tank',
+  healer: 'ring-role-healer',
+  melee: 'ring-role-melee',
+  ranged: 'ring-role-ranged',
+  caster: 'ring-role-caster',
 };
 
-export function RosterSlot({ player, tierId, onUpdate }: RosterSlotProps) {
+export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0, width: 0, renderAbove: false });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const jobButtonsRef = useRef<HTMLDivElement>(null);
 
   const hasJob = Boolean(player.job);
-  const hasBiS = Boolean(player.bisLink);
   const isEmpty = !player.name && !player.job;
 
-  const borderColor = hasJob ? ROLE_BORDER_COLORS[player.role] : 'border-border-default';
+  // Ring color for card outline and selected job buttons
+  const ringColor = ROLE_RING_COLORS[player.role] || 'ring-border-default';
 
-  const handleJobSelect = (job: string) => {
+  // Get role-specific jobs for quick-select
+  const roleJobs = getJobsByRole(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+
+  // Determine slot label - show actual role if different from expected
+  const expectedRole = POSITION_EXPECTED_ROLE[player.position];
+  const slotLabel = hasJob && player.role !== expectedRole
+    ? `${getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')} (${player.position})`
+    : POSITION_LABELS[player.position] || player.position;
+
+  const handleJobSelect = (job: string, shouldFocusNext = false) => {
     const role = getRoleForJob(job);
     onUpdate({ job, role: role || 'melee' });
     setShowJobPicker(false);
+    // Auto-focus next slot's name input after job selection
+    if (shouldFocusNext) {
+      onFocusNextSlot();
+    }
   };
+
+  const handleJobButtonKeyDown = (e: React.KeyboardEvent, job: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleJobSelect(job, true); // Focus next on Enter
+    }
+  };
+
+  const handleOpenJobPicker = () => {
+    if (jobButtonsRef.current) {
+      const rect = jobButtonsRef.current.getBoundingClientRect();
+
+      // Estimate dropdown height (max-height is 224px from JobPicker)
+      const DROPDOWN_HEIGHT = 280; // ~224px content + padding/border
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Render above if not enough space below but enough space above
+      const renderAbove = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
+
+      setPickerPosition({
+        top: renderAbove ? rect.top + window.scrollY : rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+        renderAbove,
+      });
+    }
+    setShowJobPicker(true);
+  };
+
+  // Update picker position on scroll/resize
+  useEffect(() => {
+    if (!showJobPicker || !jobButtonsRef.current) return;
+
+    const updatePosition = () => {
+      if (jobButtonsRef.current) {
+        const rect = jobButtonsRef.current.getBoundingClientRect();
+
+        const DROPDOWN_HEIGHT = 280;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const renderAbove = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
+
+        setPickerPosition({
+          top: renderAbove ? rect.top + window.scrollY : rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+          renderAbove,
+        });
+      }
+    };
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [showJobPicker]);
 
   const handleBiSImport = (updates: { gear: GearSlotStatus[]; bisLink?: string }) => {
     // Extract BiS data from import
@@ -106,15 +196,15 @@ export function RosterSlot({ player, tierId, onUpdate }: RosterSlotProps) {
   return (
     <>
       <div
-        className={`relative bg-surface-card border-2 ${borderColor} rounded-lg p-4 space-y-3 transition-all`}
+        ref={containerRef}
+        className={`relative bg-surface-card border border-border-default rounded-lg p-3 space-y-2.5 transition-all ${hasJob ? `ring-2 ${ringColor}` : ''}`}
       >
         {/* Position label */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-text-muted">
-              {POSITION_LABELS[player.position] || player.position}
+            <span className="text-xs font-medium text-text-muted">
+              {slotLabel}
             </span>
-            {hasJob && <JobIcon job={player.job} size="sm" />}
           </div>
           {!isEmpty && (
             <button
@@ -129,43 +219,71 @@ export function RosterSlot({ player, tierId, onUpdate }: RosterSlotProps) {
 
         {/* Player name */}
         <input
+          ref={nameInputRef}
           type="text"
           value={player.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
           placeholder="Player name"
           className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+          tabIndex={slotIndex * 10 + 1}
         />
 
-        {/* Job picker toggle/display */}
-        {showJobPicker ? (
-          <div className="border border-border-default rounded bg-surface-elevated p-2">
-            <JobPicker
-              selectedJob={player.job}
-              onJobSelect={handleJobSelect}
-              onRequestClose={() => setShowJobPicker(false)}
-            />
+        {/* Job quick-select buttons */}
+        <div className="space-y-1.5">
+          <label className="block text-xs text-text-muted">Select Job</label>
+          <div ref={jobButtonsRef} className="flex flex-wrap gap-2">
+            {roleJobs.map((jobInfo, idx) => (
+              <button
+                key={jobInfo.abbreviation}
+                type="button"
+                onClick={() => handleJobSelect(jobInfo.abbreviation, true)}
+                onKeyDown={(e) => handleJobButtonKeyDown(e, jobInfo.abbreviation)}
+                className={`p-1.5 rounded-lg transition-all ${
+                  player.job === jobInfo.abbreviation
+                    ? `ring-2 ${ringColor}`
+                    : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
+                }`}
+                title={jobInfo.abbreviation}
+                tabIndex={slotIndex * 10 + 2 + idx}
+              >
+                <JobIcon job={jobInfo.abbreviation} size="md" />
+              </button>
+            ))}
+            {/* "Other Jobs" button */}
+            <button
+              type="button"
+              onClick={handleOpenJobPicker}
+              className={`p-1.5 rounded-lg transition-all ${
+                showJobPicker
+                  ? `ring-2 ${ringColor}`
+                  : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
+              }`}
+              title="Other jobs..."
+              tabIndex={slotIndex * 10 + 2 + roleJobs.length}
+            >
+              <MoreHorizontal className="w-6 h-6 text-text-muted" />
+            </button>
           </div>
-        ) : (
-          <button
-            onClick={() => setShowJobPicker(true)}
-            className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded text-sm text-left hover:border-accent/30 transition-colors flex items-center justify-between"
-          >
-            <span className={hasJob ? 'text-text-primary' : 'text-text-muted'}>
-              {hasJob ? player.job : 'Select job...'}
-            </span>
-            <svg className="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        )}
 
-        {/* BiS import button */}
+          {/* Selected job display - always rendered to reserve height */}
+          <div className={`flex items-center gap-2 text-xs h-6 ${!hasJob ? 'invisible' : ''}`}>
+            <span className="text-text-muted">Selected:</span>
+            <JobIcon job={player.job || 'PLD'} size="sm" />
+            <span className={`font-medium text-role-${player.role}`}>
+              {player.job}
+            </span>
+          </div>
+        </div>
+
+
+        {/* BiS import button - temporarily hidden for space
         <Button
           variant="secondary"
           size="sm"
           onClick={() => setShowBiSImport(true)}
           disabled={!hasJob}
           className="w-full"
+          tabIndex={slotIndex * 10 + 9}
           leftIcon={
             hasBiS ? (
               <Check className="w-4 h-4 text-status-success" />
@@ -176,7 +294,31 @@ export function RosterSlot({ player, tierId, onUpdate }: RosterSlotProps) {
         >
           {hasBiS ? 'BiS Imported' : 'Import BiS'}
         </Button>
+        */}
       </div>
+
+      {/* Job picker dropdown portal (when "Other Jobs" is clicked) */}
+      {showJobPicker &&
+        createPortal(
+          <div
+            className="fixed z-[100]"
+            style={{
+              [pickerPosition.renderAbove ? 'bottom' : 'top']: pickerPosition.renderAbove
+                ? `${window.innerHeight - pickerPosition.top}px`
+                : `${pickerPosition.top}px`,
+              left: `${pickerPosition.left}px`,
+              width: `${pickerPosition.width}px`,
+            }}
+          >
+            <JobPicker
+              selectedJob={player.job}
+              onJobSelect={handleJobSelect}
+              onRequestClose={() => setShowJobPicker(false)}
+              reverseLayout={pickerPosition.renderAbove}
+            />
+          </div>,
+          document.body
+        )}
 
       {/* BiS Import Modal */}
       {showBiSImport && hasJob && (

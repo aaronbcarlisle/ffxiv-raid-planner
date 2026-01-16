@@ -5,6 +5,7 @@
  * Allows partial completion (not all slots required).
  */
 
+import { useRef } from 'react';
 import { RosterSlot } from '../RosterSlot';
 import type { WizardPlayer } from '../types';
 
@@ -15,10 +16,20 @@ interface RosterSetupStepProps {
 }
 
 export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetupStepProps) {
+  // Refs for each slot's name input (for keyboard navigation)
+  const slotRefs = useRef<Array<HTMLInputElement | null>>([null, null, null, null, null, null, null, null]);
+
   const handlePlayerUpdate = (index: number, updates: Partial<WizardPlayer>) => {
     const newPlayers = [...players];
     newPlayers[index] = { ...newPlayers[index], ...updates };
     onPlayersChange(newPlayers);
+  };
+
+  const handleFocusNextSlot = (currentIndex: number) => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < 8 && slotRefs.current[nextIndex]) {
+      slotRefs.current[nextIndex]?.focus();
+    }
   };
 
   // Group players into pairs for 2-column layout
@@ -30,16 +41,10 @@ export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetu
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Info header */}
-      <div className="bg-surface-elevated border border-border-default rounded-lg p-4">
-        <p className="text-sm text-text-secondary">
-          <strong className="text-text-primary">Optional:</strong> Fill in player names and jobs now, or add them later. BiS imports are also optional.
-        </p>
-      </div>
-
+    <div className="space-y-4">
       {/* Roster grid - 2 columns on desktop, 1 on mobile */}
-      <div className="space-y-4">
+      {/* Scrollable container with max height to keep nav visible */}
+      <div className="space-y-4 max-h-[calc(100vh-22rem)] overflow-y-auto pr-2">
         {playerPairs.map((pair, pairIndex) => {
           const [player1, player2] = pair;
           const index1 = pairIndex * 2;
@@ -50,21 +55,22 @@ export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetu
               <RosterSlot
                 player={player1}
                 tierId={tierId}
+                slotIndex={index1}
+                nameInputRef={(el) => (slotRefs.current[index1] = el)}
                 onUpdate={(updates) => handlePlayerUpdate(index1, updates)}
+                onFocusNextSlot={() => handleFocusNextSlot(index1)}
               />
               <RosterSlot
                 player={player2}
                 tierId={tierId}
+                slotIndex={index2}
+                nameInputRef={(el) => (slotRefs.current[index2] = el)}
                 onUpdate={(updates) => handlePlayerUpdate(index2, updates)}
+                onFocusNextSlot={() => handleFocusNextSlot(index2)}
               />
             </div>
           );
         })}
-      </div>
-
-      {/* Helpful tip */}
-      <div className="text-xs text-text-muted text-center pt-2">
-        <p>You can always add or edit players after creating the static</p>
       </div>
     </div>
   );
