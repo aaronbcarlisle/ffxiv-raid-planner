@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getBannerState } from './PlayerSetupBanner';
+import { getBannerState } from './playerSetupBannerUtils';
 import type { SnapshotPlayer } from '../../types';
 
 // Helper to create a minimal player for testing
