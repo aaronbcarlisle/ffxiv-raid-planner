@@ -1,24 +1,28 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 16, 2026 (v1.0.9 In Progress - Setup Wizard & Player Setup Banner)
+**Last Updated:** January 16, 2026 (v1.0.10 Complete)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.0.9 (In Progress)
+### Current Version: v1.0.10
 
-**Branch:** `feature/player-setup-banner`
+**Branch:** `feature/start-next-week`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Setup Wizard** | ✅ Complete | 4-step guided static creation replacing simple modal |
-| **PlayerSetupBanner** | ✅ Complete | Contextual "Take Ownership" / "Import BiS" prompts on cards |
-| **AssignUserModal Improvements** | ✅ Complete | Role badges, reassignment confirmation, sorting by assignment |
-| **View As actions** | ✅ Complete | "Take Ownership" in View As mode assigns viewed user correctly |
-| **TankRole selector placement** | ✅ Complete | Moved MT/OT to header for better visual alignment |
-| **BiS removed from wizard** | ✅ Complete | Removed non-functional BiS import from wizard |
+| **Weapon Priority Tie Styling** | ✅ Complete | Connector line style with collapsible sections |
+| **Score Breakdown Tooltips** | ✅ Complete | Hover to see priority calculation breakdown |
+| **Gear Slot Icons** | ✅ Complete | Icons in Gear Priority and Who Needs It panels |
+| **Tooltip Audit** | ✅ Complete | Comprehensive tooltip improvements across UI |
+| **Week Management** | ✅ Complete | Start next week, revert week, improved selectors |
+
+### 🔨 Current Priority: Session 4
+
+| Feature | Status | Description |
+|---------|--------|-------------|
 | **MembersPanel Enhancement** | 🔨 Pending | Session 4: Linked Card dropdown per member |
 
 ### ✅ Completed Features (Production Ready)
@@ -55,7 +59,19 @@
 
 ## Version History
 
-### v1.0.9 - Setup Wizard & Player Setup Banner (January 2026, In Progress)
+### v1.0.10 - Loot Priority UX & Score Tooltips (January 16, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Weapon Priority Tie Styling** | ✅ Complete | Connector line style with collapsible sections |
+| **Score Breakdown Tooltips** | ✅ Complete | Hover to see priority calculation breakdown |
+| **Gear Slot Icons** | ✅ Complete | Icons in Gear Priority and Who Needs It panels |
+| **Icon Gallery** | ✅ Complete | Developer tool for viewing all custom icons |
+| **BiS Import Modal UX** | ✅ Complete | Default preset selection, improved gear tooltips |
+| **Comprehensive Tooltip Audit** | ✅ Complete | Rich tooltips across UI with kbd hints |
+| **Week Management** | ✅ Complete | Start next week, revert week, improved selectors |
+
+### v1.0.9 - Setup Wizard & Player Setup Banner (January 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -65,7 +81,6 @@
 | **PlayerSetupBanner** | ✅ Complete | Contextual setup prompts on player cards |
 | **AssignUserModal v2** | ✅ Complete | Role badges, reassignment confirmation, sorted by assignment |
 | **TankRoleSelector** | ✅ Complete | Moved to PlayerCard header for visual alignment |
-| **MembersPanel Enhancement** | 🔨 Pending | Linked Card dropdown per member (Session 4) |
 
 **Setup Wizard Features:**
 - Default tier pre-selection (latest savage tier)
@@ -233,13 +248,14 @@ pnpm test
 
 ## Next Steps
 
-### 🔨 Current Priority: v1.0.9 Completion
+### 🔨 Current Priority: Session 4 (MembersPanel Enhancement)
 
-1. **Session 4: MembersPanel Enhancement**
-   - Add "Linked Card" dropdown to each member row
-   - Show available cards: unclaimed OR already claimed by this member
-   - On selection, call existing assign endpoint
-   - Pre-select if member already has a linked card
+**Task:** Add "Linked Card" dropdown to each member row in MembersPanel
+- Show available cards: unclaimed OR already claimed by this member
+- On selection, call existing assign endpoint
+- Pre-select if member already has a linked card
+
+See `docs/SETUP_WIZARD_PLAN.md` for implementation details.
 
 ### Future Phases
 
@@ -247,20 +263,33 @@ pnpm test
 - **Phase 8:** FFLogs integration - Parse logs for gear verification
 - **Phase 9:** Discord bot - Notifications and commands
 
+### Technical Debt (See OUTSTANDING_WORK.md)
+
+- **C-001:** N+1 Query in Admin Dashboard (Critical)
+- **H-001-H-005:** Security headers, SSRF fix, pagination, indexes, request IDs
+- **Audit Sessions 1-12:** Combined audit plan in `docs/plans/`
+
 ---
 
 ## Documentation Structure
 
 ```
 docs/
-├── CONSOLIDATED_STATUS.md    # This file - project status and version history
-├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
-├── UI_COMPONENTS.md          # UI component inventory
-├── CODING_STANDARDS.md       # Code style and patterns
-├── SETUP_WIZARD_PLAN.md      # Setup wizard implementation plan
-├── GEARING_REFERENCE.md      # FFXIV gearing data
-├── GEARING_MATH.md           # Gearing mechanics and formulas
-└── SESSION_HANDOFF.md        # Current session handoff notes
+├── CONSOLIDATED_STATUS.md       # This file - project status and version history
+├── OUTSTANDING_WORK.md          # Prioritized list of remaining work (P0-P3)
+├── SESSION_HANDOFF.md           # Current session handoff notes
+├── UI_COMPONENTS.md             # UI component inventory (READ BEFORE UI WORK)
+├── CODING_STANDARDS.md          # Code style and patterns
+├── SETUP_WIZARD_PLAN.md         # Setup wizard implementation plan
+├── GEARING_REFERENCE.md         # FFXIV gearing data
+├── GEARING_MATH.md              # Gearing mechanics and formulas
+├── plans/                       # Technical audit session plans
+│   ├── COMBINED_AUDIT_PLAN.md   # Master plan (47 issues, 12 sessions)
+│   └── SESSION_01-12.md         # Individual session details
+├── implementation/              # Historical implementation plans
+│   ├── parity-audit/            # Feature parity analysis
+│   └── ux-audit/                # UX audit and improvements
+└── archive/                     # Historical session handoffs
 ```
 
 ---
