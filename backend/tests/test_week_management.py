@@ -65,6 +65,46 @@ class TestStartNextWeek:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
+    async def test_start_next_week_preserves_created_at_week(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user: User,
+    ):
+        """Test that start-next-week preserves week calculation when week_start_date is None.
+
+        Regression test: When week_start_date is None, calculate_week_number falls back
+        to created_at. If a tier was created 3 weeks ago, it shows Week 4. Clicking
+        "Start Next Week" should advance to Week 5, NOT jump backwards to Week 2.
+        """
+        group = await create_static_group(session, test_user)
+        tier = await create_tier_snapshot(session, group)
+        # Simulate a tier created 3 weeks ago with no week_start_date set
+        tier.week_start_date = None
+        tier.created_at = (datetime.now(timezone.utc) - timedelta(weeks=3)).isoformat()
+        await session.commit()
+
+        # Before: Week should be 4 (3 full weeks passed + 1)
+        # (calculate_week_number uses created_at when week_start_date is None)
+
+        token = create_access_token(test_user.id)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/start-next-week",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # After: Week should be 5 (advanced by 1 from week 4)
+        # NOT week 2 (which would happen if we initialized to "now" instead of created_at)
+        assert data["currentWeek"] == 5, (
+            f"Expected week 5 (3 weeks from created_at + 1 advance), "
+            f"got week {data['currentWeek']}"
+        )
+
+    @pytest.mark.asyncio
     async def test_start_next_week_max_weeks_limit(
         self,
         client: AsyncClient,

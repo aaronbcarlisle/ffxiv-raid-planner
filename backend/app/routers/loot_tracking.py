@@ -806,9 +806,11 @@ async def start_next_week(
             detail=f"Cannot advance beyond week {MAX_WEEKS}"
         )
 
-    # If week_start_date is not set, set it to now (first week)
+    # If week_start_date is not set, use created_at as the effective start date.
+    # This preserves the current week calculation (which falls back to created_at)
+    # instead of jumping backwards to "now".
     if tier.week_start_date is None:
-        tier.week_start_date = datetime.now(timezone.utc).isoformat()
+        tier.week_start_date = tier.created_at
 
     # Parse the current week_start_date
     start_date = datetime.fromisoformat(tier.week_start_date)
