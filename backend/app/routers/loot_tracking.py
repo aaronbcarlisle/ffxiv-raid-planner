@@ -794,10 +794,12 @@ async def start_next_week(
     await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
-    # Get tier with row-level lock to prevent race conditions
+    # Get tier with row-level lock to prevent race conditions.
+    # All validation and modifications happen AFTER lock acquisition.
     tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
-    # Validate maximum weeks to prevent abuse (20 weeks ~= 5 months of raiding)
+    # Validate maximum weeks to prevent abuse (20 weeks ~= 5 months of raiding).
+    # Note: This calculation uses the locked tier data, ensuring serialized access.
     MAX_WEEKS = 20
     current_week = calculate_week_number(tier)
     if current_week >= MAX_WEEKS:
@@ -856,13 +858,16 @@ async def revert_week(
     await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
-    # Get tier with row-level lock to prevent race conditions
+    # Get tier with row-level lock to prevent race conditions.
+    # All validation and modifications happen AFTER lock acquisition.
     tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
-    # Cannot revert if week_start_date is not set or already at week 1
+    # Cannot revert if week_start_date is not set.
+    # Note: All checks below use the locked tier data, ensuring serialized access.
     if tier.week_start_date is None:
         raise HTTPException(status_code=400, detail="Cannot revert: no week start date set")
 
+    # Check current week AFTER acquiring lock to prevent race conditions
     current_calculated_week = calculate_week_number(tier)
     if current_calculated_week <= 1:
         raise HTTPException(status_code=400, detail="Cannot revert: already at week 1")

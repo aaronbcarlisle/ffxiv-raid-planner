@@ -65,6 +65,34 @@ class TestStartNextWeek:
         assert response.status_code == 403
 
     @pytest.mark.asyncio
+    async def test_start_next_week_lead_role_success(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user: User,
+    ):
+        """Test that lead role can advance week"""
+        owner = await create_user(session, discord_username="owner")
+        group = await create_static_group(session, owner)
+        tier = await create_tier_snapshot(session, group)
+        # test_user is a lead, not owner
+        await create_membership(session, test_user, group, role=MemberRole.LEAD)
+        await session.commit()
+
+        token = create_access_token(test_user.id)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/start-next-week",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "currentWeek" in data
+        assert data["currentWeek"] >= 1
+
+    @pytest.mark.asyncio
     async def test_start_next_week_preserves_created_at_week(
         self,
         client: AsyncClient,
@@ -159,6 +187,34 @@ class TestRevertWeek:
         data = response.json()
         assert "currentWeek" in data
         assert "weekStartDate" in data
+
+    @pytest.mark.asyncio
+    async def test_revert_week_lead_role_success(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user: User,
+    ):
+        """Test that lead role can revert week"""
+        owner = await create_user(session, discord_username="owner")
+        group = await create_static_group(session, owner)
+        tier = await create_tier_snapshot(session, group)
+        tier.week_start_date = (datetime.now(timezone.utc) - timedelta(weeks=2)).isoformat()
+        # test_user is a lead, not owner
+        await create_membership(session, test_user, group, role=MemberRole.LEAD)
+        await session.commit()
+
+        token = create_access_token(test_user.id)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/revert-week",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "currentWeek" in data
 
     @pytest.mark.asyncio
     async def test_revert_week_at_week_1_fails(
