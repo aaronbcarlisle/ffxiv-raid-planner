@@ -6,13 +6,14 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List, Users } from 'lucide-react';
+import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
-import { ContextMenu, Select, Input, Label, Checkbox, Modal, Spinner, StaticGridSkeleton, StaticListSkeleton, ErrorMessage } from '../components/ui';
+import { ContextMenu, Select, Input, Label, Modal, Spinner, StaticGridSkeleton, StaticListSkeleton, ErrorMessage } from '../components/ui';
 import { Button, IconButton } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
+import { SetupWizard } from '../components/wizard';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
 
 // Sort options
@@ -55,11 +56,9 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 export function Dashboard() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const { groups, isLoading, isCreating, error, fetchGroups, createGroup, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
+  const { groups, isLoading, error, fetchGroups, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupPublic, setNewGroupPublic] = useState(false);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
 
   // View mode state (grid or list) - persisted to localStorage
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
@@ -155,20 +154,9 @@ export function Dashboard() {
     }
   }, [isAuthenticated, fetchGroups]);
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) return;
-
-    try {
-      await createGroup(newGroupName.trim(), newGroupPublic);
-      setShowCreateModal(false);
-      setNewGroupName('');
-      setNewGroupPublic(false);
-      // Refresh groups list (group view will be added in Phase 4.3)
-      await fetchGroups();
-    } catch {
-      // Error is handled in store
-    }
+  const handleWizardComplete = async (_groupId: string, shareCode: string) => {
+    // Navigate to the newly created group
+    navigate(`/group/${shareCode}`);
   };
 
   // Context menu handlers
@@ -312,7 +300,7 @@ export function Dashboard() {
               />
             </div>
           )}
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={() => setShowCreateWizard(true)}>
             Create Static
           </Button>
         </div>
@@ -393,7 +381,7 @@ export function Dashboard() {
           </div>
 
           <div className="text-center">
-            <Button onClick={() => setShowCreateModal(true)}>
+            <Button onClick={() => setShowCreateWizard(true)}>
               Create Your First Static
             </Button>
           </div>
@@ -594,65 +582,12 @@ export function Dashboard() {
         />
       )}
 
-      {/* Create Modal */}
-      {showCreateModal && (
-        <Modal
-          isOpen={showCreateModal}
-          onClose={() => {
-            setShowCreateModal(false);
-            setNewGroupName('');
-            setNewGroupPublic(false);
-          }}
-          title={
-            <span className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Create Static Group
-            </span>
-          }
-        >
-          <form onSubmit={handleCreateGroup} className="space-y-4">
-            <div>
-              <Label htmlFor="groupName">Group Name</Label>
-              <Input
-                id="groupName"
-                value={newGroupName}
-                onChange={setNewGroupName}
-                placeholder="e.g., Girliepops, Hardcore Raiders"
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <Checkbox
-                checked={newGroupPublic}
-                onChange={setNewGroupPublic}
-                label="Make this group public (anyone with the link can view)"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewGroupName('');
-                  setNewGroupPublic(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!newGroupName.trim()}
-                loading={isCreating}
-              >
-                Create
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {/* Setup Wizard */}
+      <SetupWizard
+        isOpen={showCreateWizard}
+        onClose={() => setShowCreateWizard(false)}
+        onComplete={handleWizardComplete}
+      />
 
       {/* Settings Modal */}
       {showSettingsModal && selectedGroup && (
