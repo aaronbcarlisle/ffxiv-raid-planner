@@ -197,6 +197,9 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
     setCreatedGroupId(null);
     setCreatedShareCode(null);
     setCreatedInviteLink(null);
+    // Clear partial completion state to prevent interference with future wizard sessions
+    setPendingGroupId(null);
+    setPendingShareCode(null);
   };
 
   const handleClose = () => {
