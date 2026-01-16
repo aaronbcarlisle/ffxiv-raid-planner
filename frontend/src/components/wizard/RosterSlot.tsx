@@ -28,6 +28,13 @@ const POSITION_EXPECTED_ROLE: Record<string, string> = {
   R2: 'caster',
 };
 
+/**
+ * Placeholder job used for type safety when the "Selected job" display is hidden.
+ * This value is never visible to users - it's only used to satisfy TypeScript's
+ * type requirements for JobIcon when the element has `invisible` class applied.
+ */
+const PLACEHOLDER_JOB = 'PLD' as const;
+
 interface RosterSlotProps {
   player: WizardPlayer;
   tierId: string; // For BiS import context
@@ -299,21 +306,21 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
           </div>
 
           {/* Selected job display - uses invisible class to reserve height and prevent layout shift.
-              PLD fallback is used when hidden to satisfy type requirements; content is not visible. */}
+              PLACEHOLDER_JOB used when hidden for type safety; content is not visible to users. */}
           <div className={`flex items-center gap-2 text-xs h-6 ${!hasJob ? 'invisible' : ''}`}>
             <span className="text-text-muted">Selected:</span>
-            <JobIcon job={player.job || 'PLD'} size="sm" />
+            <JobIcon job={player.job || PLACEHOLDER_JOB} size="sm" />
             <span className={`font-medium text-role-${player.role}`}>
               {player.job}
             </span>
             <span className="text-text-secondary">
-              - {getJobDisplayName(player.job || 'PLD')}
+              - {getJobDisplayName(player.job || PLACEHOLDER_JOB)}
             </span>
           </div>
         </div>
 
 
-        {/* BiS import button - temporarily hidden for space
+        {/* TODO: Re-enable BiS import button when UI space allows (deferred to future iteration)
         <Button
           variant="secondary"
           size="sm"

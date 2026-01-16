@@ -103,6 +103,7 @@ export function ShareStep({ inviteLink, onGoToStatic }: ShareStepProps) {
       <ConfirmModal
         isOpen={showConfirm}
         title="Have you copied the invite link?"
+        size="lg"
         message={
           <div className="space-y-3">
             <p>Make sure you've copied the invite link before leaving this page.</p>

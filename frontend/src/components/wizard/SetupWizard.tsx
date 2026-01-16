@@ -128,8 +128,11 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
         setPendingGroupId(groupId);
         setPendingShareCode(shareCode);
       } else if (!shareCode) {
-        // Defensive check: if groupId exists but shareCode doesn't, state is inconsistent
-        // This shouldn't happen since both are set atomically, but handle gracefully
+        // Defensive check: groupId and shareCode are set atomically (lines 128-129), so this
+        // should be unreachable under normal operation. However, it could occur if:
+        // - React state updates are lost due to a browser bug or extension interference
+        // - State was manually corrupted (e.g., React DevTools manipulation)
+        // Throwing an error prompts the user to retry, which will create a fresh group.
         throw new Error('Inconsistent state: group created but share code missing. Please try again.');
       }
 
@@ -214,8 +217,12 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   };
 
   const handleClose = () => {
+    // Prevent closing while submission is in progress to avoid orphaned resources
+    if (isSubmitting) {
+      return;
+    }
     // Show confirmation if there are unsaved changes
-    if (hasChanges() && !isSubmitting) {
+    if (hasChanges()) {
       setShowCancelConfirm(true);
     } else {
       onClose();

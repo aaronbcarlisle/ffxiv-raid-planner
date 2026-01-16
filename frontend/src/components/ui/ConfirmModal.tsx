@@ -20,6 +20,8 @@ interface ConfirmModalProps {
   variant?: 'danger' | 'warning' | 'default';
   /** Optional custom icon for the title. If not provided, uses variant-based default. */
   icon?: ReactNode;
+  /** Modal size. Defaults to 'md'. */
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   onConfirm: () => Promise<void> | void;
   onCancel: () => void;
 }
@@ -32,6 +34,7 @@ export function ConfirmModal({
   cancelLabel = 'Cancel',
   variant = 'danger',
   icon,
+  size = 'md',
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -89,7 +92,7 @@ export function ConfirmModal({
           {title}
         </span>
       }
-      size="md"
+      size={size}
     >
       <div className="space-y-4">
         {/* Warning/Info message */}

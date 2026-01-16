@@ -446,6 +446,8 @@ export default function ReleaseNotes() {
   const navigate = useNavigate();
 
   // Initialize from URL hash if present (e.g., #v1.0.5)
+  // Note: Direct window.location.hash access is safe here as this is a client-only SPA (no SSR).
+  // useLocation().hash could be used but requires an extra re-render on initial load.
   const initialVersion = (() => {
     const hash = window.location.hash;
     if (hash && hash.startsWith('#v')) {

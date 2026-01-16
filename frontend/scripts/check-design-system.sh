@@ -197,6 +197,11 @@ check_pattern() {
   # - Lines with design-system-ignore comment
   # - JSDoc comment lines (starting with *)
   # - Single-line comments (starting with //)
+  #
+  # SECURITY NOTE: eval is used here to build the grep command dynamically.
+  # This is safe because $pattern values come from hardcoded arrays (HTML_PATTERNS,
+  # COLOR_PATTERNS) defined in this script, not from external/user input.
+  # If patterns were ever sourced externally, input validation would be required.
   local grep_cmd="grep -rn $case_flag \"$pattern\" \"$SRC_DIR\" --include=\"*.tsx\" --include=\"*.ts\" $EXCLUDE_ARGS 2>/dev/null || true"
   local results=$(eval "$grep_cmd" | grep -v "design-system-ignore" | grep -v ':[[:space:]]*\*' | grep -v ':[[:space:]]*//' || true)
 

@@ -19,7 +19,7 @@ export interface GroupViewShortcutParams {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   groupView: boolean;
-  setGroupView: (enabled: boolean) => void;
+  setGroupView: (enabled: boolean, groupId?: string) => void;
   subsView: boolean;
   setSubsView: (enabled: boolean) => void;
 
@@ -111,7 +111,7 @@ export function useGroupViewKeyboardShortcuts(
       }},
       { key: 'g', description: 'Toggle group/grid view', action: () => {
         if (pageMode === 'players') {
-          setGroupView(!groupView);
+          setGroupView(!groupView, currentGroup?.id);
         }
         // Toggle grid/list on Log tab
         if (pageMode === 'history') {
