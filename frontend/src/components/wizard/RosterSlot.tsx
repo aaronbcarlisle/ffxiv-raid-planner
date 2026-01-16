@@ -10,7 +10,7 @@ import { X, MoreHorizontal } from 'lucide-react';
 import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { BiSImportModal } from '../player/BiSImportModal';
-import { getRoleForJob, getJobsByRole, getRoleDisplayName } from '../../gamedata';
+import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
 import type { SnapshotPlayer, GearSlotStatus } from '../../types';
 
@@ -56,6 +56,15 @@ const ROLE_RING_COLORS: Record<string, string> = {
   caster: 'ring-role-caster',
 };
 
+// Role background colors for selected job buttons
+const ROLE_BG_COLORS: Record<string, string> = {
+  tank: 'bg-role-tank/30',
+  healer: 'bg-role-healer/30',
+  melee: 'bg-role-melee/30',
+  ranged: 'bg-role-ranged/30',
+  caster: 'bg-role-caster/30',
+};
+
 export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [showBiSImport, setShowBiSImport] = useState(false);
@@ -68,14 +77,32 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
 
   // Ring color for card outline and selected job buttons
   const ringColor = ROLE_RING_COLORS[player.role] || 'ring-border-default';
+  // Background color for selected job button
+  const bgColor = ROLE_BG_COLORS[player.role] || 'bg-surface-interactive';
 
-  // Get role-specific jobs for quick-select
-  const roleJobs = getJobsByRole(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+  // Get role-specific jobs for quick-select (H1 = pure healers, H2 = barrier healers)
+  const roleJobs: JobInfo[] = (() => {
+    const jobs = getJobsByRole(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+    // Filter healers by type based on position
+    if (player.role === 'healer') {
+      const healerType = player.position === 'H1' ? 'pure' : 'barrier';
+      return jobs.filter(j => getHealerType(j.abbreviation) === healerType);
+    }
+    return jobs;
+  })();
+
+  // Get display name for the role (Pure Healer / Barrier Healer for healers)
+  const roleDisplayName = (() => {
+    if (player.role === 'healer') {
+      return player.position === 'H1' ? 'Pure Healer' : 'Barrier Healer';
+    }
+    return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+  })();
 
   // Determine slot label - show actual role if different from expected
   const expectedRole = POSITION_EXPECTED_ROLE[player.position];
   const slotLabel = hasJob && player.role !== expectedRole
-    ? `${getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')} (${player.position})`
+    ? getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
     : POSITION_LABELS[player.position] || player.position;
 
   const handleJobSelect = (job: string, shouldFocusNext = false) => {
@@ -206,15 +233,15 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
               {slotLabel}
             </span>
           </div>
-          {!isEmpty && (
-            <button
-              onClick={handleClear}
-              className="text-text-muted hover:text-status-error transition-colors"
-              title="Clear slot"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          {/* Always render to prevent layout shift, but hide when empty */}
+          <button
+            onClick={handleClear}
+            className={`text-text-muted hover:text-status-error transition-colors ${isEmpty ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+            title="Clear slot"
+            tabIndex={isEmpty ? -1 : undefined}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Player name */}
@@ -230,7 +257,9 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
 
         {/* Job quick-select buttons */}
         <div className="space-y-1.5">
-          <label className="block text-xs text-text-muted">Select Job</label>
+          <label className="block text-xs text-text-muted">
+            Select Job for: <span className={`text-role-${player.role} font-medium`}>{roleDisplayName}</span>
+          </label>
           <div ref={jobButtonsRef} className="flex flex-wrap gap-2">
             {roleJobs.map((jobInfo, idx) => (
               <button
@@ -240,7 +269,7 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
                 onKeyDown={(e) => handleJobButtonKeyDown(e, jobInfo.abbreviation)}
                 className={`p-1.5 rounded-lg transition-all ${
                   player.job === jobInfo.abbreviation
-                    ? `ring-2 ${ringColor}`
+                    ? `${bgColor} ring-2 ${ringColor}`
                     : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
                 }`}
                 title={jobInfo.abbreviation}
@@ -271,6 +300,9 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
             <JobIcon job={player.job || 'PLD'} size="sm" />
             <span className={`font-medium text-role-${player.role}`}>
               {player.job}
+            </span>
+            <span className="text-text-secondary">
+              - {getJobDisplayName(player.job || 'PLD')}
             </span>
           </div>
         </div>
@@ -312,7 +344,7 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
           >
             <JobPicker
               selectedJob={player.job}
-              onJobSelect={handleJobSelect}
+              onJobSelect={(job) => handleJobSelect(job, true)}
               onRequestClose={() => setShowJobPicker(false)}
               reverseLayout={pickerPosition.renderAbove}
             />

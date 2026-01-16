@@ -5,7 +5,7 @@
  * Allows partial completion (not all slots required).
  */
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { RosterSlot } from '../RosterSlot';
 import type { WizardPlayer } from '../types';
 
@@ -13,11 +13,33 @@ interface RosterSetupStepProps {
   players: WizardPlayer[];
   tierId: string; // For BiS import context
   onPlayersChange: (players: WizardPlayer[]) => void;
+  onAllSlotsFilled?: () => void; // Called when all 8 slots have jobs selected
 }
 
-export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetupStepProps) {
+export function RosterSetupStep({ players, tierId, onPlayersChange, onAllSlotsFilled }: RosterSetupStepProps) {
   // Refs for each slot's name input (for keyboard navigation)
   const slotRefs = useRef<Array<HTMLInputElement | null>>([null, null, null, null, null, null, null, null]);
+
+  // Track if all slots were previously filled (to detect transition)
+  const prevAllFilledRef = useRef(false);
+
+  // Auto-focus first slot's name input when step mounts
+  useEffect(() => {
+    // Small delay to ensure DOM is ready after step transition
+    const timer = setTimeout(() => {
+      slotRefs.current[0]?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []); // Empty deps = only on mount
+
+  // Check if all slots have jobs and trigger callback on transition
+  useEffect(() => {
+    const allFilled = players.every((p) => p.job);
+    if (allFilled && !prevAllFilledRef.current) {
+      onAllSlotsFilled?.();
+    }
+    prevAllFilledRef.current = allFilled;
+  }, [players, onAllSlotsFilled]);
 
   const handlePlayerUpdate = (index: number, updates: Partial<WizardPlayer>) => {
     const newPlayers = [...players];
@@ -29,6 +51,9 @@ export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetu
     const nextIndex = currentIndex + 1;
     if (nextIndex < 8 && slotRefs.current[nextIndex]) {
       slotRefs.current[nextIndex]?.focus();
+    } else if (nextIndex >= 8) {
+      // Last slot - focus the Next button directly
+      onAllSlotsFilled?.();
     }
   };
 
@@ -44,7 +69,8 @@ export function RosterSetupStep({ players, tierId, onPlayersChange }: RosterSetu
     <div className="space-y-4">
       {/* Roster grid - 2 columns on desktop, 1 on mobile */}
       {/* Scrollable container with max height to keep nav visible */}
-      <div className="space-y-4 max-h-[calc(100vh-22rem)] overflow-y-auto pr-2">
+      {/* Padding prevents ring highlights from being clipped by overflow */}
+      <div className="space-y-4 max-h-[calc(100vh-22rem)] overflow-y-auto px-1 py-1 -mx-1 -my-1">
         {playerPairs.map((pair, pairIndex) => {
           const [player1, player2] = pair;
           const index1 = pairIndex * 2;

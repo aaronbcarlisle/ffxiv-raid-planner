@@ -5,7 +5,7 @@
  * Uses local state (not Zustand) - state discarded on cancel.
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { WizardProgress } from './WizardProgress';
 import { WizardNavigation } from './WizardNavigation';
@@ -31,6 +31,12 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the Next button (called when last roster slot is filled)
+  const focusNextButton = () => {
+    nextButtonRef.current?.focus();
+  };
 
   // Validation for each step
   const canProceedFromStep = (step: WizardStep): boolean => {
@@ -93,8 +99,43 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
     }, 300);
   };
 
+  // Keyboard navigation: Alt+Left = Back, Alt+Right = Next
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault(); // Prevent browser back
+        setState((prev) => (prev.step > 1 ? { ...prev, step: (prev.step - 1) as WizardStep } : prev));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault(); // Prevent browser forward
+        setState((prev) => {
+          // Check if can proceed from current step
+          const canProceed =
+            prev.step === 1
+              ? prev.staticName.trim().length > 0 && prev.tierId.length > 0
+              : prev.step < 4; // Steps 2 & 3 always allow proceeding
+          if (canProceed && prev.step < 4) {
+            return { ...prev, step: (prev.step + 1) as WizardStep };
+          }
+          return prev;
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // Modal title includes static name once set
+  const modalTitle = state.staticName.trim()
+    ? `Create Static: ${state.staticName.trim()}`
+    : 'Create Static';
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Create Static" size="4xl">
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="4xl">
       <div className="space-y-6">
         {/* Progress indicator */}
         <WizardProgress currentStep={state.step} />
@@ -116,6 +157,7 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
             players={state.players}
             tierId={state.tierId}
             onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
+            onAllSlotsFilled={focusNextButton}
           />
         )}
 
@@ -133,6 +175,7 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
 
         {/* Navigation */}
         <WizardNavigation
+          ref={nextButtonRef}
           currentStep={state.step}
           canProceed={canProceedFromStep(state.step)}
           isSubmitting={isSubmitting}
