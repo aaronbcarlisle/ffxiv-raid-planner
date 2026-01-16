@@ -160,13 +160,14 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
     }
   }, [showFullPicker, onRequestClose]);
 
-  // Focus search when picker opens, and scroll to bottom if upward layout
+  // Focus search when picker opens, and scroll to show tanks if upward layout
   useEffect(() => {
     if (showFullPicker) {
       searchInputRef.current?.focus();
-      // Scroll to bottom for upward layout so tanks (closest to search) are visible
+      // With flex-col-reverse, tanks (index 0) are at DOM start but visual bottom.
+      // scrollTop = 0 shows DOM start, which is the visual bottom (tanks closest to search).
       if (reverseLayout && listRef.current) {
-        listRef.current.scrollTop = listRef.current.scrollHeight;
+        listRef.current.scrollTop = 0;
       }
     }
   }, [showFullPicker, reverseLayout]);

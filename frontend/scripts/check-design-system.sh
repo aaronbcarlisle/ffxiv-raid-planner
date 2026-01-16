@@ -279,7 +279,7 @@ if [[ "$SUMMARY_MODE" == true && ${#FILE_VIOLATIONS[@]} -gt 0 ]]; then
   echo -e "${BOLD}Violations by file:${NC}"
   echo ""
   for file in "${!FILE_VIOLATIONS[@]}"; do
-    local patterns="${FILE_VIOLATIONS[$file]}"
+    patterns="${FILE_VIOLATIONS[$file]}"
     echo -e "  ${BLUE}$file${NC}"
     echo -e "    Patterns: ${YELLOW}$patterns${NC}"
   done

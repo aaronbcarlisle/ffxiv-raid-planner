@@ -11,8 +11,6 @@ import { writeFileSync } from 'fs';
 import { join } from 'path';
 
 const XIVAPI_V1_BASE = 'https://xivapi.com';
-// Reserved for future v2 API migration
-const _XIVAPI_V2_BASE = 'https://v2.xivapi.com/api';
 
 interface XIVAPIv1Job {
   ID: number;

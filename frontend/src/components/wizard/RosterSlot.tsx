@@ -10,6 +10,7 @@ import { X, MoreHorizontal } from 'lucide-react';
 import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { Label } from '../ui/Label';
+import { Input } from '../ui/Input';
 import { BiSImportModal } from '../player/BiSImportModal';
 import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
@@ -135,9 +136,10 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
       // Render above if not enough space below but enough space above
       const renderAbove = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
 
+      // Use viewport coordinates directly for fixed positioning
       setPickerPosition({
-        top: renderAbove ? rect.top + window.scrollY : rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: renderAbove ? rect.top : rect.bottom,
+        left: rect.left,
         width: rect.width,
         renderAbove,
       });
@@ -158,9 +160,10 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
         const spaceAbove = rect.top;
         const renderAbove = spaceBelow < DROPDOWN_HEIGHT && spaceAbove > spaceBelow;
 
+        // Use viewport coordinates directly for fixed positioning
         setPickerPosition({
-          top: renderAbove ? rect.top + window.scrollY : rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
+          top: renderAbove ? rect.top : rect.bottom,
+          left: rect.left,
           width: rect.width,
           renderAbove,
         });
@@ -246,13 +249,13 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
         </div>
 
         {/* Player name */}
-        <input
+        <Input
           ref={nameInputRef}
-          type="text"
           value={player.name}
-          onChange={(e) => onUpdate({ name: e.target.value })}
+          onChange={(value) => onUpdate({ name: value })}
           placeholder="Player name"
-          className="w-full px-3 py-2 bg-surface-elevated border border-border-default rounded text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+          size="sm"
+          fullWidth
           tabIndex={slotIndex * 10 + 1}
         />
 
