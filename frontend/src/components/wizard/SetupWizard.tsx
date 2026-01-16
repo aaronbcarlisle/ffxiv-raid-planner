@@ -135,27 +135,32 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
 
       // Step 3: Update players with names/jobs/BiS data
       // Player updates are idempotent, so re-running on retry is safe
+      // Use Promise.all for parallel execution since updates are independent
       if (tier.players && tier.players.length > 0) {
-        // Map wizard players to tier players by position
-        for (const wizardPlayer of state.players) {
-          // Find matching tier player by position
-          const tierPlayer = tier.players.find((p) => p.position === wizardPlayer.position);
-          if (!tierPlayer) continue;
+        const updatePromises = state.players
+          .map((wizardPlayer) => {
+            // Find matching tier player by position
+            const tierPlayer = tier.players.find((p) => p.position === wizardPlayer.position);
+            if (!tierPlayer) return null;
 
-          // Only update if there's something to update
-          if (wizardPlayer.name.trim() || wizardPlayer.job || wizardPlayer.bisLink || wizardPlayer.gear) {
-            const jobInfo = wizardPlayer.job ? getJobInfo(wizardPlayer.job) : null;
+            // Only update if there's something to update
+            if (wizardPlayer.name.trim() || wizardPlayer.job || wizardPlayer.bisLink || wizardPlayer.gear) {
+              const jobInfo = wizardPlayer.job ? getJobInfo(wizardPlayer.job) : null;
 
-            await updatePlayer(groupId, tier.tierId, tierPlayer.id, {
-              name: wizardPlayer.name.trim() || tierPlayer.name,
-              job: wizardPlayer.job || tierPlayer.job,
-              role: jobInfo?.role || wizardPlayer.role || tierPlayer.role,
-              bisLink: wizardPlayer.bisLink,
-              gear: wizardPlayer.gear,
-              configured: !!(wizardPlayer.name.trim() && wizardPlayer.job),
-            });
-          }
-        }
+              return updatePlayer(groupId, tier.tierId, tierPlayer.id, {
+                name: wizardPlayer.name.trim() || tierPlayer.name,
+                job: wizardPlayer.job || tierPlayer.job,
+                role: jobInfo?.role || wizardPlayer.role || tierPlayer.role,
+                bisLink: wizardPlayer.bisLink,
+                gear: wizardPlayer.gear,
+                configured: !!(wizardPlayer.name.trim() && wizardPlayer.job),
+              });
+            }
+            return null;
+          })
+          .filter((p): p is Promise<unknown> => p !== null);
+
+        await Promise.all(updatePromises);
       }
 
       // Step 4: Always create a member invite for sharing

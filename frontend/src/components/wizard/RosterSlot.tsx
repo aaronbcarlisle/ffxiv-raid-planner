@@ -334,7 +334,10 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
         */}
       </div>
 
-      {/* Job picker dropdown portal (when "Other Jobs" is clicked) */}
+      {/* Job picker dropdown portal (when "Other Jobs" is clicked)
+          Portal cleanup is automatic - React removes portal content when:
+          1. showJobPicker becomes false (conditional unmount)
+          2. RosterSlot component unmounts (parent cleanup propagates) */}
       {showJobPicker &&
         createPortal(
           <div
