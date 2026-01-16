@@ -97,6 +97,10 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       fetchBiSPresets(player.job, contentType)
         .then((response) => {
           setPresets(response.presets);
+          // Default to first preset if available
+          if (response.presets.length > 0) {
+            setSelectedPresetIndex('0');
+          }
         })
         .catch(() => {
           // Silently fail - presets are optional
