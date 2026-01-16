@@ -2,36 +2,46 @@
 
 ## Branch: `feature/player-setup-banner`
 
-## v1.0.9 Status: Setup Wizard & Player Setup Banner
+## v1.0.10 Status: Loot Priority UX & Score Tooltips
 
-### Completed Features (All Committed & Pushed)
+### Completed Features (This Session)
+
+1. **Weapon Priority Tie Styling Redesign**
+   - Implemented "connector line" style (Style D) as default
+   - Vertical line with dots connecting tied players
+   - Collapsible tie sections with chevron toggle
+   - Winner info shown inline in header after rolling
+   - Inset shadow effect on expanded sections
+
+2. **Priority Score Breakdown Tooltips**
+   - Gear Priority: Role Priority, Gear Needed (weighted), Loot Adjustment
+   - Weapon Priority: Main Job Bonus, Role Priority, List Position
+   - Enhanced scores show No Drops Bonus and Fair Share Adjustment
+   - Tooltips always visible on hover (not just after logging)
+
+3. **Gear Slot Icons in Priority Panels**
+   - Gear Priority sections now show generic gear slot icons
+   - Same icons as player cards without imported BiS
+   - Consolidated "ring" slot uses ring1 icon
+
+4. **Code Cleanup**
+   - Removed TieStyleComparison mockup component
+   - Removed comparison mode toggle and state
+   - Simplified Weapon Priority tab content
+
+### Previously Completed (v1.0.9)
 
 1. **Setup Wizard** - 4-step guided static creation
-   - Step 1: Static Details (name, tier, content type)
-   - Step 2: Roster Setup (8 player slots with job quick-select)
-   - Step 3: Share (copy share link for inviting members)
-   - Step 4: Review (summary before creation)
-   - Default tier pre-selected, sticky navigation, cancel confirmation
-
 2. **PlayerSetupBanner** - Contextual setup prompts on player cards
-   - Shows between header and gear table when setup incomplete
-   - States: Unclaimed (Assign/Take Ownership), No BiS (Import BiS)
-   - Supports View As mode for admin impersonation
-
-3. **AssignUserModal Improvements**
-   - Visual role badges (Owner/Lead/Member/Viewer/Linked) in user dropdown
-   - Users already assigned to other player cards appear at bottom of list
-   - Confirmation modal when reassigning user from another card
-
-4. **BiS Removed from Wizard** - Moved to post-creation via PlayerSetupBanner
-   - BiS import requires existing player records (doesn't work during creation)
-   - PlayerSetupBanner prompts "Import BiS" after claiming a card
+3. **AssignUserModal Improvements** - Role badges, reassignment confirmation
+4. **BiS Modal UX** - Default preset selection, gear tooltips
+5. **Various Fixes** - Select styling, healer labels, modal backdrop
 
 ### Current State
 
-- All changes committed and pushed to `origin/feature/player-setup-banner`
-- Build passes (`pnpm build`)
-- Branch is up to date with remote
+- All changes staged (not committed)
+- TypeScript compiles successfully (`pnpm tsc --noEmit`)
+- Branch is `feature/player-setup-banner`
 
 ---
 
@@ -39,16 +49,30 @@
 
 ### Immediate Next Steps
 
-1. **Session 4: MembersPanel Enhancement** (from SETUP_WIZARD_PLAN.md)
+1. **Commit and Push** - Stage changes and push to remote
+2. **Session 4: MembersPanel Enhancement** (from SETUP_WIZARD_PLAN.md)
    - Add "Linked Card" dropdown to each member row in MembersPanel
    - Show available cards: unclaimed OR already claimed by this member
    - On selection, call existing assign endpoint
    - Pre-select if member already has a linked card
 
-### After v1.0.9
+### After v1.0.10
 
 - Phase 7: Lodestone auto-sync
 - Phase 8: FFLogs integration
+
+---
+
+## Key Files Modified This Session
+
+| File | Changes |
+|------|---------|
+| `components/loot/LootPriorityPanel.tsx` | Added gear slot icons, removed comparison mockup, added GearScoreTooltip with full breakdown |
+| `components/loot/WeaponPriorityList.tsx` | Changed default tieStyle to 'connector', all tie styling logic already present |
+| `utils/priority.ts` | Added `PriorityScoreBreakdown` interface and `calculatePriorityScoreWithBreakdown` function |
+| `utils/weaponPriority.ts` | Already had score breakdown fields (mainJobBonus, roleScore, rankScore) |
+| `docs/UI_COMPONENTS.md` | Added Loot Priority Components section |
+| `data/releaseNotes.ts` | Added v1.0.10 release notes |
 
 ---
 
@@ -62,6 +86,8 @@
 | `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
 | `components/player/AssignUserModal.tsx` | User assignment with role badges |
 | `components/player/PlayerCard.tsx` | Main player card, integrates banner |
+| `components/loot/LootPriorityPanel.tsx` | Gear/Weapon priority with score tooltips |
+| `components/loot/WeaponPriorityList.tsx` | Weapon priority with connector tie styling |
 | `components/static-group/MembersPanel.tsx` | Target for Session 4 |
 | `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
 
@@ -73,9 +99,9 @@
 Continue working on branch feature/player-setup-banner in the FFXIV Raid Planner project.
 
 Current state:
-- v1.0.9 complete: Setup Wizard & PlayerSetupBanner fully implemented
-- All work committed and pushed
-- User documentation updated
+- v1.0.10 complete: Weapon priority tie styling, score tooltips, gear slot icons
+- Changes need to be committed and pushed
+- Build passes (pnpm tsc --noEmit)
 
 Next task: Session 4 from docs/SETUP_WIZARD_PLAN.md
 

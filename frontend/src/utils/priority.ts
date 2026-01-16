@@ -18,6 +18,17 @@ export interface PriorityEntry {
 }
 
 /**
+ * Priority score breakdown for tooltips
+ */
+export interface PriorityScoreBreakdown {
+  score: number;
+  rolePriority: number;
+  weightedNeed: number;
+  weightedNeedBonus: number; // weightedNeed * 10
+  lootAdjustmentPenalty: number; // lootAdjustment * 15 (positive = penalty applied)
+}
+
+/**
  * Options for priority score calculation
  */
 export interface PriorityScoreOptions {
@@ -56,6 +67,39 @@ export function calculatePriorityScore(
   }
 
   return score;
+}
+
+/**
+ * Calculate priority score with detailed breakdown for tooltips
+ */
+export function calculatePriorityScoreWithBreakdown(
+  player: SnapshotPlayer,
+  settings: StaticSettings,
+  options?: PriorityScoreOptions
+): PriorityScoreBreakdown {
+  const roleIndex = settings.lootPriority.indexOf(player.role);
+  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
+
+  const weightedNeed = player.gear
+    .filter((g) => !isSlotComplete(g))
+    .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
+
+  const weightedNeedBonus = Math.round(weightedNeed * 10);
+
+  let lootAdjustmentPenalty = 0;
+  if (options?.includeLootAdjustment && player.lootAdjustment) {
+    lootAdjustmentPenalty = player.lootAdjustment * 15;
+  }
+
+  const score = Math.round(rolePriority + weightedNeedBonus - lootAdjustmentPenalty);
+
+  return {
+    score,
+    rolePriority,
+    weightedNeed,
+    weightedNeedBonus,
+    lootAdjustmentPenalty,
+  };
 }
 
 /**

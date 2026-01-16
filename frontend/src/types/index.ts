@@ -204,19 +204,21 @@ export const GEAR_SLOT_NAMES: Record<GearSlot, string> = {
   ring2: 'L. Ring',
 };
 
-// Gear slot icons from XIVAPI (outline/silhouette style - matches FFXIV character panel)
+// Gear slot icons (white variant for clean visibility)
+// Source: XIVAPI gear icons, colorized locally via scripts/colorize-gear-icons.py
+// Other variants available: gold, gold-vibrant, gold-bright, amber, yellow, teal, gray, black
 export const GEAR_SLOT_ICONS: Record<GearSlot, string> = {
-  weapon: 'https://xivapi.com/img-misc/gear/mainhand.png',
-  head: 'https://xivapi.com/img-misc/gear/head.png',
-  body: 'https://xivapi.com/img-misc/gear/body.png',
-  hands: 'https://xivapi.com/img-misc/gear/hands.png',
-  legs: 'https://xivapi.com/img-misc/gear/legs.png',
-  feet: 'https://xivapi.com/img-misc/gear/feet.png',
-  earring: 'https://xivapi.com/img-misc/gear/ear.png',
-  necklace: 'https://xivapi.com/img-misc/gear/neck.png',
-  bracelet: 'https://xivapi.com/img-misc/gear/wrist.png',
-  ring1: 'https://xivapi.com/img-misc/gear/ring.png',
-  ring2: 'https://xivapi.com/img-misc/gear/ring.png',
+  weapon: '/images/gear-slots/white/weapon.png',
+  head: '/images/gear-slots/white/head.png',
+  body: '/images/gear-slots/white/body.png',
+  hands: '/images/gear-slots/white/hands.png',
+  legs: '/images/gear-slots/white/legs.png',
+  feet: '/images/gear-slots/white/feet.png',
+  earring: '/images/gear-slots/white/earring.png',
+  necklace: '/images/gear-slots/white/necklace.png',
+  bracelet: '/images/gear-slots/white/bracelet.png',
+  ring1: '/images/gear-slots/white/ring.png',
+  ring2: '/images/gear-slots/white/ring.png',
 };
 
 // Gear slot filled icons from XIVAPI (colorful/filled style)

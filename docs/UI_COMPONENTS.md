@@ -186,7 +186,13 @@ import { Tooltip } from '../components/primitives/Tooltip';
 </Tooltip>
 ```
 
-**When to use:** Help text, keyboard shortcuts, disabled reason explanations.
+**When to use:** Help text, keyboard shortcuts, disabled reason explanations, score breakdowns.
+
+**Priority Score Tooltips (v1.0.10):**
+The Tooltip component is used extensively in loot priority panels to show score breakdowns:
+- **Gear Priority**: Hover shows Role Priority, Gear Needed (weighted), and Loot Adjustment
+- **Weapon Priority**: Hover shows Main Job Bonus, Role Priority, and List Position
+- Enhanced scores also display No Drops Bonus and Fair Share Adjustment when active
 
 ---
 
@@ -1111,3 +1117,132 @@ import { AssignUserModal } from '../components/player/AssignUserModal';
 ```
 
 **When to use:** Admin/owner player assignment via context menu or PlayerSetupBanner
+
+---
+
+## Loot Priority Components (v1.0.10)
+
+### LootPriorityPanel
+
+**Path:** `components/loot/LootPriorityPanel.tsx`
+
+**Purpose:** Main panel for displaying loot priority calculations and quick logging.
+
+**Features:**
+- **Gear Priority Tab**: Shows priority for each gear slot with gear slot icons
+- **Weapon Priority Tab**: Shows weapon priority by job with collapsible tie sections
+- **Who Needs It Matrix**: Cross-player/slot matrix view
+- **Score Tooltips**: All scores show breakdown on hover
+- **Quick Logging**: Log button on each priority entry for inline logging
+
+**Sub-components:**
+- `GearScoreTooltip` - Score breakdown (Role Priority, Gear Needed, Loot Adjustment)
+- `PriorityList` - Ranked list of players for a slot
+
+---
+
+### WeaponPriorityList
+
+**Path:** `components/loot/WeaponPriorityList.tsx`
+
+**Purpose:** Displays weapon priority by job with advanced tie handling.
+
+**Features:**
+- **Connector Line Styling**: Tied players shown with vertical line + dots connector
+- **Collapsible Tie Sections**: Click chevron to expand/collapse tie groups
+- **Winner Display**: After rolling, winner's job icon + name shown in header
+- **Score Tooltips**: Hover shows Main Job Bonus, Role Priority, List Position
+
+**Props:**
+```typescript
+interface WeaponPriorityListProps {
+  players: SnapshotPlayer[];
+  settings: StaticSettings;
+  showLogButtons?: boolean;
+  onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+}
+```
+
+**Tie Style Options:**
+The `WeaponPriorityCard` component accepts a `tieStyle` prop:
+- `'connector'` (default) - Vertical line + dots, collapsible sections
+- `'border'` - Left accent border (legacy)
+- `'sameRank'` - Same rank number with "=" indicator
+- `'rankNotation'` - Mathematical "2=." notation
+- `'background'` - Subtle background banding
+
+**Usage:**
+```tsx
+import { WeaponPriorityList } from '../components/loot/WeaponPriorityList';
+
+<WeaponPriorityList
+  players={players}
+  settings={settings}
+  showLogButtons={canLog}
+  onLogClick={handleWeaponLog}
+/>
+```
+
+**When to use:** Weapon priority display on the Loot tab.
+
+---
+
+## Icons and Assets
+
+### Gear Slot Icons
+
+**Path:** `types/index.ts` (GEAR_SLOT_ICONS constant)
+
+**Purpose:** Generic gear slot icons for UI elements.
+
+**Usage:**
+```tsx
+import { GEAR_SLOT_ICONS, GearSlot } from '../types';
+
+<img
+  src={GEAR_SLOT_ICONS[slot as GearSlot]}
+  alt=""
+  className="w-4 h-4 brightness-[3.0]"
+/>
+```
+
+**Available Slots:** weapon, head, body, hands, legs, feet, earring, necklace, bracelet, ring1, ring2
+
+**Icon Variants:** Located in `public/images/gear-slots/{variant}/`
+- `white` (active) - Used with `brightness-[3.0]` filter
+- `gray`, `black`, `teal`, `gold`, `gold-vibrant`, `gold-rich`, `gold-bright`, `amber`, `yellow`
+
+**Regenerate:** `cd frontend && python scripts/colorize-gear-icons.py`
+
+---
+
+### Material Icons
+
+**Path:** `public/images/materials/{variant}/`
+
+**Purpose:** Upgrade material icons (twine, glaze, solvent, tomestone).
+
+**Variants:**
+- `original/` - Full-color XIVAPI originals (for Photoshop editing)
+- `white/`, `white-flat/`, `gray/`, `black/`, `teal/`, `gold-vibrant/` - Processed silhouettes
+
+**Files:** twine.png, glaze.png, solvent.png, tomestone.png
+
+**Regenerate:** `cd frontend && python scripts/process-material-icons.py`
+
+---
+
+### Icon Gallery (Developer Tool)
+
+**URL:** `http://localhost:5173/icon-gallery.html`
+
+**Purpose:** Visual reference for all custom icons in the application.
+
+**Contents:**
+- All gear slot icon variants with color comparison
+- Upgrade material icons (original and silhouettes)
+- Job icons by role (from XIVAPI)
+- Visual comparison section
+- XIVAPI URLs and regeneration commands
+
+**When to use:** Choosing icon variants, verifying icon appearance, referencing XIVAPI URLs.

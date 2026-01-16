@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FFXIV Raid Planner - Icon Reference</title>
+  <style>
+    body {
+      background: #0a0a0f;
+      color: #e5e5e5;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #14b8a6;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #14b8a6;
+      margin: 40px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #333;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 15px;
+    }
+    .variant {
+      background: #121218;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+    .variant h3 {
+      font-size: 11px;
+      margin: 0 0 10px 0;
+      color: #14b8a6;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .icons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+    .icons img {
+      width: 24px;
+      height: 24px;
+    }
+    .sample-row {
+      background: #1a1a22;
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .sample-row img {
+      width: 16px;
+      height: 16px;
+    }
+    .sample-row.with-filter img {
+      filter: brightness(3.0);
+    }
+
+    /* Material icons section */
+    .material-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .material-item {
+      background: #121218;
+      border-radius: 8px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .material-item img {
+      width: 40px;
+      height: 40px;
+    }
+    .material-info {
+      flex: 1;
+    }
+    .material-info .name {
+      font-weight: 600;
+      color: #e5e5e5;
+      margin-bottom: 2px;
+    }
+    .material-info .use {
+      font-size: 11px;
+      color: #888;
+    }
+    .material-info .id {
+      font-size: 10px;
+      color: #555;
+      font-family: monospace;
+    }
+
+    /* Job icons section */
+    .job-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+    }
+    .job-item {
+      background: #121218;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .job-item img {
+      width: 32px;
+      height: 32px;
+    }
+    .job-item span {
+      font-size: 11px;
+      color: #888;
+    }
+    .job-item.tank { border-left: 3px solid #5a9fd4; }
+    .job-item.healer { border-left: 3px solid #5ad490; }
+    .job-item.melee { border-left: 3px solid #d45a5a; }
+    .job-item.ranged { border-left: 3px solid #d4a05a; }
+    .job-item.caster { border-left: 3px solid #b45ad4; }
+
+    /* Comparison section */
+    .comparison {
+      background: #121218;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .comparison h3 {
+      margin: 0 0 15px 0;
+      font-size: 13px;
+      color: #14b8a6;
+    }
+    .comparison-row {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .comparison-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #1a1a22;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .comparison-item img {
+      width: 20px;
+      height: 20px;
+    }
+    .comparison-item.with-filter img {
+      filter: brightness(3.0);
+    }
+
+    /* Notes */
+    .notes {
+      margin-top: 40px;
+      padding: 15px;
+      background: #121218;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #888;
+    }
+    .notes code {
+      background: #1a1a22;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #14b8a6;
+    }
+    .notes ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .notes li {
+      margin: 5px 0;
+    }
+
+    /* Active indicator */
+    .active-badge {
+      display: inline-block;
+      background: #14b8a6;
+      color: #000;
+      font-size: 9px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <h1>FFXIV Raid Planner - Icon Reference</h1>
+  <p class="subtitle">All custom icons used in the application (non-Lucide)</p>
+
+  <!-- ============================================ -->
+  <!-- GEAR SLOT ICONS -->
+  <!-- ============================================ -->
+  <h2>Gear Slot Icons</h2>
+  <p style="color: #888; font-size: 12px; margin-bottom: 20px;">
+    Source: XIVAPI gear icons, colorized locally via <code>scripts/colorize-gear-icons.py</code>
+  </p>
+
+  <div class="grid">
+    <div class="variant">
+      <h3>White <span class="active-badge">ACTIVE</span></h3>
+      <div class="icons">
+        <img src="images/gear-slots/white/weapon.png" alt="weapon">
+        <img src="images/gear-slots/white/head.png" alt="head">
+        <img src="images/gear-slots/white/body.png" alt="body">
+        <img src="images/gear-slots/white/hands.png" alt="hands">
+        <img src="images/gear-slots/white/legs.png" alt="legs">
+        <img src="images/gear-slots/white/feet.png" alt="feet">
+        <img src="images/gear-slots/white/earring.png" alt="earring">
+        <img src="images/gear-slots/white/necklace.png" alt="necklace">
+        <img src="images/gear-slots/white/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/white/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/white/earring.png" alt="">
+        <span>Ears (raw)</span>
+      </div>
+      <div class="sample-row with-filter">
+        <img src="images/gear-slots/white/earring.png" alt="">
+        <span>Ears (brightness 3.0)</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Gray</h3>
+      <div class="icons">
+        <img src="images/gear-slots/gray/weapon.png" alt="weapon">
+        <img src="images/gear-slots/gray/head.png" alt="head">
+        <img src="images/gear-slots/gray/body.png" alt="body">
+        <img src="images/gear-slots/gray/hands.png" alt="hands">
+        <img src="images/gear-slots/gray/legs.png" alt="legs">
+        <img src="images/gear-slots/gray/feet.png" alt="feet">
+        <img src="images/gear-slots/gray/earring.png" alt="earring">
+        <img src="images/gear-slots/gray/necklace.png" alt="necklace">
+        <img src="images/gear-slots/gray/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/gray/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/gray/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Black</h3>
+      <div class="icons">
+        <img src="images/gear-slots/black/weapon.png" alt="weapon">
+        <img src="images/gear-slots/black/head.png" alt="head">
+        <img src="images/gear-slots/black/body.png" alt="body">
+        <img src="images/gear-slots/black/hands.png" alt="hands">
+        <img src="images/gear-slots/black/legs.png" alt="legs">
+        <img src="images/gear-slots/black/feet.png" alt="feet">
+        <img src="images/gear-slots/black/earring.png" alt="earring">
+        <img src="images/gear-slots/black/necklace.png" alt="necklace">
+        <img src="images/gear-slots/black/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/black/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/black/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Teal (Accent)</h3>
+      <div class="icons">
+        <img src="images/gear-slots/teal/weapon.png" alt="weapon">
+        <img src="images/gear-slots/teal/head.png" alt="head">
+        <img src="images/gear-slots/teal/body.png" alt="body">
+        <img src="images/gear-slots/teal/hands.png" alt="hands">
+        <img src="images/gear-slots/teal/legs.png" alt="legs">
+        <img src="images/gear-slots/teal/feet.png" alt="feet">
+        <img src="images/gear-slots/teal/earring.png" alt="earring">
+        <img src="images/gear-slots/teal/necklace.png" alt="necklace">
+        <img src="images/gear-slots/teal/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/teal/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/teal/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Gold (Original)</h3>
+      <div class="icons">
+        <img src="images/gear-slots/gold/weapon.png" alt="weapon">
+        <img src="images/gear-slots/gold/head.png" alt="head">
+        <img src="images/gear-slots/gold/body.png" alt="body">
+        <img src="images/gear-slots/gold/hands.png" alt="hands">
+        <img src="images/gear-slots/gold/legs.png" alt="legs">
+        <img src="images/gear-slots/gold/feet.png" alt="feet">
+        <img src="images/gear-slots/gold/earring.png" alt="earring">
+        <img src="images/gear-slots/gold/necklace.png" alt="necklace">
+        <img src="images/gear-slots/gold/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/gold/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/gold/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Gold-Vibrant</h3>
+      <div class="icons">
+        <img src="images/gear-slots/gold-vibrant/weapon.png" alt="weapon">
+        <img src="images/gear-slots/gold-vibrant/head.png" alt="head">
+        <img src="images/gear-slots/gold-vibrant/body.png" alt="body">
+        <img src="images/gear-slots/gold-vibrant/hands.png" alt="hands">
+        <img src="images/gear-slots/gold-vibrant/legs.png" alt="legs">
+        <img src="images/gear-slots/gold-vibrant/feet.png" alt="feet">
+        <img src="images/gear-slots/gold-vibrant/earring.png" alt="earring">
+        <img src="images/gear-slots/gold-vibrant/necklace.png" alt="necklace">
+        <img src="images/gear-slots/gold-vibrant/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/gold-vibrant/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/gold-vibrant/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Gold-Rich</h3>
+      <div class="icons">
+        <img src="images/gear-slots/gold-rich/weapon.png" alt="weapon">
+        <img src="images/gear-slots/gold-rich/head.png" alt="head">
+        <img src="images/gear-slots/gold-rich/body.png" alt="body">
+        <img src="images/gear-slots/gold-rich/hands.png" alt="hands">
+        <img src="images/gear-slots/gold-rich/legs.png" alt="legs">
+        <img src="images/gear-slots/gold-rich/feet.png" alt="feet">
+        <img src="images/gear-slots/gold-rich/earring.png" alt="earring">
+        <img src="images/gear-slots/gold-rich/necklace.png" alt="necklace">
+        <img src="images/gear-slots/gold-rich/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/gold-rich/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/gold-rich/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Gold-Bright</h3>
+      <div class="icons">
+        <img src="images/gear-slots/gold-bright/weapon.png" alt="weapon">
+        <img src="images/gear-slots/gold-bright/head.png" alt="head">
+        <img src="images/gear-slots/gold-bright/body.png" alt="body">
+        <img src="images/gear-slots/gold-bright/hands.png" alt="hands">
+        <img src="images/gear-slots/gold-bright/legs.png" alt="legs">
+        <img src="images/gear-slots/gold-bright/feet.png" alt="feet">
+        <img src="images/gear-slots/gold-bright/earring.png" alt="earring">
+        <img src="images/gear-slots/gold-bright/necklace.png" alt="necklace">
+        <img src="images/gear-slots/gold-bright/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/gold-bright/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/gold-bright/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Amber</h3>
+      <div class="icons">
+        <img src="images/gear-slots/amber/weapon.png" alt="weapon">
+        <img src="images/gear-slots/amber/head.png" alt="head">
+        <img src="images/gear-slots/amber/body.png" alt="body">
+        <img src="images/gear-slots/amber/hands.png" alt="hands">
+        <img src="images/gear-slots/amber/legs.png" alt="legs">
+        <img src="images/gear-slots/amber/feet.png" alt="feet">
+        <img src="images/gear-slots/amber/earring.png" alt="earring">
+        <img src="images/gear-slots/amber/necklace.png" alt="necklace">
+        <img src="images/gear-slots/amber/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/amber/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/amber/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+
+    <div class="variant">
+      <h3>Yellow</h3>
+      <div class="icons">
+        <img src="images/gear-slots/yellow/weapon.png" alt="weapon">
+        <img src="images/gear-slots/yellow/head.png" alt="head">
+        <img src="images/gear-slots/yellow/body.png" alt="body">
+        <img src="images/gear-slots/yellow/hands.png" alt="hands">
+        <img src="images/gear-slots/yellow/legs.png" alt="legs">
+        <img src="images/gear-slots/yellow/feet.png" alt="feet">
+        <img src="images/gear-slots/yellow/earring.png" alt="earring">
+        <img src="images/gear-slots/yellow/necklace.png" alt="necklace">
+        <img src="images/gear-slots/yellow/bracelet.png" alt="bracelet">
+        <img src="images/gear-slots/yellow/ring.png" alt="ring">
+      </div>
+      <div class="sample-row">
+        <img src="images/gear-slots/yellow/earring.png" alt="">
+        <span>Ears</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- UPGRADE MATERIAL ICONS -->
+  <!-- ============================================ -->
+  <h2>Upgrade Material Icons</h2>
+
+  <h3 style="color: #888; font-size: 13px; margin: 20px 0 10px 0;">Original (XIVAPI)</h3>
+  <p style="color: #666; font-size: 11px; margin-bottom: 15px;">
+    Source: XIVAPI CDN - full color with backgrounds
+  </p>
+  <div class="material-grid">
+    <div class="material-item">
+      <img src="https://xivapi.com/i/021000/021686.png" alt="Surgelight Twine">
+      <div class="material-info">
+        <div class="name">Surgelight Twine</div>
+        <div class="use">Augments armor (left-side)</div>
+        <div class="id">Item: 43554 | Icon: 021686</div>
+      </div>
+    </div>
+
+    <div class="material-item">
+      <img src="https://xivapi.com/i/027000/027636.png" alt="Surgelight Glaze">
+      <div class="material-info">
+        <div class="name">Surgelight Glaze</div>
+        <div class="use">Augments accessories (right-side)</div>
+        <div class="id">Item: 43555 | Icon: 027636</div>
+      </div>
+    </div>
+
+    <div class="material-item">
+      <img src="https://xivapi.com/i/027000/027637.png" alt="Surgelight Solvent">
+      <div class="material-info">
+        <div class="name">Surgelight Solvent</div>
+        <div class="use">Augments weapons</div>
+        <div class="id">Item: 43553 | Icon: 027637</div>
+      </div>
+    </div>
+
+    <div class="material-item">
+      <img src="https://xivapi.com/i/026000/026652.png" alt="Universal Tomestone">
+      <div class="material-info">
+        <div class="name">Universal Tomestone</div>
+        <div class="use">Exchange for tome weapons</div>
+        <div class="id">Item: 43548 | Icon: 026652</div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="color: #888; font-size: 13px; margin: 30px 0 10px 0;">Processed Silhouettes (Local)</h3>
+  <p style="color: #666; font-size: 11px; margin-bottom: 15px;">
+    Source: <code>public/images/materials/{variant}/</code> - generated via <code>scripts/process-material-icons.py</code>
+  </p>
+  <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+    <div class="variant">
+      <h3>White (Shaded)</h3>
+      <div class="icons">
+        <img src="images/materials/white/twine.png" alt="twine">
+        <img src="images/materials/white/glaze.png" alt="glaze">
+        <img src="images/materials/white/solvent.png" alt="solvent">
+        <img src="images/materials/white/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+    <div class="variant">
+      <h3>White (Flat)</h3>
+      <div class="icons">
+        <img src="images/materials/white-flat/twine.png" alt="twine">
+        <img src="images/materials/white-flat/glaze.png" alt="glaze">
+        <img src="images/materials/white-flat/solvent.png" alt="solvent">
+        <img src="images/materials/white-flat/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+    <div class="variant">
+      <h3>Gray</h3>
+      <div class="icons">
+        <img src="images/materials/gray/twine.png" alt="twine">
+        <img src="images/materials/gray/glaze.png" alt="glaze">
+        <img src="images/materials/gray/solvent.png" alt="solvent">
+        <img src="images/materials/gray/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+    <div class="variant">
+      <h3>Black</h3>
+      <div class="icons">
+        <img src="images/materials/black/twine.png" alt="twine">
+        <img src="images/materials/black/glaze.png" alt="glaze">
+        <img src="images/materials/black/solvent.png" alt="solvent">
+        <img src="images/materials/black/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+    <div class="variant">
+      <h3>Teal</h3>
+      <div class="icons">
+        <img src="images/materials/teal/twine.png" alt="twine">
+        <img src="images/materials/teal/glaze.png" alt="glaze">
+        <img src="images/materials/teal/solvent.png" alt="solvent">
+        <img src="images/materials/teal/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+    <div class="variant">
+      <h3>Gold-Vibrant</h3>
+      <div class="icons">
+        <img src="images/materials/gold-vibrant/twine.png" alt="twine">
+        <img src="images/materials/gold-vibrant/glaze.png" alt="glaze">
+        <img src="images/materials/gold-vibrant/solvent.png" alt="solvent">
+        <img src="images/materials/gold-vibrant/tomestone.png" alt="tomestone">
+      </div>
+    </div>
+  </div>
+
+  <p style="color: #666; font-size: 11px; margin-top: 15px;">
+    <strong>Note:</strong> Original PNGs for Photoshop editing are in <code>public/images/materials/original/</code>
+  </p>
+
+  <!-- ============================================ -->
+  <!-- JOB ICONS -->
+  <!-- ============================================ -->
+  <h2>Job Icons</h2>
+  <p style="color: #888; font-size: 12px; margin-bottom: 20px;">
+    Source: XIVAPI (loaded from CDN, used via <code>JobIcon</code> component)
+  </p>
+
+  <h3 style="color: #5a9fd4; font-size: 13px; margin: 20px 0 10px 0;">Tanks</h3>
+  <div class="job-grid">
+    <div class="job-item tank">
+      <img src="https://xivapi.com/cj/1/paladin.png" alt="PLD">
+      <span>Paladin</span>
+    </div>
+    <div class="job-item tank">
+      <img src="https://xivapi.com/cj/1/warrior.png" alt="WAR">
+      <span>Warrior</span>
+    </div>
+    <div class="job-item tank">
+      <img src="https://xivapi.com/cj/1/darkknight.png" alt="DRK">
+      <span>Dark Knight</span>
+    </div>
+    <div class="job-item tank">
+      <img src="https://xivapi.com/cj/1/gunbreaker.png" alt="GNB">
+      <span>Gunbreaker</span>
+    </div>
+  </div>
+
+  <h3 style="color: #5ad490; font-size: 13px; margin: 20px 0 10px 0;">Healers</h3>
+  <div class="job-grid">
+    <div class="job-item healer">
+      <img src="https://xivapi.com/cj/1/whitemage.png" alt="WHM">
+      <span>White Mage</span>
+    </div>
+    <div class="job-item healer">
+      <img src="https://xivapi.com/cj/1/scholar.png" alt="SCH">
+      <span>Scholar</span>
+    </div>
+    <div class="job-item healer">
+      <img src="https://xivapi.com/cj/1/astrologian.png" alt="AST">
+      <span>Astrologian</span>
+    </div>
+    <div class="job-item healer">
+      <img src="https://xivapi.com/i/062000/062040.png" alt="SGE">
+      <span>Sage</span>
+    </div>
+  </div>
+
+  <h3 style="color: #d45a5a; font-size: 13px; margin: 20px 0 10px 0;">Melee DPS</h3>
+  <div class="job-grid">
+    <div class="job-item melee">
+      <img src="https://xivapi.com/cj/1/monk.png" alt="MNK">
+      <span>Monk</span>
+    </div>
+    <div class="job-item melee">
+      <img src="https://xivapi.com/cj/1/dragoon.png" alt="DRG">
+      <span>Dragoon</span>
+    </div>
+    <div class="job-item melee">
+      <img src="https://xivapi.com/cj/1/ninja.png" alt="NIN">
+      <span>Ninja</span>
+    </div>
+    <div class="job-item melee">
+      <img src="https://xivapi.com/cj/1/samurai.png" alt="SAM">
+      <span>Samurai</span>
+    </div>
+    <div class="job-item melee">
+      <img src="https://xivapi.com/i/062000/062039.png" alt="RPR">
+      <span>Reaper</span>
+    </div>
+    <div class="job-item melee">
+      <img src="https://xivapi.com/i/062000/062041.png" alt="VPR">
+      <span>Viper</span>
+    </div>
+  </div>
+
+  <h3 style="color: #d4a05a; font-size: 13px; margin: 20px 0 10px 0;">Physical Ranged DPS</h3>
+  <div class="job-grid">
+    <div class="job-item ranged">
+      <img src="https://xivapi.com/cj/1/bard.png" alt="BRD">
+      <span>Bard</span>
+    </div>
+    <div class="job-item ranged">
+      <img src="https://xivapi.com/cj/1/machinist.png" alt="MCH">
+      <span>Machinist</span>
+    </div>
+    <div class="job-item ranged">
+      <img src="https://xivapi.com/cj/1/dancer.png" alt="DNC">
+      <span>Dancer</span>
+    </div>
+  </div>
+
+  <h3 style="color: #b45ad4; font-size: 13px; margin: 20px 0 10px 0;">Magical Ranged DPS</h3>
+  <div class="job-grid">
+    <div class="job-item caster">
+      <img src="https://xivapi.com/cj/1/blackmage.png" alt="BLM">
+      <span>Black Mage</span>
+    </div>
+    <div class="job-item caster">
+      <img src="https://xivapi.com/cj/1/summoner.png" alt="SMN">
+      <span>Summoner</span>
+    </div>
+    <div class="job-item caster">
+      <img src="https://xivapi.com/cj/1/redmage.png" alt="RDM">
+      <span>Red Mage</span>
+    </div>
+    <div class="job-item caster">
+      <img src="https://xivapi.com/i/062000/062042.png" alt="PCT">
+      <span>Pictomancer</span>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- COMPARISON SECTION -->
+  <!-- ============================================ -->
+  <h2>Visual Comparison</h2>
+
+  <div class="comparison">
+    <h3>Job Icons vs Gear Slot Icons (Various Variants)</h3>
+    <div class="comparison-row">
+      <div class="comparison-item">
+        <img src="https://xivapi.com/i/062000/062041.png" alt="VPR">
+        <span>Viper (Job)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/cj/1/paladin.png" alt="PLD">
+        <span>Paladin (Job)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/cj/1/dragoon.png" alt="DRG">
+        <span>Dragoon (Job)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/cj/1/bard.png" alt="BRD">
+        <span>Bard (Job)</span>
+      </div>
+    </div>
+    <div class="comparison-row" style="margin-top: 15px;">
+      <div class="comparison-item with-filter">
+        <img src="images/gear-slots/white/earring.png" alt="">
+        <span>White + brightness(3.0)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="images/gear-slots/gold-vibrant/earring.png" alt="">
+        <span>Gold-Vibrant</span>
+      </div>
+      <div class="comparison-item">
+        <img src="images/gear-slots/gold-bright/earring.png" alt="">
+        <span>Gold-Bright</span>
+      </div>
+      <div class="comparison-item">
+        <img src="images/gear-slots/amber/earring.png" alt="">
+        <span>Amber</span>
+      </div>
+      <div class="comparison-item">
+        <img src="images/gear-slots/yellow/earring.png" alt="">
+        <span>Yellow</span>
+      </div>
+      <div class="comparison-item">
+        <img src="images/gear-slots/teal/earring.png" alt="">
+        <span>Teal</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison" style="margin-top: 15px;">
+    <h3>Upgrade Material Icons</h3>
+    <div class="comparison-row">
+      <div class="comparison-item">
+        <img src="https://xivapi.com/i/021000/021686.png" alt="">
+        <span>Twine (armor)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/i/027000/027636.png" alt="">
+        <span>Glaze (accessories)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/i/027000/027637.png" alt="">
+        <span>Solvent (weapons)</span>
+      </div>
+      <div class="comparison-item">
+        <img src="https://xivapi.com/i/026000/026652.png" alt="">
+        <span>Universal Tomestone</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- NOTES -->
+  <!-- ============================================ -->
+  <div class="notes">
+    <strong>Usage Notes:</strong>
+    <ul>
+      <li>Gear slot icons are stored locally in <code>public/images/gear-slots/{variant}/</code></li>
+      <li>Current active variant: <code>white</code> with CSS <code>brightness-[3.0]</code> filter</li>
+      <li>To change variant, update <code>GEAR_SLOT_ICONS</code> in <code>types/index.ts</code></li>
+      <li>Job icons and material icons are loaded from XIVAPI CDN</li>
+      <li>Viper and Pictomancer use numeric icon format: <code>/i/062000/0620XX.png</code></li>
+      <li>Other jobs use classic format: <code>/cj/1/{jobname}.png</code> (lowercase)</li>
+    </ul>
+
+    <strong style="display: block; margin-top: 15px;">XIVAPI Icon URLs:</strong>
+    <ul>
+      <li>Surgelight Twine: <code>https://xivapi.com/i/021000/021686.png</code></li>
+      <li>Surgelight Glaze: <code>https://xivapi.com/i/027000/027636.png</code></li>
+      <li>Surgelight Solvent: <code>https://xivapi.com/i/027000/027637.png</code></li>
+      <li>Universal Tomestone: <code>https://xivapi.com/i/026000/026652.png</code></li>
+    </ul>
+
+    <strong style="display: block; margin-top: 15px;">Regenerate Gear Icons:</strong>
+    <pre style="background: #1a1a22; padding: 10px; border-radius: 6px; margin-top: 5px; overflow-x: auto;">cd frontend && python scripts/colorize-gear-icons.py</pre>
+  </div>
+</body>
+</html>

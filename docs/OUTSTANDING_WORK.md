@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
 **Last Updated:** January 16, 2026
-**Current Version:** v1.0.9 (Setup Wizard & Player Setup Banner - Core Complete, MembersPanel Enhancement Pending)
+**Current Version:** v1.0.10 (Loot Priority UX & Score Tooltips)
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---

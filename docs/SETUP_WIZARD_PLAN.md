@@ -499,6 +499,35 @@ All tests passing. PR ready for review.
 
 ---
 
+## Additional Work (v1.0.10)
+
+### Loot Priority UX Improvements ✅ COMPLETE
+
+While on this branch, additional UX improvements were made to the loot priority system:
+
+1. **Weapon Priority Tie Styling Redesign**
+   - Implemented "connector line" style (Style D) as default
+   - Vertical line with dots connecting tied players
+   - Collapsible tie sections with chevron toggle
+   - Winner info shown inline in header after rolling
+   - Removed comparison mockup code
+
+2. **Priority Score Breakdown Tooltips**
+   - Gear Priority: Shows Role Priority, Gear Needed (weighted), Loot Adjustment
+   - Weapon Priority: Shows Main Job Bonus, Role Priority, List Position
+   - Tooltips always visible on hover (not just after logging)
+
+3. **Gear Slot Icons in Priority Panels**
+   - Gear Priority sections now show generic gear slot icons
+   - Same icons as player cards without imported BiS
+
+**Files Modified:**
+- `components/loot/LootPriorityPanel.tsx` - Score tooltips, gear slot icons
+- `components/loot/WeaponPriorityList.tsx` - Connector tie style as default
+- `utils/priority.ts` - `calculatePriorityScoreWithBreakdown` function
+
+---
+
 ## Edge Cases & Handling
 
 ### Wizard Edge Cases
