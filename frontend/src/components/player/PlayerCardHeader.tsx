@@ -288,6 +288,7 @@ export function PlayerCardHeader({
           {/* Average iLv with slot breakdown tooltip */}
           {averageILv > 0 && (
             <Tooltip
+              delayDuration={200}
               content={
                 <div className="min-w-[140px]">
                   <div className="font-medium mb-1.5">Average Item Level</div>

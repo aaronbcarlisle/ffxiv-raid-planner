@@ -144,7 +144,7 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
             </Tooltip>
           </div>
         )}
-        <Tooltip content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
+        <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
           <span
             className="text-xs px-1.5 py-0.5 rounded cursor-help"
             style={{ backgroundColor: `${roleColor}30`, color: roleColor }}

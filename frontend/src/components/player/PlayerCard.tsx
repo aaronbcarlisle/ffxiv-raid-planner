@@ -355,7 +355,7 @@ export const PlayerCard = memo(function PlayerCard({
         if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
         tooltipTimeoutRef.current = setTimeout(() => {
           setCursorTooltip(pos);
-        }, 400);
+        }, 500);
       }
     } else {
       if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);

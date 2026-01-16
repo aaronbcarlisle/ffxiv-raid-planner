@@ -133,6 +133,7 @@ function SlotIcon({
     return (
       <>
         <Tooltip
+          delayDuration={200}
           content={
             hasLootEntry ? (
               <div>

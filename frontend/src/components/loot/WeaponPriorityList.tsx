@@ -321,7 +321,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                               </button>
                             </Tooltip>
                           )}
-                          <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                          <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                             <span
                               className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                               style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -385,7 +385,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       </button>
                     </Tooltip>
                   )}
-                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                  <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                       style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -557,7 +557,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                                     </button>
                                   </Tooltip>
                                 )}
-                                <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                                <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                                   <span
                                     className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                                     style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -624,7 +624,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                         </button>
                       </Tooltip>
                     )}
-                    <Tooltip content={<ScoreTooltip entry={entry} />}>
+                    <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                       <span
                         className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                         style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -748,7 +748,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       </Tooltip>
                     </div>
                   )}
-                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                  <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                       style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
