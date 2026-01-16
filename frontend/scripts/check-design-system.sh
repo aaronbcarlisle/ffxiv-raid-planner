@@ -204,6 +204,13 @@ check_pattern() {
     local count=$(echo "$results" | wc -l)
     total_violations=$((total_violations + count))
 
+    # Update category-specific counter (avoids bash return value 0-255 limit)
+    if [[ "$category" == "html" ]]; then
+      html_violations=$((html_violations + count))
+    elif [[ "$category" == "color" ]]; then
+      color_violations=$((color_violations + count))
+    fi
+
     if [[ "$SUMMARY_MODE" == true ]]; then
       # Track by file for summary mode
       while IFS= read -r line; do
@@ -232,10 +239,7 @@ check_pattern() {
       done
       echo ""
     fi
-
-    return $count
   fi
-  return 0
 }
 
 # ============================================================================
@@ -254,7 +258,6 @@ if [[ "$CHECK_HTML" == true ]]; then
   for pattern in "${!HTML_PATTERNS[@]}"; do
     replacement="${HTML_PATTERNS[$pattern]}"
     check_pattern "$pattern" "$replacement" "html" ""
-    html_violations=$((html_violations + $?))
   done
 fi
 
@@ -267,7 +270,6 @@ if [[ "$CHECK_COLORS" == true ]]; then
     replacement="${COLOR_PATTERNS[$pattern]}"
     # Case insensitive for hex colors
     check_pattern "$pattern" "$replacement" "color" "-i"
-    color_violations=$((color_violations + $?))
   done
 fi
 
