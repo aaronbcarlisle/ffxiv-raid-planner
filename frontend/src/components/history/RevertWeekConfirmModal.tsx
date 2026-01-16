@@ -154,8 +154,8 @@ export function RevertWeekConfirmModal({
 
         {/* Note about data preservation */}
         <p className="text-xs text-text-muted">
-          Note: This only changes the week calculation. Your logged data will remain intact and
-          will now appear under Week {week + 1} relative to the new calculation.
+          Note: This only changes the week calculation. Your logged data will remain intact but
+          will appear as &quot;future&quot; entries since the current week will be recalculated.
         </p>
 
         {/* Buttons */}

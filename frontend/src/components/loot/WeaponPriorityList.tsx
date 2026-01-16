@@ -38,7 +38,14 @@ function ScoreTooltip({ entry }: { entry: WeaponPriorityEntry }) {
   );
 }
 
-// Tie styling variants for comparison
+/**
+ * Visual styles for displaying tied players in weapon priority lists.
+ * - 'connector': Shows a vertical line connecting tied players (default)
+ * - 'border': Adds a colored border around tied entries
+ * - 'sameRank': Displays same rank number for all tied players
+ * - 'rankNotation': Shows "T1", "T2" notation for tied ranks
+ * - 'background': Uses background color to group tied players
+ */
 export type TieStyle = 'border' | 'sameRank' | 'rankNotation' | 'background' | 'connector';
 
 interface WeaponPriorityCardProps {
@@ -47,9 +54,14 @@ interface WeaponPriorityCardProps {
   priority: WeaponPriorityEntry[];
   showLogButtons: boolean;
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+  /** Visual style for displaying tied players. Defaults to 'connector'. */
   tieStyle?: TieStyle;
 }
 
+/**
+ * Displays weapon priority list for a specific job with tie visualization.
+ * Shows ranked players with their priority scores and optional log buttons.
+ */
 export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   job,
   jobName,
