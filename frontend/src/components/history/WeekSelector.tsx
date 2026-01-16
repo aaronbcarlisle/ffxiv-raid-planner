@@ -7,9 +7,11 @@
  * Includes "Add Week" button to navigate to current calculated week.
  */
 
+import { Target, RotateCcw, Plus, Loader2 } from 'lucide-react';
 import type { WeekEntryType } from '../../stores/lootTrackingStore';
 import { Select } from '../ui';
 import { Button } from '../primitives/Button';
+import { IconButton } from '../primitives/IconButton';
 import { Tooltip } from '../primitives/Tooltip';
 
 interface WeekSelectorProps {
@@ -111,15 +113,14 @@ export function WeekSelector({
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
         <Tooltip content="Revert to previous week (undo Start Next Week)">
-          <Button
-            variant="warning"
+          <IconButton
+            aria-label="Revert to previous week"
+            icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
             size="sm"
             onClick={onRevertWeek}
-            disabled={disabled}
-            loading={isRevertingWeek}
-          >
-            {isRevertingWeek ? 'Reverting...' : '← Revert Week'}
-          </Button>
+            disabled={disabled || isRevertingWeek}
+            className="bg-status-warning/20 border-status-warning/30 text-status-warning hover:bg-status-warning/30"
+          />
         </Tooltip>
       )}
 
@@ -160,32 +161,29 @@ export function WeekSelector({
 
       {/* Go to Current Week button - shown when viewing a past/future week */}
       {showGoToCurrentWeek && (
-        <Tooltip content={`Go to Week ${calculatedCurrentWeek}`}>
-          <Button
-            variant="ghost"
+        <Tooltip content={`Go to current week (Week ${calculatedCurrentWeek})`}>
+          <IconButton
+            aria-label={`Go to current week (Week ${calculatedCurrentWeek})`}
+            icon={<Target className="w-4 h-4" />}
+            variant="primary"
             size="sm"
             onClick={handleGoToCurrentWeek}
             disabled={disabled}
-            className="ml-2"
-          >
-            Go to Current Week
-          </Button>
+          />
         </Tooltip>
       )}
 
       {/* Start Next Week button - for manually advancing when auto-calculation is behind */}
       {onStartNextWeek && (
         <Tooltip content="Start the next week (use when week calculation is behind your actual raid schedule)">
-          <Button
-            variant="secondary"
+          <IconButton
+            aria-label="Start next week"
+            icon={isStartingNextWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            variant="default"
             size="sm"
             onClick={onStartNextWeek}
-            disabled={disabled}
-            loading={isStartingNextWeek}
-            className="ml-2"
-          >
-            {isStartingNextWeek ? 'Starting...' : 'Start Next Week'}
-          </Button>
+            disabled={disabled || isStartingNextWeek}
+          />
         </Tooltip>
       )}
     </div>
