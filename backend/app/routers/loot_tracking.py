@@ -40,6 +40,7 @@ from app.schemas import (
     PageBalanceResponse,
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
+    WeekOperationResponse,
 )
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
@@ -780,7 +781,7 @@ async def clear_player_page_ledger(
     await db.commit()
 
 
-@router.post("/{group_id}/tiers/{tier_id}/start-next-week")
+@router.post("/{group_id}/tiers/{tier_id}/start-next-week", response_model=WeekOperationResponse)
 async def start_next_week(
     group_id: str,
     tier_id: str,
@@ -847,7 +848,7 @@ async def start_next_week(
     }
 
 
-@router.post("/{group_id}/tiers/{tier_id}/revert-week")
+@router.post("/{group_id}/tiers/{tier_id}/revert-week", response_model=WeekOperationResponse)
 async def revert_week(
     group_id: str,
     tier_id: str,

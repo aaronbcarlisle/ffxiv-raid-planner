@@ -160,34 +160,31 @@ export function WeekSelector({
         </Button>
       </Tooltip>
 
-      <Tooltip
-        content={
-          <div>
-            <div className="font-medium">Week {currentWeek}</div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              {weekDataTypes && weekDataTypes.has(currentWeek)
-                ? `Logged: ${formatEntryTypes(weekDataTypes.get(currentWeek)!)}`
-                : 'No entries logged'}
+      <div className="flex items-center gap-2">
+        <Tooltip
+          content={
+            <div>
+              <div className="font-medium">Week {currentWeek}</div>
+              <div className="text-text-secondary text-xs mt-0.5">
+                {weekDataTypes && weekDataTypes.has(currentWeek)
+                  ? `Logged: ${formatEntryTypes(weekDataTypes.get(currentWeek)!)}`
+                  : 'No entries logged'}
+              </div>
             </div>
-            <div className="text-text-muted text-[10px] mt-1 border-t border-border-subtle pt-1">
-              Click to select a different week
-            </div>
-          </div>
-        }
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-text-muted">Week</span>
-          <Select
-            value={String(currentWeek)}
-            onChange={(value) => onWeekChange(Number(value))}
-            disabled={disabled}
-            options={displayedWeeks.map((week) => ({
-              value: String(week),
-              label: getWeekLabel(week),
-            }))}
-          />
-        </div>
-      </Tooltip>
+          }
+        >
+          <span className="text-sm text-text-muted cursor-help">Week</span>
+        </Tooltip>
+        <Select
+          value={String(currentWeek)}
+          onChange={(value) => onWeekChange(Number(value))}
+          disabled={disabled}
+          options={displayedWeeks.map((week) => ({
+            value: String(week),
+            label: getWeekLabel(week),
+          }))}
+        />
+      </div>
 
       <Tooltip
         content={

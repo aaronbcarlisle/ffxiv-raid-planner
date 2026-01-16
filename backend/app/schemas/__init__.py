@@ -21,6 +21,7 @@ from .loot_tracking import (
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
     TransactionTypeEnum,
+    WeekOperationResponse,
 )
 from .static_group import (
     AdminStaticGroupListItem,
@@ -95,6 +96,7 @@ __all__ = [
     "PageLedgerEntryCreate",
     "PageLedgerEntryResponse",
     "TransactionTypeEnum",
+    "WeekOperationResponse",
     # Static Group
     "AdminStaticGroupListItem",
     "AdminStaticGroupListResponse",

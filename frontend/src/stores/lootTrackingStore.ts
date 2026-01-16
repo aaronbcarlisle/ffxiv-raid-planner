@@ -572,11 +572,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         );
         set({ maxWeek: weekInfo.maxWeek });
       } catch (err) {
-        // Secondary fetch failed - use current week as fallback for maxWeek
-        // This ensures state is at least consistent with the revert operation
-        logger.warn('Failed to fetch maxWeek after revertWeek, using fallback:', err);
-        const { maxWeek } = get();
-        set({ maxWeek: Math.max(maxWeek, newWeek) });
+        // Secondary fetch failed - don't update maxWeek, it will sync on next page load.
+        // Using Math.max wouldn't work for revert since week decreases.
+        logger.warn('Failed to fetch maxWeek after revertWeek:', err);
       }
       return newWeek;
     } catch (error) {

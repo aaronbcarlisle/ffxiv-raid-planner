@@ -206,3 +206,10 @@ class MaterialBalanceResponse(CamelModel):
     glaze: int  # Total glaze received
     solvent: int  # Total solvent received
     universal_tomestone: int  # Total universal tomestones received
+
+
+class WeekOperationResponse(CamelModel):
+    """Response schema for week management operations (start-next-week, revert-week)"""
+
+    current_week: int
+    week_start_date: str
