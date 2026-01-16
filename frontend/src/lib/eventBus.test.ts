@@ -295,14 +295,15 @@ describe('eventBus integration', () => {
   });
 
   it('handles unsubscribe during emit', () => {
-    let unsubscribe: (() => void) | undefined;
+    // Using holder pattern to allow callback to reference unsubscribe before assignment
+    const holder: { unsubscribe?: () => void } = {};
 
     const callback1 = vi.fn(() => {
-      if (unsubscribe) unsubscribe();
+      if (holder.unsubscribe) holder.unsubscribe();
     });
     const callback2 = vi.fn();
 
-    unsubscribe = eventBus.on('during-emit', callback1);
+    holder.unsubscribe = eventBus.on('during-emit', callback1);
     eventBus.on('during-emit', callback2);
 
     // First emit - callback1 runs and unsubscribes itself

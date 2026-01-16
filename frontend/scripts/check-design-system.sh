@@ -21,7 +21,7 @@
 # See docs/UI_COMPONENTS.md for the full component inventory.
 #
 
-set -e
+# Note: Don't use set -e here - check_pattern returns violation count which would exit early
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/../src"
@@ -156,6 +156,9 @@ EXCLUDE_FILES=(
   "IconButton.tsx"      # The component itself
   "index.css"           # CSS definitions
   "tailwind.config.ts"  # Tailwind configuration
+  "CodeBlock.tsx"       # Prism syntax highlighting needs hardcoded colors
+  "loot-tables.ts"      # Floor color definitions
+  "releaseNotes.ts"     # Color mentions in prose content
   "*.test.ts"           # Test files
   "*.test.tsx"          # Test files
 )
@@ -190,9 +193,12 @@ check_pattern() {
   local case_flag="$4"  # Optional: -i for case insensitive
 
   # Use grep to find violations, excluding known exceptions
-  # Also filter out lines with design-system-ignore comment
+  # Also filter out:
+  # - Lines with design-system-ignore comment
+  # - JSDoc comment lines (starting with *)
+  # - Single-line comments (starting with //)
   local grep_cmd="grep -rn $case_flag \"$pattern\" \"$SRC_DIR\" --include=\"*.tsx\" --include=\"*.ts\" $EXCLUDE_ARGS 2>/dev/null || true"
-  local results=$(eval "$grep_cmd" | grep -v "design-system-ignore" || true)
+  local results=$(eval "$grep_cmd" | grep -v "design-system-ignore" | grep -v ':[[:space:]]*\*' | grep -v ':[[:space:]]*//' || true)
 
   if [[ -n "$results" ]]; then
     local count=$(echo "$results" | wc -l)

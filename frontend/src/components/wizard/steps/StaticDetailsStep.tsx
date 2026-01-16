@@ -5,6 +5,7 @@
  */
 
 import { RAID_TIERS } from '../../../gamedata/raid-tiers';
+import { Input, Select, Checkbox, Label } from '../../ui';
 
 interface StaticDetailsStepProps {
   staticName: string;
@@ -27,41 +28,34 @@ export function StaticDetailsStep({
     <div className="space-y-6">
       {/* Static Name */}
       <div>
-        <label htmlFor="static-name" className="block text-sm font-medium text-text-primary mb-2">
-          Static Name <span className="text-status-error">*</span>
-        </label>
-        <input
+        <Label htmlFor="static-name" required>
+          Static Name
+        </Label>
+        <Input
           id="static-name"
-          type="text"
           value={staticName}
-          onChange={(e) => onStaticNameChange(e.target.value)}
+          onChange={onStaticNameChange}
           placeholder="Enter your static's name"
-          className="w-full px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
           autoFocus
+          helperText="Choose a name that your team will recognize"
         />
-        <p className="text-xs text-text-muted mt-1">
-          Choose a name that your team will recognize
-        </p>
       </div>
 
       {/* Tier Selection */}
       <div>
-        <label htmlFor="tier-select" className="block text-sm font-medium text-text-primary mb-2">
-          Raid Tier <span className="text-status-error">*</span>
-        </label>
-        <select
+        <Label htmlFor="tier-select" required>
+          Raid Tier
+        </Label>
+        <Select
           id="tier-select"
           value={tierId}
-          onChange={(e) => onTierIdChange(e.target.value)}
-          className="w-full px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
-        >
-          <option value="">Select a tier...</option>
-          {RAID_TIERS.map((tier) => (
-            <option key={tier.id} value={tier.id}>
-              {tier.name} ({tier.shortName})
-            </option>
-          ))}
-        </select>
+          onChange={onTierIdChange}
+          placeholder="Select a tier..."
+          options={RAID_TIERS.map((tier) => ({
+            value: tier.id,
+            label: `${tier.name} (${tier.shortName})`,
+          }))}
+        />
         <p className="text-xs text-text-muted mt-1">
           Select which raid tier this static will progress through
         </p>
@@ -69,22 +63,13 @@ export function StaticDetailsStep({
 
       {/* Visibility Toggle */}
       <div>
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
-            checked={isPublic}
-            onChange={(e) => onIsPublicChange(e.target.checked)}
-            className="w-4 h-4 rounded border-border-default text-accent focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface-base cursor-pointer"
-          />
-          <div>
-            <span className="text-sm font-medium text-text-primary group-hover:text-accent transition-colors">
-              Make this static public
-            </span>
-            <p className="text-xs text-text-muted mt-0.5">
-              Public statics can be discovered by anyone with the share link
-            </p>
-          </div>
-        </label>
+        <Checkbox
+          id="is-public"
+          checked={isPublic}
+          onChange={onIsPublicChange}
+          label="Make this static public"
+          description="Public statics can be discovered by anyone with the share link"
+        />
       </div>
 
       {/* Info box */}

@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom';
 import { X, MoreHorizontal } from 'lucide-react';
 import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
+import { Label } from '../ui/Label';
 import { BiSImportModal } from '../player/BiSImportModal';
 import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
@@ -257,9 +258,9 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
 
         {/* Job quick-select buttons */}
         <div className="space-y-1.5">
-          <label className="block text-xs text-text-muted">
+          <Label size="sm" className="mb-0">
             Select Job for: <span className={`text-role-${player.role} font-medium`}>{roleDisplayName}</span>
-          </label>
+          </Label>
           <div ref={jobButtonsRef} className="flex flex-wrap gap-2">
             {roleJobs.map((jobInfo, idx) => (
               <button

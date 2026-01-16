@@ -130,7 +130,9 @@ export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelp
         <p className="text-xs text-text-muted">
           Shortcuts disabled when typing or in modals
         </p>
-        <label className="flex items-center gap-2 cursor-pointer">
+        <label // design-system-ignore - toggle switch wrapper, not a form field label
+          className="flex items-center gap-2 cursor-pointer"
+        >
           <span className="text-xs text-text-secondary">Enable shortcuts</span>
           <button
             type="button"

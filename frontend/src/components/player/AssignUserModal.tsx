@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal, Input, Checkbox, Select, type SelectOption } from '../ui';
+import { Modal, Input, Checkbox, Select, Label, type SelectOption } from '../ui';
 import { Button } from '../primitives';
 import { X, Users } from 'lucide-react';
 import type { SnapshotPlayer, InteractedUser, AssignPlayerRequest } from '../../types';
@@ -193,9 +193,7 @@ export function AssignUserModal({
         {/* User dropdown (when not using manual input) */}
         {!useManualInput && (
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Select User
-            </label>
+            <Label>Select User</Label>
             {isLoading ? (
               <div className="text-sm text-text-muted">Loading users...</div>
             ) : (
@@ -218,9 +216,7 @@ export function AssignUserModal({
         {/* Manual Discord ID input (when using manual input) */}
         {useManualInput && (
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-2">
-              Discord User ID
-            </label>
+            <Label>Discord User ID</Label>
             <Input
               type="text"
               value={manualId}
@@ -259,9 +255,7 @@ export function AssignUserModal({
 
             {createMembership && (
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Role
-                </label>
+                <Label>Role</Label>
                 <Select
                   value={membershipRole}
                   onChange={(value) => setMembershipRole(value as 'member' | 'lead')}

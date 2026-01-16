@@ -60,7 +60,10 @@ export function StaticSwitcher({
   return (
     <Dropdown open={isOpen} onOpenChange={setIsOpen}>
       <DropdownTrigger>
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle">
+        {/* Radix DropdownMenu requires native button as trigger */}
+        <button // design-system-ignore
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
+        >
           <span className="font-display text-lg text-accent max-w-[200px] truncate">
             {currentGroup.name}
           </span>

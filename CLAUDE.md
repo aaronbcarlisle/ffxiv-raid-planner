@@ -93,11 +93,11 @@ pnpm tsc --noEmit     # Type check
 pnpm lint             # ESLint
 
 # Design System Check (run before committing UI changes)
-./frontend/scripts/check-design-system.sh           # Check all violations
+pnpm check:design-system                            # Check all violations (preferred)
+pnpm check:design-system:strict                     # Fail on violations (for CI)
 ./frontend/scripts/check-design-system.sh --html    # Only check raw HTML elements
 ./frontend/scripts/check-design-system.sh --colors  # Only check hardcoded colors
 ./frontend/scripts/check-design-system.sh --summary # Group violations by file
-./frontend/scripts/check-design-system.sh --strict  # Fail on violations (for CI)
 
 # Raid Tier Banners
 cd frontend && python scripts/blend_tier_banners.py           # Regenerate banners from floor images
@@ -912,6 +912,22 @@ useGroupTiers()          // All tiers for current group
 - **Loot Logging** - Historical loot tracking with week navigation
 - **Book/Page Tracking** - Floor-based book earning and spending ledger
 - **Invitation System** - Invite links with role/expiration/max uses
+
+---
+
+## CI/CD
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs on PRs to main:
+
+| Check | Command | Failure Behavior |
+|-------|---------|------------------|
+| Type check | `pnpm tsc --noEmit` | Blocks merge |
+| Lint | `pnpm lint` | Blocks merge |
+| Design system | `pnpm check:design-system:strict` | Blocks merge |
+| Tests | `pnpm test` | Blocks merge |
+| Build | `pnpm build` | Blocks merge |
+
+**Design system violations will fail CI.** Run `pnpm check:design-system` locally before pushing.
 
 ---
 

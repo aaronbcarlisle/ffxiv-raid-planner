@@ -178,8 +178,9 @@ describe('Layout Shift Prevention Pattern', () => {
     // but visually hidden when not active
     expect(className).toBe('invisible');
 
-    // When visible
-    const visibleClassName = true ? '' : 'invisible';
+    // When visible - demonstrates the pattern with isVisible=true
+    const isVisibleTrue = true;
+    const visibleClassName = isVisibleTrue ? '' : 'invisible';
     expect(visibleClassName).toBe('');
   });
 
