@@ -91,6 +91,17 @@ export function AssignUserModal({
   const [showReassignConfirm, setShowReassignConfirm] = useState(false);
   const [pendingReassignUserId, setPendingReassignUserId] = useState<string | null>(null);
 
+  // Reset state when player changes (defensive - in case modal stays mounted between uses)
+  useEffect(() => {
+    setSelectedUserId(player.userId || '');
+    setUseManualInput(false);
+    setManualId('');
+    setManualIdError(null);
+    setCreateMembership(false);
+    setShowReassignConfirm(false);
+    setPendingReassignUserId(null);
+  }, [player.id, player.userId]);
+
   // Build a map of userId -> player name for existing assignments (excluding current player)
   const userAssignments = useMemo(() => {
     const map = new Map<string, string>();
