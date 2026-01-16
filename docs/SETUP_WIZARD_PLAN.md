@@ -9,6 +9,17 @@ This plan addresses the unintuitive static creation process by implementing:
 
 ## Design Decisions (User Confirmed)
 
+### Session 1.5 UX Improvements (New)
+| Feature | Implementation |
+|---------|----------------|
+| Default tier | Pre-select RAID_TIERS[0] (latest tier) |
+| Job selection | Role-specific quick-select buttons + "Other" fallback |
+| Dropdown rendering | Portal or z-index fix to prevent modal shift |
+| Keyboard nav | Full Tab/Enter/Arrow support through roster |
+| Navigation footer | Sticky at bottom, always visible |
+
+### Original Decisions
+
 | Decision | Choice |
 |----------|--------|
 | BiS in wizard | Button opens existing BiSImportModal (lightweight) |
@@ -116,7 +127,7 @@ interface WizardPlayer {
 
 #### Prompt for Session 1
 ```
-Continue implementing the Static Setup Wizard from the plan at docs/SETUP_WIZARD_PLAN.md
+Continue implementing the Static Setup Wizard from the plan at /home/serapis/.claude/plans/compressed-purring-llama.md
 
 This session focuses on: Wizard Foundation & Steps 1-2
 
@@ -162,6 +173,116 @@ Next session: Implement Steps 3-4 and full submission flow.
 
 ---
 
+### Session 1.5: UX Polish & Refinements
+**Model:** Sonnet
+**Estimated Scope:** ~200-300 lines of modifications
+
+#### Tasks
+1. **Default to Latest Tier** - Pre-select current tier in StaticDetailsStep
+2. **Job Quick-Select Buttons** - Add role-specific job buttons to RosterSlot
+3. **Fix Dropdown Z-Index** - Ensure JobPicker renders outside modal scroll container
+4. **Keyboard Navigation** - Full keyboard support for roster slots
+5. **Sticky Navigation Footer** - Make Back/Next buttons always visible
+
+#### Detailed Changes
+
+**1. StaticDetailsStep - Default Tier**
+- Get current tier from `RAID_TIERS[0]` (always first in array)
+- Pre-populate `tierId` in wizard state initialization
+- Show selected tier with ability to change (not hidden)
+
+**2. RosterSlot - Job Quick-Select**
+- Show role-specific job icons as toggle buttons (similar to existing JobPicker with `templateRole`)
+- For tanks: PLD, WAR, DRK, GNB buttons + "Other"
+- For healers: WHM, SCH, AST, SGE buttons + "Other"
+- For melee: MNK, DRG, NIN, SAM, RPR, VPR buttons + "Other"
+- For ranged: BRD, MCH, DNC buttons + "Other"
+- For casters: BLM, SMN, RDM, PCT buttons + "Other"
+- "Other" opens full JobPicker dropdown
+- Replace button-to-open-picker with inline quick-select
+
+**3. JobPicker Portal Fix**
+- Ensure JobPicker dropdown uses `createPortal` to render at document root
+- Or use proper z-index layering (z-50+ to render above modal backdrop)
+- Prevents modal content from shifting when picker expands
+
+**4. Keyboard Navigation**
+- Tab order: name input → job buttons → BiS button → next slot
+- Enter key on job button selects that job and focuses next slot
+- Arrow keys navigate between job buttons
+- Escape closes expanded JobPicker
+- Auto-focus next slot's name input after job selection
+
+**5. Sticky Footer in Modal**
+- Modify SetupWizard to split modal content into:
+  - Scrollable content area (WizardProgress + step content)
+  - Fixed footer (WizardNavigation)
+- Use flex layout: `flex flex-col` with `flex-1 overflow-y-auto` for content
+- Footer stays at bottom regardless of scroll position
+
+#### Prompt for Session 1.5
+```
+Continue implementing the Static Setup Wizard from the plan at docs/SETUP_WIZARD_PLAN.md
+
+This session focuses on: UX Polish & Refinements (Session 1.5)
+
+Prerequisites from Session 1:
+- Wizard foundation and Steps 1-2 implemented
+- Basic functionality working
+
+Tasks:
+1. StaticDetailsStep.tsx - Default to latest tier:
+   - Initialize tierId with RAID_TIERS[0].id in SetupWizard state
+   - Keep tier selector visible but pre-populated
+
+2. RosterSlot.tsx - Add job quick-select buttons:
+   - Show role-specific job icons as clickable buttons
+   - Use existing getJobsByRole() to get jobs for player's role
+   - Display job icons in a horizontal row with hover states
+   - Add "Other Jobs" button that opens full JobPicker
+   - Replace current button-to-open-picker with inline buttons
+
+3. JobPicker.tsx - Fix z-index/portal:
+   - Ensure dropdown renders above modal backdrop
+   - Use z-index z-[100] or higher
+   - Test that modal content doesn't shift when picker opens
+
+4. RosterSlot.tsx - Keyboard navigation:
+   - Implement proper tab order through slots
+   - Add Enter key handler on job buttons to select and advance
+   - Auto-focus next slot's name input after job selection
+   - Add onKeyDown handlers for navigation
+
+5. SetupWizard.tsx - Sticky navigation footer:
+   - Restructure modal content with flex layout
+   - Make step content scrollable: overflow-y-auto flex-1
+   - Keep WizardNavigation fixed at bottom
+   - Test with short screens to verify footer stays visible
+
+Run build and test keyboard navigation thoroughly.
+```
+
+#### Handoff for Session 2
+```
+Session 1.5 Complete. UX refinements implemented.
+
+Changes made:
+- StaticDetailsStep defaults to latest tier (still changeable)
+- RosterSlot has inline job quick-select buttons per role
+- JobPicker z-index fixed, no modal content shift
+- Full keyboard navigation working (Tab, Enter, Arrow keys)
+- Navigation footer is sticky, always visible
+
+Current state:
+- Wizard UX is polished and keyboard-accessible
+- Default selections reduce clicks for common case
+- Ready for Steps 3-4 implementation
+
+Next session: Implement Steps 3-4 and full submission flow.
+```
+
+---
+
 ### Session 2: Steps 3-4 & Submission Flow
 **Model:** Sonnet
 **Estimated Scope:** ~500-700 lines
@@ -177,7 +298,7 @@ Next session: Implement Steps 3-4 and full submission flow.
 
 #### Prompt for Session 2
 ```
-Continue implementing the Static Setup Wizard from the plan at docs/SETUP_WIZARD_PLAN.md
+Continue implementing the Static Setup Wizard from the plan at /home/serapis/.claude/plans/compressed-purring-llama.md
 
 This session focuses on: Steps 3-4 & Submission Flow
 
@@ -250,7 +371,7 @@ Next session: PlayerCard action buttons.
 
 #### Prompt for Session 3
 ```
-Continue implementing the Static Setup Wizard features from the plan at docs/SETUP_WIZARD_PLAN.md
+Continue implementing the Static Setup Wizard features from the plan at /home/serapis/.claude/plans/compressed-purring-llama.md
 
 This session focuses on: PlayerCard Action Buttons
 
@@ -319,7 +440,7 @@ Next session: MembersPanel linked card dropdown.
 
 #### Prompt for Session 4
 ```
-Continue implementing the Static Setup Wizard features from the plan at docs/SETUP_WIZARD_PLAN.md
+Continue implementing the Static Setup Wizard features from the plan at /home/serapis/.claude/plans/compressed-purring-llama.md
 
 This session focuses on: MembersPanel Enhancement & Final Polish
 
