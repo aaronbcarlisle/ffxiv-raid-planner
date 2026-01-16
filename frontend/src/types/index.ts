@@ -517,6 +517,7 @@ export interface InvitationPreview {
   inviteCode: string;
   staticGroupName: string;
   staticGroupId: string;
+  shareCode: string;  // For navigation to group page
   role: MemberRole;
   isValid: boolean;
   expiresAt?: string;

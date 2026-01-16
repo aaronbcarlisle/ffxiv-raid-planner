@@ -12,11 +12,12 @@ def to_camel(string: str) -> str:
 
 
 class CamelModel(BaseModel):
-    """Base model with camelCase aliases"""
+    """Base model with camelCase aliases for JSON serialization"""
 
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
+        serialize_by_alias=True,  # Ensure JSON output uses camelCase
     )
 
 
