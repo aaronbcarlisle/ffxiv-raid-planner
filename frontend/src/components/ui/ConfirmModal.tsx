@@ -89,7 +89,7 @@ export function ConfirmModal({
           {title}
         </span>
       }
-      size="sm"
+      size="md"
     >
       <div className="space-y-4">
         {/* Warning/Info message */}

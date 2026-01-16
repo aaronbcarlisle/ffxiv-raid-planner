@@ -2,109 +2,159 @@
 
 ## Branch: `feature/setup-wizard`
 
-## Last Session: Session 1.5+ (Keyboard Navigation & Focus Polish)
+## Last Session: Session 2 (Steps 3-4 & Submission Flow)
 
 ### Completed This Session
 
-1. **Auto-focus first player slot** - When switching from Details to Roster step, first slot's name input is automatically focused
+1. **InviteMembersStep.tsx** - Step 3 implementation:
+   - Role selector (member/lead/viewer) for invite recipients
+   - Skip invite option with checkbox
+   - Preview of invite link (actual link generated after creation)
+   - Helpful tips about invite management
 
-2. **JobPicker upward dropdown fix** - Fixed keyboard navigation for dropdowns that open upward:
-   - Double `flex-col-reverse` (container + each category section) ensures index 0 is at visual bottom
-   - Up/Down arrows now move in correct visual direction
-   - Scroll position starts at bottom (tanks visible, closest to search)
+2. **ReviewStep.tsx** - Step 4 implementation:
+   - Static details summary (name, tier, visibility, invite role)
+   - Roster grid showing all 8 slots with job icons
+   - Empty slot warnings (informational, not blocking)
+   - BiS import status indicators
+   - Error display with retry button
 
-3. **Focus flow improvements**:
-   - "Other Jobs" picker selection now focuses next slot (same as quick-select buttons)
-   - Last slot (R2) job selection focuses Next button directly
+3. **Full submission flow** in SetupWizard.tsx:
+   - `createGroup()` → Creates static group
+   - `createTier()` → Creates tier with default players
+   - `updatePlayer()` loop → Updates players with names/jobs/BiS data
+   - `createInvitation()` → Creates invite link (if not skipped)
+   - Navigation to `/group/{shareCode}` on success
 
-4. **Wizard keyboard shortcuts**:
-   - `Alt+Left` - Go back a step
-   - `Alt+Right` - Go forward a step (respects validation)
-   - `preventDefault()` stops Chrome's browser back/forward
+4. **Cancel confirmation dialog**:
+   - ConfirmModal prompts when closing with unsaved changes
+   - "Keep Editing" / "Discard" options
+   - Change detection for all wizard fields
 
-5. **Keyboard hint in footer** - Subtle hint between Back/Next buttons: `[Alt] + [←][→] to navigate`
+5. **Dashboard integration** already working:
+   - SetupWizard replaces simple create modal
+   - `onComplete` callback navigates to new static
 
-### Files Modified This Session
+### Files Created/Modified This Session
 
 | File | Changes |
 |------|---------|
-| `components/wizard/SetupWizard.tsx` | Added keyboard event listener for Alt+Arrow navigation |
-| `components/wizard/WizardNavigation.tsx` | Added keyboard shortcut hint with styled kbd elements |
-| `components/wizard/steps/RosterSetupStep.tsx` | Auto-focus first slot on mount, focus Next on last slot |
-| `components/wizard/RosterSlot.tsx` | Pass `shouldFocusNext=true` when selecting from "Other Jobs" |
-| `components/player/JobPicker.tsx` | Fixed upward dropdown keyboard nav with double flex-col-reverse |
+| `components/wizard/steps/InviteMembersStep.tsx` | New - Step 3 with role selector, skip option |
+| `components/wizard/steps/ReviewStep.tsx` | New - Step 4 with summary, roster preview |
+| `components/wizard/SetupWizard.tsx` | Updated - Full submission flow, cancel confirm |
+| `components/wizard/index.ts` | Updated - Export new step components |
 
 ### Current State
 
 - **Step 1 (Details)**: Fully functional - name, tier selector, public toggle
-- **Step 2 (Roster)**: Fully functional with polished UX - job quick-select, keyboard nav, proper focus flow
-- **Step 3 (Invite)**: Placeholder only
-- **Step 4 (Review)**: Placeholder only
-- **Submission**: Not implemented (placeholder alert)
+- **Step 2 (Roster)**: Fully functional - job quick-select, keyboard nav, BiS import
+- **Step 3 (Invite)**: Fully functional - role selector, skip option
+- **Step 4 (Review)**: Fully functional - summary, roster preview, warnings
+- **Submission**: Fully functional - creates group, tier, players, invitation
+- **Cancel confirm**: Fully functional - warns on discard
 
 ### Key Files Reference
 
 ```
 frontend/src/components/wizard/
-├── SetupWizard.tsx           # Main orchestrator, state, keyboard shortcuts
+├── SetupWizard.tsx           # Main orchestrator, state, submission flow
 ├── WizardProgress.tsx        # 4-step progress indicator
 ├── WizardNavigation.tsx      # Back/Next buttons + keyboard hint
 ├── RosterSlot.tsx            # Individual player slot with job picker
 ├── types.ts                  # WizardState, WizardPlayer interfaces
+├── index.ts                  # Barrel exports
 └── steps/
     ├── StaticDetailsStep.tsx # Step 1: Name + Tier + Public
     ├── RosterSetupStep.tsx   # Step 2: 8 player slots grid
-    ├── InviteMembersStep.tsx # Step 3: (TO BE IMPLEMENTED)
-    └── ReviewStep.tsx        # Step 4: (TO BE IMPLEMENTED)
+    ├── InviteMembersStep.tsx # Step 3: Invite role + skip option
+    └── ReviewStep.tsx        # Step 4: Summary + Create button
 ```
 
-### Known Issues / Notes
+### Submission Flow Detail
 
-- `frontend/src/gamedata/index.ts` and `raid-tiers.ts` have unrelated uncommitted changes (tier images)
-- Untracked files: `frontend/public/images/raid-tiers/`, `frontend/scripts/blend-tier-banners.py`
+```typescript
+// 1. Create static group
+const group = await createGroup(staticName, isPublic);
+
+// 2. Create tier (with 8 default players)
+const tier = await createTier(group.id, tierId);
+
+// 3. Update players with wizard data
+for (const wizardPlayer of players) {
+  const tierPlayer = tier.players.find(p => p.position === wizardPlayer.position);
+  if (tierPlayer && (wizardPlayer.name || wizardPlayer.job || wizardPlayer.bisLink)) {
+    await updatePlayer(group.id, tier.id, tierPlayer.id, {
+      name: wizardPlayer.name,
+      job: wizardPlayer.job,
+      role: getJobInfo(wizardPlayer.job)?.role,
+      bisLink: wizardPlayer.bisLink,
+      gear: wizardPlayer.gear,
+      configured: !!(wizardPlayer.name && wizardPlayer.job),
+    });
+  }
+}
+
+// 4. Create invitation (if not skipped)
+if (!skipInvite) {
+  await createInvitation(group.id, { role: inviteRole });
+}
+
+// 5. Navigate to new static
+navigate(`/group/${group.shareCode}`);
+```
 
 ---
 
-## Next Session: Session 2 - Steps 3-4 & Submission Flow
+## Next Session: Session 3 - PlayerCard Action Buttons
 
 ### Tasks
 
-1. **Build InviteMembersStep.tsx**
-   - Auto-generate member invite link display
-   - Copy button with feedback toast
-   - Role selector (default: member)
-   - "Skip for now" option
+1. **Create PlayerCardActions.tsx** in `/frontend/src/components/player/`
+   - Accepts: player, currentUserId, userRole, isGroupOwner, handlers
+   - Renders conditional buttons based on state
 
-2. **Build ReviewStep.tsx**
-   - Static name and tier summary
-   - Roster cards (8 slots showing name/job/BiS status)
-   - Empty slot warnings (info, not blocking)
-   - "Create Static" button
+2. **Button visibility logic:**
+   | State | Owner/Lead | Member |
+   |-------|------------|--------|
+   | Unclaimed | "Assign Ownership" | "Take Ownership" |
+   | Claimed by me, no BiS | "Import BiS" | "Import BiS" |
+   | Claimed by other | - | - |
 
-3. **Implement submission flow in SetupWizard.tsx**:
-   - `createGroup()` → `createTier()` → `addPlayer()` loop → `createInvitation()`
-   - Loading spinner during submission
-   - Error handling with retry option
-   - Navigate to `/group/{shareCode}` on success
+3. **Modify PlayerCard.tsx:**
+   - Add `<PlayerCardActions />` below header or in card footer
+   - "Assign Ownership" opens AssignUserModal
+   - "Take Ownership" calls existing onClaimPlayer
+   - "Import BiS" opens BiSImportModal
 
-4. **Add cancel confirmation** (ConfirmModal when closing mid-wizard)
+4. **Use existing Button component with variants:**
+   - "Assign Ownership": variant="secondary" with Link2 icon
+   - "Take Ownership": variant="secondary" with UserCheck icon
+   - "Import BiS": variant="secondary" with FileDown icon
 
-5. **Update Dashboard.tsx**:
-   - Replace simple create modal with `<SetupWizard />`
-   - Handle onComplete callback
+5. **Add tests** in PlayerCardActions.test.tsx for visibility logic
 
-### API Endpoints Used (Existing)
+### Files to Modify
 
-```
-POST /api/static-groups                    # Create static
-POST /api/static-groups/{id}/tiers         # Create tier
-POST .../tiers/{tierId}/players            # Add player (loop)
-PUT .../players/{playerId}                 # Update with BiS data
-POST /api/static-groups/{id}/invitations   # Create invite link
-```
+- `components/player/PlayerCardActions.tsx` (new)
+- `components/player/PlayerCardActions.test.tsx` (new)
+- `components/player/PlayerCard.tsx` (add action buttons)
 
-### Stores to Use
+---
 
-- `staticGroupStore.ts` - `createGroup()`
-- `tierStore.ts` - `createTier()`, `addPlayer()`, `updatePlayer()`
-- `invitationStore.ts` - `createInvitation()`
+## Session 4 - MembersPanel Enhancement & Final Polish
+
+### Tasks
+
+1. **Modify MembersPanel.tsx:**
+   - Add "Linked Card" dropdown to each member row
+   - Show available cards: unclaimed OR already claimed by this member
+   - On selection, call existing assign endpoint
+
+2. **Documentation updates:**
+   - Update CLAUDE.md Key Files section with new wizard components
+   - Add wizard patterns to Key Implementation Patterns
+   - Update OUTSTANDING_WORK.md if applicable
+
+3. **Final testing:**
+   - Run full test suite
+   - Manual testing of wizard flow
