@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fetch:gamedata": "tsx scripts/fetch-xivapi-data.ts"
+    "fetch:gamedata": "tsx scripts/fetch-xivapi-data.ts",
+    "check:design-system": "bash scripts/check-design-system.sh",
+    "check:design-system:strict": "bash scripts/check-design-system.sh --strict"
   },
   "dependencies": {
     "@dnd-kit/core": "6.1.0",

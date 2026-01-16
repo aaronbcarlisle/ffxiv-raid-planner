@@ -5,6 +5,8 @@
  * Supports floor filters (Who Needs It, Gear Priority) and role filters (Weapon Priority).
  */
 
+/* eslint-disable react-refresh/only-export-components -- Intentionally exports both component and config */
+
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 
 // Role configuration for Weapon Priority tab

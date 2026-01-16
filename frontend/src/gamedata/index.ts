@@ -28,6 +28,7 @@ export {
   sortJobsByRole,
   groupJobsByRole,
   getJobsForTemplateRole,
+  getHealerType,
   JOB_DISPLAY_NAMES,
   ROLE_CONFIG,
 } from './jobs';

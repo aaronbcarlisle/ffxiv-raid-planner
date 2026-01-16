@@ -234,16 +234,17 @@ export function TeamSummaryEnhanced({
     return result;
   }, [playerSummaries]);
 
-  if (playerSummaries.length === 0) {
-    return (
-      <div className="bg-surface-card rounded-lg border border-border-default p-8 text-center">
-        <p className="text-text-muted">No configured players to display</p>
-      </div>
-    );
-  }
-
   // Calculate aggregate stats for summary cards
+  // Must be before early return to comply with Rules of Hooks
   const aggregateStats = useMemo(() => {
+    if (playerSummaries.length === 0) {
+      return {
+        playerCount: 0,
+        gearPercent: 0,
+        booksProgress: { have: 0, need: 0 },
+        matsProgress: { have: 0, need: 0 },
+      };
+    }
     const totalBooksNeeded = totals.booksNeeded.I + totals.booksNeeded.II + totals.booksNeeded.III + totals.booksNeeded.IV;
     const totalBooksHave = totals.booksBalance.I + totals.booksBalance.II + totals.booksBalance.III + totals.booksBalance.IV;
     const totalMatsNeeded = totals.matsNeeded.twine + totals.matsNeeded.glaze + totals.matsNeeded.solvent;
@@ -256,6 +257,14 @@ export function TeamSummaryEnhanced({
       matsProgress: { have: totalMatsHave, need: totalMatsNeeded },
     };
   }, [totals, playerSummaries.length]);
+
+  if (playerSummaries.length === 0) {
+    return (
+      <div className="bg-surface-card rounded-lg border border-border-default p-8 text-center">
+        <p className="text-text-muted">No configured players to display</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-surface-card rounded-lg border border-border-default">

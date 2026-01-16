@@ -15,7 +15,7 @@ import {
   calculateEnhancedPriorityScore,
   calculateAverageDrops,
 } from '../../utils/lootCoordination';
-import { getRoleColor } from '../../gamedata';
+import { getRoleColor, type Role } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { FilterBar } from './FilterBar';
 import { WeaponPriorityList } from './WeaponPriorityList';
@@ -48,7 +48,7 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
   showLogButton,
   onLogClick,
 }: LootPriorityEntryProps) {
-  const roleColor = getRoleColor(entry.player.role as any);
+  const roleColor = getRoleColor(entry.player.role as Role);
   const displayScore = showEnhanced && entry.enhancedScore !== undefined
     ? entry.enhancedScore
     : entry.score;

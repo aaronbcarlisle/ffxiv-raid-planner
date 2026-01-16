@@ -219,6 +219,7 @@ async def get_invitation_preview(
         invite_code=invitation.invite_code,
         static_group_name=invitation.static_group.name,
         static_group_id=invitation.static_group_id,
+        share_code=invitation.static_group.share_code,
         role=MemberRoleEnum(invitation.role),
         is_valid=invitation.is_valid,
         expires_at=invitation.expires_at,

@@ -24,7 +24,7 @@
  * ```
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 
 /**
  * Returns a debounced version of the value that only updates
@@ -75,8 +75,11 @@ export function useDebouncedCallback<T extends (...args: Parameters<T>) => void>
   const callbackRef = useRef(callback);
   const argsRef = useRef<Parameters<T> | null>(null);
 
-  // Update callback ref on each render to avoid stale closures
-  callbackRef.current = callback;
+  // Update callback ref synchronously after render to avoid stale closures.
+  // useLayoutEffect runs synchronously after DOM mutations but before browser paint.
+  useLayoutEffect(() => {
+    callbackRef.current = callback;
+  });
 
   const cancel = useCallback(() => {
     if (timeoutRef.current) {

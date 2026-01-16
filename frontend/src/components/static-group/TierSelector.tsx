@@ -48,7 +48,10 @@ export function TierSelector({
   return (
     <Dropdown>
       <DropdownTrigger>
-        <button className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30 transition-colors">
+        {/* Radix DropdownMenu requires native button as trigger */}
+        <button // design-system-ignore
+          className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded hover:border-accent/30 transition-colors"
+        >
           <span className="text-text-primary text-sm">
             {currentTierInfo?.name || currentTierId || 'Select Tier'}
           </span>

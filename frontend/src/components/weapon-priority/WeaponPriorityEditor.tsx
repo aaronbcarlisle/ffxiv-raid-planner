@@ -59,18 +59,8 @@ export function WeaponPriorityEditor({
   }, [showJobSelector]);
 
   // Create function to add currently selected jobs (always uses latest ref value)
-  const addSelectedJobsRef2 = useRef(() => {
-    if (selectedJobsRef.current.length > 0) {
-      handleAddMultipleJobs(selectedJobsRef.current);
-    }
-  });
-
-  // Update the function ref when dependencies change
-  addSelectedJobsRef2.current = () => {
-    if (selectedJobsRef.current.length > 0) {
-      handleAddMultipleJobs(selectedJobsRef.current);
-    }
-  };
+  // Initialized as no-op, updated in useEffect after handleAddMultipleJobs is defined
+  const addSelectedJobsRef2 = useRef<() => void>(() => {});
 
   // Notify parent when selector state changes
   const updateJobSelectorState = (show: boolean, count: number) => {
@@ -128,6 +118,15 @@ export function WeaponPriorityEditor({
     selectedJobsRef.current = [];
     updateJobSelectorState(false, 0);
   };
+
+  // Update the function ref when handleAddMultipleJobs changes
+  useEffect(() => {
+    addSelectedJobsRef2.current = () => {
+      if (selectedJobsRef.current.length > 0) {
+        handleAddMultipleJobs(selectedJobsRef.current);
+      }
+    };
+  }, [handleAddMultipleJobs]);
 
   const handleRemoveJob = useCallback((job: string) => {
     const index = weaponPriorities.findIndex(wp => wp.job === job);

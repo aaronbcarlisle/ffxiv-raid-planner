@@ -444,25 +444,35 @@ function ReleaseCard({
 export default function ReleaseNotes() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeVersion, setActiveVersion] = useState(RELEASES[0]?.version || '');
+
+  // Initialize from URL hash if present (e.g., #v1.0.5)
+  // Note: Direct window.location.hash access is safe here as this is a client-only SPA (no SSR).
+  // useLocation().hash could be used but requires an extra re-render on initial load.
+  const initialVersion = (() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#v')) {
+      return hash.slice(2); // Remove #v
+    }
+    return RELEASES[0]?.version || '';
+  })();
+
+  const [activeVersion, setActiveVersion] = useState(initialVersion);
   const [shouldScrollNav, setShouldScrollNav] = useState(false);
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track expanded versions - Set allows multiple to be expanded
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(() => {
-    // Start with latest expanded by default
-    return new Set([RELEASES[0]?.version].filter(Boolean));
+    // Include hash version in initial expanded set
+    const versions = [RELEASES[0]?.version, initialVersion].filter(Boolean);
+    return new Set(versions);
   });
 
-  // Handle URL hash anchor on mount/change
+  // Handle URL hash anchor scrolling on mount/change
   useEffect(() => {
     if (location.hash && location.hash.startsWith('#v')) {
-      const version = location.hash.slice(2); // Remove #v
-      // Expand this version
-      setExpandedVersions(prev => new Set([...prev, version]));
-      setActiveVersion(version);
-      // Scroll to it after a small delay
+      // State is already set via initializers or handleVersionClick
+      // Just scroll to the element
       setTimeout(() => {
         const element = document.getElementById(location.hash.slice(1));
         if (element) {

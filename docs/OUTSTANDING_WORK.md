@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 11, 2026 (Validated against codebase)
+**Last Updated:** January 15, 2026 (Added lint technical debt section)
 **Current Version:** v1.0.8 (Admin Assignment & Modal Polish Complete)
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -14,8 +14,9 @@
 | **High (P1)** | 5 | 11 |
 | **Medium (P2)** | 14 | 22 |
 | **Low (P3)** | 8 | 15 |
+| **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 33 | ~51 hrs |
+| **Total** | 38 | ~62 hrs |
 
 ---
 
@@ -217,6 +218,69 @@
   2. Stale members on fetch failure - clear viewAsMembers on API failure
   3. View As state race condition - add cancellation (low impact)
 - **Effort:** 1 hour
+
+---
+
+## Technical Debt - Lint Issues (P3)
+
+**Added:** January 15, 2026
+**Current Error Count:** ~49 (down from 65 after quick fixes)
+
+These are ESLint errors that don't affect functionality but should be addressed for code quality.
+
+### TD-001: Explicit `any` Types (21 occurrences)
+- **Rule:** `@typescript-eslint/no-explicit-any`
+- **Files Affected:**
+  - `components/history/SectionedLogView.tsx` (~18 occurrences)
+  - Various other components (3 occurrences)
+- **Fix:** Add proper TypeScript types
+- **Effort:** 4 hours
+
+### TD-002: React Compiler Warnings (24 occurrences)
+- **Rule:** React compiler (react-compiler)
+- **Issues:**
+  - "Calling setState synchronously within an effect" (18)
+  - "Compilation Skipped: Existing memoization" (6)
+- **Files Affected:**
+  - Various docs pages (ApiCookbook, ApiDocs, CommonTasksDocs, etc.)
+  - AuthCallback.tsx, HistoryView.tsx, ReleaseBanner.tsx
+  - JobPicker.tsx, BiSImportModal.tsx, ContextMenu.tsx, TipsCarousel.tsx
+  - WeaponPriorityEditor.tsx, KeyboardShortcutsHelp.tsx, ReleaseNotes.tsx
+- **Fix:** Wrap setState calls in setTimeout or restructure effects
+- **Effort:** 3 hours
+
+### TD-003: React Hooks Dependency Warnings (11 warnings)
+- **Rule:** `react-hooks/exhaustive-deps`
+- **Files Affected:**
+  - `stores/lootTrackingStore.ts`
+  - `hooks/useLootActions.ts`, `hooks/useModal.ts`, `hooks/useDebounce.ts`
+  - `components/player/PlayerGrid.tsx`
+  - `components/team/TeamSummaryEnhanced.tsx`
+  - `components/loot/FilterBar.tsx`, `components/loot/LootPriorityPanel.tsx`
+- **Fix:** Review dependencies, add missing deps or refactor to avoid infinite loops
+- **Effort:** 2 hours
+
+### TD-004: React Refresh Export Warnings (5 occurrences)
+- **Rule:** `react-refresh/only-export-components`
+- **Files Affected:**
+  - `components/loot/RoleSection.tsx`
+  - `components/ui/ThreeStateCheckbox.tsx`
+  - `components/weapon-priority/WeaponJobSelector.tsx`
+  - Other files exporting constants alongside components
+- **Fix:** Move non-component exports to separate files
+- **Effort:** 1 hour
+
+### TD-005: Refs During Render (2 occurrences)
+- **Rule:** React compiler
+- **Files:** `components/history/WeeklyLootGrid.tsx`, `components/player/BiSImportModal.tsx`
+- **Fix:** Move ref access to effects or callbacks
+- **Effort:** 1 hour
+
+### Quick Wins Completed (January 15, 2026)
+- ✅ Added ESLint rule to ignore `_`-prefixed unused variables
+- ✅ Fixed 7 unused variable errors by adding `_` prefix
+- ✅ Fixed `prefer-const` error in eventBus.test.ts
+- ✅ Fixed `no-constant-condition` error in uxHelpers.test.ts
 
 ---
 

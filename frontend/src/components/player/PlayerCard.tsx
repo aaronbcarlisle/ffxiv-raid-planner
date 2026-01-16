@@ -206,7 +206,7 @@ export const PlayerCard = memo(function PlayerCard({
 
       // Just update gear if no weapon priority sync needed
       await onUpdate({ gear: newGear });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
   };
@@ -214,7 +214,7 @@ export const PlayerCard = memo(function PlayerCard({
   const handleTomeWeaponChange = async (updates: Partial<typeof player.tomeWeapon>) => {
     try {
       await onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
   };
@@ -242,7 +242,7 @@ export const PlayerCard = memo(function PlayerCard({
         if (updateBiS) {
           setShowBiSImport(true);
         }
-      } catch (error) {
+      } catch (_error) {
         // Error already handled by api.ts (toast shown)
       }
     }
@@ -269,7 +269,7 @@ export const PlayerCard = memo(function PlayerCard({
   const handleNameChange = async (name: string) => {
     try {
       await onUpdate({ name });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
   };
@@ -277,7 +277,7 @@ export const PlayerCard = memo(function PlayerCard({
   const handlePositionChange = async (position: RaidPosition | undefined) => {
     try {
       await onUpdate({ position: position ?? null });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
   };
@@ -285,7 +285,7 @@ export const PlayerCard = memo(function PlayerCard({
   const handleTankRoleChange = async (tankRole: TankRole | undefined) => {
     try {
       await onUpdate({ tankRole: tankRole ?? null });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
   };
@@ -434,6 +434,10 @@ export const PlayerCard = memo(function PlayerCard({
     onUpdate,
     onClaimPlayer,
     onReleasePlayer,
+    isGroupOwner,
+    isAdminAccess,
+    onOwnerAssignPlayer,
+    onAdminAssignPlayer,
   ]);
 
   // Prevent focus flash when Shift+Click starts

@@ -135,6 +135,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     const actionable = getActionableIndices();
     if (actionable.length > 0) {
       const firstIndex = actionable[0];
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Initialize focus state on mount
       setFocusedIndex(firstIndex);
       // Small delay to ensure refs are set
       requestAnimationFrame(() => {

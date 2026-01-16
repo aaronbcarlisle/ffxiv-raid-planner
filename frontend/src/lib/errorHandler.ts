@@ -165,3 +165,11 @@ export function isPermissionError(error: unknown): boolean {
 export function isNotFoundError(error: unknown): boolean {
   return isHttpError(error, 404);
 }
+
+/**
+ * Extract error message from unknown error type
+ * Useful for catch blocks where error is typed as unknown
+ */
+export function getErrorMessage(error: unknown): string {
+  return parseApiError(error).message;
+}

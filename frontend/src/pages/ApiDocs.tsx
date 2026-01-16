@@ -327,17 +327,25 @@ function NavSidebar({
 export default function ApiDocs() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('overview');
+  // Initialize from URL hash if present
+  const [activeSection, setActiveSection] = useState(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      if (NAV_SECTIONS.some(s => s.id === id)) return id;
+    }
+    return 'overview';
+  });
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
 
-  // Handle URL hash anchor on mount/change
+  // Handle URL hash anchor scrolling on mount/change
   useEffect(() => {
     if (location.hash) {
       const id = location.hash.slice(1); // Remove #
       const element = document.getElementById(id);
       if (element) {
-        setActiveSection(id);
+        // State is already set via initializer or handleNavClick
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
         }, 100);

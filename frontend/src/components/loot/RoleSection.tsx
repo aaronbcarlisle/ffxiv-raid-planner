@@ -10,6 +10,8 @@
  * - Right-click for Expand All / Collapse All context menu
  */
 
+/* eslint-disable react-refresh/only-export-components -- Intentionally exports both component and config */
+
 import { useState, type ReactNode, type MouseEvent } from 'react';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react';

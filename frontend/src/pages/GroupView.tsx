@@ -65,6 +65,7 @@ export function GroupView() {
     setViewMode,
     groupView,
     setGroupView,
+    setGroupViewState,
     subsView,
     setSubsView,
     selectedFloor,
@@ -188,6 +189,29 @@ export function GroupView() {
       setSortPresetState('standard');
     }
   }, [currentTier?.tierId, searchParams, setSortPresetState]);
+
+  // Load groupView (G1/G2) from localStorage when group changes
+  useEffect(() => {
+    if (!currentGroup?.id) return;
+    const urlGroups = searchParams.get('groups');
+    // Only load from localStorage if no URL param is set
+    if (urlGroups === 'true' || urlGroups === 'false') {
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`group-view-groups-${currentGroup.id}`);
+      if (saved === 'true') {
+        setGroupViewState(true);
+      } else if (saved === 'false') {
+        setGroupViewState(false);
+      } else {
+        // Default to true (ON) for new statics
+        setGroupViewState(true);
+      }
+    } catch {
+      setGroupViewState(true);
+    }
+  }, [currentGroup?.id, searchParams, setGroupViewState]);
 
   // Handle player deep link - scroll to and highlight player
   useEffect(() => {
@@ -568,7 +592,7 @@ export function GroupView() {
                 />
                 <GroupViewToggle
                   enabled={groupView}
-                  onToggle={setGroupView}
+                  onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
                   disabled={!hasPositionData}
                 />
                 {hasSubstitutes && (

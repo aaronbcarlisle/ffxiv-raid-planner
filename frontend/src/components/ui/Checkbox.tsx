@@ -5,11 +5,13 @@ interface CheckboxProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
+  /** Helper text shown below the label */
+  description?: string;
   disabled?: boolean;
   className?: string;
 }
 
-export function Checkbox({ id, checked, onChange, label, disabled, className = '' }: CheckboxProps) {
+export function Checkbox({ id, checked, onChange, label, description, disabled, className = '' }: CheckboxProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent native checkbox behavior
     e.stopPropagation();
@@ -70,7 +72,12 @@ export function Checkbox({ id, checked, onChange, label, disabled, className = '
           />
         )}
       </div>
-      {label && <span className="text-text-secondary text-sm">{label}</span>}
+      {(label || description) && (
+        <div className="flex flex-col">
+          {label && <span className="text-text-secondary text-sm">{label}</span>}
+          {description && <span className="text-text-muted text-xs mt-0.5">{description}</span>}
+        </div>
+      )}
     </label>
   );
 }

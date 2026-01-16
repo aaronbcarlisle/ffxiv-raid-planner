@@ -14,12 +14,14 @@ import { Button } from '../primitives';
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'default';
   /** Optional custom icon for the title. If not provided, uses variant-based default. */
   icon?: ReactNode;
+  /** Modal size. Defaults to 'md'. */
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   onConfirm: () => Promise<void> | void;
   onCancel: () => void;
 }
@@ -32,6 +34,7 @@ export function ConfirmModal({
   cancelLabel = 'Cancel',
   variant = 'danger',
   icon,
+  size = 'md',
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -89,7 +92,7 @@ export function ConfirmModal({
           {title}
         </span>
       }
-      size="sm"
+      size={size}
     >
       <div className="space-y-4">
         {/* Warning/Info message */}
@@ -103,7 +106,7 @@ export function ConfirmModal({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           )}
-          <p className="text-sm text-text-primary">{message}</p>
+          <div className="text-sm text-text-primary">{message}</div>
         </div>
 
         {/* Buttons */}

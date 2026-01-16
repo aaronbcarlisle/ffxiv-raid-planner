@@ -112,6 +112,7 @@ export function TipsCarousel({ context, userRole, className = '' }: TipsCarousel
 
   // Reset index when context changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset derived state when context prop changes
     setCurrentIndex(0);
   }, [context]);
 

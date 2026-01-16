@@ -90,7 +90,9 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   // Fetch presets when modal opens (category determined by tier's contentType)
   useEffect(() => {
     if (isOpen && player.job && player.configured) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset state when modal opens for new fetch
       setPresetsLoading(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset selection when modal opens
       setSelectedPresetIndex('');
       fetchBiSPresets(player.job, contentType)
         .then((response) => {
@@ -109,6 +111,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   // Prefill with existing bisLink when modal opens
   useEffect(() => {
     if (isOpen && player.bisLink) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Prefill input from props when modal opens
       setInputValue(player.bisLink);
     }
   }, [isOpen, player.bisLink]);

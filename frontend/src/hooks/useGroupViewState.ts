@@ -31,7 +31,8 @@ export interface UseGroupViewStateReturn {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   groupView: boolean;
-  setGroupView: (enabled: boolean) => void;
+  setGroupView: (enabled: boolean, groupId?: string) => void;
+  setGroupViewState: React.Dispatch<React.SetStateAction<boolean>>;
   subsView: boolean;
   setSubsView: (enabled: boolean) => void;
 
@@ -144,9 +145,14 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     return 'standard'; // Will be overwritten by tier-specific localStorage in useEffect
   });
 
-  // Group view (G1/G2): URL param > default (false)
+  // Group view (G1/G2): URL param > localStorage > default (true)
+  // Note: localStorage loading happens per-group in GroupView.tsx useEffect
   const [groupView, setGroupViewState] = useState(() => {
-    return searchParams.get('groups') === 'true';
+    const urlParam = searchParams.get('groups');
+    // Only respect explicit URL param, otherwise default to true
+    if (urlParam === 'true') return true;
+    if (urlParam === 'false') return false;
+    return true; // Default to ON
   });
 
   // Subs view (separate substitutes): URL param > default (false)
@@ -256,9 +262,16 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Wrapper to update groupView and URL
-  const setGroupView = useCallback((enabled: boolean) => {
+  // Wrapper to persist groupView per-group and update URL
+  const setGroupView = useCallback((enabled: boolean, groupId?: string) => {
     setGroupViewState(enabled);
+    if (groupId) {
+      try {
+        localStorage.setItem(`group-view-groups-${groupId}`, String(enabled));
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       if (enabled) {
@@ -300,6 +313,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setViewMode,
     groupView,
     setGroupView,
+    setGroupViewState,
     subsView,
     setSubsView,
 

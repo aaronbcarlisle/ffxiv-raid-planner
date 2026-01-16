@@ -143,7 +143,7 @@ export function InviteAccept() {
           <div className="bg-status-info/10 border border-status-info/30 rounded p-3 mb-4 text-sm text-status-info">
             You're already a member of this static group.
             <Link
-              to={`/group/${preview.staticGroupId}`}
+              to={`/group/${preview.shareCode}`}
               className="block mt-2 text-accent hover:text-accent-bright"
             >
               Go to Static →
@@ -175,7 +175,7 @@ export function InviteAccept() {
           </div>
         ) : preview.alreadyMember ? (
           <Link
-            to={`/group/${preview.staticGroupId}`}
+            to={`/group/${preview.shareCode}`}
             className="block w-full bg-accent text-bg-primary px-6 py-3 rounded font-medium hover:bg-accent-bright text-center"
           >
             Go to Static

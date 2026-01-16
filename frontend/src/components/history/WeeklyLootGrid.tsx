@@ -171,7 +171,7 @@ export function WeeklyLootGrid({
     }
 
     return items;
-  }, [contextMenu, onEditLoot, onEditMaterial, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu]);
+  }, [contextMenu, onEditLoot, onEditMaterial, onCopyEntryUrl, onDeleteLoot, onDeleteMaterial, canEdit, setContextMenu, onNavigateToPlayer]);
   // Filter entries for current week
   const weekLootEntries = useMemo(() =>
     lootLog.filter(e => e.weekNumber === currentWeek),

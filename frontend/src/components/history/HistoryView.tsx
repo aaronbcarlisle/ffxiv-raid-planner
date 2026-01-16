@@ -95,9 +95,11 @@ export function HistoryView({
     try {
       const saved = localStorage.getItem(weekStorageKey);
       if (!saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing with external store value on first load
         setSelectedWeek(currentWeek);
       }
     } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Fallback sync with external store value
       setSelectedWeek(currentWeek);
     }
   }, [currentWeek, weekStorageKey, setSelectedWeek]);
@@ -105,6 +107,7 @@ export function HistoryView({
   // Switch to target week when navigation occurs (from gear slot → loot entry)
   useEffect(() => {
     if (targetWeek != null && targetWeek !== selectedWeek) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Controlled prop sync for navigation
       setSelectedWeek(targetWeek);
     }
   }, [targetWeek, selectedWeek, setSelectedWeek]);
