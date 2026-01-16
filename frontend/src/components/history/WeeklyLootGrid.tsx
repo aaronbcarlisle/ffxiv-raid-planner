@@ -12,6 +12,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import { Tooltip } from '../primitives/Tooltip';
 import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
@@ -263,34 +264,36 @@ export function WeeklyLootGrid({
           <span>{player?.name || 'Unknown'}</span>
         </div>
         {canEdit && onDeleteLoot && 'itemSlot' in entry && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteLoot(entry.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
-            title="Delete entry"
-            aria-label="Delete loot entry"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <Tooltip content="Delete entry">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteLoot(entry.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
+              aria-label="Delete loot entry"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
         {canEdit && onDeleteMaterial && 'materialType' in entry && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteMaterial(entry.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
-            title="Delete entry"
-            aria-label="Delete material entry"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <Tooltip content="Delete entry">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteMaterial(entry.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
+              aria-label="Delete material entry"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
       </div>
     );
@@ -425,7 +428,7 @@ export function WeeklyLootGrid({
                   const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id) && (!highlightedEntryType || highlightedEntryType === 'loot');
 
                   const isClickable = canClickToLog || canClickToEdit;
-                  return (
+                  const cellContent = (
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
@@ -471,12 +474,56 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={lootEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
                     </div>
                   );
+
+                  // Wrap with tooltip if there's an entry
+                  if (lootEntry) {
+                    return (
+                      <Tooltip
+                        key={item.slot}
+                        content={
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Click</kbd>
+                              <span className="text-text-secondary">Edit entry</span>
+                            </div>
+                            {onCopyEntryUrl && (
+                              <div className="flex items-center gap-2">
+                                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                                <span className="text-text-secondary">Copy link</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+                              <span className="text-text-secondary">Go to player</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                              <span className="text-text-secondary">More options</span>
+                            </div>
+                          </div>
+                        }
+                        delayDuration={400}
+                      >
+                        {cellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  // For empty cells that can be clicked to log
+                  if (canClickToLog) {
+                    return (
+                      <Tooltip key={item.slot} content="Click to log loot" delayDuration={400}>
+                        {cellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  return cellContent;
                 })}
 
                 {/* Material columns */}
@@ -487,7 +534,7 @@ export function WeeklyLootGrid({
                   const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
 
                   const isClickable = canClickToLogMat || canClickToEditMat;
-                  return (
+                  const matCellContent = (
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
@@ -533,7 +580,6 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={matEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"
@@ -544,6 +590,51 @@ export function WeeklyLootGrid({
                       {renderRecipientBadge(matEntry)}
                     </div>
                   );
+
+                  // Wrap with tooltip if there's an entry
+                  if (matEntry) {
+                    return (
+                      <Tooltip
+                        key={mat.type}
+                        content={
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Click</kbd>
+                              <span className="text-text-secondary">Edit entry</span>
+                            </div>
+                            {onCopyEntryUrl && (
+                              <div className="flex items-center gap-2">
+                                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                                <span className="text-text-secondary">Copy link</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+                              <span className="text-text-secondary">Go to player</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                              <span className="text-text-secondary">More options</span>
+                            </div>
+                          </div>
+                        }
+                        delayDuration={400}
+                      >
+                        {matCellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  // For empty cells that can be clicked to log
+                  if (canClickToLogMat) {
+                    return (
+                      <Tooltip key={mat.type} content="Click to log material" delayDuration={400}>
+                        {matCellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  return matCellContent;
                 })}
               </div>
             </div>

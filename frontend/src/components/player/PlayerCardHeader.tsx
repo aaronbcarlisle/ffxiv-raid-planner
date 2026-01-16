@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
+import { Tooltip } from '../primitives/Tooltip';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
 import { TankRoleSelector } from './TankRoleSelector';
@@ -16,9 +17,36 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition, TankRole, SnapshotPlayer } from '../../types';
+import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
-import { calculateAverageItemLevel } from '../../utils/calculations';
+import { calculateAverageItemLevel, getEffectiveCurrentSource } from '../../utils/calculations';
+import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
+
+/**
+ * Calculate item level for a single gear slot, mirroring calculateAverageItemLevel logic.
+ */
+function getSlotItemLevel(
+  slot: { slot: GearSlot; hasItem: boolean; bisSource: 'raid' | 'tome'; isAugmented: boolean; itemLevel?: number; currentSource?: string },
+  tierId: string
+): number {
+  // Special case: tome BiS with item but NOT augmented
+  if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
+    const isWeapon = slot.slot === 'weapon';
+    return getItemLevelForCategory(tierId, 'tome', isWeapon);
+  }
+
+  // Use itemLevel from BiS import if player has the item
+  if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
+    return slot.itemLevel;
+  }
+
+  // Calculate from currentSource for unacquired gear
+  const currentSource = getEffectiveCurrentSource(slot as Parameters<typeof getEffectiveCurrentSource>[0]);
+  const isWeapon = slot.slot === 'weapon';
+  const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
+  return getItemLevelForCategory(tierId, effectiveSource, isWeapon);
+}
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -143,24 +171,23 @@ export function PlayerCardHeader({
       <div className="flex items-center gap-3">
         {/* Clickable job icon with dropdown */}
         <div className="relative">
-          <button
-            type="button"
-            onClick={handleJobIconClick}
-            className={`p-0.5 rounded transition-all ${
-              editPermission.allowed
-                ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
-                : 'cursor-not-allowed opacity-75'
-            }`}
-            style={{ backgroundColor: roleColor }}
-            title={
-              editPermission.allowed
-                ? 'Click to change job'
-                : editPermission.reason
-            }
-            disabled={!editPermission.allowed}
+          <Tooltip
+            content={editPermission.allowed ? 'Click to change job' : editPermission.reason}
           >
-            <JobIcon job={job} size="lg" className="rounded-sm" />
-          </button>
+            <button
+              type="button"
+              onClick={handleJobIconClick}
+              className={`p-0.5 rounded transition-all ${
+                editPermission.allowed
+                  ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
+                  : 'cursor-not-allowed opacity-75'
+              }`}
+              style={{ backgroundColor: roleColor }}
+              disabled={!editPermission.allowed}
+            >
+              <JobIcon job={job} size="lg" className="rounded-sm" />
+            </button>
+          </Tooltip>
 
           {/* Job picker dropdown */}
           {showJobPicker && (
@@ -193,38 +220,34 @@ export function PlayerCardHeader({
               />
             ) : (
               <div className="flex items-center gap-1">
-                <span
-                  className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
-                  onClick={(e) => e.stopPropagation()}
-                  onDoubleClick={handleNameDoubleClick}
-                  title={
-                    !editPermission.allowed
-                      ? editPermission.reason
-                      : "Double-click to edit name"
-                  }
+                <Tooltip
+                  content={editPermission.allowed ? 'Double-click to edit name' : editPermission.reason}
                 >
-                  {name}
-                </span>
+                  <span
+                    className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={handleNameDoubleClick}
+                  >
+                    {name}
+                  </span>
+                </Tooltip>
                 {/* Edit button - always visible but subtle */}
-                <button
-                  onClick={handleEditClick}
-                  className={`p-0.5 rounded opacity-40 transition-opacity ${
-                    editPermission.allowed
-                      ? 'hover:bg-surface-interactive hover:opacity-100'
-                      : 'cursor-not-allowed opacity-30'
-                  }`}
-                  title={
-                    !editPermission.allowed
-                      ? editPermission.reason
-                      : "Edit name"
-                  }
-                  disabled={!editPermission.allowed}
-                  aria-label="Edit player name"
-                >
-                  <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
+                <Tooltip content={editPermission.allowed ? 'Edit name' : editPermission.reason}>
+                  <button
+                    onClick={handleEditClick}
+                    className={`p-0.5 rounded opacity-40 transition-opacity ${
+                      editPermission.allowed
+                        ? 'hover:bg-surface-interactive hover:opacity-100'
+                        : 'cursor-not-allowed opacity-30'
+                    }`}
+                    disabled={!editPermission.allowed}
+                    aria-label="Edit player name"
+                  >
+                    <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </Tooltip>
               </div>
             )}
             {/* Tank role selector (MT/OT) - before position */}
@@ -262,25 +285,67 @@ export function PlayerCardHeader({
             size="md"
             showLabel
           />
-          {/* Average iLv */}
+          {/* Average iLv with slot breakdown tooltip */}
           {averageILv > 0 && (
-            <div
-              className="text-sm text-text-muted"
-              title="Average Item Level"
+            <Tooltip
+              delayDuration={200}
+              content={
+                <div className="min-w-[140px]">
+                  <div className="font-medium mb-1.5">Average Item Level</div>
+                  <div className="space-y-0.5 text-xs">
+                    {GEAR_SLOTS.map((slotKey) => {
+                      const gearSlot = player.gear.find(g => g.slot === slotKey);
+                      if (!gearSlot) return null;
+                      const slotILv = getSlotItemLevel(gearSlot, tierId);
+                      return (
+                        <div key={slotKey} className="flex justify-between gap-3">
+                          <span className="text-text-secondary">{GEAR_SLOT_NAMES[slotKey]}</span>
+                          <span className={gearSlot.hasItem ? 'text-status-success' : 'text-text-muted'}>
+                            {slotILv}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border-subtle mt-1.5 pt-1.5 flex justify-between font-medium">
+                    <span>Average</span>
+                    <span className="text-accent">i{averageILv}</span>
+                  </div>
+                </div>
+              }
             >
-              i{averageILv}
-            </div>
+              <div className="text-sm text-text-muted cursor-help">
+                i{averageILv}
+              </div>
+            </Tooltip>
           )}
         </div>
         {onMenuClick && (
-          <button
-            onClick={onMenuClick}
-            className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
-            title="Player options"
-            aria-label="Player options menu"
+          <Tooltip
+            content={
+              <div className="space-y-1.5">
+                <div className="font-medium">Player Options</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                    <span className="text-text-secondary">Copy link</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                    <span className="text-text-secondary">More options</span>
+                  </div>
+                </div>
+              </div>
+            }
           >
-            <MoreVertical className="w-5 h-5 text-text-secondary" />
-          </button>
+            <button
+              onClick={onMenuClick}
+              className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Player options menu"
+            >
+              <MoreVertical className="w-5 h-5 text-text-secondary" />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

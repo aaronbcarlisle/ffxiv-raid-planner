@@ -119,9 +119,10 @@ export function AssignUserModal({
       setIsLoading(true);
       try {
         // Admins fetch ALL users (with group context for membership check), owners fetch only group-interacted users
+        const encodedGroupId = encodeURIComponent(groupId);
         const endpoint = isAdmin
-          ? `/api/static-groups/admin/all-users?group_id=${groupId}`
-          : `/api/static-groups/${groupId}/interacted-users`;
+          ? `/api/static-groups/admin/all-users?group_id=${encodedGroupId}`
+          : `/api/static-groups/${encodedGroupId}/interacted-users`;
 
         const users = await authRequest<InteractedUser[]>(endpoint);
         setInteractedUsers(users);

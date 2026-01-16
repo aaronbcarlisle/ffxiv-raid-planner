@@ -38,7 +38,24 @@ function ScoreTooltip({ entry }: { entry: WeaponPriorityEntry }) {
   );
 }
 
-// Tie styling variants for comparison
+// Build tooltip content for weapon log button
+function WeaponLogTooltip({ job, jobName, playerName }: { job: string; jobName: string; playerName: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <JobIcon job={job} size="xs" />
+      <span>Log {jobName} Weapon for {playerName}</span>
+    </span>
+  );
+}
+
+/**
+ * Visual styles for displaying tied players in weapon priority lists.
+ * - 'connector': Shows a vertical line connecting tied players (default)
+ * - 'border': Adds a colored border around tied entries
+ * - 'sameRank': Displays same rank number for all tied players
+ * - 'rankNotation': Shows "T1", "T2" notation for tied ranks
+ * - 'background': Uses background color to group tied players
+ */
 export type TieStyle = 'border' | 'sameRank' | 'rankNotation' | 'background' | 'connector';
 
 interface WeaponPriorityCardProps {
@@ -47,9 +64,14 @@ interface WeaponPriorityCardProps {
   priority: WeaponPriorityEntry[];
   showLogButtons: boolean;
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+  /** Visual style for displaying tied players. Defaults to 'connector'. */
   tieStyle?: TieStyle;
 }
 
+/**
+ * Displays weapon priority list for a specific job with tie visualization.
+ * Shows ranked players with their priority scores and optional log buttons.
+ */
 export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   job,
   jobName,
@@ -223,15 +245,20 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                 >
                   {/* Tie group header with roll button */}
                   <div className="flex items-center justify-between px-2 py-1 border-b border-border-subtle">
-                    <span className="text-xs text-text-muted font-medium">
-                      Tied for #{displayRank}
-                    </span>
-                    <button
-                      onClick={() => handleRoll(tieGroup!)}
-                      className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
-                    >
-                      {hasRolled ? 'Reroll' : 'Roll'}
-                    </button>
+                    <Tooltip content="Click to show tied players">
+                      <span className="text-xs text-text-muted font-medium cursor-help">
+                        Tied for #{displayRank}
+                      </span>
+                    </Tooltip>
+                    <Tooltip content={hasRolled ? 'Roll again for a new winner' : 'Randomly select a winner'}>
+                      {/* design-system-ignore: Roll button with specific accent styling */}
+                      <button
+                        onClick={() => handleRoll(tieGroup!)}
+                        className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
+                      >
+                        {hasRolled ? 'Reroll' : 'Roll'}
+                      </button>
+                    </Tooltip>
                   </div>
 
                   {/* Tied players */}
@@ -284,14 +311,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                         <div className="flex items-center gap-2">
                           {/* Log button - shows on hover */}
                           {showLogButtons && onLogClick && (
-                            <button
-                              onClick={() => onLogClick(job, tieEntry.player)}
-                              className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                            >
-                              Log
-                            </button>
+                            <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={tieEntry.player.name} />}>
+                              {/* design-system-ignore: Log button with specific accent styling */}
+                              <button
+                                onClick={() => onLogClick(job, tieEntry.player)}
+                                className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                              >
+                                Log
+                              </button>
+                            </Tooltip>
                           )}
-                          <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                          <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                             <span
                               className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                               style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -345,14 +375,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                 <div className="flex items-center gap-2">
                   {/* Log button - shows on hover for any entry */}
                   {showLogButtons && onLogClick && (
-                    <button
-                      onClick={() => onLogClick(job, entry.player)}
-                      className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                    >
-                      Log
-                    </button>
+                    <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
+                      {/* design-system-ignore: Log button with specific accent styling */}
+                      <button
+                        onClick={() => onLogClick(job, entry.player)}
+                        className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                      >
+                        Log
+                      </button>
+                    </Tooltip>
                   )}
-                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                  <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                       style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -408,50 +441,58 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       className="flex items-center justify-between px-2 py-1 cursor-pointer select-none"
                       onClick={() => toggleTieGroup(block.tieGroup!)}
                     >
-                      <div className="flex items-center gap-1.5">
-                        {/* Rank number - same style as regular entries */}
-                        <span className={`text-sm ${isFirstBlock ? 'text-accent font-medium' : 'text-text-secondary'}`}>
-                          {block.displayRank}.
-                        </span>
-                        {/* Expand/collapse chevron */}
-                        <svg
-                          className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span className="text-xs text-text-muted font-medium">
-                          Tied ({block.entries.length})
-                        </span>
-                        {/* Winner info shown in header after roll */}
-                        {hasRolled && winnerEntry && (
-                          <div className="flex items-center gap-1.5 ml-2">
-                            <JobIcon job={winnerEntry.player.job} size="xs" />
-                            <span className="text-xs text-status-success font-medium">
-                              {winnerEntry.player.name}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <Tooltip content={isExpanded ? 'Click to collapse' : 'Click to expand tied players'}>
+                        <div className="flex items-center gap-1.5">
+                          {/* Rank number - same style as regular entries */}
+                          <span className={`text-sm ${isFirstBlock ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+                            {block.displayRank}.
+                          </span>
+                          {/* Expand/collapse chevron */}
+                          <svg
+                            className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                          <span className="text-xs text-text-muted font-medium">
+                            Tied ({block.entries.length})
+                          </span>
+                          {/* Winner info shown in header after roll */}
+                          {hasRolled && winnerEntry && (
+                            <div className="flex items-center gap-1.5 ml-2">
+                              <JobIcon job={winnerEntry.player.job} size="xs" />
+                              <span className="text-xs text-status-success font-medium">
+                                {winnerEntry.player.name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </Tooltip>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         {/* Log button for winner - always visible after roll */}
                         {hasRolled && winnerEntry && onLogClick && (
-                          <button
-                            onClick={() => onLogClick(job, winnerEntry.player)}
-                            className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
-                          >
-                            Log
-                          </button>
+                          <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={winnerEntry.player.name} />}>
+                            {/* design-system-ignore: Log button with specific accent styling */}
+                            <button
+                              onClick={() => onLogClick(job, winnerEntry.player)}
+                              className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+                            >
+                              Log
+                            </button>
+                          </Tooltip>
                         )}
-                        <button
-                          onClick={() => handleRoll(block.tieGroup!)}
-                          className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
-                        >
-                          {hasRolled ? 'Reroll' : 'Roll'}
-                        </button>
+                        <Tooltip content={hasRolled ? 'Roll again for a new winner' : 'Randomly select a winner'}>
+                          {/* design-system-ignore: Roll button with specific accent styling */}
+                          <button
+                            onClick={() => handleRoll(block.tieGroup!)}
+                            className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
+                          >
+                            {hasRolled ? 'Reroll' : 'Roll'}
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
 
@@ -506,14 +547,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                               <div className="flex items-center gap-2">
                                 {/* Log button - shows on hover */}
                                 {showLogButtons && onLogClick && (
-                                  <button
-                                    onClick={() => onLogClick(job, tieEntry.player)}
-                                    className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                                  >
-                                    Log
-                                  </button>
+                                  <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={tieEntry.player.name} />}>
+                                    {/* design-system-ignore: Log button with specific accent styling */}
+                                    <button
+                                      onClick={() => onLogClick(job, tieEntry.player)}
+                                      className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                                    >
+                                      Log
+                                    </button>
+                                  </Tooltip>
                                 )}
-                                <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                                <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                                   <span
                                     className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                                     style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -570,14 +614,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   <div className="flex items-center gap-2">
                     {/* Log button - shows on hover */}
                     {showLogButtons && onLogClick && (
-                      <button
-                        onClick={() => onLogClick(job, entry.player)}
-                        className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                      >
-                        Log
-                      </button>
+                      <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
+                        {/* design-system-ignore: Log button with specific accent styling */}
+                        <button
+                          onClick={() => onLogClick(job, entry.player)}
+                          className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                        >
+                          Log
+                        </button>
+                      </Tooltip>
                     )}
-                    <Tooltip content={<ScoreTooltip entry={entry} />}>
+                    <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                       <span
                         className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                         style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -679,23 +726,29 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                 <div className="flex items-center gap-2">
                   {/* Roll button - only on first entry in tie group */}
                   {isTied && isFirstInTie && tieGroupEntries && (
-                    <button
-                      onClick={() => handleRoll(tieGroup!)}
-                      className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
-                    >
-                      {hasRolled ? 'Reroll' : 'Roll'}
-                    </button>
+                    <Tooltip content={hasRolled ? 'Roll again for a new winner' : 'Randomly select a winner from tied players'}>
+                      <button
+                        onClick={() => handleRoll(tieGroup!)}
+                        className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
+                      >
+                        {hasRolled ? 'Reroll' : 'Roll'}
+                      </button>
+                    </Tooltip>
                   )}
                   {/* Log button - shows on hover */}
                   {showLogButtons && onLogClick && (
-                    <button
-                      onClick={() => onLogClick(job, entry.player)}
-                      className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-                    >
-                      Log
-                    </button>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
+                        <button
+                          onClick={() => onLogClick(job, entry.player)}
+                          className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+                        >
+                          Log
+                        </button>
+                      </Tooltip>
+                    </div>
                   )}
-                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                  <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
                       style={{ backgroundColor: `${roleColor}30`, color: roleColor }}

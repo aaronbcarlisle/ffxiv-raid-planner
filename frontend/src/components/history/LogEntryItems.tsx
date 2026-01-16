@@ -6,6 +6,7 @@
  */
 
 import { memo } from 'react';
+import { Tooltip } from '../primitives/Tooltip';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { JobIcon } from '../ui/JobIcon';
@@ -38,6 +39,7 @@ interface LootLogEntryItemProps {
   onEdit: (entry: LootLogEntry) => void;
   onDelete: (entry: LootLogEntry) => void;
   onContextMenu: (e: React.MouseEvent, entry: LootLogEntry) => void;
+  onNavigateToPlayer?: (playerId: string) => void;
 }
 
 export const LootLogEntryItem = memo(function LootLogEntryItem({
@@ -49,17 +51,56 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
   onEdit,
   onDelete,
   onContextMenu,
+  onNavigateToPlayer,
 }: LootLogEntryItemProps) {
   const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
   const isWeapon = entry.itemSlot === 'weapon';
   const isHighlighted = highlightedEntryId === String(entry.id);
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Shift+Click copies entry URL
+    if (e.shiftKey) {
+      e.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      onCopyUrl(String(entry.id));
+      return;
+    }
+    // Alt+Click navigates to player
+    if (e.altKey && onNavigateToPlayer) {
+      e.preventDefault();
+      onNavigateToPlayer(entry.recipientPlayerId);
+      return;
+    }
+  };
+
   return (
-    <div
-      id={`loot-entry-${entry.id}`}
-      className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isHighlighted ? 'highlight-pulse' : ''}`}
-      onContextMenu={(e) => onContextMenu(e, entry)}
+    <Tooltip
+      content={
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+            <span className="text-text-secondary">Copy link</span>
+          </div>
+          {onNavigateToPlayer && (
+            <div className="flex items-center gap-2">
+              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+              <span className="text-text-secondary">Go to player</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+            <span className="text-text-secondary">More options</span>
+          </div>
+        </div>
+      }
+      delayDuration={400}
     >
+      <div
+        id={`loot-entry-${entry.id}`}
+        className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
+        onClick={handleClick}
+        onContextMenu={(e) => onContextMenu(e, entry)}
+      >
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -94,32 +135,38 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
           </div>
         </div>
         <div className="flex items-center gap-3 ml-4">
-          <button
-            onClick={() => onCopyUrl(String(entry.id))}
-            className="text-text-muted hover:text-accent text-sm"
-            title="Copy link to this entry"
-          >
-            Copy URL
-          </button>
+          <Tooltip content="Copy link to this entry">
+            <button
+              onClick={() => onCopyUrl(String(entry.id))}
+              className="text-text-muted hover:text-accent text-sm"
+            >
+              Copy URL
+            </button>
+          </Tooltip>
           {canEdit && (
             <>
-              <button
-                onClick={() => onEdit(entry)}
-                className="text-text-muted hover:text-accent text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onDelete(entry)}
-                className="text-status-error hover:text-status-error/80 text-sm"
-              >
-                Delete
-              </button>
+              <Tooltip content="Edit entry">
+                <button
+                  onClick={() => onEdit(entry)}
+                  className="text-text-muted hover:text-accent text-sm"
+                >
+                  Edit
+                </button>
+              </Tooltip>
+              <Tooltip content="Delete entry">
+                <button
+                  onClick={() => onDelete(entry)}
+                  className="text-status-error hover:text-status-error/80 text-sm"
+                >
+                  Delete
+                </button>
+              </Tooltip>
             </>
           )}
         </div>
       </div>
     </div>
+    </Tooltip>
   );
 });
 
@@ -133,6 +180,7 @@ interface MaterialLogEntryItemProps {
   onEdit: (entry: MaterialLogEntry) => void;
   onDelete: (entryId: number) => void;
   onContextMenu: (e: React.MouseEvent, entry: MaterialLogEntry) => void;
+  onNavigateToPlayer?: (playerId: string) => void;
 }
 
 export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
@@ -145,15 +193,54 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
   onEdit,
   onDelete,
   onContextMenu,
+  onNavigateToPlayer,
 }: MaterialLogEntryItemProps) {
   const isMatHighlighted = highlightedEntryId === String(entry.id) && highlightedEntryType === 'material';
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Shift+Click copies entry URL
+    if (e.shiftKey) {
+      e.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      onCopyUrl(String(entry.id), 'material');
+      return;
+    }
+    // Alt+Click navigates to player
+    if (e.altKey && onNavigateToPlayer) {
+      e.preventDefault();
+      onNavigateToPlayer(entry.recipientPlayerId);
+      return;
+    }
+  };
+
   return (
-    <div
-      id={`material-entry-${entry.id}`}
-      className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-      onContextMenu={(e) => onContextMenu(e, entry)}
+    <Tooltip
+      content={
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+            <span className="text-text-secondary">Copy link</span>
+          </div>
+          {onNavigateToPlayer && (
+            <div className="flex items-center gap-2">
+              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+              <span className="text-text-secondary">Go to player</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+            <span className="text-text-secondary">More options</span>
+          </div>
+        </div>
+      }
+      delayDuration={400}
     >
+      <div
+        id={`material-entry-${entry.id}`}
+        className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+        onClick={handleClick}
+        onContextMenu={(e) => onContextMenu(e, entry)}
+      >
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -176,31 +263,37 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
           </div>
         </div>
         <div className="flex items-center gap-3 ml-4">
-          <button
-            onClick={() => onCopyUrl(String(entry.id), 'material')}
-            className="text-text-muted hover:text-accent text-sm"
-            title="Copy link to this entry"
-          >
-            Copy URL
-          </button>
+          <Tooltip content="Copy link to this entry">
+            <button
+              onClick={() => onCopyUrl(String(entry.id), 'material')}
+              className="text-text-muted hover:text-accent text-sm"
+            >
+              Copy URL
+            </button>
+          </Tooltip>
           {canEdit && (
             <>
-              <button
-                onClick={() => onEdit(entry)}
-                className="text-text-muted hover:text-accent text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onDelete(entry.id)}
-                className="text-status-error hover:text-status-error/80 text-sm"
-              >
-                Delete
-              </button>
+              <Tooltip content="Edit entry">
+                <button
+                  onClick={() => onEdit(entry)}
+                  className="text-text-muted hover:text-accent text-sm"
+                >
+                  Edit
+                </button>
+              </Tooltip>
+              <Tooltip content="Delete entry">
+                <button
+                  onClick={() => onDelete(entry.id)}
+                  className="text-status-error hover:text-status-error/80 text-sm"
+                >
+                  Delete
+                </button>
+              </Tooltip>
             </>
           )}
         </div>
       </div>
     </div>
+    </Tooltip>
   );
 });

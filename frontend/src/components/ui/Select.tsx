@@ -127,7 +127,7 @@ export function Select({
         ) : (
           <span className="text-text-muted">{effectivePlaceholder}</span>
         )}
-        <SelectPrimitive.Icon>
+        <SelectPrimitive.Icon className="ml-auto pl-2">
           <ChevronDown className="w-4 h-4 text-text-muted flex-shrink-0" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>

@@ -10,6 +10,7 @@ import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';
 import { EditBookBalanceModal } from './EditBookBalanceModal';
 import { PlayerLedgerModal } from './PlayerLedgerModal';
+import { Tooltip } from '../primitives/Tooltip';
 import { JobIcon } from '../ui/JobIcon';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, PageBalance } from '../../types';
@@ -119,45 +120,59 @@ export function PageBalancesPanel({
           <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
           {/* View mode toggle */}
           <div className="flex rounded-md overflow-hidden border border-border-default">
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-1 text-sm font-bold transition-colors ${
-                viewMode === 'week'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              Week {currentWeek}
-            </button>
-            <button
-              onClick={() => setViewMode('allTime')}
-              className={`px-3 py-1 text-sm font-bold transition-colors ${
-                viewMode === 'allTime'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              All Time
-            </button>
+            <Tooltip content={`Show books earned in Week ${currentWeek} only`}>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`px-3 py-1 text-sm font-bold transition-colors ${
+                  viewMode === 'week'
+                    ? 'bg-accent text-accent-contrast'
+                    : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Week {currentWeek}
+              </button>
+            </Tooltip>
+            <Tooltip content="Show cumulative books earned across all weeks">
+              <button
+                onClick={() => setViewMode('allTime')}
+                className={`px-3 py-1 text-sm font-bold transition-colors ${
+                  viewMode === 'allTime'
+                    ? 'bg-accent text-accent-contrast'
+                    : 'bg-surface-interactive text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                All Time
+              </button>
+            </Tooltip>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {canEdit && pageBalances.length > 0 && (
-            <button
-              onClick={() => setResetState({ type: 'all' })}
-              className="px-3 py-1.5 rounded bg-status-error/20 text-status-error text-sm hover:bg-status-error/30 transition-colors"
-              title="Reset all book balances to zero"
-            >
-              Reset All
-            </button>
+            <Tooltip content="Reset all book balances to zero">
+              <button
+                onClick={() => setResetState({ type: 'all' })}
+                className="px-3 py-1.5 rounded bg-status-error/20 text-status-error text-sm hover:bg-status-error/30 transition-colors"
+              >
+                Reset All
+              </button>
+            </Tooltip>
           )}
           {canEdit && (
-            <button
-              onClick={() => setShowMarkClearedModal(true)}
-              className="px-3 py-1.5 rounded bg-accent text-accent-contrast text-sm font-bold hover:bg-accent-hover transition-colors"
+            <Tooltip
+              content={
+                <div>
+                  <div className="font-medium">Mark Floor Cleared</div>
+                  <div className="text-text-secondary text-xs mt-0.5">Award books to all players who cleared a floor</div>
+                </div>
+              }
             >
-              Mark Floor Cleared
-            </button>
+              <button
+                onClick={() => setShowMarkClearedModal(true)}
+                className="px-3 py-1.5 rounded bg-accent text-accent-contrast text-sm font-bold hover:bg-accent-hover transition-colors"
+              >
+                Mark Floor Cleared
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -176,16 +191,20 @@ export function PageBalancesPanel({
               <tr className="border-b border-border-default">
                 <th className="px-3 py-2 text-left text-sm text-text-secondary">Player</th>
                 {(['I', 'II', 'III', 'IV'] as const).map((bookType) => (
-                  <th
-                    key={bookType}
-                    className={`px-3 py-2 text-center text-sm text-text-secondary ${
-                      canEdit ? 'cursor-pointer hover:text-status-error transition-colors' : ''
-                    }`}
-                    onClick={canEdit ? () => setResetState({ type: 'column', bookType }) : undefined}
-                    title={canEdit ? `Click to reset Book ${bookType} for all players` : undefined}
-                  >
-                    Book {bookType}
-                  </th>
+                  canEdit ? (
+                    <Tooltip key={bookType} content={`Click to reset Book ${bookType} for all players`}>
+                      <th
+                        className="px-3 py-2 text-center text-sm text-text-secondary cursor-pointer hover:text-status-error transition-colors"
+                        onClick={() => setResetState({ type: 'column', bookType })}
+                      >
+                        Book {bookType}
+                      </th>
+                    </Tooltip>
+                  ) : (
+                    <th key={bookType} className="px-3 py-2 text-center text-sm text-text-secondary">
+                      Book {bookType}
+                    </th>
+                  )
                 ))}
                 <th className="px-3 py-2 w-8"></th>
                 {canEdit && <th className="px-3 py-2 w-8"></th>}
@@ -215,61 +234,71 @@ export function PageBalancesPanel({
                         {balance.playerName}
                       </div>
                     </td>
-                    <td
-                      className={cellClass}
-                      onClick={() => handleCellClick('I', balance.bookI)}
-                      title={canEdit ? 'Click to edit' : undefined}
-                    >
-                      {balance.bookI}
-                    </td>
-                    <td
-                      className={cellClass}
-                      onClick={() => handleCellClick('II', balance.bookII)}
-                      title={canEdit ? 'Click to edit' : undefined}
-                    >
-                      {balance.bookII}
-                    </td>
-                    <td
-                      className={cellClass}
-                      onClick={() => handleCellClick('III', balance.bookIII)}
-                      title={canEdit ? 'Click to edit' : undefined}
-                    >
-                      {balance.bookIII}
-                    </td>
-                    <td
-                      className={cellClass}
-                      onClick={() => handleCellClick('IV', balance.bookIV)}
-                      title={canEdit ? 'Click to edit' : undefined}
-                    >
-                      {balance.bookIV}
-                    </td>
+                    {canEdit ? (
+                      <Tooltip content={`Book I: ${balance.bookI} — Click to adjust`}>
+                        <td className={cellClass} onClick={() => handleCellClick('I', balance.bookI)}>
+                          {balance.bookI}
+                        </td>
+                      </Tooltip>
+                    ) : (
+                      <td className={cellClass}>{balance.bookI}</td>
+                    )}
+                    {canEdit ? (
+                      <Tooltip content={`Book II: ${balance.bookII} — Click to adjust`}>
+                        <td className={cellClass} onClick={() => handleCellClick('II', balance.bookII)}>
+                          {balance.bookII}
+                        </td>
+                      </Tooltip>
+                    ) : (
+                      <td className={cellClass}>{balance.bookII}</td>
+                    )}
+                    {canEdit ? (
+                      <Tooltip content={`Book III: ${balance.bookIII} — Click to adjust`}>
+                        <td className={cellClass} onClick={() => handleCellClick('III', balance.bookIII)}>
+                          {balance.bookIII}
+                        </td>
+                      </Tooltip>
+                    ) : (
+                      <td className={cellClass}>{balance.bookIII}</td>
+                    )}
+                    {canEdit ? (
+                      <Tooltip content={`Book IV: ${balance.bookIV} — Click to adjust`}>
+                        <td className={cellClass} onClick={() => handleCellClick('IV', balance.bookIV)}>
+                          {balance.bookIV}
+                        </td>
+                      </Tooltip>
+                    ) : (
+                      <td className={cellClass}>{balance.bookIV}</td>
+                    )}
                     {/* View history button */}
                     <td className="px-1 py-2">
-                      <button
-                        onClick={() => handleViewHistory(balance.playerId, balance.playerName)}
-                        className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                        title={`View book history for ${balance.playerName}`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                      </button>
+                      <Tooltip content={`View book history for ${balance.playerName}`}>
+                        <button
+                          onClick={() => handleViewHistory(balance.playerId, balance.playerName)}
+                          className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                          </svg>
+                        </button>
+                      </Tooltip>
                     </td>
                     {canEdit && (
                       <td className="px-1 py-2">
-                        <button
-                          onClick={() => setResetState({
-                            type: 'row',
-                            playerId: balance.playerId,
-                            playerName: balance.playerName
-                          })}
-                          className="p-1 rounded text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors"
-                          title={`Reset all books for ${balance.playerName}`}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        </button>
+                        <Tooltip content={`Reset all books for ${balance.playerName}`}>
+                          <button
+                            onClick={() => setResetState({
+                              type: 'row',
+                              playerId: balance.playerId,
+                              playerName: balance.playerName
+                            })}
+                            className="p-1 rounded text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          </button>
+                        </Tooltip>
                       </td>
                     )}
                   </tr>

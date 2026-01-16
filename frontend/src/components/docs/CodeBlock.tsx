@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
 import { Copy, Check } from 'lucide-react';
+import { Tooltip } from '../primitives/Tooltip';
 
 // Custom theme based on the app's dark color palette
 const customTheme = {
@@ -111,17 +112,18 @@ export function CodeBlock({
             </pre>
           )}
         </Highlight>
-        <button
-          onClick={handleCopy}
-          className="absolute top-2 right-2 p-1.5 rounded bg-surface-card/80 border border-border-subtle opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-interactive"
-          title="Copy to clipboard"
-        >
-          {copied ? (
-            <Check className="w-4 h-4 text-status-success" />
-          ) : (
-            <Copy className="w-4 h-4 text-text-muted" />
-          )}
-        </button>
+        <Tooltip content="Copy to clipboard">
+          <button
+            onClick={handleCopy}
+            className="absolute top-2 right-2 p-1.5 rounded bg-surface-card/80 border border-border-subtle opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-interactive"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-status-success" />
+            ) : (
+              <Copy className="w-4 h-4 text-text-muted" />
+            )}
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

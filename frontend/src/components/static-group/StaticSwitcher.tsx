@@ -30,6 +30,8 @@ interface StaticSwitcherProps {
   groups: StaticGroupListItem[];
   onFetchGroups: () => void;
   isMember: boolean;
+  /** Current user's role in this static */
+  userRole?: MemberRole;
 }
 
 export function StaticSwitcher({
@@ -37,6 +39,7 @@ export function StaticSwitcher({
   groups,
   onFetchGroups,
   isMember,
+  userRole,
 }: StaticSwitcherProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -48,35 +51,71 @@ export function StaticSwitcher({
     }
   }, [isOpen, isMember, onFetchGroups]);
 
-  // Non-member: show plain text (no dropdown)
+  // Non-member: show plain text (no dropdown) with tooltip
   if (!isMember) {
     return (
-      <span className="font-display text-lg text-text-primary px-2">
-        {currentGroup.name}
-      </span>
+      <Tooltip
+        content={
+          <div>
+            <div className="font-medium">Current Static</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              Join as a member to switch between statics
+            </div>
+          </div>
+        }
+      >
+        <span className="font-display text-lg text-text-primary px-2 cursor-help">
+          {currentGroup.name}
+        </span>
+      </Tooltip>
     );
   }
 
   return (
     <Dropdown open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownTrigger>
-        {/* Radix DropdownMenu requires native button as trigger */}
-        <button // design-system-ignore
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
-        >
-          <span className="font-display text-lg text-accent max-w-[200px] truncate">
-            {currentGroup.name}
-          </span>
-          <svg
-            className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </DropdownTrigger>
+      <Tooltip
+        content={
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              Switch Static
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">⌘/Ctrl</kbd>
+                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">[</kbd>
+                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">]</kbd>
+              </span>
+            </div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              Click to switch or use shortcuts to cycle
+            </div>
+          </div>
+        }
+      >
+        <span className="inline-flex">
+          <DropdownTrigger>
+            {/* Radix DropdownMenu requires native button as trigger */}
+            <button // design-system-ignore
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
+            >
+              <span className="font-display text-lg text-accent max-w-[200px] truncate">
+                {currentGroup.name}
+              </span>
+              {userRole && (
+                <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[userRole]}`}>
+                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                </span>
+              )}
+              <svg
+                className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </DropdownTrigger>
+        </span>
+      </Tooltip>
 
       <DropdownContent align="start" className="w-72 overflow-hidden">
         {/* Static list */}

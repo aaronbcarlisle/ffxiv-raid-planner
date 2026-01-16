@@ -5,7 +5,7 @@
  * Full integration with PlayerCard components, DnD, loot/stats tabs.
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
@@ -22,7 +22,7 @@ import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, KeyboardShortcutsHelp } from '../components/ui';
-import { Button } from '../components/primitives';
+import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -101,6 +101,10 @@ export function GroupView() {
     highlightedEntry,
     setHighlightedEntry,
   } = state;
+
+  // Settings modal options (for opening to specific tab with highlight)
+  const [settingsModalTab, setSettingsModalTab] = useState<'general' | 'priority' | 'members' | 'invitations'>('general');
+  const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
 
   // Handle viewAs URL parameter
   useEffect(() => {
@@ -361,7 +365,16 @@ export function GroupView() {
     const handleAddPlayerEvent = () => { handleAddPlayer(); };
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
-    const handleSettingsEvent = () => { setShowSettingsModal(true); };
+    const handleSettingsEvent = () => {
+      setSettingsModalTab('general');
+      setHighlightCreateInvite(false);
+      setShowSettingsModal(true);
+    };
+    const handleOpenSettingsInvitationsEvent = () => {
+      setSettingsModalTab('invitations');
+      setHighlightCreateInvite(true);
+      setShowSettingsModal(true);
+    };
     const handleDeleteTierEvent = () => { setShowDeleteTierConfirm(true); };
     const handleShowKeyboardShortcuts = () => { setShowKeyboardHelp(true); };
 
@@ -370,6 +383,7 @@ export function GroupView() {
     window.addEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
     window.addEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
     window.addEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
+    window.addEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
     window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
     window.addEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
 
@@ -379,6 +393,7 @@ export function GroupView() {
       window.removeEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
       window.removeEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
       window.removeEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
+      window.removeEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
       window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
       window.removeEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
     };
@@ -595,8 +610,9 @@ export function GroupView() {
           {/* Toolbar: Tabs + Context Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
             <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
-            <div className="relative flex items-center justify-end gap-3">
-              <div className={`absolute right-0 flex items-center gap-3 ${pageMode !== 'players' ? 'invisible' : ''}`}>
+            {/* Roster tab controls - only render when on players tab */}
+            {pageMode === 'players' && (
+              <div className="flex items-center gap-3">
                 <SortModeSelector
                   sortPreset={sortPreset}
                   onPresetChange={setSortPresetWithTier}
@@ -607,26 +623,45 @@ export function GroupView() {
                   disabled={!hasPositionData}
                 />
                 {hasSubstitutes && (
-                  <button
-                    onClick={() => setSubsView(!subsView)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                      subsView
-                        ? 'bg-accent/20 text-accent border border-accent/50'
-                        : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
-                    }`}
-                    title={subsView ? 'Show subs with main roster (S)' : 'Separate substitutes (S)'}
-                    aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
-                    aria-pressed={subsView}
+                  <Tooltip
+                    content={
+                      <div className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        <div>
+                          <div className="flex items-center gap-2 font-medium">
+                            {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
+                            <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
+                          </div>
+                          <div className="text-text-secondary text-xs mt-0.5">
+                            {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+                          </div>
+                        </div>
+                      </div>
+                    }
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    <span>Subs</span>
-                  </button>
+                    {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                    <button
+                      onClick={() => setSubsView(!subsView)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border ${
+                        subsView
+                          ? 'bg-accent/20 text-accent border-accent/50'
+                          : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                      }`}
+                      aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                      aria-pressed={subsView}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                      </svg>
+                      <span>Subs</span>
+                    </button>
+                  </Tooltip>
                 )}
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
               </div>
-            </div>
+            )}
           </div>
 
           {/* Players Tab */}
@@ -780,8 +815,14 @@ export function GroupView() {
       {showSettingsModal && currentGroup && (
         <GroupSettingsModal
           group={currentGroup}
-          onClose={() => setShowSettingsModal(false)}
+          onClose={() => {
+            setShowSettingsModal(false);
+            setSettingsModalTab('general');
+            setHighlightCreateInvite(false);
+          }}
           isAdmin={isAdmin}
+          initialTab={settingsModalTab}
+          highlightCreateInvite={highlightCreateInvite}
         />
       )}
 

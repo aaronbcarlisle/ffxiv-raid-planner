@@ -184,34 +184,37 @@ export function WhoNeedsItMatrix({
                   return (
                     <td key={player.id} className="text-center py-2 px-2">
                       {needs ? (
-                        <button
-                          onClick={() => {
-                            if (showLogButtons && onLogClick) {
-                              // For ring row, determine which ring slot this player actually needs
-                              const actualSlot = slot === 'ring1'
-                                ? getNeededRingSlot(player)
-                                : slot as GearSlot;
-                              const floorNum = getFloorForSlot(actualSlot);
-                              const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
-                              onLogClick(actualSlot, player, floorName);
-                            }
-                          }}
-                          disabled={!showLogButtons}
-                          className={`
-                            w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all
-                            ${showLogButtons ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
-                          `}
-                          style={{
-                            backgroundColor: `${roleColor}30`,
-                            border: `2px solid ${roleColor}`,
-                          }}
-                          title={showLogButtons ? `Log ${displayName} to ${player.name}` : `${player.name} needs ${displayName}`}
+                        <Tooltip
+                          content={showLogButtons ? `Log ${displayName} to ${player.name}` : `${player.name} needs ${displayName}`}
                         >
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: roleColor }}
-                          />
-                        </button>
+                          <button
+                            onClick={() => {
+                              if (showLogButtons && onLogClick) {
+                                // For ring row, determine which ring slot this player actually needs
+                                const actualSlot = slot === 'ring1'
+                                  ? getNeededRingSlot(player)
+                                  : slot as GearSlot;
+                                const floorNum = getFloorForSlot(actualSlot);
+                                const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
+                                onLogClick(actualSlot, player, floorName);
+                              }
+                            }}
+                            disabled={!showLogButtons}
+                            className={`
+                              w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all
+                              ${showLogButtons ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
+                            `}
+                            style={{
+                              backgroundColor: `${roleColor}30`,
+                              border: `2px solid ${roleColor}`,
+                            }}
+                          >
+                            <div
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: roleColor }}
+                            />
+                          </button>
+                        </Tooltip>
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-surface-interactive border border-border-subtle mx-auto" />
                       )}

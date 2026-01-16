@@ -26,7 +26,7 @@ export function Tooltip({
   side = 'top',
   align = 'center',
   sideOffset = 4,
-  delayDuration = 200,
+  delayDuration = 500,
   skipDelayDuration = 100,
 }: TooltipProps) {
   return (

@@ -43,6 +43,8 @@ interface LootPriorityEntryProps {
   showEnhanced: boolean;
   showLogButton: boolean;
   onLogClick?: (player: SnapshotPlayer) => void;
+  /** Label for the slot/item being logged (e.g., "Head", "Glaze") */
+  itemLabel?: string;
 }
 
 // Tooltip content for gear priority score breakdown
@@ -106,6 +108,7 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
   showEnhanced,
   showLogButton,
   onLogClick,
+  itemLabel,
 }: LootPriorityEntryProps) {
   const roleColor = getRoleColor(entry.player.role as Role);
   const displayScore = showEnhanced && entry.enhancedScore !== undefined
@@ -130,14 +133,18 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
       <div className="flex items-center gap-2">
         {/* Log button - shows on hover for any entry */}
         {showLogButton && onLogClick && (
-          <button
-            onClick={() => onLogClick(entry.player)}
-            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
-          >
-            Log
-          </button>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <Tooltip content={`Log ${itemLabel || 'drop'} for ${entry.player.name}`}>
+              <button
+                onClick={() => onLogClick(entry.player)}
+                className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+              >
+                Log
+              </button>
+            </Tooltip>
+          </div>
         )}
-        <Tooltip content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
+        <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
           <span
             className="text-xs px-1.5 py-0.5 rounded cursor-help"
             style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
@@ -183,6 +190,8 @@ interface PriorityListProps {
   showLogButton?: boolean;
   onLogClick?: (player: SnapshotPlayer) => void;
   showEnhanced?: boolean;
+  /** Label for the item type (e.g., "Head", "Glaze") for tooltip */
+  itemLabel?: string;
 }
 
 function PriorityList({
@@ -190,6 +199,7 @@ function PriorityList({
   showLogButton = false,
   onLogClick,
   showEnhanced = false,
+  itemLabel,
 }: PriorityListProps) {
   if (entries.length === 0) {
     return (
@@ -208,6 +218,7 @@ function PriorityList({
           showEnhanced={showEnhanced}
           showLogButton={showLogButton}
           onLogClick={onLogClick}
+          itemLabel={itemLabel}
         />
       ))}
     </div>
@@ -456,36 +467,75 @@ export function LootPriorityPanel({
           </h3>
           {/* Sub-tab navigation */}
           <div className="flex bg-surface-base rounded-lg p-1">
-            <button
-              onClick={() => setActiveSubTab('matrix')}
-              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
-                activeSubTab === 'matrix'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+            <Tooltip
+              content={
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    Who Needs It
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
+                  </div>
+                  <div className="text-text-secondary text-xs mt-0.5">Matrix showing which slots each player still needs</div>
+                </div>
+              }
             >
-              Who Needs It
-            </button>
-            <button
-              onClick={() => setActiveSubTab('gear')}
-              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
-                activeSubTab === 'gear'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+              {/* design-system-ignore: Subtab button requires specific toggle styling */}
+              <button
+                onClick={() => setActiveSubTab('matrix')}
+                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                  activeSubTab === 'matrix'
+                    ? 'bg-accent text-accent-contrast'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Who Needs It
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    Gear Priority
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
+                  </div>
+                  <div className="text-text-secondary text-xs mt-0.5">Ordered priority list for each loot item by floor</div>
+                </div>
+              }
             >
-              Gear Priority
-            </button>
-            <button
-              onClick={() => setActiveSubTab('weapon')}
-              className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
-                activeSubTab === 'weapon'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
+              {/* design-system-ignore: Subtab button requires specific toggle styling */}
+              <button
+                onClick={() => setActiveSubTab('gear')}
+                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                  activeSubTab === 'gear'
+                    ? 'bg-accent text-accent-contrast'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Gear Priority
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    Weapon Priority
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+3</kbd>
+                  </div>
+                  <div className="text-text-secondary text-xs mt-0.5">Custom weapon priority order with tie-break rolls</div>
+                </div>
+              }
             >
-              Weapon Priority
-            </button>
+              {/* design-system-ignore: Subtab button requires specific toggle styling */}
+              <button
+                onClick={() => setActiveSubTab('weapon')}
+                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                  activeSubTab === 'weapon'
+                    ? 'bg-accent text-accent-contrast'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Weapon Priority
+              </button>
+            </Tooltip>
           </div>
         </div>
         {showEnhancedScores && lootLog.length > 0 && (
@@ -537,6 +587,7 @@ export function LootPriorityPanel({
                       showLogButton={!!canShowLogButtons}
                       onLogClick={(player) => handleLogClick(slot, player)}
                       showEnhanced={showEnhancedScores && lootLog.length > 0}
+                      itemLabel={label}
                     />
                   </div>
                 );
@@ -561,6 +612,7 @@ export function LootPriorityPanel({
                         showLogButton={!!canShowLogButtons}
                         onLogClick={(player) => handleMaterialLogClick(material, player)}
                         showEnhanced={showEnhancedScores && lootLog.length > 0}
+                        itemLabel={label}
                       />
                     </div>
                   ))}

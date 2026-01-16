@@ -7,8 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
+import { logger } from '../../lib/logger';
 import { WeekSelector } from './WeekSelector';
 import { SectionedLogView } from './SectionedLogView';
+import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
 import type { SnapshotPlayer } from '../../types';
 
 interface HistoryViewProps {
@@ -57,9 +60,22 @@ export function HistoryView({
     maxWeek,
     weeksWithEntries,
     weekDataTypes,
+    lootLog,
+    materialLog,
+    pageLedger,
     fetchCurrentWeek,
     fetchWeekDataTypes,
+    fetchLootLog,
+    fetchMaterialLog,
+    fetchPageLedger,
+    startNextWeek,
+    revertWeek,
   } = useLootTrackingStore();
+
+  // State for start next week and revert week actions
+  const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
+  const [isRevertingWeek, setIsRevertingWeek] = useState(false);
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -116,6 +132,77 @@ export function HistoryView({
     setSelectedWeek(week);
   };
 
+  // Handler for starting the next week manually
+  const handleStartNextWeek = useCallback(async () => {
+    setIsStartingNextWeek(true);
+    try {
+      const newWeek = await startNextWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      toast.success(`Advanced to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to start next week');
+    } finally {
+      setIsStartingNextWeek(false);
+    }
+  }, [groupId, tierId, startNextWeek, setSelectedWeek]);
+
+  // Handler for confirming the revert (extracted to avoid circular dependency)
+  const executeRevert = useCallback(async () => {
+    setIsRevertingWeek(true);
+    setShowRevertConfirm(false);
+    try {
+      const newWeek = await revertWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      // Refresh week data types to update the selector (non-critical)
+      try {
+        await fetchWeekDataTypes(groupId, tierId);
+      } catch {
+        // Secondary fetch failed - week selector may be stale until next page load
+        logger.warn('Failed to refresh week data types after revert');
+      }
+      toast.success(`Reverted to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to revert week');
+    } finally {
+      setIsRevertingWeek(false);
+    }
+  }, [groupId, tierId, revertWeek, setSelectedWeek, fetchWeekDataTypes]);
+
+  // Handler for revert week button click - show confirm if data exists
+  const handleRevertWeekClick = useCallback(async () => {
+    // Prevent double-clicks during the check/revert process
+    if (isRevertingWeek) return;
+    setIsRevertingWeek(true);
+
+    try {
+      // Fetch the latest data for the current week to show in the modal
+      await Promise.all([
+        fetchLootLog(groupId, tierId),
+        fetchMaterialLog(groupId, tierId),
+        fetchPageLedger(groupId, tierId),
+      ]);
+
+      // Re-check with fresh data (store will have updated)
+      const store = useLootTrackingStore.getState();
+      const hasLoot = store.lootLog.some((e) => e.weekNumber === currentWeek);
+      const hasMaterials = store.materialLog.some((e) => e.weekNumber === currentWeek);
+      const hasBooks = store.pageLedger.some((e) => e.weekNumber === currentWeek);
+
+      if (hasLoot || hasMaterials || hasBooks) {
+        // Show confirmation modal (will reset loading when user cancels or confirms)
+        setShowRevertConfirm(true);
+        setIsRevertingWeek(false); // Reset loading - modal will handle next step
+      } else {
+        // No data, proceed directly (executeRevert will manage its own loading state)
+        setIsRevertingWeek(false);
+        await executeRevert();
+      }
+    } catch {
+      toast.error('Failed to check week data');
+      setIsRevertingWeek(false);
+    }
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, currentWeek, executeRevert, isRevertingWeek]);
+
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
@@ -130,6 +217,10 @@ export function HistoryView({
           onWeekChange={handleWeekChange}
           weeksWithEntries={weeksWithEntries}
           weekDataTypes={weekDataTypes}
+          onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
+          isStartingNextWeek={isStartingNextWeek}
+          onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
+          isRevertingWeek={isRevertingWeek}
         />
       </div>
 
@@ -151,6 +242,19 @@ export function HistoryView({
         onLogMaterialModalClose={onLogMaterialModalClose}
         openMarkFloorClearedModal={openMarkFloorClearedModal}
         onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
+      />
+
+      {/* Revert week confirmation modal */}
+      <RevertWeekConfirmModal
+        isOpen={showRevertConfirm}
+        week={currentWeek}
+        lootLog={lootLog}
+        materialLog={materialLog}
+        pageLedger={pageLedger}
+        players={players}
+        isReverting={isRevertingWeek}
+        onConfirm={executeRevert}
+        onCancel={() => setShowRevertConfirm(false)}
       />
     </div>
   );

@@ -9,7 +9,7 @@
  */
 
 import { memo } from 'react';
-import { Button } from '../primitives';
+import { Button, Tooltip } from '../primitives';
 import { Link2, UserCheck, FileDown } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
@@ -50,6 +50,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   let message: string;
   let buttonLabel: string;
   let buttonIcon: React.ReactNode;
+  let buttonTooltip: string;
   let onClick: (() => void) | undefined;
 
   switch (bannerState) {
@@ -57,6 +58,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       message = 'Unclaimed';
       buttonLabel = 'Assign Player';
       buttonIcon = <Link2 className="w-3.5 h-3.5" />;
+      buttonTooltip = 'Link a Discord member to this player slot';
       // Use owner assign for non-admin access, or admin assign for admin access
       onClick = onOpenAssignModal;
       break;
@@ -65,6 +67,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       message = 'Unclaimed';
       buttonLabel = 'Take Ownership';
       buttonIcon = <UserCheck className="w-3.5 h-3.5" />;
+      buttonTooltip = 'Claim this slot as your character';
       // In View As mode, use admin assign to assign the viewed user
       // Normal mode uses claim endpoint
       onClick = (isAdminAccess && viewAsUserId) ? onAssignViewAsUser : onClaimPlayer;
@@ -74,6 +77,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       message = 'No BiS configured';
       buttonLabel = 'Import BiS';
       buttonIcon = <FileDown className="w-3.5 h-3.5" />;
+      buttonTooltip = 'Import gear set from XIVGear or Etro';
       onClick = onOpenBiSImport;
       break;
 
@@ -88,18 +92,20 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       aria-label={`Setup needed: ${message}`}
     >
       <span className="text-sm text-accent">{message}</span>
-      <Button
-        size="sm"
-        variant="secondary"
-        leftIcon={buttonIcon}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.();
-        }}
-        disabled={!onClick}
-      >
-        {buttonLabel}
-      </Button>
+      <Tooltip content={buttonTooltip}>
+        <Button
+          size="sm"
+          variant="secondary"
+          leftIcon={buttonIcon}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.();
+          }}
+          disabled={!onClick}
+        >
+          {buttonLabel}
+        </Button>
+      </Tooltip>
     </div>
   );
 });

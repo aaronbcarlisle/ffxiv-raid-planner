@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
+import { Tooltip } from '../primitives/Tooltip';
 import type { MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../../types';
 
 // Extended member info with role for user swapping
@@ -158,14 +159,15 @@ export function ViewAsBanner() {
 
           {/* User swap dropdown */}
           <div className="relative">
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-status-warning hover:bg-status-warning/20 rounded transition-colors border border-status-warning/30"
-              title="Switch to another user"
-            >
-              <ChevronDown className="w-3 h-3" />
-              Switch User
-            </button>
+            <Tooltip content="Switch to another user">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-status-warning hover:bg-status-warning/20 rounded transition-colors border border-status-warning/30"
+              >
+                <ChevronDown className="w-3 h-3" />
+                Switch User
+              </button>
+            </Tooltip>
 
             {showDropdown && (
               <>

@@ -10,6 +10,7 @@
 
 import type { SnapshotPlayer, LootLogEntry } from '../../types';
 import { getRoleColor } from '../../gamedata';
+import { Tooltip } from '../primitives/Tooltip';
 
 interface LootCountBarProps {
   players: SnapshotPlayer[];
@@ -74,24 +75,38 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
               ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
               : 'var(--color-text-secondary)';
 
+            const diffFromAvg = count - average;
+            const diffText = diffFromAvg > 0 ? `+${diffFromAvg.toFixed(1)}` : diffFromAvg.toFixed(1);
+
             return (
-              <div
+              <Tooltip
                 key={player.id}
-                className="flex flex-col items-center"
-                title={`${player.name}: ${count} drop${count !== 1 ? 's' : ''}`}
+                content={
+                  <div>
+                    <div className="font-medium">{player.name}</div>
+                    <div className="text-text-secondary text-xs mt-0.5">
+                      {count} drop{count !== 1 ? 's' : ''} this week
+                    </div>
+                    <div className="text-text-muted text-[10px] mt-1">
+                      {diffFromAvg === 0 ? 'At average' : `${diffText} from avg`}
+                    </div>
+                  </div>
+                }
               >
-                <div
-                  className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold border ${getCountStyle(count)}`}
-                >
-                  {count}
+                <div className="flex flex-col items-center cursor-help">
+                  <div
+                    className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold border ${getCountStyle(count)}`}
+                  >
+                    {count}
+                  </div>
+                  <span
+                    className="text-[10px] font-medium mt-0.5"
+                    style={{ color: roleColor }}
+                  >
+                    {player.position || '?'}
+                  </span>
                 </div>
-                <span
-                  className="text-[10px] font-medium mt-0.5"
-                  style={{ color: roleColor }}
-                >
-                  {player.position || '?'}
-                </span>
-              </div>
+              </Tooltip>
             );
           })}
         </div>

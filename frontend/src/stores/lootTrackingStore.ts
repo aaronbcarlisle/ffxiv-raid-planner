@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { getErrorMessage } from '../lib/errorHandler';
+import { logger } from '../lib/logger';
 import type {
   LootLogEntry,
   LootLogEntryCreate,
@@ -80,6 +81,8 @@ interface LootTrackingState {
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
   deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   clearAllPageLedger: (groupId: string, tierId: string) => Promise<void>;
+  startNextWeek: (groupId: string, tierId: string) => Promise<number>;
+  revertWeek: (groupId: string, tierId: string) => Promise<number>;
   clearLootTracking: () => void;
   clearPlayerLedger: () => void;
 }
@@ -517,6 +520,63 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  startNextWeek: async (groupId, tierId) => {
+    set({ error: null });
+    try {
+      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/start-next-week`
+      );
+      // Update current week immediately to ensure state reflects backend
+      const newWeek = response.currentWeek;
+      set({ currentWeek: newWeek });
+
+      // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
+      try {
+        const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
+          `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
+        );
+        set({ maxWeek: weekInfo.maxWeek });
+      } catch (err) {
+        // Secondary fetch failed - use Math.max as fallback
+        logger.warn('Failed to fetch maxWeek after startNextWeek, using fallback:', err);
+        const { maxWeek } = get();
+        set({ maxWeek: Math.max(maxWeek, newWeek) });
+      }
+      return newWeek;
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  revertWeek: async (groupId, tierId) => {
+    set({ error: null });
+    try {
+      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/revert-week`
+      );
+      // Update current week immediately to ensure state reflects backend
+      const newWeek = response.currentWeek;
+      set({ currentWeek: newWeek });
+
+      // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
+      try {
+        const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
+          `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
+        );
+        set({ maxWeek: weekInfo.maxWeek });
+      } catch (err) {
+        // Secondary fetch failed - don't update maxWeek, it will sync on next page load.
+        // Using Math.max wouldn't work for revert since week decreases.
+        logger.warn('Failed to fetch maxWeek after revertWeek:', err);
+      }
+      return newWeek;
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;

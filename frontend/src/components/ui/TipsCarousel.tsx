@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Lightbulb, X } from 'lucide-react';
+import { Tooltip } from '../primitives/Tooltip';
 
 type MembershipRole = 'owner' | 'lead' | 'member' | 'viewer';
 
@@ -143,23 +144,25 @@ export function TipsCarousel({ context, userRole, className = '' }: TipsCarousel
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
       <Lightbulb className="w-3 h-3 text-text-muted/50 flex-shrink-0" />
-      <button
-        onClick={handleCycleNext}
-        className={`text-xs text-text-muted/60 hover:text-text-muted transition-all duration-200 cursor-pointer ${
-          isVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-        title="Click for next tip"
-      >
-        {currentTip.text}
-      </button>
-      <button
-        onClick={handleDismiss}
-        className="p-0.5 text-text-muted/30 hover:text-text-muted/60 transition-colors flex-shrink-0"
-        title="Dismiss tips"
-        aria-label="Dismiss tips"
-      >
-        <X className="w-3 h-3" />
-      </button>
+      <Tooltip content="Click for next tip">
+        <button
+          onClick={handleCycleNext}
+          className={`text-xs text-text-muted/60 hover:text-text-muted transition-all duration-200 cursor-pointer ${
+            isVisible ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          {currentTip.text}
+        </button>
+      </Tooltip>
+      <Tooltip content="Dismiss tips">
+        <button
+          onClick={handleDismiss}
+          className="p-0.5 text-text-muted/30 hover:text-text-muted/60 transition-colors flex-shrink-0"
+          aria-label="Dismiss tips"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      </Tooltip>
     </div>
   );
 }

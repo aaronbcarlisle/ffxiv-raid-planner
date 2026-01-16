@@ -5,7 +5,7 @@ API endpoints for loot log and page tracking.
 """
 
 import structlog
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,9 +40,13 @@ from app.schemas import (
     PageBalanceResponse,
     PageLedgerEntryCreate,
     PageLedgerEntryResponse,
+    WeekOperationResponse,
 )
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
+
+# Maximum weeks allowed per tier (~5 months of raiding)
+MAX_WEEKS = 20
 
 
 # Helper functions
@@ -52,15 +56,22 @@ async def get_tier_snapshot(
     db: AsyncSession,
     group_id: str,
     tier_id: str,
+    for_update: bool = False,
 ) -> TierSnapshot:
-    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)"""
-    result = await db.execute(
-        select(TierSnapshot).where(
-            TierSnapshot.static_group_id == group_id,
-            # Support both UUID (id) and slug (tier_id) lookups
-            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
-        )
+    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)
+
+    Args:
+        for_update: If True, acquire a row-level lock to prevent concurrent modifications.
+                   Use this when the caller intends to modify the tier.
+    """
+    query = select(TierSnapshot).where(
+        TierSnapshot.static_group_id == group_id,
+        # Support both UUID (id) and slug (tier_id) lookups
+        (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
     )
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     tier = result.scalar_one_or_none()
     if not tier:
         raise HTTPException(status_code=404, detail="Tier snapshot not found")
@@ -768,6 +779,134 @@ async def clear_player_page_ledger(
         )
     )
     await db.commit()
+
+
+@router.post("/{group_id}/tiers/{tier_id}/start-next-week", response_model=WeekOperationResponse)
+async def start_next_week(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually advance to the next week by adjusting week_start_date.
+
+    This is useful when the automatic week calculation doesn't match
+    when you actually started raiding (e.g., first log was days after
+    the first raid session).
+    """
+    # Check permissions - requires lead or owner
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier with row-level lock to prevent race conditions.
+    # All validation and modifications happen AFTER lock acquisition.
+    tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
+
+    # Validate maximum weeks to prevent abuse.
+    # Note: This calculation uses the locked tier data, ensuring serialized access.
+    current_week = calculate_week_number(tier)
+    if current_week >= MAX_WEEKS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot advance beyond week {MAX_WEEKS}"
+        )
+
+    # If week_start_date is not set, use created_at as the effective start date.
+    # This preserves the current week calculation (which falls back to created_at)
+    # instead of jumping backwards to "now".
+    if tier.week_start_date is None:
+        tier.week_start_date = tier.created_at
+
+    # Parse the current week_start_date
+    try:
+        start_date = datetime.fromisoformat(tier.week_start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid week_start_date format")
+
+    # Move it back by 7 days to advance the calculated week by 1
+    new_start_date = start_date - timedelta(days=7)
+    tier.week_start_date = new_start_date.isoformat()
+
+    await db.commit()
+
+    # Calculate and return the new week number
+    new_week = calculate_week_number(tier)
+
+    logger.info(
+        "week_advanced",
+        group_id=group_id,
+        tier_id=tier_id,
+        new_week=new_week,
+        old_start_date=start_date.isoformat(),
+        new_start_date=new_start_date.isoformat(),
+        user_id=current_user.id,
+    )
+
+    return {
+        "currentWeek": new_week,
+        "weekStartDate": tier.week_start_date,
+    }
+
+
+@router.post("/{group_id}/tiers/{tier_id}/revert-week", response_model=WeekOperationResponse)
+async def revert_week(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Revert to the previous week by adjusting week_start_date forward.
+
+    This undoes the effect of start-next-week. Useful if the user
+    accidentally advanced the week when they didn't mean to.
+    """
+    # Check permissions - requires lead or owner
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier with row-level lock to prevent race conditions.
+    # All validation and modifications happen AFTER lock acquisition.
+    tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
+
+    # Cannot revert if week_start_date is not set.
+    # Note: All checks below use the locked tier data, ensuring serialized access.
+    if tier.week_start_date is None:
+        raise HTTPException(status_code=400, detail="Cannot revert: no week start date set")
+
+    # Check current week AFTER acquiring lock to prevent race conditions
+    current_calculated_week = calculate_week_number(tier)
+    if current_calculated_week <= 1:
+        raise HTTPException(status_code=400, detail="Cannot revert: already at week 1")
+
+    # Parse the current week_start_date
+    try:
+        start_date = datetime.fromisoformat(tier.week_start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid week_start_date format")
+
+    # Move it forward by 7 days to decrease the calculated week by 1
+    new_start_date = start_date + timedelta(days=7)
+    tier.week_start_date = new_start_date.isoformat()
+
+    await db.commit()
+
+    # Calculate and return the new week number
+    new_week = calculate_week_number(tier)
+
+    logger.info(
+        "week_reverted",
+        group_id=group_id,
+        tier_id=tier_id,
+        new_week=new_week,
+        old_start_date=start_date.isoformat(),
+        new_start_date=new_start_date.isoformat(),
+        user_id=current_user.id,
+    )
+
+    return {
+        "currentWeek": new_week,
+        "weekStartDate": tier.week_start_date,
+    }
 
 
 @router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")

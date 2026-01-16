@@ -7,6 +7,8 @@
  * - Progress (26%+): accent teal
  */
 
+import { Tooltip } from '../primitives/Tooltip';
+
 interface ProgressRingProps {
   /** Current value (e.g., 5) */
   value: number;
@@ -63,47 +65,55 @@ export function ProgressRing({
   const colors = getProgressColor(percentage);
 
   return (
-    <div
-      className={`relative inline-flex items-center justify-center ${className}`}
-      style={{ width: diameter, height: diameter }}
-      title={`${value}/${max} (${Math.round(percentage)}%)`}
-    >
-      <svg
-        width={diameter}
-        height={diameter}
-        className="transform -rotate-90"
-      >
-        {/* Background circle (track) */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          className="stroke-surface-elevated"
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress circle */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          className={`${colors.stroke} transition-all duration-300 ease-out`}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-        />
-      </svg>
-      {/* Center label */}
-      {showLabel && (
-        <span
-          className={`absolute inset-0 flex items-center justify-center font-bold ${fontSize} ${colors.text}`}
-        >
-          {value}/{max}
+    <Tooltip
+      content={
+        <span>
+          <span className="font-medium">{value}/{max}</span>
+          <span className="text-text-secondary ml-1">({Math.round(percentage)}% complete)</span>
         </span>
-      )}
-    </div>
+      }
+    >
+      <div
+        className={`relative inline-flex items-center justify-center ${className}`}
+        style={{ width: diameter, height: diameter }}
+      >
+        <svg
+          width={diameter}
+          height={diameter}
+          className="transform -rotate-90"
+        >
+          {/* Background circle (track) */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            className="stroke-surface-elevated"
+            strokeWidth={strokeWidth}
+          />
+          {/* Progress circle */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            className={`${colors.stroke} transition-all duration-300 ease-out`}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+          />
+        </svg>
+        {/* Center label */}
+        {showLabel && (
+          <span
+            className={`absolute inset-0 flex items-center justify-center font-bold ${fontSize} ${colors.text}`}
+          >
+            {value}/{max}
+          </span>
+        )}
+      </div>
+    </Tooltip>
   );
 }
 

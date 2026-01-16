@@ -133,16 +133,34 @@ function SlotIcon({
     return (
       <>
         <Tooltip
+          delayDuration={200}
           content={
-            <ItemHoverCard
-              itemName={status.itemName!}
-              itemLevel={status.itemLevel!}
-              itemIcon={status.itemIcon}
-              itemStats={status.itemStats}
-              bisSource={bisSource}
-              hasItem={hasItem}
-              isAugmented={isAugmented}
-            />
+            hasLootEntry ? (
+              <div>
+                <ItemHoverCard
+                  itemName={status.itemName!}
+                  itemLevel={status.itemLevel!}
+                  itemIcon={status.itemIcon}
+                  itemStats={status.itemStats}
+                  bisSource={bisSource}
+                  hasItem={hasItem}
+                  isAugmented={isAugmented}
+                />
+                <div className="mt-2 pt-2 border-t border-border-subtle text-xs text-text-muted">
+                  <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to loot entry
+                </div>
+              </div>
+            ) : (
+              <ItemHoverCard
+                itemName={status.itemName!}
+                itemLevel={status.itemLevel!}
+                itemIcon={status.itemIcon}
+                itemStats={status.itemStats}
+                bisSource={bisSource}
+                hasItem={hasItem}
+                isAugmented={isAugmented}
+              />
+            )
           }
           side="right"
           sideOffset={8}
@@ -151,7 +169,6 @@ function SlotIcon({
             className={`cursor-pointer ${hasLootEntry && onNavigateToLootEntry ? 'hover:ring-1 hover:ring-accent/50 rounded' : ''}`}
             onClick={handleClick}
             onContextMenu={handleContextMenu}
-            title={hasLootEntry ? 'Alt+Click to go to loot entry' : undefined}
           >
             {iconElement}
           </div>
@@ -168,16 +185,31 @@ function SlotIcon({
     );
   }
 
+  const slotElement = (
+    <div
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      className={hasLootEntry && onNavigateToLootEntry ? 'cursor-pointer hover:ring-1 hover:ring-accent/50 rounded' : ''}
+    >
+      {iconElement}
+    </div>
+  );
+
   return (
     <>
-      <div
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        className={hasLootEntry && onNavigateToLootEntry ? 'cursor-pointer hover:ring-1 hover:ring-accent/50 rounded' : ''}
-        title={hasLootEntry ? 'Alt+Click to go to loot entry' : undefined}
-      >
-        {iconElement}
-      </div>
+      {hasLootEntry ? (
+        <Tooltip
+          content={
+            <span className="text-xs">
+              <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to loot entry
+            </span>
+          }
+        >
+          {slotElement}
+        </Tooltip>
+      ) : (
+        slotElement
+      )}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -246,28 +278,49 @@ function WeaponSlotRow({
               Raid
             </span>
             {/* + is a toggle for interim tome weapon */}
-            <button
-              onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-              className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium transition-colors ${
-                tomeWeapon.pursuing
-                  ? 'bg-gear-tome/20 text-gear-tome'
-                  : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={disabled ? disabledTooltip : (tomeWeapon.pursuing ? 'Stop tracking tome weapon' : 'Track interim tome weapon')}
-              disabled={disabled}
+            <Tooltip
+              content={
+                disabled
+                  ? disabledTooltip
+                  : tomeWeapon.pursuing
+                    ? 'Stop tracking tome weapon'
+                    : 'Track interim tome weapon'
+              }
             >
-              +
-            </button>
+              <button
+                onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
+                className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-medium transition-colors ${
+                  tomeWeapon.pursuing
+                    ? 'bg-gear-tome/20 text-gear-tome'
+                    : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={disabled}
+              >
+                +
+              </button>
+            </Tooltip>
           </div>
         </td>
         <td className="py-1">
-          <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
-            <Checkbox
-              checked={status.hasItem}
-              onChange={(checked) => onGearChange({ hasItem: checked })}
-              disabled={disabled}
-            />
-          </div>
+          {disabled && disabledTooltip ? (
+            <Tooltip content={disabledTooltip}>
+              <div className="flex justify-center">
+                <Checkbox
+                  checked={status.hasItem}
+                  onChange={(checked) => onGearChange({ hasItem: checked })}
+                  disabled={disabled}
+                />
+              </div>
+            </Tooltip>
+          ) : (
+            <div className="flex justify-center">
+              <Checkbox
+                checked={status.hasItem}
+                onChange={(checked) => onGearChange({ hasItem: checked })}
+                disabled={disabled}
+              />
+            </div>
+          )}
         </td>
         <td className="py-1">
           <div className="flex justify-center text-text-muted">
@@ -299,38 +352,58 @@ function WeaponSlotRow({
             <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
           </td>
           <td className="py-1">
-            <div className="flex justify-center" title={disabled ? disabledTooltip : undefined}>
-              <Checkbox
-                checked={tomeWeapon.hasItem}
-                onChange={(checked) => {
-                  // When unchecking "Have", also uncheck "Augmented"
-                  if (!checked) {
-                    onTomeWeaponChange({ hasItem: checked, isAugmented: false });
-                  } else {
-                    onTomeWeaponChange({ hasItem: checked });
-                  }
-                }}
-                disabled={disabled}
-              />
-            </div>
+            {disabled && disabledTooltip ? (
+              <Tooltip content={disabledTooltip}>
+                <div className="flex justify-center">
+                  <Checkbox
+                    checked={tomeWeapon.hasItem}
+                    onChange={(checked) => {
+                      if (!checked) {
+                        onTomeWeaponChange({ hasItem: checked, isAugmented: false });
+                      } else {
+                        onTomeWeaponChange({ hasItem: checked });
+                      }
+                    }}
+                    disabled={disabled}
+                  />
+                </div>
+              </Tooltip>
+            ) : (
+              <div className="flex justify-center">
+                <Checkbox
+                  checked={tomeWeapon.hasItem}
+                  onChange={(checked) => {
+                    if (!checked) {
+                      onTomeWeaponChange({ hasItem: checked, isAugmented: false });
+                    } else {
+                      onTomeWeaponChange({ hasItem: checked });
+                    }
+                  }}
+                  disabled={disabled}
+                />
+              </div>
+            )}
           </td>
           <td className="py-1">
-            <div
-              className="flex justify-center"
-              title={
+            <Tooltip
+              content={
                 disabled
                   ? disabledTooltip || 'Get the tome weapon first'
-                  : tomeWeapon.hasItem && !tomeWeapon.isAugmented
-                    ? 'Get Solvent from Floor 3 (M11S)'
-                    : undefined
+                  : !tomeWeapon.hasItem
+                    ? 'Get the tome weapon first'
+                    : !tomeWeapon.isAugmented
+                      ? 'Get Solvent from Floor 3 (M11S)'
+                      : 'Tome weapon augmented'
               }
             >
-              <Checkbox
-                checked={tomeWeapon.isAugmented}
-                onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
-                disabled={disabled || !tomeWeapon.hasItem}
-              />
-            </div>
+              <div className="flex justify-center">
+                <Checkbox
+                  checked={tomeWeapon.isAugmented}
+                  onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
+                  disabled={disabled || !tomeWeapon.hasItem}
+                />
+              </div>
+            </Tooltip>
           </td>
         </tr>
       )}
@@ -456,25 +529,25 @@ export function GearTable({
           const stateInfo = `${status.hasItem ? ' ✓' : ''}${status.isAugmented ? ' Aug' : ''}`;
 
           return (
-            <div
-              key={slot}
-              className={`w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
-                isComplete
-                  ? 'bg-status-success/30'
-                  : status.hasItem
-                    ? 'bg-status-warning/30'
-                    : 'bg-surface-interactive'
-              }`}
-              title={`${itemInfo}: ${sourceInfo}${stateInfo}`}
-            >
-              <img
-                src={iconUrl}
-                alt={status.itemName || GEAR_SLOT_NAMES[slot]}
-                width={18}
-                height={18}
-                className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
-              />
-            </div>
+            <Tooltip key={slot} content={`${itemInfo}: ${sourceInfo}${stateInfo}`}>
+              <div
+                className={`w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
+                  isComplete
+                    ? 'bg-status-success/30'
+                    : status.hasItem
+                      ? 'bg-status-warning/30'
+                      : 'bg-surface-interactive'
+                }`}
+              >
+                <img
+                  src={iconUrl}
+                  alt={status.itemName || GEAR_SLOT_NAMES[slot]}
+                  width={18}
+                  height={18}
+                  className={`${iconClass} ${isActualItemIcon ? 'rounded' : ''}`}
+                />
+              </div>
+            </Tooltip>
           );
         })}
       </div>
@@ -490,8 +563,16 @@ export function GearTable({
             {/* CurrentSource column hidden for now - change to "hidden md:table-cell" to re-enable */}
             <th className="text-center py-1 font-medium hidden">Current</th>
             <th className="text-center py-1 font-medium w-16">BiS</th>
-            <th className="text-center py-1 font-medium w-16">Have</th>
-            <th className="text-center py-1 font-medium w-16">Aug</th>
+            <th className="text-center py-1 font-medium w-16">
+              <Tooltip content="Mark gear as acquired">
+                <span className="cursor-help">Have</span>
+              </Tooltip>
+            </th>
+            <th className="text-center py-1 font-medium w-16">
+              <Tooltip content="Mark tome gear as augmented">
+                <span className="cursor-help">Aug</span>
+              </Tooltip>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -545,31 +626,44 @@ export function GearTable({
                 </td>
                 <td className="py-1 text-center">
                   <div className="flex justify-center">
-                    <button
-                      onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
-                      className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${
-                        status.bisSource === 'raid'
-                          ? 'bg-gear-raid/20 text-gear-raid'
-                          : 'bg-gear-tome/20 text-gear-tome'
-                      } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
-                      disabled={!gearPermission.allowed}
-                      title={!gearPermission.allowed ? gearPermission.reason : 'Click to toggle BiS source'}
+                    <Tooltip
+                      content={!gearPermission.allowed ? gearPermission.reason : 'Click to toggle BiS source'}
                     >
-                      {status.bisSource === 'raid' ? 'Raid' : 'Tome'}
-                      <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                      </svg>
-                    </button>
+                      <button
+                        onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
+                        className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${
+                          status.bisSource === 'raid'
+                            ? 'bg-gear-raid/20 text-gear-raid'
+                            : 'bg-gear-tome/20 text-gear-tome'
+                        } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
+                        disabled={!gearPermission.allowed}
+                      >
+                        {status.bisSource === 'raid' ? 'Raid' : 'Tome'}
+                        <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                        </svg>
+                      </button>
+                    </Tooltip>
                   </div>
                 </td>
                 <td className="py-1">
-                  <div className="flex justify-center" title={!gearPermission.allowed ? gearPermission.reason : undefined}>
-                    <Checkbox
-                      checked={status.hasItem}
-                      onChange={(checked) => handleHasItemChange(slot, checked)}
-                      disabled={!gearPermission.allowed}
-                    />
-                  </div>
+                  <Tooltip
+                    content={
+                      !gearPermission.allowed
+                        ? gearPermission.reason
+                        : status.hasItem
+                          ? 'Uncheck to mark as not acquired'
+                          : 'Check when you have this gear'
+                    }
+                  >
+                    <div className="flex justify-center">
+                      <Checkbox
+                        checked={status.hasItem}
+                        onChange={(checked) => handleHasItemChange(slot, checked)}
+                        disabled={!gearPermission.allowed}
+                      />
+                    </div>
+                  </Tooltip>
                 </td>
                 <td className="py-1">
                   {status.bisSource === 'raid' ? (
@@ -577,24 +671,25 @@ export function GearTable({
                       {/* Raid gear can't be augmented - empty cell */}
                     </div>
                   ) : (
-                    <div
-                      className="flex justify-center"
-                      title={
+                    <Tooltip
+                      content={
                         !gearPermission.allowed
                           ? gearPermission.reason
-                          : status.bisSource === 'tome' && !status.hasItem
+                          : !status.hasItem
                             ? 'Get tome gear first'
-                            : status.bisSource === 'tome' && status.hasItem && !status.isAugmented
+                            : !status.isAugmented
                               ? getUpgradeMaterialTooltip(status.slot)
-                              : undefined
+                              : 'Gear augmented'
                       }
                     >
-                      <Checkbox
-                        checked={status.isAugmented}
-                        onChange={(checked) => handleAugmentedChange(slot, checked)}
-                        disabled={!gearPermission.allowed || !canAugment}
-                      />
-                    </div>
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={status.isAugmented}
+                          onChange={(checked) => handleAugmentedChange(slot, checked)}
+                          disabled={!gearPermission.allowed || !canAugment}
+                        />
+                      </div>
+                    </Tooltip>
                   )}
                 </td>
               </tr>

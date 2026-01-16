@@ -12,7 +12,7 @@ import { api, ApiError } from '../services/api';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage } from '../components/ui';
-import { Button } from '../components/primitives';
+import { Button, Tooltip } from '../components/primitives';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../types';
 
 // Extended member info with role for View As modal
@@ -398,34 +398,58 @@ export function AdminDashboard() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-accent text-sm">{group.shareCode}</span>
-                        <button
-                          onClick={(e) => handleCopyCode(group.shareCode, e)}
-                          className="p-1 rounded hover:bg-surface-elevated transition-colors"
-                          title="Copy code (hold Shift for full URL)"
+                        <Tooltip
+                          content={
+                            <div>
+                              <div className="font-medium">Copy Share Code</div>
+                              <div className="text-text-secondary text-xs mt-0.5">
+                                Hold <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Shift</kbd> for full URL
+                              </div>
+                            </div>
+                          }
                         >
-                          {copiedCode === group.shareCode ? (
-                            <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          )}
-                        </button>
+                          {/* design-system-ignore: Inline icon button in table cell */}
+                          <button
+                            onClick={(e) => handleCopyCode(group.shareCode, e)}
+                            className="p-1 rounded hover:bg-surface-elevated transition-colors"
+                            aria-label="Copy share code"
+                          >
+                            {copiedCode === group.shareCode ? (
+                              <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </button>
+                        </Tooltip>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-text-muted text-sm">
                       {new Date(group.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={(e) => handleOpenViewAs(group, e)}
-                        className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-status-warning"
-                        title="View as member"
+                      <Tooltip
+                        content={
+                          <div>
+                            <div className="font-medium">View As Member</div>
+                            <div className="text-text-secondary text-xs mt-0.5">
+                              Impersonate a member to see their view
+                            </div>
+                          </div>
+                        }
                       >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                        {/* design-system-ignore: Inline icon button in table cell */}
+                        <button
+                          onClick={(e) => handleOpenViewAs(group, e)}
+                          className="p-1.5 rounded hover:bg-surface-elevated transition-colors text-text-muted hover:text-status-warning"
+                          aria-label="View as member"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </td>
                   </tr>
                 ))}
