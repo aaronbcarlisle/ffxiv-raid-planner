@@ -2,17 +2,49 @@
  * AssignUserModal - Admin/Owner modal for assigning users to player cards
  *
  * Allows admins/owners to assign users with optional auto-membership creation.
+ * Shows role badges next to user names and handles reassignment confirmation.
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal, Input, Checkbox, Select, Label, type SelectOption } from '../ui';
+import { Modal, ConfirmModal, Input, Checkbox, Select, Label, type SelectOption } from '../ui';
 import { Button } from '../primitives';
-import { X, Users } from 'lucide-react';
-import type { SnapshotPlayer, InteractedUser, AssignPlayerRequest } from '../../types';
+import { X, Users, AlertTriangle } from 'lucide-react';
+import type { SnapshotPlayer, InteractedUser, AssignPlayerRequest, MemberRole } from '../../types';
 import { authRequest } from '../../services/api';
 import { logger } from '../../lib/logger';
 import { toast } from '../../stores/toastStore';
 import { parseApiError } from '../../lib/errorHandler';
+
+/**
+ * Role badge colors matching design system
+ */
+const ROLE_BADGE_STYLES: Record<MemberRole, string> = {
+  owner: 'bg-membership-owner/30 text-membership-owner border-membership-owner/50',
+  lead: 'bg-membership-lead/30 text-membership-lead border-membership-lead/50',
+  member: 'bg-membership-member/30 text-membership-member border-membership-member/50',
+  viewer: 'bg-membership-viewer/30 text-membership-viewer border-membership-viewer/50',
+};
+
+const LINKED_BADGE_STYLE = 'bg-membership-linked/30 text-membership-linked border-membership-linked/50';
+
+/**
+ * Role badge component for select dropdown
+ */
+function RoleBadge({ role, isLinked }: { role?: MemberRole; isLinked?: boolean }) {
+  if (isLinked) {
+    return (
+      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide ${LINKED_BADGE_STYLE}`}>
+        Linked
+      </span>
+    );
+  }
+  if (!role) return null;
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide ${ROLE_BADGE_STYLES[role]}`}>
+      {role}
+    </span>
+  );
+}
 
 const log = logger.scope('AssignUserModal');
 
@@ -33,6 +65,8 @@ interface AssignUserModalProps {
   player: SnapshotPlayer;
   groupId: string;
   isAdmin: boolean; // Determines dropdown content (all users vs members only)
+  /** All players in the tier (for checking existing assignments) */
+  allPlayers?: SnapshotPlayer[];
   onClose: () => void;
   onAssign: (data: AssignPlayerRequest) => Promise<void>;
 }
@@ -41,6 +75,7 @@ export function AssignUserModal({
   player,
   groupId,
   isAdmin,
+  allPlayers = [],
   onClose,
   onAssign,
 }: AssignUserModalProps) {
@@ -53,6 +88,19 @@ export function AssignUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [interactedUsers, setInteractedUsers] = useState<InteractedUser[]>([]);
+  const [showReassignConfirm, setShowReassignConfirm] = useState(false);
+  const [pendingReassignUserId, setPendingReassignUserId] = useState<string | null>(null);
+
+  // Build a map of userId -> player name for existing assignments (excluding current player)
+  const userAssignments = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of allPlayers) {
+      if (p.userId && p.id !== player.id) {
+        map.set(p.userId, p.name);
+      }
+    }
+    return map;
+  }, [allPlayers, player.id]);
 
   // Fetch users on mount
   useEffect(() => {
@@ -87,23 +135,78 @@ export function AssignUserModal({
 
   const isNonMember = selectedUser && !selectedUser.isMember;
 
-  // Transform interacted users to SelectOption format
+  // Transform interacted users to SelectOption format with role badges
+  // Sort: unassigned users first, then assigned users at bottom
   const userOptions = useMemo<SelectOption[]>(() => {
+    // Sort users: unassigned first, assigned last
+    const sortedUsers = [...interactedUsers].sort((a, b) => {
+      const aAssigned = userAssignments.has(a.user.id);
+      const bAssigned = userAssignments.has(b.user.id);
+      if (aAssigned && !bAssigned) return 1;
+      if (!aAssigned && bAssigned) return -1;
+      // Secondary sort by name
+      const aName = a.user.displayName || a.user.discordUsername;
+      const bName = b.user.displayName || b.user.discordUsername;
+      return aName.localeCompare(bName);
+    });
+
     const options: SelectOption[] = [
       { value: '', label: '-- Select user --' },
-      ...interactedUsers.map(u => ({
-        value: u.user.id,
-        label: `${u.user.displayName || u.user.discordUsername}${
-          u.isMember ? ` (${u.memberRole})` : ' (linked player)'
-        }`,
-      })),
+      ...sortedUsers.map(u => {
+        const assignedToPlayer = userAssignments.get(u.user.id);
+        const displayName = u.user.displayName || u.user.discordUsername;
+
+        return {
+          value: u.user.id,
+          label: assignedToPlayer
+            ? `${displayName} (assigned to ${assignedToPlayer})`
+            : displayName,
+          icon: <RoleBadge role={u.memberRole} isLinked={!u.isMember} />,
+        };
+      }),
     ];
     return options;
-  }, [interactedUsers]);
+  }, [interactedUsers, userAssignments]);
 
   // Determine effective user ID
   const effectiveUserId = useManualInput ? manualId.trim() : selectedUserId;
   const hasChanged = effectiveUserId !== (player.userId || '');
+
+  // Get info about pending reassignment for the confirm modal
+  const pendingReassignPlayerName = pendingReassignUserId
+    ? userAssignments.get(pendingReassignUserId)
+    : null;
+  const pendingReassignUserName = useMemo(() => {
+    if (!pendingReassignUserId) return null;
+    const user = interactedUsers.find(u => u.user.id === pendingReassignUserId);
+    return user?.user.displayName || user?.user.discordUsername || 'this user';
+  }, [pendingReassignUserId, interactedUsers]);
+
+  // Handle user selection - check for reassignment confirmation
+  const handleUserSelect = (userId: string) => {
+    if (userId && userAssignments.has(userId)) {
+      // User is already assigned to another player - show confirmation
+      setPendingReassignUserId(userId);
+      setShowReassignConfirm(true);
+    } else {
+      setSelectedUserId(userId);
+    }
+  };
+
+  // Confirm reassignment
+  const handleConfirmReassign = () => {
+    if (pendingReassignUserId) {
+      setSelectedUserId(pendingReassignUserId);
+    }
+    setShowReassignConfirm(false);
+    setPendingReassignUserId(null);
+  };
+
+  // Cancel reassignment
+  const handleCancelReassign = () => {
+    setShowReassignConfirm(false);
+    setPendingReassignUserId(null);
+  };
 
   const handleAssign = async () => {
     // Validate manual ID if using manual input
@@ -199,7 +302,7 @@ export function AssignUserModal({
             ) : (
               <Select
                 value={selectedUserId}
-                onChange={setSelectedUserId}
+                onChange={handleUserSelect}
                 options={userOptions}
                 placeholder="-- Select user --"
                 disabled={isSubmitting}
@@ -303,6 +406,29 @@ export function AssignUserModal({
           </Button>
         </div>
       </div>
+
+      {/* Reassignment confirmation modal */}
+      <ConfirmModal
+        isOpen={showReassignConfirm}
+        onCancel={handleCancelReassign}
+        onConfirm={handleConfirmReassign}
+        title="Reassign User?"
+        icon={<AlertTriangle className="w-5 h-5 text-status-warning" />}
+        message={
+          <div className="space-y-2">
+            <p>
+              <strong>{pendingReassignUserName}</strong> is currently assigned to{' '}
+              <strong>{pendingReassignPlayerName}</strong>.
+            </p>
+            <p>
+              Assigning them to <strong>{player.name}</strong> will release their ownership
+              of {pendingReassignPlayerName}.
+            </p>
+          </div>
+        }
+        confirmLabel="Reassign"
+        variant="warning"
+      />
     </Modal>
   );
 }

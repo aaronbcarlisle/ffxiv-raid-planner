@@ -19,6 +19,7 @@ import type { DragState } from '../dnd/useDragAndDrop';
 // Memoized player card renderer to prevent unnecessary re-renders
 interface PlayerCardRendererProps {
   player: SnapshotPlayer;
+  allPlayers: SnapshotPlayer[];
   editingPlayerId: string | null;
   viewMode: ViewMode;
   contentType: ContentType;
@@ -56,6 +57,7 @@ interface PlayerCardRendererProps {
 
 const PlayerCardRenderer = memo(function PlayerCardRenderer({
   player,
+  allPlayers,
   editingPlayerId,
   viewMode,
   contentType,
@@ -171,6 +173,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
     return (
       <DroppablePlayerCard
         player={player}
+        allPlayers={allPlayers}
         settings={DEFAULT_SETTINGS}
         viewMode={viewMode}
         contentType={contentType}
@@ -309,6 +312,7 @@ export function PlayerGrid({
 }: PlayerGridProps) {
   // Memoize common props for PlayerCardRenderer to prevent unnecessary re-renders
   const renderCardProps = useMemo(() => ({
+    allPlayers: players,
     editingPlayerId,
     viewMode,
     contentType,
@@ -342,6 +346,7 @@ export function PlayerGrid({
     onEditPlayer,
     onCancelEdit,
   }), [
+    players,
     editingPlayerId,
     viewMode,
     contentType,

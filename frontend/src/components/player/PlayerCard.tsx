@@ -40,6 +40,8 @@ import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '.
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
+  /** All players in the tier (for assignment modal) */
+  allPlayers?: SnapshotPlayer[];
   settings: StaticSettings;
   viewMode: ViewMode;
   contentType: ContentType;
@@ -77,6 +79,7 @@ interface PlayerCardProps {
 
 export const PlayerCard = memo(function PlayerCard({
   player,
+  allPlayers,
   settings: _settings,
   viewMode,
   contentType,
@@ -737,6 +740,7 @@ export const PlayerCard = memo(function PlayerCard({
           player={player}
           groupId={groupId}
           isAdmin={isAdmin || false}
+          allPlayers={allPlayers}
           onClose={() => setShowAdminAssignModal(false)}
           onAssign={async (data) => {
             if (onAdminAssignPlayer) {
@@ -753,6 +757,7 @@ export const PlayerCard = memo(function PlayerCard({
           player={player}
           groupId={groupId}
           isAdmin={false}
+          allPlayers={allPlayers}
           onClose={() => setShowOwnerAssignModal(false)}
           onAssign={async (data) => {
             if (onOwnerAssignPlayer) {
