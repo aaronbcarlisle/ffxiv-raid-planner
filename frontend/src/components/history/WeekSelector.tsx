@@ -115,7 +115,7 @@ export function WeekSelector({
         <Tooltip content="Revert to previous week (undo Start Next Week)">
           <IconButton
             aria-label="Revert to previous week"
-            icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+            icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin text-status-warning" /> : <RotateCcw className="w-4 h-4 text-status-warning" />}
             size="sm"
             onClick={onRevertWeek}
             disabled={disabled || isRevertingWeek}
