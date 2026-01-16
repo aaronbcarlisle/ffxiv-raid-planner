@@ -553,8 +553,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       );
       // Update current week in the store
       const newWeek = response.currentWeek;
+      // Also fetch fresh maxWeek from backend
+      const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
+      );
       set({
         currentWeek: newWeek,
+        maxWeek: weekInfo.maxWeek,
       });
       return newWeek;
     } catch (error) {

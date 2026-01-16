@@ -10,6 +10,7 @@ import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { WeekSelector } from './WeekSelector';
 import { SectionedLogView } from './SectionedLogView';
+import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
 import type { SnapshotPlayer } from '../../types';
 
 interface HistoryViewProps {
@@ -58,8 +59,14 @@ export function HistoryView({
     maxWeek,
     weeksWithEntries,
     weekDataTypes,
+    lootLog,
+    materialLog,
+    pageLedger,
     fetchCurrentWeek,
     fetchWeekDataTypes,
+    fetchLootLog,
+    fetchMaterialLog,
+    fetchPageLedger,
     startNextWeek,
     revertWeek,
   } = useLootTrackingStore();
@@ -67,6 +74,7 @@ export function HistoryView({
   // State for start next week and revert week actions
   const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
   const [isRevertingWeek, setIsRevertingWeek] = useState(false);
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -137,19 +145,46 @@ export function HistoryView({
     }
   }, [groupId, tierId, startNextWeek, setSelectedWeek]);
 
-  // Handler for reverting to the previous week
-  const handleRevertWeek = useCallback(async () => {
+  // Handler for confirming the revert (extracted to avoid circular dependency)
+  const executeRevert = useCallback(async () => {
     setIsRevertingWeek(true);
+    setShowRevertConfirm(false);
     try {
       const newWeek = await revertWeek(groupId, tierId);
       setSelectedWeek(newWeek);
+      // Refresh week data types to update the selector
+      await fetchWeekDataTypes(groupId, tierId);
       toast.success(`Reverted to Week ${newWeek}`);
     } catch {
       toast.error('Failed to revert week');
     } finally {
       setIsRevertingWeek(false);
     }
-  }, [groupId, tierId, revertWeek, setSelectedWeek]);
+  }, [groupId, tierId, revertWeek, setSelectedWeek, fetchWeekDataTypes]);
+
+  // Handler for revert week button click - show confirm if data exists
+  const handleRevertWeekClick = useCallback(async () => {
+    // First, fetch the latest data for the current week to show in the modal
+    await Promise.all([
+      fetchLootLog(groupId, tierId),
+      fetchMaterialLog(groupId, tierId),
+      fetchPageLedger(groupId, tierId),
+    ]);
+
+    // Re-check with fresh data (store will have updated)
+    const store = useLootTrackingStore.getState();
+    const hasLoot = store.lootLog.some((e) => e.weekNumber === currentWeek);
+    const hasMaterials = store.materialLog.some((e) => e.weekNumber === currentWeek);
+    const hasBooks = store.pageLedger.some((e) => e.weekNumber === currentWeek);
+
+    if (hasLoot || hasMaterials || hasBooks) {
+      // Show confirmation modal
+      setShowRevertConfirm(true);
+    } else {
+      // No data, proceed directly
+      await executeRevert();
+    }
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, currentWeek, executeRevert]);
 
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
@@ -167,7 +202,7 @@ export function HistoryView({
           weekDataTypes={weekDataTypes}
           onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
           isStartingNextWeek={isStartingNextWeek}
-          onRevertWeek={canEdit ? handleRevertWeek : undefined}
+          onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
           isRevertingWeek={isRevertingWeek}
         />
       </div>
@@ -190,6 +225,19 @@ export function HistoryView({
         onLogMaterialModalClose={onLogMaterialModalClose}
         openMarkFloorClearedModal={openMarkFloorClearedModal}
         onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
+      />
+
+      {/* Revert week confirmation modal */}
+      <RevertWeekConfirmModal
+        isOpen={showRevertConfirm}
+        week={currentWeek}
+        lootLog={lootLog}
+        materialLog={materialLog}
+        pageLedger={pageLedger}
+        players={players}
+        isReverting={isRevertingWeek}
+        onConfirm={executeRevert}
+        onCancel={() => setShowRevertConfirm(false)}
       />
     </div>
   );
