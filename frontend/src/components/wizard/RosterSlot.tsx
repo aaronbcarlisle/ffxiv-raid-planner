@@ -85,13 +85,23 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
   // Background color for selected job button
   const bgColor = ROLE_BG_COLORS[player.role] || 'bg-surface-interactive';
 
-  // Get role-specific jobs for quick-select (H1 = pure healers, H2 = barrier healers)
+  // Determine healer type: from selected job if healer is selected, otherwise from position
+  const effectiveHealerType = (() => {
+    if (player.role === 'healer' && player.job) {
+      // Use the selected healer job's type
+      return getHealerType(player.job) || (player.position === 'H1' ? 'pure' : 'barrier');
+    }
+    // Default to position-based (H1 = pure, H2 = barrier)
+    return player.position === 'H1' ? 'pure' : 'barrier';
+  })();
+
+  // Get role-specific jobs for quick-select
+  // For healers: show jobs matching the selected healer's type (or position-based default)
   const roleJobs: JobInfo[] = (() => {
     const jobs = getJobsByRole(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
-    // Filter healers by type based on position
+    // Filter healers by type
     if (player.role === 'healer') {
-      const healerType = player.position === 'H1' ? 'pure' : 'barrier';
-      return jobs.filter(j => getHealerType(j.abbreviation) === healerType);
+      return jobs.filter(j => getHealerType(j.abbreviation) === effectiveHealerType);
     }
     return jobs;
   })();
@@ -99,7 +109,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
   // Get display name for the role (Pure Healer / Barrier Healer for healers)
   const roleDisplayName = (() => {
     if (player.role === 'healer') {
-      return player.position === 'H1' ? 'Pure Healer' : 'Barrier Healer';
+      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
     }
     return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
   })();
