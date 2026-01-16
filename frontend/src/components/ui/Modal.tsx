@@ -131,7 +131,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   // Use portal to render at document body level, preventing inherited styles (opacity, transforms)
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={handleBackdropEvent}
       onContextMenu={handleBackdropEvent}
     >
