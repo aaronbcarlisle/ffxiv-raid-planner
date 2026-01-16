@@ -1,12 +1,12 @@
 /**
- * PlayerCard Status - Status badges and tank role selector
+ * PlayerCard Status - Status badges row
  *
- * Displays SUB, BiS, You, LinkedUser badges and MT/OT for tanks.
+ * Displays SUB, BiS, You, LinkedUser badges.
+ * MT/OT selector moved to PlayerCardHeader for visual alignment.
  * Extracted from PlayerCard for maintainability.
  */
 
-import { TankRoleSelector } from './TankRoleSelector';
-import type { TankRole, LinkedUserInfo, SnapshotPlayer } from '../../types';
+import type { LinkedUserInfo, SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Build URL from bisLink - supports both Etro and XIVGear formats
@@ -28,14 +28,12 @@ interface PlayerCardStatusProps {
   role: string;
   isSubstitute: boolean;
   bisLink?: string;
-  tankRole: TankRole | null | undefined;
   userId?: string | null;
   linkedUser?: LinkedUserInfo | null;
   currentUserId?: string;
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   isAdmin?: boolean;
-  onTankRoleChange: (tankRole: TankRole | undefined) => void;
 }
 
 // Role-based badge colors for linked users
@@ -47,17 +45,15 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export function PlayerCardStatus({
-  role,
+  role: _role,
   isSubstitute,
   bisLink,
-  tankRole,
   userId,
   linkedUser,
   currentUserId,
-  player,
-  userRole,
-  isAdmin,
-  onTankRoleChange,
+  player: _player,
+  userRole: _userRole,
+  isAdmin: _isAdmin,
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
   const isLinkedToOther = userId && userId !== currentUserId;
@@ -71,7 +67,7 @@ export function PlayerCardStatus({
   const roleLabel = linkedUser?.displayName || linkedUser?.discordUsername || '';
 
   // Don't render if nothing to show
-  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther || role === 'tank';
+  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther;
   if (!hasContent) return null;
 
   return (
@@ -125,18 +121,6 @@ export function PlayerCardStatus({
             {roleLabel}
           </span>
         </span>
-      )}
-
-      {/* Tank role selector (MT/OT) */}
-      {role === 'tank' && (
-        <TankRoleSelector
-          tankRole={tankRole}
-          onSelect={onTankRoleChange}
-          player={player}
-          userRole={userRole}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-        />
       )}
     </div>
   );

@@ -65,7 +65,7 @@ frontend/src/components/wizard/
 | Component | Modification |
 |-----------|-------------|
 | `Dashboard.tsx` | Replace create modal with wizard trigger |
-| `PlayerCard.tsx` | Add conditional action button row |
+| `PlayerCard.tsx` | Add `PlayerSetupBanner` for contextual prompts |
 | `MembersPanel.tsx` | Add "Linked Card" dropdown per member |
 
 ### State Management
@@ -111,11 +111,11 @@ interface WizardPlayer {
 
 ## Implementation Sessions
 
-### Session 1: Wizard Foundation & Step 1-2
+### Session 1: Wizard Foundation & Step 1-2 ✅ COMPLETE
 **Model:** Sonnet (good balance of speed and quality for component scaffolding)
-**Estimated Scope:** ~800-1000 lines of new code
+**Actual Scope:** ~900 lines of new code
 
-#### Tasks
+#### Tasks (Completed)
 1. Create wizard directory structure and types
 2. Build `SetupWizard.tsx` container with modal, state, navigation
 3. Implement `WizardProgress.tsx` (4-step indicator)
@@ -173,11 +173,11 @@ Next session: Implement Steps 3-4 and full submission flow.
 
 ---
 
-### Session 1.5: UX Polish & Refinements
+### Session 1.5: UX Polish & Refinements ✅ COMPLETE
 **Model:** Sonnet
-**Estimated Scope:** ~200-300 lines of modifications
+**Actual Scope:** ~250 lines of modifications
 
-#### Tasks
+#### Tasks (Completed)
 1. **Default to Latest Tier** - Pre-select current tier in StaticDetailsStep
 2. **Job Quick-Select Buttons** - Add role-specific job buttons to RosterSlot
 3. **Fix Dropdown Z-Index** - Ensure JobPicker renders outside modal scroll container
@@ -283,14 +283,14 @@ Next session: Implement Steps 3-4 and full submission flow.
 
 ---
 
-### Session 2: Steps 3-4 & Submission Flow
+### Session 2: Steps 3-4 & Submission Flow ✅ COMPLETE
 **Model:** Sonnet
-**Estimated Scope:** ~500-700 lines
+**Actual Scope:** ~600 lines
 
-#### Tasks
-1. Build `InviteMembersStep.tsx` (invite link display, copy button, skip option)
+#### Tasks (Completed)
+1. Build `ShareStep.tsx` (share link display, copy button)
 2. Build `ReviewStep.tsx` (summary cards, warnings, Create button)
-3. Implement wizard submission flow (create group → tier → players → invite)
+3. Implement wizard submission flow (create group → tier → players)
 4. Add loading states and error handling
 5. Navigate to new static on completion
 6. Add cancel confirmation dialog
@@ -355,69 +355,68 @@ Next session: PlayerCard action buttons.
 
 ---
 
-### Session 3: PlayerCard Action Buttons
-**Model:** Sonnet
-**Estimated Scope:** ~300-400 lines
+### Session 3: PlayerCard Setup Banner ✅ COMPLETE
+**Model:** Opus
+**Actual Scope:** ~200 lines (component + tests)
 
-#### Tasks
-1. Create `PlayerCardActions.tsx` component with conditional button rendering
-2. Modify `PlayerCard.tsx` to include action button row
-3. Implement button visibility logic:
-   - Unclaimed + Owner/Lead → "Assign Ownership"
-   - Unclaimed + Member → "Take Ownership"
-   - Claimed by me + No BiS → "Import BiS"
-4. Wire up button handlers (reuse existing claim/assign/BiS logic)
-5. Add unit tests for button visibility logic
+#### Design Decision: Setup Banner Approach
+Instead of embedded buttons or floating badges, we implemented a **contextual setup banner** that appears between the PlayerCard header and gear table. The banner:
+- Only shows when setup is incomplete (unclaimed OR no BiS)
+- Displays relevant action(s) based on user role
+- Auto-hides when card is fully configured
+- Doesn't add permanent visual weight to configured cards
 
-#### Prompt for Session 3
-```
-Continue implementing the Static Setup Wizard features from the plan at /home/serapis/.claude/plans/compressed-purring-llama.md
+#### Tasks (Completed)
+1. Created `PlayerSetupBanner.tsx` - contextual banner component
+2. Modified `PlayerCard.tsx` to include setup banner
+3. Implemented banner visibility logic:
+   - Unclaimed + Owner/Lead → "Assign Player" button
+   - Unclaimed + Member (no other claim) → "Take Ownership" button
+   - Claimed by me + No BiS → "Import BiS" button
+   - Fully configured → Banner hidden
+4. Wired up button handlers (reuse existing claim/assign/BiS logic)
+5. Added unit tests for visibility logic (20 tests)
 
-This session focuses on: PlayerCard Action Buttons
+#### Files Created
+- `/frontend/src/components/player/PlayerSetupBanner.tsx` - Banner component
+- `/frontend/src/components/player/PlayerSetupBanner.test.ts` - Unit tests (20 tests)
 
-Tasks:
-1. Create PlayerCardActions.tsx in /frontend/src/components/player/
-   - Accepts: player, currentUserId, userRole, isGroupOwner, userHasClaimedPlayer, handlers
-   - Renders conditional buttons based on state
+#### Files Modified
+- `/frontend/src/components/player/PlayerCard.tsx` - Integrated banner (line ~807)
+- `/home/serapis/projects/ffxiv-raid-planner/CLAUDE.md` - Documentation updates
 
-2. Button visibility logic:
-   | State | Owner/Lead | Member |
-   |-------|------------|--------|
-   | Unclaimed | "Assign Ownership" | "Take Ownership" |
-   | Claimed by me, no BiS | "Import BiS" | "Import BiS" |
-   | Claimed by other | - | - |
+#### Banner States
+| Condition | Message | Action Button |
+|-----------|---------|---------------|
+| Unclaimed + Owner/Lead | "Unclaimed" | "Assign Player" |
+| Unclaimed + Member | "Unclaimed" | "Take Ownership" |
+| Claimed by me + No BiS | "No BiS configured" | "Import BiS" |
+| Fully configured | *(hidden)* | - |
 
-3. Modify PlayerCard.tsx:
-   - Add <PlayerCardActions /> below header or in card footer
-   - Pass required props from existing context
-   - "Assign Ownership" opens AssignUserModal
-   - "Take Ownership" calls existing onClaimPlayer
-   - "Import BiS" opens BiSImportModal
-
-4. Use existing Button component with appropriate variants:
-   - "Assign Ownership": variant="secondary" with Link2 icon
-   - "Take Ownership": variant="secondary" with UserCheck icon
-   - "Import BiS": variant="secondary" with FileDown icon
-
-5. Add tests in PlayerCardActions.test.tsx for visibility logic
-
-Run build, run tests, fix any errors.
-```
+#### Implementation Details
+- Banner height: ~32px compact design
+- Background: `bg-surface-elevated` with subtle border
+- Uses `Button` component with `size="sm"` variant
+- Icons: Link2 (assign), UserCheck (claim), FileDown (BiS import)
+- Respects role permissions via `getBannerState()` pure function
+- Memoized with `React.memo` for performance
 
 #### Handoff for Session 4
 ```
-Session 3 Complete. PlayerCard action buttons are working.
+Session 3 Complete. PlayerCard setup banner is working.
 
 Files created/modified:
-- /frontend/src/components/player/PlayerCardActions.tsx (new)
-- /frontend/src/components/player/PlayerCardActions.test.tsx (new)
-- /frontend/src/components/player/PlayerCard.tsx (added action buttons)
+- /frontend/src/components/player/PlayerSetupBanner.tsx (new)
+- /frontend/src/components/player/PlayerSetupBanner.test.ts (new)
+- /frontend/src/components/player/PlayerCard.tsx (integrated banner)
+- CLAUDE.md (documentation updates)
 
 Current state:
-- Action buttons appear based on card state and user role
-- Buttons trigger existing modals/actions
-- Context menu still works (buttons are additional, not replacement)
-- Tests passing
+- Setup banner appears based on card state and user role
+- Buttons trigger existing modals/actions (AssignUserModal, BiSImportModal)
+- Context menu still works (banner is additional, not replacement)
+- Tests passing (20 new tests, 340 total)
+- Build passes, design system check passes
 
 Next session: MembersPanel linked card dropdown.
 ```
@@ -513,13 +512,16 @@ All tests passing. PR ready for review.
 | BiS import fails | Show error in slot, allow retry/skip |
 | Session expires | Redirect to login, wizard state lost |
 
-### PlayerCard Button Edge Cases
+### PlayerCard Setup Banner Edge Cases
 
 | Edge Case | Handling |
 |-----------|----------|
-| User already claimed a card | Hide "Take Ownership" on other cards |
+| User already claimed a card | Hide "Take Ownership" banner on other cards |
 | Admin using View As | Use effective role, not admin status |
-| Card has BiS already | Hide "Import BiS" (use context menu to update) |
+| Card has BiS already | Hide banner entirely (use context menu to update) |
+| Card claimed by other user | Hide banner for non-owner roles |
+| Viewer role | Never show setup banner |
+| Not logged in | Never show setup banner |
 
 ### MembersPanel Edge Cases
 
@@ -536,7 +538,7 @@ All tests passing. PR ready for review.
 ### Unit Tests
 - `SetupWizard.test.tsx` - State transitions, validation
 - `RosterSetupStep.test.tsx` - Slot interactions
-- `PlayerCardActions.test.tsx` - Button visibility logic
+- `PlayerSetupBanner.test.ts` - Banner visibility logic (20 tests)
 
 ### Integration Tests
 - Full wizard flow creates static correctly
@@ -580,11 +582,11 @@ Pre-populated wizard with party compositions:
 | `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
 | `components/wizard/steps/RosterSetupStep.tsx` | Most complex step |
 | `components/wizard/RosterSlot.tsx` | Individual player input |
-| `components/player/PlayerCard.tsx` | Add action buttons (lines 308-437) |
-| `components/player/PlayerCardActions.tsx` | New action button component |
+| `components/player/PlayerCard.tsx` | Add setup banner (line ~807) |
+| `components/player/PlayerSetupBanner.tsx` | Contextual setup prompts (v1.0.9) |
 | `components/static-group/MembersPanel.tsx` | Add linked card dropdown |
 | `components/player/BiSImportModal.tsx` | Reuse in wizard |
-| `components/player/AssignUserModal.tsx` | Reuse for "Assign Ownership" |
+| `components/player/AssignUserModal.tsx` | Reuse for "Assign Player" |
 | `stores/staticGroupStore.ts` | createGroup() |
 | `stores/tierStore.ts` | createTier(), addPlayer(), updatePlayer() |
 | `stores/invitationStore.ts` | createInvitation() |

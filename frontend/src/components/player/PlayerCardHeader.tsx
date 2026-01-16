@@ -11,11 +11,12 @@ import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
+import { TankRoleSelector } from './TankRoleSelector';
 import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition, SnapshotPlayer } from '../../types';
+import type { RaidPosition, TankRole, SnapshotPlayer } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { calculateAverageItemLevel } from '../../utils/calculations';
 
@@ -24,6 +25,7 @@ interface PlayerCardHeaderProps {
   name: string;
   role: string;
   position: RaidPosition | null | undefined;
+  tankRole?: TankRole | null;
   completedSlots: number;
   totalSlots: number;
   player: SnapshotPlayer;
@@ -34,6 +36,7 @@ interface PlayerCardHeaderProps {
   onJobChange: (job: string) => void;
   onNameChange: (name: string) => void;
   onPositionChange: (position: RaidPosition | undefined) => void;
+  onTankRoleChange?: (tankRole: TankRole | undefined) => void;
   onMenuClick?: (e: React.MouseEvent) => void;
 }
 
@@ -42,6 +45,7 @@ export function PlayerCardHeader({
   name,
   role,
   position,
+  tankRole,
   completedSlots,
   totalSlots,
   player,
@@ -52,6 +56,7 @@ export function PlayerCardHeader({
   onJobChange,
   onNameChange,
   onPositionChange,
+  onTankRoleChange,
   onMenuClick,
 }: PlayerCardHeaderProps) {
   // Calculate average iLv for display
@@ -221,6 +226,17 @@ export function PlayerCardHeader({
                   </svg>
                 </button>
               </div>
+            )}
+            {/* Tank role selector (MT/OT) - before position */}
+            {role === 'tank' && onTankRoleChange && (
+              <TankRoleSelector
+                tankRole={tankRole}
+                onSelect={onTankRoleChange}
+                player={player}
+                userRole={userRole}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+              />
             )}
             {/* Position badge */}
             <PositionSelector

@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.8 Complete (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish + Admin Assignment) | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.9 In Progress (Phase 1-6.5 + Parity + Audit Complete + UX + Design System + Security + Modal Polish + Admin Assignment + Setup Wizard) | **Next:** Session 4 (MembersPanel), Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web-based tool for FFXIV static raid groups to track gear progress toward BiS, manage loot distribution with priority calculations.
 
@@ -154,6 +154,10 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `components/ui/Skeleton.tsx` | Skeleton loaders for loading states (v1.0.7) |
 | `components/ui/ConfirmModal.tsx` | Generic confirm dialog with auto-icons (v1.0.8) |
 | `components/player/AssignUserModal.tsx` | Admin player assignment modal (v1.0.8) |
+| `components/player/PlayerSetupBanner.tsx` | Contextual setup prompts on player cards (v1.0.9) |
+| `components/wizard/SetupWizard.tsx` | 4-step guided static creation wizard (v1.0.9) |
+| `components/wizard/RosterSlot.tsx` | Individual player slot in wizard roster (v1.0.9) |
+| `components/wizard/steps/` | Wizard step components (StaticDetails, RosterSetup, Share, Review) |
 | `hooks/useDoubleClickConfirm.ts` | Double-click confirmation pattern hook (v1.0.8) |
 | `config.ts` | API URL and environment configuration |
 
@@ -169,6 +173,12 @@ All actionable audit items from v1.0.1-v1.0.7 have been resolved. R-002 (props d
 
 ### Deferred Items
 - **R-002:** Props drilling in GroupView - Deferred; hooks (useGroupViewState, usePlayerActions) mitigate this
+
+### Resolved in v1.0.9
+- ~~Setup Wizard~~ - 4-step guided static creation replacing simple modal
+- ~~PlayerSetupBanner~~ - Contextual "Take Ownership" / "Import BiS" prompts on cards
+- ~~View As actions~~ - "Take Ownership" in View As mode assigns viewed user correctly
+- ~~TankRole selector placement~~ - Moved MT/OT to header for better visual alignment
 
 ### Resolved in v1.0.8
 - ~~Modal header icons~~ - All modals have contextual icons in headers
@@ -543,6 +553,67 @@ Owners and admins can assign Discord users to player cards for groups they manag
 - `components/player/AssignUserModal.tsx` - Assignment modal with tabs
 - `backend/app/routers/tiers.py` - `POST .../players/{id}/assign` endpoint
 - `backend/app/permissions.py` - `create_membership_for_assignment()` helper
+
+### Player Setup Banner (v1.0.9)
+Contextual banner that appears on PlayerCards when setup is incomplete:
+- Shows between header and gear table
+- Only visible when action is needed (unclaimed or no BiS)
+- Auto-hides when card is fully configured
+- Respects role permissions (owner/lead can assign, members can claim)
+
+**Banner States:**
+| Condition | Message | Action |
+|-----------|---------|--------|
+| Unclaimed + Owner/Lead | "Unclaimed" | Assign Player |
+| Unclaimed + Member | "Unclaimed" | Take Ownership |
+| Claimed by me + No BiS | "No BiS configured" | Import BiS |
+| Fully configured | *(hidden)* | - |
+
+**Files:**
+- `components/player/PlayerSetupBanner.tsx` - Banner component
+- `components/player/PlayerCard.tsx` - Integration point (line ~807)
+
+### Setup Wizard (v1.0.9)
+4-step guided modal for creating new static groups, replacing the simple name-only modal.
+
+**Steps:**
+1. **Static Details** - Name, tier selection (defaults to latest), content type
+2. **Roster Setup** - 8 player slots with job quick-select, inline BiS import
+3. **Share** - Copy share link for inviting members
+4. **Review** - Summary of configuration before creation
+
+**Key Features:**
+- Role-specific job quick-select buttons (no dropdown needed for common jobs)
+- Keyboard navigation (Tab through slots, Enter to select and advance)
+- Sticky navigation footer (always visible regardless of scroll)
+- Default tier pre-selected (latest savage tier)
+- Partial roster allowed (creates empty slots for unconfigured positions)
+- Cancel confirmation prevents accidental data loss
+
+**State Management:**
+Uses local React state (not Zustand) because wizard state is transient and discarded on cancel.
+
+**Submission Flow:**
+1. `POST /api/static-groups` - Create static group
+2. `POST /api/static-groups/{id}/tiers` - Create tier snapshot
+3. `POST .../tiers/{tierId}/players` - Add each configured player
+4. Navigate to `/group/{shareCode}` on success
+
+**Files:**
+```
+components/wizard/
+├── SetupWizard.tsx           # Main orchestrator (modal + state + submission)
+├── WizardProgress.tsx        # 4-step progress indicator
+├── WizardNavigation.tsx      # Back/Next/Create buttons
+├── RosterSlot.tsx            # Individual player slot with job picker
+├── types.ts                  # WizardState, WizardPlayer interfaces
+├── index.ts                  # Barrel export
+└── steps/
+    ├── StaticDetailsStep.tsx # Step 1: Name + Tier
+    ├── RosterSetupStep.tsx   # Step 2: 8 player slots
+    ├── ShareStep.tsx         # Step 3: Share link
+    └── ReviewStep.tsx        # Step 4: Summary
+```
 
 ### UI State Persistence (localStorage)
 - `group-view-tab`, `loot-priority-subtab`, `party-view-mode`
