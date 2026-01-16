@@ -112,7 +112,19 @@ export function WeekSelector({
     <div className="flex items-center gap-3">
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
-        <Tooltip content="Revert to previous week (undo Start Next Week)">
+        <Tooltip
+          content={
+            <div className="flex items-start gap-2 max-w-xs">
+              <RotateCcw className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium">Revert Week</div>
+                <div className="text-text-secondary text-xs mt-0.5">
+                  Moves the week calculation back by one week. Use this to undo an accidental "Start Next Week". Your logged data stays intact.
+                </div>
+              </div>
+            </div>
+          }
+        >
           <IconButton
             aria-label="Revert to previous week"
             icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin text-status-warning" /> : <RotateCcw className="w-4 h-4 text-status-warning" />}
