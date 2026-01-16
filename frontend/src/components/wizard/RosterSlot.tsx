@@ -114,11 +114,23 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
     return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
   })();
 
-  // Determine slot label - show actual role if different from expected
+  // Determine slot label - show actual role/healer-type if different from expected
   const expectedRole = POSITION_EXPECTED_ROLE[player.position];
-  const slotLabel = hasJob && player.role !== expectedRole
-    ? getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-    : POSITION_LABELS[player.position] || player.position;
+  const expectedHealerType = player.position === 'H1' ? 'pure' : 'barrier';
+  const slotLabel = (() => {
+    if (!hasJob) {
+      return POSITION_LABELS[player.position] || player.position;
+    }
+    // If role changed entirely (e.g., healer -> tank), show the new role
+    if (player.role !== expectedRole) {
+      return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+    }
+    // If healer type changed (e.g., Pure Healer in Barrier Healer slot), show the new healer type
+    if (player.role === 'healer' && effectiveHealerType !== expectedHealerType) {
+      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
+    }
+    return POSITION_LABELS[player.position] || player.position;
+  })();
 
   const handleJobSelect = (job: string, shouldFocusNext = false) => {
     const role = getRoleForJob(job);
