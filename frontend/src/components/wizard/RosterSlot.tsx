@@ -298,7 +298,8 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
             </button>
           </div>
 
-          {/* Selected job display - always rendered to reserve height */}
+          {/* Selected job display - uses invisible class to reserve height and prevent layout shift.
+              PLD fallback is used when hidden to satisfy type requirements; content is not visible. */}
           <div className={`flex items-center gap-2 text-xs h-6 ${!hasJob ? 'invisible' : ''}`}>
             <span className="text-text-muted">Selected:</span>
             <JobIcon job={player.job || 'PLD'} size="sm" />
