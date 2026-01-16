@@ -9,6 +9,8 @@
 
 import type { WeekEntryType } from '../../stores/lootTrackingStore';
 import { Select } from '../ui';
+import { Button } from '../primitives/Button';
+import { Tooltip } from '../primitives/Tooltip';
 
 interface WeekSelectorProps {
   currentWeek: number;
@@ -108,24 +110,29 @@ export function WeekSelector({
     <div className="flex items-center gap-3">
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
-        <button
-          onClick={onRevertWeek}
-          disabled={disabled || isRevertingWeek}
-          className="px-3 py-1.5 rounded bg-status-warning/20 hover:bg-status-warning/30 text-status-warning text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed border border-status-warning/30"
-          title="Revert to previous week (undo Start Next Week)"
-        >
-          {isRevertingWeek ? 'Reverting...' : '← Revert Week'}
-        </button>
+        <Tooltip content="Revert to previous week (undo Start Next Week)">
+          <Button
+            variant="warning"
+            size="sm"
+            onClick={onRevertWeek}
+            disabled={disabled}
+            loading={isRevertingWeek}
+          >
+            {isRevertingWeek ? 'Reverting...' : '← Revert Week'}
+          </Button>
+        </Tooltip>
       )}
 
-      <button
-        onClick={handlePrevWeek}
-        disabled={disabled || prevWeek === null}
-        className="px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary"
-        title="Previous Week"
-      >
-        ←
-      </button>
+      <Tooltip content="Previous Week">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handlePrevWeek}
+          disabled={disabled || prevWeek === null}
+        >
+          ←
+        </Button>
+      </Tooltip>
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-text-muted">Week</span>
@@ -140,37 +147,46 @@ export function WeekSelector({
         />
       </div>
 
-      <button
-        onClick={handleNextWeek}
-        disabled={disabled || nextWeek === null}
-        className="px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary"
-        title="Next Week"
-      >
-        →
-      </button>
+      <Tooltip content="Next Week">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleNextWeek}
+          disabled={disabled || nextWeek === null}
+        >
+          →
+        </Button>
+      </Tooltip>
 
       {/* Go to Current Week button - shown when viewing a past/future week */}
       {showGoToCurrentWeek && (
-        <button
-          onClick={handleGoToCurrentWeek}
-          disabled={disabled}
-          className="ml-2 px-3 py-1.5 rounded bg-accent/20 hover:bg-accent/30 text-accent text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title={`Go to Week ${calculatedCurrentWeek}`}
-        >
-          Go to Current Week
-        </button>
+        <Tooltip content={`Go to Week ${calculatedCurrentWeek}`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoToCurrentWeek}
+            disabled={disabled}
+            className="ml-2"
+          >
+            Go to Current Week
+          </Button>
+        </Tooltip>
       )}
 
       {/* Start Next Week button - for manually advancing when auto-calculation is behind */}
       {onStartNextWeek && (
-        <button
-          onClick={onStartNextWeek}
-          disabled={disabled || isStartingNextWeek}
-          className="ml-2 px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover text-text-secondary text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed border border-border-default"
-          title="Start the next week (use when week calculation is behind your actual raid schedule)"
-        >
-          {isStartingNextWeek ? 'Starting...' : 'Start Next Week'}
-        </button>
+        <Tooltip content="Start the next week (use when week calculation is behind your actual raid schedule)">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onStartNextWeek}
+            disabled={disabled}
+            loading={isStartingNextWeek}
+            className="ml-2"
+          >
+            {isStartingNextWeek ? 'Starting...' : 'Start Next Week'}
+          </Button>
+        </Tooltip>
       )}
     </div>
   );
