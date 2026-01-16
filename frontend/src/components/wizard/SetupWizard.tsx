@@ -127,6 +127,10 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
         // Store immediately so retry can resume from here
         setPendingGroupId(groupId);
         setPendingShareCode(shareCode);
+      } else if (!shareCode) {
+        // Defensive check: if groupId exists but shareCode doesn't, state is inconsistent
+        // This shouldn't happen since both are set atomically, but handle gracefully
+        throw new Error('Inconsistent state: group created but share code missing. Please try again.');
       }
 
       // Step 2: Create the tier

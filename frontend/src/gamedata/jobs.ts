@@ -198,7 +198,13 @@ export function groupJobsByRole(): Record<Role, JobInfo[]> {
 }
 
 /**
- * Get healer type (pure or barrier) for a healer job
+ * Determines the healer type for a given healer job.
+ *
+ * @param abbreviation - Job abbreviation (e.g., 'WHM', 'SCH')
+ * @returns 'pure' for WHM/AST, 'barrier' for SCH/SGE, undefined for non-healers
+ *
+ * Pure healers (H1 slot): WHM, AST - focus on direct healing
+ * Barrier healers (H2 slot): SCH, SGE - focus on shields/mitigation
  */
 export function getHealerType(abbreviation: string): HealerType | undefined {
   return HEALER_TYPES[abbreviation];
