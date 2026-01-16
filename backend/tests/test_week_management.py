@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import User, StaticGroup, TierSnapshot, Membership, MemberRole
+from app.models import User, MemberRole
 from tests.factories import create_user, create_static_group, create_tier_snapshot, create_membership
 
 
