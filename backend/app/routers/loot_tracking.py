@@ -797,6 +797,15 @@ async def start_next_week(
     # Get tier with row-level lock to prevent race conditions
     tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
+    # Validate maximum weeks to prevent abuse (20 weeks ~= 5 months of raiding)
+    MAX_WEEKS = 20
+    current_week = calculate_week_number(tier)
+    if current_week >= MAX_WEEKS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot advance beyond week {MAX_WEEKS}"
+        )
+
     # If week_start_date is not set, set it to now (first week)
     if tier.week_start_date is None:
         tier.week_start_date = datetime.now(timezone.utc).isoformat()
