@@ -516,12 +516,16 @@ async def get_user_role_in_group_admin(
 
 @router.get("/admin/all-users", response_model=list[InteractedUserInfo])
 async def list_all_users_admin(
+    group_id: str | None = None,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[InteractedUserInfo]:
     """List ALL users in the database (admin only)
 
     Used by admins in assignment modals to assign any user to a player card.
+
+    Args:
+        group_id: Optional group ID to check membership status for each user
     """
     # Require admin permission
     is_admin = await is_user_admin(session, current_user.id)
@@ -532,7 +536,16 @@ async def list_all_users_admin(
     result = await session.execute(select(User).order_by(User.discord_username))
     users = result.scalars().all()
 
-    # Convert to InteractedUserInfo format (all marked as non-members since no group context)
+    # If group_id provided, fetch memberships for that group
+    memberships_map: dict[str, Membership] = {}
+    if group_id:
+        memberships_result = await session.execute(
+            select(Membership).where(Membership.static_group_id == group_id)
+        )
+        for membership in memberships_result.scalars().all():
+            memberships_map[membership.user_id] = membership
+
+    # Convert to InteractedUserInfo format
     return [
         InteractedUserInfo(
             user=MemberInfo(
@@ -543,8 +556,8 @@ async def list_all_users_admin(
                 avatar_url=user.avatar_url,
                 display_name=user.display_name,
             ),
-            is_member=False,  # No group context, so always false
-            member_role=None,
+            is_member=user.id in memberships_map,
+            member_role=memberships_map[user.id].role if user.id in memberships_map else None,
         )
         for user in users
     ]

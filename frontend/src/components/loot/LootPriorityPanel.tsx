@@ -1,14 +1,17 @@
 import { useState, useMemo, useCallback, memo } from 'react';
+import { Tooltip } from '../primitives/Tooltip';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { FLOOR_LOOT_TABLES, getFloorForUpgradeMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import {
   getPriorityForItem,
   getPriorityForRing,
   getPriorityForUpgradeMaterial,
   getPriorityForUniversalTomestone,
+  calculatePriorityScoreWithBreakdown,
   type PriorityEntry,
+  type PriorityScoreBreakdown,
 } from '../../utils/priority';
 import {
   calculatePlayerLootStats,
@@ -28,6 +31,8 @@ interface EnhancedPriorityEntry extends PriorityEntry {
   enhancedScore?: number;
   droughtBonus?: number;
   balancePenalty?: number;
+  // Score breakdown for tooltips
+  breakdown?: PriorityScoreBreakdown;
 }
 
 // Memoized priority entry component to prevent unnecessary re-renders
@@ -38,6 +43,60 @@ interface LootPriorityEntryProps {
   showEnhanced: boolean;
   showLogButton: boolean;
   onLogClick?: (player: SnapshotPlayer) => void;
+}
+
+// Tooltip content for gear priority score breakdown
+function GearScoreTooltip({ entry, showEnhanced }: { entry: EnhancedPriorityEntry; showEnhanced: boolean }) {
+  const hasEnhanced = showEnhanced && entry.enhancedScore !== undefined;
+  const breakdown = entry.breakdown;
+
+  return (
+    <div className="text-xs space-y-0.5">
+      <div className="font-medium text-text-primary mb-1">
+        Priority Score: {hasEnhanced ? entry.enhancedScore : entry.score}
+      </div>
+      {breakdown ? (
+        <>
+          {breakdown.rolePriority > 0 && (
+            <div className="text-text-secondary">
+              Role Priority: <span className="text-accent">+{breakdown.rolePriority}</span>
+            </div>
+          )}
+          {breakdown.weightedNeedBonus > 0 && (
+            <div className="text-text-secondary">
+              Gear Needed: <span className="text-accent">+{breakdown.weightedNeedBonus}</span>
+              <span className="text-text-muted ml-1">({breakdown.weightedNeed.toFixed(1)} weighted)</span>
+            </div>
+          )}
+          {breakdown.lootAdjustmentPenalty !== 0 && (
+            <div className="text-text-secondary">
+              Loot Adj: <span className={breakdown.lootAdjustmentPenalty > 0 ? 'text-status-warning' : 'text-status-success'}>
+                {breakdown.lootAdjustmentPenalty > 0 ? '-' : '+'}{Math.abs(breakdown.lootAdjustmentPenalty)}
+              </span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-text-secondary">
+          Base Score: <span className="text-accent">+{entry.score}</span>
+        </div>
+      )}
+      {hasEnhanced && (
+        <>
+          {(entry.droughtBonus ?? 0) > 0 && (
+            <div className="text-text-secondary">
+              No Drops Bonus: <span className="text-status-success">+{entry.droughtBonus}</span>
+            </div>
+          )}
+          {(entry.balancePenalty ?? 0) > 0 && (
+            <div className="text-text-secondary">
+              Fair Share Adj: <span className="text-status-warning">-{entry.balancePenalty}</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 const LootPriorityEntry = memo(function LootPriorityEntry({
@@ -52,11 +111,6 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
   const displayScore = showEnhanced && entry.enhancedScore !== undefined
     ? entry.enhancedScore
     : entry.score;
-
-  // Build tooltip for enhanced score breakdown with intuitive labels
-  const tooltipText = showEnhanced && entry.enhancedScore !== undefined
-    ? `Role Priority: ${entry.score} | No Drops Bonus: +${entry.droughtBonus ?? 0} | Fair Share Adj: -${entry.balancePenalty ?? 0}`
-    : undefined;
 
   return (
     <div
@@ -83,13 +137,14 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
             Log
           </button>
         )}
-        <span
-          className="text-xs px-1.5 py-0.5 rounded cursor-help"
-          style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-          title={tooltipText}
-        >
-          {displayScore}
-        </span>
+        <Tooltip content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
+          <span
+            className="text-xs px-1.5 py-0.5 rounded cursor-help"
+            style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+          >
+            {displayScore}
+          </span>
+        </Tooltip>
       </div>
     </div>
   );
@@ -125,7 +180,6 @@ interface LootPriorityPanelProps {
 
 interface PriorityListProps {
   entries: EnhancedPriorityEntry[];
-  maxShown?: number;
   showLogButton?: boolean;
   onLogClick?: (player: SnapshotPlayer) => void;
   showEnhanced?: boolean;
@@ -133,25 +187,19 @@ interface PriorityListProps {
 
 function PriorityList({
   entries,
-  maxShown = 3,
   showLogButton = false,
   onLogClick,
   showEnhanced = false,
 }: PriorityListProps) {
-  const [expanded, setExpanded] = useState(false);
-
   if (entries.length === 0) {
     return (
       <div className="text-status-success text-sm py-1">No one needs</div>
     );
   }
 
-  const visibleEntries = expanded ? entries : entries.slice(0, maxShown);
-  const hasMore = entries.length > maxShown;
-
   return (
     <div className="space-y-1">
-      {visibleEntries.map((entry, index) => (
+      {entries.map((entry, index) => (
         <LootPriorityEntry
           key={entry.player.id}
           entry={entry}
@@ -162,14 +210,6 @@ function PriorityList({
           onLogClick={onLogClick}
         />
       ))}
-      {hasMore && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-text-muted hover:text-accent text-xs px-2 py-0.5 transition-colors"
-        >
-          {expanded ? 'Show less' : `+${entries.length - maxShown} more`}
-        </button>
-      )}
     </div>
   );
 }
@@ -293,13 +333,24 @@ export function LootPriorityPanel({
     return calculateAverageDrops(playerIds, lootLog);
   }, [showEnhancedScores, lootLog, players]);
 
-  // Helper to enhance priority entries with loot history
+  // Helper to enhance priority entries with loot history and breakdown
   const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] => {
+    // Always calculate breakdown for tooltips
+    const entriesWithBreakdown = entries.map((entry) => {
+      const breakdown = calculatePriorityScoreWithBreakdown(entry.player, settings);
+      return {
+        ...entry,
+        breakdown,
+      };
+    });
+
+    // If not showing enhanced scores or no loot history, return with just breakdown
     if (!showEnhancedScores || lootLog.length === 0) {
-      return entries;
+      return entriesWithBreakdown;
     }
 
-    return entries.map((entry) => {
+    // Add enhanced score modifications based on loot history
+    return entriesWithBreakdown.map((entry) => {
       const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
       const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
       const excessDrops = stats.totalDrops - averageDrops;
@@ -465,22 +516,31 @@ export function LootPriorityPanel({
           <div className="p-4">
             {/* Gear drops grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {itemPriorities.map(({ slot, label, entries }) => (
-                <div
-                  key={slot}
-                  className="bg-surface-base rounded-lg p-3"
-                >
-                  <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
-                    {label}
+              {itemPriorities.map(({ slot, label, entries }) => {
+                // Use ring1 icon for consolidated "ring" slot
+                const iconSlot = slot === 'ring' ? 'ring1' : slot;
+                return (
+                  <div
+                    key={slot}
+                    className="bg-surface-base rounded-lg p-3"
+                  >
+                    <div className="flex items-center gap-1.5 text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
+                      <img
+                        src={GEAR_SLOT_ICONS[iconSlot as keyof typeof GEAR_SLOT_ICONS]}
+                        alt=""
+                        className="w-4 h-4 brightness-[3.0]"
+                      />
+                      <span>{label}</span>
+                    </div>
+                    <PriorityList
+                      entries={entries}
+                      showLogButton={!!canShowLogButtons}
+                      onLogClick={(player) => handleLogClick(slot, player)}
+                      showEnhanced={showEnhancedScores && lootLog.length > 0}
+                    />
                   </div>
-                  <PriorityList
-                    entries={entries}
-                    showLogButton={!!canShowLogButtons}
-                    onLogClick={(player) => handleLogClick(slot, player)}
-                    showEnhanced={showEnhancedScores && lootLog.length > 0}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Upgrade materials (if any for this floor) */}

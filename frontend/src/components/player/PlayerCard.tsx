@@ -8,6 +8,7 @@
 import { useState, useEffect, memo, useMemo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
+import { PlayerSetupBanner } from './PlayerSetupBanner';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
@@ -39,6 +40,8 @@ import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '.
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
+  /** All players in the tier (for assignment modal) */
+  allPlayers?: SnapshotPlayer[];
   settings: StaticSettings;
   viewMode: ViewMode;
   contentType: ContentType;
@@ -49,6 +52,7 @@ interface PlayerCardProps {
   userHasClaimedPlayer?: boolean;
   isAdmin?: boolean;
   isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
+  viewAsUserId?: string; // User ID being impersonated in View As mode
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -75,6 +79,7 @@ interface PlayerCardProps {
 
 export const PlayerCard = memo(function PlayerCard({
   player,
+  allPlayers,
   settings: _settings,
   viewMode,
   contentType,
@@ -85,6 +90,7 @@ export const PlayerCard = memo(function PlayerCard({
   userHasClaimedPlayer,
   isAdmin,
   isAdminAccess,
+  viewAsUserId,
   groupId,
   tierId,
   isHighlighted,
@@ -734,6 +740,7 @@ export const PlayerCard = memo(function PlayerCard({
           player={player}
           groupId={groupId}
           isAdmin={isAdmin || false}
+          allPlayers={allPlayers}
           onClose={() => setShowAdminAssignModal(false)}
           onAssign={async (data) => {
             if (onAdminAssignPlayer) {
@@ -750,6 +757,7 @@ export const PlayerCard = memo(function PlayerCard({
           player={player}
           groupId={groupId}
           isAdmin={false}
+          allPlayers={allPlayers}
           onClose={() => setShowOwnerAssignModal(false)}
           onAssign={async (data) => {
             if (onOwnerAssignPlayer) {
@@ -772,6 +780,7 @@ export const PlayerCard = memo(function PlayerCard({
           name={player.name}
           role={player.role}
           position={player.position}
+          tankRole={player.tankRole}
           completedSlots={completedSlots}
           totalSlots={totalSlots}
           player={player}
@@ -782,6 +791,7 @@ export const PlayerCard = memo(function PlayerCard({
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
+          onTankRoleChange={handleTankRoleChange}
           onMenuClick={handleMenuButtonClick}
         />
 
@@ -791,17 +801,37 @@ export const PlayerCard = memo(function PlayerCard({
             role={player.role}
             isSubstitute={player.isSubstitute}
             bisLink={player.bisLink}
-            tankRole={player.tankRole}
             userId={player.userId}
             linkedUser={player.linkedUser}
             currentUserId={currentUserId}
             player={player}
             userRole={userRole}
             isAdmin={isAdmin}
-            onTankRoleChange={handleTankRoleChange}
           />
         </div>
       </div>
+
+      {/* Setup Banner - shows when card needs configuration */}
+      <PlayerSetupBanner
+        player={player}
+        currentUserId={currentUserId ?? null}
+        userRole={userRole}
+        userHasClaimedPlayer={userHasClaimedPlayer ?? false}
+        isAdminAccess={!!viewAsUserId}
+        viewAsUserId={viewAsUserId}
+        onClaimPlayer={onClaimPlayer}
+        onOpenAssignModal={() => {
+          if (isAdminAccess) {
+            setShowAdminAssignModal(true);
+          } else {
+            setShowOwnerAssignModal(true);
+          }
+        }}
+        onAssignViewAsUser={viewAsUserId && onAdminAssignPlayer ? () => {
+          onAdminAssignPlayer({ userId: viewAsUserId });
+        } : undefined}
+        onOpenBiSImport={() => setShowBiSImport(true)}
+      />
 
       {/* Compact mode: spacer before gear (aligns icons at bottom across cards with/without badges) */}
       {!isExpanded && <div className="flex-1" />}

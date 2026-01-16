@@ -19,23 +19,21 @@ const NAV_GROUPS = [
       { id: 'overview', label: 'Overview' },
       { id: 'login', label: '1. Log In' },
       { id: 'create-static', label: '2. Create Static' },
-      { id: 'create-tier', label: '3. Create Tier' },
     ],
   },
   {
     label: 'Roster',
     items: [
-      { id: 'add-players', label: '4. Add Players' },
-      { id: 'import-bis', label: '5. Import BiS' },
-      { id: 'invite-members', label: '6. Invite Members' },
+      { id: 'import-bis', label: '3. Import BiS' },
+      { id: 'invite-members', label: '4. Invite Members' },
     ],
   },
   {
     label: 'Loot Management',
     items: [
-      { id: 'loot-priority', label: '7. Configure Priority' },
-      { id: 'logging-loot', label: '8. Log Loot' },
-      { id: 'track-clears', label: '9. Track Clears' },
+      { id: 'loot-priority', label: '5. Configure Priority' },
+      { id: 'logging-loot', label: '6. Log Loot' },
+      { id: 'track-clears', label: '7. Track Clears' },
     ],
   },
   {
@@ -323,24 +321,24 @@ export default function LeadsGuideDocs() {
           {/* Overview */}
           <Section id="overview" title="Overview">
             <p className="text-text-secondary mb-6">
-              As a static lead, you'll set up the infrastructure for your raid group. This guide walks
-              you through the complete setup process from creating your static to distributing loot.
+              As a static lead, you'll set up the infrastructure for your raid group. The new Setup
+              Wizard makes this quick and easy - just follow the guided steps to create your static
+              with your full roster in one flow.
             </p>
 
             <div className="bg-surface-card border border-border-subtle rounded-lg p-4 mb-6">
               <h3 className="font-medium text-text-primary mb-3">What you'll set up:</h3>
               <ol className="list-decimal list-inside text-text-secondary space-y-1 text-sm">
-                <li>Create your static group</li>
-                <li>Create a tier snapshot (e.g., M9S-M12S)</li>
-                <li>Add player cards for your roster</li>
+                <li>Create your static with the Setup Wizard (name, tier, and roster all at once)</li>
                 <li>Import BiS sets for each player</li>
                 <li>Invite members to take ownership of their cards</li>
                 <li>Configure loot priority and start tracking</li>
               </ol>
             </div>
 
-            <InfoBox type="tip" title="Time to complete">
-              Initial setup takes about 10-15 minutes. Most of the time is spent importing BiS sets.
+            <InfoBox type="tip" title="Quick start">
+              The Setup Wizard handles static creation, tier selection, and roster setup all in one
+              flow. You can set up your entire roster in under 5 minutes, then import BiS sets afterward.
             </InfoBox>
           </Section>
 
@@ -362,84 +360,74 @@ export default function LeadsGuideDocs() {
 
           {/* Step 2: Create Static */}
           <Section id="create-static" title="2. Create Your Static">
-            <Step number={1} title="Go to Dashboard">
-              <p>Click <strong>Dashboard</strong> in the navigation bar.</p>
-            </Step>
-            <Step number={2} title="Click 'Create Static'">
-              <p>In the "My Statics" section, click the <strong>Create Static</strong> button.</p>
-            </Step>
-            <Step number={3} title="Enter a name">
-              <p>Give your static a memorable name (e.g., "Midcore Warriors" or "Weekend Static").</p>
-            </Step>
-            <Step number={4} title="Save and note your share code">
-              <p>
-                After creating, you'll see a <strong>share code</strong> (e.g., "ABC12345").
-                This lets others view your static read-only. For edit access, you'll create invite links later.
-              </p>
-            </Step>
-          </Section>
-
-          {/* Step 3: Create Tier */}
-          <Section id="create-tier" title="3. Create a Tier">
-            <Step number={1} title="Open your static">
-              <p>Click on your static to open the group view.</p>
-            </Step>
-            <Step number={2} title="Click the tier selector">
-              <p>At the top of the page, click the tier dropdown and select <strong>Add Tier</strong>.</p>
-            </Step>
-            <Step number={3} title="Select the raid tier">
-              <p>Choose the tier you're progressing (e.g., "AAC Welterweight" for M9S-M12S).</p>
-            </Step>
-
-            <InfoBox type="info" title="Multiple tiers">
-              You can have multiple tiers in one static. Each tier tracks gear and loot separately.
-              Great for tracking both current and past tiers.
-            </InfoBox>
-          </Section>
-
-          {/* Step 4: Add Players */}
-          <Section id="add-players" title="4. Add Players">
-            <Step number={1} title="Click 'Add Player'">
-              <p>Below the existing cards (or in an empty roster), click <strong>Add Player</strong>.</p>
-            </Step>
-            <Step number={2} title="Enter player info">
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>Name</strong>: Character name or nickname</li>
-                <li><strong>Job</strong>: Their main job for this tier</li>
-                <li><strong>Position</strong>: T1, T2, H1, H2, M1, M2, R1, R2</li>
-              </ul>
-            </Step>
-            <Step number={3} title="Repeat for all 8 players">
-              <p>Add cards for your entire roster. You can reorder them by dragging.</p>
-            </Step>
-
-            <InfoBox type="tip" title="Pro tip">
-              Set up all player cards yourself first, then invite members to claim them.
-              This is faster than having everyone set up their own.
-            </InfoBox>
-          </Section>
-
-          {/* Step 5: Import BiS */}
-          <Section id="import-bis" title="5. Import BiS Sets">
             <p className="text-text-secondary mb-6">
-              Import BiS sets to automatically populate gear slots with item data.
+              The Setup Wizard guides you through creating your static in 4 simple steps.
             </p>
 
-            <Step number={1} title="Open the player options menu">
-              <p>Click the 3-dot menu (⋮) on a player card, or right-click the card to open the context menu.</p>
+            <Step number={1} title="Go to Dashboard and click 'Create Static'">
+              <p>Click <strong>Dashboard</strong> in the navigation bar, then click the <strong>Create Static</strong> button. This opens the Setup Wizard.</p>
             </Step>
-            <Step number={2} title="Select 'Import BiS'">
-              <p>Choose "Import BiS" from the menu options.</p>
+
+            <Step number={2} title="Step 1: Static Details">
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>Name</strong>: Give your static a memorable name</li>
+                <li><strong>Tier</strong>: Select the raid tier (defaults to current savage tier)</li>
+                <li><strong>Content type</strong>: Ultimate or Savage</li>
+              </ul>
             </Step>
-            <Step number={3} title="Choose import method">
+
+            <Step number={3} title="Step 2: Roster Setup">
+              <p className="mb-2">Configure your 8 player slots. Each slot shows:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>Position</strong>: T1, T2, H1, H2, M1, M2, R1, R2 (auto-assigned)</li>
+                <li><strong>Name</strong>: Character name or nickname</li>
+                <li><strong>Job</strong>: Click the quick-select buttons for your role, or "Other" for a full job picker</li>
+              </ul>
+              <p className="mt-2 text-text-muted">You can leave slots empty - they'll be created as unconfigured placeholders.</p>
+            </Step>
+
+            <Step number={4} title="Step 3: Share Link">
+              <p>Copy the share code to let others view your static. You'll set up proper invitations after creation.</p>
+            </Step>
+
+            <Step number={5} title="Step 4: Review & Create">
+              <p>Review your configuration and click <strong>Create Static</strong>. You'll be redirected to your new static's page.</p>
+            </Step>
+
+            <InfoBox type="tip" title="Keyboard navigation">
+              Use Tab to move between fields and Enter to select a job and advance to the next slot.
+              The wizard is fully keyboard-accessible.
+            </InfoBox>
+
+            <InfoBox type="info" title="Multiple tiers">
+              You can add more tiers later from the tier selector dropdown. Each tier tracks gear and loot separately.
+            </InfoBox>
+          </Section>
+
+          {/* Step 3: Import BiS */}
+          <Section id="import-bis" title="3. Import BiS Sets">
+            <p className="text-text-secondary mb-6">
+              After creating your static, import BiS sets to populate gear slots with item data.
+              Player cards without BiS show a helpful setup banner prompting you to import.
+            </p>
+
+            <Step number={1} title="Find a player card that needs BiS">
+              <p>Cards without BiS show an <strong>"Import BiS"</strong> button directly on the card. You can also use the context menu (right-click or 3-dot menu).</p>
+            </Step>
+            <Step number={2} title="Choose import method">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>XIVGear/Etro URL</strong>: Paste a link to their gearset</li>
                 <li><strong>Presets</strong>: Choose from curated community BiS sets by job</li>
               </ul>
             </Step>
-            <Step number={4} title="Click Import">
+            <Step number={3} title="Click Import">
               <p>The gear slots will populate with item names, icons, and sources (raid vs tome).</p>
             </Step>
+
+            <InfoBox type="tip" title="Setup banner">
+              Unclaimed cards show an "Assign Player" button, and cards without BiS show
+              an "Import BiS" button. These prompts help you complete setup quickly.
+            </InfoBox>
 
             <LinkCard
               href="/docs/guides/common-tasks#bis-import"
@@ -448,8 +436,8 @@ export default function LeadsGuideDocs() {
             />
           </Section>
 
-          {/* Step 6: Invite Members */}
-          <Section id="invite-members" title="6. Invite Members">
+          {/* Step 4: Invite Members */}
+          <Section id="invite-members" title="4. Invite Members">
             <Step number={1} title="Open Static Settings">
               <p>Click the gear icon next to your static name.</p>
             </Step>
@@ -474,8 +462,8 @@ export default function LeadsGuideDocs() {
             </InfoBox>
           </Section>
 
-          {/* Step 7: Configure Loot Priority */}
-          <Section id="loot-priority" title="7. Configure Loot Priority">
+          {/* Step 5: Configure Loot Priority */}
+          <Section id="loot-priority" title="5. Configure Loot Priority">
             <p className="text-text-secondary mb-6">
               The loot priority system calculates who should get each drop based on role and need.
             </p>
@@ -497,8 +485,8 @@ export default function LeadsGuideDocs() {
             />
           </Section>
 
-          {/* Step 8: Log Loot */}
-          <Section id="logging-loot" title="8. Log Loot Drops">
+          {/* Step 6: Log Loot */}
+          <Section id="logging-loot" title="6. Log Loot Drops">
             <p className="text-text-secondary mb-6">
               During raid, log drops to track history and update priority scores.
             </p>
@@ -522,8 +510,8 @@ export default function LeadsGuideDocs() {
             </InfoBox>
           </Section>
 
-          {/* Step 9: Track Clears */}
-          <Section id="track-clears" title="9. Track Floor Clears">
+          {/* Step 7: Track Clears */}
+          <Section id="track-clears" title="7. Track Floor Clears">
             <Step number={1} title="Go to History tab">
               <p>Switch to the <strong>History</strong> tab on your static's page.</p>
             </Step>

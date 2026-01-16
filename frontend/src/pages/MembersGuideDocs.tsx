@@ -385,16 +385,15 @@ export default function MembersGuideDocs() {
           <Section id="claim-card" title="3. Claim Your Player Card">
             <p className="text-text-secondary mb-6">
               Your lead may have already created a player card for you. Claim it to take ownership.
+              Unclaimed cards show a helpful "Take Ownership" button directly on the card.
             </p>
 
             <Step number={1} title="Find your card">
-              <p>Look for a player card with your character name or the job you play.</p>
+              <p>Look for a player card with your character name or the job you play. Unclaimed cards are easy to spot - they show a banner with a <strong>"Take Ownership"</strong> button.</p>
             </Step>
-            <Step number={2} title="Right-click (or long-press) the card">
-              <p>This opens the context menu.</p>
-            </Step>
-            <Step number={3} title="Click 'Take Ownership'">
+            <Step number={2} title="Click 'Take Ownership'">
               <p>
+                Click the button on the card, or right-click and choose "Take Ownership" from the menu.
                 The card is now yours! You can edit your gear, import BiS, and update your info.
                 Your Discord avatar will appear on the card.
               </p>
@@ -402,7 +401,7 @@ export default function MembersGuideDocs() {
 
             <InfoBox type="tip" title="Can't find your card?">
               Ask your static lead. They may need to add you, or the card might have a different name.
-              Leads can also assign ownership to you from their end.
+              Leads can also assign ownership to you from their end using the "Assign Player" button.
             </InfoBox>
           </Section>
 
@@ -410,22 +409,20 @@ export default function MembersGuideDocs() {
           <Section id="import-bis" title="4. Import Your BiS">
             <p className="text-text-secondary mb-6">
               If your lead hasn't already imported your BiS, you can do it yourself.
+              Cards without BiS show an "Import BiS" button directly on the card to make this easy.
             </p>
 
-            <Step number={1} title="Open the player options menu">
-              <p>Click the 3-dot menu (⋮) on your player card, or right-click the card to open the context menu.</p>
+            <Step number={1} title="Click 'Import BiS'">
+              <p>If your card doesn't have BiS yet, you'll see an <strong>"Import BiS"</strong> button on the card. Click it, or use the context menu (right-click or 3-dot menu).</p>
             </Step>
-            <Step number={2} title="Select 'Import BiS'">
-              <p>Choose "Import BiS" from the menu options.</p>
-            </Step>
-            <Step number={3} title="Choose import method">
+            <Step number={2} title="Choose import method">
               <ul className="list-disc list-inside mt-2 space-y-1">
                 <li><strong>XIVGear URL</strong>: Paste your xivgear.app link</li>
                 <li><strong>Etro URL</strong>: Paste your etro.gg link</li>
                 <li><strong>Presets</strong>: Choose from curated BiS sets for your job</li>
               </ul>
             </Step>
-            <Step number={4} title="Click Import">
+            <Step number={3} title="Click Import">
               <p>Your gear slots will populate with item names, icons, and sources.</p>
             </Step>
 

@@ -1,12 +1,12 @@
 /**
- * PlayerCard Status - Status badges and tank role selector
+ * PlayerCard Status - Status badges row
  *
- * Displays SUB, BiS, You, LinkedUser badges and MT/OT for tanks.
+ * Displays SUB, BiS, You, LinkedUser badges.
+ * MT/OT selector moved to PlayerCardHeader for visual alignment.
  * Extracted from PlayerCard for maintainability.
  */
 
-import { TankRoleSelector } from './TankRoleSelector';
-import type { TankRole, LinkedUserInfo, SnapshotPlayer } from '../../types';
+import type { LinkedUserInfo, SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Build URL from bisLink - supports both Etro and XIVGear formats
@@ -16,26 +16,56 @@ function buildBiSUrl(bisLink: string): string {
   return `https://etro.gg/gearset/${bisLink}`;
 }
 
-// Detect if bisLink is from Etro or XIVGear
-function getBiSSourceName(bisLink: string): string {
-  if (bisLink.includes('etro.gg')) return 'Etro';
-  if (bisLink.includes('xivgear')) return 'XIVGear';
-  if (bisLink.includes('|')) return 'XIVGear';
-  return 'Etro';
+// Map tier codes to user-friendly names
+const TIER_DISPLAY_NAMES: Record<string, string> = {
+  current: 'Savage BiS',
+  fru: 'FRU BiS',
+  top: 'TOP BiS',
+  dsr: 'DSR BiS',
+  tea: 'TEA BiS',
+  ucob: 'UCoB BiS',
+  uwu: 'UWU BiS',
+};
+
+// Build descriptive tooltip text for BiS link
+function getBiSTooltip(bisLink: string): string {
+  // Custom URL - just show source
+  if (bisLink.startsWith('http')) {
+    if (bisLink.includes('etro.gg')) return 'Open in Etro';
+    if (bisLink.includes('xivgear')) return 'Open in XIVGear';
+    return 'Open BiS link';
+  }
+
+  // Shortlink preset (sl|uuid)
+  if (bisLink.startsWith('sl|')) {
+    return 'Open curated BiS in XIVGear';
+  }
+
+  // GitHub preset (bis|job|tier|index)
+  if (bisLink.startsWith('bis|')) {
+    const parts = bisLink.split('|');
+    if (parts.length >= 3) {
+      const tier = parts[2];
+      const tierName = TIER_DISPLAY_NAMES[tier] || `${tier.toUpperCase()} BiS`;
+      return `Open ${tierName} in XIVGear`;
+    }
+    return 'Open curated BiS in XIVGear';
+  }
+
+  // Fallback (probably an Etro UUID)
+  return 'Open in Etro';
 }
 
 interface PlayerCardStatusProps {
   role: string;
   isSubstitute: boolean;
   bisLink?: string;
-  tankRole: TankRole | null | undefined;
   userId?: string | null;
   linkedUser?: LinkedUserInfo | null;
   currentUserId?: string;
   player: SnapshotPlayer;
   userRole?: MemberRole | null;
   isAdmin?: boolean;
-  onTankRoleChange: (tankRole: TankRole | undefined) => void;
 }
 
 // Role-based badge colors for linked users
@@ -47,17 +77,15 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export function PlayerCardStatus({
-  role,
+  role: _role,
   isSubstitute,
   bisLink,
-  tankRole,
   userId,
   linkedUser,
   currentUserId,
-  player,
-  userRole,
-  isAdmin,
-  onTankRoleChange,
+  player: _player,
+  userRole: _userRole,
+  isAdmin: _isAdmin,
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
   const isLinkedToOther = userId && userId !== currentUserId;
@@ -71,7 +99,7 @@ export function PlayerCardStatus({
   const roleLabel = linkedUser?.displayName || linkedUser?.discordUsername || '';
 
   // Don't render if nothing to show
-  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther || role === 'tank';
+  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther;
   if (!hasContent) return null;
 
   return (
@@ -91,7 +119,7 @@ export function PlayerCardStatus({
           rel="noopener noreferrer"
           className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
                      hover:bg-accent/30 flex items-center gap-1 transition-colors"
-          title={`Open BiS in ${getBiSSourceName(bisLink)}`}
+          title={getBiSTooltip(bisLink)}
           onClick={(e) => e.stopPropagation()}
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,18 +153,6 @@ export function PlayerCardStatus({
             {roleLabel}
           </span>
         </span>
-      )}
-
-      {/* Tank role selector (MT/OT) */}
-      {role === 'tank' && (
-        <TankRoleSelector
-          tankRole={tankRole}
-          onSelect={onTankRoleChange}
-          player={player}
-          userRole={userRole}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-        />
       )}
     </div>
   );

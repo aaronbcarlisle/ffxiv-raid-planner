@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.9';
+export const CURRENT_VERSION = '1.0.10';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,89 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.10',
+    date: '2026-01-16',
+    title: 'Loot Priority UX & Score Tooltips',
+    highlights: ['Weapon priority tie styling redesign', 'Priority score breakdown tooltips'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Weapon priority connector line styling',
+        description: 'Redesigned tie group visualization with collapsible sections',
+        details:
+          'Tied weapon priority entries now display with a connector line (dots + vertical line) design. Tie sections are collapsible - click the chevron to expand/collapse. After rolling for winner, the winner\'s job icon and name appear inline in the header for quick visibility without expanding.',
+      },
+      {
+        category: 'feature',
+        title: 'Priority score breakdown tooltips',
+        description: 'Hover over any priority score to see the full calculation breakdown',
+        details:
+          'Both Gear Priority and Weapon Priority scores now show tooltips on hover with the full breakdown. Gear scores show: Role Priority, Gear Needed (weighted), Loot Adjustment. Weapon scores show: Main Job Bonus, Role Priority, List Position. Enhanced scores also display No Drops Bonus and Fair Share Adjustment when active.',
+      },
+      {
+        category: 'improvement',
+        title: 'Gear slot icons in priority panels',
+        description: 'Gear Priority and Who Needs It panels display slot icons',
+        details:
+          'Each gear slot in the Gear Priority and Who Needs It panels now shows the corresponding gear slot icon (same icons used in player cards without imported BiS). Icons are locally stored with multiple color variants available.',
+      },
+      {
+        category: 'improvement',
+        title: 'Icon Gallery developer tool',
+        description: 'Visual reference page for all custom icons',
+        details:
+          'New /icon-gallery.html page shows all gear slot icons (10 color variants), upgrade material icons (original + silhouettes), and job icons. Includes XIVAPI URLs and regeneration commands for icon processing.',
+      },
+      {
+        category: 'improvement',
+        title: 'BiS import modal improvements',
+        description: 'Better UX for importing gear sets',
+        details:
+          'BiS import modal now defaults to the first preset in the list. Select component highlights selected items more clearly. Gear tooltips always show on hover for quick reference.',
+        commits: [
+          { hash: '6e5ca21', message: 'feat: BiS modal UX improvements and gear tooltips' },
+          { hash: '940af1d', message: 'feat: default BiS import preset to first item in list' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Select highlight styling',
+        description: 'Fixed Select component to show proper highlight on selected items',
+        details:
+          'The Select dropdown now properly highlights the currently selected item with the accent color, making it clearer which option is active.',
+        commits: [{ hash: 'c746be3', message: 'fix: Select highlight styling and player reassignment state sync' }],
+      },
+      {
+        category: 'fix',
+        title: 'Player reassignment state sync',
+        description: 'Fixed state synchronization when reassigning players',
+        details:
+          'When reassigning a player to a different user, the UI state now properly syncs to reflect the change immediately without requiring a refresh.',
+        commits: [{ hash: 'c746be3', message: 'fix: Select highlight styling and player reassignment state sync' }],
+      },
+      {
+        category: 'fix',
+        title: 'Healer slot label updates',
+        description: 'Healer position labels now correctly reflect selected job type',
+        details:
+          'When selecting a job in healer slots, the label now updates to show the specific healer type (Pure Healer/Shield Healer) based on the selected job rather than the template position.',
+        commits: [
+          { hash: '72d6528', message: 'fix: show specific healer type in slot label for all positions' },
+          { hash: 'd3bcd19', message: 'fix: update slot label when healer type differs from position' },
+          { hash: '690c8df', message: 'fix: update healer quick-select buttons based on selected job type' },
+        ],
+      },
+      {
+        category: 'fix',
+        title: 'Modal backdrop rendering',
+        description: 'Removed backdrop blur from modals to prevent rendering artifacts',
+        details:
+          'Modal backdrops no longer use backdrop-blur CSS which was causing visual artifacts on some systems. The overlay effect now uses opacity alone for consistent rendering.',
+        commits: [{ hash: '01e6d4d', message: 'fix: remove backdrop blur from Modal to prevent rendering artifacts' }],
+      },
+    ],
+  },
   {
     version: '1.0.9',
     date: '2026-01-15',

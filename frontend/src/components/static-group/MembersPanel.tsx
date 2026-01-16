@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { authRequest } from '../../services/api';
 import { JobIcon } from '../ui/JobIcon';
 import { Select, type SelectOption } from '../ui/Select';
+import { eventBus, Events } from '../../lib/eventBus';
 import type { Membership, MemberRole, LinkedPlayerInfo } from '../../types';
 
 interface MembersPanelProps {
@@ -76,6 +77,8 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
       });
       await fetchData();
       setEditingMember(null);
+      // Notify other components (e.g., PlayerCards) that member role changed
+      eventBus.emit(Events.MEMBER_ROLE_CHANGED, { groupId, userId, role: newRole });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update role');
     } finally {

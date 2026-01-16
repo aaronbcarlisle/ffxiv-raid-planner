@@ -73,6 +73,36 @@ interface GearChange {
   sourceChanged: boolean;  // True if raid<->tome change
 }
 
+/**
+ * Detect if a bisLink is a preset format (not a custom URL)
+ * Preset formats: 'bis|job|tier' or 'sl|uuid'
+ */
+const isPresetLink = (link: string): boolean =>
+  link.startsWith('bis|') || link.startsWith('sl|');
+
+/**
+ * Parse a preset bisLink to extract matching info
+ * Returns null if not a preset format
+ * Format: bis|job|tier|index (index optional for backward compatibility)
+ * or: sl|uuid
+ */
+const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier?: string; index?: number; uuid?: string } | null => {
+  if (link.startsWith('bis|')) {
+    const parts = link.split('|');
+    if (parts.length >= 3) {
+      const rawIndex = parts.length >= 4 ? parseInt(parts[3], 10) : undefined;
+      const index = rawIndex !== undefined && !Number.isNaN(rawIndex) ? rawIndex : undefined;
+      return { type: 'bis', job: parts[1], tier: parts[2], index };
+    }
+  } else if (link.startsWith('sl|')) {
+    const uuid = link.slice(3);
+    if (uuid) {
+      return { type: 'sl', uuid };
+    }
+  }
+  return null;
+};
+
 export function BiSImportModal({ isOpen, onClose, player, contentType, onImport }: BiSImportModalProps) {
   const [inputValue, setInputValue] = useState('');
   const [state, setState] = useState<ModalState>('input');
@@ -88,15 +118,57 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');
 
   // Fetch presets when modal opens (category determined by tier's contentType)
+  // Also handles smart preset matching when player has an existing preset-format bisLink
   useEffect(() => {
     if (isOpen && player.job && player.configured) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset state when modal opens for new fetch
+      // Reset state synchronously before async fetch - necessary for proper modal initialization
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPresetsLoading(true);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset selection when modal opens
       setSelectedPresetIndex('');
+      setInputValue('');
       fetchBiSPresets(player.job, contentType)
         .then((response) => {
           setPresets(response.presets);
+
+          // Smart preset matching: if player has a preset-format bisLink, try to match it
+          const bisLink = player.bisLink;
+          if (bisLink && isPresetLink(bisLink)) {
+            const parsed = parsePresetLink(bisLink);
+            if (parsed) {
+              let matchIndex = -1;
+
+              if (parsed.type === 'bis' && parsed.tier) {
+                // Match by githubTier and githubIndex (if index is present)
+                if (parsed.index !== undefined) {
+                  // New format with index - exact match
+                  // Note: presets with undefined githubIndex are normalized to 0 when saving,
+                  // so we need to compare with that normalization in mind
+                  matchIndex = response.presets.findIndex(
+                    p => p.githubTier === parsed.tier && (p.githubIndex ?? 0) === parsed.index
+                  );
+                } else {
+                  // Legacy format without index - match first with same tier
+                  matchIndex = response.presets.findIndex(p => p.githubTier === parsed.tier);
+                }
+              } else if (parsed.type === 'sl' && parsed.uuid) {
+                // Match by uuid
+                matchIndex = response.presets.findIndex(p => p.uuid === parsed.uuid);
+              }
+
+              if (matchIndex !== -1) {
+                setSelectedPresetIndex(String(matchIndex));
+                return; // Don't fall through to default selection
+              }
+            }
+          }
+
+          // Default to first preset if:
+          // - No bisLink exists (Import BiS case)
+          // - bisLink is a preset format but no match found
+          // - Don't select a preset if bisLink is a custom URL (handled by bisLink prefill effect)
+          if (response.presets.length > 0 && (!bisLink || isPresetLink(bisLink))) {
+            setSelectedPresetIndex('0');
+          }
         })
         .catch(() => {
           // Silently fail - presets are optional
@@ -106,19 +178,20 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           setPresetsLoading(false);
         });
     }
-  }, [isOpen, player.job, player.configured, contentType]);
+  }, [isOpen, player.job, player.configured, player.bisLink, player.id, contentType]);
 
-  // Prefill with existing bisLink when modal opens
+  // Prefill URL field with existing bisLink when modal opens - but only for custom URLs
+  // Preset-format bisLinks (bis|job|tier, sl|uuid) are handled by the preset matching logic above
   useEffect(() => {
-    if (isOpen && player.bisLink) {
+    if (isOpen && player.bisLink && !isPresetLink(player.bisLink)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Prefill input from props when modal opens
       setInputValue(player.bisLink);
     }
-  }, [isOpen, player.bisLink]);
+  }, [isOpen, player.bisLink, player.id]);
 
   const reset = useCallback(() => {
-    // Reset to existing bisLink or empty
-    setInputValue(player.bisLink || '');
+    // Clear all state - the useEffects will re-initialize properly when modal opens again
+    setInputValue('');
     setState('input');
     setError('');
     setPreviewData(null);
@@ -126,7 +199,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     setResetHaveStatus(true);
     setJobMismatch(false);
     setSelectedPresetIndex('');
-  }, [player.bisLink]);
+    setPresets([]);
+  }, []);
 
   const handleClose = () => {
     reset();
@@ -332,11 +406,12 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         // Shortlink preset - store the XIVGear shortlink format
         bisLink = `sl|${selectedPreset.uuid}`;
       } else if (selectedPreset?.githubTier !== undefined) {
-        // GitHub preset - store the curated BiS path with tier file
-        bisLink = `bis|${player.job.toLowerCase()}|${selectedPreset.githubTier}`;
+        // GitHub preset - store the curated BiS path with tier file and index
+        const index = selectedPreset.githubIndex ?? 0;
+        bisLink = `bis|${player.job.toLowerCase()}|${selectedPreset.githubTier}|${index}`;
       } else {
         // Fallback for presets without githubTier (legacy)
-        bisLink = `bis|${player.job.toLowerCase()}|current`;
+        bisLink = `bis|${player.job.toLowerCase()}|current|0`;
       }
     } else {
       bisLink = inputValue.trim();

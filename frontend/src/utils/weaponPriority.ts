@@ -18,6 +18,10 @@ export interface WeaponPriorityEntry {
   score: number; // Overall priority score (higher = higher priority)
   isTied: boolean; // True if this player is tied with adjacent entries
   tieGroup?: number; // Groups tied players together (same number = same tie group)
+  // Score breakdown for tooltips
+  mainJobBonus: number;
+  roleScore: number;
+  rankScore: number;
 }
 
 /**
@@ -92,6 +96,9 @@ export function getWeaponPriorityForJob(
       score,
       isTied: false,
       tieGroup: undefined,
+      mainJobBonus,
+      roleScore,
+      rankScore,
     });
   }
 

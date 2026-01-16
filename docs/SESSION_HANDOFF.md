@@ -1,160 +1,120 @@
-# Setup Wizard - Session Handoff
+# Session Handoff - January 16, 2026
 
-## Branch: `feature/setup-wizard`
+## Branch: `feature/player-setup-banner`
 
-## Last Session: Session 2 (Steps 3-4 & Submission Flow)
+## v1.0.10 Status: Loot Priority UX & Score Tooltips
 
-### Completed This Session
+### Completed Features (This Session)
 
-1. **InviteMembersStep.tsx** - Step 3 implementation:
-   - Role selector (member/lead/viewer) for invite recipients
-   - Skip invite option with checkbox
-   - Preview of invite link (actual link generated after creation)
-   - Helpful tips about invite management
+1. **Weapon Priority Tie Styling Redesign**
+   - Implemented "connector line" style (Style D) as default
+   - Vertical line with dots connecting tied players
+   - Collapsible tie sections with chevron toggle
+   - Winner info shown inline in header after rolling
+   - Inset shadow effect on expanded sections
 
-2. **ReviewStep.tsx** - Step 4 implementation:
-   - Static details summary (name, tier, visibility, invite role)
-   - Roster grid showing all 8 slots with job icons
-   - Empty slot warnings (informational, not blocking)
-   - BiS import status indicators
-   - Error display with retry button
+2. **Priority Score Breakdown Tooltips**
+   - Gear Priority: Role Priority, Gear Needed (weighted), Loot Adjustment
+   - Weapon Priority: Main Job Bonus, Role Priority, List Position
+   - Enhanced scores show No Drops Bonus and Fair Share Adjustment
+   - Tooltips always visible on hover (not just after logging)
 
-3. **Full submission flow** in SetupWizard.tsx:
-   - `createGroup()` → Creates static group
-   - `createTier()` → Creates tier with default players
-   - `updatePlayer()` loop → Updates players with names/jobs/BiS data
-   - `createInvitation()` → Creates invite link (if not skipped)
-   - Navigation to `/group/{shareCode}` on success
+3. **Gear Slot Icons in Priority Panels**
+   - Gear Priority sections now show generic gear slot icons
+   - Same icons as player cards without imported BiS
+   - Consolidated "ring" slot uses ring1 icon
 
-4. **Cancel confirmation dialog**:
-   - ConfirmModal prompts when closing with unsaved changes
-   - "Keep Editing" / "Discard" options
-   - Change detection for all wizard fields
+4. **Code Cleanup**
+   - Removed TieStyleComparison mockup component
+   - Removed comparison mode toggle and state
+   - Simplified Weapon Priority tab content
 
-5. **Dashboard integration** already working:
-   - SetupWizard replaces simple create modal
-   - `onComplete` callback navigates to new static
+### Previously Completed (v1.0.9)
 
-### Files Created/Modified This Session
-
-| File | Changes |
-|------|---------|
-| `components/wizard/steps/InviteMembersStep.tsx` | New - Step 3 with role selector, skip option |
-| `components/wizard/steps/ReviewStep.tsx` | New - Step 4 with summary, roster preview |
-| `components/wizard/SetupWizard.tsx` | Updated - Full submission flow, cancel confirm |
-| `components/wizard/index.ts` | Updated - Export new step components |
+1. **Setup Wizard** - 4-step guided static creation
+2. **PlayerSetupBanner** - Contextual setup prompts on player cards
+3. **AssignUserModal Improvements** - Role badges, reassignment confirmation
+4. **BiS Modal UX** - Default preset selection, gear tooltips
+5. **Various Fixes** - Select styling, healer labels, modal backdrop
 
 ### Current State
 
-- **Step 1 (Details)**: Fully functional - name, tier selector, public toggle
-- **Step 2 (Roster)**: Fully functional - job quick-select, keyboard nav, BiS import
-- **Step 3 (Invite)**: Fully functional - role selector, skip option
-- **Step 4 (Review)**: Fully functional - summary, roster preview, warnings
-- **Submission**: Fully functional - creates group, tier, players, invitation
-- **Cancel confirm**: Fully functional - warns on discard
-
-### Key Files Reference
-
-```
-frontend/src/components/wizard/
-├── SetupWizard.tsx           # Main orchestrator, state, submission flow
-├── WizardProgress.tsx        # 4-step progress indicator
-├── WizardNavigation.tsx      # Back/Next buttons + keyboard hint
-├── RosterSlot.tsx            # Individual player slot with job picker
-├── types.ts                  # WizardState, WizardPlayer interfaces
-├── index.ts                  # Barrel exports
-└── steps/
-    ├── StaticDetailsStep.tsx # Step 1: Name + Tier + Public
-    ├── RosterSetupStep.tsx   # Step 2: 8 player slots grid
-    ├── InviteMembersStep.tsx # Step 3: Invite role + skip option
-    └── ReviewStep.tsx        # Step 4: Summary + Create button
-```
-
-### Submission Flow Detail
-
-```typescript
-// 1. Create static group
-const group = await createGroup(staticName, isPublic);
-
-// 2. Create tier (with 8 default players)
-const tier = await createTier(group.id, tierId);
-
-// 3. Update players with wizard data
-for (const wizardPlayer of players) {
-  const tierPlayer = tier.players.find(p => p.position === wizardPlayer.position);
-  if (tierPlayer && (wizardPlayer.name || wizardPlayer.job || wizardPlayer.bisLink)) {
-    await updatePlayer(group.id, tier.id, tierPlayer.id, {
-      name: wizardPlayer.name,
-      job: wizardPlayer.job,
-      role: getJobInfo(wizardPlayer.job)?.role,
-      bisLink: wizardPlayer.bisLink,
-      gear: wizardPlayer.gear,
-      configured: !!(wizardPlayer.name && wizardPlayer.job),
-    });
-  }
-}
-
-// 4. Create invitation (if not skipped)
-if (!skipInvite) {
-  await createInvitation(group.id, { role: inviteRole });
-}
-
-// 5. Navigate to new static
-navigate(`/group/${group.shareCode}`);
-```
+- All changes staged (not committed)
+- TypeScript compiles successfully (`pnpm tsc --noEmit`)
+- Branch is `feature/player-setup-banner`
 
 ---
 
-## Next Session: Session 3 - PlayerCard Action Buttons
+## Outstanding Work
 
-### Tasks
+### Immediate Next Steps
 
-1. **Create PlayerCardActions.tsx** in `/frontend/src/components/player/`
-   - Accepts: player, currentUserId, userRole, isGroupOwner, handlers
-   - Renders conditional buttons based on state
-
-2. **Button visibility logic:**
-   | State | Owner/Lead | Member |
-   |-------|------------|--------|
-   | Unclaimed | "Assign Ownership" | "Take Ownership" |
-   | Claimed by me, no BiS | "Import BiS" | "Import BiS" |
-   | Claimed by other | - | - |
-
-3. **Modify PlayerCard.tsx:**
-   - Add `<PlayerCardActions />` below header or in card footer
-   - "Assign Ownership" opens AssignUserModal
-   - "Take Ownership" calls existing onClaimPlayer
-   - "Import BiS" opens BiSImportModal
-
-4. **Use existing Button component with variants:**
-   - "Assign Ownership": variant="secondary" with Link2 icon
-   - "Take Ownership": variant="secondary" with UserCheck icon
-   - "Import BiS": variant="secondary" with FileDown icon
-
-5. **Add tests** in PlayerCardActions.test.tsx for visibility logic
-
-### Files to Modify
-
-- `components/player/PlayerCardActions.tsx` (new)
-- `components/player/PlayerCardActions.test.tsx` (new)
-- `components/player/PlayerCard.tsx` (add action buttons)
-
----
-
-## Session 4 - MembersPanel Enhancement & Final Polish
-
-### Tasks
-
-1. **Modify MembersPanel.tsx:**
-   - Add "Linked Card" dropdown to each member row
+1. **Commit and Push** - Stage changes and push to remote
+2. **Session 4: MembersPanel Enhancement** (from SETUP_WIZARD_PLAN.md)
+   - Add "Linked Card" dropdown to each member row in MembersPanel
    - Show available cards: unclaimed OR already claimed by this member
    - On selection, call existing assign endpoint
+   - Pre-select if member already has a linked card
 
-2. **Documentation updates:**
-   - Update CLAUDE.md Key Files section with new wizard components
-   - Add wizard patterns to Key Implementation Patterns
-   - Update OUTSTANDING_WORK.md if applicable
+### After v1.0.10
 
-3. **Final testing:**
-   - Run full test suite
-   - Manual testing of wizard flow
+- Phase 7: Lodestone auto-sync
+- Phase 8: FFLogs integration
+
+---
+
+## Key Files Modified This Session
+
+| File | Changes |
+|------|---------|
+| `components/loot/LootPriorityPanel.tsx` | Added gear slot icons, removed comparison mockup, added GearScoreTooltip with full breakdown |
+| `components/loot/WeaponPriorityList.tsx` | Changed default tieStyle to 'connector', all tie styling logic already present |
+| `utils/priority.ts` | Added `PriorityScoreBreakdown` interface and `calculatePriorityScoreWithBreakdown` function |
+| `utils/weaponPriority.ts` | Already had score breakdown fields (mainJobBonus, roleScore, rankScore) |
+| `docs/UI_COMPONENTS.md` | Added Loot Priority Components section |
+| `data/releaseNotes.ts` | Added v1.0.10 release notes |
+
+---
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
+| `components/wizard/steps/RosterSetupStep.tsx` | Roster configuration step |
+| `components/wizard/RosterSlot.tsx` | Individual player slot with job picker |
+| `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
+| `components/player/AssignUserModal.tsx` | User assignment with role badges |
+| `components/player/PlayerCard.tsx` | Main player card, integrates banner |
+| `components/loot/LootPriorityPanel.tsx` | Gear/Weapon priority with score tooltips |
+| `components/loot/WeaponPriorityList.tsx` | Weapon priority with connector tie styling |
+| `components/static-group/MembersPanel.tsx` | Target for Session 4 |
+| `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
+
+---
+
+## Copy/Paste Prompt for New Session
+
+```
+Continue working on branch feature/player-setup-banner in the FFXIV Raid Planner project.
+
+Current state:
+- v1.0.10 complete: Weapon priority tie styling, score tooltips, gear slot icons
+- Changes need to be committed and pushed
+- Build passes (pnpm tsc --noEmit)
+
+Next task: Session 4 from docs/SETUP_WIZARD_PLAN.md
+
+Session 4: MembersPanel Enhancement
+- Add "Linked Card" dropdown to each member row in MembersPanel
+- Show available cards: unclaimed OR already claimed by this member
+- On selection, call existing assign endpoint (POST .../players/{id}/assign)
+- Pre-select if member already has a linked card
+
+Key files:
+- components/static-group/MembersPanel.tsx (modify)
+- components/player/AssignUserModal.tsx (reference for patterns)
+- stores/tierStore.ts (player data)
+
+Run `pnpm build` to verify everything works.
+```

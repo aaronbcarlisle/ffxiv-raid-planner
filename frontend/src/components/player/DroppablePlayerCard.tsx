@@ -12,6 +12,8 @@ export type DragAttributes = DraggableAttributes;
 
 interface DroppablePlayerCardProps {
   player: SnapshotPlayer;
+  /** All players in the tier (for assignment modal) */
+  allPlayers?: SnapshotPlayer[];
   settings: StaticSettings;
   viewMode: ViewMode;
   contentType: ContentType;
@@ -24,6 +26,7 @@ interface DroppablePlayerCardProps {
   userHasClaimedPlayer?: boolean;
   isAdmin?: boolean;
   isAdminAccess?: boolean;
+  viewAsUserId?: string;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;

@@ -30,6 +30,7 @@ import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
 import { HEADER_EVENTS } from '../components/layout/Header';
+import { useEventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
@@ -265,6 +266,16 @@ export function GroupView() {
     })();
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
+
+  // Refresh tier data when member roles change (updates linkedUser.membershipRole on player cards)
+  useEventBus<{ groupId: string; userId: string; role: string }>(
+    Events.MEMBER_ROLE_CHANGED,
+    useCallback((data) => {
+      if (currentGroup?.id === data.groupId && currentTier?.tierId) {
+        fetchTier(currentGroup.id, currentTier.tierId);
+      }
+    }, [currentGroup?.id, currentTier?.tierId, fetchTier])
+  );
 
   // Initialize loot tracking store when Loot or Players tab is active
   const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
@@ -520,11 +531,11 @@ export function GroupView() {
       <div className="max-w-4xl mx-auto py-8">
         <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-status-error/10 border-status-error/30'} border rounded-lg p-6 text-center`}>
           <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-status-error'}`}>
-            {isPrivateGroupError ? 'Private Group' : 'Error'}
+            {isPrivateGroupError ? 'Private Static' : 'Error'}
           </h2>
           <p className="text-text-secondary mb-4">
             {isPrivateGroupError
-              ? 'This static group is private. Please log in to view it.'
+              ? 'This static is private. Please log in to view it.'
               : error
             }
           </p>
@@ -646,6 +657,7 @@ export function GroupView() {
                   userHasClaimedPlayer={userHasClaimedPlayer}
                   isAdminAccess={isAdminAccess}
                   isAdmin={isAdmin}
+                  viewAsUserId={viewAsUser?.userId}
                   groupId={currentGroup!.id}
                   tierId={currentTier!.tierId}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries}

@@ -140,6 +140,8 @@ function SlotIcon({
               itemIcon={status.itemIcon}
               itemStats={status.itemStats}
               bisSource={bisSource}
+              hasItem={hasItem}
+              isAugmented={isAugmented}
             />
           }
           side="right"

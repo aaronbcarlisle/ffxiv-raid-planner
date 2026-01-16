@@ -14,6 +14,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor } from '../../gamedata';
 import { FilterBar } from './FilterBar';
 import { RoleSection } from './RoleSection';
+import { Tooltip } from '../primitives/Tooltip';
 
 // Roll result for a player
 interface RollResult {
@@ -21,74 +22,149 @@ interface RollResult {
   roll: number;
 }
 
+// Build tooltip content for score breakdown
+function ScoreTooltip({ entry }: { entry: WeaponPriorityEntry }) {
+  return (
+    <div className="text-xs space-y-0.5">
+      <div className="font-medium text-text-primary mb-1">Priority Score: {entry.score}</div>
+      {entry.mainJobBonus > 0 && (
+        <div className="text-text-secondary">Main Job Bonus: <span className="text-accent">+{entry.mainJobBonus}</span></div>
+      )}
+      {entry.roleScore > 0 && (
+        <div className="text-text-secondary">Role Priority: <span className="text-accent">+{entry.roleScore}</span></div>
+      )}
+      <div className="text-text-secondary">List Position: <span className="text-accent">+{entry.rankScore}</span></div>
+    </div>
+  );
+}
+
+// Tie styling variants for comparison
+export type TieStyle = 'border' | 'sameRank' | 'rankNotation' | 'background' | 'connector';
+
 interface WeaponPriorityCardProps {
   job: string;
   jobName: string;
   priority: WeaponPriorityEntry[];
   showLogButtons: boolean;
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+  tieStyle?: TieStyle;
 }
 
-const WeaponPriorityCard = memo(function WeaponPriorityCard({
+export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   job,
   jobName,
   priority,
   showLogButtons,
   onLogClick,
+  tieStyle = 'connector',
 }: WeaponPriorityCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const [rollResults, setRollResults] = useState<Map<number, RollResult[]>>(new Map());
+  // Track which tie groups are expanded (for connector style)
+  const [expandedTieGroups, setExpandedTieGroups] = useState<Set<number>>(new Set());
 
-  const maxShown = 3;
-  const hasMore = priority.length > maxShown;
-  const visibleEntries = expanded ? priority : priority.slice(0, maxShown);
+  // Toggle expansion of a tie group
+  const toggleTieGroup = useCallback((tieGroup: number) => {
+    setExpandedTieGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(tieGroup)) {
+        next.delete(tieGroup);
+      } else {
+        next.add(tieGroup);
+      }
+      return next;
+    });
+  }, []);
 
-  // Group entries and identify tie groups
+  // For 'border' style: Group entries and collapse tie groups into single render blocks
+  // For other styles: Keep entries flat but annotate with rank and tie info
   const groupedEntries = useMemo(() => {
-    const result: Array<{ entry: WeaponPriorityEntry; displayRank: number; tieGroupEntries?: WeaponPriorityEntry[] }> = [];
+    if (tieStyle === 'border') {
+      // Original collapsed logic for bordered style
+      const result: Array<{ entry: WeaponPriorityEntry; displayRank: number; tieGroupEntries?: WeaponPriorityEntry[] }> = [];
+      let currentRank = 1;
+      let i = 0;
+
+      while (i < priority.length) {
+        const entry = priority[i];
+
+        if (entry.isTied && entry.tieGroup !== undefined) {
+          const tieGroupEntries = priority.filter(
+            (e) => e.tieGroup === entry.tieGroup
+          );
+
+          result.push({
+            entry,
+            displayRank: currentRank,
+            tieGroupEntries,
+          });
+
+          i += tieGroupEntries.length;
+          currentRank++;
+        } else {
+          result.push({ entry, displayRank: currentRank });
+          i++;
+          currentRank++;
+        }
+      }
+
+      return result;
+    }
+
+    // For flat styles (sameRank, rankNotation, background, connector)
+    // Each entry renders separately, but tied entries share the same rank
+    const result: Array<{
+      entry: WeaponPriorityEntry;
+      displayRank: number;
+      isTied: boolean;
+      isFirstInTie: boolean;
+      isLastInTie: boolean;
+      tieGroupEntries?: WeaponPriorityEntry[];
+    }> = [];
     let currentRank = 1;
     let i = 0;
 
-    while (i < visibleEntries.length) {
-      const entry = visibleEntries[i];
+    while (i < priority.length) {
+      const entry = priority[i];
 
       if (entry.isTied && entry.tieGroup !== undefined) {
-        // Collect all entries in the same tie group that are visible
-        const tieGroupEntries = visibleEntries.filter(
+        const tieGroupEntries = priority.filter(
           (e) => e.tieGroup === entry.tieGroup
         );
 
-        // Add first entry with tie group info
+        // Add all entries in the tie group with same rank
+        tieGroupEntries.forEach((tieEntry, tieIdx) => {
+          result.push({
+            entry: tieEntry,
+            displayRank: currentRank,
+            isTied: true,
+            isFirstInTie: tieIdx === 0,
+            isLastInTie: tieIdx === tieGroupEntries.length - 1,
+            tieGroupEntries: tieIdx === 0 ? tieGroupEntries : undefined, // Only first gets the group
+          });
+        });
+
+        i += tieGroupEntries.length;
+        currentRank++;
+      } else {
         result.push({
           entry,
           displayRank: currentRank,
-          tieGroupEntries,
+          isTied: false,
+          isFirstInTie: false,
+          isLastInTie: false,
         });
-
-        // Skip the rest of the tie group (they're handled together)
-        i += tieGroupEntries.length;
-        currentRank++; // Tie group counts as one rank
-      } else {
-        result.push({ entry, displayRank: currentRank });
         i++;
         currentRank++;
       }
     }
 
     return result;
-  }, [visibleEntries]);
+  }, [priority, tieStyle]);
 
   // Roll for a tie group
-  const handleRoll = useCallback((tieGroup: number, visibleEntries: WeaponPriorityEntry[]) => {
-    // Check if there are more tied players in the full list than what's visible
+  const handleRoll = useCallback((tieGroup: number) => {
+    // Roll for ALL tied entries in this group
     const allTiedEntries = priority.filter((e) => e.tieGroup === tieGroup);
-
-    // If tie group extends beyond visible entries, auto-expand
-    if (allTiedEntries.length > visibleEntries.length) {
-      setExpanded(true);
-    }
-
-    // Roll for ALL tied entries (not just visible ones)
     const results: RollResult[] = allTiedEntries.map((e) => ({
       playerId: e.player.id,
       roll: Math.floor(Math.random() * 100) + 1, // 1-100
@@ -127,7 +203,8 @@ const WeaponPriorityCard = memo(function WeaponPriorityCard({
       {/* Priority list */}
       {priority.length === 0 ? (
         <div className="text-sm text-text-muted py-2">No one needs</div>
-      ) : (
+      ) : tieStyle === 'border' ? (
+        // Original bordered tie group style
         <div className="space-y-1">
           {groupedEntries.map(({ entry, displayRank, tieGroupEntries }, groupIndex) => {
             const isTieGroup = tieGroupEntries && tieGroupEntries.length > 1;
@@ -150,7 +227,7 @@ const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       Tied for #{displayRank}
                     </span>
                     <button
-                      onClick={() => handleRoll(tieGroup!, tieGroupEntries)}
+                      onClick={() => handleRoll(tieGroup!)}
                       className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
                     >
                       {hasRolled ? 'Reroll' : 'Roll'}
@@ -214,12 +291,14 @@ const WeaponPriorityCard = memo(function WeaponPriorityCard({
                               Log
                             </button>
                           )}
-                          <span
-                            className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-                          >
-                            {tieEntry.score}
-                          </span>
+                          <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                            <span
+                              className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                              style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                            >
+                              {tieEntry.score}
+                            </span>
+                          </Tooltip>
                         </div>
                       </div>
                     );
@@ -273,24 +352,361 @@ const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       Log
                     </button>
                   )}
-                  <span
-                    className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded"
-                    style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
-                  >
-                    {entry.score}
-                  </span>
+                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                    <span
+                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                    >
+                      {entry.score}
+                    </span>
+                  </Tooltip>
                 </div>
               </div>
             );
           })}
-          {hasMore && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-text-muted hover:text-accent text-xs px-2 py-0.5 transition-colors"
-            >
-              {expanded ? 'Show less' : `+${priority.length - maxShown} more`}
-            </button>
-          )}
+        </div>
+      ) : tieStyle === 'connector' ? (
+        // Style D: Connector with header, background, and connecting dots/line
+        // Uses grouped rendering similar to border style
+        <div className="space-y-1">
+          {(() => {
+            // Re-group entries for connector style (need grouped blocks like border style)
+            const blocks: Array<{ type: 'single' | 'tie'; displayRank: number; entries: WeaponPriorityEntry[]; tieGroup?: number }> = [];
+            let currentRank = 1;
+            let i = 0;
+
+            while (i < priority.length) {
+              const entry = priority[i];
+              if (entry.isTied && entry.tieGroup !== undefined) {
+                const tieGroupEntries = priority.filter((e) => e.tieGroup === entry.tieGroup);
+                blocks.push({ type: 'tie', displayRank: currentRank, entries: tieGroupEntries, tieGroup: entry.tieGroup });
+                i += tieGroupEntries.length;
+                currentRank++;
+              } else {
+                blocks.push({ type: 'single', displayRank: currentRank, entries: [entry] });
+                i++;
+                currentRank++;
+              }
+            }
+
+            return blocks.map((block, blockIndex) => {
+              const isFirstBlock = blockIndex === 0;
+
+              if (block.type === 'tie') {
+                const hasRolled = block.tieGroup !== undefined && rollResults.has(block.tieGroup);
+                const winnerId = block.tieGroup !== undefined ? getWinnerId(block.tieGroup) : null;
+                const winnerEntry = winnerId ? block.entries.find(e => e.player.id === winnerId) : null;
+                const isExpanded = block.tieGroup !== undefined && expandedTieGroups.has(block.tieGroup);
+
+                return (
+                  <div
+                    key={`tie-${block.tieGroup}`}
+                    className={`rounded ${isFirstBlock ? 'bg-surface-elevated/50' : 'bg-surface-elevated/30'}`}
+                  >
+                    {/* Tie group header - clickable to expand/collapse */}
+                    <div
+                      className="flex items-center justify-between px-2 py-1 cursor-pointer select-none"
+                      onClick={() => toggleTieGroup(block.tieGroup!)}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {/* Rank number - same style as regular entries */}
+                        <span className={`text-sm ${isFirstBlock ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+                          {block.displayRank}.
+                        </span>
+                        {/* Expand/collapse chevron */}
+                        <svg
+                          className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span className="text-xs text-text-muted font-medium">
+                          Tied ({block.entries.length})
+                        </span>
+                        {/* Winner info shown in header after roll */}
+                        {hasRolled && winnerEntry && (
+                          <div className="flex items-center gap-1.5 ml-2">
+                            <JobIcon job={winnerEntry.player.job} size="xs" />
+                            <span className="text-xs text-status-success font-medium">
+                              {winnerEntry.player.name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {/* Log button for winner - always visible after roll */}
+                        {hasRolled && winnerEntry && onLogClick && (
+                          <button
+                            onClick={() => onLogClick(job, winnerEntry.player)}
+                            className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
+                          >
+                            Log
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRoll(block.tieGroup!)}
+                          className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
+                        >
+                          {hasRolled ? 'Reroll' : 'Roll'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable tied players with connector line */}
+                    {isExpanded && (
+                      <div className="relative shadow-[inset_0_0_6px_rgba(0,0,0,1)] border-t border-border-subtle/50 rounded-b">
+                        {/* Connector line - positioned below the chevron (around 30px from left) */}
+                        <div className="absolute left-[30px] top-[14px] bottom-[14px] w-px bg-accent/50" />
+
+                        {block.entries.map((tieEntry) => {
+                          const roleColor = tieEntry.player.role
+                            ? getRoleColor(tieEntry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+                            : 'var(--color-text-secondary)';
+                          const playerRoll = block.tieGroup !== undefined ? getPlayerRoll(block.tieGroup, tieEntry.player.id) : null;
+                          const isWinner = winnerId === tieEntry.player.id;
+                          const isFirst = isFirstBlock;
+
+                          return (
+                            <div
+                              key={tieEntry.player.id}
+                              className={`relative flex items-center justify-between pl-10 pr-2 py-1 text-sm group ${
+                                isWinner ? 'bg-status-success/20' : ''
+                              }`}
+                            >
+                              {/* Connector dot - centered on line at 30px */}
+                              <div className="absolute left-[26px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent border border-[#1a1a22]" />
+
+                              <div className="flex items-center gap-2 min-w-0">
+                                <JobIcon job={tieEntry.player.job} size="xs" />
+                                <span
+                                  className={`truncate ${
+                                    isWinner ? 'text-status-success font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                                  }`}
+                                >
+                                  {tieEntry.player.name}
+                                </span>
+                                {tieEntry.isMainJob && (
+                                  <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
+                                    Main
+                                  </span>
+                                )}
+                                {playerRoll !== null && (
+                                  <span
+                                    className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                                      isWinner ? 'bg-status-success/30 text-status-success font-medium' : 'bg-surface-elevated text-text-muted'
+                                    }`}
+                                  >
+                                    {playerRoll}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* Log button - shows on hover */}
+                                {showLogButtons && onLogClick && (
+                                  <button
+                                    onClick={() => onLogClick(job, tieEntry.player)}
+                                    className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                                  >
+                                    Log
+                                  </button>
+                                )}
+                                <Tooltip content={<ScoreTooltip entry={tieEntry} />}>
+                                  <span
+                                    className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                                    style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                                  >
+                                    {tieEntry.score}
+                                  </span>
+                                </Tooltip>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // Single (non-tied) entry
+              const entry = block.entries[0];
+              const roleColor = entry.player.role
+                ? getRoleColor(entry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+                : 'var(--color-text-secondary)';
+              const isFirst = isFirstBlock;
+
+              return (
+                <div
+                  key={entry.player.id}
+                  className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
+                    isFirst ? 'bg-accent/20' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`flex-shrink-0 ${
+                        isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                      }`}
+                    >
+                      {block.displayRank}.
+                    </span>
+                    <JobIcon job={entry.player.job} size="xs" />
+                    <span
+                      className={`truncate ${
+                        isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                      }`}
+                    >
+                      {entry.player.name}
+                    </span>
+                    {entry.isMainJob && (
+                      <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
+                        Main
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Log button - shows on hover */}
+                    {showLogButtons && onLogClick && (
+                      <button
+                        onClick={() => onLogClick(job, entry.player)}
+                        className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                      >
+                        Log
+                      </button>
+                    )}
+                    <Tooltip content={<ScoreTooltip entry={entry} />}>
+                      <span
+                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      >
+                        {entry.score}
+                      </span>
+                    </Tooltip>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      ) : (
+        // Flat styles: sameRank, rankNotation, background
+        <div className="space-y-0">
+          {groupedEntries.map((grouped) => {
+            const { entry, displayRank, isTied, isFirstInTie, tieGroupEntries } = grouped as {
+              entry: WeaponPriorityEntry;
+              displayRank: number;
+              isTied: boolean;
+              isFirstInTie: boolean;
+              tieGroupEntries?: WeaponPriorityEntry[];
+            };
+            const tieGroup = entry.tieGroup;
+            const hasRolled = tieGroup !== undefined && rollResults.has(tieGroup);
+            const winnerId = tieGroup !== undefined ? getWinnerId(tieGroup) : null;
+            const playerRoll = tieGroup !== undefined ? getPlayerRoll(tieGroup, entry.player.id) : null;
+            const isWinner = winnerId === entry.player.id;
+            const isFirst = displayRank === 1;
+            const roleColor = entry.player.role
+              ? getRoleColor(entry.player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+              : 'var(--color-text-secondary)';
+
+            // Determine rank display based on style
+            let rankDisplay: React.ReactNode;
+            if (tieStyle === 'sameRank') {
+              // Style A: Same rank number + "=" indicator
+              rankDisplay = (
+                <span className={`flex-shrink-0 w-6 text-right ${isFirst || isWinner ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+                  {displayRank}.
+                </span>
+              );
+            } else if (tieStyle === 'rankNotation') {
+              // Style B: "2=." notation
+              rankDisplay = (
+                <span className={`flex-shrink-0 w-6 text-right ${isFirst || isWinner ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+                  {displayRank}{isTied ? '=' : ''}.
+                </span>
+              );
+            } else if (tieStyle === 'background') {
+              // Style C: Same rank number
+              rankDisplay = (
+                <span className={`flex-shrink-0 w-6 text-right ${isFirst || isWinner ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+                  {displayRank}.
+                </span>
+              );
+            }
+
+            // Background for style C (subtle banding)
+            const bgClass = tieStyle === 'background' && isTied
+              ? (isFirst ? 'bg-accent/10' : 'bg-surface-elevated/40')
+              : (isFirst && !isTied ? 'bg-accent/20' : '');
+
+            return (
+              <div
+                key={entry.player.id}
+                className={`relative flex items-center justify-between px-2 py-1 text-sm group ${bgClass} ${isWinner ? 'bg-status-success/20' : ''}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {rankDisplay}
+                  {/* Tie indicator for style A */}
+                  {tieStyle === 'sameRank' && isTied && (
+                    <span className="flex-shrink-0 w-3 text-accent/60 text-xs font-bold">=</span>
+                  )}
+                  <JobIcon job={entry.player.job} size="xs" />
+                  <span
+                    className={`truncate ${
+                      isWinner ? 'text-status-success font-medium' : isFirst ? 'text-accent font-medium' : 'text-text-secondary'
+                    }`}
+                  >
+                    {entry.player.name}
+                  </span>
+                  {entry.isMainJob && (
+                    <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
+                      Main
+                    </span>
+                  )}
+                  {playerRoll !== null && (
+                    <span
+                      className={`flex-shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                        isWinner ? 'bg-status-success/30 text-status-success font-medium' : 'bg-surface-elevated text-text-muted'
+                      }`}
+                    >
+                      {playerRoll}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Roll button - only on first entry in tie group */}
+                  {isTied && isFirstInTie && tieGroupEntries && (
+                    <button
+                      onClick={() => handleRoll(tieGroup!)}
+                      className="px-2 py-0.5 text-xs rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors font-medium"
+                    >
+                      {hasRolled ? 'Reroll' : 'Roll'}
+                    </button>
+                  )}
+                  {/* Log button - shows on hover */}
+                  {showLogButtons && onLogClick && (
+                    <button
+                      onClick={() => onLogClick(job, entry.player)}
+                      className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                    >
+                      Log
+                    </button>
+                  )}
+                  <Tooltip content={<ScoreTooltip entry={entry} />}>
+                    <span
+                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                    >
+                      {entry.score}
+                    </span>
+                  </Tooltip>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

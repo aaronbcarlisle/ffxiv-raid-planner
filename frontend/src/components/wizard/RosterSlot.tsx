@@ -1,7 +1,7 @@
 /**
  * RosterSlot - Individual player slot for wizard roster setup
  *
- * Shows position label, name input, job picker, and BiS import button.
+ * Shows position label, name input, and job picker.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -11,10 +11,8 @@ import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { Label } from '../ui/Label';
 import { Input } from '../ui/Input';
-import { BiSImportModal } from '../player/BiSImportModal';
-import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
+import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, getEffectiveHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
-import type { SnapshotPlayer, GearSlotStatus } from '../../types';
 
 // Expected role for each position
 const POSITION_EXPECTED_ROLE: Record<string, string> = {
@@ -37,7 +35,6 @@ const PLACEHOLDER_JOB = 'PLD' as const;
 
 interface RosterSlotProps {
   player: WizardPlayer;
-  tierId: string; // For BiS import context
   slotIndex: number; // For keyboard navigation
   nameInputRef: (el: HTMLInputElement | null) => void; // Callback ref for name input
   onUpdate: (updates: Partial<WizardPlayer>) => void;
@@ -74,9 +71,8 @@ const ROLE_BG_COLORS: Record<string, string> = {
   caster: 'bg-role-caster/30',
 };
 
-export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
+export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
   const [showJobPicker, setShowJobPicker] = useState(false);
-  const [showBiSImport, setShowBiSImport] = useState(false);
   const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0, width: 0, renderAbove: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const jobButtonsRef = useRef<HTMLDivElement>(null);
@@ -89,13 +85,16 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
   // Background color for selected job button
   const bgColor = ROLE_BG_COLORS[player.role] || 'bg-surface-interactive';
 
-  // Get role-specific jobs for quick-select (H1 = pure healers, H2 = barrier healers)
+  // Determine healer type: from selected job if healer is selected, otherwise from position
+  const effectiveHealerType = getEffectiveHealerType(player.role, player.job, player.position);
+
+  // Get role-specific jobs for quick-select
+  // For healers: show jobs matching the selected healer's type (or position-based default)
   const roleJobs: JobInfo[] = (() => {
     const jobs = getJobsByRole(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
-    // Filter healers by type based on position
+    // Filter healers by type
     if (player.role === 'healer') {
-      const healerType = player.position === 'H1' ? 'pure' : 'barrier';
-      return jobs.filter(j => getHealerType(j.abbreviation) === healerType);
+      return jobs.filter(j => getHealerType(j.abbreviation) === effectiveHealerType);
     }
     return jobs;
   })();
@@ -103,16 +102,33 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
   // Get display name for the role (Pure Healer / Barrier Healer for healers)
   const roleDisplayName = (() => {
     if (player.role === 'healer') {
-      return player.position === 'H1' ? 'Pure Healer' : 'Barrier Healer';
+      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
     }
     return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
   })();
 
-  // Determine slot label - show actual role if different from expected
+  // Determine slot label - show actual role/healer-type if different from expected
   const expectedRole = POSITION_EXPECTED_ROLE[player.position];
-  const slotLabel = hasJob && player.role !== expectedRole
-    ? getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-    : POSITION_LABELS[player.position] || player.position;
+  const expectedHealerType = player.position === 'H1' ? 'pure' : 'barrier';
+  const slotLabel = (() => {
+    if (!hasJob) {
+      return POSITION_LABELS[player.position] || player.position;
+    }
+    // For healers, always show the specific healer type (Pure/Barrier) when it differs from position
+    if (player.role === 'healer') {
+      // If in a healer slot with matching type, use position label
+      if (expectedRole === 'healer' && effectiveHealerType === expectedHealerType) {
+        return POSITION_LABELS[player.position] || player.position;
+      }
+      // Otherwise show specific healer type
+      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
+    }
+    // For non-healers, show role name if different from expected
+    if (player.role !== expectedRole) {
+      return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+    }
+    return POSITION_LABELS[player.position] || player.position;
+  })();
 
   const handleJobSelect = (job: string, shouldFocusNext = false) => {
     const role = getRoleForJob(job);
@@ -184,34 +200,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
       window.removeEventListener('resize', updatePosition);
     };
   }, [showJobPicker]);
-
-  const handleBiSImport = (updates: { gear: GearSlotStatus[]; bisLink?: string }) => {
-    // Extract BiS data from import
-    onUpdate({
-      bisLink: updates.bisLink,
-      gear: updates.gear,
-    });
-    setShowBiSImport(false);
-  };
-
-  // Create a temporary player object for BiS import
-  const tempPlayer: SnapshotPlayer = {
-    id: `temp-${player.position}`,
-    tierSnapshotId: tierId,
-    name: player.name || player.position,
-    job: player.job,
-    role: player.role,
-    configured: true,
-    sortOrder: 0,
-    gear: player.gear || [],
-    tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
-    weaponPriorities: [],
-    weaponPrioritiesLocked: false,
-    isSubstitute: false,
-    bisLink: player.bisLink,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
 
   const handleClear = () => {
     onUpdate({
@@ -318,27 +306,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
             </span>
           </div>
         </div>
-
-
-        {/* TODO: Re-enable BiS import button when UI space allows (deferred to future iteration)
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowBiSImport(true)}
-          disabled={!hasJob}
-          className="w-full"
-          tabIndex={slotIndex * 10 + 9}
-          leftIcon={
-            hasBiS ? (
-              <Check className="w-4 h-4 text-status-success" />
-            ) : (
-              <FileDown className="w-4 h-4" />
-            )
-          }
-        >
-          {hasBiS ? 'BiS Imported' : 'Import BiS'}
-        </Button>
-        */}
       </div>
 
       {/* Job picker dropdown portal (when "Other Jobs" is clicked)
@@ -366,17 +333,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
           </div>,
           document.body
         )}
-
-      {/* BiS Import Modal */}
-      {showBiSImport && hasJob && (
-        <BiSImportModal
-          isOpen={showBiSImport}
-          onClose={() => setShowBiSImport(false)}
-          onImport={handleBiSImport}
-          player={tempPlayer}
-          contentType="savage"
-        />
-      )}
     </>
   );
 }

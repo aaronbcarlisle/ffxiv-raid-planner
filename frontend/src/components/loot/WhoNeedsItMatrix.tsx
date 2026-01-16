@@ -172,7 +172,7 @@ export function WhoNeedsItMatrix({
                     <img
                       src={GEAR_SLOT_ICONS[slot as GearSlot]}
                       alt=""
-                      className="w-4 h-4 opacity-60"
+                      className="w-4 h-4 brightness-[3.0]"
                     />
                     <span>{displayName}</span>
                   </div>

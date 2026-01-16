@@ -11,12 +11,11 @@ import type { WizardPlayer } from '../types';
 
 interface RosterSetupStepProps {
   players: WizardPlayer[];
-  tierId: string; // For BiS import context
   onPlayersChange: (players: WizardPlayer[]) => void;
   onAllSlotsFilled?: () => void; // Called when all 8 slots have jobs selected
 }
 
-export function RosterSetupStep({ players, tierId, onPlayersChange, onAllSlotsFilled }: RosterSetupStepProps) {
+export function RosterSetupStep({ players, onPlayersChange, onAllSlotsFilled }: RosterSetupStepProps) {
   // Refs for each slot's name input (for keyboard navigation)
   const slotRefs = useRef<Array<HTMLInputElement | null>>([null, null, null, null, null, null, null, null]);
 
@@ -80,7 +79,6 @@ export function RosterSetupStep({ players, tierId, onPlayersChange, onAllSlotsFi
             <div key={pairIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <RosterSlot
                 player={player1}
-                tierId={tierId}
                 slotIndex={index1}
                 nameInputRef={(el) => (slotRefs.current[index1] = el)}
                 onUpdate={(updates) => handlePlayerUpdate(index1, updates)}
@@ -88,7 +86,6 @@ export function RosterSetupStep({ players, tierId, onPlayersChange, onAllSlotsFi
               />
               <RosterSlot
                 player={player2}
-                tierId={tierId}
                 slotIndex={index2}
                 nameInputRef={(el) => (slotRefs.current[index2] = el)}
                 onUpdate={(updates) => handlePlayerUpdate(index2, updates)}

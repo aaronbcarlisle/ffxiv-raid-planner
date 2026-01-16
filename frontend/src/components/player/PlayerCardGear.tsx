@@ -6,8 +6,10 @@
  */
 
 import { GearTable } from './GearTable';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer, GearSlot } from '../../types';
-import { GEAR_SLOT_ICONS } from '../../types';
+import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
 // Slot order for compact display
@@ -66,57 +68,92 @@ export function PlayerCardGear({
 
   // Compact mode - gear icons row
   return (
-    <div className="px-3 py-2 border-t border-border-default">
-      <div className="flex items-center justify-between gap-1">
-        {SLOT_ORDER.map((slotKey) => {
-          const slotData = gear.find((g) => g.slot === slotKey);
-          if (!slotData) return null;
+    <TooltipProvider>
+      <div className="px-3 py-2 border-t border-border-default">
+        <div className="flex items-center justify-between gap-1">
+          {SLOT_ORDER.map((slotKey) => {
+            const slotData = gear.find((g) => g.slot === slotKey);
+            if (!slotData) return null;
 
-          const isComplete = slotData.bisSource === 'raid'
-            ? slotData.hasItem
-            : slotData.hasItem && slotData.isAugmented;
+            const isComplete = slotData.bisSource === 'raid'
+              ? slotData.hasItem
+              : slotData.hasItem && slotData.isAugmented;
 
-          const hasPartial = slotData.bisSource === 'tome' && slotData.hasItem && !slotData.isAugmented;
+            const hasPartial = slotData.bisSource === 'tome' && slotData.hasItem && !slotData.isAugmented;
 
-          // Use actual item icon if available, otherwise placeholder
-          const iconUrl = slotData.itemIcon || GEAR_SLOT_ICONS[slotKey];
+            // Use actual item icon if available, otherwise placeholder
+            const iconUrl = slotData.itemIcon || GEAR_SLOT_ICONS[slotKey];
 
-          return (
-            <div
-              key={slotKey}
-              className="relative"
-              title={`${slotData.slot}: ${isComplete ? 'Complete' : hasPartial ? 'Needs augment' : 'Missing'}`}
-            >
-              <img
-                src={iconUrl}
-                alt={slotData.slot}
-                className={`w-5 h-5 transition-all ${
-                  slotData.itemIcon
-                    ? // Actual item icon styling
-                      isComplete
-                        ? 'opacity-100'
-                        : hasPartial
-                          ? 'opacity-75'
-                          : 'opacity-40 grayscale'
-                    : // Placeholder icon styling (invert to white)
-                      isComplete
-                        ? 'brightness-0 invert opacity-90'
-                        : hasPartial
-                          ? 'brightness-0 invert opacity-50'
-                          : 'opacity-30'
-                }`}
+            // Build tooltip content - use ItemHoverCard if we have item metadata, otherwise simple text
+            const hasItemData = slotData.itemName && slotData.itemLevel;
+            const slotName = GEAR_SLOT_NAMES[slotKey] || slotKey;
+
+            const tooltipContent = hasItemData ? (
+              <ItemHoverCard
+                itemName={slotData.itemName!}
+                itemLevel={slotData.itemLevel!}
+                itemIcon={slotData.itemIcon}
+                itemStats={slotData.itemStats}
+                bisSource={slotData.bisSource}
+                hasItem={slotData.hasItem}
+                isAugmented={slotData.isAugmented}
               />
-              {/* Completion indicator dot */}
-              {isComplete && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-status-success" />
-              )}
-              {hasPartial && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-status-warning" />
-              )}
-            </div>
-          );
-        })}
+            ) : (
+              // Fallback for items without metadata
+              <div className="text-sm">
+                <span className="font-medium">{slotName}</span>
+                <span className="text-text-muted ml-1">
+                  ({slotData.bisSource === 'raid' ? 'Savage' : 'Tome'})
+                </span>
+                {!slotData.hasItem && (
+                  <span className="text-text-muted ml-1">(missing)</span>
+                )}
+                {hasPartial && (
+                  <span className="text-text-muted ml-1">(needs augment)</span>
+                )}
+              </div>
+            );
+
+            return (
+              <Tooltip
+                key={slotKey}
+                content={tooltipContent}
+                side="top"
+                sideOffset={4}
+              >
+                <div className="relative cursor-pointer">
+                  <img
+                    src={iconUrl}
+                    alt={slotData.slot}
+                    className={`w-5 h-5 transition-all ${
+                      slotData.itemIcon
+                        ? // Actual item icon styling
+                          isComplete
+                            ? 'opacity-100'
+                            : hasPartial
+                              ? 'opacity-75'
+                              : 'opacity-40 grayscale'
+                        : // Placeholder icon styling (invert to white)
+                          isComplete
+                            ? 'brightness-0 invert opacity-90'
+                            : hasPartial
+                              ? 'brightness-0 invert opacity-50'
+                              : 'opacity-30'
+                    }`}
+                  />
+                  {/* Completion indicator dot */}
+                  {isComplete && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-status-success" />
+                  )}
+                  {hasPartial && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-status-warning" />
+                  )}
+                </div>
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

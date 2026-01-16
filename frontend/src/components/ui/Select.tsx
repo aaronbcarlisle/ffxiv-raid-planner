@@ -174,7 +174,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           cursor-pointer
           select-none
           outline-none
-          data-[highlighted]:bg-accent data-[highlighted]:text-accent-contrast data-[highlighted]:font-bold
+          data-[highlighted]:bg-surface-interactive
           data-[disabled]:text-text-disabled data-[disabled]:pointer-events-none
         "
         {...props}
