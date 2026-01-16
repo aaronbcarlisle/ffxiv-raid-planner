@@ -80,6 +80,7 @@ interface LootTrackingState {
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
   deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   clearAllPageLedger: (groupId: string, tierId: string) => Promise<void>;
+  startNextWeek: (groupId: string, tierId: string) => Promise<number>;
   clearLootTracking: () => void;
   clearPlayerLedger: () => void;
 }
@@ -517,6 +518,26 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  startNextWeek: async (groupId, tierId) => {
+    set({ error: null });
+    try {
+      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/start-next-week`
+      );
+      // Update current week and maxWeek in the store
+      const newWeek = response.currentWeek;
+      const { maxWeek } = get();
+      set({
+        currentWeek: newWeek,
+        maxWeek: Math.max(maxWeek, newWeek),
+      });
+      return newWeek;
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;

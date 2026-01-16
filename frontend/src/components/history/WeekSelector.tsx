@@ -20,6 +20,10 @@ interface WeekSelectorProps {
   weeksWithEntries?: Set<number>;
   /** Map of week -> entry types for enhanced display */
   weekDataTypes?: Map<number, WeekEntryType[]>;
+  /** Callback to start the next week (advances the week calculation). Only shown if provided. */
+  onStartNextWeek?: () => Promise<void>;
+  /** Whether the start next week action is in progress */
+  isStartingNextWeek?: boolean;
 }
 
 /** Format entry types for display (e.g., "loot/books") */
@@ -39,6 +43,8 @@ export function WeekSelector({
   disabled = false,
   weeksWithEntries,
   weekDataTypes,
+  onStartNextWeek,
+  isStartingNextWeek = false,
 }: WeekSelectorProps) {
   // Find previous week with entries (or just prev week if no tracking)
   const findPrevWeek = (): number | null => {
@@ -164,6 +170,18 @@ export function WeekSelector({
           title={`Navigate to Week ${calculatedCurrentWeek}`}
         >
           + Week {calculatedCurrentWeek}
+        </button>
+      )}
+
+      {/* Start Next Week button - for manually advancing when auto-calculation is behind */}
+      {onStartNextWeek && (
+        <button
+          onClick={onStartNextWeek}
+          disabled={disabled || isStartingNextWeek}
+          className="ml-2 px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover text-text-secondary text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed border border-border-default"
+          title="Start the next week (use when week calculation is behind your actual raid schedule)"
+        >
+          {isStartingNextWeek ? 'Starting...' : 'Start Next Week'}
         </button>
       )}
     </div>

@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
 import { WeekSelector } from './WeekSelector';
 import { SectionedLogView } from './SectionedLogView';
 import type { SnapshotPlayer } from '../../types';
@@ -59,7 +60,11 @@ export function HistoryView({
     weekDataTypes,
     fetchCurrentWeek,
     fetchWeekDataTypes,
+    startNextWeek,
   } = useLootTrackingStore();
+
+  // State for start next week action
+  const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -116,6 +121,20 @@ export function HistoryView({
     setSelectedWeek(week);
   };
 
+  // Handler for starting the next week manually
+  const handleStartNextWeek = useCallback(async () => {
+    setIsStartingNextWeek(true);
+    try {
+      const newWeek = await startNextWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      toast.success(`Advanced to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to start next week');
+    } finally {
+      setIsStartingNextWeek(false);
+    }
+  }, [groupId, tierId, startNextWeek, setSelectedWeek]);
+
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
@@ -130,6 +149,8 @@ export function HistoryView({
           onWeekChange={handleWeekChange}
           weeksWithEntries={weeksWithEntries}
           weekDataTypes={weekDataTypes}
+          onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
+          isStartingNextWeek={isStartingNextWeek}
         />
       </div>
 

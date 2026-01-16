@@ -5,7 +5,7 @@ API endpoints for loot log and page tracking.
 """
 
 import structlog
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -768,6 +768,58 @@ async def clear_player_page_ledger(
         )
     )
     await db.commit()
+
+
+@router.post("/{group_id}/tiers/{tier_id}/start-next-week")
+async def start_next_week(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually advance to the next week by adjusting week_start_date.
+
+    This is useful when the automatic week calculation doesn't match
+    when you actually started raiding (e.g., first log was days after
+    the first raid session).
+    """
+    # Check permissions - requires lead or owner
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # If week_start_date is not set, set it to now (first week)
+    if tier.week_start_date is None:
+        tier.week_start_date = datetime.now(timezone.utc).isoformat()
+
+    # Parse the current week_start_date
+    start_date = datetime.fromisoformat(tier.week_start_date)
+
+    # Move it back by 7 days to advance the calculated week by 1
+    new_start_date = start_date - timedelta(days=7)
+    tier.week_start_date = new_start_date.isoformat()
+
+    await db.commit()
+
+    # Calculate and return the new week number
+    new_week = calculate_week_number(tier)
+
+    logger.info(
+        "week_advanced",
+        group_id=group_id,
+        tier_id=tier_id,
+        new_week=new_week,
+        old_start_date=start_date.isoformat(),
+        new_start_date=new_start_date.isoformat(),
+        user_id=current_user.id,
+    )
+
+    return {
+        "currentWeek": new_week,
+        "weekStartDate": tier.week_start_date,
+    }
 
 
 @router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")
