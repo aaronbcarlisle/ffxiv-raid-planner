@@ -52,15 +52,22 @@ async def get_tier_snapshot(
     db: AsyncSession,
     group_id: str,
     tier_id: str,
+    for_update: bool = False,
 ) -> TierSnapshot:
-    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)"""
-    result = await db.execute(
-        select(TierSnapshot).where(
-            TierSnapshot.static_group_id == group_id,
-            # Support both UUID (id) and slug (tier_id) lookups
-            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
-        )
+    """Get tier snapshot by tier_id or UUID (no permission check - caller must check)
+
+    Args:
+        for_update: If True, acquire a row-level lock to prevent concurrent modifications.
+                   Use this when the caller intends to modify the tier.
+    """
+    query = select(TierSnapshot).where(
+        TierSnapshot.static_group_id == group_id,
+        # Support both UUID (id) and slug (tier_id) lookups
+        (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
     )
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     tier = result.scalar_one_or_none()
     if not tier:
         raise HTTPException(status_code=404, detail="Tier snapshot not found")
@@ -787,8 +794,8 @@ async def start_next_week(
     await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
-    # Get tier
-    tier = await get_tier_snapshot(db, group_id, tier_id)
+    # Get tier with row-level lock to prevent race conditions
+    tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
     # If week_start_date is not set, set it to now (first week)
     if tier.week_start_date is None:
@@ -838,8 +845,8 @@ async def revert_week(
     await get_static_group(db, group_id)
     await require_can_edit_roster(db, current_user.id, group_id)
 
-    # Get tier
-    tier = await get_tier_snapshot(db, group_id, tier_id)
+    # Get tier with row-level lock to prevent race conditions
+    tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
     # Cannot revert if week_start_date is not set or already at week 1
     if tier.week_start_date is None:
