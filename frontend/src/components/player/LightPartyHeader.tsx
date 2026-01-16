@@ -9,6 +9,7 @@
 
 import { useMemo } from 'react';
 import type { SnapshotPlayer } from '../../types';
+import { Tooltip } from '../primitives/Tooltip';
 
 interface LightPartyHeaderProps {
   groupNumber: 1 | 2;
@@ -53,13 +54,27 @@ export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps
 
   const colors = groupColors[groupNumber];
 
+  // Group descriptions
+  const groupDescription = groupNumber === 1
+    ? 'Tank 1, Healer 1, Melee 1, Ranged 1'
+    : 'Tank 2, Healer 2, Melee 2, Ranged 2';
+
   return (
     <div className="flex items-center gap-4 mb-3">
       {/* Group badge and label */}
       <div className="flex items-center gap-2">
-        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${colors.badge}`}>
-          G{groupNumber}
-        </span>
+        <Tooltip
+          content={
+            <div>
+              <div className="font-medium">Light Party {groupNumber}</div>
+              <div className="text-text-secondary text-xs mt-0.5">{groupDescription}</div>
+            </div>
+          }
+        >
+          <span className={`px-2 py-0.5 rounded text-xs font-bold border cursor-help ${colors.badge}`}>
+            G{groupNumber}
+          </span>
+        </Tooltip>
         <span className="text-text-secondary text-sm font-medium">
           Light Party {groupNumber}
         </span>
@@ -71,12 +86,23 @@ export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps
       {/* Progress bar and summary */}
       <div className="flex items-center gap-3">
         {/* Progress bar */}
-        <div className="w-24 h-2 bg-surface-elevated rounded-full overflow-hidden" title={`${percentage}% complete`}>
-          <div
-            className={`h-full ${colors.progress} transition-all duration-300`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
+        <Tooltip
+          content={
+            <div>
+              <div className="font-medium">Light Party {groupNumber} Progress</div>
+              <div className="text-text-secondary text-xs mt-0.5">
+                {completed}/{total} slots ({percentage}% complete)
+              </div>
+            </div>
+          }
+        >
+          <div className="w-24 h-2 bg-surface-elevated rounded-full overflow-hidden">
+            <div
+              className={`h-full ${colors.progress} transition-all duration-300`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </Tooltip>
 
         {/* Summary text */}
         <span className="text-xs text-text-muted whitespace-nowrap">

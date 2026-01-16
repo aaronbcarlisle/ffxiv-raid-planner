@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
 import { ContextMenu, Select, Input, Label, Modal, Spinner, StaticGridSkeleton, StaticListSkeleton, ErrorMessage } from '../components/ui';
-import { Button, IconButton } from '../components/primitives';
+import { Button, IconButton, Tooltip } from '../components/primitives';
 import { GroupSettingsModal } from '../components/static-group';
 import { SetupWizard } from '../components/wizard';
 import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
@@ -280,29 +280,42 @@ export function Dashboard() {
           {/* View mode toggle */}
           {groups.length > 0 && (
             <div className="flex bg-surface-raised rounded-md border border-border-default">
-              <IconButton
-                icon={<LayoutGrid className="w-4 h-4" />}
-                onClick={() => setViewMode('grid')}
-                variant={viewMode === 'grid' ? 'primary' : 'ghost'}
-                size="sm"
-                aria-label="Grid view"
-                aria-pressed={viewMode === 'grid'}
-                className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
-              />
-              <IconButton
-                icon={<List className="w-4 h-4" />}
-                onClick={() => setViewMode('list')}
-                variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                size="sm"
-                aria-label="List view"
-                aria-pressed={viewMode === 'list'}
-                className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
-              />
+              <Tooltip content="Display statics as cards">
+                <IconButton
+                  icon={<LayoutGrid className="w-4 h-4" />}
+                  onClick={() => setViewMode('grid')}
+                  variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                  size="sm"
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === 'grid'}
+                  className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
+                />
+              </Tooltip>
+              <Tooltip content="Display statics as a list">
+                <IconButton
+                  icon={<List className="w-4 h-4" />}
+                  onClick={() => setViewMode('list')}
+                  variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                  size="sm"
+                  aria-label="List view"
+                  aria-pressed={viewMode === 'list'}
+                  className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
+                />
+              </Tooltip>
             </div>
           )}
-          <Button onClick={() => setShowCreateWizard(true)}>
-            Create Static
-          </Button>
+          <Tooltip
+            content={
+              <div>
+                <div className="font-medium">Create Static</div>
+                <div className="text-text-secondary text-xs mt-0.5">Start a new raid group</div>
+              </div>
+            }
+          >
+            <Button onClick={() => setShowCreateWizard(true)}>
+              Create Static
+            </Button>
+          </Tooltip>
         </div>
       </div>
 
@@ -457,22 +470,33 @@ export function Dashboard() {
                 <span>
                   Code: <span className="font-mono text-accent">{group.shareCode}</span>
                 </span>
-                <button
-                  onClick={(e) => handleCopyCode(group.shareCode, e)}
-                  className="p-1 rounded hover:bg-surface-interactive transition-colors"
-                  title="Copy code (hold Shift for full URL)"
-                  aria-label="Copy share code"
+                <Tooltip
+                  content={
+                    <div>
+                      <div className="font-medium">Copy Share Code</div>
+                      <div className="text-text-secondary text-xs mt-0.5">
+                        Hold <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Shift</kbd> for full URL
+                      </div>
+                    </div>
+                  }
                 >
-                  {copiedCode === group.shareCode ? (
-                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  )}
-                </button>
+                  {/* design-system-ignore: Inline icon button for compact list */}
+                  <button
+                    onClick={(e) => handleCopyCode(group.shareCode, e)}
+                    className="p-1 rounded hover:bg-surface-interactive transition-colors"
+                    aria-label="Copy share code"
+                  >
+                    {copiedCode === group.shareCode ? (
+                      <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </Tooltip>
               </div>
             </div>
           ))}
@@ -545,22 +569,33 @@ export function Dashboard() {
 
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-accent">{group.shareCode}</span>
-                  <button
-                    onClick={(e) => handleCopyCode(group.shareCode, e)}
-                    className="p-1 rounded hover:bg-surface-elevated transition-colors"
-                    title="Copy code (hold Shift for full URL)"
-                    aria-label="Copy share code"
+                  <Tooltip
+                    content={
+                      <div>
+                        <div className="font-medium">Copy Share Code</div>
+                        <div className="text-text-secondary text-xs mt-0.5">
+                          Hold <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Shift</kbd> for full URL
+                        </div>
+                      </div>
+                    }
                   >
-                    {copiedCode === group.shareCode ? (
-                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </button>
+                    {/* design-system-ignore: Inline icon button for compact list */}
+                    <button
+                      onClick={(e) => handleCopyCode(group.shareCode, e)}
+                      className="p-1 rounded hover:bg-surface-elevated transition-colors"
+                      aria-label="Copy share code"
+                    >
+                      {copiedCode === group.shareCode ? (
+                        <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
 
                 <span className="text-text-muted text-xs">

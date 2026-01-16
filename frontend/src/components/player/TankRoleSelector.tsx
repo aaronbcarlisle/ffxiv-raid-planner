@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import type { TankRole, SnapshotPlayer } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface TankRoleSelectorProps {
@@ -46,25 +47,29 @@ export function TankRoleSelector({
     ? (tankRole ? 'hover:bg-role-tank/30' : 'hover:text-text-secondary')
     : '';
 
+  const tooltipContent = !editPermission.allowed
+    ? editPermission.reason
+    : tankRole
+      ? `Tank role: ${tankRole}`
+      : 'Click to set MT/OT';
+
   return (
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${baseClasses} ${hoverClasses} ${
-            !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-          title={
-            !editPermission.allowed
-              ? editPermission.reason
-              : tankRole
-                ? `Tank role: ${tankRole}`
-                : 'Click to set MT/OT'
-          }
-          disabled={!editPermission.allowed}
-        >
-          {tankRole || '--'}
-        </button>
-      </PopoverTrigger>
+      <Tooltip content={tooltipContent}>
+        <span className="inline-flex">
+          <PopoverTrigger asChild>
+            {/* design-system-ignore: Badge-style button with specific toggle styling */}
+            <button
+              className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${baseClasses} ${hoverClasses} ${
+                !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={!editPermission.allowed}
+            >
+              {tankRole || '--'}
+            </button>
+          </PopoverTrigger>
+        </span>
+      </Tooltip>
 
       <PopoverContent align="start" sideOffset={4} className="p-2">
         <div className="flex gap-1">

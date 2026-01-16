@@ -107,9 +107,20 @@ export function PlayerCardStatus({
     <div className="flex items-center gap-2 flex-wrap">
       {/* SUB badge */}
       {isSubstitute && (
-        <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
-          SUB
-        </span>
+        <Tooltip
+          content={
+            <div>
+              <div className="font-medium">Substitute</div>
+              <div className="text-text-secondary text-xs mt-0.5">
+                This player is a backup for the raid group
+              </div>
+            </div>
+          }
+        >
+          <span className="text-xs bg-status-warning/20 text-status-warning px-1.5 py-0.5 rounded font-medium">
+            SUB
+          </span>
+        </Tooltip>
       )}
 
       {/* BiS link badge */}

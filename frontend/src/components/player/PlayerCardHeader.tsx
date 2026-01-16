@@ -17,9 +17,36 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition, TankRole, SnapshotPlayer } from '../../types';
+import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
-import { calculateAverageItemLevel } from '../../utils/calculations';
+import { calculateAverageItemLevel, getEffectiveCurrentSource } from '../../utils/calculations';
+import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
+
+/**
+ * Calculate item level for a single gear slot, mirroring calculateAverageItemLevel logic.
+ */
+function getSlotItemLevel(
+  slot: { slot: GearSlot; hasItem: boolean; bisSource: 'raid' | 'tome'; isAugmented: boolean; itemLevel?: number; currentSource?: string },
+  tierId: string
+): number {
+  // Special case: tome BiS with item but NOT augmented
+  if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
+    const isWeapon = slot.slot === 'weapon';
+    return getItemLevelForCategory(tierId, 'tome', isWeapon);
+  }
+
+  // Use itemLevel from BiS import if player has the item
+  if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
+    return slot.itemLevel;
+  }
+
+  // Calculate from currentSource for unacquired gear
+  const currentSource = getEffectiveCurrentSource(slot as Parameters<typeof getEffectiveCurrentSource>[0]);
+  const isWeapon = slot.slot === 'weapon';
+  const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
+  return getItemLevelForCategory(tierId, effectiveSource, isWeapon);
+}
 
 interface PlayerCardHeaderProps {
   job: string;
@@ -258,9 +285,34 @@ export function PlayerCardHeader({
             size="md"
             showLabel
           />
-          {/* Average iLv */}
+          {/* Average iLv with slot breakdown tooltip */}
           {averageILv > 0 && (
-            <Tooltip content="Average Item Level">
+            <Tooltip
+              content={
+                <div className="min-w-[140px]">
+                  <div className="font-medium mb-1.5">Average Item Level</div>
+                  <div className="space-y-0.5 text-xs">
+                    {GEAR_SLOTS.map((slotKey) => {
+                      const gearSlot = player.gear.find(g => g.slot === slotKey);
+                      if (!gearSlot) return null;
+                      const slotILv = getSlotItemLevel(gearSlot, tierId);
+                      return (
+                        <div key={slotKey} className="flex justify-between gap-3">
+                          <span className="text-text-secondary">{GEAR_SLOT_NAMES[slotKey]}</span>
+                          <span className={gearSlot.hasItem ? 'text-status-success' : 'text-text-muted'}>
+                            {slotILv}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-border-subtle mt-1.5 pt-1.5 flex justify-between font-medium">
+                    <span>Average</span>
+                    <span className="text-accent">i{averageILv}</span>
+                  </div>
+                </div>
+              }
+            >
               <div className="text-sm text-text-muted cursor-help">
                 i{averageILv}
               </div>

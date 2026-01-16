@@ -7,6 +7,7 @@
 
 import type { GearSourceCategory } from '../../types';
 import { GEAR_SOURCE_NAMES } from '../../types';
+import { Tooltip } from '../primitives/Tooltip';
 
 interface GearSourceBadgeProps {
   source: GearSourceCategory;
@@ -48,12 +49,13 @@ export function GearSourceBadge({ source, compact = false }: GearSourceBadgeProp
   const styles = SOURCE_STYLES[source];
 
   return (
-    <span
-      className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded border ${styles}`}
-      title={GEAR_SOURCE_NAMES[source]}
-    >
-      {label}
-    </span>
+    <Tooltip content={GEAR_SOURCE_NAMES[source]}>
+      <span
+        className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded border ${styles}`}
+      >
+        {label}
+      </span>
+    </Tooltip>
   );
 }
 

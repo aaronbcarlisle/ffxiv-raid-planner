@@ -139,7 +139,17 @@ export function WeekSelector({
         </Tooltip>
       )}
 
-      <Tooltip content="Previous Week">
+      <Tooltip
+        content={
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              Previous Week
+              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">←</kbd>
+            </div>
+            <div className="text-text-secondary text-xs mt-0.5">Navigate to the previous week</div>
+          </div>
+        }
+      >
         <Button
           variant="secondary"
           size="sm"
@@ -150,20 +160,46 @@ export function WeekSelector({
         </Button>
       </Tooltip>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-text-muted">Week</span>
-        <Select
-          value={String(currentWeek)}
-          onChange={(value) => onWeekChange(Number(value))}
-          disabled={disabled}
-          options={displayedWeeks.map((week) => ({
-            value: String(week),
-            label: getWeekLabel(week),
-          }))}
-        />
-      </div>
+      <Tooltip
+        content={
+          <div>
+            <div className="font-medium">Week {currentWeek}</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              {weekDataTypes && weekDataTypes.has(currentWeek)
+                ? `Logged: ${formatEntryTypes(weekDataTypes.get(currentWeek)!)}`
+                : 'No entries logged'}
+            </div>
+            <div className="text-text-muted text-[10px] mt-1 border-t border-border-subtle pt-1">
+              Click to select a different week
+            </div>
+          </div>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text-muted">Week</span>
+          <Select
+            value={String(currentWeek)}
+            onChange={(value) => onWeekChange(Number(value))}
+            disabled={disabled}
+            options={displayedWeeks.map((week) => ({
+              value: String(week),
+              label: getWeekLabel(week),
+            }))}
+          />
+        </div>
+      </Tooltip>
 
-      <Tooltip content="Next Week">
+      <Tooltip
+        content={
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              Next Week
+              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">→</kbd>
+            </div>
+            <div className="text-text-secondary text-xs mt-0.5">Navigate to the next week</div>
+          </div>
+        }
+      >
         <Button
           variant="secondary"
           size="sm"

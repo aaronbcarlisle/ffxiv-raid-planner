@@ -5,12 +5,14 @@
  * On other pages: [Logo] ... [User]
  */
 
-import { useState, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Copy } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Copy, UserPlus } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useViewAsStore } from '../../stores/viewAsStore';
+import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
@@ -36,23 +38,53 @@ export const HEADER_EVENTS = {
   ROLLOVER: 'header:rollover',
   SETTINGS: 'header:settings',
   DELETE_TIER: 'header:delete-tier',
+  OPEN_SETTINGS_INVITATIONS: 'header:open-settings-invitations',
 } as const;
 
 export function Header() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const { currentGroup, groups, fetchGroups } = useStaticGroupStore();
   const { tiers, currentTier, isSaving } = useTierStore();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { viewAsUser } = useViewAsStore();
+  const { invitations, fetchInvitations } = useInvitationStore();
 
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
 
   // Check if user is a member of the current group
-  const userRole = currentGroup?.userRole;
-  const isMember = userRole === 'owner' || userRole === 'lead' || userRole === 'member';
-  const canEdit = userRole === 'owner' || userRole === 'lead';
+  const actualUserRole = currentGroup?.userRole;
+
+  // Effective role: when viewing as someone, use their role; otherwise use actual role
+  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
+
+  // Admin access: admin mode is active when:
+  // - User is an admin (user.isAdmin)
+  // - adminMode=true URL param is present (navigated from Admin Dashboard)
+  // - NOT viewing as another user (viewAs disables admin privileges)
+  const adminModeParam = searchParams.get('adminMode') === 'true';
+  const isAdmin = user?.isAdmin ?? false;
+  const isAdminAccess = !viewAsUser && isAdmin && adminModeParam;
+
+  // Always show admin controls if user is admin (even without adminMode param)
+  // This ensures the gear icon is visible when in admin mode or as actual owner/lead
+  const isMember = userRole === 'owner' || userRole === 'lead' || userRole === 'member' || isAdmin;
+  const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
+  const canManageInvitations = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
+
+  // Fetch invitations for Invite Members button
+  useEffect(() => {
+    if (isGroupRoute && currentGroup && canManageInvitations) {
+      fetchInvitations(currentGroup.id);
+    }
+  }, [isGroupRoute, currentGroup?.id, canManageInvitations, fetchInvitations]);
+
+  // Get first active invitation for quick copy
+  const activeInvitation = invitations.find(inv => inv.isValid);
 
   // Calculate available tiers for creation
   const existingTierIds = tiers.map(t => t.tierId);
@@ -99,14 +131,44 @@ export function Header() {
     }
   };
 
+  // Handle invite members button click
+  const handleInviteMembers = async () => {
+    if (!currentGroup) return;
+
+    if (activeInvitation) {
+      // Copy the active invitation link
+      const url = `${window.location.origin}/invite/${activeInvitation.inviteCode}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        setInviteCopied(true);
+        toast.success('Invite link copied!');
+        setTimeout(() => setInviteCopied(false), 2000);
+      } catch {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setInviteCopied(true);
+        toast.success('Invite link copied!');
+        setTimeout(() => setInviteCopied(false), 2000);
+      }
+    } else {
+      // No active invitation - open settings modal to invitations tab
+      dispatchHeaderEvent(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS);
+    }
+  };
+
   // Dispatch custom event helper
   const dispatchHeaderEvent = (eventName: string, detail?: unknown) => {
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   };
 
-  // Check permissions
-  const tierPermission = canManageTiers(userRole);
-  const groupPermission = canManageGroup(userRole);
+  // Check permissions - pass isAdminAccess for elevated admin privileges
+  const tierPermission = canManageTiers(userRole, isAdminAccess);
+  const groupPermission = canManageGroup(userRole, isAdminAccess);
 
   // Build settings actions
   const settingsActions = useMemo(() => {
@@ -187,19 +249,30 @@ export function Header() {
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-4 min-w-0">
           {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center gap-3 flex-shrink-0 group"
+          <Tooltip
+            content={
+              <div>
+                <div className="font-medium">FFXIV Raid Planner</div>
+                <div className="text-text-secondary text-xs mt-0.5">
+                  Return to home page
+                </div>
+              </div>
+            }
           >
-            <div className="relative">
-              <div className="absolute inset-0 bg-accent/20 rounded-lg blur-md group-hover:bg-accent/30 transition-colors" />
-              <img
-                src="/logo.svg"
-                alt="FFXIV Raid Planner"
-                className="relative w-9 h-9"
-              />
-            </div>
-          </Link>
+            <Link
+              to="/"
+              className="flex items-center gap-3 flex-shrink-0 group"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-accent/20 rounded-lg blur-md group-hover:bg-accent/30 transition-colors" />
+                <img
+                  src="/logo.svg"
+                  alt="FFXIV Raid Planner"
+                  className="relative w-9 h-9"
+                />
+              </div>
+            </Link>
+          </Tooltip>
 
           {/* Group context (only on group pages) */}
           {isGroupRoute && currentGroup && (
@@ -213,45 +286,73 @@ export function Header() {
                 groups={groups}
                 onFetchGroups={fetchGroups}
                 isMember={isMember}
+                userRole={userRole}
               />
 
-              {/* Role badge */}
-              {userRole && (
-                <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[userRole]}`}>
-                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                </span>
-              )}
-
-              {/* Share code - clickable to copy */}
-              <Tooltip
-                content={
-                  <div className="flex items-start gap-2 max-w-xs">
-                    <Copy className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-medium">Copy Share Code</div>
-                      <div className="text-text-secondary text-xs mt-0.5">
-                        Click to copy code. Hold <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Shift</kbd> for full URL with current tier.
+              {/* Invite Members button (for owners/leads) or Share code (for others) */}
+              {canManageInvitations ? (
+                <Tooltip
+                  content={
+                    <div className="flex items-start gap-2 max-w-xs">
+                      <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-medium">Invite Members</div>
+                        <div className="text-text-secondary text-xs mt-0.5">
+                          {activeInvitation
+                            ? 'Click to copy invitation link'
+                            : 'Click to create an invitation link'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                }
-              >
-                <button
-                  onClick={(e) => handleCopyCode(e)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
+                  }
                 >
-                  <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
-                  {copied ? (
-                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  )}
-                </button>
-              </Tooltip>
+                  <button
+                    onClick={handleInviteMembers}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
+                  >
+                    {inviteCopied ? (
+                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <UserPlus className="w-4 h-4 text-accent" />
+                    )}
+                    <span className="text-sm font-medium text-accent">
+                      {inviteCopied ? 'Copied!' : 'Invite'}
+                    </span>
+                  </button>
+                </Tooltip>
+              ) : (
+                <Tooltip
+                  content={
+                    <div className="flex items-start gap-2 max-w-xs">
+                      <Copy className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-medium">Copy Share Code</div>
+                        <div className="text-text-secondary text-xs mt-0.5">
+                          Click to copy code. Hold <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Shift</kbd> for full URL with current tier.
+                        </div>
+                      </div>
+                    </div>
+                  }
+                >
+                  <button
+                    onClick={(e) => handleCopyCode(e)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
+                  >
+                    <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
+                    {copied ? (
+                      <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </Tooltip>
+              )}
             </>
           )}
         </div>

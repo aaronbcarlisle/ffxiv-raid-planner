@@ -13,6 +13,8 @@ import type { Invitation, MemberRole } from '../../types';
 interface InvitationsPanelProps {
   groupId: string;
   canManage: boolean;
+  /** Whether to highlight the create invitation button */
+  highlightCreateButton?: boolean;
 }
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -29,7 +31,7 @@ const ROLE_COLORS: Record<MemberRole, string> = {
   viewer: 'text-membership-viewer',
 };
 
-export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) {
+export function InvitationsPanel({ groupId, canManage, highlightCreateButton = false }: InvitationsPanelProps) {
   const {
     invitations,
     isLoading,
@@ -151,7 +153,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${highlightCreateButton ? 'px-3' : ''}`}>
       {error && (
         <div className="bg-status-error/20 text-status-error p-3 rounded text-sm flex justify-between items-center">
           <span>{error}</span>
@@ -171,7 +173,7 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
         <Button
           variant="secondary"
           onClick={() => setShowCreateForm(true)}
-          className="w-full"
+          className={`w-full ${highlightCreateButton ? 'highlight-pulse' : ''}`}
         >
           + Create Invitation Link
         </Button>

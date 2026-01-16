@@ -8,6 +8,7 @@ import { useState } from 'react';
 import type { RaidPosition, SnapshotPlayer } from '../../types';
 import { RAID_POSITIONS } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 interface PositionSelectorProps {
@@ -92,25 +93,29 @@ export function PositionSelector({
     setOpen(false);
   };
 
+  const tooltipContent = !editPermission.allowed
+    ? editPermission.reason
+    : position
+      ? `Position: ${position}`
+      : 'Click to set position';
+
   return (
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
-      <PopoverTrigger>
-        <button
-          className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
-            editPermission.allowed ? getHoverClasses(position) : ''
-          } ${!editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
-          title={
-            !editPermission.allowed
-              ? editPermission.reason
-              : position
-                ? `Position: ${position}`
-                : 'Click to set position'
-          }
-          disabled={!editPermission.allowed}
-        >
-          {position || '--'}
-        </button>
-      </PopoverTrigger>
+      <Tooltip content={tooltipContent}>
+        <span className="inline-flex">
+          <PopoverTrigger asChild>
+            {/* design-system-ignore: Badge-style button with specific toggle styling */}
+            <button
+              className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
+                editPermission.allowed ? getHoverClasses(position) : ''
+              } ${!editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!editPermission.allowed}
+            >
+              {position || '--'}
+            </button>
+          </PopoverTrigger>
+        </span>
+      </Tooltip>
 
       <PopoverContent align="start" sideOffset={4} className="p-2 min-w-[140px]">
         {/* 4x2 grid of positions */}
@@ -119,7 +124,8 @@ export function PositionSelector({
             const isSelected = position === pos;
             const isSuggested = suggested.includes(pos);
 
-            return (
+            const posButton = (
+              /* design-system-ignore: Position grid button with specific styling */
               <button
                 key={pos}
                 onClick={() => handleSelect(pos)}
@@ -127,10 +133,17 @@ export function PositionSelector({
                   px-2 py-1.5 rounded text-xs font-bold transition-colors
                   ${getPositionBgClasses(pos, isSelected, isSuggested)}
                 `}
-                title={isSuggested ? `Suggested for ${role}` : undefined}
               >
                 {pos}
               </button>
+            );
+
+            return isSuggested ? (
+              <Tooltip key={pos} content={`Suggested for ${role}`}>
+                {posButton}
+              </Tooltip>
+            ) : (
+              posButton
             );
           })}
         </div>

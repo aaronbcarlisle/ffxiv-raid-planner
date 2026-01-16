@@ -15,7 +15,7 @@ import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { AssignUserModal } from './AssignUserModal';
 import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
-import { Button } from '../primitives';
+import { Button, Tooltip } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
@@ -470,14 +470,29 @@ export const PlayerCard = memo(function PlayerCard({
   };
 
   return (
-    <div
-      id={`player-card-${player.id}`}
-      className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 select-none ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
-      style={{ borderLeftColor: roleColor }}
-      onContextMenu={handleContextMenu}
-      onMouseDown={handleMouseDown}
-      onClick={handleCardClick}
+    <Tooltip
+      content={
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+            <span className="text-text-secondary">Copy link</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+            <span className="text-text-secondary">More options</span>
+          </div>
+        </div>
+      }
+      delayDuration={600}
     >
+      <div
+        id={`player-card-${player.id}`}
+        className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 select-none ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
+        style={{ borderLeftColor: roleColor }}
+        onContextMenu={handleContextMenu}
+        onMouseDown={handleMouseDown}
+        onClick={handleCardClick}
+      >
       {/* Context Menu */}
       {contextMenu && (
         <ContextMenu
@@ -771,7 +786,6 @@ export const PlayerCard = memo(function PlayerCard({
       {/* Header - drag handle area */}
       <div
         className={`p-3 transition-colors ${dragListeners ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        title={onCopyUrl ? 'Shift+Click to copy link' : undefined}
         {...dragAttributes}
         {...dragListeners}
       >
@@ -857,5 +871,6 @@ export const PlayerCard = memo(function PlayerCard({
       {/* Needs Footer - only visible in compact mode */}
       {!isExpanded && <NeedsFooter needs={needs} />}
     </div>
+    </Tooltip>
   );
 });

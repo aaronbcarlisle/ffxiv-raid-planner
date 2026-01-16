@@ -482,11 +482,33 @@ export function WeeklyLootGrid({
 
                   // Wrap with tooltip if there's an entry
                   if (lootEntry) {
-                    const tooltipText = onCopyEntryUrl
-                      ? 'Shift+Click to copy link • Alt+Click to go to player • Right-click for menu'
-                      : 'Alt+Click to go to player • Right-click for menu';
                     return (
-                      <Tooltip key={item.slot} content={tooltipText} delayDuration={400}>
+                      <Tooltip
+                        key={item.slot}
+                        content={
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Click</kbd>
+                              <span className="text-text-secondary">Edit entry</span>
+                            </div>
+                            {onCopyEntryUrl && (
+                              <div className="flex items-center gap-2">
+                                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                                <span className="text-text-secondary">Copy link</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+                              <span className="text-text-secondary">Go to player</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                              <span className="text-text-secondary">More options</span>
+                            </div>
+                          </div>
+                        }
+                        delayDuration={400}
+                      >
                         {cellContent}
                       </Tooltip>
                     );
@@ -571,11 +593,33 @@ export function WeeklyLootGrid({
 
                   // Wrap with tooltip if there's an entry
                   if (matEntry) {
-                    const tooltipText = onCopyEntryUrl
-                      ? 'Shift+Click to copy link • Alt+Click to go to player • Right-click for menu'
-                      : 'Alt+Click to go to player • Right-click for menu';
                     return (
-                      <Tooltip key={mat.type} content={tooltipText} delayDuration={400}>
+                      <Tooltip
+                        key={mat.type}
+                        content={
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Click</kbd>
+                              <span className="text-text-secondary">Edit entry</span>
+                            </div>
+                            {onCopyEntryUrl && (
+                              <div className="flex items-center gap-2">
+                                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                                <span className="text-text-secondary">Copy link</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
+                              <span className="text-text-secondary">Go to player</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                              <span className="text-text-secondary">More options</span>
+                            </div>
+                          </div>
+                        }
+                        delayDuration={400}
+                      >
                         {matCellContent}
                       </Tooltip>
                     );

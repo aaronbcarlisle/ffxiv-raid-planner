@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
 import { Input } from '../components/ui';
-import { Button } from '../components/primitives';
+import { Button, Tooltip } from '../components/primitives';
 import { BookOpen, Users, Calculator, Sparkles } from 'lucide-react';
 import type { MemberRole } from '../types';
 
@@ -203,21 +203,32 @@ export function Home() {
                     </span>
                     <span className="font-mono text-xs text-accent">{group.shareCode}</span>
                   </div>
-                  <button
-                    onClick={(e) => handleCopyCode(group.shareCode, e)}
-                    className="p-1 rounded hover:bg-surface-interactive transition-colors"
-                    title="Copy code (hold Shift for full URL)"
+                  <Tooltip
+                    content={
+                      <div>
+                        <div className="font-medium">Copy Share Code</div>
+                        <div className="text-text-secondary text-xs mt-0.5">
+                          Hold <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Shift</kbd> for full URL
+                        </div>
+                      </div>
+                    }
                   >
-                    {copiedCode === group.shareCode ? (
-                      <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </button>
+                    {/* design-system-ignore: Inline icon button for compact list */}
+                    <button
+                      onClick={(e) => handleCopyCode(group.shareCode, e)}
+                      className="p-1 rounded hover:bg-surface-interactive transition-colors"
+                    >
+                      {copiedCode === group.shareCode ? (
+                        <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5 text-text-muted hover:text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
               </Link>
             ))}

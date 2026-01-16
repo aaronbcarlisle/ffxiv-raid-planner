@@ -10,6 +10,7 @@ import { DroppablePlayerCard } from './DroppablePlayerCard';
 import { EmptySlotCard } from './EmptySlotCard';
 import { InlinePlayerEdit } from './InlinePlayerEdit';
 import { LightPartyHeader } from './LightPartyHeader';
+import { Tooltip } from '../primitives/Tooltip';
 import { toast } from '../../stores/toastStore';
 import { canResetGear } from '../../utils/permissions';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -442,7 +443,16 @@ export function PlayerGrid({
         {subsView && groupedPlayers.substitutes.length > 0 && (
           <div className="opacity-75">
             <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-              <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+              <Tooltip
+                content={
+                  <div>
+                    <div className="font-medium">Substitutes</div>
+                    <div className="text-text-secondary text-xs mt-0.5">Backup players not in the main roster</div>
+                  </div>
+                }
+              >
+                <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle cursor-help">SUB</span>
+              </Tooltip>
               Substitutes
             </h3>
             <div className={gridClasses}>
@@ -488,7 +498,16 @@ export function PlayerGrid({
       {subsView && players.some(p => p.isSubstitute) && (
         <div className="opacity-75">
           <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
-            <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle">SUB</span>
+            <Tooltip
+              content={
+                <div>
+                  <div className="font-medium">Substitutes</div>
+                  <div className="text-text-secondary text-xs mt-0.5">Backup players not in the main roster</div>
+                </div>
+              }
+            >
+              <span className="bg-surface-interactive text-text-muted px-2 py-0.5 rounded text-xs font-bold border border-border-subtle cursor-help">SUB</span>
+            </Tooltip>
             Substitutes
           </h3>
           <div className={gridClasses}>

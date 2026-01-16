@@ -305,11 +305,16 @@ export function DropdownSub({ children }: DropdownSubProps) {
 interface DropdownSubTriggerProps {
   children: ReactNode;
   icon?: ReactNode;
+  /** Direction the chevron should point (matches submenu open direction) */
+  chevronSide?: 'left' | 'right';
   className?: string;
 }
 
 export const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerProps>(
-  ({ children, icon, className = '' }, ref) => {
+  ({ children, icon, chevronSide = 'right', className = '' }, ref) => {
+    // Chevron paths: right = "M9 5l7 7-7 7", left = "M15 19l-7-7 7-7"
+    const chevronPath = chevronSide === 'left' ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7';
+
     return (
       <DropdownMenuPrimitive.SubTrigger
         ref={ref}
@@ -322,17 +327,32 @@ export const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerP
           ${className}
         `}
       >
+        {/* Chevron on left side when submenu opens left */}
+        {chevronSide === 'left' && (
+          <svg
+            className="w-4 h-4 text-text-muted"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d={chevronPath} />
+          </svg>
+        )}
         {icon && <span className="w-4 h-4 flex items-center justify-center">{icon}</span>}
         <span className="flex-1">{children}</span>
-        <svg
-          className="w-4 h-4 text-text-muted"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        {/* Chevron on right side when submenu opens right */}
+        {chevronSide === 'right' && (
+          <svg
+            className="w-4 h-4 text-text-muted"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d={chevronPath} />
+          </svg>
+        )}
       </DropdownMenuPrimitive.SubTrigger>
     );
   }
@@ -340,32 +360,39 @@ export const DropdownSubTrigger = forwardRef<HTMLDivElement, DropdownSubTriggerP
 
 DropdownSubTrigger.displayName = 'DropdownSubTrigger';
 
-export const DropdownSubContent = forwardRef<
-  HTMLDivElement,
-  { children: ReactNode; className?: string }
->(({ children, className = '' }, ref) => {
-  return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.SubContent
-        ref={ref}
-        sideOffset={2}
-        alignOffset={-5}
-        className={`
-          z-50 rounded-lg
-          bg-surface-overlay border border-border-default
-          shadow-xl
-          min-w-[8rem] overflow-hidden py-1
-          animate-in fade-in-0 zoom-in-95
-          data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
-          data-[side=left]:slide-in-from-right-2
-          data-[side=right]:slide-in-from-left-2
-          ${className}
-        `}
-      >
-        {children}
-      </DropdownMenuPrimitive.SubContent>
-    </DropdownMenuPrimitive.Portal>
-  );
-});
+interface DropdownSubContentProps {
+  children: ReactNode;
+  /** Side to open on (default: right, but may flip due to collision detection) */
+  side?: 'left' | 'right';
+  className?: string;
+}
+
+export const DropdownSubContent = forwardRef<HTMLDivElement, DropdownSubContentProps>(
+  ({ children, side = 'right', className = '' }, ref) => {
+    return (
+      <DropdownMenuPrimitive.Portal>
+        <DropdownMenuPrimitive.SubContent
+          ref={ref}
+          side={side}
+          sideOffset={2}
+          alignOffset={-5}
+          className={`
+            z-50 rounded-lg
+            bg-surface-overlay border border-border-default
+            shadow-xl
+            min-w-[8rem] overflow-hidden py-1
+            animate-in fade-in-0 zoom-in-95
+            data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
+            data-[side=left]:slide-in-from-right-2
+            data-[side=right]:slide-in-from-left-2
+            ${className}
+          `}
+        >
+          {children}
+        </DropdownMenuPrimitive.SubContent>
+      </DropdownMenuPrimitive.Portal>
+    );
+  }
+);
 
 DropdownSubContent.displayName = 'DropdownSubContent';

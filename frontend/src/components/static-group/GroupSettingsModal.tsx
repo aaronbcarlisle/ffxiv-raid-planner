@@ -86,13 +86,17 @@ interface GroupSettingsModalProps {
   group: StaticGroup;
   onClose: () => void;
   isAdmin?: boolean;
+  /** Initial tab to show when modal opens */
+  initialTab?: SettingsTab;
+  /** Whether to highlight the create invitation button */
+  highlightCreateInvite?: boolean;
 }
 
-export function GroupSettingsModal({ group, onClose, isAdmin }: GroupSettingsModalProps) {
+export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'general', highlightCreateInvite = false }: GroupSettingsModalProps) {
   const navigate = useNavigate();
   const { updateGroup, deleteGroup } = useStaticGroupStore();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [name, setName] = useState(group.name);
   const [isPublic, setIsPublic] = useState(group.isPublic);
   const [lootPriority, setLootPriority] = useState<string[]>(
@@ -447,7 +451,11 @@ export function GroupSettingsModal({ group, onClose, isAdmin }: GroupSettingsMod
           )}
 
           {activeTab === 'invitations' && (
-            <InvitationsPanel groupId={group.id} canManage={canManageInvitations} />
+            <InvitationsPanel
+              groupId={group.id}
+              canManage={canManageInvitations}
+              highlightCreateButton={highlightCreateInvite}
+            />
           )}
         </div>
       </div>

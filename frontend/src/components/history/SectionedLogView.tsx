@@ -24,6 +24,7 @@ import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
+import { Tooltip } from '../primitives';
 
 interface SectionedLogViewProps {
   groupId: string;
@@ -817,26 +818,52 @@ export function SectionedLogView({
                   <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
                   {/* View mode toggle */}
                   <div className="flex bg-surface-base rounded-lg p-0.5">
-                    <button
-                      onClick={() => setLootViewMode('byFloor')}
-                      className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
-                        lootViewMode === 'byFloor'
-                          ? 'bg-accent text-accent-contrast'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
+                    <Tooltip
+                      content={
+                        <div>
+                          <div className="flex items-center gap-2 font-medium">
+                            By Floor
+                            <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
+                          </div>
+                          <div className="text-text-secondary text-xs mt-0.5">Group entries by raid floor</div>
+                        </div>
+                      }
                     >
-                      By Floor
-                    </button>
-                    <button
-                      onClick={() => setLootViewMode('chronological')}
-                      className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
-                        lootViewMode === 'chronological'
-                          ? 'bg-accent text-accent-contrast'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
+                      {/* design-system-ignore: View mode toggle button requires specific toggle styling */}
+                      <button
+                        onClick={() => setLootViewMode('byFloor')}
+                        className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                          lootViewMode === 'byFloor'
+                            ? 'bg-accent text-accent-contrast'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        By Floor
+                      </button>
+                    </Tooltip>
+                    <Tooltip
+                      content={
+                        <div>
+                          <div className="flex items-center gap-2 font-medium">
+                            Timeline
+                            <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
+                          </div>
+                          <div className="text-text-secondary text-xs mt-0.5">Show all entries chronologically</div>
+                        </div>
+                      }
                     >
-                      Timeline
-                    </button>
+                      {/* design-system-ignore: View mode toggle button requires specific toggle styling */}
+                      <button
+                        onClick={() => setLootViewMode('chronological')}
+                        className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                          lootViewMode === 'chronological'
+                            ? 'bg-accent text-accent-contrast'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        Timeline
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
                 {/* Floor filter - hidden in Timeline mode but still rendered to prevent layout shift */}
@@ -904,6 +931,7 @@ export function SectionedLogView({
                               onEdit={handleEditLootEntry}
                               onDelete={handleDeleteLoot}
                               onContextMenu={handleLootContextMenu}
+                              onNavigateToPlayer={onNavigateToPlayer}
                             />
                           ) : (
                             <MaterialLogEntryItem
@@ -917,6 +945,7 @@ export function SectionedLogView({
                               onEdit={handleEditMaterialEntry}
                               onDelete={handleDeleteMaterial}
                               onContextMenu={handleMaterialContextMenu}
+                              onNavigateToPlayer={onNavigateToPlayer}
                             />
                           )
                         )}
@@ -937,6 +966,7 @@ export function SectionedLogView({
                         onEdit={handleEditLootEntry}
                         onDelete={handleDeleteLoot}
                         onContextMenu={handleLootContextMenu}
+                        onNavigateToPlayer={onNavigateToPlayer}
                       />
                     ) : (
                       <MaterialLogEntryItem
@@ -950,6 +980,7 @@ export function SectionedLogView({
                         onEdit={handleEditMaterialEntry}
                         onDelete={handleDeleteMaterial}
                         onContextMenu={handleMaterialContextMenu}
+                        onNavigateToPlayer={onNavigateToPlayer}
                       />
                     )
                   )
@@ -992,15 +1023,16 @@ export function SectionedLogView({
                   </div>
                 </div>
               )}
-              <button
-                onClick={toggleBooksSidebar}
-                className="p-1 text-text-muted hover:text-text-primary transition-colors"
-                title={booksSidebarCollapsed ? 'Expand' : 'Collapse'}
-              >
-                <svg className={`w-4 h-4 transition-transform ${booksSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+              <Tooltip content={booksSidebarCollapsed ? 'Expand books sidebar' : 'Collapse books sidebar'}>
+                <button
+                  onClick={toggleBooksSidebar}
+                  className="p-1 text-text-muted hover:text-text-primary transition-colors"
+                >
+                  <svg className={`w-4 h-4 transition-transform ${booksSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </Tooltip>
             </div>
 
             {/* Sidebar Content */}
@@ -1035,17 +1067,24 @@ export function SectionedLogView({
                             </td>
                             {(['I', 'II', 'III', 'IV'] as const).map((book) => {
                               const value = balance[`book${book}` as keyof typeof balance] as number;
-                              return (
-                                <td
-                                  key={book}
-                                  className={`text-center py-2 px-1 ${canEdit ? 'cursor-pointer hover:bg-accent/20 rounded transition-colors' : ''}`}
-                                  onClick={canEdit ? () => setEditBookState({
-                                    playerId: balance.playerId,
-                                    playerName: player.name,
-                                    bookType: book,
-                                    currentValue: value,
-                                  }) : undefined}
-                                >
+                              return canEdit ? (
+                                <Tooltip key={book} content={`Book ${book}: ${value} — Click to adjust`}>
+                                  <td
+                                    className="text-center py-2 px-1 cursor-pointer hover:bg-accent/20 rounded transition-colors"
+                                    onClick={() => setEditBookState({
+                                      playerId: balance.playerId,
+                                      playerName: player.name,
+                                      bookType: book,
+                                      currentValue: value,
+                                    })}
+                                  >
+                                    <span className={`font-medium ${value > 0 ? 'text-text-primary' : 'text-text-muted'}`}>
+                                      {value}
+                                    </span>
+                                  </td>
+                                </Tooltip>
+                              ) : (
+                                <td key={book} className="text-center py-2 px-1">
                                   <span className={`font-medium ${value > 0 ? 'text-text-primary' : 'text-text-muted'}`}>
                                     {value}
                                   </span>
@@ -1053,15 +1092,16 @@ export function SectionedLogView({
                               );
                             })}
                             <td className="py-1.5 px-1">
-                              <button
-                                onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
-                                className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                                title={`View book history for ${player.name}`}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                              </button>
+                              <Tooltip content={`View book history for ${player.name}`}>
+                                <button
+                                  onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
+                                  className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                  </svg>
+                                </button>
+                              </Tooltip>
                             </td>
                           </tr>
                         );
@@ -1073,13 +1113,21 @@ export function SectionedLogView({
                 {/* Mark Floor Cleared - at bottom of Books section */}
                 {canEdit && (
                   <div className="p-2 border-t border-border-subtle">
-                    <button
-                      onClick={() => setShowFloorClearedModal(true)}
-                      className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
-                      title="Award books to party (Alt+B)"
+                    <Tooltip
+                      content={
+                        <span className="flex items-center gap-2">
+                          Award books to party
+                          <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+B</kbd>
+                        </span>
+                      }
                     >
-                      Mark Floor Cleared
-                    </button>
+                      <button
+                        onClick={() => setShowFloorClearedModal(true)}
+                        className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                      >
+                        Mark Floor Cleared
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>
