@@ -187,6 +187,8 @@ class TestRevertWeek:
         data = response.json()
         assert "currentWeek" in data
         assert "weekStartDate" in data
+        # Verify week actually decremented (was week 3 with 2 weeks offset, now week 2)
+        assert data["currentWeek"] == 2
 
     @pytest.mark.asyncio
     async def test_revert_week_lead_role_success(

@@ -44,6 +44,9 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
+# Maximum weeks allowed per tier (~5 months of raiding)
+MAX_WEEKS = 20
+
 
 # Helper functions
 
@@ -798,9 +801,8 @@ async def start_next_week(
     # All validation and modifications happen AFTER lock acquisition.
     tier = await get_tier_snapshot(db, group_id, tier_id, for_update=True)
 
-    # Validate maximum weeks to prevent abuse (20 weeks ~= 5 months of raiding).
+    # Validate maximum weeks to prevent abuse.
     # Note: This calculation uses the locked tier data, ensuring serialized access.
-    MAX_WEEKS = 20
     current_week = calculate_week_number(tier)
     if current_week >= MAX_WEEKS:
         raise HTTPException(
@@ -815,7 +817,10 @@ async def start_next_week(
         tier.week_start_date = tier.created_at
 
     # Parse the current week_start_date
-    start_date = datetime.fromisoformat(tier.week_start_date)
+    try:
+        start_date = datetime.fromisoformat(tier.week_start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid week_start_date format")
 
     # Move it back by 7 days to advance the calculated week by 1
     new_start_date = start_date - timedelta(days=7)
@@ -873,7 +878,10 @@ async def revert_week(
         raise HTTPException(status_code=400, detail="Cannot revert: already at week 1")
 
     # Parse the current week_start_date
-    start_date = datetime.fromisoformat(tier.week_start_date)
+    try:
+        start_date = datetime.fromisoformat(tier.week_start_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid week_start_date format")
 
     # Move it forward by 7 days to decrease the calculated week by 1
     new_start_date = start_date + timedelta(days=7)
