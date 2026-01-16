@@ -646,6 +646,7 @@ export function GroupView() {
                   userHasClaimedPlayer={userHasClaimedPlayer}
                   isAdminAccess={isAdminAccess}
                   isAdmin={isAdmin}
+                  viewAsUserId={viewAsUser?.userId}
                   groupId={currentGroup!.id}
                   tierId={currentTier!.tierId}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries}

@@ -30,6 +30,7 @@ interface PlayerCardRendererProps {
   userHasClaimedPlayer: boolean;
   isAdminAccess: boolean;
   isAdmin: boolean;
+  viewAsUserId?: string;
   groupId: string;
   tierId: string;
   highlightedPlayerId: string | null;
@@ -66,6 +67,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   userHasClaimedPlayer,
   isAdminAccess,
   isAdmin,
+  viewAsUserId,
   groupId,
   tierId,
   highlightedPlayerId,
@@ -181,6 +183,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         userHasClaimedPlayer={userHasClaimedPlayer}
         isAdmin={isAdmin}
         isAdminAccess={isAdminAccess}
+        viewAsUserId={viewAsUserId}
         groupId={groupId}
         tierId={tierId}
         isHighlighted={highlightedPlayerId === player.id}
@@ -238,6 +241,7 @@ export interface PlayerGridProps {
   userHasClaimedPlayer: boolean;
   isAdminAccess: boolean;
   isAdmin: boolean;
+  viewAsUserId?: string;
   groupId: string;
   tierId: string;
   playerSlotsWithLootEntries: Map<string, Set<GearSlot>>;
@@ -281,6 +285,7 @@ export function PlayerGrid({
   userHasClaimedPlayer,
   isAdminAccess,
   isAdmin,
+  viewAsUserId,
   groupId,
   tierId,
   playerSlotsWithLootEntries,
@@ -315,6 +320,7 @@ export function PlayerGrid({
     userHasClaimedPlayer,
     isAdminAccess,
     isAdmin,
+    viewAsUserId,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -347,6 +353,7 @@ export function PlayerGrid({
     userHasClaimedPlayer,
     isAdminAccess,
     isAdmin,
+    viewAsUserId,
     groupId,
     tierId,
     highlightedPlayerId,
