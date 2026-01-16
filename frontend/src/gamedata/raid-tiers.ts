@@ -18,6 +18,8 @@ export interface RaidTier {
   floors: string[];
   /** Full duty names from game (for tooltips) */
   dutyNames?: string[];
+  /** Path to composite banner image (all 4 floors blended) */
+  banner?: string;
   /** Item levels for this tier */
   itemLevels: {
     /** Savage armor iLvl */
@@ -69,6 +71,7 @@ export const RAID_TIERS: RaidTier[] = [
       'AAC Heavyweight M3 (Savage)',
       'AAC Heavyweight M4 (Savage)',
     ],
+    banner: '/images/raid-tiers/aac-heavyweight.png',
     itemLevels: {
       savage: 790,
       savageWeapon: 795,
@@ -101,6 +104,7 @@ export const RAID_TIERS: RaidTier[] = [
       'AAC Cruiserweight M3 (Savage)',
       'AAC Cruiserweight M4 (Savage)',
     ],
+    banner: '/images/raid-tiers/aac-cruiserweight.png',
     itemLevels: {
       savage: 760,
       savageWeapon: 765,
@@ -133,6 +137,7 @@ export const RAID_TIERS: RaidTier[] = [
       'AAC Light-heavyweight M3 (Savage)',
       'AAC Light-heavyweight M4 (Savage)',
     ],
+    banner: '/images/raid-tiers/aac-light-heavyweight.png',
     itemLevels: {
       savage: 730,
       savageWeapon: 735,
@@ -163,6 +168,7 @@ export const RAID_TIERS: RaidTier[] = [
     shortName: 'P9S-P12S',
     patch: '6.4',
     floors: ['P9S', 'P10S', 'P11S', 'P12S'],
+    banner: '/images/raid-tiers/anabaseios.png',
     itemLevels: {
       savage: 660,
       savageWeapon: 665,

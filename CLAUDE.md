@@ -38,6 +38,50 @@ This rule is **absolute and non-negotiable**.
 
 ---
 
+## UI Implementation Rules (MANDATORY)
+
+**BEFORE implementing ANY new UI, you MUST:**
+
+1. **Check existing components** - See [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) for the full inventory
+2. **Run design system check** - `./frontend/scripts/check-design-system.sh`
+3. **Use design system primitives** - Never use raw `<button>`, `<input>`, `<select>`, `<label>`, `<textarea>`
+4. **Use semantic color tokens** - Never hardcode colors (use `text-role-tank`, `bg-surface-card`, etc.)
+
+### Quick Reference - Use These Components
+
+| Need | Use This | Path |
+|------|----------|------|
+| Any button | `Button` | `primitives/Button.tsx` |
+| Icon button | `IconButton` | `primitives/IconButton.tsx` |
+| **Job selection** | `JobPicker` | `player/JobPicker.tsx` |
+| **Position (T1-R2)** | `PositionSelector` | `player/PositionSelector.tsx` |
+| Tank role (MT/OT) | `TankRoleSelector` | `player/TankRoleSelector.tsx` |
+| Text input | `Input` | `ui/Input.tsx` |
+| Dropdown select | `Select` | `ui/Select.tsx` |
+| Checkbox | `Checkbox` | `ui/Checkbox.tsx` |
+| Modal dialog | `Modal` + `useModal` | `ui/Modal.tsx` |
+| Confirmation | `ConfirmModal` | `ui/ConfirmModal.tsx` |
+| Menu dropdown | `Dropdown` | `primitives/Dropdown.tsx` |
+| Right-click menu | `ContextMenu` | `ui/ContextMenu.tsx` |
+| Error display | `ErrorMessage` | `ui/ErrorMessage.tsx` |
+| Loading state | `Skeleton` variants | `ui/Skeleton.tsx` |
+| Job icon | `JobIcon` | `ui/JobIcon.tsx` |
+
+### Common Mistakes to Avoid
+
+| Wrong | Right |
+|-------|-------|
+| Creating new job selector | Use `JobPicker` from `components/player/` |
+| Creating position buttons | Use `PositionSelector` from `components/player/` |
+| Raw `<button>` element | Use `Button` or `IconButton` |
+| Raw `<input>` element | Use `Input`, `Checkbox`, or `NumberInput` |
+| Raw `<select>` element | Use `Select` |
+| Hardcoded color `#14b8a6` | Use `text-accent` or `bg-accent` |
+| Hardcoded color `#5a9fd4` | Use `text-role-tank` |
+| Creating new modal | Use `Modal` with `useModal` hook |
+
+---
+
 ## Commands
 
 ```bash
@@ -48,9 +92,16 @@ pnpm build            # Production build
 pnpm tsc --noEmit     # Type check
 pnpm lint             # ESLint
 
-# Design System
-./frontend/scripts/check-design-system.sh           # Check for raw HTML/hardcoded colors
-./frontend/scripts/check-design-system.sh --strict  # Strict mode for CI (exits 1 on violations)
+# Design System Check (run before committing UI changes)
+./frontend/scripts/check-design-system.sh           # Check all violations
+./frontend/scripts/check-design-system.sh --html    # Only check raw HTML elements
+./frontend/scripts/check-design-system.sh --colors  # Only check hardcoded colors
+./frontend/scripts/check-design-system.sh --summary # Group violations by file
+./frontend/scripts/check-design-system.sh --strict  # Fail on violations (for CI)
+
+# Raid Tier Banners
+cd frontend && python scripts/blend_tier_banners.py           # Regenerate banners from floor images
+cd frontend && python scripts/blend_tier_banners.py --fetch   # Fetch fresh images from XIVAPI first
 
 # Backend
 cd backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
@@ -74,7 +125,9 @@ cd backend && python scripts/migrate_add_is_admin.py  # Add admin column (run on
 | `utils/lootCoordination.ts` | Cross-store loot/gear sync |
 | `utils/weaponPriority.ts` | Weapon priority scoring |
 | `gamedata/loot-tables.ts` | Floor drop tables, FLOOR_COLORS |
-| `gamedata/raid-tiers.ts` | Tier configuration |
+| `gamedata/raid-tiers.ts` | Tier configuration, banner paths |
+| `public/images/raid-tiers/` | Composite tier banner images |
+| `scripts/blend_tier_banners.py` | Fetches and blends floor images into banners |
 | `data/releaseNotes.ts` | Version history data |
 | `pages/ReleaseNotes.tsx` | Release notes page with collapsible nav |
 | `pages/GroupView.tsx` | Main group view with tab navigation (788 lines) |
@@ -382,6 +435,57 @@ Backend always validates (defense in depth). Destructive actions disabled with t
 
 ### Cross-Group Drag
 Dragging between G1/G2 auto-swaps position (T1↔T2, H1↔H2, etc.)
+
+### Raid Tier Banners
+Composite banner images for each savage raid tier, sourced from XIVAPI duty finder images.
+
+**Location:**
+- `frontend/public/images/raid-tiers/` - Composite banners (`{tier-id}.png`)
+- `frontend/public/images/raid-tiers/floors/` - Individual floor images
+
+**Structure:**
+Each composite banner blends the 4 floor images horizontally with gradient transitions:
+```
+[Floor 1] → [Floor 2] → [Floor 3] → [Floor 4]
+```
+
+**Available Banners:**
+| Tier ID | Floors | Image |
+|---------|--------|-------|
+| `aac-heavyweight` | M9S-M12S | 3330x360 |
+| `aac-cruiserweight` | M5S-M8S | 3330x360 |
+| `aac-light-heavyweight` | M1S-M4S | 3330x360 |
+| `anabaseios` | P9S-P12S | 3330x360 |
+
+**Regenerating Banners:**
+```bash
+cd frontend
+
+# Regenerate from existing floor images
+python scripts/blend_tier_banners.py
+
+# Fetch fresh HD images from XIVAPI first
+python scripts/blend_tier_banners.py --fetch
+
+# Adjust blend overlap (default: 0.35)
+python scripts/blend_tier_banners.py --overlap 0.4
+
+# Process a single tier
+python scripts/blend_tier_banners.py --tier aac-heavyweight
+```
+
+**Adding New Tiers:**
+1. Add tier to `TIERS` dict in `blend_tier_banners.py` with XIVAPI image IDs
+2. Run `python scripts/blend_tier_banners.py --fetch --tier {new-tier-id}`
+3. Add `banner` path to `raid-tiers.ts`
+
+**Usage in Code:**
+```typescript
+import { getTierById } from '../gamedata/raid-tiers';
+
+const tier = getTierById('aac-heavyweight');
+// tier.banner = '/images/raid-tiers/aac-heavyweight.png'
+```
 
 ### Modal + DnD
 When modals open, set drag sensor distance to 999999 to disable dragging.
@@ -815,12 +919,16 @@ useGroupTiers()          // All tiers for current group
 
 ```
 docs/
+├── UI_COMPONENTS.md          # UI component inventory (READ BEFORE IMPLEMENTING UI)
+├── CODING_STANDARDS.md       # Naming conventions, code style, patterns
 ├── CONSOLIDATED_STATUS.md    # Project status, version history, roadmap
 ├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
 ├── GEARING_REFERENCE.md      # FFXIV gearing data (floor drops, tome costs)
 └── GEARING_MATH.md           # Gearing mechanics and formulas
 ```
 
+- **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - UI component inventory **(READ BEFORE IMPLEMENTING UI)**
+- **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Naming conventions, code style, patterns
 - **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Project status, version history
 - **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - All remaining work items, prioritized
 - **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
