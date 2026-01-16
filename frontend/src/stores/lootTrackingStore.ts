@@ -541,8 +541,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
           `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
         );
         set({ maxWeek: weekInfo.maxWeek });
-      } catch {
+      } catch (err) {
         // Secondary fetch failed - use Math.max as fallback
+        console.warn('Failed to fetch maxWeek after startNextWeek, using fallback:', err);
         const { maxWeek } = get();
         set({ maxWeek: Math.max(maxWeek, newWeek) });
       }
@@ -569,9 +570,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
           `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
         );
         set({ maxWeek: weekInfo.maxWeek });
-      } catch {
+      } catch (err) {
         // Secondary fetch failed - use current week as fallback for maxWeek
         // This ensures state is at least consistent with the revert operation
+        console.warn('Failed to fetch maxWeek after revertWeek, using fallback:', err);
         const { maxWeek } = get();
         set({ maxWeek: Math.max(maxWeek, newWeek) });
       }

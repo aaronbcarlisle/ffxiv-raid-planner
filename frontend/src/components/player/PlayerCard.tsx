@@ -5,7 +5,7 @@
  * Supports drag-and-drop, context menu, and inline editing.
  */
 
-import { useState, useEffect, memo, useMemo } from 'react';
+import { useState, useEffect, memo, useMemo, useRef } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerSetupBanner } from './PlayerSetupBanner';
@@ -15,7 +15,7 @@ import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { AssignUserModal } from './AssignUserModal';
 import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
-import { Button, Tooltip } from '../primitives';
+import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
@@ -126,6 +126,8 @@ export const PlayerCard = memo(function PlayerCard({
   const [showOwnerAssignModal, setShowOwnerAssignModal] = useState(false);
   const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [cursorTooltip, setCursorTooltip] = useState<{ x: number; y: number } | null>(null);
+  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get role color for left border
   const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
@@ -154,6 +156,13 @@ export const PlayerCard = memo(function PlayerCard({
       }
     };
   }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, onModalOpen, onModalClose]);
+
+  // Cleanup tooltip timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+    };
+  }, []);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -306,6 +315,57 @@ export const PlayerCard = memo(function PlayerCard({
     e.stopPropagation();
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setContextMenu({ x: rect.right, y: rect.bottom });
+  };
+
+  // Check if an element is interactive (button, input, or has interactive parent)
+  const isInteractiveElement = (element: HTMLElement | null): boolean => {
+    while (element) {
+      // Stop at card boundary
+      if (element.id === `player-card-${player.id}`) return false;
+      // Check for interactive elements
+      const tagName = element.tagName.toLowerCase();
+      if (tagName === 'button' || tagName === 'input' || tagName === 'a') return true;
+      if (element.getAttribute('role') === 'button') return true;
+      if (element.classList.contains('cursor-pointer')) return true;
+      if (element.classList.contains('cursor-help')) return true;
+      // Check for Radix tooltip/popover triggers
+      if (element.hasAttribute('data-state')) return true;
+      element = element.parentElement;
+    }
+    return false;
+  };
+
+  const handleCardMouseMove = (e: React.MouseEvent) => {
+    // Don't show tooltip if context menu is open
+    if (contextMenu) {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+      setCursorTooltip(null);
+      return;
+    }
+
+    const pos = { x: e.clientX, y: e.clientY };
+
+    // Only show tooltip if hovering over empty area (not interactive elements)
+    if (!isInteractiveElement(e.target as HTMLElement)) {
+      // If already showing, update position immediately
+      if (cursorTooltip) {
+        setCursorTooltip(pos);
+      } else {
+        // Delay showing tooltip
+        if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+        tooltipTimeoutRef.current = setTimeout(() => {
+          setCursorTooltip(pos);
+        }, 400);
+      }
+    } else {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+      setCursorTooltip(null);
+    }
+  };
+
+  const handleCardMouseLeave = () => {
+    if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+    setCursorTooltip(null);
   };
 
   // Ownership status
@@ -470,21 +530,6 @@ export const PlayerCard = memo(function PlayerCard({
   };
 
   return (
-    <Tooltip
-      content={
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
-            <span className="text-text-secondary">Copy link</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
-            <span className="text-text-secondary">More options</span>
-          </div>
-        </div>
-      }
-      delayDuration={600}
-    >
       <div
         id={`player-card-${player.id}`}
         className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 select-none ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
@@ -492,7 +537,33 @@ export const PlayerCard = memo(function PlayerCard({
         onContextMenu={handleContextMenu}
         onMouseDown={handleMouseDown}
         onClick={handleCardClick}
+        onMouseMove={handleCardMouseMove}
+        onMouseLeave={handleCardMouseLeave}
       >
+      {/* Cursor-following tooltip for empty areas */}
+      {cursorTooltip && (
+        <div
+          className="fixed z-50 pointer-events-none animate-in fade-in-0 zoom-in-95 duration-150"
+          style={{
+            left: cursorTooltip.x + 12,
+            top: cursorTooltip.y + 12,
+          }}
+        >
+          <div className="rounded-md bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default">
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                <span className="text-text-secondary">Copy link</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                <span className="text-text-secondary">More options</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Context Menu */}
       {contextMenu && (
         <ContextMenu
@@ -871,6 +942,5 @@ export const PlayerCard = memo(function PlayerCard({
       {/* Needs Footer - only visible in compact mode */}
       {!isExpanded && <NeedsFooter needs={needs} />}
     </div>
-    </Tooltip>
   );
 });

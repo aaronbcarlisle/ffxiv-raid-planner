@@ -152,8 +152,13 @@ export function HistoryView({
     try {
       const newWeek = await revertWeek(groupId, tierId);
       setSelectedWeek(newWeek);
-      // Refresh week data types to update the selector
-      await fetchWeekDataTypes(groupId, tierId);
+      // Refresh week data types to update the selector (non-critical)
+      try {
+        await fetchWeekDataTypes(groupId, tierId);
+      } catch {
+        // Secondary fetch failed - week selector may be stale until next page load
+        console.warn('Failed to refresh week data types after revert');
+      }
       toast.success(`Reverted to Week ${newWeek}`);
     } catch {
       toast.error('Failed to revert week');

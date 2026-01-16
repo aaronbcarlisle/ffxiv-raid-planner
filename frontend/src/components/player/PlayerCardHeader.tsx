@@ -320,7 +320,23 @@ export function PlayerCardHeader({
           )}
         </div>
         {onMenuClick && (
-          <Tooltip content="Player options">
+          <Tooltip
+            content={
+              <div className="space-y-1.5">
+                <div className="font-medium">Player Options</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
+                    <span className="text-text-secondary">Copy link</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
+                    <span className="text-text-secondary">More options</span>
+                  </div>
+                </div>
+              </div>
+            }
+          >
             <button
               onClick={onMenuClick}
               className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
