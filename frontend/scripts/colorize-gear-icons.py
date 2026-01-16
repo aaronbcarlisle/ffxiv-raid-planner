@@ -8,7 +8,6 @@ This script:
 3. Saves them locally in public/images/gear-slots/
 """
 
-import os
 from pathlib import Path
 from urllib.request import urlretrieve
 from PIL import Image

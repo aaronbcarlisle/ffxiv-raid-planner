@@ -19,7 +19,6 @@ export interface PlayerSetupBannerProps {
   player: SnapshotPlayer;
   currentUserId: string | null;
   userRole: MemberRole | null | undefined;
-  isGroupOwner: boolean;
   userHasClaimedPlayer: boolean;
   isAdminAccess: boolean;
   /** User ID being impersonated in View As mode */
@@ -35,7 +34,6 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   player,
   currentUserId,
   userRole,
-  isGroupOwner: _isGroupOwner,
   userHasClaimedPlayer,
   isAdminAccess,
   viewAsUserId,

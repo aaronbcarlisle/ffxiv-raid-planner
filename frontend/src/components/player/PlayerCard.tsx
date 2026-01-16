@@ -816,7 +816,6 @@ export const PlayerCard = memo(function PlayerCard({
         player={player}
         currentUserId={currentUserId ?? null}
         userRole={userRole}
-        isGroupOwner={userRole === 'owner'}
         userHasClaimedPlayer={userHasClaimedPlayer ?? false}
         isAdminAccess={!!viewAsUserId}
         viewAsUserId={viewAsUserId}

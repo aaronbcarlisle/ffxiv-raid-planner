@@ -11,7 +11,6 @@ The originals have detailed colors and backgrounds - this creates
 simple monochrome versions that match the gear slot icon style.
 """
 
-import os
 from pathlib import Path
 from PIL import Image
 

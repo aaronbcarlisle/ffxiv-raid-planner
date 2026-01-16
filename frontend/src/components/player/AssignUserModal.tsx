@@ -209,12 +209,12 @@ export function AssignUserModal({
     setPendingReassignUserId(null);
   };
 
-  // Cancel reassignment - reset select to current player's userId
+  // Cancel reassignment - keep the previous valid selection
+  // (selectedUserId already holds the user's last valid choice before they triggered the confirm)
   const handleCancelReassign = () => {
     setShowReassignConfirm(false);
     setPendingReassignUserId(null);
-    // Reset the select back to the player's current assignment (or empty if unassigned)
-    setSelectedUserId(player.userId || '');
+    // Don't reset selectedUserId - it already contains the user's previous valid selection
   };
 
   const handleAssign = async () => {
