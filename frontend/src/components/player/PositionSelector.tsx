@@ -13,15 +13,15 @@ import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 // Position descriptions for tooltips
-const POSITION_INFO: Record<RaidPosition, { label: string; group: string; roleHint: string }> = {
-  T1: { label: 'Tank 1', group: 'Light Party 1 (G1)', roleHint: 'Usually MT' },
-  T2: { label: 'Tank 2', group: 'Light Party 2 (G2)', roleHint: 'Usually OT' },
-  H1: { label: 'Healer 1', group: 'Light Party 1 (G1)', roleHint: 'Pure healer preferred' },
-  H2: { label: 'Healer 2', group: 'Light Party 2 (G2)', roleHint: 'Shield healer preferred' },
-  M1: { label: 'Melee 1', group: 'Light Party 1 (G1)', roleHint: 'Any melee DPS' },
-  M2: { label: 'Melee 2', group: 'Light Party 2 (G2)', roleHint: 'Any melee DPS' },
-  R1: { label: 'Ranged 1', group: 'Light Party 1 (G1)', roleHint: 'Physical ranged or caster' },
-  R2: { label: 'Ranged 2', group: 'Light Party 2 (G2)', roleHint: 'Physical ranged or caster' },
+const POSITION_INFO: Record<RaidPosition, { label: string; group: string }> = {
+  T1: { label: 'Tank 1', group: 'Light Party 1 (G1)' },
+  T2: { label: 'Tank 2', group: 'Light Party 2 (G2)' },
+  H1: { label: 'Healer 1', group: 'Light Party 1 (G1)' },
+  H2: { label: 'Healer 2', group: 'Light Party 2 (G2)' },
+  M1: { label: 'Melee 1', group: 'Light Party 1 (G1)' },
+  M2: { label: 'Melee 2', group: 'Light Party 2 (G2)' },
+  R1: { label: 'Ranged 1', group: 'Light Party 1 (G1)' },
+  R2: { label: 'Ranged 2', group: 'Light Party 2 (G2)' },
 };
 
 interface PositionSelectorProps {
@@ -124,9 +124,6 @@ export function PositionSelector({
             <div className="font-medium">{POSITION_INFO[position].label} ({position})</div>
             <div className="text-text-secondary text-xs mt-0.5">
               {POSITION_INFO[position].group}
-            </div>
-            <div className="text-text-muted text-xs">
-              {POSITION_INFO[position].roleHint}
             </div>
           </div>
         </div>

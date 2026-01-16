@@ -12,15 +12,15 @@ import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 
 // Tank role descriptions for tooltips
-const TANK_ROLE_INFO: Record<TankRole, { label: string; description: string; icon: typeof Shield }> = {
+const TANK_ROLE_INFO: Record<TankRole, { label: string; group: string; icon: typeof Shield }> = {
   MT: {
     label: 'Main Tank',
-    description: 'Primary aggro holder. Faces boss toward the party and handles tankbusters.',
+    group: 'Usually in Light Party 1 (G1)',
     icon: Shield,
   },
   OT: {
     label: 'Off Tank',
-    description: 'Secondary tank. Handles adds, assists with tank swaps, and provides mitigation.',
+    group: 'Usually in Light Party 2 (G2)',
     icon: ShieldAlert,
   },
 };
@@ -74,7 +74,7 @@ export function TankRoleSelector({
           <div>
             <div className="font-medium">{TANK_ROLE_INFO[tankRole].label} ({tankRole})</div>
             <div className="text-text-secondary text-xs mt-0.5">
-              {TANK_ROLE_INFO[tankRole].description}
+              {TANK_ROLE_INFO[tankRole].group}
             </div>
           </div>
         </div>
