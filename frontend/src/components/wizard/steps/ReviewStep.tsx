@@ -5,7 +5,7 @@
  * Displays roster preview with empty slot warnings.
  */
 
-import { Users, AlertCircle, FileText, Shield, Check, X } from 'lucide-react';
+import { Users, AlertCircle, FileText, Shield, X } from 'lucide-react';
 import { getTierById } from '../../../gamedata/raid-tiers';
 import { JobIcon } from '../../ui/JobIcon';
 import type { WizardPlayer } from '../types';
@@ -42,7 +42,6 @@ export function ReviewStep({
   const filledSlots = players.filter((p) => p.name.trim() || p.job).length;
   const emptySlots = 8 - filledSlots;
   const hasAllJobs = players.every((p) => p.job);
-  const hasBisLinks = players.filter((p) => p.bisLink).length;
 
   return (
     <div className="space-y-6">
@@ -134,28 +133,19 @@ export function ReviewStep({
               >
                 {player.name.trim() || 'Empty'}
               </span>
-
-              {/* BiS indicator */}
-              {player.bisLink && (
-                <Check className="w-4 h-4 text-status-success flex-shrink-0" />
-              )}
             </div>
           ))}
         </div>
 
         {/* Stats row */}
-        <div className="mt-3 pt-3 border-t border-border-subtle flex items-center gap-4 text-xs text-text-muted">
-          <span className="flex items-center gap-1">
-            <Check className="w-3.5 h-3.5 text-status-success" />
-            {hasBisLinks} BiS imported
-          </span>
-          {!hasAllJobs && (
+        {!hasAllJobs && (
+          <div className="mt-3 pt-3 border-t border-border-subtle flex items-center gap-4 text-xs text-text-muted">
             <span className="flex items-center gap-1">
               <X className="w-3.5 h-3.5 text-status-warning" />
               {players.filter((p) => !p.job).length} missing jobs
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Empty slots warning */}

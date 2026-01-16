@@ -1,7 +1,7 @@
 /**
  * RosterSlot - Individual player slot for wizard roster setup
  *
- * Shows position label, name input, job picker, and BiS import button.
+ * Shows position label, name input, and job picker.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -11,10 +11,8 @@ import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { Label } from '../ui/Label';
 import { Input } from '../ui/Input';
-import { BiSImportModal } from '../player/BiSImportModal';
 import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
-import type { SnapshotPlayer, GearSlotStatus } from '../../types';
 
 // Expected role for each position
 const POSITION_EXPECTED_ROLE: Record<string, string> = {
@@ -37,7 +35,6 @@ const PLACEHOLDER_JOB = 'PLD' as const;
 
 interface RosterSlotProps {
   player: WizardPlayer;
-  tierId: string; // For BiS import context
   slotIndex: number; // For keyboard navigation
   nameInputRef: (el: HTMLInputElement | null) => void; // Callback ref for name input
   onUpdate: (updates: Partial<WizardPlayer>) => void;
@@ -74,9 +71,8 @@ const ROLE_BG_COLORS: Record<string, string> = {
   caster: 'bg-role-caster/30',
 };
 
-export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
+export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
   const [showJobPicker, setShowJobPicker] = useState(false);
-  const [showBiSImport, setShowBiSImport] = useState(false);
   const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0, width: 0, renderAbove: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const jobButtonsRef = useRef<HTMLDivElement>(null);
@@ -185,34 +181,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
     };
   }, [showJobPicker]);
 
-  const handleBiSImport = (updates: { gear: GearSlotStatus[]; bisLink?: string }) => {
-    // Extract BiS data from import
-    onUpdate({
-      bisLink: updates.bisLink,
-      gear: updates.gear,
-    });
-    setShowBiSImport(false);
-  };
-
-  // Create a temporary player object for BiS import
-  const tempPlayer: SnapshotPlayer = {
-    id: `temp-${player.position}`,
-    tierSnapshotId: tierId,
-    name: player.name || player.position,
-    job: player.job,
-    role: player.role,
-    configured: true,
-    sortOrder: 0,
-    gear: player.gear || [],
-    tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
-    weaponPriorities: [],
-    weaponPrioritiesLocked: false,
-    isSubstitute: false,
-    bisLink: player.bisLink,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
   const handleClear = () => {
     onUpdate({
       name: '',
@@ -318,27 +286,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
             </span>
           </div>
         </div>
-
-
-        {/* TODO: Re-enable BiS import button when UI space allows (deferred to future iteration)
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowBiSImport(true)}
-          disabled={!hasJob}
-          className="w-full"
-          tabIndex={slotIndex * 10 + 9}
-          leftIcon={
-            hasBiS ? (
-              <Check className="w-4 h-4 text-status-success" />
-            ) : (
-              <FileDown className="w-4 h-4" />
-            )
-          }
-        >
-          {hasBiS ? 'BiS Imported' : 'Import BiS'}
-        </Button>
-        */}
       </div>
 
       {/* Job picker dropdown portal (when "Other Jobs" is clicked)
@@ -366,17 +313,6 @@ export function RosterSlot({ player, tierId, slotIndex, nameInputRef, onUpdate, 
           </div>,
           document.body
         )}
-
-      {/* BiS Import Modal */}
-      {showBiSImport && hasJob && (
-        <BiSImportModal
-          isOpen={showBiSImport}
-          onClose={() => setShowBiSImport(false)}
-          onImport={handleBiSImport}
-          player={tempPlayer}
-          contentType="savage"
-        />
-      )}
     </>
   );
 }

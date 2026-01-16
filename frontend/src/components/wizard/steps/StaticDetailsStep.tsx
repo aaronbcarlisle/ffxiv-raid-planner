@@ -75,7 +75,7 @@ export function StaticDetailsStep({
       {/* Info box */}
       <div className="bg-surface-elevated border border-border-default rounded-lg p-4">
         <p className="text-sm text-text-secondary">
-          <strong className="text-text-primary">Next step:</strong> You'll be able to set up your roster with player names, jobs, and BiS imports.
+          <strong className="text-text-primary">Next step:</strong> You'll set up your roster with player names and jobs.
         </p>
       </div>
     </div>

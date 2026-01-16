@@ -301,7 +301,6 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
           {state.step === 2 && (
             <RosterSetupStep
               players={state.players}
-              tierId={state.tierId}
               onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
               onAllSlotsFilled={focusNextButton}
             />
