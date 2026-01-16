@@ -9,6 +9,8 @@
  * - 'augmented': Double checkmark (augmented tome gear)
  */
 
+/* eslint-disable react-refresh/only-export-components -- Intentionally exports both component and type */
+
 export type ThreeState = 'none' | 'have' | 'augmented';
 
 interface ThreeStateCheckboxProps {

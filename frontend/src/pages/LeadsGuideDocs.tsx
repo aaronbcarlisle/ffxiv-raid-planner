@@ -92,14 +92,10 @@ function InfoBox({ type = 'info', title, children }: { type?: 'info' | 'tip' | '
 
 function LinkCard({ href, title, description }: { href: string; title: string; description: string }) {
   const isExternal = href.startsWith('http');
-  const Component = isExternal ? 'a' : Link;
-  const props = isExternal ? { href, target: '_blank', rel: 'noopener noreferrer' } : { to: href };
+  const className = "group flex items-center gap-3 p-3 rounded-lg bg-surface-card border border-border-subtle hover:border-accent/50 transition-colors";
 
-  return (
-    <Component
-      {...(props as any)}
-      className="group flex items-center gap-3 p-3 rounded-lg bg-surface-card border border-border-subtle hover:border-accent/50 transition-colors"
-    >
+  const content = (
+    <>
       <div className="flex-1">
         <div className="font-medium text-text-primary group-hover:text-accent transition-colors flex items-center gap-1">
           {title}
@@ -108,7 +104,21 @@ function LinkCard({ href, title, description }: { href: string; title: string; d
         <div className="text-sm text-text-muted">{description}</div>
       </div>
       <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" />
-    </Component>
+    </>
+  );
+
+  if (isExternal) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link to={href} className={className}>
+      {content}
+    </Link>
   );
 }
 
@@ -200,7 +210,15 @@ function NavSidebar({ activeSection, onSectionClick }: { activeSection: string; 
 
 export default function LeadsGuideDocs() {
   const location = useLocation();
-  const [activeSection, setActiveSection] = useState('overview');
+  // Initialize from URL hash if present
+  const [activeSection, setActiveSection] = useState(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      if (NAV_SECTIONS.some(s => s.id === id)) return id;
+    }
+    return 'overview';
+  });
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
 
@@ -211,14 +229,13 @@ export default function LeadsGuideDocs() {
     window.history.replaceState(null, '', `#${sectionId}`);
   }, []);
 
-  // Handle URL hash on mount/change
+  // Handle URL hash scrolling on mount/change
   useEffect(() => {
     if (location.hash) {
       const sectionId = location.hash.slice(1); // Remove #
       const section = NAV_SECTIONS.find(s => s.id === sectionId);
       if (section) {
-        setActiveSection(sectionId);
-        // Scroll to section after a small delay
+        // State is already set via initializer or handleNavClick
         setTimeout(() => {
           document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
         }, 100);

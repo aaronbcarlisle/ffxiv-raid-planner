@@ -187,6 +187,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
 
   // Reset highlight when search changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset derived state when filter changes
     setHighlightedIndex(-1);
   }, [jobSearch]);
 

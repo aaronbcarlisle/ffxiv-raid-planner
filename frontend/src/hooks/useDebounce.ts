@@ -75,8 +75,10 @@ export function useDebouncedCallback<T extends (...args: Parameters<T>) => void>
   const callbackRef = useRef(callback);
   const argsRef = useRef<Parameters<T> | null>(null);
 
-  // Update callback ref on each render to avoid stale closures
-  callbackRef.current = callback;
+  // Update callback ref to avoid stale closures
+  useEffect(() => {
+    callbackRef.current = callback;
+  });
 
   const cancel = useCallback(() => {
     if (timeoutRef.current) {

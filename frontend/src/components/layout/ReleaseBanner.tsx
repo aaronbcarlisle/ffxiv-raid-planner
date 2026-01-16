@@ -5,7 +5,7 @@
  * Dismissed by clicking X or visiting the release notes page.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, X } from 'lucide-react';
 import {
@@ -33,15 +33,12 @@ function setLastSeenVersion(version: string): void {
 }
 
 export function ReleaseBanner() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isExiting, setIsExiting] = useState(false);
-
-  useEffect(() => {
+  // Initialize visibility based on version comparison
+  const [isVisible, setIsVisible] = useState(() => {
     const lastSeen = getLastSeenVersion();
-    if (isNewerVersion(CURRENT_VERSION, lastSeen)) {
-      setIsVisible(true);
-    }
-  }, []);
+    return isNewerVersion(CURRENT_VERSION, lastSeen);
+  });
+  const [isExiting, setIsExiting] = useState(false);
 
   const handleDismiss = () => {
     setIsExiting(true);

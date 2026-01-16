@@ -13,27 +13,33 @@ export function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { handleCallback, error, clearError } = useAuthStore();
-  const [status, setStatus] = useState<'processing' | 'error' | 'success'>('processing');
 
-  useEffect(() => {
+  // Derive initial status from URL params
+  const [status, setStatus] = useState<'processing' | 'error' | 'success'>(() => {
+    const errorParam = searchParams.get('error');
     const code = searchParams.get('code');
     const state = searchParams.get('state');
-    const errorParam = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
 
-    // Handle Discord OAuth errors
     if (errorParam) {
-      console.error('Discord OAuth error:', errorParam, errorDescription);
-      setStatus('error');
-      return;
+      console.error('Discord OAuth error:', errorParam, searchParams.get('error_description'));
+      return 'error';
     }
-
-    // Validate required parameters
     if (!code || !state) {
       console.error('Missing code or state in OAuth callback');
-      setStatus('error');
-      return;
+      return 'error';
     }
+    return 'processing';
+  });
+
+  useEffect(() => {
+    // Don't process if already in error state
+    if (status === 'error') return;
+
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+
+    // These are guaranteed to exist since status would be 'error' otherwise
+    if (!code || !state) return;
 
     // Exchange code for tokens
     handleCallback(code, state)
@@ -49,7 +55,7 @@ export function AuthCallback() {
         console.error('OAuth callback failed:', err);
         setStatus('error');
       });
-  }, [searchParams, handleCallback, navigate]);
+  }, [searchParams, handleCallback, navigate, status]);
 
   // Processing state
   if (status === 'processing') {

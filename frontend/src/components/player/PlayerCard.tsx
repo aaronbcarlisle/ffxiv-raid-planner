@@ -434,6 +434,10 @@ export const PlayerCard = memo(function PlayerCard({
     onUpdate,
     onClaimPlayer,
     onReleasePlayer,
+    isGroupOwner,
+    isAdminAccess,
+    onOwnerAssignPlayer,
+    onAdminAssignPlayer,
   ]);
 
   // Prevent focus flash when Shift+Click starts

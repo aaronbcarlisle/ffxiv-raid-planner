@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { getErrorMessage } from '../lib/errorHandler';
 import type {
   LootLogEntry,
   LootLogEntryCreate,
@@ -122,9 +123,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         lootLog: response,
         loadingStates: { ...state.loadingStates, lootLog: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, lootLog: false },
       }));
       throw error;
@@ -161,7 +162,6 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     } catch (error) {
       // Silently fail - week selector will fall back to basic display
       // Log error for debugging week selector enhancement issues
-      // eslint-disable-next-line no-console
       console.error('Failed to fetch week data types:', { groupId, tierId, error });
     }
   },
@@ -180,9 +180,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         pageLedger: response,
         loadingStates: { ...state.loadingStates, pageLedger: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, pageLedger: false },
       }));
       throw error;
@@ -203,9 +203,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         pageBalances: response,
         loadingStates: { ...state.loadingStates, pageBalances: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, pageBalances: false },
       }));
       throw error;
@@ -225,9 +225,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         playerLedger: response,
         loadingStates: { ...state.loadingStates, playerLedger: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, playerLedger: false },
       }));
       throw error;
@@ -248,9 +248,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         materialLog: response,
         loadingStates: { ...state.loadingStates, materialLog: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, materialLog: false },
       }));
       throw error;
@@ -270,9 +270,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         materialBalances: response,
         loadingStates: { ...state.loadingStates, materialBalances: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, materialBalances: false },
       }));
       throw error;
@@ -292,9 +292,9 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         maxWeek: response.maxWeek,
         loadingStates: { ...state.loadingStates, currentWeek: false },
       }));
-    } catch (error: any) {
+    } catch (error) {
       set((state) => ({
-        error: error.message,
+        error: getErrorMessage(error),
         loadingStates: { ...state.loadingStates, currentWeek: false },
       }));
       throw error;
@@ -316,8 +316,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       set({ weeksWithEntries: newWeeks });
       // Refresh loot log
       await get().fetchLootLog(groupId, tierId);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -331,8 +331,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchLootLog(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -346,8 +346,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchLootLog(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -370,8 +370,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialLog(groupId, tierId),
         get().fetchMaterialBalances(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -386,8 +386,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialBalances(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -401,8 +401,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchMaterialLog(groupId, tierId),
         get().fetchMaterialBalances(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -425,8 +425,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchPageBalances(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -449,8 +449,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchPageBalances(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -481,8 +481,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       }
       // Refresh balances
       await get().fetchPageBalances(groupId, tierId);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -493,8 +493,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/players/${playerId}/page-ledger`);
       // Clear local state
       set({ playerLedger: [] });
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },
@@ -517,8 +517,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeeksWithEntries(groupId, tierId),
       ]);
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
       throw error;
     }
   },

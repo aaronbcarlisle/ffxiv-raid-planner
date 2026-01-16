@@ -4,7 +4,7 @@
  * Shows available keyboard shortcuts in a grid layout when user presses '?'
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Keyboard } from 'lucide-react';
 import { Modal } from './Modal';
 import { areShortcutsEnabled, setShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
@@ -78,12 +78,8 @@ interface KeyboardShortcutsHelpProps {
 }
 
 export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelpProps) {
-  const [enabled, setEnabled] = useState(true);
-
-  // Load initial state from localStorage
-  useEffect(() => {
-    setEnabled(areShortcutsEnabled());
-  }, [isOpen]);
+  // Initialize from localStorage
+  const [enabled, setEnabled] = useState(() => areShortcutsEnabled());
 
   const handleToggle = () => {
     const newValue = !enabled;
