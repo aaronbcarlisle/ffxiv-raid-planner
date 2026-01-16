@@ -822,6 +822,61 @@ async def start_next_week(
     }
 
 
+@router.post("/{group_id}/tiers/{tier_id}/revert-week")
+async def revert_week(
+    group_id: str,
+    tier_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Revert to the previous week by adjusting week_start_date forward.
+
+    This undoes the effect of start-next-week. Useful if the user
+    accidentally advanced the week when they didn't mean to.
+    """
+    # Check permissions - requires lead or owner
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Cannot revert if week_start_date is not set or already at week 1
+    if tier.week_start_date is None:
+        raise HTTPException(status_code=400, detail="Cannot revert: no week start date set")
+
+    current_calculated_week = calculate_week_number(tier)
+    if current_calculated_week <= 1:
+        raise HTTPException(status_code=400, detail="Cannot revert: already at week 1")
+
+    # Parse the current week_start_date
+    start_date = datetime.fromisoformat(tier.week_start_date)
+
+    # Move it forward by 7 days to decrease the calculated week by 1
+    new_start_date = start_date + timedelta(days=7)
+    tier.week_start_date = new_start_date.isoformat()
+
+    await db.commit()
+
+    # Calculate and return the new week number
+    new_week = calculate_week_number(tier)
+
+    logger.info(
+        "week_reverted",
+        group_id=group_id,
+        tier_id=tier_id,
+        new_week=new_week,
+        old_start_date=start_date.isoformat(),
+        new_start_date=new_start_date.isoformat(),
+        user_id=current_user.id,
+    )
+
+    return {
+        "currentWeek": new_week,
+        "weekStartDate": tier.week_start_date,
+    }
+
+
 @router.get("/{group_id}/tiers/{tier_id}/weeks-with-entries")
 async def get_weeks_with_entries(
     group_id: str,

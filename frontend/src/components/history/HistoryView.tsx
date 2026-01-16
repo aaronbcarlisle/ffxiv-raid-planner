@@ -61,10 +61,12 @@ export function HistoryView({
     fetchCurrentWeek,
     fetchWeekDataTypes,
     startNextWeek,
+    revertWeek,
   } = useLootTrackingStore();
 
-  // State for start next week action
+  // State for start next week and revert week actions
   const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
+  const [isRevertingWeek, setIsRevertingWeek] = useState(false);
 
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
@@ -135,6 +137,20 @@ export function HistoryView({
     }
   }, [groupId, tierId, startNextWeek, setSelectedWeek]);
 
+  // Handler for reverting to the previous week
+  const handleRevertWeek = useCallback(async () => {
+    setIsRevertingWeek(true);
+    try {
+      const newWeek = await revertWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      toast.success(`Reverted to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to revert week');
+    } finally {
+      setIsRevertingWeek(false);
+    }
+  }, [groupId, tierId, revertWeek, setSelectedWeek]);
+
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
@@ -151,6 +167,8 @@ export function HistoryView({
           weekDataTypes={weekDataTypes}
           onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
           isStartingNextWeek={isStartingNextWeek}
+          onRevertWeek={canEdit ? handleRevertWeek : undefined}
+          isRevertingWeek={isRevertingWeek}
         />
       </div>
 

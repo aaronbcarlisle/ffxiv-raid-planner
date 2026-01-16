@@ -81,6 +81,7 @@ interface LootTrackingState {
   deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   clearAllPageLedger: (groupId: string, tierId: string) => Promise<void>;
   startNextWeek: (groupId: string, tierId: string) => Promise<number>;
+  revertWeek: (groupId: string, tierId: string) => Promise<number>;
   clearLootTracking: () => void;
   clearPlayerLedger: () => void;
 }
@@ -536,6 +537,24 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       set({
         currentWeek: newWeek,
         maxWeek: Math.max(maxWeek, newWeek),
+      });
+      return newWeek;
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  revertWeek: async (groupId, tierId) => {
+    set({ error: null });
+    try {
+      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/revert-week`
+      );
+      // Update current week in the store
+      const newWeek = response.currentWeek;
+      set({
+        currentWeek: newWeek,
       });
       return newWeek;
     } catch (error) {

@@ -24,6 +24,10 @@ interface WeekSelectorProps {
   onStartNextWeek?: () => Promise<void>;
   /** Whether the start next week action is in progress */
   isStartingNextWeek?: boolean;
+  /** Callback to revert to previous week (undoes start next week). Only shown if provided and week > 1. */
+  onRevertWeek?: () => Promise<void>;
+  /** Whether the revert week action is in progress */
+  isRevertingWeek?: boolean;
 }
 
 /** Format entry types for display (e.g., "loot/books") */
@@ -45,33 +49,12 @@ export function WeekSelector({
   weekDataTypes,
   onStartNextWeek,
   isStartingNextWeek = false,
+  onRevertWeek,
+  isRevertingWeek = false,
 }: WeekSelectorProps) {
-  // Find previous week with entries (or just prev week if no tracking)
-  const findPrevWeek = (): number | null => {
-    if (!weeksWithEntries || weeksWithEntries.size === 0) {
-      return currentWeek > 1 ? currentWeek - 1 : null;
-    }
-    // Find the highest week with entries that's less than current
-    for (let w = currentWeek - 1; w >= 1; w--) {
-      if (weeksWithEntries.has(w)) return w;
-    }
-    return null;
-  };
-
-  // Find next week with entries (or just next week if no tracking)
-  const findNextWeek = (): number | null => {
-    if (!weeksWithEntries || weeksWithEntries.size === 0) {
-      return currentWeek < maxWeek ? currentWeek + 1 : null;
-    }
-    // Find the lowest week with entries that's greater than current
-    for (let w = currentWeek + 1; w <= maxWeek; w++) {
-      if (weeksWithEntries.has(w)) return w;
-    }
-    return null;
-  };
-
-  const prevWeek = findPrevWeek();
-  const nextWeek = findNextWeek();
+  // Simple sequential navigation - always allow moving to adjacent weeks
+  const prevWeek = currentWeek > 1 ? currentWeek - 1 : null;
+  const nextWeek = currentWeek < maxWeek ? currentWeek + 1 : null;
 
   const handlePrevWeek = () => {
     if (prevWeek !== null) {
@@ -104,37 +87,42 @@ export function WeekSelector({
     return `${week}`;
   };
 
-  // Get weeks to show in dropdown - only weeks with entries, plus current calculated week
+  // Always show all weeks from 1 to maxWeek in the dropdown
   const getDisplayedWeeks = (): number[] => {
-    if (!weeksWithEntries || weeksWithEntries.size === 0) {
-      // No data - show all weeks up to max
-      return Array.from({ length: maxWeek }, (_, i) => i + 1);
-    }
-
-    // Include weeks with entries plus the current selected week
-    const weeks = new Set(weeksWithEntries);
-    weeks.add(currentWeek);
-
-    // Sort and return
-    return Array.from(weeks).sort((a, b) => a - b);
+    return Array.from({ length: maxWeek }, (_, i) => i + 1);
   };
 
-  // Check if we can add a new week (calculated week doesn't have entries yet)
-  const canAddWeek = calculatedCurrentWeek > 0 && !weeksWithEntries?.has(calculatedCurrentWeek);
+  // Show "Go to Current Week" when viewing a different week than the calculated current week
+  const showGoToCurrentWeek = calculatedCurrentWeek > 0 && currentWeek !== calculatedCurrentWeek;
 
-  const handleAddWeek = () => {
+  const handleGoToCurrentWeek = () => {
     onWeekChange(calculatedCurrentWeek);
   };
 
   const displayedWeeks = getDisplayedWeeks();
 
+  // Can revert if calculatedCurrentWeek > 1 (has been advanced at least once)
+  const canRevertWeek = onRevertWeek && calculatedCurrentWeek > 1;
+
   return (
     <div className="flex items-center gap-3">
+      {/* Revert Week button - shown to the left when week has been advanced */}
+      {canRevertWeek && (
+        <button
+          onClick={onRevertWeek}
+          disabled={disabled || isRevertingWeek}
+          className="px-3 py-1.5 rounded bg-status-warning/20 hover:bg-status-warning/30 text-status-warning text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed border border-status-warning/30"
+          title="Revert to previous week (undo Start Next Week)"
+        >
+          {isRevertingWeek ? 'Reverting...' : '← Revert Week'}
+        </button>
+      )}
+
       <button
         onClick={handlePrevWeek}
         disabled={disabled || prevWeek === null}
         className="px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary"
-        title={weeksWithEntries?.size ? "Previous week with entries" : "Previous Week"}
+        title="Previous Week"
       >
         ←
       </button>
@@ -156,20 +144,20 @@ export function WeekSelector({
         onClick={handleNextWeek}
         disabled={disabled || nextWeek === null}
         className="px-3 py-1.5 rounded bg-surface-interactive hover:bg-surface-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-text-secondary"
-        title={weeksWithEntries?.size ? "Next week with entries" : "Next Week"}
+        title="Next Week"
       >
         →
       </button>
 
-      {/* Add Week button */}
-      {canAddWeek && (
+      {/* Go to Current Week button - shown when viewing a past/future week */}
+      {showGoToCurrentWeek && (
         <button
-          onClick={handleAddWeek}
+          onClick={handleGoToCurrentWeek}
           disabled={disabled}
           className="ml-2 px-3 py-1.5 rounded bg-accent/20 hover:bg-accent/30 text-accent text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title={`Navigate to Week ${calculatedCurrentWeek}`}
+          title={`Go to Week ${calculatedCurrentWeek}`}
         >
-          + Week {calculatedCurrentWeek}
+          Go to Current Week
         </button>
       )}
 
