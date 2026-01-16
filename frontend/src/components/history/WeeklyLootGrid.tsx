@@ -12,6 +12,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
+import { Tooltip } from '../primitives/Tooltip';
 import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
@@ -263,34 +264,36 @@ export function WeeklyLootGrid({
           <span>{player?.name || 'Unknown'}</span>
         </div>
         {canEdit && onDeleteLoot && 'itemSlot' in entry && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteLoot(entry.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
-            title="Delete entry"
-            aria-label="Delete loot entry"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <Tooltip content="Delete entry">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteLoot(entry.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
+              aria-label="Delete loot entry"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
         {canEdit && onDeleteMaterial && 'materialType' in entry && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteMaterial(entry.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
-            title="Delete entry"
-            aria-label="Delete material entry"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <Tooltip content="Delete entry">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteMaterial(entry.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 text-status-error hover:text-status-error/80 transition-opacity"
+              aria-label="Delete material entry"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </Tooltip>
         )}
       </div>
     );

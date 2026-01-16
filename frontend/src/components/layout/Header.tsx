@@ -7,6 +7,7 @@
 
 import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Copy } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -14,6 +15,7 @@ import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { SettingsPopover, TipsCarousel } from '../ui';
+import { Tooltip } from '../primitives/Tooltip';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
 import type { MemberRole } from '../../types';
@@ -221,22 +223,35 @@ export function Header() {
               )}
 
               {/* Share code - clickable to copy */}
-              <button
-                onClick={(e) => handleCopyCode(e)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
-                title="Copy code (hold Shift for full URL)"
+              <Tooltip
+                content={
+                  <div className="flex items-start gap-2 max-w-xs">
+                    <Copy className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Copy Share Code</div>
+                      <div className="text-text-secondary text-xs mt-0.5">
+                        Click to copy code. Hold <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Shift</kbd> for full URL with current tier.
+                      </div>
+                    </div>
+                  </div>
+                }
               >
-                <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
-                {copied ? (
-                  <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                )}
-              </button>
+                <button
+                  onClick={(e) => handleCopyCode(e)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
+                >
+                  <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
+                  {copied ? (
+                    <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
+              </Tooltip>
             </>
           )}
         </div>

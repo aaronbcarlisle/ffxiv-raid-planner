@@ -7,6 +7,7 @@
  * - Action buttons (Log Loot, Log Material)
  */
 
+import { Package, Gem } from 'lucide-react';
 import {
   Dropdown,
   DropdownTrigger,
@@ -15,6 +16,7 @@ import {
   DropdownSeparator,
 } from '../primitives/Dropdown';
 import { Button } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 
 export interface LootLogFiltersProps {
   // Layout mode
@@ -159,12 +161,40 @@ export function LootLogFilters({
       {/* Action buttons */}
       {canEdit && (
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={onOpenLootModal} title="Log loot drop (Alt+L)">
-            + Log Loot
-          </Button>
-          <Button size="sm" onClick={onOpenMaterialModal} title="Log material drop (Alt+M)">
-            + Log Material
-          </Button>
+          <Tooltip
+            content={
+              <div className="flex items-start gap-2">
+                <Package className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Log Loot</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Record a gear drop. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+L</kbd>
+                  </div>
+                </div>
+              </div>
+            }
+          >
+            <Button size="sm" onClick={onOpenLootModal}>
+              + Log Loot
+            </Button>
+          </Tooltip>
+          <Tooltip
+            content={
+              <div className="flex items-start gap-2">
+                <Gem className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Log Material</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Record twine, glaze, or solvent. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+M</kbd>
+                  </div>
+                </div>
+              </div>
+            }
+          >
+            <Button size="sm" onClick={onOpenMaterialModal}>
+              + Log Material
+            </Button>
+          </Tooltip>
         </div>
       )}
     </div>

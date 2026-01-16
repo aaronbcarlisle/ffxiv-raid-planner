@@ -6,6 +6,7 @@
  * Extracted from PlayerCard for maintainability.
  */
 
+import { Tooltip } from '../primitives/Tooltip';
 import type { LinkedUserInfo, SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
@@ -113,46 +114,50 @@ export function PlayerCardStatus({
 
       {/* BiS link badge */}
       {bisLink && (
-        <a
-          href={buildBiSUrl(bisLink)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
-                     hover:bg-accent/30 flex items-center gap-1 transition-colors"
-          title={getBiSTooltip(bisLink)}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          BiS
-        </a>
+        <Tooltip content={getBiSTooltip(bisLink)}>
+          <a
+            href={buildBiSUrl(bisLink)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium
+                       hover:bg-accent/30 flex items-center gap-1 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            BiS
+          </a>
+        </Tooltip>
       )}
 
       {/* "You" badge */}
       {isLinkedToMe && (
-        <span className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium" title="This is you">
-          You
-        </span>
+        <Tooltip content="This is you">
+          <span className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium">
+            You
+          </span>
+        </Tooltip>
       )}
 
       {/* Linked user badge */}
       {isLinkedToOther && linkedUser && (
-        <span
-          className={`text-xs ${roleColor} px-1.5 py-0.5 rounded font-medium flex items-center gap-1`}
-          title={`Linked to ${linkedUser.displayName || linkedUser.discordUsername}${linkedUser.membershipRole ? ` (${linkedUser.membershipRole})` : ''}`}
-        >
-          {linkedUser.avatarUrl ? (
-            <img
-              src={linkedUser.avatarUrl}
-              alt=""
-              className="w-3 h-3 rounded-full"
-            />
-          ) : null}
-          <span className="max-w-16 truncate">
-            {roleLabel}
+        <Tooltip content={`Linked to ${linkedUser.displayName || linkedUser.discordUsername}${linkedUser.membershipRole ? ` (${linkedUser.membershipRole})` : ''}`}>
+          <span
+            className={`text-xs ${roleColor} px-1.5 py-0.5 rounded font-medium flex items-center gap-1`}
+          >
+            {linkedUser.avatarUrl ? (
+              <img
+                src={linkedUser.avatarUrl}
+                alt=""
+                className="w-3 h-3 rounded-full"
+              />
+            ) : null}
+            <span className="max-w-16 truncate">
+              {roleLabel}
+            </span>
           </span>
-        </span>
+        </Tooltip>
       )}
     </div>
   );

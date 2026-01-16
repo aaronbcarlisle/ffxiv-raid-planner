@@ -7,6 +7,7 @@ import { X, XCircle, Check } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { Select, Label, NumberInput } from '../ui';
 import { Button, IconButton } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 import type { Invitation, MemberRole } from '../../types';
 
 interface InvitationsPanelProps {
@@ -274,40 +275,42 @@ export function InvitationsPanel({ groupId, canManage }: InvitationsPanelProps) 
 
                 <div className="flex items-center gap-2">
                   {inv.isValid && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => copyInviteLink(inv.inviteCode)}
-                      title="Copy invite link"
-                    >
-                      {copiedCode === inv.inviteCode ? '✓ Copied' : 'Copy Link'}
-                    </Button>
+                    <Tooltip content="Copy invite link">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => copyInviteLink(inv.inviteCode)}
+                      >
+                        {copiedCode === inv.inviteCode ? '✓ Copied' : 'Copy Link'}
+                      </Button>
+                    </Tooltip>
                   )}
                   {inv.isActive && (
-                    <Button
-                      variant={armedRevokeId === inv.id ? 'warning' : 'danger'}
-                      size="sm"
-                      onClick={() => handleRevokeClick(inv.id)}
-                      onBlur={() => {
-                        // Reset if user tabs away
-                        if (armedRevokeId === inv.id) {
-                          setTimeout(() => setArmedRevokeId(null), 100);
-                        }
-                      }}
-                      title={armedRevokeId === inv.id ? 'Click again to confirm' : 'Revoke invitation'}
-                    >
-                      {armedRevokeId === inv.id ? (
-                        <>
-                          <Check className="w-4 h-4 mr-1" />
-                          Confirm?
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Revoke
-                        </>
-                      )}
-                    </Button>
+                    <Tooltip content={armedRevokeId === inv.id ? 'Click again to confirm' : 'Revoke invitation'}>
+                      <Button
+                        variant={armedRevokeId === inv.id ? 'warning' : 'danger'}
+                        size="sm"
+                        onClick={() => handleRevokeClick(inv.id)}
+                        onBlur={() => {
+                          // Reset if user tabs away
+                          if (armedRevokeId === inv.id) {
+                            setTimeout(() => setArmedRevokeId(null), 100);
+                          }
+                        }}
+                      >
+                        {armedRevokeId === inv.id ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Confirm?
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Revoke
+                          </>
+                        )}
+                      </Button>
+                    </Tooltip>
                   )}
                 </div>
               </div>

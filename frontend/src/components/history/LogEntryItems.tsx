@@ -6,6 +6,7 @@
  */
 
 import { memo } from 'react';
+import { Tooltip } from '../primitives/Tooltip';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { JobIcon } from '../ui/JobIcon';
@@ -94,27 +95,32 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
           </div>
         </div>
         <div className="flex items-center gap-3 ml-4">
-          <button
-            onClick={() => onCopyUrl(String(entry.id))}
-            className="text-text-muted hover:text-accent text-sm"
-            title="Copy link to this entry"
-          >
-            Copy URL
-          </button>
+          <Tooltip content="Copy link to this entry">
+            <button
+              onClick={() => onCopyUrl(String(entry.id))}
+              className="text-text-muted hover:text-accent text-sm"
+            >
+              Copy URL
+            </button>
+          </Tooltip>
           {canEdit && (
             <>
-              <button
-                onClick={() => onEdit(entry)}
-                className="text-text-muted hover:text-accent text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onDelete(entry)}
-                className="text-status-error hover:text-status-error/80 text-sm"
-              >
-                Delete
-              </button>
+              <Tooltip content="Edit entry">
+                <button
+                  onClick={() => onEdit(entry)}
+                  className="text-text-muted hover:text-accent text-sm"
+                >
+                  Edit
+                </button>
+              </Tooltip>
+              <Tooltip content="Delete entry">
+                <button
+                  onClick={() => onDelete(entry)}
+                  className="text-status-error hover:text-status-error/80 text-sm"
+                >
+                  Delete
+                </button>
+              </Tooltip>
             </>
           )}
         </div>
@@ -176,27 +182,32 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
           </div>
         </div>
         <div className="flex items-center gap-3 ml-4">
-          <button
-            onClick={() => onCopyUrl(String(entry.id), 'material')}
-            className="text-text-muted hover:text-accent text-sm"
-            title="Copy link to this entry"
-          >
-            Copy URL
-          </button>
+          <Tooltip content="Copy link to this entry">
+            <button
+              onClick={() => onCopyUrl(String(entry.id), 'material')}
+              className="text-text-muted hover:text-accent text-sm"
+            >
+              Copy URL
+            </button>
+          </Tooltip>
           {canEdit && (
             <>
-              <button
-                onClick={() => onEdit(entry)}
-                className="text-text-muted hover:text-accent text-sm"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onDelete(entry.id)}
-                className="text-status-error hover:text-status-error/80 text-sm"
-              >
-                Delete
-              </button>
+              <Tooltip content="Edit entry">
+                <button
+                  onClick={() => onEdit(entry)}
+                  className="text-text-muted hover:text-accent text-sm"
+                >
+                  Edit
+                </button>
+              </Tooltip>
+              <Tooltip content="Delete entry">
+                <button
+                  onClick={() => onDelete(entry.id)}
+                  className="text-status-error hover:text-status-error/80 text-sm"
+                >
+                  Delete
+                </button>
+              </Tooltip>
             </>
           )}
         </div>

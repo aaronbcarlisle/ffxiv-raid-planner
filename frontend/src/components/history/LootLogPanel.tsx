@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { AddLootEntryModal } from './AddLootEntryModal';
 import { DeleteLootConfirmModal } from './DeleteLootConfirmModal';
+import { Tooltip } from '../primitives/Tooltip';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate } from '../../types';
@@ -146,20 +147,22 @@ export function LootLogPanel({
 
               {canEdit && (
                 <div className="flex items-center gap-1 ml-3">
-                  <button
-                    onClick={() => setEntryToEdit(entry)}
-                    className="px-2 py-1 rounded text-xs text-accent hover:bg-accent/20 transition-colors"
-                    title="Edit entry"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setEntryToDelete(entry)}
-                    className="px-2 py-1 rounded text-xs text-status-error hover:bg-status-error/20 transition-colors"
-                    title="Delete entry"
-                  >
-                    Delete
-                  </button>
+                  <Tooltip content="Edit entry">
+                    <button
+                      onClick={() => setEntryToEdit(entry)}
+                      className="px-2 py-1 rounded text-xs text-accent hover:bg-accent/20 transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Delete entry">
+                    <button
+                      onClick={() => setEntryToDelete(entry)}
+                      className="px-2 py-1 rounded text-xs text-status-error hover:bg-status-error/20 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </Tooltip>
                 </div>
               )}
             </div>

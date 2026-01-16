@@ -10,6 +10,7 @@ import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';
 import { EditBookBalanceModal } from './EditBookBalanceModal';
 import { PlayerLedgerModal } from './PlayerLedgerModal';
+import { Tooltip } from '../primitives/Tooltip';
 import { JobIcon } from '../ui/JobIcon';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, PageBalance } from '../../types';
@@ -143,13 +144,14 @@ export function PageBalancesPanel({
         </div>
         <div className="flex items-center gap-2">
           {canEdit && pageBalances.length > 0 && (
-            <button
-              onClick={() => setResetState({ type: 'all' })}
-              className="px-3 py-1.5 rounded bg-status-error/20 text-status-error text-sm hover:bg-status-error/30 transition-colors"
-              title="Reset all book balances to zero"
-            >
-              Reset All
-            </button>
+            <Tooltip content="Reset all book balances to zero">
+              <button
+                onClick={() => setResetState({ type: 'all' })}
+                className="px-3 py-1.5 rounded bg-status-error/20 text-status-error text-sm hover:bg-status-error/30 transition-colors"
+              >
+                Reset All
+              </button>
+            </Tooltip>
           )}
           {canEdit && (
             <button

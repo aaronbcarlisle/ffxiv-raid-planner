@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
+import { Tooltip } from '../primitives/Tooltip';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
 import { TankRoleSelector } from './TankRoleSelector';
@@ -143,24 +144,23 @@ export function PlayerCardHeader({
       <div className="flex items-center gap-3">
         {/* Clickable job icon with dropdown */}
         <div className="relative">
-          <button
-            type="button"
-            onClick={handleJobIconClick}
-            className={`p-0.5 rounded transition-all ${
-              editPermission.allowed
-                ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
-                : 'cursor-not-allowed opacity-75'
-            }`}
-            style={{ backgroundColor: roleColor }}
-            title={
-              editPermission.allowed
-                ? 'Click to change job'
-                : editPermission.reason
-            }
-            disabled={!editPermission.allowed}
+          <Tooltip
+            content={editPermission.allowed ? 'Click to change job' : editPermission.reason}
           >
-            <JobIcon job={job} size="lg" className="rounded-sm" />
-          </button>
+            <button
+              type="button"
+              onClick={handleJobIconClick}
+              className={`p-0.5 rounded transition-all ${
+                editPermission.allowed
+                  ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
+                  : 'cursor-not-allowed opacity-75'
+              }`}
+              style={{ backgroundColor: roleColor }}
+              disabled={!editPermission.allowed}
+            >
+              <JobIcon job={job} size="lg" className="rounded-sm" />
+            </button>
+          </Tooltip>
 
           {/* Job picker dropdown */}
           {showJobPicker && (
@@ -193,38 +193,34 @@ export function PlayerCardHeader({
               />
             ) : (
               <div className="flex items-center gap-1">
-                <span
-                  className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
-                  onClick={(e) => e.stopPropagation()}
-                  onDoubleClick={handleNameDoubleClick}
-                  title={
-                    !editPermission.allowed
-                      ? editPermission.reason
-                      : "Double-click to edit name"
-                  }
+                <Tooltip
+                  content={editPermission.allowed ? 'Double-click to edit name' : editPermission.reason}
                 >
-                  {name}
-                </span>
+                  <span
+                    className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={handleNameDoubleClick}
+                  >
+                    {name}
+                  </span>
+                </Tooltip>
                 {/* Edit button - always visible but subtle */}
-                <button
-                  onClick={handleEditClick}
-                  className={`p-0.5 rounded opacity-40 transition-opacity ${
-                    editPermission.allowed
-                      ? 'hover:bg-surface-interactive hover:opacity-100'
-                      : 'cursor-not-allowed opacity-30'
-                  }`}
-                  title={
-                    !editPermission.allowed
-                      ? editPermission.reason
-                      : "Edit name"
-                  }
-                  disabled={!editPermission.allowed}
-                  aria-label="Edit player name"
-                >
-                  <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
+                <Tooltip content={editPermission.allowed ? 'Edit name' : editPermission.reason}>
+                  <button
+                    onClick={handleEditClick}
+                    className={`p-0.5 rounded opacity-40 transition-opacity ${
+                      editPermission.allowed
+                        ? 'hover:bg-surface-interactive hover:opacity-100'
+                        : 'cursor-not-allowed opacity-30'
+                    }`}
+                    disabled={!editPermission.allowed}
+                    aria-label="Edit player name"
+                  >
+                    <svg className="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </Tooltip>
               </div>
             )}
             {/* Tank role selector (MT/OT) - before position */}
@@ -264,23 +260,23 @@ export function PlayerCardHeader({
           />
           {/* Average iLv */}
           {averageILv > 0 && (
-            <div
-              className="text-sm text-text-muted"
-              title="Average Item Level"
-            >
-              i{averageILv}
-            </div>
+            <Tooltip content="Average Item Level">
+              <div className="text-sm text-text-muted cursor-help">
+                i{averageILv}
+              </div>
+            </Tooltip>
           )}
         </div>
         {onMenuClick && (
-          <button
-            onClick={onMenuClick}
-            className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
-            title="Player options"
-            aria-label="Player options menu"
-          >
-            <MoreVertical className="w-5 h-5 text-text-secondary" />
-          </button>
+          <Tooltip content="Player options">
+            <button
+              onClick={onMenuClick}
+              className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Player options menu"
+            >
+              <MoreVertical className="w-5 h-5 text-text-secondary" />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

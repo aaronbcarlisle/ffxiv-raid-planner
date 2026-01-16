@@ -1,3 +1,4 @@
+import { Tooltip } from '../primitives/Tooltip';
 import type { TemplateRole, RaidPosition } from '../../types';
 import { TEMPLATE_ROLE_INFO, getRoleIconUrl } from '../../utils/constants';
 
@@ -106,9 +107,10 @@ export function EmptySlotCard({ templateRole, position, onStartEdit, onRemove }:
               }
             }}
             className="w-8 h-8 rounded flex items-center justify-center text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors"
-            title="Remove slot"
           >
-            &minus;
+            <Tooltip content="Remove slot">
+              <span>&minus;</span>
+            </Tooltip>
           </div>
         )}
       </div>
