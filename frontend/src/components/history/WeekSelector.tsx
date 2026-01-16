@@ -187,7 +187,19 @@ export function WeekSelector({
 
       {/* Start Next Week button - for manually advancing when auto-calculation is behind */}
       {onStartNextWeek && (
-        <Tooltip content="Start the next week (use when week calculation is behind your actual raid schedule)">
+        <Tooltip
+          content={
+            <div className="flex items-start gap-2 max-w-xs">
+              <Plus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium">Start Next Week</div>
+                <div className="text-text-secondary text-xs mt-0.5">
+                  Manually advances the week calculation by one week. Use when your raid schedule is ahead of the automatic calculation.
+                </div>
+              </div>
+            </div>
+          }
+        >
           <IconButton
             aria-label="Start next week"
             icon={isStartingNextWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
