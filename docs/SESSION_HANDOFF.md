@@ -1,160 +1,103 @@
-# Setup Wizard - Session Handoff
+# Session Handoff - January 16, 2026
 
-## Branch: `feature/setup-wizard`
+## Branch: `feature/player-setup-banner`
 
-## Last Session: Session 2 (Steps 3-4 & Submission Flow)
+## Last Session Summary
 
-### Completed This Session
+### Completed & Committed
 
-1. **InviteMembersStep.tsx** - Step 3 implementation:
-   - Role selector (member/lead/viewer) for invite recipients
-   - Skip invite option with checkbox
-   - Preview of invite link (actual link generated after creation)
-   - Helpful tips about invite management
+1. **PlayerSetupBanner** - Contextual setup prompts on player cards
+   - Shows between header and gear table when setup incomplete
+   - States: Unclaimed (Assign/Take Ownership), No BiS (Import BiS)
+   - Uses accent-themed styling (teal, not warning amber)
+   - Supports View As mode for admin impersonation
 
-2. **ReviewStep.tsx** - Step 4 implementation:
-   - Static details summary (name, tier, visibility, invite role)
-   - Roster grid showing all 8 slots with job icons
-   - Empty slot warnings (informational, not blocking)
-   - BiS import status indicators
-   - Error display with retry button
+2. **AssignUserModal Improvements**
+   - Visual role badges (Owner/Lead/Member/Viewer/Linked) in user dropdown
+   - Users already assigned to other player cards appear at bottom of list
+   - Shows "(assigned to [PlayerName])" indicator
+   - Confirmation modal when reassigning user from another card
+   - Threaded `allPlayers` prop through component hierarchy
 
-3. **Full submission flow** in SetupWizard.tsx:
-   - `createGroup()` → Creates static group
-   - `createTier()` → Creates tier with default players
-   - `updatePlayer()` loop → Updates players with names/jobs/BiS data
-   - `createInvitation()` → Creates invite link (if not skipped)
-   - Navigation to `/group/{shareCode}` on success
+3. **TypeScript fix** - Added `viewAsUserId` to DroppablePlayerCardProps
 
-4. **Cancel confirmation dialog**:
-   - ConfirmModal prompts when closing with unsaved changes
-   - "Keep Editing" / "Discard" options
-   - Change detection for all wizard fields
+4. **Merged main** into branch (conflicts resolved)
 
-5. **Dashboard integration** already working:
-   - SetupWizard replaces simple create modal
-   - `onComplete` callback navigates to new static
+### Uncommitted Changes (Ready to Commit)
 
-### Files Created/Modified This Session
+**Removed BiS Import from Setup Wizard** - The BiS import functionality doesn't work during static creation (players don't exist yet) and takes up too much UI space.
 
-| File | Changes |
+Files modified:
+- `frontend/src/components/wizard/RosterSlot.tsx` - Removed BiS button, BiSImportModal, tierId prop
+- `frontend/src/components/wizard/steps/RosterSetupStep.tsx` - Removed tierId prop
+- `frontend/src/components/wizard/steps/StaticDetailsStep.tsx` - Updated "Next step" text
+- `frontend/src/components/wizard/steps/ReviewStep.tsx` - Removed BiS indicators and stats
+- `frontend/src/components/wizard/SetupWizard.tsx` - Removed tierId from RosterSetupStep call
+
+Build and type check pass.
+
+---
+
+## Outstanding Work
+
+### Immediate Next Steps
+
+1. **Commit BiS removal** - Changes are ready, just need `git add && git commit`
+2. **Push to remote** - Update PR #26
+
+### Session 4 (from SETUP_WIZARD_PLAN.md)
+
+**MembersPanel "Linked Card" Dropdown**
+- Add dropdown to each member row in MembersPanel
+- Show available cards: unclaimed OR already claimed by this member
+- On selection, call existing assign endpoint
+- Pre-select if member already has a linked card
+
+### Documentation Updates Needed
+
+- Update CLAUDE.md with wizard component documentation
+- Mark Session 3 complete in SETUP_WIZARD_PLAN.md
+
+---
+
+## Key Files Reference
+
+| File | Purpose |
 |------|---------|
-| `components/wizard/steps/InviteMembersStep.tsx` | New - Step 3 with role selector, skip option |
-| `components/wizard/steps/ReviewStep.tsx` | New - Step 4 with summary, roster preview |
-| `components/wizard/SetupWizard.tsx` | Updated - Full submission flow, cancel confirm |
-| `components/wizard/index.ts` | Updated - Export new step components |
-
-### Current State
-
-- **Step 1 (Details)**: Fully functional - name, tier selector, public toggle
-- **Step 2 (Roster)**: Fully functional - job quick-select, keyboard nav, BiS import
-- **Step 3 (Invite)**: Fully functional - role selector, skip option
-- **Step 4 (Review)**: Fully functional - summary, roster preview, warnings
-- **Submission**: Fully functional - creates group, tier, players, invitation
-- **Cancel confirm**: Fully functional - warns on discard
-
-### Key Files Reference
-
-```
-frontend/src/components/wizard/
-├── SetupWizard.tsx           # Main orchestrator, state, submission flow
-├── WizardProgress.tsx        # 4-step progress indicator
-├── WizardNavigation.tsx      # Back/Next buttons + keyboard hint
-├── RosterSlot.tsx            # Individual player slot with job picker
-├── types.ts                  # WizardState, WizardPlayer interfaces
-├── index.ts                  # Barrel exports
-└── steps/
-    ├── StaticDetailsStep.tsx # Step 1: Name + Tier + Public
-    ├── RosterSetupStep.tsx   # Step 2: 8 player slots grid
-    ├── InviteMembersStep.tsx # Step 3: Invite role + skip option
-    └── ReviewStep.tsx        # Step 4: Summary + Create button
-```
-
-### Submission Flow Detail
-
-```typescript
-// 1. Create static group
-const group = await createGroup(staticName, isPublic);
-
-// 2. Create tier (with 8 default players)
-const tier = await createTier(group.id, tierId);
-
-// 3. Update players with wizard data
-for (const wizardPlayer of players) {
-  const tierPlayer = tier.players.find(p => p.position === wizardPlayer.position);
-  if (tierPlayer && (wizardPlayer.name || wizardPlayer.job || wizardPlayer.bisLink)) {
-    await updatePlayer(group.id, tier.id, tierPlayer.id, {
-      name: wizardPlayer.name,
-      job: wizardPlayer.job,
-      role: getJobInfo(wizardPlayer.job)?.role,
-      bisLink: wizardPlayer.bisLink,
-      gear: wizardPlayer.gear,
-      configured: !!(wizardPlayer.name && wizardPlayer.job),
-    });
-  }
-}
-
-// 4. Create invitation (if not skipped)
-if (!skipInvite) {
-  await createInvitation(group.id, { role: inviteRole });
-}
-
-// 5. Navigate to new static
-navigate(`/group/${group.shareCode}`);
-```
+| `components/player/AssignUserModal.tsx` | User assignment with role badges, reassignment confirm |
+| `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
+| `components/player/PlayerCard.tsx` | Main player card, integrates banner |
+| `components/wizard/RosterSlot.tsx` | Individual player slot in wizard |
+| `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
+| `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
 
 ---
 
-## Next Session: Session 3 - PlayerCard Action Buttons
+## Copy/Paste Prompt for New Session
 
-### Tasks
+```
+Continue working on branch feature/player-setup-banner in the FFXIV Raid Planner project.
 
-1. **Create PlayerCardActions.tsx** in `/frontend/src/components/player/`
-   - Accepts: player, currentUserId, userRole, isGroupOwner, handlers
-   - Renders conditional buttons based on state
+Last session completed:
+1. AssignUserModal improvements - role badges, sorting by assignment status, reassignment confirmation (committed)
+2. Removed BiS import from Setup Wizard (uncommitted - ready to commit)
 
-2. **Button visibility logic:**
-   | State | Owner/Lead | Member |
-   |-------|------------|--------|
-   | Unclaimed | "Assign Ownership" | "Take Ownership" |
-   | Claimed by me, no BiS | "Import BiS" | "Import BiS" |
-   | Claimed by other | - | - |
+Uncommitted changes remove BiS import from wizard:
+- RosterSlot.tsx - removed BiS button, BiSImportModal import, tierId prop
+- RosterSetupStep.tsx - removed tierId prop
+- StaticDetailsStep.tsx - updated "next step" text to not mention BiS
+- ReviewStep.tsx - removed BiS indicators and hasBisLinks stat
+- SetupWizard.tsx - removed tierId from RosterSetupStep call
 
-3. **Modify PlayerCard.tsx:**
-   - Add `<PlayerCardActions />` below header or in card footer
-   - "Assign Ownership" opens AssignUserModal
-   - "Take Ownership" calls existing onClaimPlayer
-   - "Import BiS" opens BiSImportModal
+Next steps:
+1. Commit the BiS removal: git add -A && git commit -m "refactor: remove BiS import from setup wizard"
+2. Push to remote
+3. Continue with Session 4 from docs/SETUP_WIZARD_PLAN.md (MembersPanel linked card dropdown)
 
-4. **Use existing Button component with variants:**
-   - "Assign Ownership": variant="secondary" with Link2 icon
-   - "Take Ownership": variant="secondary" with UserCheck icon
-   - "Import BiS": variant="secondary" with FileDown icon
+Build passes. The BiS import was removed because:
+- It doesn't work during static creation (players don't exist yet)
+- Takes up too much UI real estate
+- Can be added later when we have a proper flow
 
-5. **Add tests** in PlayerCardActions.test.tsx for visibility logic
-
-### Files to Modify
-
-- `components/player/PlayerCardActions.tsx` (new)
-- `components/player/PlayerCardActions.test.tsx` (new)
-- `components/player/PlayerCard.tsx` (add action buttons)
-
----
-
-## Session 4 - MembersPanel Enhancement & Final Polish
-
-### Tasks
-
-1. **Modify MembersPanel.tsx:**
-   - Add "Linked Card" dropdown to each member row
-   - Show available cards: unclaimed OR already claimed by this member
-   - On selection, call existing assign endpoint
-
-2. **Documentation updates:**
-   - Update CLAUDE.md Key Files section with new wizard components
-   - Add wizard patterns to Key Implementation Patterns
-   - Update OUTSTANDING_WORK.md if applicable
-
-3. **Final testing:**
-   - Run full test suite
-   - Manual testing of wizard flow
+Run `pnpm build` to verify everything still works.
+```

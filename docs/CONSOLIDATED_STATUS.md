@@ -1,11 +1,25 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 11, 2026 (v1.0.8 Complete - Admin Assignment & Modal Polish)
+**Last Updated:** January 16, 2026 (v1.0.9 In Progress - Setup Wizard & Player Setup Banner)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
+
+### Current Version: v1.0.9 (In Progress)
+
+**Branch:** `feature/player-setup-banner`
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Setup Wizard** | ✅ Complete | 4-step guided static creation replacing simple modal |
+| **PlayerSetupBanner** | ✅ Complete | Contextual "Take Ownership" / "Import BiS" prompts on cards |
+| **AssignUserModal Improvements** | ✅ Complete | Role badges, reassignment confirmation, sorting by assignment |
+| **View As actions** | ✅ Complete | "Take Ownership" in View As mode assigns viewed user correctly |
+| **TankRole selector placement** | ✅ Complete | Moved MT/OT to header for better visual alignment |
+| **BiS removed from wizard** | ✅ Complete | Removed non-functional BiS import from wizard (uncommitted) |
+| **MembersPanel Enhancement** | 🔨 Pending | Session 4: Linked Card dropdown per member |
 
 ### ✅ Completed Features (Production Ready)
 
@@ -37,7 +51,37 @@
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
 
-### ✅ Completed: v1.0.8 - Admin Assignment & Modal Polish (January 11, 2026)
+---
+
+## Version History
+
+### v1.0.9 - Setup Wizard & Player Setup Banner (January 2026, In Progress)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Setup Wizard** | ✅ Complete | 4-step guided static creation (Details → Roster → Share → Review) |
+| **WizardProgress** | ✅ Complete | Horizontal 4-step indicator with labels |
+| **RosterSlot** | ✅ Complete | Role-specific job quick-select buttons, keyboard navigation |
+| **PlayerSetupBanner** | ✅ Complete | Contextual setup prompts on player cards |
+| **AssignUserModal v2** | ✅ Complete | Role badges, reassignment confirmation, sorted by assignment |
+| **TankRoleSelector** | ✅ Complete | Moved to PlayerCard header for visual alignment |
+| **MembersPanel Enhancement** | 🔨 Pending | Linked Card dropdown per member (Session 4) |
+
+**Setup Wizard Features:**
+- Default tier pre-selection (latest savage tier)
+- Sticky navigation footer (always visible)
+- Cancel confirmation prevents accidental data loss
+- Partial roster allowed (creates empty slots for unconfigured positions)
+
+**PlayerSetupBanner States:**
+| Condition | Message | Action |
+|-----------|---------|--------|
+| Unclaimed + Owner/Lead | "Unclaimed" | Assign Player |
+| Unclaimed + Member | "Unclaimed" | Take Ownership |
+| Claimed by me + No BiS | "No BiS configured" | Import BiS |
+| Fully configured | *(hidden)* | - |
+
+### v1.0.8 - Admin Assignment & Modal Polish (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -52,7 +96,7 @@
 | **Input Validation** | ✅ Complete | Discord ID (17-19 digits) and UUID format validation |
 | **23 New Backend Tests** | ✅ Complete | Comprehensive player assignment test coverage |
 
-### ✅ Completed: v1.0.7 - Audit Complete (January 11, 2026)
+### v1.0.7 - Audit Complete (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -63,7 +107,7 @@
 | **Button Variants** | ✅ Complete | Added success and link variants (7 total) |
 | **Audit Resolution** | ✅ Complete | All actionable audit items resolved |
 
-### ✅ Completed: v1.0.6 (January 11, 2026)
+### v1.0.6 (January 11, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -74,7 +118,7 @@
 | **React.memo Optimization** | ✅ Complete | List item components memoized (PR #20) |
 | **LogEntryItems Extraction** | ✅ Complete | LootLogEntryItem and MaterialLogEntryItem extracted |
 
-### ✅ Completed: v1.0.5 (January 10, 2026)
+### v1.0.5 (January 10, 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -85,7 +129,7 @@
 | **PlayerGrid Component** | ✅ Complete | Grid rendering with group view and subs (467 lines) |
 | **AdminBanners Component** | ✅ Complete | Admin access and View As indicators |
 
-### ✅ Completed: v1.0.2-v1.0.4 (January 2026)
+### v1.0.2-v1.0.4 (January 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -97,7 +141,7 @@
 | **Design System Migration** | ✅ Complete | 57 CSS tokens, semantic colors, new primitives |
 | **Admin Dashboard** | ✅ Complete | Super-user static browser with View As |
 
-### ✅ Completed: v1.0.1 Audit Improvements (January 2026)
+### v1.0.1 (January 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -108,7 +152,7 @@
 | **Bundle Optimization** | ✅ Complete | Vite manual chunks for vendor splitting |
 | **Production Config Validation** | ✅ Complete | JWT strength, debug mode, SQLite rejection |
 
-### ✅ Completed: v1.0.0 Release (January 2026)
+### v1.0.0 (January 2026)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -124,7 +168,7 @@
 
 ---
 
-## Critical Issues (Blockers)
+## Critical Issues
 
 ### ✅ All P0/P1 Issues Resolved
 
@@ -132,7 +176,7 @@
 |-------|----------|--------|
 | **Database migrations** | Backend | ✅ Done (Alembic) |
 | **Rate limiting** | Backend API | ✅ Done (slowapi) |
-| **Test coverage** | Frontend + Backend | ✅ Done (456 tests) |
+| **Test coverage** | Frontend + Backend | ✅ Done (479+ tests) |
 | **Error boundaries** | Frontend | ✅ Done (react-error-boundary) |
 | **ARIA labels** | UI components | ✅ Done (v1.0.4) |
 | **Loading skeletons** | Dashboard | ✅ Done (v1.0.7) |
@@ -154,18 +198,24 @@
 
 ## Test Coverage
 
-**Total: 479 tests (160 backend + 319 frontend)**
+**Total: 479+ tests (160 backend + 319 frontend)**
 
 ### Backend (160 tests)
+```bash
+cd backend && source venv/bin/activate && pytest tests/ -q
+```
 - `test_auth.py` - Authentication endpoints
 - `test_auth_utils.py` - JWT token creation/verification
 - `test_config_validation.py` - Production config validation
 - `test_duplicate_group.py` - Bulk duplication endpoint
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests
-- `test_player_assignment.py` - Admin player assignment endpoints (v1.0.8)
+- `test_player_assignment.py` - Admin player assignment endpoints
 
 ### Frontend (319 tests)
+```bash
+pnpm test
+```
 - `errorHandler.test.ts` - Error parsing utilities
 - `logger.test.ts` - Logging utility
 - `eventBus.test.ts` - Event bus pub/sub
@@ -175,19 +225,30 @@
 - `releaseNotes.test.ts` - Release notes data validation
 - `uxHelpers.test.ts` - UX patterns and accessibility
 - `lootCoordination.test.ts` - Loot stats and gear sync
-- `useModal.test.ts` - Modal state hooks (v1.0.7)
-- `useDebounce.test.ts` - Debounce utilities (v1.0.7)
+- `useModal.test.ts` - Modal state hooks
+- `useDebounce.test.ts` - Debounce utilities
+- `PlayerSetupBanner.test.ts` - Banner visibility logic (20 tests)
 
 ---
 
 ## Next Steps
 
-### 🔨 Current Priority: Phase 7 Planning
-- Design Lodestone auto-sync architecture
-- Evaluate XIVAPI character endpoints
-- Plan gear verification workflow
+### 🔨 Current Priority: v1.0.9 Completion
+
+1. **Session 4: MembersPanel Enhancement**
+   - Add "Linked Card" dropdown to each member row
+   - Show available cards: unclaimed OR already claimed by this member
+   - On selection, call existing assign endpoint
+   - Pre-select if member already has a linked card
+
+2. **Commit uncommitted changes** (BiS removal from wizard)
+
+3. **Documentation updates**
+   - Update CLAUDE.md with wizard component documentation
+   - Update UI_COMPONENTS.md with new components
 
 ### Future Phases
+
 - **Phase 7:** Lodestone auto-sync - Verify equipped gear against Lodestone
 - **Phase 8:** FFLogs integration - Parse logs for gear verification
 - **Phase 9:** Discord bot - Notifications and commands
@@ -200,13 +261,15 @@
 docs/
 ├── CONSOLIDATED_STATUS.md    # This file - project status and version history
 ├── OUTSTANDING_WORK.md       # Prioritized list of remaining work (P0-P3)
+├── UI_COMPONENTS.md          # UI component inventory
+├── CODING_STANDARDS.md       # Code style and patterns
+├── SETUP_WIZARD_PLAN.md      # Setup wizard implementation plan
+├── GEARING_REFERENCE.md      # FFXIV gearing data
 ├── GEARING_MATH.md           # Gearing mechanics and formulas
-└── GEARING_REFERENCE.md      # FFXIV gearing data
+└── SESSION_HANDOFF.md        # Current session handoff notes
 ```
-
-**Note:** All historical audits, plans, and session handoffs have been consolidated into OUTSTANDING_WORK.md. The archive folder has been removed.
 
 ---
 
 **Document maintained by:** Development Team
-**Review cadence:** Monthly or after major features
+**Review cadence:** After each version release
