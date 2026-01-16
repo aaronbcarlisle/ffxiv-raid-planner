@@ -109,9 +109,9 @@ export function ShareStep({ inviteLink, onGoToStatic }: ShareStepProps) {
             <div className="bg-surface-raised rounded-lg p-3 text-sm">
               <p className="text-text-muted mb-2">You can find this link again anytime:</p>
               <div className="flex items-center gap-2 text-text-primary">
-                <Settings className="w-4 h-4 text-text-muted" />
+                <Settings className="w-4 h-4 text-text-muted" aria-hidden="true" />
                 <span>
-                  <strong>Gear Icon</strong> → <strong>Static Settings</strong> → <strong>Invites</strong> tab
+                  <strong>Settings menu</strong> → <strong>Static Settings</strong> → <strong>Invites</strong> tab
                 </span>
               </div>
             </div>

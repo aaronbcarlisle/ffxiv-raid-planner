@@ -55,6 +55,11 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   const [createdShareCode, setCreatedShareCode] = useState<string | null>(null);
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
 
+  // Partial completion tracking - allows retry to resume from where it failed
+  // Only track groupId since that's the main source of duplicates; tier/player creation is idempotent
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
+  const [pendingShareCode, setPendingShareCode] = useState<string | null>(null);
+
   // Stores
   const createGroup = useStaticGroupStore((s) => s.createGroup);
   const createTier = useTierStore((s) => s.createTier);
@@ -111,14 +116,25 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
     setSubmitError(null);
 
     try {
-      // Step 1: Create the static group
-      const group = await createGroup(state.staticName.trim(), state.isPublic);
+      // Step 1: Create the static group (or reuse if already created on a previous attempt)
+      // This prevents duplicate groups when retrying after partial failure
+      let groupId = pendingGroupId;
+      let shareCode = pendingShareCode;
+      if (!groupId) {
+        const group = await createGroup(state.staticName.trim(), state.isPublic);
+        groupId = group.id;
+        shareCode = group.shareCode;
+        // Store immediately so retry can resume from here
+        setPendingGroupId(groupId);
+        setPendingShareCode(shareCode);
+      }
 
       // Step 2: Create the tier
-      const tier = await createTier(group.id, state.tierId);
+      // Note: createTier is idempotent - calling it again for same tierId returns existing tier
+      const tier = await createTier(groupId, state.tierId);
 
       // Step 3: Update players with names/jobs/BiS data
-      // The tier comes with 8 default players, we just need to update them
+      // Player updates are idempotent, so re-running on retry is safe
       if (tier.players && tier.players.length > 0) {
         // Map wizard players to tier players by position
         for (const wizardPlayer of state.players) {
@@ -130,7 +146,7 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
           if (wizardPlayer.name.trim() || wizardPlayer.job || wizardPlayer.bisLink || wizardPlayer.gear) {
             const jobInfo = wizardPlayer.job ? getJobInfo(wizardPlayer.job) : null;
 
-            await updatePlayer(group.id, tier.tierId, tierPlayer.id, {
+            await updatePlayer(groupId, tier.tierId, tierPlayer.id, {
               name: wizardPlayer.name.trim() || tierPlayer.name,
               job: wizardPlayer.job || tierPlayer.job,
               role: jobInfo?.role || wizardPlayer.role || tierPlayer.role,
@@ -143,14 +159,17 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       }
 
       // Step 4: Always create a member invite for sharing
-      const invitation = await createInvitation(group.id, { role: 'member' });
+      const invitation = await createInvitation(groupId, { role: 'member' });
       const inviteLink = `${window.location.origin}/invite/${invitation.inviteCode}`;
 
       // Store results and advance to step 4
-      setCreatedGroupId(group.id);
-      setCreatedShareCode(group.shareCode);
+      setCreatedGroupId(groupId);
+      setCreatedShareCode(shareCode);
       setCreatedInviteLink(inviteLink);
       setIsCreated(true);
+      // Clear pending state since we completed successfully
+      setPendingGroupId(null);
+      setPendingShareCode(null);
       setState((prev) => ({ ...prev, step: 4 }));
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to create static');
