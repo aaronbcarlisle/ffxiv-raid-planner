@@ -9,32 +9,28 @@
 1. **PlayerSetupBanner** - Contextual setup prompts on player cards
    - Shows between header and gear table when setup incomplete
    - States: Unclaimed (Assign/Take Ownership), No BiS (Import BiS)
-   - Uses accent-themed styling (teal, not warning amber)
    - Supports View As mode for admin impersonation
 
 2. **AssignUserModal Improvements**
    - Visual role badges (Owner/Lead/Member/Viewer/Linked) in user dropdown
    - Users already assigned to other player cards appear at bottom of list
-   - Shows "(assigned to [PlayerName])" indicator
    - Confirmation modal when reassigning user from another card
-   - Threaded `allPlayers` prop through component hierarchy
 
-3. **TypeScript fix** - Added `viewAsUserId` to DroppablePlayerCardProps
+3. **Removed BiS import from Setup Wizard** (e53124e)
+   - BiS import doesn't work during static creation (players don't exist yet)
+   - Users can import BiS after creation via PlayerSetupBanner
 
-4. **Merged main** into branch (conflicts resolved)
+4. **Documentation Optimization** (f0e4ad8)
+   - CLAUDE.md reduced from 1,038 → 341 lines (67% reduction)
+   - Updated CONSOLIDATED_STATUS.md with v1.0.9 features
+   - Added wizard/banner components to UI_COMPONENTS.md
+   - Archived 4 old session handoff files to `docs/archive/`
 
-### Uncommitted Changes (Ready to Commit)
+### Current State
 
-**Removed BiS Import from Setup Wizard** - The BiS import functionality doesn't work during static creation (players don't exist yet) and takes up too much UI space.
-
-Files modified:
-- `frontend/src/components/wizard/RosterSlot.tsx` - Removed BiS button, BiSImportModal, tierId prop
-- `frontend/src/components/wizard/steps/RosterSetupStep.tsx` - Removed tierId prop
-- `frontend/src/components/wizard/steps/StaticDetailsStep.tsx` - Updated "Next step" text
-- `frontend/src/components/wizard/steps/ReviewStep.tsx` - Removed BiS indicators and stats
-- `frontend/src/components/wizard/SetupWizard.tsx` - Removed tierId from RosterSetupStep call
-
-Build and type check pass.
+- All changes committed and pushed
+- Build passes
+- Branch is up to date with remote
 
 ---
 
@@ -42,21 +38,16 @@ Build and type check pass.
 
 ### Immediate Next Steps
 
-1. **Commit BiS removal** - Changes are ready, just need `git add && git commit`
-2. **Push to remote** - Update PR #26
+1. **Session 4: MembersPanel Enhancement** (from SETUP_WIZARD_PLAN.md)
+   - Add "Linked Card" dropdown to each member row in MembersPanel
+   - Show available cards: unclaimed OR already claimed by this member
+   - On selection, call existing assign endpoint
+   - Pre-select if member already has a linked card
 
-### Session 4 (from SETUP_WIZARD_PLAN.md)
+### After v1.0.9
 
-**MembersPanel "Linked Card" Dropdown**
-- Add dropdown to each member row in MembersPanel
-- Show available cards: unclaimed OR already claimed by this member
-- On selection, call existing assign endpoint
-- Pre-select if member already has a linked card
-
-### Documentation Updates Needed
-
-- Update CLAUDE.md with wizard component documentation
-- Mark Session 3 complete in SETUP_WIZARD_PLAN.md
+- Phase 7: Lodestone auto-sync
+- Phase 8: FFLogs integration
 
 ---
 
@@ -64,11 +55,11 @@ Build and type check pass.
 
 | File | Purpose |
 |------|---------|
-| `components/player/AssignUserModal.tsx` | User assignment with role badges, reassignment confirm |
+| `components/player/AssignUserModal.tsx` | User assignment with role badges |
 | `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
 | `components/player/PlayerCard.tsx` | Main player card, integrates banner |
-| `components/wizard/RosterSlot.tsx` | Individual player slot in wizard |
 | `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
+| `components/static-group/MembersPanel.tsx` | Target for Session 4 |
 | `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
 
 ---
@@ -78,26 +69,23 @@ Build and type check pass.
 ```
 Continue working on branch feature/player-setup-banner in the FFXIV Raid Planner project.
 
-Last session completed:
-1. AssignUserModal improvements - role badges, sorting by assignment status, reassignment confirmation (committed)
-2. Removed BiS import from Setup Wizard (uncommitted - ready to commit)
+Current state:
+- v1.0.9 in progress (Setup Wizard & Player Setup Banner)
+- All previous work committed and pushed
+- Documentation optimized (CLAUDE.md reduced 67%)
 
-Uncommitted changes remove BiS import from wizard:
-- RosterSlot.tsx - removed BiS button, BiSImportModal import, tierId prop
-- RosterSetupStep.tsx - removed tierId prop
-- StaticDetailsStep.tsx - updated "next step" text to not mention BiS
-- ReviewStep.tsx - removed BiS indicators and hasBisLinks stat
-- SetupWizard.tsx - removed tierId from RosterSetupStep call
+Next task: Session 4 from docs/SETUP_WIZARD_PLAN.md
 
-Next steps:
-1. Commit the BiS removal: git add -A && git commit -m "refactor: remove BiS import from setup wizard"
-2. Push to remote
-3. Continue with Session 4 from docs/SETUP_WIZARD_PLAN.md (MembersPanel linked card dropdown)
+Session 4: MembersPanel Enhancement
+- Add "Linked Card" dropdown to each member row in MembersPanel
+- Show available cards: unclaimed OR already claimed by this member
+- On selection, call existing assign endpoint (POST .../players/{id}/assign)
+- Pre-select if member already has a linked card
 
-Build passes. The BiS import was removed because:
-- It doesn't work during static creation (players don't exist yet)
-- Takes up too much UI real estate
-- Can be added later when we have a proper flow
+Key files:
+- components/static-group/MembersPanel.tsx (modify)
+- components/player/AssignUserModal.tsx (reference for patterns)
+- stores/tierStore.ts (player data)
 
-Run `pnpm build` to verify everything still works.
+Run `pnpm build` to verify everything works.
 ```
