@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { getErrorMessage } from '../lib/errorHandler';
+import { logger } from '../lib/logger';
 import type {
   LootLogEntry,
   LootLogEntryCreate,
@@ -543,7 +544,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         set({ maxWeek: weekInfo.maxWeek });
       } catch (err) {
         // Secondary fetch failed - use Math.max as fallback
-        console.warn('Failed to fetch maxWeek after startNextWeek, using fallback:', err);
+        logger.warn('Failed to fetch maxWeek after startNextWeek, using fallback:', err);
         const { maxWeek } = get();
         set({ maxWeek: Math.max(maxWeek, newWeek) });
       }
@@ -573,7 +574,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       } catch (err) {
         // Secondary fetch failed - use current week as fallback for maxWeek
         // This ensures state is at least consistent with the revert operation
-        console.warn('Failed to fetch maxWeek after revertWeek, using fallback:', err);
+        logger.warn('Failed to fetch maxWeek after revertWeek, using fallback:', err);
         const { maxWeek } = get();
         set({ maxWeek: Math.max(maxWeek, newWeek) });
       }

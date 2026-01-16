@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
+import { logger } from '../../lib/logger';
 import { WeekSelector } from './WeekSelector';
 import { SectionedLogView } from './SectionedLogView';
 import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
@@ -157,7 +158,7 @@ export function HistoryView({
         await fetchWeekDataTypes(groupId, tierId);
       } catch {
         // Secondary fetch failed - week selector may be stale until next page load
-        console.warn('Failed to refresh week data types after revert');
+        logger.warn('Failed to refresh week data types after revert');
       }
       toast.success(`Reverted to Week ${newWeek}`);
     } catch {
