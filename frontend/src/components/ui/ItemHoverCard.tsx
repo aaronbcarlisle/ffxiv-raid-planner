@@ -6,6 +6,10 @@ interface ItemHoverCardProps {
   itemIcon?: string;
   itemStats?: ItemStats;
   bisSource: 'raid' | 'tome';
+  /** Whether the player has this item (shows "missing" indicator if false) */
+  hasItem?: boolean;
+  /** Whether the tome item is augmented (only relevant when bisSource is 'tome') */
+  isAugmented?: boolean;
 }
 
 // Abbreviations for stat names
@@ -46,6 +50,8 @@ export function ItemHoverCard({
   itemIcon,
   itemStats,
   bisSource,
+  hasItem,
+  isAugmented,
 }: ItemHoverCardProps) {
   // Sort and filter stats
   const sortedStats = itemStats
@@ -56,6 +62,21 @@ export function ItemHoverCard({
           value: itemStats[stat as keyof ItemStats]!,
         }))
     : [];
+
+  // Determine missing status text
+  const getMissingText = () => {
+    if (hasItem === undefined) return null; // Don't show if not specified
+    if (hasItem) {
+      // Has item - check if tome needs augment
+      if (bisSource === 'tome' && !isAugmented) {
+        return '(needs augment)';
+      }
+      return null; // Complete
+    }
+    return '(missing)';
+  };
+
+  const missingText = getMissingText();
 
   // Split stats into two columns
   const midPoint = Math.ceil(sortedStats.length / 2);
@@ -80,6 +101,11 @@ export function ItemHoverCard({
             }`}
           >
             {itemName}
+            {missingText && (
+              <span className="ml-1 text-text-muted">
+                {missingText}
+              </span>
+            )}
           </div>
           <div className="text-xs text-text-muted mt-0.5">Item Level {itemLevel}</div>
         </div>

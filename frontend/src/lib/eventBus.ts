@@ -136,6 +136,9 @@ export const Events = {
   // Tier events
   TIER_CHANGED: 'tier:changed',
   TIER_CREATED: 'tier:created',
+
+  // Membership events
+  MEMBER_ROLE_CHANGED: 'membership:role-changed',
 } as const;
 
 // Type for event names

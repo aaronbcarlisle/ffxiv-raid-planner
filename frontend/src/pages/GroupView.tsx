@@ -30,6 +30,7 @@ import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
 import { HEADER_EVENTS } from '../components/layout/Header';
+import { useEventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
@@ -265,6 +266,16 @@ export function GroupView() {
     })();
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
+
+  // Refresh tier data when member roles change (updates linkedUser.membershipRole on player cards)
+  useEventBus<{ groupId: string; userId: string; role: string }>(
+    Events.MEMBER_ROLE_CHANGED,
+    useCallback((data) => {
+      if (currentGroup?.id === data.groupId && currentTier?.tierId) {
+        fetchTier(currentGroup.id, currentTier.tierId);
+      }
+    }, [currentGroup?.id, currentTier?.tierId, fetchTier])
+  );
 
   // Initialize loot tracking store when Loot or Players tab is active
   const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
