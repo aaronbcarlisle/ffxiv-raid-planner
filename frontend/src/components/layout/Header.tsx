@@ -20,16 +20,6 @@ import { SettingsPopover, TipsCarousel } from '../ui';
 import { Tooltip } from '../primitives/Tooltip';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
-import type { MemberRole } from '../../types';
-
-// Role badge colors - using semantic membership tokens
-const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
-  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
-  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
-  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
-};
-
 // Custom event types for communication with GroupView
 export const HEADER_EVENTS = {
   TIER_CHANGE: 'header:tier-change',
@@ -286,7 +276,7 @@ export function Header() {
                 groups={groups}
                 onFetchGroups={fetchGroups}
                 isMember={isMember}
-                userRole={userRole}
+                userRole={userRole ?? undefined}
               />
 
               {/* Invite Members button (for owners/leads) or Share code (for others) */}

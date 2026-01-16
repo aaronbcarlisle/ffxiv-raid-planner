@@ -157,7 +157,7 @@ export function TierSelector({
             <DropdownSubTrigger icon={<History className="w-4 h-4" />} chevronSide="left">
               Previous Tiers
             </DropdownSubTrigger>
-            <DropdownSubContent side="left">
+            <DropdownSubContent>
               {previousTiers.map((tier) => {
                 const info = getTierById(tier.tierId);
                 const isSelected = tier.tierId === currentTierId;

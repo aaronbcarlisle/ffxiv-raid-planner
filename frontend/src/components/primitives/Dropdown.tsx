@@ -362,18 +362,15 @@ DropdownSubTrigger.displayName = 'DropdownSubTrigger';
 
 interface DropdownSubContentProps {
   children: ReactNode;
-  /** Side to open on (default: right, but may flip due to collision detection) */
-  side?: 'left' | 'right';
   className?: string;
 }
 
 export const DropdownSubContent = forwardRef<HTMLDivElement, DropdownSubContentProps>(
-  ({ children, side = 'right', className = '' }, ref) => {
+  ({ children, className = '' }, ref) => {
     return (
       <DropdownMenuPrimitive.Portal>
         <DropdownMenuPrimitive.SubContent
           ref={ref}
-          side={side}
           sideOffset={2}
           alignOffset={-5}
           className={`
