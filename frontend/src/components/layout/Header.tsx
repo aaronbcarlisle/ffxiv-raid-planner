@@ -71,6 +71,8 @@ export function Header() {
     if (isGroupRoute && currentGroup && canManageInvitations) {
       fetchInvitations(currentGroup.id);
     }
+    // Only refetch when the group ID changes, not the entire object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGroupRoute, currentGroup?.id, canManageInvitations, fetchInvitations]);
 
   // Get first active invitation for quick copy
@@ -231,7 +233,7 @@ export function Header() {
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.DELETE_TIER),
       },
     ];
-  }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length]);
+  }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
     <header className="bg-surface-raised border-b border-border-default">
