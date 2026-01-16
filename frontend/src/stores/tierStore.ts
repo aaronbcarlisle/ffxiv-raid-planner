@@ -540,14 +540,20 @@ export const useTierStore = create<TierState>((set, get) => ({
       );
 
       // Update player in current tier
+      // Also clear userId from any other player that had this user (reassignment case)
       set((state) => {
         if (state.currentTier?.players) {
           return {
             currentTier: {
               ...state.currentTier,
-              players: state.currentTier.players.map(p =>
-                p.id === playerId ? updatedPlayer : p
-              ),
+              players: state.currentTier.players.map(p => {
+                if (p.id === playerId) return updatedPlayer;
+                // Clear userId from previous owner if user was reassigned
+                if (updatedPlayer.userId && p.userId === updatedPlayer.userId) {
+                  return { ...p, userId: undefined, linkedUser: undefined };
+                }
+                return p;
+              }),
             },
             isSaving: false,
           };
@@ -581,14 +587,20 @@ export const useTierStore = create<TierState>((set, get) => ({
       );
 
       // Update player in current tier
+      // Also clear userId from any other player that had this user (reassignment case)
       set((state) => {
         if (state.currentTier?.players) {
           return {
             currentTier: {
               ...state.currentTier,
-              players: state.currentTier.players.map(p =>
-                p.id === playerId ? updatedPlayer : p
-              ),
+              players: state.currentTier.players.map(p => {
+                if (p.id === playerId) return updatedPlayer;
+                // Clear userId from previous owner if user was reassigned
+                if (updatedPlayer.userId && p.userId === updatedPlayer.userId) {
+                  return { ...p, userId: undefined, linkedUser: undefined };
+                }
+                return p;
+              }),
             },
             isSaving: false,
           };
