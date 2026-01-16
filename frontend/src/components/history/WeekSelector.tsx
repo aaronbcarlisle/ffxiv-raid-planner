@@ -105,7 +105,10 @@ export function WeekSelector({
 
   const displayedWeeks = getDisplayedWeeks();
 
-  // Can revert if calculatedCurrentWeek > 1 (has been advanced at least once)
+  // Can revert if calculatedCurrentWeek > 1 (has been advanced at least once).
+  // Note: This may show the button for tiers where week_start_date is None and
+  // calculatedCurrentWeek > 1 due to time passing. Backend will return a clear
+  // error ("no week start date set") in that case.
   const canRevertWeek = onRevertWeek && calculatedCurrentWeek > 1;
 
   return (

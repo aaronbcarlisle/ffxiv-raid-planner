@@ -164,27 +164,38 @@ export function HistoryView({
 
   // Handler for revert week button click - show confirm if data exists
   const handleRevertWeekClick = useCallback(async () => {
-    // First, fetch the latest data for the current week to show in the modal
-    await Promise.all([
-      fetchLootLog(groupId, tierId),
-      fetchMaterialLog(groupId, tierId),
-      fetchPageLedger(groupId, tierId),
-    ]);
+    // Prevent double-clicks during the check/revert process
+    if (isRevertingWeek) return;
+    setIsRevertingWeek(true);
 
-    // Re-check with fresh data (store will have updated)
-    const store = useLootTrackingStore.getState();
-    const hasLoot = store.lootLog.some((e) => e.weekNumber === currentWeek);
-    const hasMaterials = store.materialLog.some((e) => e.weekNumber === currentWeek);
-    const hasBooks = store.pageLedger.some((e) => e.weekNumber === currentWeek);
+    try {
+      // Fetch the latest data for the current week to show in the modal
+      await Promise.all([
+        fetchLootLog(groupId, tierId),
+        fetchMaterialLog(groupId, tierId),
+        fetchPageLedger(groupId, tierId),
+      ]);
 
-    if (hasLoot || hasMaterials || hasBooks) {
-      // Show confirmation modal
-      setShowRevertConfirm(true);
-    } else {
-      // No data, proceed directly
-      await executeRevert();
+      // Re-check with fresh data (store will have updated)
+      const store = useLootTrackingStore.getState();
+      const hasLoot = store.lootLog.some((e) => e.weekNumber === currentWeek);
+      const hasMaterials = store.materialLog.some((e) => e.weekNumber === currentWeek);
+      const hasBooks = store.pageLedger.some((e) => e.weekNumber === currentWeek);
+
+      if (hasLoot || hasMaterials || hasBooks) {
+        // Show confirmation modal (will reset loading when user cancels or confirms)
+        setShowRevertConfirm(true);
+        setIsRevertingWeek(false); // Reset loading - modal will handle next step
+      } else {
+        // No data, proceed directly (executeRevert will manage its own loading state)
+        setIsRevertingWeek(false);
+        await executeRevert();
+      }
+    } catch {
+      toast.error('Failed to check week data');
+      setIsRevertingWeek(false);
     }
-  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, currentWeek, executeRevert]);
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, currentWeek, executeRevert, isRevertingWeek]);
 
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;

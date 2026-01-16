@@ -531,16 +531,21 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/start-next-week`
       );
-      // Update current week in the store
+      // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      // Fetch fresh maxWeek from backend (consistent with revertWeek)
-      const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
-      );
-      set({
-        currentWeek: newWeek,
-        maxWeek: weekInfo.maxWeek,
-      });
+      set({ currentWeek: newWeek });
+
+      // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
+      try {
+        const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
+          `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
+        );
+        set({ maxWeek: weekInfo.maxWeek });
+      } catch {
+        // Secondary fetch failed - use Math.max as fallback
+        const { maxWeek } = get();
+        set({ maxWeek: Math.max(maxWeek, newWeek) });
+      }
       return newWeek;
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -554,16 +559,22 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/revert-week`
       );
-      // Update current week in the store
+      // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      // Also fetch fresh maxWeek from backend
-      const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
-      );
-      set({
-        currentWeek: newWeek,
-        maxWeek: weekInfo.maxWeek,
-      });
+      set({ currentWeek: newWeek });
+
+      // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
+      try {
+        const weekInfo = await api.get<{ currentWeek: number; maxWeek: number }>(
+          `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
+        );
+        set({ maxWeek: weekInfo.maxWeek });
+      } catch {
+        // Secondary fetch failed - use current week as fallback for maxWeek
+        // This ensures state is at least consistent with the revert operation
+        const { maxWeek } = get();
+        set({ maxWeek: Math.max(maxWeek, newWeek) });
+      }
       return newWeek;
     } catch (error) {
       set({ error: getErrorMessage(error) });
