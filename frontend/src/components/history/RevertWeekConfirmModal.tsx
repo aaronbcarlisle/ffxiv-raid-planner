@@ -87,8 +87,9 @@ export function RevertWeekConfirmModal({
           </svg>
           <div className="text-sm text-text-primary">
             <p>
-              This will move the week calculation back by one week. The following data was logged
-              for <strong>Week {week}</strong>:
+              This will move the week calculation back by one week.{' '}
+              <strong>Your data will not be deleted</strong> &mdash; the entries below will simply
+              appear as future week entries after reverting.
             </p>
           </div>
         </div>
