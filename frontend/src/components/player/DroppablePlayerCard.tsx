@@ -24,6 +24,7 @@ interface DroppablePlayerCardProps {
   userHasClaimedPlayer?: boolean;
   isAdmin?: boolean;
   isAdminAccess?: boolean;
+  viewAsUserId?: string;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
