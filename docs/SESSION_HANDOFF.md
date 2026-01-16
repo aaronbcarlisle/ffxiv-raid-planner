@@ -2,34 +2,35 @@
 
 ## Branch: `feature/player-setup-banner`
 
-## Last Session Summary
+## v1.0.9 Status: Setup Wizard & Player Setup Banner
 
-### Completed & Committed
+### Completed Features (All Committed & Pushed)
 
-1. **PlayerSetupBanner** - Contextual setup prompts on player cards
+1. **Setup Wizard** - 4-step guided static creation
+   - Step 1: Static Details (name, tier, content type)
+   - Step 2: Roster Setup (8 player slots with job quick-select)
+   - Step 3: Share (copy share link for inviting members)
+   - Step 4: Review (summary before creation)
+   - Default tier pre-selected, sticky navigation, cancel confirmation
+
+2. **PlayerSetupBanner** - Contextual setup prompts on player cards
    - Shows between header and gear table when setup incomplete
    - States: Unclaimed (Assign/Take Ownership), No BiS (Import BiS)
    - Supports View As mode for admin impersonation
 
-2. **AssignUserModal Improvements**
+3. **AssignUserModal Improvements**
    - Visual role badges (Owner/Lead/Member/Viewer/Linked) in user dropdown
    - Users already assigned to other player cards appear at bottom of list
    - Confirmation modal when reassigning user from another card
 
-3. **Removed BiS import from Setup Wizard** (e53124e)
-   - BiS import doesn't work during static creation (players don't exist yet)
-   - Users can import BiS after creation via PlayerSetupBanner
-
-4. **Documentation Optimization** (f0e4ad8)
-   - CLAUDE.md reduced from 1,038 → 341 lines (67% reduction)
-   - Updated CONSOLIDATED_STATUS.md with v1.0.9 features
-   - Added wizard/banner components to UI_COMPONENTS.md
-   - Archived 4 old session handoff files to `docs/archive/`
+4. **BiS Removed from Wizard** - Moved to post-creation via PlayerSetupBanner
+   - BiS import requires existing player records (doesn't work during creation)
+   - PlayerSetupBanner prompts "Import BiS" after claiming a card
 
 ### Current State
 
-- All changes committed and pushed
-- Build passes
+- All changes committed and pushed to `origin/feature/player-setup-banner`
+- Build passes (`pnpm build`)
 - Branch is up to date with remote
 
 ---
@@ -55,10 +56,12 @@
 
 | File | Purpose |
 |------|---------|
-| `components/player/AssignUserModal.tsx` | User assignment with role badges |
-| `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
-| `components/player/PlayerCard.tsx` | Main player card, integrates banner |
 | `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
+| `components/wizard/steps/RosterSetupStep.tsx` | Roster configuration step |
+| `components/wizard/RosterSlot.tsx` | Individual player slot with job picker |
+| `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
+| `components/player/AssignUserModal.tsx` | User assignment with role badges |
+| `components/player/PlayerCard.tsx` | Main player card, integrates banner |
 | `components/static-group/MembersPanel.tsx` | Target for Session 4 |
 | `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
 
@@ -70,9 +73,9 @@
 Continue working on branch feature/player-setup-banner in the FFXIV Raid Planner project.
 
 Current state:
-- v1.0.9 in progress (Setup Wizard & Player Setup Banner)
-- All previous work committed and pushed
-- Documentation optimized (CLAUDE.md reduced 67%)
+- v1.0.9 complete: Setup Wizard & PlayerSetupBanner fully implemented
+- All work committed and pushed
+- User documentation updated
 
 Next task: Session 4 from docs/SETUP_WIZARD_PLAN.md
 

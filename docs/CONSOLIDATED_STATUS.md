@@ -18,7 +18,7 @@
 | **AssignUserModal Improvements** | ✅ Complete | Role badges, reassignment confirmation, sorting by assignment |
 | **View As actions** | ✅ Complete | "Take Ownership" in View As mode assigns viewed user correctly |
 | **TankRole selector placement** | ✅ Complete | Moved MT/OT to header for better visual alignment |
-| **BiS removed from wizard** | ✅ Complete | Removed non-functional BiS import from wizard (uncommitted) |
+| **BiS removed from wizard** | ✅ Complete | Removed non-functional BiS import from wizard |
 | **MembersPanel Enhancement** | 🔨 Pending | Session 4: Linked Card dropdown per member |
 
 ### ✅ Completed Features (Production Ready)
@@ -240,12 +240,6 @@ pnpm test
    - Show available cards: unclaimed OR already claimed by this member
    - On selection, call existing assign endpoint
    - Pre-select if member already has a linked card
-
-2. **Commit uncommitted changes** (BiS removal from wizard)
-
-3. **Documentation updates**
-   - Update CLAUDE.md with wizard component documentation
-   - Update UI_COMPONENTS.md with new components
 
 ### Future Phases
 
