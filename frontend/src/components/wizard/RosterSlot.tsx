@@ -121,13 +121,18 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
     if (!hasJob) {
       return POSITION_LABELS[player.position] || player.position;
     }
-    // If role changed entirely (e.g., healer -> tank), show the new role
+    // For healers, always show the specific healer type (Pure/Barrier) when it differs from position
+    if (player.role === 'healer') {
+      // If in a healer slot with matching type, use position label
+      if (expectedRole === 'healer' && effectiveHealerType === expectedHealerType) {
+        return POSITION_LABELS[player.position] || player.position;
+      }
+      // Otherwise show specific healer type
+      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
+    }
+    // For non-healers, show role name if different from expected
     if (player.role !== expectedRole) {
       return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
-    }
-    // If healer type changed (e.g., Pure Healer in Barrier Healer slot), show the new healer type
-    if (player.role === 'healer' && effectiveHealerType !== expectedHealerType) {
-      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
     }
     return POSITION_LABELS[player.position] || player.position;
   })();
