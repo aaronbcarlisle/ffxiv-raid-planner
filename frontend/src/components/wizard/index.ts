@@ -10,6 +10,8 @@ export { RosterSlot } from './RosterSlot';
 // Step components
 export { StaticDetailsStep } from './steps/StaticDetailsStep';
 export { RosterSetupStep } from './steps/RosterSetupStep';
+export { ReviewStep } from './steps/ReviewStep';
+export { ShareStep } from './steps/ShareStep';
 
 // Types
 export type { WizardState, WizardPlayer, WizardStep } from './types';

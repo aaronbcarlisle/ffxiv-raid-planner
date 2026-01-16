@@ -1,18 +1,28 @@
 /**
  * SetupWizard - Main wizard orchestrator for static creation
  *
- * 4-step guided flow: Details → Roster → Invite → Review
+ * 4-step guided flow: Details → Roster → Review → Share
+ * Static is created at step 3 (Review), step 4 (Share) shows the actual invite link.
  * Uses local state (not Zustand) - state discarded on cancel.
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Wand2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { WizardProgress } from './WizardProgress';
 import { WizardNavigation } from './WizardNavigation';
 import { StaticDetailsStep } from './steps/StaticDetailsStep';
 import { RosterSetupStep } from './steps/RosterSetupStep';
+import { ReviewStep } from './steps/ReviewStep';
+import { ShareStep } from './steps/ShareStep';
 import { INITIAL_ROSTER, type WizardState, type WizardStep } from './types';
 import { RAID_TIERS } from '../../gamedata/raid-tiers';
+import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useTierStore } from '../../stores/tierStore';
+import { useInvitationStore } from '../../stores/invitationStore';
+import { getJobInfo } from '../../gamedata';
 
 interface SetupWizardProps {
   isOpen: boolean;
@@ -20,18 +30,48 @@ interface SetupWizardProps {
   onComplete?: (groupId: string, shareCode: string) => void;
 }
 
-export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
-  const [state, setState] = useState<WizardState>({
-    step: 1,
-    staticName: '',
-    tierId: RAID_TIERS[0]?.id || '', // Default to latest tier
-    isPublic: false,
-    players: INITIAL_ROSTER,
-    inviteCode: null,
-  });
+const getInitialState = (): WizardState => ({
+  step: 1,
+  staticName: '',
+  tierId: RAID_TIERS[0]?.id || '',
+  isPublic: false,
+  players: INITIAL_ROSTER,
+  inviteCode: null,
+});
 
+export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
+  const navigate = useNavigate();
+  const [state, setState] = useState<WizardState>(getInitialState());
+
+  // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Post-creation state
+  const [isCreated, setIsCreated] = useState(false);
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
+  const [createdShareCode, setCreatedShareCode] = useState<string | null>(null);
+  const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
+
+  // Stores
+  const createGroup = useStaticGroupStore((s) => s.createGroup);
+  const createTier = useTierStore((s) => s.createTier);
+  const updatePlayer = useTierStore((s) => s.updatePlayer);
+  const createInvitation = useInvitationStore((s) => s.createInvitation);
+
+  // Check if wizard has unsaved changes (only relevant before creation)
+  const hasChanges = () => {
+    if (isCreated) return false; // No unsaved changes after creation
+    const initial = getInitialState();
+    return (
+      state.staticName.trim() !== '' ||
+      state.tierId !== initial.tierId ||
+      state.isPublic !== initial.isPublic ||
+      state.players.some((p) => p.name.trim() !== '' || p.job !== '')
+    );
+  };
 
   // Focus the Next button (called when last roster slot is filled)
   const focusNextButton = () => {
@@ -42,16 +82,12 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
   const canProceedFromStep = (step: WizardStep): boolean => {
     switch (step) {
       case 1:
-        // Step 1: Require name and tier
         return state.staticName.trim().length > 0 && state.tierId.length > 0;
       case 2:
-        // Step 2: Always allow (roster is optional)
         return true;
       case 3:
-        // Step 3: Always allow (invite is optional)
         return true;
       case 4:
-        // Step 4: Can create if step 1 was valid
         return state.staticName.trim().length > 0 && state.tierId.length > 0;
       default:
         return false;
@@ -71,35 +107,98 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
   };
 
   const handleSubmit = async () => {
-    // Submission flow will be implemented in Session 2
-    console.log('Submit wizard:', state);
-
-    // Placeholder for now
     setIsSubmitting(true);
-    setTimeout(() => {
+    setSubmitError(null);
+
+    try {
+      // Step 1: Create the static group
+      const group = await createGroup(state.staticName.trim(), state.isPublic);
+
+      // Step 2: Create the tier
+      const tier = await createTier(group.id, state.tierId);
+
+      // Step 3: Update players with names/jobs/BiS data
+      // The tier comes with 8 default players, we just need to update them
+      if (tier.players && tier.players.length > 0) {
+        // Map wizard players to tier players by position
+        for (const wizardPlayer of state.players) {
+          // Find matching tier player by position
+          const tierPlayer = tier.players.find((p) => p.position === wizardPlayer.position);
+          if (!tierPlayer) continue;
+
+          // Only update if there's something to update
+          if (wizardPlayer.name.trim() || wizardPlayer.job || wizardPlayer.bisLink || wizardPlayer.gear) {
+            const jobInfo = wizardPlayer.job ? getJobInfo(wizardPlayer.job) : null;
+
+            await updatePlayer(group.id, tier.tierId, tierPlayer.id, {
+              name: wizardPlayer.name.trim() || tierPlayer.name,
+              job: wizardPlayer.job || tierPlayer.job,
+              role: jobInfo?.role || wizardPlayer.role || tierPlayer.role,
+              bisLink: wizardPlayer.bisLink,
+              gear: wizardPlayer.gear,
+              configured: !!(wizardPlayer.name.trim() && wizardPlayer.job),
+            });
+          }
+        }
+      }
+
+      // Step 4: Always create a member invite for sharing
+      const invitation = await createInvitation(group.id, { role: 'member' });
+      const inviteLink = `${window.location.origin}/invite/${invitation.inviteCode}`;
+
+      // Store results and advance to step 4
+      setCreatedGroupId(group.id);
+      setCreatedShareCode(group.shareCode);
+      setCreatedInviteLink(inviteLink);
+      setIsCreated(true);
+      setState((prev) => ({ ...prev, step: 4 }));
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to create static');
+    } finally {
       setIsSubmitting(false);
-      alert('Wizard submission will be implemented in Session 2');
-    }, 1000);
+    }
+  };
+
+  // Handle finishing the wizard (after creation)
+  const handleFinish = () => {
+    if (onComplete && createdGroupId && createdShareCode) {
+      onComplete(createdGroupId, createdShareCode);
+    } else if (createdShareCode) {
+      navigate(`/group/${createdShareCode}`);
+    }
+
+    onClose();
+    resetWizard();
+  };
+
+  const resetWizard = () => {
+    setState(getInitialState());
+    setSubmitError(null);
+    setIsCreated(false);
+    setCreatedGroupId(null);
+    setCreatedShareCode(null);
+    setCreatedInviteLink(null);
   };
 
   const handleClose = () => {
-    // TODO: Add cancel confirmation in Session 2
-    onClose();
+    // Show confirmation if there are unsaved changes
+    if (hasChanges() && !isSubmitting) {
+      setShowCancelConfirm(true);
+    } else {
+      onClose();
+      // Reset state after modal closes
+      setTimeout(resetWizard, 300);
+    }
+  };
 
-    // Reset state after modal closes
-    setTimeout(() => {
-      setState({
-        step: 1,
-        staticName: '',
-        tierId: RAID_TIERS[0]?.id || '', // Default to latest tier
-        isPublic: false,
-        players: INITIAL_ROSTER,
-        inviteCode: null,
-      });
-    }, 300);
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    onClose();
+    setTimeout(resetWizard, 300);
   };
 
   // Keyboard navigation: Alt+Left = Back, Alt+Right = Next
+  // Disabled after creation (isCreated) to prevent going back
   useEffect(() => {
     if (!isOpen) return;
 
@@ -107,17 +206,20 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
       if (!e.altKey) return;
 
       if (e.key === 'ArrowLeft') {
-        e.preventDefault(); // Prevent browser back
+        e.preventDefault();
+        // Disable going back after creation
+        if (isCreated) return;
         setState((prev) => (prev.step > 1 ? { ...prev, step: (prev.step - 1) as WizardStep } : prev));
       } else if (e.key === 'ArrowRight') {
-        e.preventDefault(); // Prevent browser forward
+        e.preventDefault();
+        // Disable navigation on step 4 (share step)
+        if (isCreated) return;
         setState((prev) => {
-          // Check if can proceed from current step
           const canProceed =
             prev.step === 1
               ? prev.staticName.trim().length > 0 && prev.tierId.length > 0
-              : prev.step < 4; // Steps 2 & 3 always allow proceeding
-          if (canProceed && prev.step < 4) {
+              : prev.step < 3; // Stop at step 3 (review), submit advances to step 4
+          if (canProceed && prev.step < 3) {
             return { ...prev, step: (prev.step + 1) as WizardStep };
           }
           return prev;
@@ -127,63 +229,91 @@ export function SetupWizard({ isOpen, onClose }: SetupWizardProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, isCreated]);
 
   // Modal title includes static name once set
-  const modalTitle = state.staticName.trim()
-    ? `Create Static: ${state.staticName.trim()}`
-    : 'Create Static';
+  const modalTitle = (
+    <span className="flex items-center gap-2">
+      <Wand2 className="w-5 h-5 text-accent" />
+      {state.staticName.trim() ? `Create Static: ${state.staticName.trim()}` : 'Create Static'}
+    </span>
+  );
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="4xl">
-      <div className="space-y-6">
-        {/* Progress indicator */}
-        <WizardProgress currentStep={state.step} />
+    <>
+      <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="4xl">
+        <div className="space-y-6">
+          {/* Progress indicator */}
+          <WizardProgress currentStep={state.step} />
 
-        {/* Step content - each step handles its own scrolling if needed */}
-        {state.step === 1 && (
-          <StaticDetailsStep
-            staticName={state.staticName}
-            tierId={state.tierId}
-            isPublic={state.isPublic}
-            onStaticNameChange={(name) => setState((prev) => ({ ...prev, staticName: name }))}
-            onTierIdChange={(tierId) => setState((prev) => ({ ...prev, tierId }))}
-            onIsPublicChange={(isPublic) => setState((prev) => ({ ...prev, isPublic }))}
-          />
-        )}
+          {/* Step content */}
+          {state.step === 1 && (
+            <StaticDetailsStep
+              staticName={state.staticName}
+              tierId={state.tierId}
+              isPublic={state.isPublic}
+              onStaticNameChange={(name) => setState((prev) => ({ ...prev, staticName: name }))}
+              onTierIdChange={(tierId) => setState((prev) => ({ ...prev, tierId }))}
+              onIsPublicChange={(isPublic) => setState((prev) => ({ ...prev, isPublic }))}
+            />
+          )}
 
-        {state.step === 2 && (
-          <RosterSetupStep
-            players={state.players}
-            tierId={state.tierId}
-            onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
-            onAllSlotsFilled={focusNextButton}
-          />
-        )}
+          {state.step === 2 && (
+            <RosterSetupStep
+              players={state.players}
+              tierId={state.tierId}
+              onPlayersChange={(players) => setState((prev) => ({ ...prev, players }))}
+              onAllSlotsFilled={focusNextButton}
+            />
+          )}
 
-        {state.step === 3 && (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-text-muted">Step 3 (Invite Members) - To be implemented in Session 2</p>
-          </div>
-        )}
+          {state.step === 3 && (
+            <ReviewStep
+              staticName={state.staticName}
+              tierId={state.tierId}
+              isPublic={state.isPublic}
+              players={state.players}
+              isSubmitting={isSubmitting}
+              error={submitError}
+              onRetry={handleSubmit}
+            />
+          )}
 
-        {state.step === 4 && (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-text-muted">Step 4 (Review) - To be implemented in Session 2</p>
-          </div>
-        )}
+          {state.step === 4 && createdInviteLink && (
+            <ShareStep
+              inviteLink={createdInviteLink}
+              onGoToStatic={handleFinish}
+            />
+          )}
 
-        {/* Navigation */}
-        <WizardNavigation
-          ref={nextButtonRef}
-          currentStep={state.step}
-          canProceed={canProceedFromStep(state.step)}
-          isSubmitting={isSubmitting}
-          onBack={handleBack}
-          onNext={handleNext}
-          onSubmit={handleSubmit}
-        />
-      </div>
-    </Modal>
+          {/* Navigation - hidden on share step (step 4) */}
+          {state.step !== 4 && (
+            <WizardNavigation
+              ref={nextButtonRef}
+              currentStep={state.step}
+              canProceed={canProceedFromStep(state.step)}
+              isSubmitting={isSubmitting}
+              isCreated={isCreated}
+              onBack={handleBack}
+              onNext={handleNext}
+              onSubmit={handleSubmit}
+              onFinish={handleFinish}
+            />
+          )}
+        </div>
+      </Modal>
+
+      {/* Cancel confirmation */}
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        title="Discard Changes?"
+        message="You have unsaved changes in the wizard. Are you sure you want to discard them?"
+        confirmLabel="Discard"
+        cancelLabel="Keep Editing"
+        variant="warning"
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setShowCancelConfirm(false)}
+      />
+    </>
   );
 }

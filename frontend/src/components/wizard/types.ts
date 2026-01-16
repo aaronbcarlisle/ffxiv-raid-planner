@@ -43,6 +43,6 @@ export const INITIAL_ROSTER: WizardPlayer[] = [
 export const STEP_TITLES: Record<WizardStep, string> = {
   1: 'Details',
   2: 'Roster',
-  3: 'Invite',
-  4: 'Review',
+  3: 'Create',
+  4: 'Share',
 };
