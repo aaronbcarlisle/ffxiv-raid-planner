@@ -263,7 +263,7 @@ class TestAdminAssignPlayer:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_cannot_assign_user_already_linked_in_tier(
+    async def test_reassign_user_already_linked_in_tier(
         self,
         client: AsyncClient,
         session: AsyncSession,
@@ -273,7 +273,7 @@ class TestAdminAssignPlayer:
         test_tier,
         test_player,
     ):
-        """Test that a user cannot be linked to multiple players in the same tier."""
+        """Test that reassigning a user to another player auto-unlinks the old player."""
         # Create another player and assign target_user to it
         other_player = await create_snapshot_player(
             session, test_tier, name="Other Player", job="WHM"
@@ -290,8 +290,14 @@ class TestAdminAssignPlayer:
             headers=headers,
         )
 
-        assert response.status_code == 400
-        assert "already linked" in response.json()["detail"].lower()
+        # Reassignment should succeed
+        assert response.status_code == 200
+        data = response.json()
+        assert data["userId"] == target_user.id
+
+        # Verify old player was unlinked
+        await session.refresh(other_player)
+        assert other_player.user_id is None
 
     @pytest.mark.asyncio
     async def test_invalid_membership_role_returns_422(
