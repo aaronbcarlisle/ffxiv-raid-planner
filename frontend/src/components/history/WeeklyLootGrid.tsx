@@ -428,7 +428,7 @@ export function WeeklyLootGrid({
                   const isHighlighted = lootEntry && highlightedEntryId === String(lootEntry.id) && (!highlightedEntryType || highlightedEntryType === 'loot');
 
                   const isClickable = canClickToLog || canClickToEdit;
-                  return (
+                  const cellContent = (
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
@@ -474,12 +474,34 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={lootEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
                     </div>
                   );
+
+                  // Wrap with tooltip if there's an entry
+                  if (lootEntry) {
+                    const tooltipText = onCopyEntryUrl
+                      ? 'Shift+Click to copy link • Alt+Click to go to player • Right-click for menu'
+                      : 'Alt+Click to go to player • Right-click for menu';
+                    return (
+                      <Tooltip key={item.slot} content={tooltipText} delayDuration={400}>
+                        {cellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  // For empty cells that can be clicked to log
+                  if (canClickToLog) {
+                    return (
+                      <Tooltip key={item.slot} content="Click to log loot" delayDuration={400}>
+                        {cellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  return cellContent;
                 })}
 
                 {/* Material columns */}
@@ -490,7 +512,7 @@ export function WeeklyLootGrid({
                   const isMatHighlighted = matEntry && highlightedEntryId === String(matEntry.id) && highlightedEntryType === 'material';
 
                   const isClickable = canClickToLogMat || canClickToEditMat;
-                  return (
+                  const matCellContent = (
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
@@ -536,7 +558,6 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
-                      title={matEntry ? (onCopyEntryUrl ? 'Shift+Click to copy link, Alt+Click to go to player' : 'Alt+Click to go to player') : undefined}
                     >
                       <div
                         className="text-[10px] mb-1"
@@ -547,6 +568,29 @@ export function WeeklyLootGrid({
                       {renderRecipientBadge(matEntry)}
                     </div>
                   );
+
+                  // Wrap with tooltip if there's an entry
+                  if (matEntry) {
+                    const tooltipText = onCopyEntryUrl
+                      ? 'Shift+Click to copy link • Alt+Click to go to player • Right-click for menu'
+                      : 'Alt+Click to go to player • Right-click for menu';
+                    return (
+                      <Tooltip key={mat.type} content={tooltipText} delayDuration={400}>
+                        {matCellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  // For empty cells that can be clicked to log
+                  if (canClickToLogMat) {
+                    return (
+                      <Tooltip key={mat.type} content="Click to log material" delayDuration={400}>
+                        {matCellContent}
+                      </Tooltip>
+                    );
+                  }
+
+                  return matCellContent;
                 })}
               </div>
             </div>
