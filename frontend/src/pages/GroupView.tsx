@@ -520,11 +520,11 @@ export function GroupView() {
       <div className="max-w-4xl mx-auto py-8">
         <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-status-error/10 border-status-error/30'} border rounded-lg p-6 text-center`}>
           <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-status-error'}`}>
-            {isPrivateGroupError ? 'Private Group' : 'Error'}
+            {isPrivateGroupError ? 'Private Static' : 'Error'}
           </h2>
           <p className="text-text-secondary mb-4">
             {isPrivateGroupError
-              ? 'This static group is private. Please log in to view it.'
+              ? 'This static is private. Please log in to view it.'
               : error
             }
           </p>

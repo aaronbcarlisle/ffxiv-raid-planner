@@ -107,9 +107,9 @@ export function AssignUserModal({
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
-        // Admins fetch ALL users, owners fetch only group-interacted users
+        // Admins fetch ALL users (with group context for membership check), owners fetch only group-interacted users
         const endpoint = isAdmin
-          ? '/api/static-groups/admin/all-users'
+          ? `/api/static-groups/admin/all-users?group_id=${groupId}`
           : `/api/static-groups/${groupId}/interacted-users`;
 
         const users = await authRequest<InteractedUser[]>(endpoint);
@@ -134,6 +134,13 @@ export function AssignUserModal({
   }, [selectedUserId, interactedUsers, useManualInput]);
 
   const isNonMember = selectedUser && !selectedUser.isMember;
+
+  // Default checkbox to checked when selecting a non-member
+  useEffect(() => {
+    if (isNonMember) {
+      setCreateMembership(true);
+    }
+  }, [isNonMember]);
 
   // Transform interacted users to SelectOption format with role badges
   // Sort: unassigned users first, then assigned users at bottom
@@ -311,7 +318,7 @@ export function AssignUserModal({
             <p className="text-xs text-text-muted mt-1">
               {isAdmin
                 ? 'Admins see all users in the database'
-                : 'Owners see only group members'}
+                : 'Owners see only static members'}
             </p>
           </div>
         )}
@@ -345,14 +352,14 @@ export function AssignUserModal({
         {isNonMember && !useManualInput && (
           <div className="p-3 bg-status-warning/10 border border-status-warning/20 rounded-lg space-y-3">
             <p className="text-sm text-status-warning">
-              <strong>Not a member:</strong> This user is not currently a member of the group.
+              <strong>Not a member:</strong> This user is not currently a member of this static.
             </p>
 
             <Checkbox
               id="create-membership"
               checked={createMembership}
               onChange={setCreateMembership}
-              label="Add them to the group"
+              label="Add them to this static"
               disabled={isSubmitting}
             />
 

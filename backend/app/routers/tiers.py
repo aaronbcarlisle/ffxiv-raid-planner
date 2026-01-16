@@ -1067,11 +1067,11 @@ async def _assign_player_impl(
                 SnapshotPlayer.id != player_id,
             )
         )
-        if existing_link.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User is already linked to another player in this tier",
-            )
+        existing_player = existing_link.scalar_one_or_none()
+        if existing_player:
+            # Automatically unlink from the old player (reassignment)
+            existing_player.user_id = None
+            existing_player.updated_at = datetime.now(timezone.utc).isoformat()
 
         # Create membership if requested and user is not a member
         if data.create_membership:

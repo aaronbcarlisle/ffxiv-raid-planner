@@ -314,6 +314,7 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 3. Don't use narrow containers - Use wide layout (120rem)
 4. Don't mix display order and priority order - They're separate
 5. Don't track weapon as either raid OR tome - BiS is always raid; tome is interim
+6. **Don't say "group" when referring to the roster/static** - Use "static" in user-facing text (code vars like `groupId` are fine)
 
 ---
 

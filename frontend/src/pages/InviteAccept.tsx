@@ -1,7 +1,7 @@
 /**
  * Invite Accept Page
  *
- * Allows users to preview and accept an invitation to join a static group.
+ * Allows users to preview and accept an invitation to join a static.
  */
 
 import { useEffect, useState } from 'react';
@@ -19,10 +19,10 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 };
 
 const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
-  owner: 'Full control over the static group',
+  owner: 'Full control over this static',
   lead: 'Can edit roster and manage members',
   member: 'Can edit their own character gear',
-  viewer: 'Read-only access to the static',
+  viewer: 'Read-only access to this static',
 };
 
 export function InviteAccept() {
@@ -112,7 +112,7 @@ export function InviteAccept() {
             You're Invited!
           </h1>
           <p className="text-text-secondary">
-            You've been invited to join a static group
+            You've been invited to join a static
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function InviteAccept() {
 
         {preview.alreadyMember && (
           <div className="bg-status-info/10 border border-status-info/30 rounded p-3 mb-4 text-sm text-status-info">
-            You're already a member of this static group.
+            You're already a member of this static.
             <Link
               to={`/group/${preview.shareCode}`}
               className="block mt-2 text-accent hover:text-accent-bright"
