@@ -211,6 +211,31 @@ export function getHealerType(abbreviation: string): HealerType | undefined {
 }
 
 /**
+ * Determines the effective healer type for a player based on their job and position.
+ *
+ * Logic:
+ * 1. If the player is a healer with a selected job, use that job's healer type
+ * 2. Fall back to position-based type (H1 = pure, H2 = barrier)
+ *
+ * @param role - Player's role (only 'healer' triggers job-based lookup)
+ * @param job - Selected job abbreviation (optional)
+ * @param position - Player position (e.g., 'H1', 'H2')
+ * @returns 'pure' or 'barrier' healer type
+ */
+export function getEffectiveHealerType(
+  role: string,
+  job: string | undefined,
+  position: string | undefined
+): HealerType {
+  if (role === 'healer' && job) {
+    // Use the selected healer job's type, falling back to position-based
+    return getHealerType(job) || (position === 'H1' ? 'pure' : 'barrier');
+  }
+  // Default to position-based (H1 = pure, H2 = barrier)
+  return position === 'H1' ? 'pure' : 'barrier';
+}
+
+/**
  * Get jobs for a template role (used for role-based player slot selection)
  * Template roles are more specific than base roles (e.g., pure-healer vs barrier-healer)
  */

@@ -42,8 +42,9 @@ export function getBannerState(
   userRole: MemberRole | null | undefined,
   userHasClaimedPlayer: boolean
 ): BannerState {
-  // Never show banner if viewer or not logged in
-  if (!currentUserId || userRole === 'viewer') return 'hidden';
+  // Never show banner if not logged in, no role, or viewer
+  // Note: null/undefined userRole means no membership (shouldn't see action prompts)
+  if (!currentUserId || !userRole || userRole === 'viewer') return 'hidden';
 
   const isUnclaimed = !player.userId;
   const isClaimedByMe = player.userId === currentUserId;
@@ -59,7 +60,7 @@ export function getBannerState(
     return 'unclaimed-member';
   }
 
-  // User sees their own card if no BiS
+  // User sees their own card if no BiS (only if they have a valid role)
   if (isClaimedByMe && !hasBiS) {
     return 'needs-bis';
   }

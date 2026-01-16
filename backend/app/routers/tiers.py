@@ -1018,6 +1018,11 @@ async def _assign_player_impl(
 
     Used by both admin-assign and owner-assign endpoints after their permission checks.
 
+    IMPORTANT: If the target user is already linked to another player in the same tier,
+    this function will automatically unlink them from that player before assigning them
+    to the new player. This allows reassignment without requiring a separate unlink step.
+    The frontend should warn users about this behavior before confirming reassignment.
+
     Args:
         session: Database session
         group_id: Static group ID
@@ -1030,7 +1035,7 @@ async def _assign_player_impl(
 
     Raises:
         NotFound: If player or target user not found
-        HTTPException: If user already linked to another player or invalid role
+        HTTPException: If invalid membership role provided
     """
     # Get player
     result = await session.execute(

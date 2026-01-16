@@ -209,10 +209,12 @@ export function AssignUserModal({
     setPendingReassignUserId(null);
   };
 
-  // Cancel reassignment
+  // Cancel reassignment - reset select to current player's userId
   const handleCancelReassign = () => {
     setShowReassignConfirm(false);
     setPendingReassignUserId(null);
+    // Reset the select back to the player's current assignment (or empty if unassigned)
+    setSelectedUserId(player.userId || '');
   };
 
   const handleAssign = async () => {

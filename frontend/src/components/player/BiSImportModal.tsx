@@ -90,8 +90,9 @@ const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier
   if (link.startsWith('bis|')) {
     const parts = link.split('|');
     if (parts.length >= 3) {
-      const index = parts.length >= 4 ? parseInt(parts[3], 10) : undefined;
-      return { type: 'bis', job: parts[1], tier: parts[2], index: isNaN(index as number) ? undefined : index };
+      const rawIndex = parts.length >= 4 ? parseInt(parts[3], 10) : undefined;
+      const index = rawIndex !== undefined && !Number.isNaN(rawIndex) ? rawIndex : undefined;
+      return { type: 'bis', job: parts[1], tier: parts[2], index };
     }
   } else if (link.startsWith('sl|')) {
     const uuid = link.slice(3);
@@ -140,8 +141,10 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                 // Match by githubTier and githubIndex (if index is present)
                 if (parsed.index !== undefined) {
                   // New format with index - exact match
+                  // Note: presets with undefined githubIndex are normalized to 0 when saving,
+                  // so we need to compare with that normalization in mind
                   matchIndex = response.presets.findIndex(
-                    p => p.githubTier === parsed.tier && p.githubIndex === parsed.index
+                    p => p.githubTier === parsed.tier && (p.githubIndex ?? 0) === parsed.index
                   );
                 } else {
                   // Legacy format without index - match first with same tier

@@ -11,7 +11,7 @@ import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
 import { Label } from '../ui/Label';
 import { Input } from '../ui/Input';
-import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, type JobInfo } from '../../gamedata';
+import { getRoleForJob, getJobsByRole, getRoleDisplayName, getJobDisplayName, getHealerType, getEffectiveHealerType, type JobInfo } from '../../gamedata';
 import type { WizardPlayer } from './types';
 
 // Expected role for each position
@@ -86,14 +86,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
   const bgColor = ROLE_BG_COLORS[player.role] || 'bg-surface-interactive';
 
   // Determine healer type: from selected job if healer is selected, otherwise from position
-  const effectiveHealerType = (() => {
-    if (player.role === 'healer' && player.job) {
-      // Use the selected healer job's type
-      return getHealerType(player.job) || (player.position === 'H1' ? 'pure' : 'barrier');
-    }
-    // Default to position-based (H1 = pure, H2 = barrier)
-    return player.position === 'H1' ? 'pure' : 'barrier';
-  })();
+  const effectiveHealerType = getEffectiveHealerType(player.role, player.job, player.position);
 
   // Get role-specific jobs for quick-select
   // For healers: show jobs matching the selected healer's type (or position-based default)
