@@ -5,11 +5,24 @@
  */
 
 import { useState } from 'react';
+import { Users } from 'lucide-react';
 import type { RaidPosition, SnapshotPlayer } from '../../types';
 import { RAID_POSITIONS } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
+
+// Position descriptions for tooltips
+const POSITION_INFO: Record<RaidPosition, { label: string; group: string; roleHint: string }> = {
+  T1: { label: 'Tank 1', group: 'Light Party 1 (G1)', roleHint: 'Usually MT' },
+  T2: { label: 'Tank 2', group: 'Light Party 2 (G2)', roleHint: 'Usually OT' },
+  H1: { label: 'Healer 1', group: 'Light Party 1 (G1)', roleHint: 'Pure healer preferred' },
+  H2: { label: 'Healer 2', group: 'Light Party 2 (G2)', roleHint: 'Shield healer preferred' },
+  M1: { label: 'Melee 1', group: 'Light Party 1 (G1)', roleHint: 'Any melee DPS' },
+  M2: { label: 'Melee 2', group: 'Light Party 2 (G2)', roleHint: 'Any melee DPS' },
+  R1: { label: 'Ranged 1', group: 'Light Party 1 (G1)', roleHint: 'Physical ranged or caster' },
+  R2: { label: 'Ranged 2', group: 'Light Party 2 (G2)', roleHint: 'Physical ranged or caster' },
+};
 
 interface PositionSelectorProps {
   position: RaidPosition | null | undefined;
@@ -93,11 +106,42 @@ export function PositionSelector({
     setOpen(false);
   };
 
+  // Get role color for tooltip icon
+  const getRoleColor = (pos: RaidPosition | null | undefined): string => {
+    if (!pos) return 'text-text-muted';
+    if (pos.startsWith('T')) return 'text-role-tank';
+    if (pos.startsWith('H')) return 'text-role-healer';
+    return 'text-role-melee';
+  };
+
   const tooltipContent = !editPermission.allowed
     ? editPermission.reason
     : position
-      ? `Position: ${position}`
-      : 'Click to set position';
+      ? (
+        <div className="flex items-start gap-2">
+          <Users className={`w-4 h-4 ${getRoleColor(position)} flex-shrink-0 mt-0.5`} />
+          <div>
+            <div className="font-medium">{POSITION_INFO[position].label} ({position})</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              {POSITION_INFO[position].group}
+            </div>
+            <div className="text-text-muted text-xs">
+              {POSITION_INFO[position].roleHint}
+            </div>
+          </div>
+        </div>
+      )
+      : (
+        <div className="flex items-start gap-2">
+          <Users className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Set Raid Position</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              Used for light party splits (G1/G2) and mechanics
+            </div>
+          </div>
+        </div>
+      );
 
   return (
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>

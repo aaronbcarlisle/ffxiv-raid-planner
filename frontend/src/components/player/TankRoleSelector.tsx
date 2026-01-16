@@ -5,10 +5,25 @@
  */
 
 import { useState } from 'react';
+import { Shield, ShieldAlert } from 'lucide-react';
 import type { TankRole, SnapshotPlayer } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
+
+// Tank role descriptions for tooltips
+const TANK_ROLE_INFO: Record<TankRole, { label: string; description: string; icon: typeof Shield }> = {
+  MT: {
+    label: 'Main Tank',
+    description: 'Primary aggro holder. Faces boss toward the party and handles tankbusters.',
+    icon: Shield,
+  },
+  OT: {
+    label: 'Off Tank',
+    description: 'Secondary tank. Handles adds, assists with tank swaps, and provides mitigation.',
+    icon: ShieldAlert,
+  },
+};
 
 interface TankRoleSelectorProps {
   tankRole: TankRole | null | undefined;
@@ -50,8 +65,31 @@ export function TankRoleSelector({
   const tooltipContent = !editPermission.allowed
     ? editPermission.reason
     : tankRole
-      ? `Tank role: ${tankRole}`
-      : 'Click to set MT/OT';
+      ? (
+        <div className="flex items-start gap-2">
+          {(() => {
+            const Icon = TANK_ROLE_INFO[tankRole].icon;
+            return <Icon className="w-4 h-4 text-role-tank flex-shrink-0 mt-0.5" />;
+          })()}
+          <div>
+            <div className="font-medium">{TANK_ROLE_INFO[tankRole].label} ({tankRole})</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              {TANK_ROLE_INFO[tankRole].description}
+            </div>
+          </div>
+        </div>
+      )
+      : (
+        <div className="flex items-start gap-2">
+          <Shield className="w-4 h-4 text-role-tank flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Set Tank Role</div>
+            <div className="text-text-secondary text-xs mt-0.5">
+              MT (Main Tank) or OT (Off Tank)
+            </div>
+          </div>
+        </div>
+      );
 
   return (
     <Popover open={open && editPermission.allowed} onOpenChange={setOpen}>
