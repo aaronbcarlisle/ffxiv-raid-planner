@@ -377,7 +377,7 @@ export function Header() {
           <div className={isGroupRoute && currentGroup ? 'border-l border-border-subtle pl-3' : ''}>
             {authLoading ? (
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
-            ) : isAuthenticated ? (
+            ) : user ? (
               <UserMenu />
             ) : (
               <LoginButton className="text-sm px-3 py-1.5" />

@@ -29,7 +29,7 @@ export function InviteAccept() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const navigate = useNavigate();
 
-  const { isAuthenticated, user, login } = useAuthStore();
+  const { user, login } = useAuthStore();
   const {
     preview,
     isLoading,
@@ -158,7 +158,7 @@ export function InviteAccept() {
         )}
 
         {/* Actions */}
-        {!isAuthenticated ? (
+        {!user ? (
           <div className="space-y-4">
             <p className="text-text-secondary text-sm text-center">
               Please log in with Discord to accept this invitation.

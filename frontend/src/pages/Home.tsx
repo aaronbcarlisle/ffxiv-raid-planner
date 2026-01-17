@@ -28,7 +28,7 @@ function getRecentStaticCodes(): string[] {
 
 export function Home() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const { groups, fetchGroups } = useStaticGroupStore();
   const [shareCode, setShareCode] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -119,7 +119,7 @@ export function Home() {
       <div className="mb-8">
         {isLoading ? (
           <div className="w-10 h-10 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        ) : isAuthenticated ? (
+        ) : user ? (
           <Link
             to="/dashboard"
             className="inline-block bg-accent text-bg-primary px-8 py-4 rounded-lg font-medium text-lg hover:bg-accent-bright transition-colors"
