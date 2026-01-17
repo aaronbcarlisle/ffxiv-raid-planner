@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Prevent npm lockfile (we use pnpm)
+package-lock.json
 dist-ssr
 *.local
 

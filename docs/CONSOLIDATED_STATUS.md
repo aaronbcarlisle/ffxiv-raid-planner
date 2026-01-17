@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 16, 2026 (v1.0.10 Complete)
+**Last Updated:** January 17, 2026 (Security Audit Sessions 1-3 Complete)
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -58,6 +58,29 @@
 ---
 
 ## Version History
+
+### Security Audit - Sessions 1-3 (January 17, 2026)
+
+**PR #31 - Session 1 & 2: Critical Security Fixes**
+
+| Issue | Status | Description |
+|-------|--------|-------------|
+| **P0-SEC-001** | ✅ Fixed | JWT tokens now only in httpOnly cookies by default |
+| **P0-SEC-002** | ✅ Fixed | Local cache fallback enforces TTL expiration |
+| **P0-SEC-003** | ✅ Fixed | X-Forwarded-For only trusted from configured proxy IPs |
+| **C-001** | ✅ Fixed | Admin dashboard N+1 query uses scalar subqueries |
+
+**PR #32 - Session 3: Dependency Security**
+
+| Issue | Status | Description |
+|-------|--------|-------------|
+| **P1-SEC-001** | ✅ Fixed | react-router-dom 7.11.0 → 7.12.0 (CVE fixes) |
+| **P1-DEVOPS-001** | ✅ Fixed | Removed dual lockfiles, standardized on pnpm |
+| **P1-SEC-004** | ⏭️ N/A | ecdsa CVE not exploitable (we use HS256, not ECDSA) |
+
+**Test Coverage:** 191 backend + 351 frontend = 542 tests passing
+
+---
 
 ### v1.0.10 - Loot Priority UX & Score Tooltips (January 16, 2026)
 
@@ -265,9 +288,10 @@ See `docs/SETUP_WIZARD_PLAN.md` for implementation details.
 
 ### Technical Debt (See OUTSTANDING_WORK.md)
 
-- **C-001:** N+1 Query in Admin Dashboard (Critical)
 - **H-001-H-005:** Security headers, SSRF fix, pagination, indexes, request IDs
-- **Audit Sessions 1-12:** Combined audit plan in `docs/plans/`
+- **Audit Sessions 4-12:** Combined audit plan in `docs/plans/`
+
+*Note: C-001 (N+1 Query) fixed in Session 1 & 2. Sessions 1-3 complete.*
 
 ---
 

@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 16, 2026 (Documentation Audit)
+**Last Updated:** January 17, 2026 (Session 3 Complete)
 **Current Version:** v1.0.10
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -10,7 +10,7 @@
 
 | Priority | Count | Estimated Hours |
 |----------|-------|-----------------|
-| **Critical (P0)** | 1 | 3 |
+| **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 5 | 11 |
 | **Medium (P2)** | 14 | 22 |
 | **Low (P3)** | 8 | 15 |
@@ -22,12 +22,7 @@
 
 ## Critical Priority (P0) - Must Fix Immediately
 
-### C-001: N+1 Query in Admin Dashboard
-- **File:** `backend/app/routers/static_groups.py:359-445`
-- **Issue:** Builds subqueries for counts but never uses them in SELECT. Instead, eager loads `tier_snapshots` and `memberships` collections, then counts them in Python. Causes 5-10+ second load times for large datasets.
-- **Root Cause:** Lines 374-381 use `selectinload()` instead of using the subquery counts in `.add_columns()`
-- **Fix:** Add subqueries to SELECT statement and remove eager loading of collections
-- **Effort:** 3 hours
+*No critical issues remaining. See "Recently Verified as Complete" for resolved items.*
 
 ---
 
@@ -314,7 +309,26 @@ These are ESLint errors that don't affect functionality but should be addressed 
 
 ---
 
-## Recently Verified as Complete (v1.0.8)
+## Recently Verified as Complete (v1.0.8+)
+
+### Session 3: Dependency Security (January 17, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **P1-SEC-001: React Router CVEs** | ✅ FIXED | Updated 7.11.0 → 7.12.0, fixes GHSA-h5cw-625j-3rxh (CSRF) and GHSA-2w69-qvjg-hvjx (XSS) |
+| **P1-DEVOPS-001: Dual Lockfiles** | ✅ FIXED | Removed package-lock.json, added to .gitignore, standardized on pnpm |
+| **P1-SEC-004: ecdsa CVE** | ⏭️ N/A | Not exploitable - we use HS256 for JWT, not ECDSA algorithms. CVE-2024-23342 requires ECDSA usage. |
+
+### Session 1 & 2: Critical Security (January 17, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **P0-SEC-001: JWT in Response Body** | ✅ FIXED | Tokens now only in httpOnly cookies by default |
+| **P0-SEC-002: Cache TTL Enforcement** | ✅ FIXED | Local cache fallback now enforces TTL expiration |
+| **P0-SEC-003: Trusted Proxy Validation** | ✅ FIXED | X-Forwarded-For only trusted from configured proxy IPs |
+| **C-001: N+1 Query in Admin Dashboard** | ✅ FIXED | Uses scalar subqueries instead of eager loading |
+
+### v1.0.8 Completions
 
 The following items were validated against the actual codebase and confirmed as fixed:
 
