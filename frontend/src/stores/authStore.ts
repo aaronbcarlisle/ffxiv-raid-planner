@@ -6,6 +6,7 @@
  * The frontend never has direct access to tokens - they're sent automatically via cookies.
  */
 
+import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, DiscordAuthUrl } from '../types';
@@ -371,6 +372,25 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+/**
+ * Hook to check if the auth store has been hydrated from localStorage.
+ * Use this to prevent flash of unauthenticated content on page load.
+ *
+ * Uses React's useSyncExternalStore for race-condition-free subscription
+ * to Zustand's hydration state. This properly handles the edge case where
+ * hydration might complete between initial render and effect subscription.
+ */
+export function useAuthHydrated(): boolean {
+  return useSyncExternalStore(
+    // Subscribe function - called when React needs to listen for changes
+    (onStoreChange) => useAuthStore.persist.onFinishHydration(onStoreChange),
+    // Get snapshot - returns current hydration state
+    () => useAuthStore.persist.hasHydrated(),
+    // Get server snapshot - for SSR (always false since no localStorage)
+    () => false
+  );
+}
 
 /**
  * Initialize auth on app load.
