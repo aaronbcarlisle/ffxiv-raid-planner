@@ -195,3 +195,84 @@ class TestSSRFProtection:
             result = await fetch_bis_from_github("drg", "current")
 
             assert result == {"sets": [{"name": "Test Set", "items": {}}]}
+
+
+class TestOAuthSSRFProtection:
+    """Test SSRF protection in Discord OAuth endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_token_exchange_rejects_redirect(self, client):
+        """Discord token exchange should reject redirects."""
+        with (
+            patch("app.routers.auth.get_settings") as mock_settings,
+            patch("app.routers.auth.oauth_state_cache") as mock_cache,
+            patch("httpx.AsyncClient") as mock_client_class,
+        ):
+            # Configure settings
+            mock_settings.return_value.discord_client_id = "test-client-id"
+            mock_settings.return_value.discord_client_secret = "test-secret"
+            mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
+
+            # Make state valid
+            mock_cache.exists = AsyncMock(return_value=True)
+            mock_cache.delete = AsyncMock()
+
+            # Mock httpx to return a redirect
+            mock_response = MagicMock()
+            mock_response.status_code = 302
+
+            mock_http_client = AsyncMock()
+            mock_http_client.post.return_value = mock_response
+            mock_http_client.__aenter__.return_value = mock_http_client
+            mock_http_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_http_client
+
+            response = await client.post(
+                "/api/auth/discord/callback",
+                json={"code": "test-code", "state": "test-state"},
+            )
+
+            # Should reject with 502 due to redirect
+            assert response.status_code == 502
+            assert "redirect" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_user_info_rejects_redirect(self, client):
+        """Discord user info endpoint should reject redirects."""
+        with (
+            patch("app.routers.auth.get_settings") as mock_settings,
+            patch("app.routers.auth.oauth_state_cache") as mock_cache,
+            patch("httpx.AsyncClient") as mock_client_class,
+        ):
+            # Configure settings
+            mock_settings.return_value.discord_client_id = "test-client-id"
+            mock_settings.return_value.discord_client_secret = "test-secret"
+            mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
+
+            # Make state valid
+            mock_cache.exists = AsyncMock(return_value=True)
+            mock_cache.delete = AsyncMock()
+
+            # Mock httpx: token exchange succeeds, user info returns redirect
+            token_response = MagicMock()
+            token_response.status_code = 200
+            token_response.json.return_value = {"access_token": "test-token"}
+
+            user_response = MagicMock()
+            user_response.status_code = 307  # Temporary redirect
+
+            mock_http_client = AsyncMock()
+            mock_http_client.post.return_value = token_response
+            mock_http_client.get.return_value = user_response
+            mock_http_client.__aenter__.return_value = mock_http_client
+            mock_http_client.__aexit__.return_value = None
+            mock_client_class.return_value = mock_http_client
+
+            response = await client.post(
+                "/api/auth/discord/callback",
+                json={"code": "test-code", "state": "test-state"},
+            )
+
+            # Should reject with 502 due to redirect
+            assert response.status_code == 502
+            assert "redirect" in response.json()["detail"].lower()

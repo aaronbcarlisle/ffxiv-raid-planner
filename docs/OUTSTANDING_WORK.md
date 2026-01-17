@@ -16,7 +16,7 @@
 | **Low (P3)** | 9 | 23 |
 | **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 38 | ~69 hrs |
+| **Total** | 36 | ~61 hrs |
 
 ---
 
