@@ -30,8 +30,9 @@ let refreshPromise: Promise<boolean> | null = null;
 /**
  * Timer ID for proactive token refresh.
  * Refreshes the token before it expires to prevent 401/403 errors.
+ * Uses `number` type for browser setTimeout (not NodeJS.Timeout).
  */
-let refreshTimerId: ReturnType<typeof setTimeout> | null = null;
+let refreshTimerId: number | null = null;
 
 /**
  * How many seconds before expiry to refresh the token.
