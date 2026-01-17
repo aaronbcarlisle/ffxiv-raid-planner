@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 17, 2026 (Session 3 Complete)
+**Last Updated:** January 17, 2026 (Session 4 Complete)
 **Current Version:** v1.0.10
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -11,9 +11,9 @@
 | Priority | Count | Estimated Hours |
 |----------|-------|-----------------|
 | **Critical (P0)** | 0 | 0 |
-| **High (P1)** | 5 | 11 |
+| **High (P1)** | 3 | 5 |
 | **Medium (P2)** | 14 | 22 |
-| **Low (P3)** | 8 | 15 |
+| **Low (P3)** | 9 | 16 |
 | **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
 | **Total** | 38 | ~62 hrs |
@@ -27,20 +27,6 @@
 ---
 
 ## High Priority (P1) - Complete This Sprint
-
-### H-001: Missing Content-Security-Policy Header
-- **File:** `backend/app/middleware/security.py`
-- **Status:** SecurityHeadersMiddleware implements 6 headers but NO CSP
-- **Issue:** No browser-level XSS protection for user-generated content
-- **Fix:** Add CSP header with appropriate directives for SPA
-- **Effort:** 2 hours
-
-### H-002: SSRF Vulnerability in BiS Import (Partial)
-- **File:** `backend/app/routers/bis.py:220, 333, 357, 407`
-- **Status:** URLs are hardcoded (good) but `follow_redirects` not disabled
-- **Issue:** `httpx.AsyncClient()` follows redirects by default, could be exploited
-- **Fix:** Add `follow_redirects=False` to all AsyncClient instances
-- **Effort:** 30 minutes
 
 ### H-003: No Pagination on Loot Log Endpoint
 - **File:** `backend/app/routers/loot_tracking.py:93-147`
@@ -214,6 +200,13 @@
   3. View As state race condition - add cancellation (low impact)
 - **Effort:** 1 hour
 
+### L-009: Etro Relic Weapon Import
+- **File:** `backend/app/routers/bis.py:405-427`
+- **Issue:** Etro stores relic weapons in a separate `relics` object, not the main `weapon` field
+- **Impact:** Ultimate BiS sets with relic weapons import without weapon data
+- **Fix:** Check `data.get("relics", {}).get("weapon")` UUID and resolve to item ID
+- **Effort:** 1 hour
+
 ---
 
 ## Technical Debt - Lint Issues (P3)
@@ -310,6 +303,13 @@ These are ESLint errors that don't affect functionality but should be addressed 
 ---
 
 ## Recently Verified as Complete (v1.0.8+)
+
+### Session 4: Security Headers & SSRF (January 17, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **H-001: Content-Security-Policy** | ✅ FIXED | Added CSP header with strict directives for SPA |
+| **H-002: SSRF in BiS Import** | ✅ FIXED | Disabled httpx redirects in all 4 external API calls |
 
 ### Session 3: Dependency Security (January 17, 2026)
 

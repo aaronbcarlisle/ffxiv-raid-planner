@@ -46,12 +46,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
             # Content Security Policy
             # Restricts sources for scripts, styles, images, and connections
+            # Note: External API calls (xivgear, etro, garland) go through our backend,
+            # so frontend only needs to connect to 'self'
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; "
                 "style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: https://xivapi.com https://cdn.discordapp.com; "
-                "connect-src 'self' https://api.xivgear.app https://www.garlandtools.org https://etro.gg; "
+                "connect-src 'self'; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
                 "form-action 'self'"
