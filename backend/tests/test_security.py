@@ -37,7 +37,7 @@ class TestContentSecurityPolicy:
 
             assert response.status_code == 200
             # In development, CSP should not be added
-            # Note: The middleware checks settings at request time
+            assert "Content-Security-Policy" not in response.headers
 
     @pytest.mark.asyncio
     async def test_csp_contains_required_directives(self, client):
@@ -47,34 +47,37 @@ class TestContentSecurityPolicy:
 
             response = await client.get("/health")
 
-            if "Content-Security-Policy" in response.headers:
-                csp = response.headers["Content-Security-Policy"]
+            # CSP must be present in production mode
+            assert "Content-Security-Policy" in response.headers, (
+                "CSP header missing in production mode"
+            )
+            csp = response.headers["Content-Security-Policy"]
 
-                # Check required directives
-                assert "default-src 'self'" in csp
-                assert "script-src 'self'" in csp
-                assert "object-src 'none'" in csp
-                assert "frame-ancestors 'none'" in csp
-                assert "base-uri 'self'" in csp
-                assert "form-action 'self'" in csp
+            # Check required directives
+            assert "default-src 'self'" in csp
+            assert "script-src 'self'" in csp
+            assert "object-src 'none'" in csp
+            assert "frame-ancestors 'none'" in csp
+            assert "base-uri 'self'" in csp
+            assert "form-action 'self'" in csp
 
-                # Parse CSP into directives to avoid relying on directive order
-                directives = {}
-                for directive in csp.split(";"):
-                    directive = directive.strip()
-                    if not directive:
-                        continue
-                    parts = directive.split()
-                    name = parts[0]
-                    directives[name] = parts[1:]
+            # Parse CSP into directives to avoid relying on directive order
+            directives = {}
+            for directive in csp.split(";"):
+                directive = directive.strip()
+                if not directive:
+                    continue
+                parts = directive.split()
+                name = parts[0]
+                directives[name] = parts[1:]
 
-                script_src_values = directives.get("script-src", [])
-                style_src_values = directives.get("style-src", [])
+            script_src_values = directives.get("script-src", [])
+            style_src_values = directives.get("style-src", [])
 
-                # Verify unsafe-inline is NOT in script-src
-                # (it's allowed in style-src for Tailwind)
-                assert "'unsafe-inline'" not in script_src_values
-                assert "'unsafe-inline'" in style_src_values
+            # Verify unsafe-inline is NOT in script-src
+            # (it's allowed in style-src for Tailwind)
+            assert "'unsafe-inline'" not in script_src_values
+            assert "'unsafe-inline'" in style_src_values
 
 
 class TestSSRFProtection:
