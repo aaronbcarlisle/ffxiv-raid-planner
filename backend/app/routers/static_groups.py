@@ -372,14 +372,15 @@ async def list_all_static_groups_admin(
         .scalar_subquery()
     )
 
-    # Build base query with eager loading
+    # Build base query with scalar subqueries for counts (avoiding N+1)
+    # Only eager load owner relationship - counts come from subqueries
     query = (
-        select(StaticGroup)
-        .options(
-            selectinload(StaticGroup.owner),
-            selectinload(StaticGroup.tier_snapshots),
-            selectinload(StaticGroup.memberships),
+        select(
+            StaticGroup,
+            member_count_subq.label("member_count"),
+            tier_count_subq.label("tier_count"),
         )
+        .options(selectinload(StaticGroup.owner))
     )
 
     # For owner sorting, we need to join the User table
@@ -428,29 +429,35 @@ async def list_all_static_groups_admin(
     query = query.offset(offset).limit(limit)
 
     result = await session.execute(query)
-    groups = result.unique().scalars().all()
+    rows = result.unique().all()
 
-    items = [
-        AdminStaticGroupListItem(
-            id=group.id,
-            name=group.name,
-            share_code=group.share_code,
-            is_public=group.is_public,
-            owner_id=group.owner_id,
-            owner=OwnerInfo(
-                id=group.owner.id,
-                discord_username=group.owner.discord_username,
-                discord_avatar=group.owner.discord_avatar,
-                avatar_url=group.owner.avatar_url,
-                display_name=group.owner.display_name,
-            ) if group.owner else None,
-            member_count=group.member_count,
-            tier_count=len(group.tier_snapshots) if group.tier_snapshots else 0,
-            created_at=group.created_at,
-            updated_at=group.updated_at,
+    items = []
+    for row in rows:
+        # Unpack: (StaticGroup, member_count, tier_count)
+        group = row[0]
+        member_count = row[1]
+        tier_count = row[2]
+
+        items.append(
+            AdminStaticGroupListItem(
+                id=group.id,
+                name=group.name,
+                share_code=group.share_code,
+                is_public=group.is_public,
+                owner_id=group.owner_id,
+                owner=OwnerInfo(
+                    id=group.owner.id,
+                    discord_username=group.owner.discord_username,
+                    discord_avatar=group.owner.discord_avatar,
+                    avatar_url=group.owner.avatar_url,
+                    display_name=group.owner.display_name,
+                ) if group.owner else None,
+                member_count=member_count,
+                tier_count=tier_count,
+                created_at=group.created_at,
+                updated_at=group.updated_at,
+            )
         )
-        for group in groups
-    ]
 
     return AdminStaticGroupListResponse(
         items=items,
