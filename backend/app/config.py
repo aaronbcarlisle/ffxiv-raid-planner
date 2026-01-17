@@ -91,6 +91,19 @@ class Settings(BaseSettings):
     # Example: "123456789012345678,987654321098765432"
     admin_discord_ids: str = ""
 
+    # Trusted proxy IPs (comma-separated) - only these IPs can set
+    # X-Forwarded-For and X-Real-IP headers for rate limiting.
+    # This prevents rate limit bypass by spoofing client IP.
+    # Example: "10.0.0.1,10.0.0.2" or "127.0.0.1" for local proxy
+    trusted_proxy_ips: str = ""
+
+    @property
+    def trusted_proxy_ips_list(self) -> list[str]:
+        """Parse comma-separated trusted proxy IPs into a list."""
+        if not self.trusted_proxy_ips:
+            return []
+        return [ip.strip() for ip in self.trusted_proxy_ips.split(",") if ip.strip()]
+
     @property
     def admin_discord_ids_list(self) -> list[str]:
         """Parse comma-separated admin Discord IDs into a list."""
