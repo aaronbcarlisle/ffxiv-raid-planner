@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, LootLogEntry
 
 
 async def create_user(
@@ -152,6 +152,39 @@ async def create_snapshot_player(
     session.add(player)
     await session.flush()
     return player
+
+
+async def create_loot_log_entry(
+    session: AsyncSession,
+    tier_snapshot: TierSnapshot,
+    recipient_player: SnapshotPlayer,
+    created_by: User,
+    *,
+    week_number: int = 1,
+    floor: str = "M9S",
+    item_slot: str = "head",
+    method: str = "drop",
+    notes: str | None = None,
+    weapon_job: str | None = None,
+    is_extra: bool = False,
+) -> LootLogEntry:
+    """Create a loot log entry for testing."""
+    entry = LootLogEntry(
+        tier_snapshot_id=tier_snapshot.id,
+        week_number=week_number,
+        floor=floor,
+        item_slot=item_slot,
+        recipient_player_id=recipient_player.id,
+        method=method,
+        notes=notes,
+        weapon_job=weapon_job,
+        is_extra=is_extra,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        created_by_user_id=created_by.id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry
 
 
 def _generate_share_code() -> str:
