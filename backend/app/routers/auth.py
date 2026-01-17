@@ -36,6 +36,19 @@ DISCORD_OAUTH_URL = "https://discord.com/oauth2/authorize"
 DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token"
 
 
+def wants_legacy_tokens(request: Request) -> bool:
+    """Check if client explicitly requests tokens in response body (legacy mode).
+
+    By default, tokens are only set in httpOnly cookies for security.
+    Legacy mode can be enabled via:
+    - X-Legacy-Token-Response: 1 header
+    - ?legacyTokens=true query parameter
+    """
+    hdr = request.headers.get("X-Legacy-Token-Response", "")
+    qry = request.query_params.get("legacyTokens", "")
+    return hdr == "1" or qry.lower() == "true"
+
+
 @router.get("/discord", response_model=DiscordAuthUrl)
 @limiter.limit(RATE_LIMITS["auth"])
 async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
@@ -196,11 +209,16 @@ async def discord_callback(
         path="/",
     )
 
-    # Still return tokens in body for backward compatibility during transition
-    # TODO: Remove after all clients migrate to cookie-based auth
+    # Only return tokens in body if explicitly requested (legacy mode)
+    # By default, tokens are only set in httpOnly cookies for security
+    if wants_legacy_tokens(request):
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=settings.jwt_access_token_expire_minutes * 60,
+        )
+
     return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
         expires_in=settings.jwt_access_token_expire_minutes * 60,
     )
 
@@ -272,10 +290,15 @@ async def refresh_access_token(
         path="/",
     )
 
-    # Return tokens in body for backward compatibility
+    # Only return tokens in body if explicitly requested (legacy mode)
+    if wants_legacy_tokens(request):
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            expires_in=settings.jwt_access_token_expire_minutes * 60,
+        )
+
     return TokenResponse(
-        access_token=access_token,
-        refresh_token=new_refresh_token,
         expires_in=settings.jwt_access_token_expire_minutes * 60,
     )
 
