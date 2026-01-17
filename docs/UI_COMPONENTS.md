@@ -15,6 +15,8 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Tank role (MT/OT) | `TankRoleSelector` | `components/player/TankRoleSelector.tsx` |
 | Text input | `Input` | `components/ui/Input.tsx` |
 | Dropdown select | `Select` | `components/ui/Select.tsx` |
+| Searchable dropdown | `SearchableSelect` | `components/ui/SearchableSelect.tsx` |
+| Categorized dropdown | `SearchableSelect` + `groupOrder` | `components/ui/SearchableSelect.tsx` |
 | Checkbox | `Checkbox` | `components/ui/Checkbox.tsx` |
 | Modal dialog | `Modal` | `components/ui/Modal.tsx` |
 | Confirmation dialog | `ConfirmModal` | `components/ui/ConfirmModal.tsx` |
@@ -366,9 +368,112 @@ const roleOptions = [
 />
 ```
 
-**When to use:** Single-value dropdown selection.
+**When to use:** Single-value dropdown selection with small lists.
 
 **Never use:** Raw `<select>` elements.
+
+---
+
+### SearchableSelect
+
+**Path:** `components/ui/SearchableSelect.tsx`
+
+**Purpose:** Filterable dropdown for large lists. Supports grouped/categorized options with colored headers.
+
+**Props:**
+```typescript
+interface GroupConfig {
+  name: string;      // Group name (matches option.group values)
+  color?: string;    // CSS color for header (e.g., 'var(--color-membership-owner)')
+}
+
+interface SelectOption {
+  value: string;
+  label: string;
+  icon?: ReactNode;
+  group?: string;    // Group name for categorization
+}
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  disabled?: boolean;
+  clearable?: boolean;
+  emptyMessage?: string;
+  groupOrder?: (string | GroupConfig)[];  // Order and styling of groups
+}
+```
+
+**Basic Usage:**
+```tsx
+import { SearchableSelect } from '../components/ui/SearchableSelect';
+
+const userOptions = users.map(u => ({
+  value: u.id,
+  label: u.displayName,
+  icon: <RoleBadge role={u.role} />,
+}));
+
+<SearchableSelect
+  value={selectedUserId}
+  onChange={setSelectedUserId}
+  options={userOptions}
+  placeholder="Select user..."
+  searchPlaceholder="Search by name..."
+  emptyMessage="No matching users"
+/>
+```
+
+**Grouped/Categorized Usage:**
+```tsx
+// Define group configuration with colors
+const GROUP_CONFIG = {
+  owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
+  lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
+  member: { name: 'Members', color: 'var(--color-membership-member)' },
+  linked: { name: 'Linked Users', color: 'var(--color-membership-linked)' },
+};
+
+// Options with group assignment
+const userOptions = users.map(u => ({
+  value: u.id,
+  label: u.displayName,
+  icon: <RoleBadge role={u.role} />,
+  group: GROUP_CONFIG[u.role].name,  // Must match GroupConfig.name
+}));
+
+// Group order with colors
+const groupOrder = ['owner', 'lead', 'member', 'linked'].map(r => GROUP_CONFIG[r]);
+
+<SearchableSelect
+  value={selectedUserId}
+  onChange={setSelectedUserId}
+  options={userOptions}
+  groupOrder={groupOrder}
+  placeholder="Select user..."
+  searchPlaceholder="Search by name..."
+/>
+```
+
+**Grouped Dropdown Features:**
+- **Sticky Headers**: Group headers stay visible while scrolling within that section
+- **Colored Headers**: Each group can have its own color (uses CSS variables)
+- **Smart Filtering**: Search matches both option labels AND group names (type "owner" to see all owners)
+- **Keyboard Navigation**: Arrow keys work across groups seamlessly
+- **Subtle Highlighting**: Keyboard selection uses `color-mix` with group color at 15% opacity
+
+**Styling Details:**
+- Dropdown background: `bg-surface-raised` (dark)
+- Search input: `bg-surface-base` (darker)
+- Headers: `bg-surface-raised` with colored text
+- Hover/highlight: `bg-white/5` or `color-mix(in srgb, {groupColor} 15%, transparent)`
+
+**When to use:** Dropdown selection with many options (10+), especially when options have natural categories.
+
+**When NOT to use:** Small lists where regular `Select` is sufficient.
 
 ---
 
@@ -970,7 +1075,9 @@ Add `// design-system-ignore` comment to ignore intentional exceptions:
 
 **Need a dropdown?**
 → Action menu: `Dropdown` + `DropdownItem`
-→ Single value: `Select`
+→ Single value (small list): `Select`
+→ Large searchable list: `SearchableSelect`
+→ Categorized list: `SearchableSelect` + `groupOrder`
 → Custom content: `Popover`
 
 **Need a modal?**

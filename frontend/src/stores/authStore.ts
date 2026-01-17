@@ -27,6 +27,67 @@ if (isProduction && isLocalhostApi) {
  */
 let refreshPromise: Promise<boolean> | null = null;
 
+/**
+ * Timer ID for proactive token refresh.
+ * Refreshes the token before it expires to prevent 401/403 errors.
+ * Uses `number` type for browser setTimeout (not NodeJS.Timeout).
+ */
+let refreshTimerId: number | null = null;
+
+/**
+ * How many seconds before expiry to refresh the token.
+ * Refreshing 60 seconds early provides a buffer for network latency.
+ */
+const REFRESH_BUFFER_SECONDS = 60;
+
+/**
+ * Response from token endpoints (callback, refresh)
+ */
+interface TokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number; // seconds until access token expires
+}
+
+/**
+ * Schedule a proactive token refresh before the current token expires.
+ * Clears any existing scheduled refresh first.
+ *
+ * @param expiresIn - Seconds until the token expires
+ * @param refreshFn - Function to call to refresh the token
+ */
+function scheduleTokenRefresh(expiresIn: number, refreshFn: () => Promise<boolean>): void {
+  // Clear any existing timer
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+
+  // Calculate when to refresh (expiresIn - buffer, minimum 10 seconds)
+  const refreshInSeconds = Math.max(expiresIn - REFRESH_BUFFER_SECONDS, 10);
+  const refreshInMs = refreshInSeconds * 1000;
+
+  refreshTimerId = window.setTimeout(async () => {
+    refreshTimerId = null;
+    try {
+      await refreshFn();
+    } catch (error) {
+      console.error('[Auth] Proactive token refresh failed:', error);
+    }
+  }, refreshInMs);
+}
+
+/**
+ * Cancel any scheduled proactive token refresh.
+ */
+function cancelScheduledRefresh(): void {
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+}
+
 interface AuthState {
   // User state
   user: User | null;
@@ -129,16 +190,21 @@ export const useAuthStore = create<AuthState>()(
           sessionStorage.removeItem('oauth_state');
 
           // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
-          await authRequest('/api/auth/discord/callback', {
+          const tokenResponse = await authRequest<TokenResponse>('/api/auth/discord/callback', {
             method: 'POST',
             body: JSON.stringify({ code, state }),
           });
 
           set({ isAuthenticated: true });
 
+          // Schedule proactive token refresh before expiry
+          scheduleTokenRefresh(tokenResponse.expiresIn, get().refreshAccessToken);
+
           // Fetch user info
           await get().fetchUser();
         } catch (error) {
+          // Cancel any scheduled refresh since login failed
+          cancelScheduledRefresh();
           set({
             error: error instanceof Error ? error.message : 'Failed to complete login',
             isLoading: false,
@@ -175,6 +241,9 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // Network error - cookies may remain but we clear local state
         } finally {
+          // Cancel any scheduled token refresh
+          cancelScheduledRefresh();
+
           // Clear local state regardless of API result
           set({
             user: null,
@@ -192,6 +261,8 @@ export const useAuthStore = create<AuthState>()(
        * When many API calls fail with 401 simultaneously (e.g., on page load after
        * token expiration), they all share the same refresh request instead of each
        * making their own. This prevents rate limiting issues and race conditions.
+       *
+       * On success, schedules the next proactive refresh before the new token expires.
        *
        * Note: Uses fetch directly instead of authRequest to prevent infinite
        * recursion (authRequest calls refreshAccessToken on 401).
@@ -216,9 +287,16 @@ export const useAuthStore = create<AuthState>()(
               throw new Error('Refresh failed');
             }
 
+            // Parse response to get new token expiry
+            const tokenResponse: TokenResponse = await response.json();
+
+            // Schedule next proactive refresh before the new token expires
+            scheduleTokenRefresh(tokenResponse.expiresIn, get().refreshAccessToken);
+
             return true;
           } catch {
-            // Refresh failed - log out user
+            // Refresh failed - cancel any scheduled refresh and log out user
+            cancelScheduledRefresh();
             set({
               user: null,
               isAuthenticated: false,
@@ -301,10 +379,13 @@ export const useAuthStore = create<AuthState>()(
  * With httpOnly cookies, we can't check token expiration client-side.
  * Instead, we simply try to fetch the user - if cookies are valid, it works.
  * If not, the backend will return 401 and we'll try to refresh.
+ *
+ * After successful authentication, schedules proactive token refresh
+ * to prevent 401/403 errors during the session.
  */
 export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  const { user, fetchUser } = state;
+  const { user, fetchUser, refreshAccessToken } = state;
 
   // Warn in console if in production with localhost API
   if (isProduction && isLocalhostApi) {
@@ -318,5 +399,17 @@ export async function initializeAuth(): Promise<void> {
   // This handles the case where httpOnly cookies have expired
   if (user) {
     await fetchUser();
+
+    // If still authenticated after fetchUser, do a proactive refresh to
+    // establish the refresh schedule. This ensures we know when to refresh
+    // even if the initial fetchUser succeeded with an existing valid token.
+    const currentState = useAuthStore.getState();
+    if (currentState.isAuthenticated) {
+      // Await refresh to ensure consistent auth state; silent catch since
+      // failure just means user will re-auth on first API call
+      await refreshAccessToken().catch(() => {
+        // Silent - will re-auth on first API call if needed
+      });
+    }
   }
 }

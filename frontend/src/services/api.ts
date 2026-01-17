@@ -45,6 +45,30 @@ function extractErrorMessage(response: Response, fallback: string): Promise<stri
     .catch(() => fallback);
 }
 
+/**
+ * Patterns that indicate a 403 is actually an authentication issue
+ * (e.g., from get_current_user_optional returning None for expired tokens)
+ * rather than a true permission/authorization issue.
+ */
+const AUTH_RELATED_403_PATTERNS = [
+  'log in',
+  'login',
+  'authenticated',
+  'authentication',
+  'session expired',
+  'session invalid',
+];
+
+/**
+ * Check if a 403 error message indicates an authentication issue
+ * rather than a true authorization/permission issue.
+ * @internal Exported for testing
+ */
+export function isAuthRelated403(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  return AUTH_RELATED_403_PATTERNS.some((pattern) => lowerMessage.includes(pattern));
+}
+
 // ==================== Authenticated Request ====================
 
 /**
@@ -75,8 +99,14 @@ export async function authRequest<T>(
   if (!response.ok) {
     const message = await extractErrorMessage(response, `HTTP ${response.status}`);
 
-    // If unauthorized, try refreshing token
-    if (response.status === 401) {
+    // Determine if we should attempt token refresh:
+    // - 401: Always try refresh (explicit auth failure)
+    // - 403: Only if the error message indicates an auth issue
+    //        (e.g., "Please log in" from get_current_user_optional returning None)
+    const shouldAttemptRefresh =
+      response.status === 401 || (response.status === 403 && isAuthRelated403(message));
+
+    if (shouldAttemptRefresh) {
       const refreshed = await useAuthStore.getState().refreshAccessToken();
       if (refreshed) {
         // Retry with cookies (new tokens set by refresh endpoint)
@@ -95,7 +125,7 @@ export async function authRequest<T>(
             `HTTP ${retryResponse.status}`
           );
 
-          // Show toast for permission errors
+          // Show toast for permission errors (true 403s after refresh)
           if (retryResponse.status === 403) {
             toast.error(retryMessage);
           }
@@ -111,8 +141,8 @@ export async function authRequest<T>(
       }
     }
 
-    // Show toast for permission errors
-    if (response.status === 403) {
+    // Show toast for permission errors (true 403s, not auth-related)
+    if (response.status === 403 && !isAuthRelated403(message)) {
       toast.error(message);
     }
 

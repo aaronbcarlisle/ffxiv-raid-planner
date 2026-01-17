@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderOpen, Copy, Settings, Trash2, LayoutGrid, List } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
@@ -55,32 +55,105 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { groups, isLoading, error, fetchGroups, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateWizard, setShowCreateWizard] = useState(false);
 
-  // View mode state (grid or list) - persisted to localStorage
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    const saved = localStorage.getItem('dashboard-view-mode');
-    return saved === 'list' ? 'list' : 'grid';
+  // View mode state (grid or list)
+  // Priority: URL param > localStorage > default
+  const [viewMode, setViewModeState] = useState<'grid' | 'list'>(() => {
+    const urlView = searchParams.get('view');
+    if (urlView === 'grid' || urlView === 'list') return urlView;
+    try {
+      const saved = localStorage.getItem('dashboard-view-mode');
+      return saved === 'list' ? 'list' : 'grid';
+    } catch {
+      return 'grid';
+    }
   });
 
-  // Sort mode state - persisted to localStorage
-  const [sortMode, setSortMode] = useState<DashboardSort>(() => {
-    const saved = localStorage.getItem('dashboard-sort-mode');
-    return (saved as DashboardSort) || 'recent';
+  // Sort mode state
+  // Priority: URL param > localStorage > default
+  const [sortMode, setSortModeState] = useState<DashboardSort>(() => {
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'recent' || urlSort === 'updated' || urlSort === 'alphabetical') return urlSort;
+    try {
+      const saved = localStorage.getItem('dashboard-sort-mode');
+      return (saved as DashboardSort) || 'recent';
+    } catch {
+      return 'recent';
+    }
   });
 
-  // Persist view mode to localStorage
+  // Sync state when URL params change externally (e.g., browser back/forward)
   useEffect(() => {
-    localStorage.setItem('dashboard-view-mode', viewMode);
-  }, [viewMode]);
+    const urlView = searchParams.get('view');
+    if (urlView === 'grid' || urlView === 'list') {
+      if (urlView !== viewMode) {
+        setViewModeState(urlView);
+        try {
+          localStorage.setItem('dashboard-view-mode', urlView);
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+    }
 
-  // Persist sort mode to localStorage
-  useEffect(() => {
-    localStorage.setItem('dashboard-sort-mode', sortMode);
-  }, [sortMode]);
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'recent' || urlSort === 'updated' || urlSort === 'alphabetical') {
+      if (urlSort !== sortMode) {
+        setSortModeState(urlSort as DashboardSort);
+        try {
+          localStorage.setItem('dashboard-sort-mode', urlSort);
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: Intentionally excluding state vars to prevent loops - we only want to sync FROM URL
+
+  // Wrapper to update viewMode and sync to URL + localStorage
+  const setViewMode = useCallback((mode: 'grid' | 'list') => {
+    setViewModeState(mode);
+    try {
+      localStorage.setItem('dashboard-view-mode', mode);
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'grid') {
+        params.delete('view');
+      } else {
+        params.set('view', mode);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Wrapper to update sortMode and sync to URL + localStorage
+  const setSortMode = useCallback((mode: DashboardSort) => {
+    setSortModeState(mode);
+    try {
+      localStorage.setItem('dashboard-sort-mode', mode);
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'recent') {
+        params.delete('sort');
+      } else {
+        params.set('sort', mode);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Sort groups based on current sort mode
   const sortedGroups = useMemo(() => {

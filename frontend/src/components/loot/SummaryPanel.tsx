@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings, TeamSummary as TeamSummaryType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import { LootPriorityPanel } from './LootPriorityPanel';
@@ -25,7 +26,29 @@ export function SummaryPanel({
   teamSummary,
   initialTab = 'loot',
 }: SummaryPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize active tab from URL param > initialTab prop > default
+  const [activeTab, setActiveTabState] = useState<Tab>(() => {
+    const urlTab = searchParams.get('statsTab');
+    if (urlTab === 'loot' || urlTab === 'stats') return urlTab;
+    return initialTab;
+  });
+
+  // Wrapper to update activeTab and sync to URL
+  const setActiveTab = useCallback((tab: Tab) => {
+    setActiveTabState(tab);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (tab === 'loot') {
+        params.delete('statsTab');
+      } else {
+        params.set('statsTab', tab);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   return (
     <div>

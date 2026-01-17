@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { logger } from '../../lib/logger';
@@ -72,6 +73,9 @@ export function HistoryView({
     revertWeek,
   } = useLootTrackingStore();
 
+  // URL state management
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // State for start next week and revert week actions
   const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
   const [isRevertingWeek, setIsRevertingWeek] = useState(false);
@@ -80,8 +84,13 @@ export function HistoryView({
   // Get localStorage key for this tier's week selection
   const weekStorageKey = `history-week-${groupId}-${tierId}`;
 
-  // Initialize selected week from localStorage or default to currentWeek
+  // Initialize selected week from URL param > localStorage > currentWeek
   const [selectedWeek, setSelectedWeekState] = useState(() => {
+    const urlWeek = searchParams.get('week');
+    if (urlWeek) {
+      const parsed = parseInt(urlWeek, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
     try {
       const saved = localStorage.getItem(weekStorageKey);
       return saved ? parseInt(saved, 10) : currentWeek;
@@ -90,7 +99,7 @@ export function HistoryView({
     }
   });
 
-  // Persist week selection to localStorage
+  // Persist week selection to localStorage and URL
   const setSelectedWeek = useCallback((week: number) => {
     setSelectedWeekState(week);
     try {
@@ -98,7 +107,19 @@ export function HistoryView({
     } catch {
       // Ignore localStorage errors
     }
-  }, [weekStorageKey]);
+    // Update URL - omit if viewing current calculated week
+    // Use getState() to avoid currentWeek in dependency array (prevents unnecessary recreations)
+    const storeCurrentWeek = useLootTrackingStore.getState().currentWeek;
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (week === storeCurrentWeek) {
+        params.delete('week');
+      } else {
+        params.set('week', String(week));
+      }
+      return params;
+    }, { replace: true });
+  }, [weekStorageKey, setSearchParams]);
 
   // Fetch current week and week data types on mount
   useEffect(() => {

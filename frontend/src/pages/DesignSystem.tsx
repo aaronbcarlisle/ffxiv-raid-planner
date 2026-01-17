@@ -22,6 +22,7 @@ import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
 import { Select } from '../components/ui/Select';
+import { SearchableSelect, type GroupConfig } from '../components/ui/SearchableSelect';
 import {
   Dropdown,
   DropdownTrigger,
@@ -685,6 +686,28 @@ function FormsSection() {
   const [checkboxValue, setCheckboxValue] = useState(false);
   const [threeState, setThreeState] = useState<ThreeState>('none');
   const [selectValue, setSelectValue] = useState('');
+  const [searchableSelectValue, setSearchableSelectValue] = useState('');
+  const [categorizedSelectValue, setCategorizedSelectValue] = useState('');
+
+  // Sample data for categorized dropdown demo
+  const ROLE_GROUP_CONFIG: Record<string, GroupConfig> = {
+    owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
+    lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
+    member: { name: 'Members', color: 'var(--color-membership-member)' },
+    linked: { name: 'Linked Users', color: 'var(--color-membership-linked)' },
+  };
+
+  const categorizedUserOptions = [
+    { value: 'user1', label: 'Alice (Owner)', group: 'Owners', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-owner/30 text-membership-owner border-membership-owner/50">Owner</span> },
+    { value: 'user2', label: 'Bob (Lead)', group: 'Leads', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-lead/30 text-membership-lead border-membership-lead/50">Lead</span> },
+    { value: 'user3', label: 'Charlie (Lead)', group: 'Leads', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-lead/30 text-membership-lead border-membership-lead/50">Lead</span> },
+    { value: 'user4', label: 'Diana (Member)', group: 'Members', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-member/30 text-membership-member border-membership-member/50">Member</span> },
+    { value: 'user5', label: 'Eve (Member)', group: 'Members', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-member/30 text-membership-member border-membership-member/50">Member</span> },
+    { value: 'user6', label: 'Frank (Member)', group: 'Members', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-member/30 text-membership-member border-membership-member/50">Member</span> },
+    { value: 'user7', label: 'Grace (Linked)', group: 'Linked Users', icon: <span className="text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wide bg-membership-linked/30 text-membership-linked border-membership-linked/50">Linked</span> },
+  ];
+
+  const categorizedGroupOrder = ['owner', 'lead', 'member', 'linked'].map(r => ROLE_GROUP_CONFIG[r]);
 
   return (
     <Section id="forms-inputs" title="Forms & Inputs">
@@ -848,6 +871,102 @@ function FormsSection() {
               ]}
             />
           </div>
+        </div>
+      </Subsection>
+
+      {/* Searchable Select */}
+      <Subsection title="Searchable Select">
+        <p className="text-sm text-text-muted mb-4">
+          Filterable dropdown for large lists. Supports search, icons, and keyboard navigation.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-xl">
+          <div>
+            <Label>Basic Searchable</Label>
+            <SearchableSelect
+              value={searchableSelectValue}
+              onChange={setSearchableSelectValue}
+              placeholder="Select a job..."
+              searchPlaceholder="Search jobs..."
+              options={[
+                { value: 'pld', label: 'Paladin' },
+                { value: 'war', label: 'Warrior' },
+                { value: 'drk', label: 'Dark Knight' },
+                { value: 'gnb', label: 'Gunbreaker' },
+                { value: 'whm', label: 'White Mage' },
+                { value: 'sch', label: 'Scholar' },
+                { value: 'ast', label: 'Astrologian' },
+                { value: 'sge', label: 'Sage' },
+              ]}
+            />
+          </div>
+          <div>
+            <Label>With Clearable</Label>
+            <SearchableSelect
+              value="whm"
+              onChange={() => {}}
+              clearable
+              options={[
+                { value: 'whm', label: 'White Mage' },
+                { value: 'sch', label: 'Scholar' },
+                { value: 'ast', label: 'Astrologian' },
+                { value: 'sge', label: 'Sage' },
+              ]}
+            />
+          </div>
+        </div>
+      </Subsection>
+
+      {/* Categorized Dropdown */}
+      <Subsection title="Categorized Dropdown">
+        <p className="text-sm text-text-muted mb-4">
+          SearchableSelect with grouped options and colored headers. Groups have sticky headers,
+          colored text matching role/category, and subtle colored highlights on selection.
+          Search also matches group names (try typing "owner" or "member").
+        </p>
+        <div className="max-w-sm">
+          <Label>User Assignment (Categorized)</Label>
+          <SearchableSelect
+            value={categorizedSelectValue}
+            onChange={setCategorizedSelectValue}
+            placeholder="Select user..."
+            searchPlaceholder="Search by name or role..."
+            emptyMessage="No matching users"
+            options={categorizedUserOptions}
+            groupOrder={categorizedGroupOrder}
+          />
+        </div>
+        <div className="mt-6 p-4 bg-surface-elevated rounded-lg">
+          <h4 className="text-sm font-medium text-text-primary mb-3">Features</h4>
+          <ul className="text-sm text-text-secondary space-y-1.5">
+            <li>• <strong>Sticky Headers</strong> - Group headers stay visible while scrolling</li>
+            <li>• <strong>Colored Headers</strong> - Each group uses its semantic color (CSS variables)</li>
+            <li>• <strong>Smart Filtering</strong> - Search matches both labels AND group names</li>
+            <li>• <strong>Keyboard Navigation</strong> - Arrow keys work seamlessly across groups</li>
+            <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-base px-1 py-0.5 rounded">color-mix</code> with 15% group color</li>
+          </ul>
+        </div>
+        <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
+          <h4 className="text-sm font-medium text-text-primary mb-3">Usage</h4>
+          <pre className="text-xs text-text-secondary overflow-x-auto">
+{`const GROUP_CONFIG = {
+  owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
+  lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
+  member: { name: 'Members', color: 'var(--color-membership-member)' },
+};
+
+const options = users.map(u => ({
+  value: u.id,
+  label: u.name,
+  group: GROUP_CONFIG[u.role].name,
+  icon: <RoleBadge role={u.role} />,
+}));
+
+<SearchableSelect
+  options={options}
+  groupOrder={Object.values(GROUP_CONFIG)}
+  ...
+/>`}
+          </pre>
         </div>
       </Subsection>
 

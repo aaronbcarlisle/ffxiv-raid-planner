@@ -15,6 +15,7 @@ export { ProgressRing } from './ProgressRing';
 export { RadioGroup, type RadioGroupProps, type RadioOption } from './RadioGroup';
 export { ResetConfirmModal } from './ResetConfirmModal';
 export { Select, type SelectProps, type SelectOption } from './Select';
+export { SearchableSelect, type SearchableSelectProps, type GroupConfig } from './SearchableSelect';
 export { SettingsPopover } from './SettingsPopover';
 export {
   Skeleton,
