@@ -225,7 +225,7 @@ async def fetch_item_from_garland(item_id: int) -> dict:
                 timeout=10.0
             )
             # Reject redirects to prevent SSRF
-            if response.status_code in (301, 302, 303, 307, 308):
+            if 300 <= response.status_code < 400:
                 logger.warning("garland_unexpected_redirect", item_id=item_id, status=response.status_code)
                 return {"id": item_id, "name": "Unknown", "level": 0, "icon": None, "stats": {}}
             if response.status_code == 200:
@@ -343,7 +343,7 @@ async def fetch_bis_from_github(job: str, tier: str) -> dict:
             raise HTTPException(status_code=502, detail=f"Failed to reach GitHub: {e}")
 
     # Reject redirects to prevent SSRF
-    if response.status_code in (301, 302, 303, 307, 308):
+    if 300 <= response.status_code < 400:
         logger.warning("github_unexpected_redirect", url=url, status=response.status_code)
         raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 
@@ -375,7 +375,7 @@ async def fetch_bis_from_shortlink(uuid: str) -> dict:
             raise HTTPException(status_code=502, detail=f"Failed to reach XIVGear: {e}")
 
     # Reject redirects to prevent SSRF
-    if response.status_code in (301, 302, 303, 307, 308):
+    if 300 <= response.status_code < 400:
         logger.warning("xivgear_unexpected_redirect", uuid=uuid, status=response.status_code)
         raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 
@@ -430,7 +430,7 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
             raise HTTPException(status_code=502, detail=f"Failed to reach Etro: {e}")
 
     # Reject redirects to prevent SSRF
-    if response.status_code in (301, 302, 303, 307, 308):
+    if 300 <= response.status_code < 400:
         logger.warning("etro_unexpected_redirect", uuid=uuid, status=response.status_code)
         raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 

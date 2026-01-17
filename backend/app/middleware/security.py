@@ -50,10 +50,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # so frontend only needs to connect to 'self'
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; "
-                "style-src 'self' 'unsafe-inline'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "  # Tailwind uses inline styles
                 "img-src 'self' data: https://xivapi.com https://cdn.discordapp.com; "
                 "connect-src 'self'; "
+                "object-src 'none'; "  # Block Flash, Java applets, etc.
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
                 "form-action 'self'"
