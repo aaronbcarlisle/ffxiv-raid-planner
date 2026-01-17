@@ -46,15 +46,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
             # Content Security Policy
             # Restricts sources for scripts, styles, images, and connections
-            # Note: External API calls (xivgear, etro, garland) go through our backend,
-            # so frontend only needs to connect to 'self'
+            # Note: External API calls (xivgear, etro, garland) go through our backend
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self'; "
-                "style-src 'self' 'unsafe-inline'; "  # Tailwind uses inline styles
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
                 "img-src 'self' data: https://xivapi.com https://cdn.discordapp.com; "
-                "connect-src 'self'; "
-                "object-src 'none'; "  # Block Flash, Java applets, etc.
+                "connect-src 'self' https://vitals.vercel-insights.com; "
+                "object-src 'none'; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
                 "form-action 'self'"
