@@ -116,6 +116,35 @@ export function AdminDashboard() {
     return urlDir === 'desc' ? 'desc' : 'asc';
   });
 
+  // Sync state when URL params change externally (e.g., browser back/forward)
+  useEffect(() => {
+    const urlSearch = searchParams.get('q') || '';
+    if (urlSearch !== search) {
+      setSearchState(urlSearch);
+      setDebouncedSearch(urlSearch);
+    }
+
+    const urlPageParam = searchParams.get('page');
+    const urlPage = urlPageParam ? Math.max(0, parseInt(urlPageParam, 10) || 0) : 0;
+    if (urlPage !== page) {
+      setPageState(urlPage);
+    }
+
+    const urlSort = searchParams.get('sort');
+    if (urlSort && ['name', 'owner', 'memberCount', 'tierCount', 'isPublic', 'createdAt'].includes(urlSort)) {
+      if (urlSort !== sortField) {
+        setSortFieldState(urlSort as SortField);
+      }
+    }
+
+    const urlDir = searchParams.get('dir');
+    const nextSortDirection: SortDirection = urlDir === 'desc' ? 'desc' : 'asc';
+    if (nextSortDirection !== sortDirection) {
+      setSortDirectionState(nextSortDirection);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: Intentionally excluding state vars to prevent loops - we only want to sync FROM URL
+
   // Helper to update URL params
   const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
     setSearchParams(prev => {

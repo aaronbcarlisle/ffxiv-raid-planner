@@ -266,6 +266,9 @@ export function SearchableSelect({
         type="button"
         onClick={handleOpen}
         disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? `${id || 'searchable-select'}-listbox` : undefined}
         className={`
           inline-flex items-center justify-between
           w-full
@@ -288,13 +291,14 @@ export function SearchableSelect({
         )}
         <span className="flex items-center gap-1 ml-2 flex-shrink-0">
           {clearable && value && (
-            <span
-              role="button"
+            <button
+              type="button"
               onClick={handleClear}
+              aria-label="Clear selection"
               className="p-0.5 rounded hover:bg-surface-interactive text-text-muted hover:text-text-primary"
             >
               <X className="w-3.5 h-3.5" />
-            </span>
+            </button>
           )}
           <ChevronDown className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </span>
@@ -304,6 +308,9 @@ export function SearchableSelect({
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
+          id={`${id || 'searchable-select'}-listbox`}
+          role="listbox"
+          aria-label={placeholder}
           style={{
             position: 'fixed',
             top: dropdownPosition.top,
@@ -370,6 +377,8 @@ export function SearchableSelect({
                       return (
                         <div
                           key={option.value}
+                          role="option"
+                          aria-selected={option.value === value}
                           data-option
                           onClick={() => handleSelect(option.value)}
                           className={`
@@ -379,6 +388,8 @@ export function SearchableSelect({
                             ${option.value === value ? 'text-accent' : 'text-text-primary'}
                             hover:bg-white/5
                           `}
+                          // Note: color-mix requires Safari 16.2+, Chrome 111+, Firefox 113+
+                          // Fallback to rgba for browsers without color-mix or ungrouped options
                           style={isHighlighted && groupData.color ? {
                             backgroundColor: `color-mix(in srgb, ${groupData.color} 15%, transparent)`,
                           } : isHighlighted ? {
@@ -403,6 +414,8 @@ export function SearchableSelect({
               flatFilteredOptions.map((option, index) => (
                 <div
                   key={option.value}
+                  role="option"
+                  aria-selected={option.value === value}
                   data-option
                   onClick={() => handleSelect(option.value)}
                   className={`

@@ -68,9 +68,13 @@ function scheduleTokenRefresh(expiresIn: number, refreshFn: () => Promise<boolea
   const refreshInSeconds = Math.max(expiresIn - REFRESH_BUFFER_SECONDS, 10);
   const refreshInMs = refreshInSeconds * 1000;
 
-  refreshTimerId = setTimeout(async () => {
+  refreshTimerId = window.setTimeout(async () => {
     refreshTimerId = null;
-    await refreshFn();
+    try {
+      await refreshFn();
+    } catch (error) {
+      console.error('[Auth] Proactive token refresh failed:', error);
+    }
   }, refreshInMs);
 }
 
@@ -399,8 +403,11 @@ export async function initializeAuth(): Promise<void> {
     // even if the initial fetchUser succeeded with an existing valid token.
     const currentState = useAuthStore.getState();
     if (currentState.isAuthenticated) {
-      // Refresh in the background - don't await to avoid blocking app load
-      refreshAccessToken();
+      // Await refresh to ensure consistent auth state; silent catch since
+      // failure just means user will re-auth on first API call
+      await refreshAccessToken().catch(() => {
+        // Silent - will re-auth on first API call if needed
+      });
     }
   }
 }

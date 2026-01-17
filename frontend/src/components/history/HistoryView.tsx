@@ -108,18 +108,18 @@ export function HistoryView({
       // Ignore localStorage errors
     }
     // Update URL - omit if viewing current calculated week
+    // Use getState() to avoid currentWeek in dependency array (prevents unnecessary recreations)
+    const storeCurrentWeek = useLootTrackingStore.getState().currentWeek;
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
-      // We compare with currentWeek from store in the effect below
-      // For now, always set it (we'll optimize in the sync effect)
-      if (week === currentWeek) {
+      if (week === storeCurrentWeek) {
         params.delete('week');
       } else {
         params.set('week', String(week));
       }
       return params;
     }, { replace: true });
-  }, [weekStorageKey, currentWeek, setSearchParams]);
+  }, [weekStorageKey, setSearchParams]);
 
   // Fetch current week and week data types on mount
   useEffect(() => {

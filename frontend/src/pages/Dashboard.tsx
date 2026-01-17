@@ -87,6 +87,34 @@ export function Dashboard() {
     }
   });
 
+  // Sync state when URL params change externally (e.g., browser back/forward)
+  useEffect(() => {
+    const urlView = searchParams.get('view');
+    if (urlView === 'grid' || urlView === 'list') {
+      if (urlView !== viewMode) {
+        setViewModeState(urlView);
+        try {
+          localStorage.setItem('dashboard-view-mode', urlView);
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+    }
+
+    const urlSort = searchParams.get('sort');
+    if (urlSort === 'recent' || urlSort === 'updated' || urlSort === 'alphabetical') {
+      if (urlSort !== sortMode) {
+        setSortModeState(urlSort as DashboardSort);
+        try {
+          localStorage.setItem('dashboard-sort-mode', urlSort);
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: Intentionally excluding state vars to prevent loops - we only want to sync FROM URL
+
   // Wrapper to update viewMode and sync to URL + localStorage
   const setViewMode = useCallback((mode: 'grid' | 'list') => {
     setViewModeState(mode);
