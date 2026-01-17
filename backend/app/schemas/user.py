@@ -43,10 +43,15 @@ class UserUpdate(CamelModel):
 
 
 class TokenResponse(CamelModel):
-    """JWT token response"""
+    """JWT token response.
 
-    access_token: str
-    refresh_token: str
+    Tokens are only included when explicitly requested via X-Legacy-Token-Response
+    header or legacyTokens query parameter. By default, tokens are only set in
+    httpOnly cookies for security.
+    """
+
+    access_token: str | None = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
     expires_in: int = Field(description="Access token expiry in seconds")
 

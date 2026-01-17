@@ -478,12 +478,14 @@ class TestBackwardCompatibility:
         response = await client.post(
             "/api/auth/refresh",
             json={"refreshToken": refresh_token},
+            headers={"X-Legacy-Token-Response": "1"},  # Request tokens in body
         )
 
         assert response.status_code == 200
         data = response.json()
         # API uses camelCase: accessToken
         assert "accessToken" in data
+        assert data["accessToken"] is not None
 
     @pytest.mark.asyncio
     async def test_cookie_preferred_over_body_for_refresh(
@@ -500,6 +502,7 @@ class TestBackwardCompatibility:
         response = await client.post(
             "/api/auth/refresh",
             json={"refreshToken": body_token},
+            headers={"X-Legacy-Token-Response": "1"},  # Request tokens in body
         )
 
         assert response.status_code == 200
@@ -516,3 +519,22 @@ class TestBackwardCompatibility:
 
         assert response.status_code == 200
         assert response.json()["id"] == test_user.id
+
+    @pytest.mark.asyncio
+    async def test_tokens_not_in_body_by_default(self, client, test_user: User):
+        """Tokens should NOT be returned in response body by default (security)."""
+        refresh_token = create_refresh_token(test_user.id)
+
+        # Without the legacy header, tokens should not be in response body
+        response = await client.post(
+            "/api/auth/refresh",
+            json={"refreshToken": refresh_token},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Tokens should be None (not included in response)
+        assert data.get("accessToken") is None
+        assert data.get("refreshToken") is None
+        # But expires_in should still be present
+        assert "expiresIn" in data
