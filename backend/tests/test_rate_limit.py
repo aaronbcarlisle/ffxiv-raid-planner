@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import Request
 
 from app.rate_limit import get_client_ip
