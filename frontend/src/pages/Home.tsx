@@ -60,14 +60,14 @@ export function Home() {
 
   // Fetch user's groups when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user) {
       fetchGroups();
     }
-  }, [isAuthenticated, fetchGroups]);
+  }, [user, fetchGroups]);
 
   // Get recent statics from user's groups based on localStorage access history
   const recentStatics = useMemo(() => {
-    if (!isAuthenticated || groups.length === 0) return [];
+    if (!user || groups.length === 0) return [];
 
     const recentCodes = getRecentStaticCodes();
     const groupsByCode = new Map(groups.map(g => [g.shareCode, g]));
@@ -88,7 +88,7 @@ export function Home() {
     }
 
     return recent;
-  }, [isAuthenticated, groups]);
+  }, [user, groups]);
 
   const handleViewStatic = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +159,7 @@ export function Home() {
       </form>
 
       {/* Content section - different for logged in vs logged out users */}
-      {isAuthenticated && recentStatics.length > 0 ? (
+      {user && recentStatics.length > 0 ? (
         /* Recent Statics for logged-in users */
         <div className="max-w-4xl mx-auto">
           <h2 className="font-display text-xl text-text-primary mb-4 text-left">
@@ -280,7 +280,7 @@ export function Home() {
       )}
 
       {/* Documentation Section - only show for logged-in users */}
-      {isAuthenticated && (
+      {user && (
         <div className="mt-16 max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-6">
             <BookOpen className="w-5 h-5 text-accent" />

@@ -39,7 +39,7 @@ export function Header() {
 
   const { currentGroup, groups, fetchGroups } = useStaticGroupStore();
   const { tiers, currentTier, isSaving } = useTierStore();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isLoading: authLoading } = useAuthStore();
   const { viewAsUser } = useViewAsStore();
   const { invitations, fetchInvitations } = useInvitationStore();
 
