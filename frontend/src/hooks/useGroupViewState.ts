@@ -155,9 +155,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     return true; // Default to ON
   });
 
-  // Subs view (separate substitutes): URL param > default (false)
+  // Subs view (separate substitutes): URL param > default (true)
   const [subsView, setSubsViewState] = useState(() => {
-    return searchParams.get('subs') === 'true';
+    return searchParams.get('subs') !== 'false';
   });
 
   // ===== Edit state =====
@@ -289,9 +289,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       if (enabled) {
-        params.set('subs', 'true');
+        params.delete('subs');  // true is default, omit from URL
       } else {
-        params.delete('subs');
+        params.set('subs', 'false');  // explicit hide
       }
       return params;
     }, { replace: true });

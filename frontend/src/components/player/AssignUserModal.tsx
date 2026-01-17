@@ -6,9 +6,9 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Modal, ConfirmModal, Input, Checkbox, Select, Label, type SelectOption } from '../ui';
-import { Button } from '../primitives';
-import { X, Users, AlertTriangle } from 'lucide-react';
+import { Modal, ConfirmModal, Input, Checkbox, Select, SearchableSelect, Label, type SelectOption } from '../ui';
+import { Button, IconButton, Tooltip } from '../primitives';
+import { Users, AlertTriangle } from 'lucide-react';
 import type { SnapshotPlayer, InteractedUser, AssignPlayerRequest, MemberRole } from '../../types';
 import { authRequest } from '../../services/api';
 import { logger } from '../../lib/logger';
@@ -154,10 +154,21 @@ export function AssignUserModal({
     }
   }, [isNonMember]);
 
-  // Transform interacted users to SelectOption format with role badges
-  // Sort: unassigned users first, then assigned users at bottom
+  // Group config for role-based grouping with colors matching design system
+  const ROLE_GROUP_CONFIG: Record<string, { name: string; color: string }> = {
+    owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
+    lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
+    member: { name: 'Members', color: 'var(--color-membership-member)' },
+    linked: { name: 'Linked Users', color: 'var(--color-membership-linked)' },
+  };
+
+  // Order of role groups in dropdown
+  const roleGroupOrder = ['owner', 'lead', 'member', 'linked'] as const;
+
+  // Transform interacted users to SelectOption format with role badges and groups
+  // Sort within groups: unassigned users first, then assigned users
   const userOptions = useMemo<SelectOption[]>(() => {
-    // Sort users: unassigned first, assigned last
+    // Sort users: unassigned first, assigned last, then by name
     const sortedUsers = [...interactedUsers].sort((a, b) => {
       const aAssigned = userAssignments.has(a.user.id);
       const bAssigned = userAssignments.has(b.user.id);
@@ -175,17 +186,26 @@ export function AssignUserModal({
         const assignedToPlayer = userAssignments.get(u.user.id);
         const displayName = u.user.displayName || u.user.discordUsername;
 
+        // Determine group: use role if member, otherwise 'linked'
+        const group = u.isMember && u.memberRole
+          ? ROLE_GROUP_CONFIG[u.memberRole].name
+          : ROLE_GROUP_CONFIG['linked'].name;
+
         return {
           value: u.user.id,
           label: assignedToPlayer
             ? `${displayName} (assigned to ${assignedToPlayer})`
             : displayName,
           icon: <RoleBadge role={u.memberRole} isLinked={!u.isMember} />,
+          group,
         };
       }),
     ];
     return options;
   }, [interactedUsers, userAssignments]);
+
+  // Group order config with colors
+  const groupOrderConfig = roleGroupOrder.map(r => ROLE_GROUP_CONFIG[r]);
 
   // Determine effective user ID
   const effectiveUserId = useManualInput ? manualId.trim() : selectedUserId;
@@ -289,12 +309,26 @@ export function AssignUserModal({
 
         {/* Current status */}
         {player.userId && player.linkedUser && (
-          <div className="p-3 bg-surface-elevated rounded-lg">
-            <p className="text-sm text-text-secondary mb-1">Currently Assigned To:</p>
-            <p className="text-text-primary font-medium">
-              {player.linkedUser.displayName}{' '}
-              <span className="text-text-muted">({player.linkedUser.discordUsername})</span>
-            </p>
+          <div className="p-3 bg-surface-elevated rounded-lg relative">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm text-text-secondary mb-1">Currently Assigned To:</p>
+                <p className="text-text-primary font-medium">
+                  {player.linkedUser.displayName}{' '}
+                  <span className="text-text-muted">({player.linkedUser.discordUsername})</span>
+                </p>
+              </div>
+              <Tooltip content="Remove assignment" side="left">
+                <IconButton
+                  aria-label="Remove assignment"
+                  icon={<span className="text-lg leading-none">&times;</span>}
+                  variant="danger"
+                  size="sm"
+                  onClick={handleUnassign}
+                  disabled={isSubmitting}
+                />
+              </Tooltip>
+            </div>
           </div>
         )}
 
@@ -321,12 +355,15 @@ export function AssignUserModal({
             {isLoading ? (
               <div className="text-sm text-text-muted">Loading users...</div>
             ) : (
-              <Select
+              <SearchableSelect
                 value={selectedUserId}
                 onChange={handleUserSelect}
                 options={userOptions}
                 placeholder="-- Select user --"
+                searchPlaceholder="Search by name..."
                 disabled={isSubmitting}
+                emptyMessage="No matching users"
+                groupOrder={groupOrderConfig}
               />
             )}
             <p className="text-xs text-text-muted mt-1">
@@ -404,18 +441,6 @@ export function AssignUserModal({
           >
             {effectiveUserId ? 'Assign User' : 'Unassign'}
           </Button>
-
-          {player.userId && (
-            <Button
-              type="button"
-              variant="danger"
-              onClick={handleUnassign}
-              disabled={isSubmitting}
-              title="Remove current assignment"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          )}
 
           <Button
             type="button"

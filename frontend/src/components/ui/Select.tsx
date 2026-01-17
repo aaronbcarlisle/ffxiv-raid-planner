@@ -60,6 +60,8 @@ export interface SelectOption {
   label: string;
   /** Optional icon to display before the label */
   icon?: ReactNode;
+  /** Optional group for categorizing options in SearchableSelect */
+  group?: string;
 }
 
 export interface SelectProps {

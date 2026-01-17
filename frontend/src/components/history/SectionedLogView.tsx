@@ -80,6 +80,9 @@ export function SectionedLogView({
     deleteMaterialEntry,
   } = useLootTrackingStore();
 
+  // URL params for deep linking
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Modal states
   const [showLootModal, setShowLootModal] = useState(false);
   const [showMaterialModal, setShowMaterialModal] = useState(false);
@@ -107,7 +110,29 @@ export function SectionedLogView({
       setShowFloorClearedModal(true);
     }
   }, [openMarkFloorClearedModal, showFloorClearedModal]);
-  const [bookViewMode, setBookViewMode] = useState<'week' | 'allTime'>('allTime');
+
+  // Book view mode: 'week' or 'allTime'
+  // Priority: URL param > default
+  const [bookViewMode, setBookViewModeState] = useState<'week' | 'allTime'>(() => {
+    const urlBookView = searchParams.get('bookView');
+    if (urlBookView === 'week') return 'week';
+    return 'allTime';
+  });
+
+  // Wrapper to update bookViewMode and sync to URL
+  const setBookViewMode = useCallback((mode: 'week' | 'allTime') => {
+    setBookViewModeState(mode);
+    // Update URL - only include if not default
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (mode === 'allTime') {
+        params.delete('bookView');
+      } else {
+        params.set('bookView', mode);
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [editBookState, setEditBookState] = useState<{
     playerId: string;
     playerName: string;
@@ -315,10 +340,6 @@ export function SectionedLogView({
       setResetModalType(null);
     }
   }, [resetModalType, groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
-
-
-  // URL params for deep linking
-  const [searchParams, setSearchParams] = useSearchParams();
 
   // Layout mode: 'grid' (weekly loot grid) or 'split' (traditional list view)
   // Priority: URL param > localStorage > default

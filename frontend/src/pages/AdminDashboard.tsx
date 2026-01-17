@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { api, ApiError } from '../services/api';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
@@ -83,6 +83,7 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
 
   const [groups, setGroups] = useState<AdminStaticGroupListItem[]>([]);
@@ -90,18 +91,60 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search and pagination
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [page, setPage] = useState(0);
+  // Search and pagination - initialized from URL params
+  const [search, setSearchState] = useState(() => searchParams.get('q') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get('q') || '');
+  const [page, setPageState] = useState(() => {
+    const urlPage = searchParams.get('page');
+    return urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
+  });
   const limit = 20;
 
   // Copy state for feedback
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // Sorting state
-  const [sortField, setSortField] = useState<SortField>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  // Sorting state - initialized from URL params
+  const [sortField, setSortFieldState] = useState<SortField>(() => {
+    const urlSort = searchParams.get('sort');
+    if (['name', 'owner', 'memberCount', 'tierCount', 'isPublic', 'createdAt'].includes(urlSort || '')) {
+      return urlSort as SortField;
+    }
+    return 'name';
+  });
+  const [sortDirection, setSortDirectionState] = useState<SortDirection>(() => {
+    const urlDir = searchParams.get('dir');
+    return urlDir === 'desc' ? 'desc' : 'asc';
+  });
+
+  // Helper to update URL params
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === '') {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      }
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Wrapper to set search and sync URL (debounced via existing effect)
+  const setSearch = useCallback((value: string) => {
+    setSearchState(value);
+  }, []);
+
+  // Wrapper to set page and sync URL
+  const setPage = useCallback((pageOrFn: number | ((prev: number) => number)) => {
+    setPageState(prev => {
+      const newPage = typeof pageOrFn === 'function' ? pageOrFn(prev) : pageOrFn;
+      // Update URL - omit if default (0)
+      updateUrlParams({ page: newPage > 0 ? String(newPage) : null });
+      return newPage;
+    });
+  }, [updateUrlParams]);
 
   // View As modal state
   const [viewAsGroup, setViewAsGroup] = useState<AdminStaticGroupListItem | null>(null);
@@ -177,23 +220,37 @@ export function AdminDashboard() {
 
   // Handle column sort - resets to first page and triggers server-side sort
   const handleSort = useCallback((field: SortField) => {
+    let newDirection: SortDirection = 'asc';
     if (sortField === field) {
-      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     }
-    setPage(0); // Reset to first page on sort change
-  }, [sortField]);
 
-  // Debounce search input
+    setSortFieldState(field);
+    setSortDirectionState(newDirection);
+    setPageState(0);
+
+    // Update URL - omit defaults
+    updateUrlParams({
+      sort: field === 'name' ? null : field,
+      dir: newDirection === 'asc' ? null : newDirection,
+      page: null, // Reset to first page
+    });
+  }, [sortField, sortDirection, updateUrlParams]);
+
+  // Debounce search input and update URL
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(0); // Reset to first page on search
+      setPageState(0); // Reset to first page on search
+
+      // Update URL with debounced search - omit if empty
+      updateUrlParams({
+        q: search || null,
+        page: null, // Reset to first page
+      });
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, updateUrlParams]);
 
   // Fetch groups
   const fetchGroups = useCallback(async () => {
