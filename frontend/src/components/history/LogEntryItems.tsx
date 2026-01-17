@@ -74,33 +74,12 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
   };
 
   return (
-    <Tooltip
-      content={
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
-            <span className="text-text-secondary">Copy link</span>
-          </div>
-          {onNavigateToPlayer && (
-            <div className="flex items-center gap-2">
-              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
-              <span className="text-text-secondary">Go to player</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
-            <span className="text-text-secondary">More options</span>
-          </div>
-        </div>
-      }
-      delayDuration={400}
+    <div
+      id={`loot-entry-${entry.id}`}
+      className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
+      onClick={handleClick}
+      onContextMenu={(e) => onContextMenu(e, entry)}
     >
-      <div
-        id={`loot-entry-${entry.id}`}
-        className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
-        onClick={handleClick}
-        onContextMenu={(e) => onContextMenu(e, entry)}
-      >
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -166,7 +145,6 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
         </div>
       </div>
     </div>
-    </Tooltip>
   );
 });
 
@@ -214,33 +192,12 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
   };
 
   return (
-    <Tooltip
-      content={
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
-            <span className="text-text-secondary">Copy link</span>
-          </div>
-          {onNavigateToPlayer && (
-            <div className="flex items-center gap-2">
-              <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Alt+Click</kbd>
-              <span className="text-text-secondary">Go to player</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Right-click</kbd>
-            <span className="text-text-secondary">More options</span>
-          </div>
-        </div>
-      }
-      delayDuration={400}
+    <div
+      id={`material-entry-${entry.id}`}
+      className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+      onClick={handleClick}
+      onContextMenu={(e) => onContextMenu(e, entry)}
     >
-      <div
-        id={`material-entry-${entry.id}`}
-        className={`bg-surface-elevated border-l-2 border-l-accent rounded-lg p-3 cursor-pointer select-none ${isMatHighlighted ? 'highlight-pulse' : ''}`}
-        onClick={handleClick}
-        onContextMenu={(e) => onContextMenu(e, entry)}
-      >
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -294,6 +251,5 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
         </div>
       </div>
     </div>
-    </Tooltip>
   );
 });

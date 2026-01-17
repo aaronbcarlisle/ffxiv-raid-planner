@@ -54,7 +54,7 @@ export function LootLogFilters({
               <div>
                 <div className="flex items-center gap-2 font-medium">
                   Grid View
-                  <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">V</kbd>
+                  <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
                 <div className="text-text-secondary text-xs mt-0.5">Spreadsheet-style weekly loot grid</div>
               </div>
@@ -85,7 +85,7 @@ export function LootLogFilters({
               <div>
                 <div className="flex items-center gap-2 font-medium">
                   List View
-                  <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">V</kbd>
+                  <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
                 <div className="text-text-secondary text-xs mt-0.5">Traditional chronological loot log</div>
               </div>
