@@ -118,9 +118,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       error: null,
     }));
     try {
-      const params = week ? `?week=${week}` : '';
+      const params = new URLSearchParams({ limit: '500' });
+      if (week) params.set('week', String(week));
       const response = await api.get<LootLogEntry[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/loot-log${params}`
+        `/api/static-groups/${groupId}/tiers/${tierId}/loot-log?${params}`
       );
       set((state) => ({
         lootLog: response,
@@ -175,9 +176,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       error: null,
     }));
     try {
-      const params = week ? `?week=${week}` : '';
+      const params = new URLSearchParams({ limit: '500' });
+      if (week) params.set('week', String(week));
       const response = await api.get<PageLedgerEntry[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger${params}`
+        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger?${params}`
       );
       set((state) => ({
         pageLedger: response,
@@ -243,9 +245,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       error: null,
     }));
     try {
-      const params = week ? `?week=${week}` : '';
+      const params = new URLSearchParams({ limit: '500' });
+      if (week) params.set('week', String(week));
       const response = await api.get<MaterialLogEntry[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/material-log${params}`
+        `/api/static-groups/${groupId}/tiers/${tierId}/material-log?${params}`
       );
       set((state) => ({
         materialLog: response,

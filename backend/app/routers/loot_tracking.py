@@ -6,7 +6,7 @@ API endpoints for loot log and page tracking.
 
 import structlog
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -109,6 +109,8 @@ async def get_loot_log(
     group_id: str,
     tier_id: str,
     week: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500, description="Max entries to return"),
+    offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -132,6 +134,9 @@ async def get_loot_log(
 
     if week is not None:
         query = query.where(LootLogEntry.week_number == week)
+
+    # Apply pagination
+    query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)
     entries = result.scalars().all()
@@ -435,6 +440,8 @@ async def get_page_ledger(
     group_id: str,
     tier_id: str,
     week: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500, description="Max entries to return"),
+    offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -458,6 +465,9 @@ async def get_page_ledger(
 
     if week is not None:
         query = query.where(PageLedgerEntry.week_number == week)
+
+    # Apply pagination
+    query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)
     entries = result.scalars().all()
@@ -1020,6 +1030,8 @@ async def get_material_log(
     group_id: str,
     tier_id: str,
     week: int | None = None,
+    limit: int = Query(default=100, ge=1, le=500, description="Max entries to return"),
+    offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
     db: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -1043,6 +1055,9 @@ async def get_material_log(
 
     if week is not None:
         query = query.where(MaterialLogEntry.week_number == week)
+
+    # Apply pagination
+    query = query.limit(limit).offset(offset)
 
     result = await db.execute(query)
     entries = result.scalars().all()
