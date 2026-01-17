@@ -203,6 +203,8 @@ export const useAuthStore = create<AuthState>()(
           // Fetch user info
           await get().fetchUser();
         } catch (error) {
+          // Cancel any scheduled refresh since login failed
+          cancelScheduledRefresh();
           set({
             error: error instanceof Error ? error.message : 'Failed to complete login',
             isLoading: false,

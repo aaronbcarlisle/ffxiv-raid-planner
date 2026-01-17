@@ -159,11 +159,12 @@ export function AssignUserModal({
     owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
     lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
     member: { name: 'Members', color: 'var(--color-membership-member)' },
+    viewer: { name: 'Viewers', color: 'var(--color-membership-viewer)' },
     linked: { name: 'Linked Users', color: 'var(--color-membership-linked)' },
   };
 
   // Order of role groups in dropdown
-  const roleGroupOrder = ['owner', 'lead', 'member', 'linked'] as const;
+  const roleGroupOrder = ['owner', 'lead', 'member', 'viewer', 'linked'] as const;
 
   // Transform interacted users to SelectOption format with role badges and groups
   // Sort within groups: unassigned users first, then assigned users
@@ -308,15 +309,21 @@ export function AssignUserModal({
         </div>
 
         {/* Current status */}
-        {player.userId && player.linkedUser && (
+        {player.userId && (
           <div className="p-3 bg-surface-elevated rounded-lg relative">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm text-text-secondary mb-1">Currently Assigned To:</p>
-                <p className="text-text-primary font-medium">
-                  {player.linkedUser.displayName}{' '}
-                  <span className="text-text-muted">({player.linkedUser.discordUsername})</span>
-                </p>
+                {player.linkedUser ? (
+                  <p className="text-text-primary font-medium">
+                    {player.linkedUser.displayName}{' '}
+                    <span className="text-text-muted">({player.linkedUser.discordUsername})</span>
+                  </p>
+                ) : (
+                  <p className="text-text-muted italic">
+                    User ID: {player.userId.slice(0, 8)}...
+                  </p>
+                )}
               </div>
               <Tooltip content="Remove assignment" side="left">
                 <IconButton

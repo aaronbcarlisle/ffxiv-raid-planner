@@ -5,7 +5,7 @@
  * Only accessible to users with isAdmin=true.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { api, ApiError } from '../services/api';
@@ -94,6 +94,9 @@ export function AdminDashboard() {
   // Search and pagination - initialized from URL params
   const [search, setSearchState] = useState(() => searchParams.get('q') || '');
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get('q') || '');
+  // Track if search change came from URL sync (back/forward navigation)
+  // to prevent the debounce effect from resetting the page
+  const searchFromUrlSyncRef = useRef(false);
   const [page, setPageState] = useState(() => {
     const urlPage = searchParams.get('page');
     return urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
@@ -120,6 +123,8 @@ export function AdminDashboard() {
   useEffect(() => {
     const urlSearch = searchParams.get('q') || '';
     if (urlSearch !== search) {
+      // Mark this as a URL sync change to prevent debounce from resetting page
+      searchFromUrlSyncRef.current = true;
       setSearchState(urlSearch);
       setDebouncedSearch(urlSearch);
     }
@@ -268,6 +273,13 @@ export function AdminDashboard() {
 
   // Debounce search input and update URL
   useEffect(() => {
+    // Skip if this change came from URL sync (back/forward navigation)
+    // to preserve the page from the URL
+    if (searchFromUrlSyncRef.current) {
+      searchFromUrlSyncRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPageState(0); // Reset to first page on search
