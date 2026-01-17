@@ -13,10 +13,10 @@
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 3 | 5 |
 | **Medium (P2)** | 14 | 22 |
-| **Low (P3)** | 9 | 16 |
+| **Low (P3)** | 9 | 23 |
 | **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 38 | ~62 hrs |
+| **Total** | 38 | ~69 hrs |
 
 ---
 
@@ -309,7 +309,7 @@ These are ESLint errors that don't affect functionality but should be addressed 
 | Item | Status | Notes |
 |------|--------|-------|
 | **H-001: Content-Security-Policy** | ✅ FIXED | Added CSP header with strict directives for SPA |
-| **H-002: SSRF in BiS Import** | ✅ FIXED | Disabled httpx redirects in all 4 external API calls |
+| **H-002: SSRF in BiS Import** | ✅ FIXED | Disabled httpx redirects in all 4 BiS import external API calls (plus 2 Discord OAuth endpoints) |
 
 ### Session 3: Dependency Security (January 17, 2026)
 

@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 from fastapi import HTTPException
 
@@ -59,12 +58,23 @@ class TestContentSecurityPolicy:
                 assert "base-uri 'self'" in csp
                 assert "form-action 'self'" in csp
 
+                # Parse CSP into directives to avoid relying on directive order
+                directives = {}
+                for directive in csp.split(";"):
+                    directive = directive.strip()
+                    if not directive:
+                        continue
+                    parts = directive.split()
+                    name = parts[0]
+                    directives[name] = parts[1:]
+
+                script_src_values = directives.get("script-src", [])
+                style_src_values = directives.get("style-src", [])
+
                 # Verify unsafe-inline is NOT in script-src
                 # (it's allowed in style-src for Tailwind)
-                script_src_start = csp.find("script-src")
-                style_src_start = csp.find("style-src")
-                script_src_section = csp[script_src_start:style_src_start] if style_src_start > script_src_start else csp[script_src_start:]
-                assert "'unsafe-inline'" not in script_src_section
+                assert "'unsafe-inline'" not in script_src_values
+                assert "'unsafe-inline'" in style_src_values
 
 
 class TestSSRFProtection:
