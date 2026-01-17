@@ -6,6 +6,7 @@
  * The frontend never has direct access to tokens - they're sent automatically via cookies.
  */
 
+import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, DiscordAuthUrl } from '../types';
@@ -371,6 +372,29 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+/**
+ * Hook to check if the auth store has been hydrated from localStorage.
+ * Use this to prevent flash of unauthenticated content on page load.
+ *
+ * Note: With localStorage (synchronous storage), hydration is typically
+ * complete before React renders. This hook handles the edge case where
+ * async storage might be used in the future.
+ */
+export function useAuthHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    // Subscribe to hydration finish event for async storage scenarios
+    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+
+    return unsubFinishHydration;
+  }, []);
+
+  return hydrated;
+}
 
 /**
  * Initialize auth on app load.

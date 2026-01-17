@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, useAuthHydrated } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
 import { Input } from '../components/ui';
@@ -29,7 +29,11 @@ function getRecentStaticCodes(): string[] {
 export function Home() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuthStore();
+  const isHydrated = useAuthHydrated();
   const { groups, fetchGroups } = useStaticGroupStore();
+
+  // Show loading state until store is hydrated from localStorage
+  const authLoading = !isHydrated || isLoading;
   const [shareCode, setShareCode] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -117,7 +121,7 @@ export function Home() {
 
       {/* Primary CTA */}
       <div className="mb-8">
-        {isLoading ? (
+        {authLoading ? (
           <div className="w-10 h-10 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
         ) : user ? (
           <Link

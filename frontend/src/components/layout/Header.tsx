@@ -10,7 +10,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Copy, UserPlus } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
@@ -39,8 +39,12 @@ export function Header() {
 
   const { currentGroup, groups, fetchGroups } = useStaticGroupStore();
   const { tiers, currentTier, isSaving } = useTierStore();
-  const { user, isLoading: authLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
+  const isHydrated = useAuthHydrated();
   const { viewAsUser } = useViewAsStore();
+
+  // Show loading state until store is hydrated from localStorage
+  const authLoading = !isHydrated || isLoading;
   const { invitations, fetchInvitations } = useInvitationStore();
 
   // Determine current route context
