@@ -141,3 +141,44 @@ class TestGetClientIP:
 
             result = get_client_ip(request)
             assert result == "203.0.113.50"
+
+    def test_rejects_malformed_ip_in_x_forwarded_for(self):
+        """Should reject malformed IPs and fall back to peer IP."""
+        with patch("app.rate_limit.settings") as mock_settings:
+            mock_settings.trusted_proxy_ips_list = ["10.0.0.1"]
+
+            # Injection attempt
+            request = self._make_request(
+                client_host="10.0.0.1",
+                headers={"X-Forwarded-For": "' OR 1=1--"},
+            )
+
+            result = get_client_ip(request)
+            # Should fall back to peer IP since malformed IP is rejected
+            assert result == "10.0.0.1"
+
+    def test_rejects_malformed_ip_in_x_real_ip(self):
+        """Should reject malformed X-Real-IP and fall back to peer IP."""
+        with patch("app.rate_limit.settings") as mock_settings:
+            mock_settings.trusted_proxy_ips_list = ["10.0.0.1"]
+
+            request = self._make_request(
+                client_host="10.0.0.1",
+                headers={"X-Real-IP": "not-an-ip-address"},
+            )
+
+            result = get_client_ip(request)
+            assert result == "10.0.0.1"
+
+    def test_accepts_valid_ipv6_address(self):
+        """Should accept valid IPv6 addresses."""
+        with patch("app.rate_limit.settings") as mock_settings:
+            mock_settings.trusted_proxy_ips_list = ["10.0.0.1"]
+
+            request = self._make_request(
+                client_host="10.0.0.1",
+                headers={"X-Forwarded-For": "2001:db8::1"},
+            )
+
+            result = get_client_ip(request)
+            assert result == "2001:db8::1"

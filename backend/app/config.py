@@ -94,7 +94,15 @@ class Settings(BaseSettings):
     # Trusted proxy IPs (comma-separated) - only these IPs can set
     # X-Forwarded-For and X-Real-IP headers for rate limiting.
     # This prevents rate limit bypass by spoofing client IP.
-    # Example: "10.0.0.1,10.0.0.2" or "127.0.0.1" for local proxy
+    #
+    # Common configurations:
+    # - Local dev: "127.0.0.1"
+    # - Docker: "172.17.0.1" (Docker bridge gateway)
+    # - Cloud LB: "10.0.0.1,10.0.0.2" (internal LB IPs)
+    # - Kubernetes: Pod CIDR or ingress controller IPs
+    #
+    # Security: NEVER use public IPs here - only internal proxy IPs.
+    # If empty, X-Forwarded-For headers are ignored (direct peer IP used).
     trusted_proxy_ips: str = ""
 
     @property

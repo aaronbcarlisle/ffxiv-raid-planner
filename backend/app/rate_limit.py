@@ -1,5 +1,7 @@
 """Rate limiting configuration using slowapi."""
 
+import ipaddress
+
 from fastapi import Request
 from slowapi import Limiter
 
@@ -8,6 +10,17 @@ from .logging_config import get_logger
 
 settings = get_settings()
 logger = get_logger(__name__)
+
+
+def _validate_ip(ip_str: str) -> str | None:
+    """Validate IP address format, return normalized IP or None.
+
+    Prevents injection attacks via malformed IP values in headers.
+    """
+    try:
+        return str(ipaddress.ip_address(ip_str))
+    except ValueError:
+        return None
 
 
 def get_client_ip(request: Request) -> str:
@@ -30,11 +43,19 @@ def get_client_ip(request: Request) -> str:
         # The first one is the original client
         x_forwarded_for = request.headers.get("X-Forwarded-For")
         if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
+            client_ip = x_forwarded_for.split(",")[0].strip()
+            validated = _validate_ip(client_ip)
+            if validated:
+                return validated
+            # Log and fall through to peer IP if validation fails
+            logger.warning("invalid_forwarded_ip", raw_ip=client_ip[:50])
 
         x_real_ip = request.headers.get("X-Real-IP")
         if x_real_ip:
-            return x_real_ip.strip()
+            validated = _validate_ip(x_real_ip.strip())
+            if validated:
+                return validated
+            logger.warning("invalid_real_ip", raw_ip=x_real_ip[:50])
 
     return peer or "unknown"
 

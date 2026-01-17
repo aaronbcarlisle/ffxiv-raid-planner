@@ -159,7 +159,11 @@ class CacheService:
         self._local_cache.pop(full_key, None)
 
     async def exists(self, key: str) -> bool:
-        """Check if a key exists in cache (and is not expired)."""
+        """Check if a key exists in cache (and is not expired).
+
+        Note: Entry could expire between exists() check and subsequent get().
+        Callers should always handle None from get() gracefully.
+        """
         full_key = self._make_key(key)
 
         if _redis:
