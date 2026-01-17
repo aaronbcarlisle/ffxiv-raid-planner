@@ -14,8 +14,8 @@ class PageLedgerEntry(Base):
     __tablename__ = "page_ledger_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False)
-    player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False)
+    tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False, index=True)
+    player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False, index=True)
     week_number: Mapped[int] = mapped_column(Integer, nullable=False)
     floor: Mapped[str] = mapped_column(String(10), nullable=False)  # "M9S", "M10S", etc.
     book_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "I", "II", "III", "IV"
@@ -27,7 +27,7 @@ class PageLedgerEntry(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)  # +1 (earned), -N (spent), 0 (missed)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)  # ISO timestamp
-    created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
 
     # Relationships
     tier_snapshot: Mapped["TierSnapshot"] = relationship("TierSnapshot", back_populates="page_ledger_entries")
