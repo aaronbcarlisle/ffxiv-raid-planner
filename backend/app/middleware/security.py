@@ -44,4 +44,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "geolocation=(), microphone=(), camera=(), payment=()"
             )
 
+            # Content Security Policy
+            # Restricts sources for scripts, styles, images, and connections
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https://xivapi.com https://cdn.discordapp.com; "
+                "connect-src 'self' https://api.xivgear.app https://www.garlandtools.org https://etro.gg; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+
         return response
