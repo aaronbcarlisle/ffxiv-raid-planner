@@ -143,10 +143,11 @@ export function SearchableSelect({
     return groupedOptions.flatMap(g => g.options);
   }, [groupedOptions, filteredOptions]);
 
-  // Reset highlighted index when filtered options change
-  useEffect(() => {
+  // Handle search change - resets highlighted index when search changes
+  const handleSearchChange = useCallback((newSearch: string) => {
+    setSearch(newSearch);
     setHighlightedIndex(0);
-  }, [flatFilteredOptions.length]);
+  }, []);
 
   // Calculate dropdown position relative to viewport
   const updateDropdownPosition = useCallback(() => {
@@ -324,7 +325,7 @@ export function SearchableSelect({
                 ref={inputRef}
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={searchPlaceholder}
                 className="
