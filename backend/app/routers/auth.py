@@ -100,7 +100,8 @@ async def discord_callback(
     await oauth_state_cache.delete(data.state)
 
     # Exchange code for tokens
-    async with httpx.AsyncClient() as client:
+    # Use follow_redirects=False to prevent SSRF attacks
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         token_response = await client.post(
             DISCORD_TOKEN_URL,
             data={
@@ -112,6 +113,14 @@ async def discord_callback(
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
+
+        # Reject redirects to prevent SSRF
+        if 300 <= token_response.status_code < 400:
+            logger.error("discord_token_redirect", status=token_response.status_code)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OAuth provider returned unexpected redirect",
+            )
 
         if token_response.status_code != 200:
             raise HTTPException(
@@ -127,6 +136,14 @@ async def discord_callback(
             f"{DISCORD_API_URL}/users/@me",
             headers={"Authorization": f"Bearer {discord_access_token}"},
         )
+
+        # Reject redirects to prevent SSRF
+        if 300 <= user_response.status_code < 400:
+            logger.error("discord_userinfo_redirect", status=user_response.status_code)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OAuth provider returned unexpected redirect",
+            )
 
         if user_response.status_code != 200:
             raise HTTPException(

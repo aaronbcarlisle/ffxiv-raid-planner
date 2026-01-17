@@ -217,13 +217,17 @@ async def fetch_item_from_garland(item_id: int) -> dict:
     if cached:
         return cached
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             # Use Garland Tools API which has current patch data
             response = await client.get(
                 f"https://www.garlandtools.org/db/doc/item/en/3/{item_id}.json",
                 timeout=10.0
             )
+            # Reject redirects to prevent SSRF
+            if 300 <= response.status_code < 400:
+                logger.warning("garland_unexpected_redirect", item_id=item_id, status=response.status_code)
+                return {"id": item_id, "name": "Unknown", "level": 0, "icon": None, "stats": {}}
             if response.status_code == 200:
                 data = response.json()
                 item = data.get("item", {})
@@ -330,13 +334,18 @@ async def fetch_bis_from_github(job: str, tier: str) -> dict:
     """Fetch curated BiS data from the static-bis-sets GitHub repo."""
     url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/{tier}.json"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(url, timeout=15.0)
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="GitHub timeout")
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Failed to reach GitHub: {e}")
+
+    # Reject redirects to prevent SSRF
+    if 300 <= response.status_code < 400:
+        logger.warning("github_unexpected_redirect", url=url, status=response.status_code)
+        raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 
     if response.status_code == 404:
         raise HTTPException(
@@ -354,7 +363,7 @@ async def fetch_bis_from_github(job: str, tier: str) -> dict:
 
 async def fetch_bis_from_shortlink(uuid: str) -> dict:
     """Fetch gear set from XIVGear shortlink API."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(
                 f"https://api.xivgear.app/shortlink/{uuid}",
@@ -364,6 +373,11 @@ async def fetch_bis_from_shortlink(uuid: str) -> dict:
             raise HTTPException(status_code=504, detail="XIVGear API timeout")
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Failed to reach XIVGear: {e}")
+
+    # Reject redirects to prevent SSRF
+    if 300 <= response.status_code < 400:
+        logger.warning("xivgear_unexpected_redirect", uuid=uuid, status=response.status_code)
+        raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="Gear set not found")
@@ -404,7 +418,7 @@ def extract_etro_uuid(url_or_uuid: str) -> str:
 
 async def fetch_bis_from_etro(uuid: str) -> dict:
     """Fetch gearset from Etro.gg API."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(
                 f"https://etro.gg/api/gearsets/{uuid}/",
@@ -414,6 +428,11 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
             raise HTTPException(status_code=504, detail="Etro API timeout")
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Failed to reach Etro: {e}")
+
+    # Reject redirects to prevent SSRF
+    if 300 <= response.status_code < 400:
+        logger.warning("etro_unexpected_redirect", uuid=uuid, status=response.status_code)
+        raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
 
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="Gearset not found on Etro")
