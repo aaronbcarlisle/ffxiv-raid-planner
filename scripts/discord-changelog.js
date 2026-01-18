@@ -480,28 +480,24 @@ const CATEGORY_COLORS = {
 const RELEASE_DESCRIPTION_LIMIT = 3500;
 
 /**
- * Format a single item for Discord display
- * Uses colored emoji circles matching the release notes page badges
+ * Format a single item for Discord display (plain bullet, no colored emoji)
  */
 function formatReleaseItem(item) {
-  const emoji = CATEGORY_EMOJIS[item.category] || '⚪';
   if (item.description) {
-    return `${emoji} **${item.title}** — ${item.description}`;
+    return `• **${item.title}** — ${item.description}`;
   }
-  return `${emoji} **${item.title}**`;
+  return `• **${item.title}**`;
 }
 
 /**
- * Build release announcement embeds - one header + one per category
- * Each category gets its own embed with matching colored border
- * Returns an array of embeds to send together
+ * Build release announcement embed - single embed with all categories
+ * Colored emoji circles are placed next to section headers, not items
+ * Returns an array with a single embed for consistency with API
  */
 function buildReleaseEmbeds(release) {
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
-  const embeds = [];
 
-  // Header embed with version title
-  const headerEmbed = new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(0x14b8a6) // Teal accent color
     .setTitle(`v${release.version} — ${release.title}`)
     .setURL(versionAnchor)
@@ -512,9 +508,7 @@ function buildReleaseEmbeds(release) {
     })
     .setTimestamp(release.date ? new Date(release.date) : undefined);
 
-  embeds.push(headerEmbed);
-
-  // If we have items, create a separate embed for each category
+  // If we have items, build a single description with all categories
   if (release.items && release.items.length > 0) {
     // Group items by category
     const groupedItems = {};
@@ -525,53 +519,62 @@ function buildReleaseEmbeds(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Create an embed for each category that has items
+    // Build description with sections
+    const sections = [];
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
-        const color = CATEGORY_COLORS[category] || 0x6b7280;
         const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-        // Build item list with colored emojis
-        let itemList = items.map(item => {
+        // Section header with colored emoji
+        let section = `${emoji} **${label}**\n`;
+
+        // Add items (plain bullets, no colored emoji)
+        section += items.map(item => {
           if (item.description) {
-            return `${emoji} **${item.title}** — ${item.description}`;
+            return `• **${item.title}** — ${item.description}`;
           }
-          return `${emoji} **${item.title}**`;
+          return `• **${item.title}**`;
         }).join('\n');
 
-        // Truncate if too long
-        if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
-          // Remove descriptions, keep just titles
-          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
-
-          // If still too long, limit items
-          if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
-            const maxItems = 10;
-            const displayItems = items.slice(0, maxItems);
-            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
-            if (items.length > maxItems) {
-              itemList += `\n*...and ${items.length - maxItems} more*`;
-            }
-          }
-        }
-
-        const categoryEmbed = new EmbedBuilder()
-          .setColor(color)
-          .setTitle(label)
-          .setDescription(itemList);
-
-        embeds.push(categoryEmbed);
+        sections.push(section);
       }
     }
+
+    let description = sections.join('\n\n');
+
+    // Truncate if too long
+    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
+      // Try without descriptions
+      const shortSections = [];
+      for (const category of CATEGORY_ORDER) {
+        const items = groupedItems[category];
+        if (items && items.length > 0) {
+          const label = CATEGORY_LABELS[category] || category;
+          const emoji = CATEGORY_EMOJIS[category] || '⚪';
+
+          let section = `${emoji} **${label}**\n`;
+          section += items.map(item => `• **${item.title}**`).join('\n');
+          shortSections.push(section);
+        }
+      }
+      description = shortSections.join('\n\n');
+
+      // If still too long, truncate with ellipsis
+      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
+        description = description.substring(0, RELEASE_DESCRIPTION_LIMIT - 3) + '...';
+      }
+    }
+
+    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
-    // Fall back to highlights-only format in the header embed
+    // Fall back to highlights-only format
     const description = release.highlights.map(h => `• ${h}`).join('\n');
-    headerEmbed.setDescription(description);
+    embed.setDescription(description);
   }
 
-  return embeds;
+  return [embed];
 }
 
 /**
