@@ -123,9 +123,20 @@ async def discord_callback(
         )
 
     # Verify client fingerprint to prevent session fixation/CSRF attacks
+    # Fingerprint is mandatory - reject states without one (prevents bypass attacks)
     expected_fingerprint = state_data.get("fingerprint")
+    if not expected_fingerprint:
+        logger.error(
+            "oauth_missing_fingerprint",
+            state=data.state[:8] + "...",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+
     actual_fingerprint = _get_client_fingerprint(request)
-    if expected_fingerprint and expected_fingerprint != actual_fingerprint:
+    if expected_fingerprint != actual_fingerprint:
         logger.warning(
             "oauth_fingerprint_mismatch",
             state=data.state[:8] + "...",

@@ -18,6 +18,20 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
     Checks Content-Length header before processing and rejects
     requests that exceed the configured limit.
+
+    IMPORTANT: This middleware only checks the Content-Length header.
+    It can be bypassed by:
+    - Chunked transfer encoding (no Content-Length header)
+    - Malicious clients omitting the header
+
+    For production deployments, configure your reverse proxy to enforce
+    request size limits at the edge:
+    - Nginx: client_max_body_size 10m;
+    - Traefik: maxRequestBodyBytes: 10485760
+    - Caddy: request_body { max_size 10MB }
+
+    This middleware provides defense-in-depth for well-behaved clients
+    but should not be the only line of defense.
     """
 
     def __init__(self, app, max_size_bytes: int = DEFAULT_MAX_SIZE_BYTES):

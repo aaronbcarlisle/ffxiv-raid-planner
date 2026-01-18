@@ -19,7 +19,7 @@ CSRF_EXEMPT_PATHS: Set[str] = {
     "/api/auth/discord",
     "/api/auth/discord/callback",
     "/api/auth/refresh",
-    "/api/auth/logout",
+    # Note: /api/auth/logout is NOT exempt - it's a state-changing POST that needs CSRF protection
     "/docs",
     "/openapi.json",
     "/redoc",

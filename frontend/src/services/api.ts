@@ -7,8 +7,11 @@
 
 import { toast } from '../stores/toastStore';
 import { useAuthStore } from '../stores/authStore';
+import { logger as baseLogger } from '../lib/logger';
 import type { BiSImportData, BiSPresetsResponse } from '../types';
 import { API_BASE_URL } from '../config';
+
+const logger = baseLogger.scope('api');
 
 // Re-export for backward compatibility
 export { API_BASE_URL } from '../config';
@@ -116,11 +119,14 @@ export async function authRequest<T>(
   };
 
   // Add CSRF token for state-changing requests
+  // Fail fast if token is missing - better UX than cryptic 403 from backend
   if (CSRF_REQUIRED_METHODS.has(method)) {
     const csrfToken = getCSRFToken();
-    if (csrfToken) {
-      headers['X-CSRF-Token'] = csrfToken;
+    if (!csrfToken) {
+      logger.error('CSRF token missing', { method, endpoint });
+      throw new ApiError(403, 'Session expired - please refresh the page');
     }
+    headers['X-CSRF-Token'] = csrfToken;
   }
 
   const response = await fetch(url, {
@@ -148,9 +154,11 @@ export async function authRequest<T>(
         // Re-fetch CSRF token after refresh (may have been updated)
         if (CSRF_REQUIRED_METHODS.has(method)) {
           const newCsrfToken = getCSRFToken();
-          if (newCsrfToken) {
-            headers['X-CSRF-Token'] = newCsrfToken;
+          if (!newCsrfToken) {
+            logger.error('CSRF token missing after refresh', { method, endpoint });
+            throw new ApiError(403, 'Session expired - please refresh the page');
           }
+          headers['X-CSRF-Token'] = newCsrfToken;
         }
 
         // Retry with cookies (new tokens set by refresh endpoint)
