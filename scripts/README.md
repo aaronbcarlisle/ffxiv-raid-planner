@@ -18,7 +18,7 @@ Posts changelog updates to Discord when PRs are merged to main.
 |----------|----------|-------------|
 | `DISCORD_BOT_TOKEN` | Yes | Discord bot token with permissions to post in the changelog channel |
 | `DISCORD_CHANGELOG_CHANNEL_ID` | Yes | ID of the Discord channel to post notifications |
-| `ANTHROPIC_API_KEY` | No | Anthropic API key for AI-powered commit summarization. Falls back to smart truncation if not provided. |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key for AI-powered commit summarization. If not provided, uses length-based truncation (see Discord Embed Limits below). |
 | `COMMIT_SHA` | Yes | The commit hash (auto-provided by GitHub Actions) |
 | `COMMIT_MESSAGE` | Yes | The full commit message (auto-provided by GitHub Actions) |
 | `GITHUB_REPOSITORY` | Yes | Repository in `owner/repo` format (auto-provided by GitHub Actions) |

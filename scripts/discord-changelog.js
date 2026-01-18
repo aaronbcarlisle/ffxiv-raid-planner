@@ -40,6 +40,10 @@ const TRUNCATION_MESSAGE_RESERVE = 50; // Space for the truncation hint
 const AI_MODEL = 'claude-3-5-haiku-latest';
 const AI_TIMEOUT_MS = 10000; // 10 second timeout for API calls
 
+// Summarization configuration
+const MAX_HIGHLIGHTS_WHEN_TRUNCATED = 2; // Max highlights shown when description exceeds limit
+const SENTENCE_BOUNDARY_MIN_FRACTION = 0.5; // Only use sentence boundary if at least 50% into text
+
 // Commit type colors for visual identification
 const COMMIT_TYPE_COLORS = {
   feat: 0x10b981,     // Green for features
@@ -64,16 +68,20 @@ let anthropicClient = null;
 
 // Patterns that indicate AI-generated content (for skip detection)
 // Note: co-authored-by is handled separately below to strip ALL co-authors
+// Using 'gi' flags so patterns can be used directly with .replace() without recreating
 const AI_CONTENT_PATTERNS = [
-  /generated (?:with|by) (?:claude|copilot|cursor)/i,
-  /🤖.*claude/i,
+  /generated (?:with|by) (?:claude|copilot|cursor)/gi,
+  /🤖.*claude/gi,
 ];
 
 // AI attribution patterns to strip from descriptions (per CLAUDE.md policy)
 // Only strips AI-specific co-authors, preserves human collaborators
 const AI_ATTRIBUTION_PATTERNS = [
   /co-authored-by:.*(?:anthropic|claude|copilot|cursor|openai|github\.com\/apps).*$/gim,
-  /^\s*🤖\s*(?:Generated|Made|Created|Authored).*$/gim, // Must run before next pattern
+  // Robot emoji pattern: Only matches lines STARTING with 🤖 followed by AI attribution text.
+  // The ^ anchor is intentional - we DON'T want to strip "feat: 🤖 add bot" (legitimate use).
+  // Must run before the "generated with/by" pattern so we strip the emoji + phrase together.
+  /^\s*🤖\s*(?:Generated|Made|Created|Authored).*$/gim,
   /generated (?:with|by) (?:claude|copilot|cursor|ai|gpt|llm).*$/gim,
 ];
 
@@ -105,9 +113,10 @@ function isAIOnlyCommit(message) {
   }
 
   // Remove all AI attribution lines and see what's left
+  // Patterns already have 'gi' flags, use directly with .replace()
   let cleaned = message;
   for (const pattern of AI_CONTENT_PATTERNS) {
-    cleaned = cleaned.replace(new RegExp(pattern.source, 'gi'), '');
+    cleaned = cleaned.replace(pattern, '');
   }
 
   // Remove common metadata patterns
@@ -253,7 +262,9 @@ function summarizeBody(body, maxLength) {
     if (summary && bulletLines.length > bulletsAdded) {
       return (summary.trim() + moreIndicator).substring(0, maxLength);
     }
-    return summary.trim() || body.substring(0, maxLength - suffixLength) + TRUNCATION_SUFFIX;
+    // Fallback: ensure result doesn't exceed maxLength (multi-byte Unicode safety)
+    const fallback = summary.trim() || body.substring(0, maxLength - suffixLength) + TRUNCATION_SUFFIX;
+    return fallback.length > maxLength ? fallback.substring(0, maxLength) : fallback;
   }
 
   // No bullets - truncate at sentence or line boundary
@@ -261,12 +272,13 @@ function summarizeBody(body, maxLength) {
   const truncateAt = maxLength - reserveForSuffix;
   let truncated = body.substring(0, truncateAt);
 
-  // Try to end at a sentence boundary
+  // Try to end at a sentence boundary. Only use it if reasonably far into
+  // the text (at least 50%) to avoid extremely short summaries.
   const lastPeriod = truncated.lastIndexOf('. ');
   const lastNewline = truncated.lastIndexOf('\n');
   const cutPoint = Math.max(lastPeriod, lastNewline);
 
-  if (cutPoint > truncateAt * 0.5) {
+  if (cutPoint > truncateAt * SENTENCE_BOUNDARY_MIN_FRACTION) {
     truncated = truncated.substring(0, cutPoint + 1);
   }
 
@@ -395,7 +407,7 @@ function buildReleaseEmbed(release) {
     let highlights = '';
     if (maxHighlightLength > 0 && release.highlights && release.highlights.length > 0) {
       const fullHighlights = release.highlights
-        .slice(0, 2)
+        .slice(0, MAX_HIGHLIGHTS_WHEN_TRUNCATED)
         .map(h => `• ${h}`)
         .join('\n');
 
