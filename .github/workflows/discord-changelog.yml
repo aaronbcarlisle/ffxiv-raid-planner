@@ -39,6 +39,7 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANGELOG_CHANNEL_ID: ${{ secrets.DISCORD_CHANGELOG_CHANNEL_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
           GITHUB_REPOSITORY: ${{ github.repository }}
