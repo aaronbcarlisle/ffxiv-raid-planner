@@ -73,6 +73,6 @@ limiter = Limiter(
 RATE_LIMITS = {
     "auth": "10/minute",           # Auth endpoints - stricter to prevent brute force
     "general": "100/minute",       # General API calls
-    "external_api": "30/minute",   # Calls that proxy to external APIs (BiS import)
+    "external_api": "10/minute",   # Calls that proxy to external APIs (BiS import) - stricter to protect external services
     "heavy": "20/minute",          # Heavy operations (create/delete)
 }

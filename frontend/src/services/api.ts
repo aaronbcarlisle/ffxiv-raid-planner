@@ -13,6 +13,29 @@ import { API_BASE_URL } from '../config';
 // Re-export for backward compatibility
 export { API_BASE_URL } from '../config';
 
+// CSRF token cookie name (must match backend)
+const CSRF_COOKIE_NAME = 'csrf_token';
+
+/**
+ * Get CSRF token from cookie for state-changing requests.
+ * The backend sets this cookie on every response.
+ */
+function getCSRFToken(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === CSRF_COOKIE_NAME) {
+      return value;
+    }
+  }
+  return null;
+}
+
+/**
+ * HTTP methods that require CSRF token
+ */
+const CSRF_REQUIRED_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+
 /**
  * API Error class for handling HTTP errors
  */
@@ -82,10 +105,19 @@ export async function authRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // Add CSRF token for state-changing requests
+  if (CSRF_REQUIRED_METHODS.has(method)) {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -109,6 +141,14 @@ export async function authRequest<T>(
     if (shouldAttemptRefresh) {
       const refreshed = await useAuthStore.getState().refreshAccessToken();
       if (refreshed) {
+        // Re-fetch CSRF token after refresh (may have been updated)
+        if (CSRF_REQUIRED_METHODS.has(method)) {
+          const newCsrfToken = getCSRFToken();
+          if (newCsrfToken) {
+            headers['X-CSRF-Token'] = newCsrfToken;
+          }
+        }
+
         // Retry with cookies (new tokens set by refresh endpoint)
         const retryResponse = await fetch(url, {
           ...options,

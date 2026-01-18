@@ -33,7 +33,8 @@ export function LootLogPanel({
   canEdit,
   onLootLogged,
 }: LootLogPanelProps) {
-  const { lootLog, isLoading, fetchLootLog } = useLootTrackingStore();
+  const { lootLog, loadingStates, fetchLootLog } = useLootTrackingStore();
+  const isLoading = loadingStates.lootLog;
   const [showAddModal, setShowAddModal] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<LootLogEntry | null>(null);

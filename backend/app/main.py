@@ -13,7 +13,12 @@ from .config import get_settings
 from .database import create_tables
 from .exceptions import register_exception_handlers
 from .logging_config import configure_logging, get_logger
-from .middleware import SecurityHeadersMiddleware
+from .middleware import (
+    CSRFMiddleware,
+    RequestIDMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from .rate_limit import limiter
 from .routers import (
     auth_router,
@@ -91,8 +96,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security headers middleware (production only)
+# Middleware stack (applied in reverse order - last added runs first)
+# 1. Security headers (innermost - just adds response headers)
 app.add_middleware(SecurityHeadersMiddleware)
+
+# 2. CSRF protection (validates state-changing requests)
+app.add_middleware(CSRFMiddleware)
+
+# 3. Request size limit (reject oversized requests early)
+app.add_middleware(RequestSizeLimitMiddleware)
+
+# 4. Request ID (outermost - sets ID for all subsequent logging)
+app.add_middleware(RequestIDMiddleware)
 
 # Register centralized exception handlers
 register_exception_handlers(app)

@@ -213,8 +213,13 @@ class TestOAuthSSRFProtection:
             mock_settings.return_value.discord_client_secret = "test-secret"
             mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
 
-            # Make state valid
-            mock_cache.exists = AsyncMock(return_value=True)
+            # Make state valid - now uses get() instead of exists()
+            mock_cache.get = AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": None,
+                }
+            )
             mock_cache.delete = AsyncMock()
 
             # Mock httpx to return a redirect
@@ -249,8 +254,13 @@ class TestOAuthSSRFProtection:
             mock_settings.return_value.discord_client_secret = "test-secret"
             mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
 
-            # Make state valid
-            mock_cache.exists = AsyncMock(return_value=True)
+            # Make state valid - now uses get() instead of exists()
+            mock_cache.get = AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": None,
+                }
+            )
             mock_cache.delete = AsyncMock()
 
             # Mock httpx: token exchange succeeds, user info returns redirect

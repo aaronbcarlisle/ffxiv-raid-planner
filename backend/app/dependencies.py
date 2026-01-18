@@ -58,7 +58,7 @@ async def get_current_user(
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -66,9 +66,10 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if not user:
+        # Use same generic message to prevent user enumeration via timing attacks
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

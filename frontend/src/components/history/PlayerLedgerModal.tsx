@@ -50,7 +50,8 @@ export function PlayerLedgerModal({
   canEdit = false,
   onHistoryCleared,
 }: PlayerLedgerModalProps) {
-  const { playerLedger, isLoading, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
+  const { playerLedger, loadingStates, fetchPlayerLedger, clearPlayerLedger, deletePlayerLedger } = useLootTrackingStore();
+  const isLoading = loadingStates.playerLedger;
 
   // Handle the actual clear action
   const handleClearHistory = useCallback(async () => {

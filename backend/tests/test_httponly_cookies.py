@@ -68,10 +68,16 @@ class TestLoginSetsCookies:
         mock_settings.jwt_refresh_token_expire_days = 7
         mock_settings.admin_discord_ids_list = []
 
-        # Mock OAuth state cache
+        # Mock OAuth state cache - now uses get() instead of exists()
+        # Return a valid state with matching fingerprint
         mocker.patch(
-            "app.routers.auth.oauth_state_cache.exists",
-            mocker.AsyncMock(return_value=True),
+            "app.routers.auth.oauth_state_cache.get",
+            mocker.AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": None,  # No fingerprint check in tests
+                }
+            ),
         )
         mocker.patch(
             "app.routers.auth.oauth_state_cache.delete",
@@ -158,9 +164,15 @@ class TestCookieAttributes:
         mock_settings.jwt_refresh_token_expire_days = 7
         mock_settings.admin_discord_ids_list = []
 
+        # Mock OAuth state cache - now uses get() instead of exists()
         mocker.patch(
-            "app.routers.auth.oauth_state_cache.exists",
-            mocker.AsyncMock(return_value=True),
+            "app.routers.auth.oauth_state_cache.get",
+            mocker.AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": None,  # No fingerprint check in tests
+                }
+            ),
         )
         mocker.patch(
             "app.routers.auth.oauth_state_cache.delete",
