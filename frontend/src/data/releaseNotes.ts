@@ -39,7 +39,7 @@ export const RELEASES: Release[] = [
     version: '1.0.11',
     date: '2026-01-18',
     title: 'Security Hardening Sprint',
-    highlights: ['CSRF protection', 'OAuth hardening', 'Request validation'],
+    highlights: ['CSRF protection', 'OAuth hardening'],
     items: [
       {
         category: 'improvement',
