@@ -16,7 +16,6 @@ import {
   DropdownSubContent,
   DropdownSubTrigger,
   DropdownTrigger,
-  Tooltip,
 } from '../primitives';
 import {
   BookOpen,
@@ -47,39 +46,26 @@ export function UserMenu({ className = '' }: UserMenuProps) {
 
   return (
     <Dropdown>
-      <Tooltip
-        content={
-          <div>
-            <div className="font-medium">{displayName}</div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              Account settings and navigation
-            </div>
-          </div>
-        }
-      >
-        <span className="inline-flex">
-          <DropdownTrigger>
-            <button
-              className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors ${className}`}
-              aria-label="User menu"
-            >
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="w-8 h-8 rounded-full border-2 border-accent/50"
-              />
-              <svg
-                className="w-4 h-4 text-text-secondary"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </DropdownTrigger>
-        </span>
-      </Tooltip>
+      <DropdownTrigger>
+        <button
+          className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors ${className}`}
+          aria-label="User menu"
+        >
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="w-8 h-8 rounded-full border-2 border-accent/50"
+          />
+          <svg
+            className="w-4 h-4 text-text-secondary"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </DropdownTrigger>
 
       <DropdownContent align="end" className="w-48">
         {/* User Info */}
