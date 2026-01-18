@@ -48,6 +48,14 @@ const CATEGORY_EMOJIS = {
   breaking: '🟠',
 };
 
+// Category colors for embed borders (hex values for Discord)
+const CATEGORY_COLORS = {
+  feature: 0x10b981,   // Green
+  improvement: 0x3b82f6, // Blue
+  fix: 0xef4444,       // Red
+  breaking: 0xf59e0b,  // Orange
+};
+
 /**
  * Parse release items from a release block
  * Extracts category, title, and description from each item
@@ -150,12 +158,16 @@ function formatReleaseItem(item) {
 }
 
 /**
- * Build a release embed mirroring the release notes page (same as discord-changelog.js)
+ * Build release announcement embeds - one header + one per category
+ * Each category gets its own embed with matching colored border
+ * Returns an array of embeds to send together
  */
-function buildReleaseEmbed(release) {
+function buildReleaseEmbeds(release) {
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
+  const embeds = [];
 
-  const embed = new EmbedBuilder()
+  // Header embed with version title
+  const headerEmbed = new EmbedBuilder()
     .setColor(0x14b8a6) // Teal accent color
     .setTitle(`v${release.version} — ${release.title}`)
     .setURL(versionAnchor)
@@ -166,7 +178,9 @@ function buildReleaseEmbed(release) {
     })
     .setTimestamp(new Date(release.date)); // Use the actual release date
 
-  // If we have items, group them by category and build a rich description
+  embeds.push(headerEmbed);
+
+  // If we have items, create a separate embed for each category
   if (release.items && release.items.length > 0) {
     // Group items by category
     const groupedItems = {};
@@ -177,88 +191,82 @@ function buildReleaseEmbed(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Build description with categories - mirroring release notes page format
-    // Use ## for section headers (Discord supports markdown headers in embeds)
-    const sections = [];
+    // Create an embed for each category that has items
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
-        const itemList = items.map(formatReleaseItem).join('\n');
-        sections.push(`## ${label}\n${itemList}`);
-      }
-    }
+        const color = CATEGORY_COLORS[category] || 0x6b7280;
+        const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-    let description = sections.join('\n\n');
+        // Build item list with colored emojis
+        let itemList = items.map(item => {
+          if (item.description) {
+            return `${emoji} **${item.title}** — ${item.description}`;
+          }
+          return `${emoji} **${item.title}**`;
+        }).join('\n');
 
-    // Check if we exceed the limit (no footer link - title already links)
-    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-      // Truncate by removing descriptions, keeping just titles with emojis
-      const truncatedSections = [];
-      for (const category of CATEGORY_ORDER) {
-        const items = groupedItems[category];
-        if (items && items.length > 0) {
-          const label = CATEGORY_LABELS[category] || category;
-          const emoji = CATEGORY_EMOJIS[category] || '⚪';
-          const itemList = items.map(i => `${emoji} **${i.title}**`).join('\n');
-          truncatedSections.push(`## ${label}\n${itemList}`);
-        }
-      }
+        // Truncate if too long
+        if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
+          // Remove descriptions, keep just titles
+          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
 
-      description = truncatedSections.join('\n\n');
-
-      // If still too long, limit items per category
-      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-        const limitedSections = [];
-        const maxItemsPerCategory = 5;
-
-        for (const category of CATEGORY_ORDER) {
-          const items = groupedItems[category];
-          if (items && items.length > 0) {
-            const label = CATEGORY_LABELS[category] || category;
-            const emoji = CATEGORY_EMOJIS[category] || '⚪';
-            const displayItems = items.slice(0, maxItemsPerCategory);
-            let itemList = displayItems.map(i => `${emoji} **${i.title}**`).join('\n');
-            if (items.length > maxItemsPerCategory) {
-              itemList += `\n  *...and ${items.length - maxItemsPerCategory} more*`;
+          // If still too long, limit items
+          if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
+            const maxItems = 10;
+            const displayItems = items.slice(0, maxItems);
+            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
+            if (items.length > maxItems) {
+              itemList += `\n*...and ${items.length - maxItems} more*`;
             }
-            limitedSections.push(`## ${label}\n${itemList}`);
           }
         }
 
-        description = limitedSections.join('\n\n');
+        const categoryEmbed = new EmbedBuilder()
+          .setColor(color)
+          .setTitle(label)
+          .setDescription(itemList);
+
+        embeds.push(categoryEmbed);
       }
     }
-
-    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
-    // Fall back to highlights-only format
+    // Fall back to highlights-only format in the header embed
     const description = release.highlights.map(h => `• ${h}`).join('\n');
-    embed.setDescription(description);
+    headerEmbed.setDescription(description);
   }
 
-  return embed;
+  return embeds;
 }
 
 /**
- * Preview an embed (for dry-run mode)
+ * Preview embeds (for dry-run mode)
  */
-function previewEmbed(release, embed) {
-  const data = embed.toJSON();
+function previewEmbeds(release, embeds) {
   console.log('\n' + '═'.repeat(60));
-  console.log(`RELEASE: v${release.version}`);
+  console.log(`RELEASE: v${release.version} (${embeds.length} embeds)`);
   console.log('═'.repeat(60));
-  if (data.author) {
-    console.log(`Author: ${data.author.name} (${data.author.url})`);
+
+  for (let i = 0; i < embeds.length; i++) {
+    const data = embeds[i].toJSON();
+    if (i > 0) console.log('─'.repeat(60));
+    console.log(`\n[Embed ${i + 1}]`);
+    if (data.author) {
+      console.log(`Author: ${data.author.name}`);
+    }
+    console.log(`Title: ${data.title}`);
+    if (data.url) console.log(`URL: ${data.url}`);
+    console.log(`Color: #${data.color.toString(16).padStart(6, '0')}`);
+    if (data.timestamp) {
+      console.log(`Timestamp: ${new Date(data.timestamp).toISOString()}`);
+    }
+    if (data.description) {
+      console.log('Description:');
+      console.log(data.description);
+    }
   }
-  console.log(`Title: ${data.title}`);
-  console.log(`URL: ${data.url}`);
-  console.log(`Color: #${data.color.toString(16).padStart(6, '0')}`);
-  console.log(`Timestamp: ${new Date(data.timestamp).toISOString()}`);
-  console.log('─'.repeat(60));
-  console.log('Description:');
-  console.log(data.description);
-  console.log('═'.repeat(60));
+  console.log('\n' + '═'.repeat(60));
 }
 
 /**
@@ -328,8 +336,8 @@ async function main() {
   if (dryRun) {
     console.log('\n[DRY RUN MODE - Not posting to Discord]');
     for (const release of releasesToPost) {
-      const embed = buildReleaseEmbed(release);
-      previewEmbed(release, embed);
+      const embeds = buildReleaseEmbeds(release);
+      previewEmbeds(release, embeds);
     }
     console.log('\nDry run complete. Run without --dry-run to post to Discord.');
     return;
@@ -353,10 +361,10 @@ async function main() {
     // Post each release with a small delay between them
     for (let i = 0; i < releasesToPost.length; i++) {
       const release = releasesToPost[i];
-      const embed = buildReleaseEmbed(release);
+      const embeds = buildReleaseEmbeds(release);
 
-      console.log(`\nPosting v${release.version}...`);
-      await channel.send({ embeds: [embed] });
+      console.log(`\nPosting v${release.version} (${embeds.length} embeds)...`);
+      await channel.send({ embeds });
       console.log(`  ✓ Posted v${release.version}: ${release.title}`);
 
       // Small delay between posts to avoid rate limiting

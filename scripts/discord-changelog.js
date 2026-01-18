@@ -468,6 +468,14 @@ const CATEGORY_EMOJIS = {
   breaking: '🟠',
 };
 
+// Category colors for embed borders (hex values for Discord)
+const CATEGORY_COLORS = {
+  feature: 0x10b981,   // Green
+  improvement: 0x3b82f6, // Blue
+  fix: 0xef4444,       // Red
+  breaking: 0xf59e0b,  // Orange
+};
+
 // Discord embed description limit (actual limit is 4096, but we use a reasonable max)
 const RELEASE_DESCRIPTION_LIMIT = 3500;
 
@@ -484,13 +492,16 @@ function formatReleaseItem(item) {
 }
 
 /**
- * Build the release announcement embed mirroring the release notes page
- * Shows items grouped by category with full titles and descriptions
+ * Build release announcement embeds - one header + one per category
+ * Each category gets its own embed with matching colored border
+ * Returns an array of embeds to send together
  */
-function buildReleaseEmbed(release) {
+function buildReleaseEmbeds(release) {
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
+  const embeds = [];
 
-  const embed = new EmbedBuilder()
+  // Header embed with version title
+  const headerEmbed = new EmbedBuilder()
     .setColor(0x14b8a6) // Teal accent color
     .setTitle(`v${release.version} — ${release.title}`)
     .setURL(versionAnchor)
@@ -501,7 +512,9 @@ function buildReleaseEmbed(release) {
     })
     .setTimestamp(release.date ? new Date(release.date) : undefined);
 
-  // If we have items, group them by category and build a rich description
+  embeds.push(headerEmbed);
+
+  // If we have items, create a separate embed for each category
   if (release.items && release.items.length > 0) {
     // Group items by category
     const groupedItems = {};
@@ -512,67 +525,62 @@ function buildReleaseEmbed(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Build description with categories - mirroring release notes page format
-    // Use ## for section headers (Discord supports markdown headers in embeds)
-    const sections = [];
+    // Create an embed for each category that has items
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
-        const itemList = items.map(formatReleaseItem).join('\n');
-        sections.push(`## ${label}\n${itemList}`);
-      }
-    }
+        const color = CATEGORY_COLORS[category] || 0x6b7280;
+        const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-    let description = sections.join('\n\n');
+        // Build item list with colored emojis
+        let itemList = items.map(item => {
+          if (item.description) {
+            return `${emoji} **${item.title}** — ${item.description}`;
+          }
+          return `${emoji} **${item.title}**`;
+        }).join('\n');
 
-    // Check if we exceed the limit (no footer link - title already links)
-    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-      // Truncate by removing descriptions, keeping just titles with emojis
-      const truncatedSections = [];
-      for (const category of CATEGORY_ORDER) {
-        const items = groupedItems[category];
-        if (items && items.length > 0) {
-          const label = CATEGORY_LABELS[category] || category;
-          const emoji = CATEGORY_EMOJIS[category] || '⚪';
-          const itemList = items.map(i => `${emoji} **${i.title}**`).join('\n');
-          truncatedSections.push(`## ${label}\n${itemList}`);
-        }
-      }
+        // Truncate if too long
+        if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
+          // Remove descriptions, keep just titles
+          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
 
-      description = truncatedSections.join('\n\n');
-
-      // If still too long, limit items per category
-      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-        const limitedSections = [];
-        const maxItemsPerCategory = 5;
-
-        for (const category of CATEGORY_ORDER) {
-          const items = groupedItems[category];
-          if (items && items.length > 0) {
-            const label = CATEGORY_LABELS[category] || category;
-            const emoji = CATEGORY_EMOJIS[category] || '⚪';
-            const displayItems = items.slice(0, maxItemsPerCategory);
-            let itemList = displayItems.map(i => `${emoji} **${i.title}**`).join('\n');
-            if (items.length > maxItemsPerCategory) {
-              itemList += `\n  *...and ${items.length - maxItemsPerCategory} more*`;
+          // If still too long, limit items
+          if (itemList.length > RELEASE_DESCRIPTION_LIMIT) {
+            const maxItems = 10;
+            const displayItems = items.slice(0, maxItems);
+            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
+            if (items.length > maxItems) {
+              itemList += `\n*...and ${items.length - maxItems} more*`;
             }
-            limitedSections.push(`## ${label}\n${itemList}`);
           }
         }
 
-        description = limitedSections.join('\n\n');
+        const categoryEmbed = new EmbedBuilder()
+          .setColor(color)
+          .setTitle(label)
+          .setDescription(itemList);
+
+        embeds.push(categoryEmbed);
       }
     }
-
-    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
-    // Fall back to highlights-only format
+    // Fall back to highlights-only format in the header embed
     const description = release.highlights.map(h => `• ${h}`).join('\n');
-    embed.setDescription(description);
+    headerEmbed.setDescription(description);
   }
 
-  return embed;
+  return embeds;
+}
+
+/**
+ * Build a single release embed (legacy format for backward compatibility)
+ * @deprecated Use buildReleaseEmbeds for the new multi-embed format
+ */
+function buildReleaseEmbed(release) {
+  // Return just the first embed for backward compatibility with tests
+  return buildReleaseEmbeds(release)[0];
 }
 
 /**
@@ -704,18 +712,20 @@ async function main() {
 
     const embeds = [];
 
-    // Add release embed if new version
+    // Add release embeds if new version (one header + one per category)
     if (isNewRelease && releaseInfo.latestRelease) {
       console.log(`New release detected: v${releaseInfo.latestRelease.version}`);
-      embeds.push(buildReleaseEmbed(releaseInfo.latestRelease));
+      const releaseEmbeds = buildReleaseEmbeds(releaseInfo.latestRelease);
+      embeds.push(...releaseEmbeds);
+      console.log(`Generated ${releaseEmbeds.length} release embeds`);
     }
 
     // Add commit embed (async due to AI summarization)
     console.log('Generating commit summary...');
     embeds.push(await buildCommitEmbed(commitSha, commitMessage, repository));
 
-    // Send the message
-    console.log('Sending message to Discord...');
+    // Send the message (Discord allows up to 10 embeds per message)
+    console.log(`Sending ${embeds.length} embeds to Discord...`);
     await channel.send({ embeds });
 
     console.log('Message sent successfully!');
@@ -746,6 +756,7 @@ export {
   extractArrayContent,
   buildCommitEmbed,
   buildReleaseEmbed,
+  buildReleaseEmbeds,
   formatReleaseItem,
   getCommitTypeColor,
   summarizeBody,
@@ -764,5 +775,6 @@ export {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   CATEGORY_EMOJIS,
+  CATEGORY_COLORS,
   RELEASE_DESCRIPTION_LIMIT,
 };
