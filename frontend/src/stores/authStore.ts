@@ -21,6 +21,27 @@ if (isProduction && isLocalhostApi) {
   );
 }
 
+// CSRF token cookie name (must match backend)
+const CSRF_COOKIE_NAME = 'csrf_token';
+
+/**
+ * Get CSRF token from cookie for state-changing requests.
+ */
+function getCSRFToken(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
+    if (name === CSRF_COOKIE_NAME) {
+      return value;
+    }
+  }
+  return null;
+}
+
 /**
  * Singleton promise for token refresh.
  * Prevents multiple concurrent refresh requests when many API calls fail with 401 simultaneously.
@@ -221,20 +242,35 @@ export const useAuthStore = create<AuthState>()(
        */
       logout: async () => {
         try {
+          // Get CSRF token for the logout POST request
+          const csrfToken = getCSRFToken();
+          const headers: Record<string, string> = {};
+          if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+          }
+
           // First attempt to logout
           const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
             method: 'POST',
             credentials: 'include',
+            headers,
           });
 
-          // If access token expired (401), try refreshing then retry logout
-          if (response.status === 401) {
+          // If access token expired (401) or CSRF failed (403), try refreshing then retry logout
+          if (response.status === 401 || response.status === 403) {
             const refreshed = await get().refreshAccessToken();
             if (refreshed) {
-              // Retry logout with new access token
+              // Get fresh CSRF token after refresh
+              const newCsrfToken = getCSRFToken();
+              const retryHeaders: Record<string, string> = {};
+              if (newCsrfToken) {
+                retryHeaders['X-CSRF-Token'] = newCsrfToken;
+              }
+              // Retry logout with new tokens
               await fetch(`${API_BASE_URL}/api/auth/logout`, {
                 method: 'POST',
                 credentials: 'include',
+                headers: retryHeaders,
               });
             }
             // If refresh fails, cookies may remain but we clear local state anyway
