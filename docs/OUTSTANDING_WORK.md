@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 18, 2026 (Session 6 In Progress)
+**Last Updated:** January 18, 2026 (Session 6 Complete)
 **Current Version:** v1.0.11
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -8,30 +8,28 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/security-hardening-sprint` (pushed, PR #38 open)
-**Latest Commit:** `4ad07e0` - fix: address Claude bot security review feedback
+**Current Branch:** `feature/security-hardening-sprint` (pushed, PR #38 ready for merge)
+**Latest Commit:** `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
 **PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/38
 
-**Session 6 status (PR review loop):**
+**Session 6 status (PR review loop complete):**
 - PR #38 created with security hardening sprint work
 - Addressed 7 inline review comments from Copilot (all resolved)
 - Addressed 4 "Must Fix" items from Claude bot PR comment
 - Addressed 1 issue from Cursor bot (logout CSRF exempt)
-- All review threads currently resolved
+- Addressed 1 additional Copilot comment (CSRF header spreading order)
+- All 8 review threads resolved
 - CI passing, Vercel deployed
-
-**PR still has unaddressed items (per user):**
-- User indicated more items need addressing before merge
-- Re-run PR Review Loop Mode to find remaining issues
-- Check for new bot comments or feedback
+- Ready for merge
 
 **Commits in PR #38:**
 1. `a398392` - feat: security hardening sprint (original 14 items)
 2. `8c98561` - docs: add session continuity notes
 3. `6650351` - fix: address PR review feedback from Copilot (6 items)
 4. `4ad07e0` - fix: address Claude bot security review feedback (4 items)
+5. `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
 
-**To continue:** Run PR Review Loop Mode again, check Claude bot comment for remaining suggestions, check for new review comments.
+**To continue:** Merge PR #38, then proceed with remaining P2/P3 items or future phases.
 
 ---
 
@@ -246,6 +244,23 @@ These are ESLint errors that don't affect functionality but should be addressed 
 ---
 
 ## Recently Verified as Complete (v1.0.8+)
+
+### Session 6: PR #38 Review Feedback (January 18, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Copilot: CSRF callback path** | ✅ FIXED | Fixed `/api/auth/callback` → `/api/auth/discord/callback` |
+| **Copilot: Missing refresh exempt** | ✅ FIXED | Added `/api/auth/refresh` to CSRF exempt paths |
+| **Copilot: CSRFAwareClient headers** | ✅ FIXED | Refactored `_inject_csrf_header()` for all header types |
+| **Copilot: Cookie parsing edge case** | ✅ FIXED | Used `indexOf`/`slice` for cookies with `=` in values |
+| **Copilot: hashlib import location** | ✅ FIXED | Moved to module level |
+| **Copilot: Combined typing imports** | ✅ FIXED | Single `from typing import Literal, Self` |
+| **Copilot: CSRF header spreading** | ✅ FIXED | Spread order ensures CSRF token cannot be overwritten |
+| **Cursor: Logout CSRF exempt** | ✅ FIXED | Removed `/api/auth/logout` from exempt paths |
+| **Claude: CSRF cookie parsing** | ✅ FIXED | Handles `=` in cookie values correctly |
+| **Claude: Fingerprint bypass** | ✅ FIXED | Made fingerprint validation mandatory |
+| **Claude: Client CSRF validation** | ✅ FIXED | Fail-fast with clear error if token missing |
+| **Claude: Request size docs** | ✅ FIXED | Documented bypass limitation and nginx config |
 
 ### Session 5: Security Hardening Sprint (January 18, 2026)
 
