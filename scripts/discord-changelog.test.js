@@ -9,11 +9,13 @@ import {
   summarizeWithAI,
   isAIOnlyCommit,
   stripAIAttributions,
+  sanitizeAITerminology,
   COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
   RELEASE_NOTES_PATH,
+  COMMIT_AUTHOR_GITHUB,
 } from './discord-changelog.js';
 
 describe('discord-changelog', () => {
@@ -22,8 +24,12 @@ describe('discord-changelog', () => {
       expect(DISCORD_TITLE_LIMIT).toBe(256);
     });
 
-    it('DISCORD_DESCRIPTION_LIMIT is 500 for concise posts', () => {
-      expect(DISCORD_DESCRIPTION_LIMIT).toBe(500);
+    it('DISCORD_DESCRIPTION_LIMIT is 1000 for rich descriptions', () => {
+      expect(DISCORD_DESCRIPTION_LIMIT).toBe(1000);
+    });
+
+    it('COMMIT_AUTHOR_GITHUB is set', () => {
+      expect(COMMIT_AUTHOR_GITHUB).toBe('aaronbcarlisle');
     });
 
     it('TRUNCATION_MESSAGE_RESERVE is 50', () => {
@@ -212,6 +218,68 @@ Signed-Off-By: Developer <dev@example.com>`;
     });
   });
 
+  describe('sanitizeAITerminology', () => {
+    it('replaces AI-powered with automated', () => {
+      expect(sanitizeAITerminology('AI-powered feature')).toBe('automated feature');
+      expect(sanitizeAITerminology('AI powered feature')).toBe('automated feature');
+    });
+
+    it('replaces AI summarization with smart summarization', () => {
+      expect(sanitizeAITerminology('feat: compact Discord changelog with AI summarization'))
+        .toBe('feat: compact Discord changelog with smart summarization');
+    });
+
+    it('replaces AI-generated with auto-generated', () => {
+      expect(sanitizeAITerminology('AI-generated content')).toBe('auto-generated content');
+    });
+
+    it('replaces with AI / using AI with automation', () => {
+      expect(sanitizeAITerminology('Feature with AI')).toBe('Feature with automation');
+      expect(sanitizeAITerminology('Processing using AI')).toBe('Processing using automation');
+    });
+
+    it('replaces artificial intelligence with automation', () => {
+      expect(sanitizeAITerminology('Uses artificial intelligence'))
+        .toBe('Uses automation');
+    });
+
+    it('is case insensitive', () => {
+      expect(sanitizeAITerminology('ai-powered')).toBe('automated');
+      expect(sanitizeAITerminology('AI SUMMARIZATION')).toBe('smart summarization');
+    });
+
+    it('handles null and empty input', () => {
+      expect(sanitizeAITerminology(null)).toBe(null);
+      expect(sanitizeAITerminology('')).toBe('');
+    });
+
+    it('preserves non-AI terminology', () => {
+      expect(sanitizeAITerminology('fix: repair bug')).toBe('fix: repair bug');
+      expect(sanitizeAITerminology('RAID feature update')).toBe('RAID feature update');
+    });
+
+    it('replaces AI-driven with smart', () => {
+      expect(sanitizeAITerminology('AI-driven feature')).toBe('smart feature');
+      expect(sanitizeAITerminology('AI driven feature')).toBe('smart feature');
+    });
+
+    it('replaces standalone AI before feature keywords', () => {
+      expect(sanitizeAITerminology('AI feature')).toBe('smart feature');
+      expect(sanitizeAITerminology('AI tool')).toBe('smart tool');
+      expect(sanitizeAITerminology('AI system')).toBe('smart system');
+      expect(sanitizeAITerminology('AI assistant')).toBe('smart assistant');
+    });
+
+    it('handles hyphenated AI-summarization variant', () => {
+      expect(sanitizeAITerminology('AI-summarization feature')).toBe('smart summarization feature');
+    });
+
+    it('handles cascading AI replacements in same string', () => {
+      expect(sanitizeAITerminology('AI-powered AI summarization feature'))
+        .toBe('automated smart summarization feature');
+    });
+  });
+
   describe('isAIOnlyCommit', () => {
     it('returns true for empty messages', () => {
       expect(isAIOnlyCommit('')).toBe(true);
@@ -338,12 +406,27 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.description.length).toBeLessThanOrEqual(DISCORD_DESCRIPTION_LIMIT);
     });
 
-    it('sets footer with short SHA and author', async () => {
+    it('sets footer with short SHA', async () => {
       const embed = await buildCommitEmbed('abc1234567890', 'feat: test', 'user/repo');
       const data = embed.toJSON();
 
-      expect(data.footer.text).toContain('abc1234');
-      expect(data.footer.text).toContain('Aaron Carlisle');
+      expect(data.footer.text).toBe('abc1234');
+    });
+
+    it('sets author with name, url, and icon', async () => {
+      const embed = await buildCommitEmbed('abc1234567890', 'feat: test', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.author.name).toBe('Aaron Carlisle');
+      expect(data.author.url).toBe('https://github.com/aaronbcarlisle');
+      expect(data.author.icon_url).toBe('https://github.com/aaronbcarlisle.png');
+    });
+
+    it('sanitizes AI terminology in title', async () => {
+      const embed = await buildCommitEmbed('abc1234', 'feat: compact changelog with AI summarization', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('feat: compact changelog with smart summarization');
     });
   });
 
@@ -382,8 +465,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      // Should still have the link to release notes
-      expect(data.description).toContain('View Full Release Notes');
+      // Should still have the link to release notes with version anchor
+      expect(data.description).toContain('view release notes for [v1.0.0]');
+      expect(data.description).toContain('#v1.0.0');
     });
 
     it('does not have leading newlines when highlights are empty', () => {
@@ -395,13 +479,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      // Description should start with the link, not newlines
-      expect(data.description.startsWith('[View Full Release Notes]')).toBe(true);
+      // Description should start with the link text, not newlines
+      expect(data.description.startsWith('view release notes for')).toBe(true);
     });
 
     it('does not have leading newlines when highlights overflow and get truncated to empty', () => {
       // Create a release with extremely long highlights that would cause available=0
-      const veryLongHighlight = 'x'.repeat(600);
+      const veryLongHighlight = 'x'.repeat(1200);
       const release = {
         version: '1.0.0',
         title: 'Overflow Test',
@@ -412,19 +496,20 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
 
       // Description should not start with newlines even when highlights overflow
       expect(data.description.charAt(0)).not.toBe('\n');
-      expect(data.description).toContain('View Full Release Notes');
+      expect(data.description).toContain('view release notes for');
     });
 
-    it('includes link to full release notes in description', () => {
+    it('includes link to full release notes with version anchor in description', () => {
       const release = {
-        version: '1.0.0',
+        version: '2.0.5',
         title: 'Test',
         highlights: [],
       };
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      expect(data.description).toContain('View Full Release Notes');
+      expect(data.description).toContain('view release notes for [v2.0.5]');
+      expect(data.description).toContain('#v2.0.5');
     });
 
     it('uses teal accent color', () => {
