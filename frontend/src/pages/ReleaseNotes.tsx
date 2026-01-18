@@ -133,7 +133,7 @@ function VersionNav({
   };
 
   return (
-    <nav className="sticky top-6 w-48 shrink-0 hidden lg:block self-start h-fit z-40">
+    <nav className="sticky top-16 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         <div
           className={`
@@ -146,7 +146,7 @@ function VersionNav({
 
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
         >
           <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
             Versions
