@@ -69,6 +69,32 @@ const AI_CONTENT_PATTERNS = [
   /🤖.*claude/i,
 ];
 
+// AI attribution patterns to strip from descriptions (per CLAUDE.md policy)
+const AI_ATTRIBUTION_PATTERNS = [
+  /co-authored-by:.*$/gim,
+  /generated (?:with|by) (?:claude|copilot|cursor|ai|gpt|llm).*$/gim,
+  /🤖.*$/gm,
+  /signed-off-by:.*$/gim,
+];
+
+/**
+ * Strip AI attributions from text (per CLAUDE.md policy)
+ * Used by fallback path when AI summarization is unavailable
+ */
+function stripAIAttributions(text) {
+  if (!text) return text;
+
+  let result = text;
+  for (const pattern of AI_ATTRIBUTION_PATTERNS) {
+    result = result.replace(pattern, '');
+  }
+
+  // Clean up extra blank lines left by removed attributions
+  result = result.replace(/\n{3,}/g, '\n\n').trim();
+
+  return result;
+}
+
 /**
  * Check if a commit message is primarily AI-generated content
  * Returns true if the commit should be skipped
@@ -355,10 +381,11 @@ function buildReleaseEmbed(release) {
 
   if (release.highlights && release.highlights.length > 0) {
     description = release.highlights.map(h => `• ${h}`).join('\n');
+    description += '\n\n';
   }
 
   // Add link to full notes
-  description += `\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+  description += `[View Full Release Notes](${RELEASE_NOTES_URL})`;
 
   // Ensure we're under the limit
   if (description.length > DISCORD_DESCRIPTION_LIMIT) {
@@ -433,7 +460,9 @@ async function buildCommitEmbed(sha, message, repository) {
     // Try AI summarization first, fall back to simple truncation
     let description = await summarizeWithAI(message, DISCORD_DESCRIPTION_LIMIT);
     if (!description) {
-      description = summarizeBody(body, DISCORD_DESCRIPTION_LIMIT);
+      // Strip AI attributions before summarizing (per CLAUDE.md policy)
+      const cleanBody = stripAIAttributions(body);
+      description = summarizeBody(cleanBody, DISCORD_DESCRIPTION_LIMIT);
     }
     embed.setDescription(description);
   }
@@ -552,6 +581,7 @@ export {
   summarizeBody,
   summarizeWithAI,
   isAIOnlyCommit,
+  stripAIAttributions,
   COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
