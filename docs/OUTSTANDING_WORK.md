@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 18, 2026 (Session 5 Complete)
+**Last Updated:** January 18, 2026 (Session 6 In Progress)
 **Current Version:** v1.0.11
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -8,22 +8,30 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/security-hardening-sprint` (pushed, not yet merged)
-**Commit:** `a398392` - feat: security hardening sprint
+**Current Branch:** `feature/security-hardening-sprint` (pushed, PR #38 open)
+**Latest Commit:** `4ad07e0` - fix: address Claude bot security review feedback
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/38
 
-**Session 5 completed 14 items:**
-- All P1 and most P2 backend security items
-- Middleware: RequestID, CSRF, RequestSizeLimit
-- Auth: OAuth fingerprint, timing attack fix, JWT algorithm restriction
-- API: BiS validation, rate limiting, query optimization, DB constraints
-- Frontend: CSRF tokens, granular loading states
+**Session 6 status (PR review loop):**
+- PR #38 created with security hardening sprint work
+- Addressed 7 inline review comments from Copilot (all resolved)
+- Addressed 4 "Must Fix" items from Claude bot PR comment
+- Addressed 1 issue from Cursor bot (logout CSRF exempt)
+- All review threads currently resolved
+- CI passing, Vercel deployed
 
-**Remaining work (3 P2 frontend polish items):**
-- M-002: Error display standardization (toast/inline/modal patterns)
-- M-013: Border radius consistency audit
-- M-014: Unified Spinner component
+**PR still has unaddressed items (per user):**
+- User indicated more items need addressing before merge
+- Re-run PR Review Loop Mode to find remaining issues
+- Check for new bot comments or feedback
 
-**To continue:** Review M-002, M-013, M-014 below, or create PR from branch.
+**Commits in PR #38:**
+1. `a398392` - feat: security hardening sprint (original 14 items)
+2. `8c98561` - docs: add session continuity notes
+3. `6650351` - fix: address PR review feedback from Copilot (6 items)
+4. `4ad07e0` - fix: address Claude bot security review feedback (4 items)
+
+**To continue:** Run PR Review Loop Mode again, check Claude bot comment for remaining suggestions, check for new review comments.
 
 ---
 
