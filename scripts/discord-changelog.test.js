@@ -150,11 +150,18 @@ Some outro text.`;
   });
 
   describe('stripAIAttributions', () => {
-    it('removes Co-Authored-By lines', () => {
+    it('removes AI Co-Authored-By lines', () => {
       const text = `Some content
 
 Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(stripAIAttributions(text)).toBe('Some content');
+    });
+
+    it('preserves human Co-Authored-By lines', () => {
+      const text = `Some content
+
+Co-Authored-By: Jane Smith <jane@example.com>`;
+      expect(stripAIAttributions(text)).toContain('Co-Authored-By: Jane Smith');
     });
 
     it('removes Generated with/by lines', () => {
@@ -164,10 +171,10 @@ Generated with Claude Code`;
       expect(stripAIAttributions(text)).toBe('Feature implementation');
     });
 
-    it('removes Signed-Off-By lines', () => {
+    it('removes Copilot Co-Authored-By lines', () => {
       const text = `Content here
 
-Signed-Off-By: Someone`;
+Co-Authored-By: GitHub Copilot`;
       expect(stripAIAttributions(text)).toBe('Content here');
     });
 
@@ -183,13 +190,19 @@ Signed-Off-By: Someone`;
       expect(stripAIAttributions('')).toBe('');
     });
 
-    it('removes multiple attribution types', () => {
+    it('removes multiple AI attribution types', () => {
       const text = `Real content here
 
 Co-Authored-By: Claude <noreply@anthropic.com>
-Signed-Off-By: User
 Generated with Copilot`;
       expect(stripAIAttributions(text)).toBe('Real content here');
+    });
+
+    it('preserves Signed-Off-By (DCO signatures)', () => {
+      const text = `Real content
+
+Signed-Off-By: Developer <dev@example.com>`;
+      expect(stripAIAttributions(text)).toContain('Signed-Off-By: Developer');
     });
   });
 

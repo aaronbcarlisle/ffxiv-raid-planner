@@ -70,11 +70,11 @@ const AI_CONTENT_PATTERNS = [
 ];
 
 // AI attribution patterns to strip from descriptions (per CLAUDE.md policy)
+// Only strips AI-specific co-authors, preserves human collaborators
 const AI_ATTRIBUTION_PATTERNS = [
-  /co-authored-by:.*$/gim,
+  /co-authored-by:.*(?:anthropic|claude|copilot|cursor|openai|github\.com\/apps).*$/gim,
   /generated (?:with|by) (?:claude|copilot|cursor|ai|gpt|llm).*$/gim,
   /🤖.*$/gm,
-  /signed-off-by:.*$/gim,
 ];
 
 /**
