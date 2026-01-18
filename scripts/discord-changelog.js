@@ -30,8 +30,27 @@ const COMMIT_AUTHOR = 'Aaron Carlisle';
 
 // Discord embed limits (https://discord.com/developers/docs/resources/channel#embed-limits)
 const DISCORD_TITLE_LIMIT = 256;
-const DISCORD_DESCRIPTION_LIMIT = 4000; // Discord max is 4096, using 4000 for safety margin
-const TRUNCATION_MESSAGE_RESERVE = 80; // Space for the truncation hint message
+const DISCORD_DESCRIPTION_LIMIT = 500; // Keep posts concise and scannable
+const TRUNCATION_MESSAGE_RESERVE = 50; // Space for the truncation hint
+
+// Commit type colors for visual identification
+const COMMIT_TYPE_COLORS = {
+  feat: 0x10b981,     // Green for features
+  feature: 0x10b981,
+  fix: 0xef4444,      // Red for bug fixes
+  bugfix: 0xef4444,
+  docs: 0x3b82f6,     // Blue for docs
+  style: 0x8b5cf6,    // Purple for style
+  refactor: 0x6b7280, // Gray for refactor
+  perf: 0xf59e0b,     // Orange for performance
+  test: 0x06b6d4,     // Cyan for tests
+  build: 0x6b7280,    // Gray for build
+  ci: 0x6b7280,       // Gray for CI
+  chore: 0x6b7280,    // Gray for chores
+  revert: 0xf59e0b,   // Orange for reverts
+  security: 0x8b5cf6, // Purple for security
+  breaking: 0xf59e0b, // Orange for breaking changes
+};
 
 // Patterns to strip from commit messages (AI tool attributions)
 // These patterns include the preceding newline to avoid leaving extra blank lines
@@ -62,6 +81,83 @@ function stripAIAttributions(message) {
 
   // Trim trailing whitespace and newlines
   return cleaned.trim();
+}
+
+/**
+ * Detect commit type from conventional commit message and return color
+ */
+function getCommitTypeColor(title) {
+  const lowerTitle = title.toLowerCase();
+
+  // Check for conventional commit format: type(scope): message or type: message
+  const conventionalMatch = lowerTitle.match(/^(\w+)(?:\([^)]*\))?:/);
+  if (conventionalMatch) {
+    const type = conventionalMatch[1];
+    if (COMMIT_TYPE_COLORS[type]) {
+      return COMMIT_TYPE_COLORS[type];
+    }
+  }
+
+  // Fallback: check if title starts with common keywords
+  for (const [type, color] of Object.entries(COMMIT_TYPE_COLORS)) {
+    if (lowerTitle.startsWith(type)) {
+      return color;
+    }
+  }
+
+  return 0x6b7280; // Default gray for general changes
+}
+
+/**
+ * Smartly summarize commit body to fit within character limit
+ * Prioritizes bullet points and truncates at sentence boundaries
+ */
+function summarizeBody(body, maxLength) {
+  if (!body || body.length <= maxLength) {
+    return body;
+  }
+
+  const TRUNCATION_SUFFIX = '...';
+  const suffixLength = TRUNCATION_SUFFIX.length;
+
+  const lines = body.split('\n').map(l => l.trim()).filter(l => l);
+
+  // Check if body has bullet points (-, *, •)
+  const bulletLines = lines.filter(l => /^[-*•]\s/.test(l));
+
+  if (bulletLines.length > 0) {
+    // Prioritize bullet points - take as many as fit
+    let summary = '';
+    const moreIndicator = '\n...';
+    for (const bullet of bulletLines) {
+      const cleanBullet = bullet.replace(/^[-*•]\s*/, '• ');
+      if ((summary + cleanBullet + '\n' + moreIndicator).length <= maxLength) {
+        summary += cleanBullet + '\n';
+      } else {
+        break;
+      }
+    }
+    if (summary && bulletLines.length > summary.split('\n').filter(l => l).length) {
+      return (summary.trim() + moreIndicator).substring(0, maxLength);
+    }
+    return summary.trim() || body.substring(0, maxLength - suffixLength) + TRUNCATION_SUFFIX;
+  }
+
+  // No bullets - truncate at sentence or line boundary
+  const reserveForSuffix = suffixLength;
+  const truncateAt = maxLength - reserveForSuffix;
+  let truncated = body.substring(0, truncateAt);
+
+  // Try to end at a sentence boundary
+  const lastPeriod = truncated.lastIndexOf('. ');
+  const lastNewline = truncated.lastIndexOf('\n');
+  const cutPoint = Math.max(lastPeriod, lastNewline);
+
+  if (cutPoint > truncateAt * 0.5) {
+    truncated = truncated.substring(0, cutPoint + 1);
+  }
+
+  return (truncated.trim() + TRUNCATION_SUFFIX).substring(0, maxLength);
 }
 
 /**
@@ -158,7 +254,7 @@ function didVersionChange() {
 }
 
 /**
- * Build the release announcement embed
+ * Build the release announcement embed with compact, visually appealing format
  */
 function buildReleaseEmbed(release) {
   const embed = new EmbedBuilder()
@@ -167,21 +263,29 @@ function buildReleaseEmbed(release) {
     .setURL(RELEASE_NOTES_URL)
     .setTimestamp();
 
+  // Build compact description with highlights
+  let description = '';
+
   if (release.highlights && release.highlights.length > 0) {
-    const highlightText = release.highlights.map(h => `• ${h}`).join('\n');
-    embed.addFields({ name: 'Highlights', value: highlightText });
+    description = release.highlights.map(h => `• ${h}`).join('\n');
   }
 
-  embed.addFields({
-    name: '\u200B',
-    value: `📖 **[View Full Release Notes](${RELEASE_NOTES_URL})**`,
-  });
+  // Add link to full notes
+  description += `\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+
+  // Ensure we're under the limit
+  if (description.length > DISCORD_DESCRIPTION_LIMIT) {
+    const highlights = release.highlights.slice(0, 2).map(h => `• ${h}`).join('\n');
+    description = `${highlights}\n*...and more*\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+  }
+
+  embed.setDescription(description);
 
   return embed;
 }
 
 /**
- * Build the commit info embed
+ * Build the commit info embed with compact, visually appealing format
  */
 function buildCommitEmbed(sha, message, repository) {
   const shortSha = sha.substring(0, 7);
@@ -199,9 +303,12 @@ function buildCommitEmbed(sha, message, repository) {
     title = shortSha;
   }
 
+  // Get commit type color
+  const color = getCommitTypeColor(title);
+
   // Truncate title if too long (Unicode-aware to avoid splitting surrogate pairs)
-  if (title.length > DISCORD_TITLE_LIMIT) {
-    const codePoints = [...title]; // Spread operator properly handles Unicode
+  if (title.length > DISCORD_TITLE_LIMIT - 3) {
+    const codePoints = [...title];
     title = codePoints.slice(0, DISCORD_TITLE_LIMIT - 3).join('') + '...';
   }
 
@@ -213,20 +320,14 @@ function buildCommitEmbed(sha, message, repository) {
     : '';
 
   const embed = new EmbedBuilder()
-    .setColor(0x6b7280) // Gray for regular commits
+    .setColor(color)
     .setTitle(title)
-    .setURL(commitUrl) // Title links to commit
+    .setURL(commitUrl)
     .setTimestamp();
 
-  // Add body as description if present
+  // Add summarized body as description if present
   if (body) {
-    let description = body;
-    if (body.length > DISCORD_DESCRIPTION_LIMIT) {
-      const truncateAt = DISCORD_DESCRIPTION_LIMIT - TRUNCATION_MESSAGE_RESERVE;
-      const remaining = body.length - truncateAt;
-      description = body.substring(0, truncateAt) +
-        `\n\n*... ${remaining} more characters, click title to view full commit*`;
-    }
+    const description = summarizeBody(body, DISCORD_DESCRIPTION_LIMIT);
     embed.setDescription(description);
   }
 
@@ -334,7 +435,10 @@ export {
   parseReleaseNotes,
   buildCommitEmbed,
   buildReleaseEmbed,
+  getCommitTypeColor,
+  summarizeBody,
   AI_ATTRIBUTION_PATTERNS,
+  COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,

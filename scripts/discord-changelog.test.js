@@ -5,7 +5,10 @@ import {
   parseReleaseNotes,
   buildCommitEmbed,
   buildReleaseEmbed,
+  getCommitTypeColor,
+  summarizeBody,
   AI_ATTRIBUTION_PATTERNS,
+  COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
@@ -155,16 +158,22 @@ Co-Authored-By: Claude Smith <claude.smith@example.com>`;
       expect(DISCORD_TITLE_LIMIT).toBe(256);
     });
 
-    it('DISCORD_DESCRIPTION_LIMIT is 4000', () => {
-      expect(DISCORD_DESCRIPTION_LIMIT).toBe(4000);
+    it('DISCORD_DESCRIPTION_LIMIT is 500 for concise posts', () => {
+      expect(DISCORD_DESCRIPTION_LIMIT).toBe(500);
     });
 
-    it('TRUNCATION_MESSAGE_RESERVE is 80', () => {
-      expect(TRUNCATION_MESSAGE_RESERVE).toBe(80);
+    it('TRUNCATION_MESSAGE_RESERVE is 50', () => {
+      expect(TRUNCATION_MESSAGE_RESERVE).toBe(50);
     });
 
     it('has 7 AI attribution patterns', () => {
       expect(AI_ATTRIBUTION_PATTERNS).toHaveLength(7);
+    });
+
+    it('has commit type colors for common types', () => {
+      expect(COMMIT_TYPE_COLORS.feat).toBe(0x10b981);
+      expect(COMMIT_TYPE_COLORS.fix).toBe(0xef4444);
+      expect(COMMIT_TYPE_COLORS.docs).toBe(0x3b82f6);
     });
   });
 
@@ -200,6 +209,20 @@ Co-Authored-By: Claude Smith <claude.smith@example.com>`;
       expect(data.url).toBe('https://github.com/user/repo/commit/abc1234567890');
     });
 
+    it('uses green color for feat commits', () => {
+      const embed = buildCommitEmbed('abc1234', 'feat: add new feature', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.color).toBe(0x10b981);
+    });
+
+    it('uses red color for fix commits', () => {
+      const embed = buildCommitEmbed('abc1234', 'fix: repair bug', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.color).toBe(0xef4444);
+    });
+
     it('truncates long titles to 256 characters', () => {
       const longTitle = 'a'.repeat(300);
       const embed = buildCommitEmbed('abc1234', longTitle, 'user/repo');
@@ -233,14 +256,13 @@ This is the commit body with more details.`;
       expect(data.description).toBe('This is the commit body with more details.');
     });
 
-    it('truncates long descriptions with character count', () => {
-      const longBody = 'x'.repeat(5000);
+    it('summarizes long descriptions', () => {
+      const longBody = 'x'.repeat(600);
       const message = `feat: title\n\n${longBody}`;
       const embed = buildCommitEmbed('abc1234', message, 'user/repo');
       const data = embed.toJSON();
 
       expect(data.description.length).toBeLessThanOrEqual(DISCORD_DESCRIPTION_LIMIT);
-      expect(data.description).toContain('more characters');
     });
 
     it('sets footer with short SHA and author', () => {
@@ -266,6 +288,79 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     });
   });
 
+  describe('getCommitTypeColor', () => {
+    it('returns green for feat commits', () => {
+      expect(getCommitTypeColor('feat: add feature')).toBe(0x10b981);
+    });
+
+    it('returns red for fix commits', () => {
+      expect(getCommitTypeColor('fix: repair bug')).toBe(0xef4444);
+    });
+
+    it('returns blue for docs commits', () => {
+      expect(getCommitTypeColor('docs: update readme')).toBe(0x3b82f6);
+    });
+
+    it('handles scoped commits', () => {
+      expect(getCommitTypeColor('feat(ui): add button')).toBe(0x10b981);
+      expect(getCommitTypeColor('fix(api): handle error')).toBe(0xef4444);
+    });
+
+    it('returns default gray for unknown types', () => {
+      expect(getCommitTypeColor('random commit message')).toBe(0x6b7280);
+    });
+
+    it('is case insensitive', () => {
+      expect(getCommitTypeColor('FEAT: uppercase feature')).toBe(0x10b981);
+      expect(getCommitTypeColor('FIX: uppercase fix')).toBe(0xef4444);
+    });
+  });
+
+  describe('summarizeBody', () => {
+    it('returns body as-is if under max length', () => {
+      const body = 'Short body text.';
+      expect(summarizeBody(body, 500)).toBe('Short body text.');
+    });
+
+    it('returns empty string for empty body', () => {
+      expect(summarizeBody('', 500)).toBe('');
+      expect(summarizeBody(null, 500)).toBe(null);
+    });
+
+    it('prioritizes bullet points when present', () => {
+      const body = `Some intro text.
+
+- First bullet point
+- Second bullet point
+- Third bullet point
+
+Some outro text.`;
+      const result = summarizeBody(body, 100);
+      expect(result).toContain('First bullet');
+    });
+
+    it('normalizes different bullet styles to dots', () => {
+      const body = `* Star bullet
+- Dash bullet`;
+      const result = summarizeBody(body, 500);
+      expect(result).toContain('Star bullet');
+      expect(result).toContain('Dash bullet');
+    });
+
+    it('truncates at sentence boundary when no bullets', () => {
+      const body = 'First sentence here. Second sentence here. Third sentence is much longer and continues.';
+      const result = summarizeBody(body, 60);
+      expect(result).toContain('First sentence');
+    });
+
+    it('enforces strict character limit', () => {
+      const longBody = 'x'.repeat(600);
+      const result = summarizeBody(longBody, 100);
+      expect(result.length).toBeLessThanOrEqual(100);
+      expect(result.endsWith('...')).toBe(true);
+    });
+  });
+
   describe('buildReleaseEmbed', () => {
     it('creates embed with version and title', () => {
       const release = {
@@ -279,7 +374,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.title).toBe('v1.0.0 — Initial Release');
     });
 
-    it('includes highlights as a field', () => {
+    it('includes highlights in description', () => {
       const release = {
         version: '1.0.0',
         title: 'Test Release',
@@ -288,10 +383,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      const highlightsField = data.fields.find(f => f.name === 'Highlights');
-      expect(highlightsField).toBeDefined();
-      expect(highlightsField.value).toContain('• Highlight 1');
-      expect(highlightsField.value).toContain('• Highlight 2');
+      expect(data.description).toContain('• Highlight 1');
+      expect(data.description).toContain('• Highlight 2');
     });
 
     it('handles empty highlights', () => {
@@ -303,11 +396,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      const highlightsField = data.fields.find(f => f.name === 'Highlights');
-      expect(highlightsField).toBeUndefined();
+      // Should still have the link to release notes
+      expect(data.description).toContain('View Full Release Notes');
     });
 
-    it('includes link to full release notes', () => {
+    it('includes link to full release notes in description', () => {
       const release = {
         version: '1.0.0',
         title: 'Test',
@@ -316,8 +409,19 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      const linkField = data.fields.find(f => f.value && f.value.includes('Release Notes'));
-      expect(linkField).toBeDefined();
+      expect(data.description).toContain('View Full Release Notes');
+    });
+
+    it('uses teal accent color', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        highlights: [],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      expect(data.color).toBe(0x14b8a6);
     });
   });
 
@@ -344,7 +448,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(releaseData.title).toBe('v1.0.5 — New Features');
       expect(commitData.title).toBe('chore: bump version to 1.0.5');
 
-      // Release embed has teal color, commit embed has gray
+      // Release embed has teal color, commit embed has gray (chore type)
       expect(releaseData.color).toBe(0x14b8a6);
       expect(commitData.color).toBe(0x6b7280);
     });
@@ -362,7 +466,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embeds = [releaseEmbed, commitEmbed];
 
       // Verify each embed has required structure
-      embeds.forEach((embed, i) => {
+      embeds.forEach((embed) => {
         const data = embed.toJSON();
         expect(data).toHaveProperty('title');
         expect(data).toHaveProperty('color');
