@@ -73,8 +73,8 @@ const AI_CONTENT_PATTERNS = [
 // Only strips AI-specific co-authors, preserves human collaborators
 const AI_ATTRIBUTION_PATTERNS = [
   /co-authored-by:.*(?:anthropic|claude|copilot|cursor|openai|github\.com\/apps).*$/gim,
+  /^\s*🤖\s*(?:Generated|Made|Created|Authored).*$/gim, // Must run before next pattern
   /generated (?:with|by) (?:claude|copilot|cursor|ai|gpt|llm).*$/gim,
-  /🤖.*$/gm,
 ];
 
 /**
@@ -437,7 +437,7 @@ async function buildCommitEmbed(sha, message, repository) {
   const color = getCommitTypeColor(title);
 
   // Truncate title if too long (Unicode-aware to avoid splitting surrogate pairs)
-  if (title.length > DISCORD_TITLE_LIMIT - 3) {
+  if (title.length > DISCORD_TITLE_LIMIT) {
     const codePoints = [...title];
     title = codePoints.slice(0, DISCORD_TITLE_LIMIT - 3).join('') + '...';
   }
