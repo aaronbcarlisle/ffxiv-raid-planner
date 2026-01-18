@@ -277,8 +277,12 @@ export interface User {
    * Set via ADMIN_DISCORD_IDS env var on backend.
    * NOT to be confused with isAdminAccess on StaticGroup which indicates
    * the user's role was granted via admin privileges rather than membership.
+   *
+   * Optional because it may be undefined when:
+   * - Loading persisted user data from localStorage (before backend populates it)
+   * - Between OAuth callback completion and fetchUser response
    */
-  isAdmin: boolean;
+  isAdmin?: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

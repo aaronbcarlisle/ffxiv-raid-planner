@@ -2,7 +2,7 @@ name: PR Automation
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   auto-assign-and-label:
@@ -85,6 +85,22 @@ jobs:
               console.log(`Adding labels: ${labelArray.join(', ')}`);
 
               // Ensure labels exist (create if they don't)
+              const colors = {
+                'bug': 'd73a4a',
+                'enhancement': 'a2eeef',
+                'documentation': '0075ca',
+                'chore': 'fef2c0',
+                'refactor': 'c5def5',
+                'testing': '5319e7',
+                'style': 'fbca04',
+                'performance': '7057ff',
+                'ci/cd': 'e99695',
+                'build': 'bfdadc',
+                'backend': '1d76db',
+                'frontend': 'd4c5f9',
+                'scripts': 'c2e0c6'
+              };
+
               for (const label of labelArray) {
                 try {
                   await github.rest.issues.getLabel({
@@ -94,29 +110,22 @@ jobs:
                   });
                 } catch (e) {
                   if (e.status === 404) {
-                    // Create the label with a default color
-                    const colors = {
-                      'bug': 'd73a4a',
-                      'enhancement': 'a2eeef',
-                      'documentation': '0075ca',
-                      'chore': 'fef2c0',
-                      'refactor': 'c5def5',
-                      'testing': '5319e7',
-                      'style': 'fbca04',
-                      'performance': '7057ff',
-                      'ci/cd': 'e99695',
-                      'build': 'bfdadc',
-                      'backend': '1d76db',
-                      'frontend': 'd4c5f9',
-                      'scripts': 'c2e0c6'
-                    };
-                    await github.rest.issues.createLabel({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      name: label,
-                      color: colors[label] || 'ededed'
-                    });
-                    console.log(`Created label: ${label}`);
+                    // Label doesn't exist, create it
+                    try {
+                      await github.rest.issues.createLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: label,
+                        color: colors[label] || 'ededed'
+                      });
+                      console.log(`Created label: ${label}`);
+                    } catch (createError) {
+                      console.error(`Failed to create label '${label}': ${createError.message}`);
+                      // Continue with other labels even if one fails to create
+                    }
+                  } else {
+                    // Log non-404 errors but continue processing
+                    console.error(`Error checking label '${label}': ${e.message} (status: ${e.status})`);
                   }
                 }
               }

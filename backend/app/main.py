@@ -91,6 +91,10 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
 # go through it, including early-return 403s from CSRFMiddleware. Without this,
 # CSRF validation failures return 403 without CORS headers, causing browsers to
 # report CORS errors instead of showing the actual 403 to JavaScript.
+#
+# Execution flow:
+#   Request:  CORS → RequestID → SizeLimit → CSRF → Security → Route
+#   Response: Route → Security → CSRF → SizeLimit → RequestID → CORS
 
 # 1. Security headers (innermost - just adds response headers)
 app.add_middleware(SecurityHeadersMiddleware)
