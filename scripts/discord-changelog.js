@@ -316,5 +316,16 @@ async function main() {
   }
 }
 
-// Run
-main();
+// Run (only when executed directly, not when imported for tests)
+if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/^.*[/\\]/, ''))) {
+  main();
+}
+
+// Export for testing
+export {
+  stripAIAttributions,
+  AI_ATTRIBUTION_PATTERNS,
+  DISCORD_TITLE_LIMIT,
+  DISCORD_DESCRIPTION_LIMIT,
+  TRUNCATION_MESSAGE_RESERVE,
+};
