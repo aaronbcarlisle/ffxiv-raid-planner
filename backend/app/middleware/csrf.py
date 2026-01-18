@@ -17,7 +17,8 @@ logger = get_logger(__name__)
 CSRF_EXEMPT_PATHS: Set[str] = {
     "/health",
     "/api/auth/discord",
-    "/api/auth/callback",
+    "/api/auth/discord/callback",
+    "/api/auth/refresh",
     "/api/auth/logout",
     "/docs",
     "/openapi.json",

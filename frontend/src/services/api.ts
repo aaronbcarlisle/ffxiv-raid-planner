@@ -23,7 +23,11 @@ const CSRF_COOKIE_NAME = 'csrf_token';
 function getCSRFToken(): string | null {
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
     if (name === CSRF_COOKIE_NAME) {
       return value;
     }

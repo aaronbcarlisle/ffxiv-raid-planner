@@ -72,24 +72,32 @@ class CSRFAwareClient(AsyncClient):
         # Set the CSRF cookie
         self.cookies.set(CSRF_COOKIE_NAME, self._csrf_token)
 
+    def _inject_csrf_header(self, kwargs: dict) -> dict:
+        """Safely inject CSRF header into kwargs, handling all header types."""
+        existing_headers = kwargs.get("headers")
+        if existing_headers is None:
+            kwargs["headers"] = {CSRF_HEADER_NAME: self._csrf_token}
+        elif isinstance(existing_headers, dict):
+            existing_headers[CSRF_HEADER_NAME] = self._csrf_token
+        else:
+            # Handle httpx.Headers or other Mapping types by converting to dict
+            kwargs["headers"] = {**dict(existing_headers), CSRF_HEADER_NAME: self._csrf_token}
+        return kwargs
+
     async def post(self, *args, **kwargs):
-        kwargs.setdefault("headers", {})
-        kwargs["headers"][CSRF_HEADER_NAME] = self._csrf_token
+        self._inject_csrf_header(kwargs)
         return await super().post(*args, **kwargs)
 
     async def put(self, *args, **kwargs):
-        kwargs.setdefault("headers", {})
-        kwargs["headers"][CSRF_HEADER_NAME] = self._csrf_token
+        self._inject_csrf_header(kwargs)
         return await super().put(*args, **kwargs)
 
     async def delete(self, *args, **kwargs):
-        kwargs.setdefault("headers", {})
-        kwargs["headers"][CSRF_HEADER_NAME] = self._csrf_token
+        self._inject_csrf_header(kwargs)
         return await super().delete(*args, **kwargs)
 
     async def patch(self, *args, **kwargs):
-        kwargs.setdefault("headers", {})
-        kwargs["headers"][CSRF_HEADER_NAME] = self._csrf_token
+        self._inject_csrf_header(kwargs)
         return await super().patch(*args, **kwargs)
 
 

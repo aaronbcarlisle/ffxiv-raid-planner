@@ -1,5 +1,6 @@
 """Authentication router for Discord OAuth"""
 
+import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -54,8 +55,6 @@ def _get_client_fingerprint(request: Request) -> str:
 
     This binds OAuth state to the requesting client to prevent session fixation attacks.
     """
-    import hashlib
-
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "")
 
