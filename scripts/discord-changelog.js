@@ -79,6 +79,7 @@ function parseReleaseNotes() {
   const versionMatch = content.match(/export const CURRENT_VERSION\s*=\s*['"]([^'"]+)['"]/);
   if (!versionMatch) {
     console.error('Could not parse CURRENT_VERSION from releaseNotes.ts');
+    console.error('Expected format: export const CURRENT_VERSION = "1.0.0"');
     return null;
   }
   const currentVersion = versionMatch[1];
@@ -88,6 +89,7 @@ function parseReleaseNotes() {
   const releasesMatch = content.match(/export const RELEASES:\s*Release\[\]\s*=\s*\[([\s\S]*?)^\];/m);
   if (!releasesMatch) {
     console.error('Could not parse RELEASES array from releaseNotes.ts');
+    console.error('Expected format: export const RELEASES: Release[] = [...]');
     return { currentVersion, latestRelease: null };
   }
 
@@ -96,7 +98,8 @@ function parseReleaseNotes() {
   const firstReleaseMatch = releasesContent.match(/\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)?['"]?,?\s*highlights:\s*\[([\s\S]*?)\]/);
 
   if (!firstReleaseMatch) {
-    console.error('Could not parse first release object');
+    console.error('Could not parse first release object from RELEASES array');
+    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", title: "Title", highlights: [...] }');
     return { currentVersion, latestRelease: null };
   }
 
