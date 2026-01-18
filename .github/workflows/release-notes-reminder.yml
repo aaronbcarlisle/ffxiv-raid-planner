@@ -39,7 +39,8 @@ jobs:
 
               const botComment = comments.find(c =>
                 c.user.type === 'Bot' &&
-                c.body.includes('release notes reminder')
+                typeof c.body === 'string' &&
+                c.body.includes('<!-- release-notes-reminder-bot -->')
               );
 
               if (!botComment) {
@@ -47,7 +48,8 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.issue.number,
-                  body: `**Release notes reminder**
+                  body: `<!-- release-notes-reminder-bot -->
+**Release notes reminder**
 
 This PR doesn't appear to update release notes. If this PR includes user-facing changes, please update \`frontend/src/data/releaseNotes.ts\`.
 
