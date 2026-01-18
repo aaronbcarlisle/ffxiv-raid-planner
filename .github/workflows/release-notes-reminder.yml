@@ -61,5 +61,5 @@ Add the \`skip-release-notes\` label to dismiss this reminder.`
               }
             } catch (error) {
               // Log the error but don't fail the workflow - this is a non-blocking reminder
-              console.log(`Release notes reminder failed: ${error.message}`);
+              console.error(`Release notes reminder failed: ${error.message}`);
             }

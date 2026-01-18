@@ -35,7 +35,7 @@ const TRUNCATION_MESSAGE_RESERVE = 80; // Space for the truncation hint message
 
 // Patterns to strip from commit messages (AI tool attributions)
 // These patterns include the preceding newline to avoid leaving extra blank lines
-// Using .* with case-insensitive flag ensures proper backtracking to find keywords anywhere in line
+// Using .* allows broad matching to catch AI attributions in various formats
 const AI_ATTRIBUTION_PATTERNS = [
   /\n?Co-Authored-By:.*(?:anthropic|claude).*/gi,      // Matches Claude/Anthropic co-authors
   /\n?Co-Authored-By:.*GitHub Copilot.*/gi,            // Matches GitHub Copilot co-author
@@ -317,7 +317,10 @@ async function main() {
 }
 
 // Run (only when executed directly, not when imported for tests)
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/^.*[/\\]/, ''))) {
+// Use URL comparison for robust cross-platform detection
+import { pathToFileURL } from 'url';
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
   main();
 }
 
