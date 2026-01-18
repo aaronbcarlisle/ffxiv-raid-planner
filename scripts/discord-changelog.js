@@ -28,6 +28,10 @@ const RELEASE_NOTES_URL = 'https://www.xivraidplanner.app/docs/release-notes';
 // Hardcoded per CLAUDE.md: "NEVER add AI attribution to commits or PRs"
 const COMMIT_AUTHOR = 'Aaron Carlisle';
 
+// Discord embed limits (https://discord.com/developers/docs/resources/channel#embed-limits)
+const DISCORD_TITLE_LIMIT = 256;
+const DISCORD_DESCRIPTION_LIMIT = 2000; // Using 2000 to stay well under 4096 limit
+
 // Patterns to strip from commit messages (AI tool attributions)
 // These patterns include the preceding newline to avoid leaving extra blank lines
 const AI_ATTRIBUTION_PATTERNS = [
@@ -185,9 +189,9 @@ function buildCommitEmbed(sha, message, repository) {
   const lines = cleanedMessage.split('\n');
   let title = lines[0].trim();
 
-  // Truncate title if too long (Discord embed title limit is 256 characters)
-  if (title.length > 256) {
-    title = title.substring(0, 253) + '...';
+  // Truncate title if too long
+  if (title.length > DISCORD_TITLE_LIMIT) {
+    title = title.substring(0, DISCORD_TITLE_LIMIT - 3) + '...';
   }
 
   // Get body (everything after first line, skip leading blank lines)
@@ -205,9 +209,13 @@ function buildCommitEmbed(sha, message, repository) {
 
   // Add body as description if present
   if (body) {
-    // Truncate body if too long (Discord embed description limit is 4096)
-    const truncatedBody = body.length > 2000 ? body.substring(0, 1997) + '...' : body;
-    embed.setDescription(truncatedBody);
+    let description = body;
+    if (body.length > DISCORD_DESCRIPTION_LIMIT) {
+      const remaining = body.length - DISCORD_DESCRIPTION_LIMIT + 50;
+      description = body.substring(0, DISCORD_DESCRIPTION_LIMIT - 50) +
+        `\n\n*... ${remaining} more characters, click title to view full commit*`;
+    }
+    embed.setDescription(description);
   }
 
   // Add footer with commit info
