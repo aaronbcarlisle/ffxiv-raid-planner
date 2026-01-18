@@ -28,15 +28,11 @@ jobs:
       - name: Get commit info
         id: commit
         run: |
-          # Get commit message (first line only for cleaner output)
-          MESSAGE=$(git log -1 --pretty=%s)
+          # Get full commit message (title + body)
+          MESSAGE=$(git log -1 --pretty=%B)
           echo "message<<EOF" >> $GITHUB_OUTPUT
           echo "$MESSAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-          # Get author name
-          AUTHOR=$(git log -1 --pretty=%an)
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
 
       - name: Post to Discord
         working-directory: scripts
@@ -45,6 +41,5 @@ jobs:
           DISCORD_CHANGELOG_CHANNEL_ID: ${{ secrets.DISCORD_CHANGELOG_CHANNEL_ID }}
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
-          COMMIT_AUTHOR: ${{ steps.commit.outputs.author }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node discord-changelog.js

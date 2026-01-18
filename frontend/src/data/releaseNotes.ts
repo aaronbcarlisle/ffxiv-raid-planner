@@ -5,7 +5,7 @@
  * Update CURRENT_VERSION and add new release entries when deploying.
  */
 
-export const CURRENT_VERSION = '1.0.10';
+export const CURRENT_VERSION = '1.0.11';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -35,6 +35,70 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.11',
+    date: '2026-01-18',
+    title: 'Security Hardening Sprint',
+    highlights: ['CSRF protection', 'OAuth hardening', 'Request validation'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'CSRF Protection',
+        description: 'Double-submit cookie pattern for all state-changing requests',
+        details:
+          'All POST, PUT, DELETE requests now require a CSRF token to prevent cross-site request forgery attacks. The token is automatically handled by the frontend API client.',
+      },
+      {
+        category: 'improvement',
+        title: 'OAuth State Hardening',
+        description: 'Client fingerprint binding prevents session fixation',
+        details:
+          'OAuth state tokens are now bound to client fingerprints, preventing session fixation attacks where an attacker could trick a user into authenticating to the attacker\'s account.',
+      },
+      {
+        category: 'improvement',
+        title: 'SSRF Protection',
+        description: 'Redirect rejection on all external API calls',
+        details:
+          'All external HTTP requests (BiS imports from XIVGear, Etro, etc.) now reject redirects to prevent server-side request forgery attacks that could access internal services.',
+      },
+      {
+        category: 'improvement',
+        title: 'Request Size Limits',
+        description: '10MB limit prevents DoS attacks',
+        details:
+          'All API requests are now limited to 10MB to prevent denial-of-service attacks through oversized payloads.',
+      },
+      {
+        category: 'improvement',
+        title: 'Request ID Tracking',
+        description: 'UUID correlation for all requests',
+        details:
+          'Every API request now receives a unique request ID for correlation in logs. Makes debugging and security auditing much easier.',
+      },
+      {
+        category: 'improvement',
+        title: 'JWT Algorithm Restriction',
+        description: 'Type-safe HS256/384/512 only',
+        details:
+          'JWT token verification is now restricted to HMAC algorithms only (HS256, HS384, HS512), preventing algorithm confusion attacks.',
+      },
+      {
+        category: 'improvement',
+        title: 'Security Event Logging',
+        description: 'Permission denials and admin access logged',
+        details:
+          'Security-relevant events like permission denials and admin access are now logged for audit purposes.',
+      },
+      {
+        category: 'fix',
+        title: 'Database Constraints',
+        description: 'CHECK constraints on week_number columns',
+        details:
+          'Added CHECK constraints to ensure week_number values are always positive integers, preventing invalid data from being stored.',
+      },
+    ],
+  },
   {
     version: '1.0.10',
     date: '2026-01-16',

@@ -1,0 +1,57 @@
+name: Release Notes Reminder
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check:
+    name: Check Release Notes
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for release notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const hasReleaseNotes = files.some(f =>
+              f.filename === 'frontend/src/data/releaseNotes.ts'
+            );
+
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const skipLabel = labels.includes('skip-release-notes');
+
+            if (!hasReleaseNotes && !skipLabel) {
+              // Check if we already commented
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number
+              });
+
+              const botComment = comments.find(c =>
+                c.user.type === 'Bot' &&
+                c.body.includes('release notes reminder')
+              );
+
+              if (!botComment) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `**Release notes reminder**
+
+This PR doesn't appear to update release notes. If this PR includes user-facing changes, please update \`frontend/src/data/releaseNotes.ts\`.
+
+Add the \`skip-release-notes\` label to dismiss this reminder.`
+                });
+              }
+            }
