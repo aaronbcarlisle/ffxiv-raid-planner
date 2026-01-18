@@ -133,8 +133,10 @@ export async function authRequest<T>(
     ...options,
     credentials: 'include', // Send httpOnly cookies
     headers: {
-      ...headers,
+      // Spread options.headers first, then our headers, to ensure
+      // security-critical headers (CSRF token) cannot be overwritten
       ...options.headers,
+      ...headers,
     },
   });
 
@@ -166,8 +168,10 @@ export async function authRequest<T>(
           ...options,
           credentials: 'include',
           headers: {
-            ...headers,
+            // Spread options.headers first, then our headers, to ensure
+            // security-critical headers (CSRF token) cannot be overwritten
             ...options.headers,
+            ...headers,
           },
         });
 
