@@ -135,6 +135,19 @@ Co-Authored-By: John Smith <john@example.com>`;
       const result = stripAIAttributions(input);
       expect(result).toBe('feat: collaborative feature\n\nCo-Authored-By: John Smith <john@example.com>');
     });
+
+    // Note: The patterns intentionally use broad matching per CLAUDE.md policy.
+    // This means names containing "claude" or "anthropic" will be stripped even
+    // if they belong to legitimate humans (e.g., "Claude Smith"). This is an
+    // accepted trade-off for aggressive AI attribution removal.
+    it('strips co-authors with AI keywords in name (known aggressive behavior)', () => {
+      const input = `feat: collaborative feature
+
+Co-Authored-By: Claude Smith <claude.smith@example.com>`;
+      const result = stripAIAttributions(input);
+      // This IS stripped because "claude" appears in the name - intentional per CLAUDE.md
+      expect(result).toBe('feat: collaborative feature');
+    });
   });
 
   describe('constants', () => {
