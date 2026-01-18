@@ -466,7 +466,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const data = embed.toJSON();
 
       // Should still have the link to release notes with version anchor
-      expect(data.description).toContain('view release notes for [v1.0.0]');
+      expect(data.description).toContain('[view in browser]');
       expect(data.description).toContain('#v1.0.0');
     });
 
@@ -480,7 +480,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const data = embed.toJSON();
 
       // Description should start with the link text, not newlines
-      expect(data.description.startsWith('view release notes for')).toBe(true);
+      expect(data.description.startsWith('[[view in browser]]')).toBe(true);
     });
 
     it('does not have leading newlines when highlights overflow and get truncated to empty', () => {
@@ -496,7 +496,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
 
       // Description should not start with newlines even when highlights overflow
       expect(data.description.charAt(0)).not.toBe('\n');
-      expect(data.description).toContain('view release notes for');
+      expect(data.description).toContain('[view in browser]');
     });
 
     it('includes link to full release notes with version anchor in description', () => {
@@ -508,7 +508,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      expect(data.description).toContain('view release notes for [v2.0.5]');
+      expect(data.description).toContain('[view in browser]');
       expect(data.description).toContain('#v2.0.5');
     });
 

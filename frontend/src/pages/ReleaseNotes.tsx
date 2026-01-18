@@ -66,6 +66,77 @@ const CATEGORY_CONFIG: Record<
   },
 };
 
+/** Number of recent releases to show before grouping by month */
+const RECENT_RELEASES_COUNT = 10;
+
+/** Group releases by month for the "older" section */
+function groupReleasesByMonth(releases: Release[]): Map<string, Release[]> {
+  const groups = new Map<string, Release[]>();
+
+  for (const release of releases) {
+    const date = new Date(release.date);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const existing = groups.get(key) || [];
+    existing.push(release);
+    groups.set(key, existing);
+  }
+
+  return groups;
+}
+
+/** Format month key to display string */
+function formatMonthKey(key: string): string {
+  const [year, month] = key.split('-');
+  const date = new Date(parseInt(year), parseInt(month) - 1);
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// Single version item in the nav
+function VersionNavItem({
+  release,
+  isActive,
+  isLatest,
+  onClick,
+}: {
+  release: Release;
+  isActive: boolean;
+  isLatest: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <li id={`nav-v${release.version}`}>
+      <button
+        onClick={onClick}
+        className={`
+          w-full text-left px-2 py-1.5 rounded transition-colors
+          ${isActive
+            ? 'bg-accent/10 text-accent font-medium'
+            : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+          }
+        `}
+        aria-label={`Jump to version ${release.version}${isLatest ? ' (latest)' : ''}`}
+        aria-current={isActive ? 'true' : undefined}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px]">v{release.version}</span>
+          {isLatest && (
+            <span className="px-1 py-0.5 text-[9px] font-medium bg-accent/20 text-accent rounded">
+              NEW
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-text-muted mt-0.5">
+          {new Date(release.date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </div>
+      </button>
+    </li>
+  );
+}
+
 // Sidebar Navigation Component
 function VersionNav({
   activeVersion,
@@ -77,7 +148,31 @@ function VersionNav({
   shouldScrollToActive: boolean;
 }) {
   const [scrollState, setScrollState] = useState({ top: true, bottom: false });
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const scrollContainerNodeRef = useRef<HTMLDivElement | null>(null);
+
+  // Split releases into recent and older
+  const { recentReleases, olderReleases, olderByMonth } = useMemo(() => {
+    const recent = RELEASES.slice(0, RECENT_RELEASES_COUNT);
+    const older = RELEASES.slice(RECENT_RELEASES_COUNT);
+    const byMonth = groupReleasesByMonth(older);
+    return { recentReleases: recent, olderReleases: older, olderByMonth: byMonth };
+  }, []);
+
+  // Auto-expand month containing active version if it's in older releases
+  useEffect(() => {
+    const olderRelease = olderReleases.find(r => r.version === activeVersion);
+    if (olderRelease) {
+      const date = new Date(olderRelease.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      setExpandedMonths(prev => {
+        if (prev.has(monthKey)) return prev;
+        const next = new Set(prev);
+        next.add(monthKey);
+        return next;
+      });
+    }
+  }, [activeVersion, olderReleases]);
 
   // Store the node reference via callback ref
   const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -132,6 +227,18 @@ function VersionNav({
     });
   };
 
+  const toggleMonth = (monthKey: string) => {
+    setExpandedMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) {
+        next.delete(monthKey);
+      } else {
+        next.add(monthKey);
+      }
+      return next;
+    });
+  };
+
   return (
     <nav className="sticky top-6 w-48 shrink-0 hidden lg:block self-start h-fit z-40">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
@@ -148,48 +255,72 @@ function VersionNav({
           ref={scrollContainerRef}
           className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
         >
+          {/* Recent Versions */}
           <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
-            Versions
+            Recent
           </div>
           <ul className="space-y-px">
-            {RELEASES.map((release, idx) => {
-              const isActive = activeVersion === release.version;
-              const isLatest = idx === 0;
+            {recentReleases.map((release, idx) => (
+              <VersionNavItem
+                key={release.version}
+                release={release}
+                isActive={activeVersion === release.version}
+                isLatest={idx === 0}
+                onClick={() => handleClick(release.version)}
+              />
+            ))}
+          </ul>
 
-              return (
-                <li key={release.version} id={`nav-v${release.version}`}>
-                  <button
-                    onClick={() => handleClick(release.version)}
-                    className={`
-                      w-full text-left px-2 py-1.5 rounded transition-colors
-                      ${isActive
-                        ? 'bg-accent/10 text-accent font-medium'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                      }
-                    `}
-                    aria-label={`Jump to version ${release.version}${isLatest ? ' (latest)' : ''}`}
-                    aria-current={isActive ? 'true' : undefined}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[13px]">v{release.version}</span>
-                      {isLatest && (
-                        <span className="px-1 py-0.5 text-[9px] font-medium bg-accent/20 text-accent rounded">
-                          NEW
-                        </span>
+          {/* Older Versions by Month */}
+          {olderReleases.length > 0 && (
+            <>
+              <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mt-4 mb-2 px-1">
+                Older
+              </div>
+              <div className="space-y-1">
+                {Array.from(olderByMonth.entries()).map(([monthKey, releases]) => {
+                  const isExpanded = expandedMonths.has(monthKey);
+                  const hasActiveVersion = releases.some(r => r.version === activeVersion);
+
+                  return (
+                    <div key={monthKey}>
+                      <button
+                        onClick={() => toggleMonth(monthKey)}
+                        className={`
+                          w-full text-left px-2 py-1.5 rounded transition-colors flex items-center justify-between
+                          ${hasActiveVersion
+                            ? 'text-accent'
+                            : 'text-text-muted hover:text-text-secondary hover:bg-surface-interactive'
+                          }
+                        `}
+                      >
+                        <span className="text-[11px] font-medium">{formatMonthKey(monthKey)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-text-muted">({releases.length})</span>
+                          <ChevronRight
+                            className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                          />
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <ul className="space-y-px ml-2 mt-1 border-l border-border-subtle pl-2">
+                          {releases.map((release) => (
+                            <VersionNavItem
+                              key={release.version}
+                              release={release}
+                              isActive={activeVersion === release.version}
+                              isLatest={false}
+                              onClick={() => handleClick(release.version)}
+                            />
+                          ))}
+                        </ul>
                       )}
                     </div>
-                    <div className="text-[10px] text-text-muted mt-0.5">
-                      {new Date(release.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         <div
@@ -293,9 +424,14 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                     key={commit.hash}
                     className="flex items-center gap-2 text-sm"
                   >
-                    <code className="px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent">
+                    <a
+                      href={`https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/commit/${commit.hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline"
+                    >
                       {commit.hash}
-                    </code>
+                    </a>
                     <span className="text-text-secondary">{commit.message}</span>
                   </li>
                 ))}

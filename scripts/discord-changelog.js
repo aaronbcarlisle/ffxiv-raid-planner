@@ -306,6 +306,49 @@ function summarizeBody(body, maxLength) {
 }
 
 /**
+ * Parse release items from a release block
+ * Extracts category, title, and description from each item
+ */
+function parseReleaseItems(itemsContent) {
+  const items = [];
+
+  // Match each item object - look for category, title, and optional description
+  // Pattern captures category, title, and optionally description
+  const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"](?:,\s*description:\s*['"]([^'"]*?)['"])?/g;
+  let match;
+  while ((match = itemPattern.exec(itemsContent)) !== null) {
+    items.push({
+      category: match[1],
+      title: match[2],
+      description: match[3] || null,
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Extract nested array content by counting brackets
+ */
+function extractArrayContent(content, startIndex) {
+  let depth = 0;
+  let start = -1;
+
+  for (let i = startIndex; i < content.length; i++) {
+    if (content[i] === '[') {
+      if (depth === 0) start = i + 1;
+      depth++;
+    } else if (content[i] === ']') {
+      depth--;
+      if (depth === 0) {
+        return content.substring(start, i);
+      }
+    }
+  }
+  return '';
+}
+
+/**
  * Parse releaseNotes.ts to extract version and release info
  */
 function parseReleaseNotes() {
@@ -325,8 +368,7 @@ function parseReleaseNotes() {
   }
   const currentVersion = versionMatch[1];
 
-  // Extract the first release object (latest release)
-  // Match the first object in the RELEASES array
+  // Extract the RELEASES array content
   const releasesMatch = content.match(/export const RELEASES:\s*Release\[\]\s*=\s*\[([\s\S]*?)^\];/m);
   if (!releasesMatch) {
     console.error('Could not parse RELEASES array from releaseNotes.ts');
@@ -334,13 +376,16 @@ function parseReleaseNotes() {
     return { currentVersion, latestRelease: null };
   }
 
-  // Find the first release object
   const releasesContent = releasesMatch[1];
-  const firstReleaseMatch = releasesContent.match(/\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)?['"]?,?\s*highlights:\s*\[([\s\S]*?)\]/);
+
+  // Find the first release header - match version, date, title, highlights, then parse items separately
+  const firstReleaseMatch = releasesContent.match(
+    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]*)?['"]?,?\s*highlights:\s*\[([\s\S]*?)\],\s*items:\s*\[/
+  );
 
   if (!firstReleaseMatch) {
     console.error('Could not parse first release object from RELEASES array');
-    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", title: "Title", highlights: [...] }');
+    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", title: "Title", highlights: [...], items: [...] }');
     return { currentVersion, latestRelease: null };
   }
 
@@ -356,6 +401,11 @@ function parseReleaseNotes() {
     highlights.push(match[1]);
   }
 
+  // Extract the items array content by counting brackets
+  const itemsStartIndex = firstReleaseMatch.index + firstReleaseMatch[0].length - 1;
+  const itemsStr = extractArrayContent(releasesContent, itemsStartIndex);
+  const items = parseReleaseItems(itemsStr);
+
   return {
     currentVersion,
     latestRelease: {
@@ -363,6 +413,7 @@ function parseReleaseNotes() {
       date,
       title,
       highlights,
+      items,
     },
   };
 }
@@ -398,53 +449,122 @@ function didVersionChange() {
   }
 }
 
+// Category labels for display
+const CATEGORY_LABELS = {
+  feature: 'New Features',
+  improvement: 'Improvements',
+  fix: 'Bug Fixes',
+  breaking: 'Breaking Changes',
+};
+
+// Category order for display (features first, then improvements, fixes, breaking)
+const CATEGORY_ORDER = ['feature', 'improvement', 'fix', 'breaking'];
+
+// Discord embed description limit (actual limit is 4096, but we use a reasonable max)
+const RELEASE_DESCRIPTION_LIMIT = 3500;
+
 /**
- * Build the release announcement embed with compact, visually appealing format
+ * Format a single item for Discord display
+ * Mirrors the release notes page format: "• **Title** — Description"
+ */
+function formatReleaseItem(item) {
+  if (item.description) {
+    return `• **${item.title}** — ${item.description}`;
+  }
+  return `• **${item.title}**`;
+}
+
+/**
+ * Build the release announcement embed mirroring the release notes page
+ * Shows items grouped by category with full titles and descriptions
  */
 function buildReleaseEmbed(release) {
+  const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
+
   const embed = new EmbedBuilder()
     .setColor(0x14b8a6) // Teal accent color
     .setTitle(`v${release.version} — ${release.title}`)
-    .setURL(RELEASE_NOTES_URL)
-    .setTimestamp();
+    .setURL(versionAnchor)
+    .setAuthor({
+      name: COMMIT_AUTHOR,
+      url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
+      iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
+    })
+    .setTimestamp(release.date ? new Date(release.date) : undefined);
 
-  // Build compact description with highlights
-  let description = '';
+  // If we have items, group them by category and build a rich description
+  if (release.items && release.items.length > 0) {
+    // Group items by category
+    const groupedItems = {};
+    for (const item of release.items) {
+      if (!groupedItems[item.category]) {
+        groupedItems[item.category] = [];
+      }
+      groupedItems[item.category].push(item);
+    }
 
-  if (release.highlights && release.highlights.length > 0) {
-    description = release.highlights.map(h => `• ${h}`).join('\n');
-    description += '\n\n';
-  }
-
-  // Add link to full notes with version anchor
-  const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
-  description += `view release notes for [v${release.version}](${versionAnchor})`;
-
-  // Ensure we're under the limit
-  if (description.length > DISCORD_DESCRIPTION_LIMIT) {
-    const suffix = `\n*...and more*\n\nview release notes for [v${release.version}](${versionAnchor})`;
-    const maxHighlightLength = DISCORD_DESCRIPTION_LIMIT - suffix.length;
-
-    let highlights = '';
-    if (maxHighlightLength > 0 && release.highlights && release.highlights.length > 0) {
-      const fullHighlights = release.highlights
-        .slice(0, MAX_HIGHLIGHTS_WHEN_TRUNCATED)
-        .map(h => `• ${h}`)
-        .join('\n');
-
-      if (fullHighlights.length <= maxHighlightLength) {
-        highlights = fullHighlights;
-      } else {
-        // Truncate with ellipsis if still too long
-        const available = Math.max(maxHighlightLength - 3, 0);
-        highlights = available > 0 ? fullHighlights.slice(0, available) + '...' : '';
+    // Build description with categories - mirroring release notes page format
+    const sections = [];
+    for (const category of CATEGORY_ORDER) {
+      const items = groupedItems[category];
+      if (items && items.length > 0) {
+        const label = CATEGORY_LABELS[category] || category;
+        const itemList = items.map(formatReleaseItem).join('\n');
+        sections.push(`**${label}** (${items.length})\n${itemList}`);
       }
     }
 
-    description = highlights ? `${highlights}${suffix}` : suffix.trimStart();
-  }
+    let description = sections.join('\n\n');
 
-  embed.setDescription(description);
+    // Add "view in browser" link at the end
+    const linkText = `\n\n[[view in browser]](${versionAnchor})`;
+
+    // Check if we exceed the limit
+    if ((description + linkText).length > RELEASE_DESCRIPTION_LIMIT) {
+      // Truncate by removing descriptions, keeping just titles
+      const truncatedSections = [];
+      for (const category of CATEGORY_ORDER) {
+        const items = groupedItems[category];
+        if (items && items.length > 0) {
+          const label = CATEGORY_LABELS[category] || category;
+          const itemList = items.map(i => `• **${i.title}**`).join('\n');
+          truncatedSections.push(`**${label}** (${items.length})\n${itemList}`);
+        }
+      }
+
+      description = truncatedSections.join('\n\n');
+
+      // If still too long, limit items per category
+      if ((description + linkText).length > RELEASE_DESCRIPTION_LIMIT) {
+        const limitedSections = [];
+        const maxItemsPerCategory = 5;
+
+        for (const category of CATEGORY_ORDER) {
+          const items = groupedItems[category];
+          if (items && items.length > 0) {
+            const label = CATEGORY_LABELS[category] || category;
+            const displayItems = items.slice(0, maxItemsPerCategory);
+            let itemList = displayItems.map(i => `• **${i.title}**`).join('\n');
+            if (items.length > maxItemsPerCategory) {
+              itemList += `\n  *...and ${items.length - maxItemsPerCategory} more*`;
+            }
+            limitedSections.push(`**${label}** (${items.length})\n${itemList}`);
+          }
+        }
+
+        description = limitedSections.join('\n\n');
+      }
+    }
+
+    embed.setDescription(description + linkText);
+  } else if (release.highlights && release.highlights.length > 0) {
+    // Fall back to highlights-only format
+    let description = release.highlights.map(h => `• ${h}`).join('\n');
+    description += `\n\n[[view in browser]](${versionAnchor})`;
+    embed.setDescription(description);
+  } else {
+    embed.setDescription(`[[view in browser]](${versionAnchor})`);
+  }
 
   return embed;
 }
@@ -616,8 +736,11 @@ if (isMainModule) {
 // Export for testing
 export {
   parseReleaseNotes,
+  parseReleaseItems,
+  extractArrayContent,
   buildCommitEmbed,
   buildReleaseEmbed,
+  formatReleaseItem,
   getCommitTypeColor,
   summarizeBody,
   summarizeWithAI,
@@ -632,4 +755,7 @@ export {
   COMMIT_AUTHOR_GITHUB,
   AI_MODEL,
   AI_TIMEOUT_MS,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  RELEASE_DESCRIPTION_LIMIT,
 };
