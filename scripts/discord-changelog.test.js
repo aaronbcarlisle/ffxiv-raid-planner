@@ -307,4 +307,55 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(linkField).toBeDefined();
     });
   });
+
+  describe('embed combinations', () => {
+    it('can build both release and commit embeds for the same message', () => {
+      // Simulates scenario where a version bump commit triggers both embeds
+      const release = {
+        version: '1.0.5',
+        title: 'New Features',
+        highlights: ['Feature A', 'Feature B'],
+      };
+      const commitMessage = `chore: bump version to 1.0.5
+
+- Added Feature A
+- Added Feature B`;
+
+      const releaseEmbed = buildReleaseEmbed(release);
+      const commitEmbed = buildCommitEmbed('abc1234', commitMessage, 'user/repo');
+
+      const releaseData = releaseEmbed.toJSON();
+      const commitData = commitEmbed.toJSON();
+
+      // Both embeds should be valid and have distinct content
+      expect(releaseData.title).toBe('v1.0.5 — New Features');
+      expect(commitData.title).toBe('chore: bump version to 1.0.5');
+
+      // Release embed has teal color, commit embed has gray
+      expect(releaseData.color).toBe(0x14b8a6);
+      expect(commitData.color).toBe(0x6b7280);
+    });
+
+    it('release and commit embeds have compatible structure for Discord API', () => {
+      const release = {
+        version: '2.0.0',
+        title: 'Major Release',
+        highlights: ['Breaking changes'],
+      };
+      const releaseEmbed = buildReleaseEmbed(release);
+      const commitEmbed = buildCommitEmbed('def5678', 'feat: major update', 'owner/repo');
+
+      // Both should be valid EmbedBuilder instances that can be sent together
+      const embeds = [releaseEmbed, commitEmbed];
+
+      // Verify each embed has required structure
+      embeds.forEach((embed, i) => {
+        const data = embed.toJSON();
+        expect(data).toHaveProperty('title');
+        expect(data).toHaveProperty('color');
+        expect(typeof data.title).toBe('string');
+        expect(typeof data.color).toBe('number');
+      });
+    });
+  });
 });

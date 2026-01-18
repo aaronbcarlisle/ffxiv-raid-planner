@@ -3,6 +3,10 @@
  *
  * Central source of truth for version tracking and release history.
  * Update CURRENT_VERSION and add new release entries when deploying.
+ *
+ * WARNING: This file's structure is parsed by scripts/discord-changelog.js
+ * to generate Discord release announcements. If you modify the format of
+ * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
 export const CURRENT_VERSION = '1.0.11';
