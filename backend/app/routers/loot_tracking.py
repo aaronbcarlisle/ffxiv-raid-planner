@@ -7,7 +7,7 @@ API endpoints for loot log and page tracking.
 import structlog
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func
+from sqlalchemy import select, func, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -934,32 +934,24 @@ async def get_weeks_with_entries(
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
 
-    # Get distinct weeks from loot log
-    loot_weeks_result = await db.execute(
-        select(LootLogEntry.week_number)
-        .where(LootLogEntry.tier_snapshot_id == tier.id)
-        .distinct()
+    # Optimized: Single UNION query instead of three separate queries
+    # Gets distinct weeks from all three tables in one database round-trip
+    loot_weeks_q = select(LootLogEntry.week_number).where(
+        LootLogEntry.tier_snapshot_id == tier.id
     )
-    loot_weeks = {row[0] for row in loot_weeks_result.all()}
-
-    # Get distinct weeks from page ledger
-    ledger_weeks_result = await db.execute(
-        select(PageLedgerEntry.week_number)
-        .where(PageLedgerEntry.tier_snapshot_id == tier.id)
-        .distinct()
+    ledger_weeks_q = select(PageLedgerEntry.week_number).where(
+        PageLedgerEntry.tier_snapshot_id == tier.id
     )
-    ledger_weeks = {row[0] for row in ledger_weeks_result.all()}
-
-    # Get distinct weeks from material log
-    material_weeks_result = await db.execute(
-        select(MaterialLogEntry.week_number)
-        .where(MaterialLogEntry.tier_snapshot_id == tier.id)
-        .distinct()
+    material_weeks_q = select(MaterialLogEntry.week_number).where(
+        MaterialLogEntry.tier_snapshot_id == tier.id
     )
-    material_weeks = {row[0] for row in material_weeks_result.all()}
 
-    # Merge and return sorted list
-    all_weeks = sorted(loot_weeks | ledger_weeks | material_weeks)
+    # UNION ALL is faster than UNION (no dedup at DB level)
+    # We use set comprehension in Python for dedup which is efficient
+    combined = union_all(loot_weeks_q, ledger_weeks_q, material_weeks_q)
+    result = await db.execute(combined)
+    all_weeks = sorted({row[0] for row in result.all()})
+
     return {"weeks": all_weeks}
 
 

@@ -48,7 +48,7 @@ interface UseLootActionsReturn {
 export function useLootActions(): UseLootActionsReturn {
   const { currentGroup } = useStaticGroupStore();
   const { currentTier } = useTierStore();
-  const { lootLog, currentWeek, isLoading } = useLootTrackingStore();
+  const { lootLog, currentWeek, loadingStates } = useLootTrackingStore();
 
   const groupId = currentGroup?.id;
   const tierId = currentTier?.tierId;  // Fixed: use tierId (tier identifier) not id (database UUID)
@@ -116,6 +116,6 @@ export function useLootActions(): UseLootActionsReturn {
     getPrioritySuggestions,
     getPlayerStats,
     getEnhancedPriority,
-    isLoading,
+    isLoading: loadingStates.lootLog,
   };
 }

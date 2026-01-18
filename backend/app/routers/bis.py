@@ -13,6 +13,31 @@ from ..rate_limit import RATE_LIMITS, limiter
 router = APIRouter(prefix="/api/bis", tags=["bis"])
 logger = get_logger(__name__)
 
+# Valid job abbreviations for BiS import (prevents path traversal)
+VALID_JOBS = frozenset({
+    # Tanks
+    "pld", "war", "drk", "gnb",
+    # Healers
+    "whm", "sch", "ast", "sge",
+    # Melee DPS
+    "mnk", "drg", "nin", "sam", "rpr", "vpr",
+    # Ranged Physical DPS
+    "brd", "mch", "dnc",
+    # Ranged Magical DPS
+    "blm", "smn", "rdm", "pct",
+})
+
+# Valid tier names for BiS import (prevents path traversal)
+VALID_TIERS = frozenset({
+    "current",    # Current savage tier
+    "fru",        # Futures Rewritten (Ultimate)
+    "top",        # The Omega Protocol (Ultimate)
+    "dsr",        # Dragonsong's Reprise (Ultimate)
+    "tea",        # The Epic of Alexander (Ultimate)
+    "ucob",       # The Unending Coil of Bahamut (Ultimate)
+    "uwu",        # The Weapon's Refrain (Ultimate)
+})
+
 
 class GearSlotData(BaseModel):
     """Data for a single gear slot from BiS import"""
@@ -331,8 +356,34 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
 
 
 async def fetch_bis_from_github(job: str, tier: str) -> dict:
-    """Fetch curated BiS data from the static-bis-sets GitHub repo."""
-    url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/{tier}.json"
+    """Fetch curated BiS data from the static-bis-sets GitHub repo.
+
+    Args:
+        job: Job abbreviation (must be in VALID_JOBS)
+        tier: Tier name (must be in VALID_TIERS)
+
+    Raises:
+        HTTPException: 400 if job/tier invalid, 404 if not found, 502 on fetch error
+    """
+    # Validate job and tier against whitelist to prevent path traversal
+    job_lower = job.lower()
+    tier_lower = tier.lower()
+
+    if job_lower not in VALID_JOBS:
+        logger.warning("invalid_bis_job", job=job)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid job abbreviation: {job.upper()}. Valid jobs: {', '.join(sorted(j.upper() for j in VALID_JOBS))}"
+        )
+
+    if tier_lower not in VALID_TIERS:
+        logger.warning("invalid_bis_tier", tier=tier)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid tier: {tier}. Valid tiers: {', '.join(sorted(VALID_TIERS))}"
+        )
+
+    url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job_lower}/{tier_lower}.json"
 
     async with httpx.AsyncClient(follow_redirects=False) as client:
         try:

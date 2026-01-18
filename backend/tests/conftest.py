@@ -1,5 +1,6 @@
 """Pytest fixtures for the test suite"""
 
+import secrets
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -15,6 +16,10 @@ from app.models import User
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+# CSRF token for testing (must match cookie name in middleware)
+CSRF_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
 
 
 @pytest_asyncio.fixture
@@ -52,16 +57,60 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+class CSRFAwareClient(AsyncClient):
+    """
+    AsyncClient wrapper that automatically handles CSRF tokens.
+
+    Sets the CSRF cookie and includes the X-CSRF-Token header
+    on all state-changing requests (POST, PUT, DELETE, PATCH).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Generate a consistent CSRF token for this client session
+        self._csrf_token = secrets.token_hex(32)
+        # Set the CSRF cookie
+        self.cookies.set(CSRF_COOKIE_NAME, self._csrf_token)
+
+    def _inject_csrf_header(self, kwargs: dict) -> dict:
+        """Safely inject CSRF header into kwargs, handling all header types."""
+        existing_headers = kwargs.get("headers")
+        if existing_headers is None:
+            kwargs["headers"] = {CSRF_HEADER_NAME: self._csrf_token}
+        elif isinstance(existing_headers, dict):
+            existing_headers[CSRF_HEADER_NAME] = self._csrf_token
+        else:
+            # Handle httpx.Headers or other Mapping types by converting to dict
+            kwargs["headers"] = {**dict(existing_headers), CSRF_HEADER_NAME: self._csrf_token}
+        return kwargs
+
+    async def post(self, *args, **kwargs):
+        self._inject_csrf_header(kwargs)
+        return await super().post(*args, **kwargs)
+
+    async def put(self, *args, **kwargs):
+        self._inject_csrf_header(kwargs)
+        return await super().put(*args, **kwargs)
+
+    async def delete(self, *args, **kwargs):
+        self._inject_csrf_header(kwargs)
+        return await super().delete(*args, **kwargs)
+
+    async def patch(self, *args, **kwargs):
+        self._inject_csrf_header(kwargs)
+        return await super().patch(*args, **kwargs)
+
+
 @pytest_asyncio.fixture
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create an async test client with the test database session."""
+    """Create an async test client with the test database session and CSRF support."""
 
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
 
-    async with AsyncClient(
+    async with CSRFAwareClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as client:

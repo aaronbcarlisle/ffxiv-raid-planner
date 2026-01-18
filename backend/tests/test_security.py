@@ -206,6 +206,7 @@ class TestOAuthSSRFProtection:
         with (
             patch("app.routers.auth.get_settings") as mock_settings,
             patch("app.routers.auth.oauth_state_cache") as mock_cache,
+            patch("app.routers.auth._get_client_fingerprint") as mock_fingerprint,
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             # Configure settings
@@ -213,8 +214,16 @@ class TestOAuthSSRFProtection:
             mock_settings.return_value.discord_client_secret = "test-secret"
             mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
 
-            # Make state valid
-            mock_cache.exists = AsyncMock(return_value=True)
+            # Mock fingerprint to return a known value
+            mock_fingerprint.return_value = "test-fingerprint-hash"
+
+            # Make state valid with matching fingerprint
+            mock_cache.get = AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": "test-fingerprint-hash",
+                }
+            )
             mock_cache.delete = AsyncMock()
 
             # Mock httpx to return a redirect
@@ -242,6 +251,7 @@ class TestOAuthSSRFProtection:
         with (
             patch("app.routers.auth.get_settings") as mock_settings,
             patch("app.routers.auth.oauth_state_cache") as mock_cache,
+            patch("app.routers.auth._get_client_fingerprint") as mock_fingerprint,
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             # Configure settings
@@ -249,8 +259,16 @@ class TestOAuthSSRFProtection:
             mock_settings.return_value.discord_client_secret = "test-secret"
             mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
 
-            # Make state valid
-            mock_cache.exists = AsyncMock(return_value=True)
+            # Mock fingerprint to return a known value
+            mock_fingerprint.return_value = "test-fingerprint-hash"
+
+            # Make state valid with matching fingerprint
+            mock_cache.get = AsyncMock(
+                return_value={
+                    "created": "2026-01-01T00:00:00+00:00",
+                    "fingerprint": "test-fingerprint-hash",
+                }
+            )
             mock_cache.delete = AsyncMock()
 
             # Mock httpx: token exchange succeeds, user info returns redirect

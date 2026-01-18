@@ -1,8 +1,35 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 17, 2026 (Session 4 Complete)
-**Current Version:** v1.0.10
+**Last Updated:** January 18, 2026 (Session 6 Complete)
+**Current Version:** v1.0.11
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
+
+---
+
+## Session Continuity (for AI assistants)
+
+**Current Branch:** `feature/security-hardening-sprint` (pushed, PR #38 ready for merge)
+**Latest Commit:** `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/38
+
+**Session 6 status (PR review loop complete):**
+- PR #38 created with security hardening sprint work
+- Addressed 7 inline review comments from Copilot (all resolved)
+- Addressed 4 "Must Fix" items from Claude bot PR comment
+- Addressed 1 issue from Cursor bot (logout CSRF exempt)
+- Addressed 1 additional Copilot comment (CSRF header spreading order)
+- All 8 review threads resolved
+- CI passing, Vercel deployed
+- Ready for merge
+
+**Commits in PR #38:**
+1. `a398392` - feat: security hardening sprint (original 14 items)
+2. `8c98561` - docs: add session continuity notes
+3. `6650351` - fix: address PR review feedback from Copilot (6 items)
+4. `4ad07e0` - fix: address Claude bot security review feedback (4 items)
+5. `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
+
+**To continue:** Merge PR #38, then proceed with remaining P2/P3 items or future phases.
 
 ---
 
@@ -11,12 +38,12 @@
 | Priority | Count | Estimated Hours |
 |----------|-------|-----------------|
 | **Critical (P0)** | 0 | 0 |
-| **High (P1)** | 3 | 5 |
-| **Medium (P2)** | 14 | 22 |
+| **High (P1)** | 0 | 0 |
+| **Medium (P2)** | 3 | 7 |
 | **Low (P3)** | 9 | 23 |
 | **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 36 | ~61 hrs |
+| **Total** | 22 | ~41 hrs |
 
 ---
 
@@ -28,103 +55,17 @@
 
 ## High Priority (P1) - Complete This Sprint
 
-### H-003: No Pagination on Loot Log Endpoint
-- **File:** `backend/app/routers/loot_tracking.py:93-147`
-- **Issue:** GET endpoint returns all records with no limit/offset
-- **Affected Endpoints:**
-  - `/loot-log` (lines 93-147)
-  - `/page-ledger` (lines 419-472)
-  - `/material-log` (lines 876-927)
-- **Fix:** Add limit/offset parameters with default 100, max 500
-- **Effort:** 2 hours
-
-### H-004: Missing Foreign Key Indexes
-- **File:** `backend/app/models/loot_log_entry.py`
-- **Issue:** FK columns (`recipient_player_id`, `tier_snapshot_id`, `created_by_user_id`) lack `index=True`
-- **Fix:** Add `index=True` to all ForeignKey columns across models
-- **Effort:** 1 hour
-
-### H-005: No Request ID Tracking
-- **File:** `backend/app/logging_config.py`
-- **Issue:** structlog configured but no middleware to inject request IDs
-- **Fix:** Implement RequestIDMiddleware, bind to contextvars for auto-inclusion
-- **Effort:** 2 hours
+*All P1 items completed in Session 5. See "Recently Verified as Complete" section.*
 
 ---
 
 ## Medium Priority (P2) - Complete This Month
-
-### M-001: Single Loading Flag Issue
-- **File:** `frontend/src/stores/lootTrackingStore.ts`
-- **Issue:** Single isLoading flag causes visual jitter with concurrent fetches
-- **Fix:** Implement granular loading states: isLoadingLoot, isLoadingMaterials, isLoadingBalances
-- **Effort:** 2 hours
 
 ### M-002: Inconsistent Error Display Patterns
 - **File:** Various stores
 - **Issue:** Mix of toast, inline, and modal error displays without clear pattern
 - **Fix:** Standardize: Toast for user actions, Inline for validation, Modal for critical
 - **Effort:** 3 hours
-
-### M-003: OAuth State Validation Weakness
-- **File:** `backend/app/routers/auth.py:49-86`
-- **Issue:** OAuth state not bound to user session, vulnerable to CSRF
-- **Fix:** Bind state to client IP and user agent
-- **Effort:** 2 hours
-
-### M-004: No CSRF Protection
-- **File:** `backend/app/main.py`
-- **Issue:** No CSRF tokens for state-changing operations
-- **Fix:** Add CSRFMiddleware from Starlette
-- **Effort:** 2 hours
-
-### M-005: Insufficient BiS Path Input Validation
-- **File:** `backend/app/routers/bis.py:111-148`
-- **Issue:** Job/tier names not validated against whitelist
-- **Fix:** Add job/tier whitelists and validate extracted values
-- **Effort:** 1 hour
-
-### M-006: No Rate Limiting on External API Calls
-- **File:** `backend/app/routers/bis.py`
-- **Issue:** 30/min rate limit too high for expensive operations
-- **Fix:** Reduce to 10/min and add per-user limiting
-- **Effort:** 1 hour
-
-### M-007: Timing Attack on User Enumeration
-- **File:** `backend/app/dependencies.py:39-47`
-- **Issue:** Different error messages for invalid token vs user not found
-- **Fix:** Use generic "Authentication failed" message for both cases
-- **Effort:** 30 minutes
-
-### M-008: Insecure JWT Algorithm Configuration
-- **File:** `backend/app/config.py:81`
-- **Issue:** JWT algorithm configurable without validation, could be set to "none"
-- **Fix:** Use Literal type and validate allowed algorithms
-- **Effort:** 30 minutes
-
-### M-009: Missing Security Event Logging
-- **File:** `backend/app/permissions.py:156-177`
-- **Issue:** Permission denials and admin privilege usage not logged consistently
-- **Fix:** Add logging to permission checks and auth endpoints
-- **Effort:** 2 hours
-
-### M-010: Inefficient Week Data Query
-- **File:** `backend/app/routers/loot_tracking.py:817-870`
-- **Issue:** Three separate queries to get distinct weeks when UNION would suffice
-- **Fix:** Use union_all to consolidate into single query
-- **Effort:** 1 hour
-
-### M-011: No Database-Level Constraints
-- **File:** `backend/app/models/*.py`
-- **Issue:** Missing CHECK constraints for business logic (week_number > 0, quantity != 0)
-- **Fix:** Add CheckConstraint to models
-- **Effort:** 2 hours
-
-### M-012: No Maximum Request Size Limit
-- **File:** `backend/app/main.py`
-- **Issue:** No limit on request body size, vulnerable to DoS
-- **Fix:** Implement RequestSizeLimitMiddleware with 10MB cap
-- **Effort:** 1 hour
 
 ### M-013: Inconsistent Border Radius
 - **Pattern:** Across codebase
@@ -303,6 +244,42 @@ These are ESLint errors that don't affect functionality but should be addressed 
 ---
 
 ## Recently Verified as Complete (v1.0.8+)
+
+### Session 6: PR #38 Review Feedback (January 18, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Copilot: CSRF callback path** | ✅ FIXED | Fixed `/api/auth/callback` → `/api/auth/discord/callback` |
+| **Copilot: Missing refresh exempt** | ✅ FIXED | Added `/api/auth/refresh` to CSRF exempt paths |
+| **Copilot: CSRFAwareClient headers** | ✅ FIXED | Refactored `_inject_csrf_header()` for all header types |
+| **Copilot: Cookie parsing edge case** | ✅ FIXED | Used `indexOf`/`slice` for cookies with `=` in values |
+| **Copilot: hashlib import location** | ✅ FIXED | Moved to module level |
+| **Copilot: Combined typing imports** | ✅ FIXED | Single `from typing import Literal, Self` |
+| **Copilot: CSRF header spreading** | ✅ FIXED | Spread order ensures CSRF token cannot be overwritten |
+| **Cursor: Logout CSRF exempt** | ✅ FIXED | Removed `/api/auth/logout` from exempt paths |
+| **Claude: CSRF cookie parsing** | ✅ FIXED | Handles `=` in cookie values correctly |
+| **Claude: Fingerprint bypass** | ✅ FIXED | Made fingerprint validation mandatory |
+| **Claude: Client CSRF validation** | ✅ FIXED | Fail-fast with clear error if token missing |
+| **Claude: Request size docs** | ✅ FIXED | Documented bypass limitation and nginx config |
+
+### Session 5: Security Hardening Sprint (January 18, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **H-003: Loot Log Pagination** | ✅ FIXED | Completed in PR #37 |
+| **H-004: Missing FK Indexes** | ✅ FIXED | Completed in PR #36 |
+| **H-005: Request ID Middleware** | ✅ FIXED | RequestIDMiddleware binds UUID to structlog context and response headers |
+| **M-001: Single Loading Flag** | ✅ FIXED | Components now use granular loadingStates (lootLog, playerLedger, etc.) |
+| **M-003: OAuth State Validation** | ✅ FIXED | State bound to client fingerprint (IP + user agent hash) |
+| **M-004: CSRF Protection** | ✅ FIXED | CSRFMiddleware with double-submit cookie pattern |
+| **M-005: BiS Path Validation** | ✅ FIXED | Job/tier validated against whitelist to prevent path traversal |
+| **M-006: External API Rate Limit** | ✅ FIXED | Reduced from 30/min to 10/min |
+| **M-007: Timing Attack Fix** | ✅ FIXED | Generic "Authentication failed" message for all auth failures |
+| **M-008: JWT Algorithm Config** | ✅ FIXED | Literal type restricts to HS256/HS384/HS512 only |
+| **M-009: Security Event Logging** | ✅ FIXED | Permission denials and admin access logged in permissions.py |
+| **M-010: Week Data Query** | ✅ FIXED | Consolidated to single UNION ALL query |
+| **M-011: DB CHECK Constraints** | ✅ FIXED | week_number > 0 constraints on all log tables |
+| **M-012: Request Size Limit** | ✅ FIXED | RequestSizeLimitMiddleware caps requests at 10MB |
 
 ### Session 4: Security Headers & SSRF (January 17, 2026)
 

@@ -4,13 +4,16 @@ Material Log Entry Model
 Tracks upgrade material distribution (Twine, Glaze, Solvent).
 """
 
-from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import CheckConstraint, Integer, String, Text, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class MaterialLogEntry(Base):
     __tablename__ = "material_log_entries"
+    __table_args__ = (
+        CheckConstraint("week_number > 0", name="ck_material_log_entries_week_positive"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False, index=True)

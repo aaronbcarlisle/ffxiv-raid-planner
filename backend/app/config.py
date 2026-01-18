@@ -3,10 +3,14 @@
 import re
 import secrets
 from functools import lru_cache
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Allowed JWT algorithms (HS256 is preferred for symmetric keys)
+# Explicitly exclude "none" and weak algorithms
+AllowedJWTAlgorithm = Literal["HS256", "HS384", "HS512"]
 
 
 # Forbidden patterns for JWT secret validation
@@ -78,7 +82,7 @@ class Settings(BaseSettings):
 
     # JWT Configuration
     jwt_secret_key: str = ""  # Set via JWT_SECRET_KEY env var (required in production)
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: AllowedJWTAlgorithm = "HS256"  # Only allow secure HMAC algorithms
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 

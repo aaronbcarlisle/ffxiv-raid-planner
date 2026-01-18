@@ -1,0 +1,50 @@
+name: Discord Changelog
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    name: Post to Discord
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to detect version changes
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Get commit info
+        id: commit
+        run: |
+          # Get commit message (first line only for cleaner output)
+          MESSAGE=$(git log -1 --pretty=%s)
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Get author name
+          AUTHOR=$(git log -1 --pretty=%an)
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+
+      - name: Post to Discord
+        working-directory: scripts
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANGELOG_CHANNEL_ID: ${{ secrets.DISCORD_CHANGELOG_CHANNEL_ID }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
+          COMMIT_AUTHOR: ${{ steps.commit.outputs.author }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node discord-changelog.js

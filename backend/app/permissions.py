@@ -8,7 +8,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from .logging_config import get_logger
 from .models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+
+logger = get_logger(__name__)
 
 
 class PermissionDenied(HTTPException):
@@ -25,6 +28,13 @@ def create_admin_membership(user_id: str, group_id: str) -> Membership:
     This allows admins to bypass normal permission checks by having
     owner-level access to any group without being an actual member.
     """
+    # Log admin privilege usage for security audit
+    logger.info(
+        "admin_access_granted",
+        user_id=user_id,
+        group_id=group_id,
+        access_type="virtual_owner",
+    )
     now = datetime.now(timezone.utc).isoformat()
     return Membership(
         id=f"admin-virtual-{user_id}-{group_id}",
@@ -239,6 +249,14 @@ async def require_membership(
     membership = await get_user_membership(session, user_id, group_id)
 
     if not membership:
+        # Log permission denial for security audit
+        logger.warning(
+            "permission_denied",
+            user_id=user_id,
+            group_id=group_id,
+            reason="not_member",
+            required_role=min_role.value if min_role else None,
+        )
         raise PermissionDenied("You are not a member of this static group")
 
     if min_role:
@@ -248,6 +266,15 @@ async def require_membership(
         user_level = membership.role_level
 
         if user_level < required_level:
+            # Log permission denial for security audit
+            logger.warning(
+                "permission_denied",
+                user_id=user_id,
+                group_id=group_id,
+                reason="insufficient_role",
+                user_role=membership.role,
+                required_role=min_role.value,
+            )
             raise PermissionDenied(
                 f"This action requires {min_role.value} role or higher"
             )
@@ -292,10 +319,21 @@ async def check_view_permission(
 
     # Private groups require membership
     if not user:
+        logger.warning(
+            "permission_denied",
+            group_id=group.id,
+            reason="private_group_anonymous",
+        )
         raise PermissionDenied("This static group is private. Please log in.")
 
     membership = await get_user_membership(session, user.id, group.id)
     if not membership:
+        logger.warning(
+            "permission_denied",
+            user_id=user.id,
+            group_id=group.id,
+            reason="private_group_not_member",
+        )
         raise PermissionDenied("This static group is private")
 
     return membership

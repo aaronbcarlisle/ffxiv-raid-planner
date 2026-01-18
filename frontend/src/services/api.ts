@@ -7,11 +7,41 @@
 
 import { toast } from '../stores/toastStore';
 import { useAuthStore } from '../stores/authStore';
+import { logger as baseLogger } from '../lib/logger';
 import type { BiSImportData, BiSPresetsResponse } from '../types';
 import { API_BASE_URL } from '../config';
 
+const logger = baseLogger.scope('api');
+
 // Re-export for backward compatibility
 export { API_BASE_URL } from '../config';
+
+// CSRF token cookie name (must match backend)
+const CSRF_COOKIE_NAME = 'csrf_token';
+
+/**
+ * Get CSRF token from cookie for state-changing requests.
+ * The backend sets this cookie on every response.
+ */
+function getCSRFToken(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
+    if (name === CSRF_COOKIE_NAME) {
+      return value;
+    }
+  }
+  return null;
+}
+
+/**
+ * HTTP methods that require CSRF token
+ */
+const CSRF_REQUIRED_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
 /**
  * API Error class for handling HTTP errors
@@ -82,17 +112,39 @@ export async function authRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
+  // Add CSRF token for state-changing requests
+  // If token is missing, try refresh first (cookie may have been cleared by browser)
+  if (CSRF_REQUIRED_METHODS.has(method)) {
+    let csrfToken = getCSRFToken();
+    if (!csrfToken) {
+      logger.warn('CSRF token missing, attempting refresh', { method, endpoint });
+      // Try refresh - this will set new cookies including CSRF token
+      const refreshed = await useAuthStore.getState().refreshAccessToken();
+      if (refreshed) {
+        csrfToken = getCSRFToken();
+      }
+      if (!csrfToken) {
+        logger.error('CSRF token still missing after refresh', { method, endpoint });
+        throw new ApiError(403, 'Session expired - please log in again');
+      }
+    }
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // Send httpOnly cookies
     headers: {
-      ...headers,
+      // Spread options.headers first, then our headers, to ensure
+      // security-critical headers (CSRF token) cannot be overwritten
       ...options.headers,
+      ...headers,
     },
   });
 
@@ -109,13 +161,25 @@ export async function authRequest<T>(
     if (shouldAttemptRefresh) {
       const refreshed = await useAuthStore.getState().refreshAccessToken();
       if (refreshed) {
+        // Re-fetch CSRF token after refresh (may have been updated)
+        if (CSRF_REQUIRED_METHODS.has(method)) {
+          const newCsrfToken = getCSRFToken();
+          if (!newCsrfToken) {
+            logger.error('CSRF token missing after refresh', { method, endpoint });
+            throw new ApiError(403, 'Session expired - please refresh the page');
+          }
+          headers['X-CSRF-Token'] = newCsrfToken;
+        }
+
         // Retry with cookies (new tokens set by refresh endpoint)
         const retryResponse = await fetch(url, {
           ...options,
           credentials: 'include',
           headers: {
-            ...headers,
+            // Spread options.headers first, then our headers, to ensure
+            // security-critical headers (CSRF token) cannot be overwritten
             ...options.headers,
+            ...headers,
           },
         });
 

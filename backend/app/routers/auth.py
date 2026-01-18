@@ -1,5 +1,6 @@
 """Authentication router for Discord OAuth"""
 
+import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -49,6 +50,19 @@ def wants_legacy_tokens(request: Request) -> bool:
     return hdr == "1" or qry.lower() == "true"
 
 
+def _get_client_fingerprint(request: Request) -> str:
+    """Generate a fingerprint from client IP and user agent for CSRF protection.
+
+    This binds OAuth state to the requesting client to prevent session fixation attacks.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "")
+
+    # Hash to avoid storing raw user agent (which could be long/sensitive)
+    fingerprint_data = f"{client_ip}:{user_agent}"
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:32]
+
+
 @router.get("/discord", response_model=DiscordAuthUrl)
 @limiter.limit(RATE_LIMITS["auth"])
 async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
@@ -60,7 +74,16 @@ async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
         )
 
     state = secrets.token_urlsafe(32)
-    await oauth_state_cache.set(state, {"created": datetime.now(timezone.utc).isoformat()})
+
+    # Store state with client fingerprint to prevent session fixation/CSRF
+    client_fingerprint = _get_client_fingerprint(request)
+    await oauth_state_cache.set(
+        state,
+        {
+            "created": datetime.now(timezone.utc).isoformat(),
+            "fingerprint": client_fingerprint,
+        },
+    )
 
     params = {
         "client_id": settings.discord_client_id,
@@ -90,13 +113,41 @@ async def discord_callback(
             detail="Discord OAuth is not configured",
         )
 
-    # Verify state (cache handles TTL expiration automatically)
-    if not await oauth_state_cache.exists(data.state):
+    # Verify state exists and matches client fingerprint
+    state_data = await oauth_state_cache.get(data.state)
+    if not state_data:
         logger.warning("oauth_invalid_state", state=data.state[:8] + "...")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth state",
         )
+
+    # Verify client fingerprint to prevent session fixation/CSRF attacks
+    # Fingerprint is mandatory - reject states without one (prevents bypass attacks)
+    expected_fingerprint = state_data.get("fingerprint")
+    if not expected_fingerprint:
+        logger.error(
+            "oauth_missing_fingerprint",
+            state=data.state[:8] + "...",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+
+    actual_fingerprint = _get_client_fingerprint(request)
+    if expected_fingerprint != actual_fingerprint:
+        logger.warning(
+            "oauth_fingerprint_mismatch",
+            state=data.state[:8] + "...",
+            expected=expected_fingerprint[:8] + "...",
+            actual=actual_fingerprint[:8] + "...",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state",
+        )
+
     await oauth_state_cache.delete(data.state)
 
     # Exchange code for tokens

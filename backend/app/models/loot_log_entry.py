@@ -4,13 +4,16 @@ Loot Log Entry Model
 Tracks individual loot drops and how they were obtained.
 """
 
-from sqlalchemy import Integer, String, Text, ForeignKey, Enum as SQLEnum, Boolean
+from sqlalchemy import CheckConstraint, Integer, String, Text, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class LootLogEntry(Base):
     __tablename__ = "loot_log_entries"
+    __table_args__ = (
+        CheckConstraint("week_number > 0", name="ck_loot_log_entries_week_positive"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     tier_snapshot_id: Mapped[str] = mapped_column(String(36), ForeignKey("tier_snapshots.id"), nullable=False, index=True)
