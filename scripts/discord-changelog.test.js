@@ -257,6 +257,27 @@ Signed-Off-By: Developer <dev@example.com>`;
       expect(sanitizeAITerminology('fix: repair bug')).toBe('fix: repair bug');
       expect(sanitizeAITerminology('RAID feature update')).toBe('RAID feature update');
     });
+
+    it('replaces AI-driven with smart', () => {
+      expect(sanitizeAITerminology('AI-driven feature')).toBe('smart feature');
+      expect(sanitizeAITerminology('AI driven feature')).toBe('smart feature');
+    });
+
+    it('replaces standalone AI before feature keywords', () => {
+      expect(sanitizeAITerminology('AI feature')).toBe('smart feature');
+      expect(sanitizeAITerminology('AI tool')).toBe('smart tool');
+      expect(sanitizeAITerminology('AI system')).toBe('smart system');
+      expect(sanitizeAITerminology('AI assistant')).toBe('smart assistant');
+    });
+
+    it('handles hyphenated AI-summarization variant', () => {
+      expect(sanitizeAITerminology('AI-summarization feature')).toBe('smart summarization feature');
+    });
+
+    it('handles cascading AI replacements in same string', () => {
+      expect(sanitizeAITerminology('AI-powered AI summarization feature'))
+        .toBe('automated smart summarization feature');
+    });
   });
 
   describe('isAIOnlyCommit', () => {

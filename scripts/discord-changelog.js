@@ -114,7 +114,7 @@ function sanitizeAITerminology(text) {
   return text
     .replace(/\bAI[- ]powered\b/gi, 'automated')
     .replace(/\bAI[- ]driven\b/gi, 'smart')
-    .replace(/\bAI summarization\b/gi, 'smart summarization')
+    .replace(/\bAI[- ]summarization\b/gi, 'smart summarization')
     .replace(/\bAI[- ]generated\b/gi, 'auto-generated')
     .replace(/\bartificial intelligence\b/gi, 'automation')
     .replace(/\bwith AI\b/gi, 'with automation')
