@@ -368,7 +368,9 @@ export function AdminDashboard() {
 
   const totalPages = Math.ceil(total / limit);
 
-  if (authLoading) {
+  // Show loading while auth is loading OR while we're waiting for isAdmin to be determined
+  // (isAdmin is undefined right after OAuth callback until fetchUser completes)
+  if (authLoading || (isAuthenticated && user && user.isAdmin === undefined)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -376,8 +378,10 @@ export function AdminDashboard() {
     );
   }
 
-  if (!user?.isAdmin) {
-    return null; // Will redirect
+  // Only render null if we're certain this user isn't an admin (explicit false, not undefined)
+  // This prevents a flash of nothing while the redirect effect fires
+  if (!isAuthenticated || !user || user.isAdmin === false) {
+    return null; // Will redirect via effect above
   }
 
   return (
