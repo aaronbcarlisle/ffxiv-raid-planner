@@ -393,6 +393,22 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.description.startsWith('[View Full Release Notes]')).toBe(true);
     });
 
+    it('does not have leading newlines when highlights overflow and get truncated to empty', () => {
+      // Create a release with extremely long highlights that would cause available=0
+      const veryLongHighlight = 'x'.repeat(600);
+      const release = {
+        version: '1.0.0',
+        title: 'Overflow Test',
+        highlights: [veryLongHighlight],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      // Description should not start with newlines even when highlights overflow
+      expect(data.description.charAt(0)).not.toBe('\n');
+      expect(data.description).toContain('View Full Release Notes');
+    });
+
     it('includes link to full release notes in description', () => {
       const release = {
         version: '1.0.0',

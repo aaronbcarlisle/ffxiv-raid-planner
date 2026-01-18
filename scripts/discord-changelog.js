@@ -408,7 +408,7 @@ function buildReleaseEmbed(release) {
       }
     }
 
-    description = `${highlights}${suffix}`;
+    description = highlights ? `${highlights}${suffix}` : suffix.trimStart();
   }
 
   embed.setDescription(description);
