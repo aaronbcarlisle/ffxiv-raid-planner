@@ -25,6 +25,13 @@ CSRF_EXEMPT_PATHS: Set[str] = {
     "/redoc",
 }
 
+# Paths where we should always generate a fresh CSRF token
+# These are auth-related endpoints where session state changes
+CSRF_FORCE_REFRESH_PATHS: Set[str] = {
+    "/api/auth/discord/callback",
+    "/api/auth/refresh",
+}
+
 # HTTP methods that require CSRF validation (state-changing operations)
 CSRF_REQUIRED_METHODS: Set[str] = {"POST", "PUT", "DELETE", "PATCH"}
 
@@ -102,11 +109,15 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         self, request: Request, response: Response, settings
     ) -> Response:
         """Ensure CSRF cookie is set on response."""
-        # Check if cookie already exists and is valid
-        existing_token = request.cookies.get(CSRF_COOKIE_NAME)
-        if existing_token and len(existing_token) == CSRF_TOKEN_LENGTH * 2:
-            # Token exists and looks valid, no need to regenerate
-            return response
+        # Force new token on auth endpoints to ensure frontend has a valid token
+        force_new_token = request.url.path in CSRF_FORCE_REFRESH_PATHS
+
+        if not force_new_token:
+            # Check if cookie already exists and is valid
+            existing_token = request.cookies.get(CSRF_COOKIE_NAME)
+            if existing_token and len(existing_token) == CSRF_TOKEN_LENGTH * 2:
+                # Token exists and looks valid, no need to regenerate
+                return response
 
         # Generate new CSRF token
         token = secrets.token_hex(CSRF_TOKEN_LENGTH)
