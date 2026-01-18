@@ -94,6 +94,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Expose CSRF token header for cross-domain scenarios where
+    # the frontend can't read cookies set by the API domain
+    expose_headers=["X-CSRF-Token"],
 )
 
 # Middleware stack (applied in reverse order - last added runs first)

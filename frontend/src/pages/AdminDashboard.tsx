@@ -331,11 +331,13 @@ export function AdminDashboard() {
   }, [isAuthenticated, page, debouncedSearch, sortField, sortDirection]);
 
   // Redirect if not authenticated or not admin
+  // Note: Check explicit `false` for isAdmin, not falsy, because undefined means
+  // the user object is still loading (e.g., right after OAuth callback)
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) {
         navigate('/');
-      } else if (user && !user.isAdmin) {
+      } else if (user && user.isAdmin === false) {
         navigate('/dashboard');
       }
     }

@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, DiscordAuthUrl } from '../types';
 import { API_BASE_URL, isProduction, isLocalhostApi } from '../config';
+import { storeCSRFTokenFromResponse } from '../services/api';
 
 if (isProduction && isLocalhostApi) {
   console.error(
@@ -147,6 +148,9 @@ async function authRequest<T>(
       ...options.headers,
     },
   });
+
+  // Capture CSRF token from response header for cross-domain scenarios
+  storeCSRFTokenFromResponse(response);
 
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
@@ -323,6 +327,9 @@ export const useAuthStore = create<AuthState>()(
             if (!response.ok) {
               throw new Error('Refresh failed');
             }
+
+            // Capture CSRF token from response header for cross-domain scenarios
+            storeCSRFTokenFromResponse(response);
 
             // Parse response to get new token expiry
             const tokenResponse: TokenResponse = await response.json();
