@@ -125,12 +125,24 @@ export async function authRequest<T>(
     if (!csrfToken) {
       logger.warn('CSRF token missing, attempting refresh', { method, endpoint });
       // Try refresh - this will set new cookies including CSRF token
-      const refreshed = await useAuthStore.getState().refreshAccessToken();
-      if (refreshed) {
-        csrfToken = getCSRFToken();
-      }
+      await useAuthStore.getState().refreshAccessToken();
+      // Always try to read cookie after refresh (might have succeeded even if it returned false)
+      csrfToken = getCSRFToken();
+
+      // If still missing, try a simple GET request to trigger CSRF cookie setting
+      // Any response from the backend will set the CSRF cookie via middleware
       if (!csrfToken) {
-        logger.error('CSRF token still missing after refresh', { method, endpoint });
+        logger.warn('CSRF token still missing after refresh, trying fallback GET', { method, endpoint });
+        try {
+          await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' });
+          csrfToken = getCSRFToken();
+        } catch {
+          // Ignore errors - we just want to trigger cookie setting
+        }
+      }
+
+      if (!csrfToken) {
+        logger.error('CSRF token missing after all recovery attempts', { method, endpoint });
         throw new ApiError(403, 'Session expired - please log in again');
       }
     }
