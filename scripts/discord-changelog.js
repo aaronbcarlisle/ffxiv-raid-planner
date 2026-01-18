@@ -189,7 +189,12 @@ function buildCommitEmbed(sha, message, repository) {
 
   // Split into title and body
   const lines = cleanedMessage.split('\n');
-  let title = lines[0].trim();
+  let title = (lines[0] || '').trim();
+
+  // Fallback title if commit message is empty after stripping AI attributions
+  if (!title) {
+    title = shortSha;
+  }
 
   // Truncate title if too long
   if (title.length > DISCORD_TITLE_LIMIT) {
