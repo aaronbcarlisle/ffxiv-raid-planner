@@ -460,18 +460,27 @@ const CATEGORY_LABELS = {
 // Category order for display (features first, then improvements, fixes, breaking)
 const CATEGORY_ORDER = ['feature', 'improvement', 'fix', 'breaking'];
 
+// Category emoji colors (matching the release notes page badges)
+const CATEGORY_EMOJIS = {
+  feature: '🟢',
+  improvement: '🔵',
+  fix: '🔴',
+  breaking: '🟠',
+};
+
 // Discord embed description limit (actual limit is 4096, but we use a reasonable max)
 const RELEASE_DESCRIPTION_LIMIT = 3500;
 
 /**
  * Format a single item for Discord display
- * Mirrors the release notes page format: "• **Title** — Description"
+ * Uses colored emoji circles matching the release notes page badges
  */
 function formatReleaseItem(item) {
+  const emoji = CATEGORY_EMOJIS[item.category] || '⚪';
   if (item.description) {
-    return `• **${item.title}** — ${item.description}`;
+    return `${emoji} **${item.title}** — ${item.description}`;
   }
-  return `• **${item.title}**`;
+  return `${emoji} **${item.title}**`;
 }
 
 /**
@@ -504,38 +513,37 @@ function buildReleaseEmbed(release) {
     }
 
     // Build description with categories - mirroring release notes page format
+    // Use ## for section headers (Discord supports markdown headers in embeds)
     const sections = [];
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
         const itemList = items.map(formatReleaseItem).join('\n');
-        sections.push(`**${label}** (${items.length})\n${itemList}`);
+        sections.push(`## ${label}\n${itemList}`);
       }
     }
 
     let description = sections.join('\n\n');
 
-    // Add "view in browser" link at the end
-    const linkText = `\n\n[[view in browser]](${versionAnchor})`;
-
-    // Check if we exceed the limit
-    if ((description + linkText).length > RELEASE_DESCRIPTION_LIMIT) {
-      // Truncate by removing descriptions, keeping just titles
+    // Check if we exceed the limit (no footer link - title already links)
+    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
+      // Truncate by removing descriptions, keeping just titles with emojis
       const truncatedSections = [];
       for (const category of CATEGORY_ORDER) {
         const items = groupedItems[category];
         if (items && items.length > 0) {
           const label = CATEGORY_LABELS[category] || category;
-          const itemList = items.map(i => `• **${i.title}**`).join('\n');
-          truncatedSections.push(`**${label}** (${items.length})\n${itemList}`);
+          const emoji = CATEGORY_EMOJIS[category] || '⚪';
+          const itemList = items.map(i => `${emoji} **${i.title}**`).join('\n');
+          truncatedSections.push(`## ${label}\n${itemList}`);
         }
       }
 
       description = truncatedSections.join('\n\n');
 
       // If still too long, limit items per category
-      if ((description + linkText).length > RELEASE_DESCRIPTION_LIMIT) {
+      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
         const limitedSections = [];
         const maxItemsPerCategory = 5;
 
@@ -543,12 +551,13 @@ function buildReleaseEmbed(release) {
           const items = groupedItems[category];
           if (items && items.length > 0) {
             const label = CATEGORY_LABELS[category] || category;
+            const emoji = CATEGORY_EMOJIS[category] || '⚪';
             const displayItems = items.slice(0, maxItemsPerCategory);
-            let itemList = displayItems.map(i => `• **${i.title}**`).join('\n');
+            let itemList = displayItems.map(i => `${emoji} **${i.title}**`).join('\n');
             if (items.length > maxItemsPerCategory) {
               itemList += `\n  *...and ${items.length - maxItemsPerCategory} more*`;
             }
-            limitedSections.push(`**${label}** (${items.length})\n${itemList}`);
+            limitedSections.push(`## ${label}\n${itemList}`);
           }
         }
 
@@ -556,14 +565,11 @@ function buildReleaseEmbed(release) {
       }
     }
 
-    embed.setDescription(description + linkText);
+    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
     // Fall back to highlights-only format
-    let description = release.highlights.map(h => `• ${h}`).join('\n');
-    description += `\n\n[[view in browser]](${versionAnchor})`;
+    const description = release.highlights.map(h => `• ${h}`).join('\n');
     embed.setDescription(description);
-  } else {
-    embed.setDescription(`[[view in browser]](${versionAnchor})`);
   }
 
   return embed;
@@ -757,5 +763,6 @@ export {
   AI_TIMEOUT_MS,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
+  CATEGORY_EMOJIS,
   RELEASE_DESCRIPTION_LIMIT,
 };

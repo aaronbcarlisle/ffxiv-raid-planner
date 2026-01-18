@@ -456,7 +456,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.description).toContain('• Highlight 2');
     });
 
-    it('handles empty highlights', () => {
+    it('handles empty highlights - no description set', () => {
       const release = {
         version: '1.0.0',
         title: 'No Highlights',
@@ -465,41 +465,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      // Should still have the link to release notes with version anchor
-      expect(data.description).toContain('[view in browser]');
-      expect(data.description).toContain('#v1.0.0');
+      // With no items and no highlights, no description is set (title already links)
+      expect(data.description).toBeUndefined();
     });
 
-    it('does not have leading newlines when highlights are empty', () => {
-      const release = {
-        version: '1.0.0',
-        title: 'No Highlights',
-        highlights: [],
-      };
-      const embed = buildReleaseEmbed(release);
-      const data = embed.toJSON();
-
-      // Description should start with the link text, not newlines
-      expect(data.description.startsWith('[[view in browser]]')).toBe(true);
-    });
-
-    it('does not have leading newlines when highlights overflow and get truncated to empty', () => {
-      // Create a release with extremely long highlights that would cause available=0
-      const veryLongHighlight = 'x'.repeat(1200);
-      const release = {
-        version: '1.0.0',
-        title: 'Overflow Test',
-        highlights: [veryLongHighlight],
-      };
-      const embed = buildReleaseEmbed(release);
-      const data = embed.toJSON();
-
-      // Description should not start with newlines even when highlights overflow
-      expect(data.description.charAt(0)).not.toBe('\n');
-      expect(data.description).toContain('[view in browser]');
-    });
-
-    it('includes link to full release notes with version anchor in description', () => {
+    it('links to release notes via title URL instead of description', () => {
       const release = {
         version: '2.0.5',
         title: 'Test',
@@ -508,8 +478,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      expect(data.description).toContain('[view in browser]');
-      expect(data.description).toContain('#v2.0.5');
+      // The URL is on the title, not in the description
+      expect(data.url).toContain('#v2.0.5');
     });
 
     it('uses teal accent color', () => {
