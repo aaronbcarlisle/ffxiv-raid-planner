@@ -6,6 +6,27 @@
 
 ---
 
+## Session Continuity (for AI assistants)
+
+**Current Branch:** `feature/security-hardening-sprint` (pushed, not yet merged)
+**Commit:** `a398392` - feat: security hardening sprint
+
+**Session 5 completed 14 items:**
+- All P1 and most P2 backend security items
+- Middleware: RequestID, CSRF, RequestSizeLimit
+- Auth: OAuth fingerprint, timing attack fix, JWT algorithm restriction
+- API: BiS validation, rate limiting, query optimization, DB constraints
+- Frontend: CSRF tokens, granular loading states
+
+**Remaining work (3 P2 frontend polish items):**
+- M-002: Error display standardization (toast/inline/modal patterns)
+- M-013: Border radius consistency audit
+- M-014: Unified Spinner component
+
+**To continue:** Review M-002, M-013, M-014 below, or create PR from branch.
+
+---
+
 ## Quick Reference
 
 | Priority | Count | Estimated Hours |
