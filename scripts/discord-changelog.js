@@ -426,9 +426,9 @@ async function buildCommitEmbed(sha, message, repository) {
 
   // Split into title and body
   const lines = message.split('\n');
-  let title = (lines[0] || '').trim();
+  let title = stripAIAttributions((lines[0] || '').trim());
 
-  // Fallback title if commit message is empty
+  // Fallback title if commit message is empty or was only AI attribution
   if (!title) {
     title = shortSha;
   }
@@ -464,7 +464,10 @@ async function buildCommitEmbed(sha, message, repository) {
       const cleanBody = stripAIAttributions(body);
       description = summarizeBody(cleanBody, DISCORD_DESCRIPTION_LIMIT);
     }
-    embed.setDescription(description);
+    // Only set description if we have meaningful content
+    if (description && description.trim()) {
+      embed.setDescription(description);
+    }
   }
 
   // Add footer with commit info

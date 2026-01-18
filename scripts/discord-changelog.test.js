@@ -277,6 +277,26 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.title).toBe('abc1234');
     });
 
+    it('strips AI attributions from title', async () => {
+      const embed = await buildCommitEmbed('abc1234', 'Generated with Claude Code', 'user/repo');
+      const data = embed.toJSON();
+
+      // Should fall back to shortSha since title was AI attribution
+      expect(data.title).toBe('abc1234');
+    });
+
+    it('omits description when body is only AI attributions', async () => {
+      const message = `feat: add feature
+
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+      const embed = await buildCommitEmbed('abc1234', message, 'user/repo');
+      const data = embed.toJSON();
+
+      // Should have title but no description
+      expect(data.title).toBe('feat: add feature');
+      expect(data.description).toBeUndefined();
+    });
+
     it('includes commit body as description (fallback summarization)', async () => {
       const message = `feat: add feature
 
