@@ -174,7 +174,7 @@ function buildReleaseEmbeds(release) {
     })
     .setTimestamp(new Date(release.date)); // Use the actual release date
 
-  // If we have items, build a single description with all categories
+  // If we have items, add fields for each category
   if (release.items && release.items.length > 0) {
     // Group items by category
     const groupedItems = {};
@@ -185,55 +185,40 @@ function buildReleaseEmbeds(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Build description with sections
-    const sections = [];
+    // Add a field for each category (field names render larger)
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
         const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-        // Section header with colored emoji
-        let section = `${emoji} **${label}**\n`;
-
-        // Add items (plain bullets, no colored emoji)
-        section += items.map(item => {
+        // Build item list with colored emoji on each item
+        let itemList = items.map(item => {
           if (item.description) {
-            return `• **${item.title}** — ${item.description}`;
+            return `${emoji} **${item.title}** — ${item.description}`;
           }
-          return `• **${item.title}**`;
+          return `${emoji} **${item.title}**`;
         }).join('\n');
 
-        sections.push(section);
-      }
-    }
+        // Truncate if field value too long (Discord limit is 1024)
+        if (itemList.length > 1024) {
+          // Try without descriptions
+          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
 
-    let description = sections.join('\n\n');
-
-    // Truncate if too long
-    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-      // Try without descriptions
-      const shortSections = [];
-      for (const category of CATEGORY_ORDER) {
-        const items = groupedItems[category];
-        if (items && items.length > 0) {
-          const label = CATEGORY_LABELS[category] || category;
-          const emoji = CATEGORY_EMOJIS[category] || '⚪';
-
-          let section = `${emoji} **${label}**\n`;
-          section += items.map(item => `• **${item.title}**`).join('\n');
-          shortSections.push(section);
+          // If still too long, limit items
+          if (itemList.length > 1024) {
+            const maxItems = 10;
+            const displayItems = items.slice(0, maxItems);
+            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
+            if (items.length > maxItems) {
+              itemList += `\n*...and ${items.length - maxItems} more*`;
+            }
+          }
         }
-      }
-      description = shortSections.join('\n\n');
 
-      // If still too long, truncate with ellipsis
-      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
-        description = description.substring(0, RELEASE_DESCRIPTION_LIMIT - 3) + '...';
+        embed.addFields({ name: label, value: itemList, inline: false });
       }
     }
-
-    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
     // Fall back to highlights-only format
     const description = release.highlights.map(h => `• ${h}`).join('\n');
@@ -267,6 +252,13 @@ function previewEmbeds(release, embeds) {
     if (data.description) {
       console.log('Description:');
       console.log(data.description);
+    }
+    if (data.fields && data.fields.length > 0) {
+      console.log('Fields:');
+      for (const field of data.fields) {
+        console.log(`\n  [${field.name}]`);
+        console.log(field.value.split('\n').map(line => '  ' + line).join('\n'));
+      }
     }
   }
   console.log('\n' + '═'.repeat(60));
