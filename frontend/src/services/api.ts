@@ -119,12 +119,20 @@ export async function authRequest<T>(
   };
 
   // Add CSRF token for state-changing requests
-  // Fail fast if token is missing - better UX than cryptic 403 from backend
+  // If token is missing, try refresh first (cookie may have been cleared by browser)
   if (CSRF_REQUIRED_METHODS.has(method)) {
-    const csrfToken = getCSRFToken();
+    let csrfToken = getCSRFToken();
     if (!csrfToken) {
-      logger.error('CSRF token missing', { method, endpoint });
-      throw new ApiError(403, 'Session expired - please refresh the page');
+      logger.warn('CSRF token missing, attempting refresh', { method, endpoint });
+      // Try refresh - this will set new cookies including CSRF token
+      const refreshed = await useAuthStore.getState().refreshAccessToken();
+      if (refreshed) {
+        csrfToken = getCSRFToken();
+      }
+      if (!csrfToken) {
+        logger.error('CSRF token still missing after refresh', { method, endpoint });
+        throw new ApiError(403, 'Session expired - please log in again');
+      }
     }
     headers['X-CSRF-Token'] = csrfToken;
   }

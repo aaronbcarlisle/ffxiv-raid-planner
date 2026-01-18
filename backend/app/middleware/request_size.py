@@ -30,8 +30,10 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     - Traefik: maxRequestBodyBytes: 10485760
     - Caddy: request_body { max_size 10MB }
 
-    This middleware provides defense-in-depth for well-behaved clients
-    but should not be the only line of defense.
+    Despite these limitations, this middleware is still valuable:
+    - Early rejection before body parsing saves server resources
+    - Protects against accidental large uploads from well-behaved clients
+    - Defense-in-depth when combined with reverse proxy limits
     """
 
     def __init__(self, app, max_size_bytes: int = DEFAULT_MAX_SIZE_BYTES):
