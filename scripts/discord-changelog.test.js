@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest';
+import { existsSync } from 'fs';
 import {
   stripAIAttributions,
+  parseReleaseNotes,
+  buildCommitEmbed,
+  buildReleaseEmbed,
   AI_ATTRIBUTION_PATTERNS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
+  RELEASE_NOTES_PATH,
 } from './discord-changelog.js';
 
 describe('discord-changelog', () => {
@@ -147,6 +152,159 @@ Co-Authored-By: John Smith <john@example.com>`;
 
     it('has 7 AI attribution patterns', () => {
       expect(AI_ATTRIBUTION_PATTERNS).toHaveLength(7);
+    });
+  });
+
+  describe('parseReleaseNotes', () => {
+    it('returns parsed release notes from the actual file', () => {
+      // This tests against the actual releaseNotes.ts file
+      const result = parseReleaseNotes();
+
+      expect(result).not.toBeNull();
+      expect(result.currentVersion).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(result.latestRelease).toBeDefined();
+      expect(result.latestRelease.version).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(result.latestRelease.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Array.isArray(result.latestRelease.highlights)).toBe(true);
+    });
+
+    it('RELEASE_NOTES_PATH points to an existing file', () => {
+      expect(existsSync(RELEASE_NOTES_PATH)).toBe(true);
+    });
+
+    it('currentVersion matches latestRelease.version', () => {
+      const result = parseReleaseNotes();
+      expect(result.currentVersion).toBe(result.latestRelease.version);
+    });
+  });
+
+  describe('buildCommitEmbed', () => {
+    it('creates embed with title from commit message', () => {
+      const embed = buildCommitEmbed('abc1234567890', 'feat: add new feature', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('feat: add new feature');
+      expect(data.url).toBe('https://github.com/user/repo/commit/abc1234567890');
+    });
+
+    it('truncates long titles to 256 characters', () => {
+      const longTitle = 'a'.repeat(300);
+      const embed = buildCommitEmbed('abc1234', longTitle, 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title.length).toBeLessThanOrEqual(DISCORD_TITLE_LIMIT);
+      expect(data.title.endsWith('...')).toBe(true);
+    });
+
+    it('uses shortSha as fallback when message is empty', () => {
+      const embed = buildCommitEmbed('abc1234567890', '', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('abc1234');
+    });
+
+    it('uses shortSha as fallback when message is only AI attribution', () => {
+      const embed = buildCommitEmbed('abc1234567890', 'Co-Authored-By: Claude <noreply@anthropic.com>', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('abc1234');
+    });
+
+    it('includes commit body as description', () => {
+      const message = `feat: add feature
+
+This is the commit body with more details.`;
+      const embed = buildCommitEmbed('abc1234', message, 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.description).toBe('This is the commit body with more details.');
+    });
+
+    it('truncates long descriptions with character count', () => {
+      const longBody = 'x'.repeat(5000);
+      const message = `feat: title\n\n${longBody}`;
+      const embed = buildCommitEmbed('abc1234', message, 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.description.length).toBeLessThanOrEqual(DISCORD_DESCRIPTION_LIMIT);
+      expect(data.description).toContain('more characters');
+    });
+
+    it('sets footer with short SHA and author', () => {
+      const embed = buildCommitEmbed('abc1234567890', 'feat: test', 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.footer.text).toContain('abc1234');
+      expect(data.footer.text).toContain('Aaron Carlisle');
+    });
+
+    it('strips AI attributions from commit message', () => {
+      const message = `feat: add feature
+
+Some description
+
+Co-Authored-By: Claude <noreply@anthropic.com>`;
+      const embed = buildCommitEmbed('abc1234', message, 'user/repo');
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('feat: add feature');
+      expect(data.description).toBe('Some description');
+      expect(data.description).not.toContain('Co-Authored-By');
+    });
+  });
+
+  describe('buildReleaseEmbed', () => {
+    it('creates embed with version and title', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Initial Release',
+        highlights: ['Feature 1', 'Feature 2'],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      expect(data.title).toBe('v1.0.0 — Initial Release');
+    });
+
+    it('includes highlights as a field', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test Release',
+        highlights: ['Highlight 1', 'Highlight 2'],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      const highlightsField = data.fields.find(f => f.name === 'Highlights');
+      expect(highlightsField).toBeDefined();
+      expect(highlightsField.value).toContain('• Highlight 1');
+      expect(highlightsField.value).toContain('• Highlight 2');
+    });
+
+    it('handles empty highlights', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'No Highlights',
+        highlights: [],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      const highlightsField = data.fields.find(f => f.name === 'Highlights');
+      expect(highlightsField).toBeUndefined();
+    });
+
+    it('includes link to full release notes', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        highlights: [],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      const linkField = data.fields.find(f => f.value && f.value.includes('Release Notes'));
+      expect(linkField).toBeDefined();
     });
   });
 });

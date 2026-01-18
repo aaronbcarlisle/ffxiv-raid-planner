@@ -327,8 +327,12 @@ if (isMainModule) {
 // Export for testing
 export {
   stripAIAttributions,
+  parseReleaseNotes,
+  buildCommitEmbed,
+  buildReleaseEmbed,
   AI_ATTRIBUTION_PATTERNS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
+  RELEASE_NOTES_PATH,
 };
