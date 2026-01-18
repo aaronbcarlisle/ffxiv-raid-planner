@@ -193,8 +193,8 @@ function buildReleaseEmbeds(release) {
         const label = CATEGORY_LABELS[category] || category;
         const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-        // Section header with colored emoji
-        let section = `${emoji} **${label}**\n`;
+        // Section header with colored emoji (H2 in Discord markdown)
+        let section = `${emoji} ## ${label}\n`;
 
         // Add items (plain bullets, no colored emoji)
         section += items.map(item => {
@@ -220,7 +220,7 @@ function buildReleaseEmbeds(release) {
           const label = CATEGORY_LABELS[category] || category;
           const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-          let section = `${emoji} **${label}**\n`;
+          let section = `${emoji} ## ${label}\n`;
           section += items.map(item => `• **${item.title}**`).join('\n');
           shortSections.push(section);
         }
