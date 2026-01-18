@@ -30,7 +30,7 @@ const COMMIT_AUTHOR = 'Aaron Carlisle';
 
 // Discord embed limits (https://discord.com/developers/docs/resources/channel#embed-limits)
 const DISCORD_TITLE_LIMIT = 256;
-const DISCORD_DESCRIPTION_LIMIT = 2000; // Using 2000 to stay well under 4096 limit
+const DISCORD_DESCRIPTION_LIMIT = 4000; // Discord max is 4096, using 4000 for safety margin
 const TRUNCATION_MESSAGE_RESERVE = 80; // Space for the truncation hint message
 
 // Patterns to strip from commit messages (AI tool attributions)
