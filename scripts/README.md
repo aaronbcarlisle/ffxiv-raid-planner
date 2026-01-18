@@ -72,7 +72,7 @@ The script respects Discord's embed limits:
 | Field | Limit |
 |-------|-------|
 | Title | 256 characters |
-| Description | 500 characters (for concise, scannable posts) |
+| Description | 1000 characters (for rich, detailed descriptions) |
 
 Long commit messages are automatically summarized or truncated to fit within these limits.
 
@@ -80,7 +80,7 @@ Long commit messages are automatically summarized or truncated to fit within the
 
 Commit messages are summarized using Claude AI (Haiku model) to create concise, readable changelog entries. The AI:
 
-- Generates summaries under 500 characters
+- Generates summaries under 1000 characters
 - Focuses on WHAT changed and WHY
 - Automatically excludes AI tool attributions from summaries
 - Falls back to simple truncation if the API is unavailable

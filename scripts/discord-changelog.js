@@ -30,10 +30,11 @@ const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts
 const RELEASE_NOTES_URL = 'https://www.xivraidplanner.app/docs/release-notes';
 // Hardcoded per CLAUDE.md: "NEVER add AI attribution to commits or PRs"
 const COMMIT_AUTHOR = 'Aaron Carlisle';
+const COMMIT_AUTHOR_GITHUB = 'aaronbcarlisle';
 
 // Discord embed limits (https://discord.com/developers/docs/resources/channel#embed-limits)
 const DISCORD_TITLE_LIMIT = 256;
-const DISCORD_DESCRIPTION_LIMIT = 500; // Keep posts concise and scannable
+const DISCORD_DESCRIPTION_LIMIT = 1000; // Rich descriptions for detailed changelogs
 const TRUNCATION_MESSAGE_RESERVE = 50; // Space for the truncation hint
 
 // AI model configuration
@@ -101,6 +102,25 @@ function stripAIAttributions(text) {
   result = result.replace(/\n{3,}/g, '\n\n').trim();
 
   return result;
+}
+
+/**
+ * Sanitize AI terminology from text to keep changelog neutral
+ * Replaces AI-related terms with functional descriptions
+ */
+function sanitizeAITerminology(text) {
+  if (!text) return text;
+
+  return text
+    .replace(/\bAI[- ]powered\b/gi, 'automated')
+    .replace(/\bAI[- ]driven\b/gi, 'smart')
+    .replace(/\bAI summarization\b/gi, 'smart summarization')
+    .replace(/\bAI[- ]generated\b/gi, 'auto-generated')
+    .replace(/\bartificial intelligence\b/gi, 'automation')
+    .replace(/\bwith AI\b/gi, 'with automation')
+    .replace(/\busing AI\b/gi, 'using automation')
+    // Standalone "AI" only when clearly about AI features (not "RAID" or similar)
+    .replace(/\bAI\b(?=\s+(?:feature|tool|system|integration|capability|assistant))/gi, 'smart');
 }
 
 /**
@@ -396,12 +416,13 @@ function buildReleaseEmbed(release) {
     description += '\n\n';
   }
 
-  // Add link to full notes
-  description += `[View Full Release Notes](${RELEASE_NOTES_URL})`;
+  // Add link to full notes with version anchor
+  const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
+  description += `view release notes for [v${release.version}](${versionAnchor})`;
 
   // Ensure we're under the limit
   if (description.length > DISCORD_DESCRIPTION_LIMIT) {
-    const suffix = `\n*...and more*\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+    const suffix = `\n*...and more*\n\nview release notes for [v${release.version}](${versionAnchor})`;
     const maxHighlightLength = DISCORD_DESCRIPTION_LIMIT - suffix.length;
 
     let highlights = '';
@@ -438,7 +459,7 @@ async function buildCommitEmbed(sha, message, repository) {
 
   // Split into title and body
   const lines = message.split('\n');
-  let title = stripAIAttributions((lines[0] || '').trim());
+  let title = sanitizeAITerminology(stripAIAttributions((lines[0] || '').trim()));
 
   // Fallback title if commit message is empty or was only AI attribution
   if (!title) {
@@ -465,6 +486,11 @@ async function buildCommitEmbed(sha, message, repository) {
     .setColor(color)
     .setTitle(title)
     .setURL(commitUrl)
+    .setAuthor({
+      name: COMMIT_AUTHOR,
+      url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
+      iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
+    })
     .setTimestamp();
 
   // Add AI-summarized body as description if present
@@ -482,8 +508,8 @@ async function buildCommitEmbed(sha, message, repository) {
     }
   }
 
-  // Add footer with commit info
-  embed.setFooter({ text: `${shortSha} • ${COMMIT_AUTHOR}` });
+  // Add footer with commit SHA (author info is in the embed author field)
+  embed.setFooter({ text: shortSha });
 
   return embed;
 }
@@ -597,11 +623,13 @@ export {
   summarizeWithAI,
   isAIOnlyCommit,
   stripAIAttributions,
+  sanitizeAITerminology,
   COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
   RELEASE_NOTES_PATH,
+  COMMIT_AUTHOR_GITHUB,
   AI_MODEL,
   AI_TIMEOUT_MS,
 };
