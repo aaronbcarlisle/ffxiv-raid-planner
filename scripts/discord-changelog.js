@@ -211,8 +211,10 @@ function buildCommitEmbed(sha, message, repository) {
   if (body) {
     let description = body;
     if (body.length > DISCORD_DESCRIPTION_LIMIT) {
-      const remaining = body.length - DISCORD_DESCRIPTION_LIMIT + 50;
-      description = body.substring(0, DISCORD_DESCRIPTION_LIMIT - 50) +
+      // Reserve space for truncation message (about 70 chars max)
+      const truncateAt = DISCORD_DESCRIPTION_LIMIT - 80;
+      const remaining = body.length - truncateAt;
+      description = body.substring(0, truncateAt) +
         `\n\n*... ${remaining} more characters, click title to view full commit*`;
     }
     embed.setDescription(description);
