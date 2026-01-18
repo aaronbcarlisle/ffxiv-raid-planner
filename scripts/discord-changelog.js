@@ -36,6 +36,10 @@ const DISCORD_TITLE_LIMIT = 256;
 const DISCORD_DESCRIPTION_LIMIT = 500; // Keep posts concise and scannable
 const TRUNCATION_MESSAGE_RESERVE = 50; // Space for the truncation hint
 
+// AI model configuration
+const AI_MODEL = 'claude-3-5-haiku-latest';
+const AI_TIMEOUT_MS = 10000; // 10 second timeout for API calls
+
 // Commit type colors for visual identification
 const COMMIT_TYPE_COLORS = {
   feat: 0x10b981,     // Green for features
@@ -59,8 +63,8 @@ const COMMIT_TYPE_COLORS = {
 let anthropicClient = null;
 
 // Patterns that indicate AI-generated content (for skip detection)
+// Note: co-authored-by is handled separately below to strip ALL co-authors
 const AI_CONTENT_PATTERNS = [
-  /co-authored-by:.*(?:anthropic|claude|copilot|cursor)/i,
   /generated (?:with|by) (?:claude|copilot|cursor)/i,
   /🤖.*claude/i,
 ];
@@ -88,7 +92,7 @@ function isAIOnlyCommit(message) {
 
   // If nothing meaningful remains (just whitespace/newlines), it's AI-only
   const meaningfulContent = cleaned.replace(/[\s\n]+/g, '');
-  return meaningfulContent.length < 10; // Less than 10 chars of real content
+  return meaningfulContent.length < 5; // Less than 5 chars of real content
 }
 
 /**
@@ -107,7 +111,7 @@ function getAnthropicClient() {
 
 /**
  * Use AI to generate a concise summary of a commit message
- * Returns null if AI summarization fails or is unavailable
+ * Returns null if AI summarization fails, times out, or is unavailable
  */
 async function summarizeWithAI(commitMessage, maxLength = DISCORD_DESCRIPTION_LIMIT) {
   const client = getAnthropicClient();
@@ -117,8 +121,13 @@ async function summarizeWithAI(commitMessage, maxLength = DISCORD_DESCRIPTION_LI
   }
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-20250414',
+    // Create a timeout promise to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('API call timed out')), AI_TIMEOUT_MS);
+    });
+
+    const apiPromise = client.messages.create({
+      model: AI_MODEL,
       max_tokens: 256,
       messages: [{
         role: 'user',
@@ -140,6 +149,9 @@ ${commitMessage}
 Summary:`
       }]
     });
+
+    // Race between API call and timeout
+    const response = await Promise.race([apiPromise, timeoutPromise]);
 
     const summary = response.content[0]?.text?.trim();
     if (summary && summary.length <= maxLength) {
@@ -202,15 +214,17 @@ function summarizeBody(body, maxLength) {
     // Prioritize bullet points - take as many as fit
     let summary = '';
     const moreIndicator = '\n...';
+    let bulletsAdded = 0;
     for (const bullet of bulletLines) {
       const cleanBullet = bullet.replace(/^[-*•]\s*/, '• ');
       if ((summary + cleanBullet + '\n' + moreIndicator).length <= maxLength) {
         summary += cleanBullet + '\n';
+        bulletsAdded++;
       } else {
         break;
       }
     }
-    if (summary && bulletLines.length > summary.split('\n').filter(l => l).length) {
+    if (summary && bulletLines.length > bulletsAdded) {
       return (summary.trim() + moreIndicator).substring(0, maxLength);
     }
     return summary.trim() || body.substring(0, maxLength - suffixLength) + TRUNCATION_SUFFIX;
@@ -348,8 +362,26 @@ function buildReleaseEmbed(release) {
 
   // Ensure we're under the limit
   if (description.length > DISCORD_DESCRIPTION_LIMIT) {
-    const highlights = release.highlights.slice(0, 2).map(h => `• ${h}`).join('\n');
-    description = `${highlights}\n*...and more*\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+    const suffix = `\n*...and more*\n\n[View Full Release Notes](${RELEASE_NOTES_URL})`;
+    const maxHighlightLength = DISCORD_DESCRIPTION_LIMIT - suffix.length;
+
+    let highlights = '';
+    if (maxHighlightLength > 0 && release.highlights && release.highlights.length > 0) {
+      const fullHighlights = release.highlights
+        .slice(0, 2)
+        .map(h => `• ${h}`)
+        .join('\n');
+
+      if (fullHighlights.length <= maxHighlightLength) {
+        highlights = fullHighlights;
+      } else {
+        // Truncate with ellipsis if still too long
+        const available = Math.max(maxHighlightLength - 3, 0);
+        highlights = available > 0 ? fullHighlights.slice(0, available) + '...' : '';
+      }
+    }
+
+    description = `${highlights}${suffix}`;
   }
 
   embed.setDescription(description);
@@ -525,4 +557,6 @@ export {
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
   RELEASE_NOTES_PATH,
+  AI_MODEL,
+  AI_TIMEOUT_MS,
 };

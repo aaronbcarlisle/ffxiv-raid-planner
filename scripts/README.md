@@ -9,19 +9,19 @@ Posts changelog updates to Discord when PRs are merged to main.
 ### Features
 
 - **Release Announcements**: When a new version is detected in `releaseNotes.ts`, posts a rich embed with version info, highlights, and a link to full release notes
-- **Commit Notifications**: Posts commit title and body as Discord embeds
-- **AI Attribution Stripping**: Automatically removes AI tool attributions (Claude, Copilot, Cursor) from commit messages per project policy
+- **Commit Notifications**: Posts commit title and AI-summarized body as Discord embeds with color-coded types
+- **Intelligent Summarization**: Uses AI to generate concise, readable changelog entries (with fallback to smart truncation)
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DISCORD_BOT_TOKEN` | Discord bot token with permissions to post in the changelog channel |
-| `DISCORD_CHANGELOG_CHANNEL_ID` | ID of the Discord channel to post notifications |
-| `ANTHROPIC_API_KEY` | Anthropic API key for AI-powered commit summarization |
-| `COMMIT_SHA` | The commit hash (auto-provided by GitHub Actions) |
-| `COMMIT_MESSAGE` | The full commit message (auto-provided by GitHub Actions) |
-| `GITHUB_REPOSITORY` | Repository in `owner/repo` format (auto-provided by GitHub Actions) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_BOT_TOKEN` | Yes | Discord bot token with permissions to post in the changelog channel |
+| `DISCORD_CHANGELOG_CHANNEL_ID` | Yes | ID of the Discord channel to post notifications |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key for AI-powered commit summarization. Falls back to smart truncation if not provided. |
+| `COMMIT_SHA` | Yes | The commit hash (auto-provided by GitHub Actions) |
+| `COMMIT_MESSAGE` | Yes | The full commit message (auto-provided by GitHub Actions) |
+| `GITHUB_REPOSITORY` | Yes | Repository in `owner/repo` format (auto-provided by GitHub Actions) |
 
 ### Discord Bot Setup
 
@@ -72,9 +72,9 @@ The script respects Discord's embed limits:
 | Field | Limit |
 |-------|-------|
 | Title | 256 characters |
-| Description | 4096 characters (using 4000 for safety) |
+| Description | 500 characters (for concise, scannable posts) |
 
-Long commit messages are automatically truncated with a "click title to view full commit" hint.
+Long commit messages are automatically summarized or truncated to fit within these limits.
 
 ### AI Summarization
 
@@ -84,8 +84,11 @@ Commit messages are summarized using Claude AI (Haiku model) to create concise, 
 - Focuses on WHAT changed and WHY
 - Automatically excludes AI tool attributions from summaries
 - Falls back to simple truncation if the API is unavailable
+- Includes a 10-second timeout to prevent CI pipeline hangs
 
 This approach eliminates the need for complex regex patterns and produces cleaner, more informative changelog posts.
+
+**Security Note:** Commit messages are passed directly to the AI prompt. This is safe for internal use since commits require repository write access. The Anthropic API includes built-in safety measures against prompt injection.
 
 ### Rate Limiting
 
