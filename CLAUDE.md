@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.0.10 | **Next:** Session 4 (MembersPanel), Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.0.11 | **Next:** Session 4 (MembersPanel), Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
 
