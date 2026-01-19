@@ -16,8 +16,8 @@ import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-store');
 
-// BUILD MARKER - If you see this in console, the Jan 18 21:05 fix is deployed
-console.log('[AUTH-STORE] Build version: 2026-01-18-2105 - Cookie-based OAuth state fix');
+// BUILD MARKER - If you see this in console, the Jan 18 21:30 fix is deployed
+console.log('[AUTH-STORE] Build version: 2026-01-18-2130 - Cookie debug logging');
 
 if (isProduction && isLocalhostApi) {
   console.error(
@@ -63,14 +63,23 @@ function setOAuthState(state: string): void {
   const domainAttr = domain ? `; domain=${domain}` : '';
   // Short expiry (10 minutes) - just needs to survive the OAuth redirect
   const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString();
-  document.cookie = `${OAUTH_STATE_COOKIE_NAME}=${state}; path=/; expires=${expires}; SameSite=Lax${domainAttr}`;
-  logger.info('OAuth state cookie set', { domain: domain || '(none)' });
+  const cookieString = `${OAUTH_STATE_COOKIE_NAME}=${state}; path=/; expires=${expires}; SameSite=Lax${domainAttr}`;
+  console.log('[AUTH-STORE] Setting OAuth state cookie:', {
+    domain,
+    cookieString,
+    currentHostname: window.location.hostname,
+  });
+  document.cookie = cookieString;
 }
 
 /**
  * Get OAuth state from cookie.
  */
 function getOAuthState(): string | null {
+  console.log('[AUTH-STORE] Reading OAuth state cookie:', {
+    currentHostname: window.location.hostname,
+    allCookies: document.cookie,
+  });
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const trimmed = cookie.trim();
@@ -79,9 +88,11 @@ function getOAuthState(): string | null {
     const name = trimmed.slice(0, eqIndex);
     const value = trimmed.slice(eqIndex + 1);
     if (name === OAUTH_STATE_COOKIE_NAME) {
+      console.log('[AUTH-STORE] Found OAuth state cookie:', value);
       return value;
     }
   }
+  console.log('[AUTH-STORE] OAuth state cookie NOT found');
   return null;
 }
 
