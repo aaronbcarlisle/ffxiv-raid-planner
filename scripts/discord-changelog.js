@@ -27,7 +27,9 @@ const __dirname = dirname(__filename);
 
 // Configuration
 const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts');
-const RELEASE_NOTES_URL = 'https://www.xivraidplanner.app/docs/release-notes';
+const APP_BASE_URL = 'https://www.xivraidplanner.app';
+const RELEASE_NOTES_URL = `${APP_BASE_URL}/docs/release-notes`;
+const APP_THUMBNAIL_URL = `${APP_BASE_URL}/og-image.png`;
 // Hardcoded per CLAUDE.md: "NEVER add AI attribution to commits or PRs"
 const COMMIT_AUTHOR = 'Aaron Carlisle';
 const COMMIT_AUTHOR_GITHUB = 'aaronbcarlisle';
@@ -460,12 +462,12 @@ const CATEGORY_LABELS = {
 // Category order for display (features first, then improvements, fixes, breaking)
 const CATEGORY_ORDER = ['feature', 'improvement', 'fix', 'breaking'];
 
-// Category emoji colors (matching the release notes page badges)
+// Category emoji colors (small colored squares)
 const CATEGORY_EMOJIS = {
-  feature: '🟢',
-  improvement: '🔵',
-  fix: '🔴',
-  breaking: '🟠',
+  feature: '🟩',
+  improvement: '🟦',
+  fix: '🟥',
+  breaking: '🟧',
 };
 
 // Category colors for embed borders (hex values for Discord)
@@ -480,6 +482,66 @@ const CATEGORY_COLORS = {
 const RELEASE_DESCRIPTION_LIMIT = 3500;
 
 /**
+ * Build a footer string showing item counts by category
+ * e.g., "3 features • 2 improvements • 1 fix"
+ */
+function buildReleaseFooter(items) {
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  const counts = {};
+  for (const item of items) {
+    counts[item.category] = (counts[item.category] || 0) + 1;
+  }
+
+  // Build parts in priority order, using singular/plural forms
+  const parts = [];
+  const labels = {
+    feature: ['feature', 'features'],
+    improvement: ['improvement', 'improvements'],
+    fix: ['fix', 'fixes'],
+    breaking: ['breaking change', 'breaking changes'],
+  };
+
+  for (const category of CATEGORY_ORDER) {
+    const count = counts[category];
+    if (count > 0) {
+      const [singular, plural] = labels[category] || [category, `${category}s`];
+      parts.push(`${count} ${count === 1 ? singular : plural}`);
+    }
+  }
+
+  return parts.join(' • ');
+}
+
+/**
+ * Determine the dominant category color for an embed based on item counts
+ * Priority order: breaking > feature > fix > improvement
+ * Falls back to teal if no items match
+ */
+function getDominantCategoryColor(items) {
+  if (!items || items.length === 0) {
+    return 0x14b8a6; // Teal fallback
+  }
+
+  const counts = {};
+  for (const item of items) {
+    counts[item.category] = (counts[item.category] || 0) + 1;
+  }
+
+  // Priority: breaking > feature > fix > improvement
+  const priority = ['breaking', 'feature', 'fix', 'improvement'];
+  for (const cat of priority) {
+    if (counts[cat] > 0) {
+      return CATEGORY_COLORS[cat];
+    }
+  }
+
+  return 0x14b8a6; // Teal fallback
+}
+
+/**
  * Format a single item for Discord display (plain bullet, no colored emoji)
  */
 function formatReleaseItem(item) {
@@ -491,14 +553,19 @@ function formatReleaseItem(item) {
 
 /**
  * Build release announcement embed - single embed with all categories
- * Colored emoji circles are placed next to section headers, not items
+ * Uses H3 headers for category names and plain bullets for items
  * Returns an array with a single embed for consistency with API
  */
 function buildReleaseEmbeds(release) {
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
 
+  // Use dominant category color based on release content
+  const embedColor = release.items && release.items.length > 0
+    ? getDominantCategoryColor(release.items)
+    : 0x14b8a6; // Teal fallback
+
   const embed = new EmbedBuilder()
-    .setColor(0x14b8a6) // Teal accent color
+    .setColor(embedColor)
     .setTitle(`v${release.version} — ${release.title}`)
     .setURL(versionAnchor)
     .setAuthor({
@@ -508,7 +575,13 @@ function buildReleaseEmbeds(release) {
     })
     .setTimestamp(release.date ? new Date(release.date) : undefined);
 
-  // If we have items, add fields for each category
+  // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
+  const footerText = buildReleaseFooter(release.items);
+  if (footerText) {
+    embed.setFooter({ text: footerText });
+  }
+
+  // If we have items, build description with H3 headers for each category
   if (release.items && release.items.length > 0) {
     // Group items by category
     const groupedItems = {};
@@ -519,40 +592,67 @@ function buildReleaseEmbeds(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Add a field for each category (field names render larger)
+    // Build description with H3 headers and plain bullets (no dash between emoji and label)
+    const sections = [];
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
         const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
-        // Build item list with colored emoji on each item
-        let itemList = items.map(item => {
+        // Build item list with plain bullets
+        const itemList = items.map(item => {
           if (item.description) {
-            return `${emoji} **${item.title}** — ${item.description}`;
+            return `• **${item.title}** — ${item.description}`;
           }
-          return `${emoji} **${item.title}**`;
+          return `• **${item.title}**`;
         }).join('\n');
 
-        // Truncate if field value too long (Discord limit is 1024)
-        if (itemList.length > 1024) {
-          // Try without descriptions
-          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
+        // Build section with H3 header and colored emoji (no dash)
+        sections.push(`### ▸ ${label}\n${itemList}`);
+      }
+    }
 
-          // If still too long, limit items
-          if (itemList.length > 1024) {
-            const maxItems = 10;
+    // Join sections and set as description
+    let description = sections.join('\n\n');
+
+    // Truncate if description too long (Discord limit is 4096)
+    if (description.length > RELEASE_DESCRIPTION_LIMIT) {
+      // Try without descriptions on items
+      const shortSections = [];
+      for (const category of CATEGORY_ORDER) {
+        const items = groupedItems[category];
+        if (items && items.length > 0) {
+          const label = CATEGORY_LABELS[category] || category;
+          const emoji = CATEGORY_EMOJIS[category] || '⚪';
+          const itemList = items.map(item => `• **${item.title}**`).join('\n');
+          shortSections.push(`### ▸ ${label}\n${itemList}`);
+        }
+      }
+      description = shortSections.join('\n\n');
+
+      // If still too long, limit items per category
+      if (description.length > RELEASE_DESCRIPTION_LIMIT) {
+        const limitedSections = [];
+        const maxItems = 5;
+        for (const category of CATEGORY_ORDER) {
+          const items = groupedItems[category];
+          if (items && items.length > 0) {
+            const label = CATEGORY_LABELS[category] || category;
+            const emoji = CATEGORY_EMOJIS[category] || '⚪';
             const displayItems = items.slice(0, maxItems);
-            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
+            let itemList = displayItems.map(item => `• **${item.title}**`).join('\n');
             if (items.length > maxItems) {
               itemList += `\n*...and ${items.length - maxItems} more*`;
             }
+            limitedSections.push(`### ▸ ${label}\n${itemList}`);
           }
         }
-
-        embed.addFields({ name: label, value: itemList, inline: false });
+        description = limitedSections.join('\n\n');
       }
     }
+
+    embed.setDescription(description);
   } else if (release.highlights && release.highlights.length > 0) {
     // Fall back to highlights-only format
     const description = release.highlights.map(h => `• ${h}`).join('\n');
@@ -747,6 +847,8 @@ export {
   buildReleaseEmbeds,
   formatReleaseItem,
   getCommitTypeColor,
+  getDominantCategoryColor,
+  buildReleaseFooter,
   summarizeBody,
   summarizeWithAI,
   isAIOnlyCommit,
@@ -765,4 +867,5 @@ export {
   CATEGORY_EMOJIS,
   CATEGORY_COLORS,
   RELEASE_DESCRIPTION_LIMIT,
+  APP_THUMBNAIL_URL,
 };

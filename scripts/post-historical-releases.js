@@ -13,48 +13,19 @@
  *   DISCORD_CHANGELOG_CHANNEL_ID - Channel ID to post to
  */
 
-import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+// Import shared embed builder from discord-changelog.js
+import { buildReleaseEmbeds } from './discord-changelog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configuration
 const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts');
-const RELEASE_NOTES_URL = 'https://www.xivraidplanner.app/docs/release-notes';
-
-// Author info (hardcoded per CLAUDE.md)
-const COMMIT_AUTHOR = 'Aaron Carlisle';
-const COMMIT_AUTHOR_GITHUB = 'aaronbcarlisle';
-
-// Category labels for display (same as discord-changelog.js)
-const CATEGORY_LABELS = {
-  feature: 'New Features',
-  improvement: 'Improvements',
-  fix: 'Bug Fixes',
-  breaking: 'Breaking Changes',
-};
-
-// Category order for display
-const CATEGORY_ORDER = ['feature', 'improvement', 'fix', 'breaking'];
-
-// Category emoji colors (matching the release notes page badges)
-const CATEGORY_EMOJIS = {
-  feature: '🟢',
-  improvement: '🔵',
-  fix: '🔴',
-  breaking: '🟠',
-};
-
-// Category colors for embed borders (hex values for Discord)
-const CATEGORY_COLORS = {
-  feature: 0x10b981,   // Green
-  improvement: 0x3b82f6, // Blue
-  fix: 0xef4444,       // Red
-  breaking: 0xf59e0b,  // Orange
-};
 
 /**
  * Parse release items from a release block
@@ -142,92 +113,6 @@ function parseAllReleases() {
   return releases;
 }
 
-// Discord embed description limit (actual limit is 4096, but we use a reasonable max)
-const RELEASE_DESCRIPTION_LIMIT = 3500;
-
-/**
- * Format a single item for Discord display (plain bullet, no colored emoji)
- */
-function formatReleaseItem(item) {
-  if (item.description) {
-    return `• **${item.title}** — ${item.description}`;
-  }
-  return `• **${item.title}**`;
-}
-
-/**
- * Build release announcement embed - single embed with all categories
- * Colored emoji circles are placed next to section headers, not items
- * Returns an array with a single embed for consistency with API
- */
-function buildReleaseEmbeds(release) {
-  const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
-
-  const embed = new EmbedBuilder()
-    .setColor(0x14b8a6) // Teal accent color
-    .setTitle(`v${release.version} — ${release.title}`)
-    .setURL(versionAnchor)
-    .setAuthor({
-      name: COMMIT_AUTHOR,
-      url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
-      iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
-    })
-    .setTimestamp(new Date(release.date)); // Use the actual release date
-
-  // If we have items, add fields for each category
-  if (release.items && release.items.length > 0) {
-    // Group items by category
-    const groupedItems = {};
-    for (const item of release.items) {
-      if (!groupedItems[item.category]) {
-        groupedItems[item.category] = [];
-      }
-      groupedItems[item.category].push(item);
-    }
-
-    // Add a field for each category (field names render larger)
-    for (const category of CATEGORY_ORDER) {
-      const items = groupedItems[category];
-      if (items && items.length > 0) {
-        const label = CATEGORY_LABELS[category] || category;
-        const emoji = CATEGORY_EMOJIS[category] || '⚪';
-
-        // Build item list with colored emoji on each item
-        let itemList = items.map(item => {
-          if (item.description) {
-            return `${emoji} **${item.title}** — ${item.description}`;
-          }
-          return `${emoji} **${item.title}**`;
-        }).join('\n');
-
-        // Truncate if field value too long (Discord limit is 1024)
-        if (itemList.length > 1024) {
-          // Try without descriptions
-          itemList = items.map(item => `${emoji} **${item.title}**`).join('\n');
-
-          // If still too long, limit items
-          if (itemList.length > 1024) {
-            const maxItems = 10;
-            const displayItems = items.slice(0, maxItems);
-            itemList = displayItems.map(item => `${emoji} **${item.title}**`).join('\n');
-            if (items.length > maxItems) {
-              itemList += `\n*...and ${items.length - maxItems} more*`;
-            }
-          }
-        }
-
-        embed.addFields({ name: label, value: itemList, inline: false });
-      }
-    }
-  } else if (release.highlights && release.highlights.length > 0) {
-    // Fall back to highlights-only format
-    const description = release.highlights.map(h => `• ${h}`).join('\n');
-    embed.setDescription(description);
-  }
-
-  return [embed];
-}
-
 /**
  * Preview embeds (for dry-run mode)
  */
@@ -246,6 +131,9 @@ function previewEmbeds(release, embeds) {
     console.log(`Title: ${data.title}`);
     if (data.url) console.log(`URL: ${data.url}`);
     console.log(`Color: #${data.color.toString(16).padStart(6, '0')}`);
+    if (data.thumbnail) {
+      console.log(`Thumbnail: ${data.thumbnail.url}`);
+    }
     if (data.timestamp) {
       console.log(`Timestamp: ${new Date(data.timestamp).toISOString()}`);
     }
@@ -259,6 +147,9 @@ function previewEmbeds(release, embeds) {
         console.log(`\n  [${field.name}]`);
         console.log(field.value.split('\n').map(line => '  ' + line).join('\n'));
       }
+    }
+    if (data.footer) {
+      console.log(`Footer: ${data.footer.text}`);
     }
   }
   console.log('\n' + '═'.repeat(60));
