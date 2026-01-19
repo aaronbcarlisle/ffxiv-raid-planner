@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { SnapshotPlayer, WeaponPriority, MemberRole } from '../../types';
 import { Modal } from '../ui/Modal';
+import { ErrorBox } from '../ui/ErrorMessage';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { WeaponPriorityGrid } from './WeaponPriorityGrid';
@@ -262,9 +263,7 @@ export function WeaponPriorityModal({
 
               {/* Permission denied */}
               {!permission.allowed && (
-                <div className="bg-status-error/10 border border-status-error/30 rounded p-3 text-sm text-status-error">
-                  {permission.reason}
-                </div>
+                <ErrorBox message={permission.reason || 'Permission denied'} size="sm" />
               )}
 
               {/* Description */}

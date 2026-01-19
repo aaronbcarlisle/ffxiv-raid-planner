@@ -8,6 +8,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore, getOAuthStateCookie } from '../stores/authStore';
+import { Spinner } from '../components/ui/Spinner';
 import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-callback');
@@ -156,7 +157,7 @@ export function AuthCallback() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-surface-elevated">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Spinner size="2xl" className="mx-auto mb-4" label="Signing in" />
           <h2 className="text-xl font-display text-accent mb-2">Signing you in...</h2>
           <p className="text-text-muted">Please wait while we complete authentication.</p>
         </div>

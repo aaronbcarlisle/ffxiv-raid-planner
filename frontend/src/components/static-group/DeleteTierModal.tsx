@@ -47,7 +47,7 @@ export function DeleteTierModal({ groupId, tierSnapshotId, tierId, onClose, onDe
       }
     >
       <div className="space-y-4">
-        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">
+        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
           <p className="text-text-secondary">
             Are you sure you want to delete <strong className="text-text-primary">{tierInfo?.name || tierId}</strong>?
             This will remove all player data for this tier.

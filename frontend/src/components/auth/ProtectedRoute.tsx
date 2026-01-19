@@ -11,6 +11,7 @@ import { type ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { LoginButton } from './LoginButton';
+import { Spinner } from '../ui/Spinner';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -54,7 +55,7 @@ export function ProtectedRoute({
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Spinner size="lg" className="mx-auto mb-4" label="Checking authentication" />
           <p className="text-text-muted">Checking authentication...</p>
         </div>
       </div>

@@ -3,10 +3,10 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, XCircle, Check } from 'lucide-react';
+import { XCircle, Check } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
-import { Select, Label, NumberInput } from '../ui';
-import { Button, IconButton } from '../primitives';
+import { Select, Label, NumberInput, ErrorMessage } from '../ui';
+import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 import type { Invitation, MemberRole } from '../../types';
 
@@ -155,17 +155,7 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
   return (
     <div className={`space-y-4 ${highlightCreateButton ? 'px-3' : ''}`}>
       {error && (
-        <div className="bg-status-error/20 text-status-error p-3 rounded text-sm flex justify-between items-center">
-          <span>{error}</span>
-          <IconButton
-            icon={<X className="w-4 h-4" />}
-            onClick={clearError}
-            variant="ghost"
-            size="sm"
-            aria-label="Dismiss error"
-            className="text-status-error hover:text-status-error/80"
-          />
-        </div>
+        <ErrorMessage message={error} onDismiss={clearError} size="sm" />
       )}
 
       {/* Create Invitation */}

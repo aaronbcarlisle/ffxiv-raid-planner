@@ -21,7 +21,7 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -532,7 +532,7 @@ export function GroupView() {
   if (isLoading && !currentGroup) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" label="Loading static" />
       </div>
     );
   }
@@ -642,7 +642,7 @@ export function GroupView() {
                     {/* design-system-ignore: Toggle button requires specific toggle styling */}
                     <button
                       onClick={() => setSubsView(!subsView)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border ${
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                         subsView
                           ? 'bg-accent/20 text-accent border-accent/50'
                           : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Modal, Checkbox, Label, Select, Input, Spinner, JobIcon } from '../ui';
+import { Modal, Checkbox, Label, Select, Input, Spinner, JobIcon, ErrorBox } from '../ui';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider, Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
@@ -579,9 +579,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
       {state === 'error' && (
         <div className="space-y-4">
-          <div className="p-4 bg-status-error/10 border border-status-error/30 rounded-lg">
-            <p className="text-status-error">{error}</p>
-          </div>
+          <ErrorBox message={error || 'An error occurred'} />
           <div className="flex gap-3">
             <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
               Cancel

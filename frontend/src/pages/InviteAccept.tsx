@@ -9,6 +9,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useInvitationStore } from '../stores/invitationStore';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/primitives';
+import { ErrorBox } from '../components/ui';
 import type { MemberRole } from '../types';
 
 const ROLE_LABELS: Record<MemberRole, string> = {
@@ -152,9 +153,7 @@ export function InviteAccept() {
         )}
 
         {(acceptError || error) && (
-          <div className="bg-status-error/10 border border-status-error/30 rounded p-3 mb-4 text-sm text-status-error">
-            {acceptError || error}
-          </div>
+          <ErrorBox message={acceptError || error || 'An error occurred'} size="sm" className="mb-4" />
         )}
 
         {/* Actions */}

@@ -119,7 +119,7 @@ export function PageBalancesPanel({
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
           {/* View mode toggle */}
-          <div className="flex rounded-md overflow-hidden border border-border-default">
+          <div className="flex rounded-lg overflow-hidden border border-border-default">
             <Tooltip content={`Show books earned in Week ${currentWeek} only`}>
               <button
                 onClick={() => setViewMode('week')}

@@ -4,9 +4,11 @@
  * Provides consistent loading spinners across the application.
  */
 
+export type SpinnerSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+
 interface SpinnerProps {
   /** Size variant */
-  size?: 'sm' | 'md' | 'lg';
+  size?: SpinnerSize;
   /** Optional custom className */
   className?: string;
   /** Accessible label for screen readers */
@@ -17,6 +19,8 @@ const SIZE_CLASSES = {
   sm: 'w-4 h-4 border',
   md: 'w-6 h-6 border-2',
   lg: 'w-8 h-8 border-2',
+  xl: 'w-10 h-10 border-2',
+  '2xl': 'w-12 h-12 border-[3px]',
 };
 
 export function Spinner({ size = 'md', className = '', label = 'Loading' }: SpinnerProps) {

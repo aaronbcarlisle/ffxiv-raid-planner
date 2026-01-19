@@ -25,7 +25,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Settings, ListOrdered, Users, Mail, Trash2 } from 'lucide-react';
-import { Modal, Checkbox, Label, Input } from '../ui';
+import { Modal, Checkbox, Label, Input, ErrorBox } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -261,11 +261,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
 
         {/* Content */}
         <div className="py-4 overflow-y-auto flex-1">
-          {error && (
-            <div className="mb-4 p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
-              {error}
-            </div>
-          )}
+          {error && <ErrorBox message={error} size="sm" className="mb-4" />}
 
           {activeTab === 'general' && !showDeleteConfirm && (
             <>
@@ -350,7 +346,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
           {activeTab === 'general' && showDeleteConfirm && (
           /* Delete Confirmation */
           <div>
-            <div className="mb-4 p-3 bg-status-error/10 border border-status-error/30 rounded">
+            <div className="mb-4 p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
               <p className="text-status-error font-medium mb-2">Delete this static?</p>
               <p className="text-text-secondary text-sm">
                 This will permanently delete <strong className="text-text-primary">{group.name}</strong> and all its tier snapshots.

@@ -139,3 +139,36 @@ export function InlineError({
     </p>
   );
 }
+
+/**
+ * ErrorBox - Simple contextual error display for modals and panels
+ *
+ * Use this for inline contextual errors that don't need retry/dismiss buttons.
+ * For page-level errors with actions, use ErrorMessage instead.
+ *
+ * @example
+ * ```tsx
+ * {error && <ErrorBox message={error} />}
+ * ```
+ */
+export interface ErrorBoxProps {
+  /** The error message to display */
+  message: string;
+  /** Additional CSS classes */
+  className?: string;
+  /** Size variant - sm has tighter padding */
+  size?: 'sm' | 'md';
+}
+
+export function ErrorBox({ message, className = '', size = 'md' }: ErrorBoxProps) {
+  const padding = size === 'sm' ? 'p-3' : 'p-4';
+
+  return (
+    <div
+      className={`bg-status-error/10 border border-status-error/30 rounded-lg ${padding} text-sm text-status-error ${className}`}
+      role="alert"
+    >
+      {message}
+    </div>
+  );
+}
