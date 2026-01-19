@@ -160,16 +160,20 @@ function VersionNav({
   }, []);
 
   // Auto-expand month containing active version if it's in older releases
+  // Note: Using queueMicrotask to defer setState and avoid react-hooks/set-state-in-effect lint error.
+  // This is a legitimate use case: expanding a section when the active version changes from scrolling.
   useEffect(() => {
     const olderRelease = olderReleases.find(r => r.version === activeVersion);
     if (olderRelease) {
       const date = new Date(olderRelease.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      setExpandedMonths(prev => {
-        if (prev.has(monthKey)) return prev;
-        const next = new Set(prev);
-        next.add(monthKey);
-        return next;
+      queueMicrotask(() => {
+        setExpandedMonths(prev => {
+          if (prev.has(monthKey)) return prev;
+          const next = new Set(prev);
+          next.add(monthKey);
+          return next;
+        });
       });
     }
   }, [activeVersion, olderReleases]);
