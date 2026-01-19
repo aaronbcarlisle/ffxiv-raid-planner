@@ -28,6 +28,70 @@ if (isProduction && isLocalhostApi) {
 // CSRF token cookie name (must match backend)
 const CSRF_COOKIE_NAME = 'csrf_token';
 
+// OAuth state cookie name - using cookie instead of sessionStorage
+// because sessionStorage is per-origin, and www.domain.com vs domain.com
+// are different origins. Cookies with domain=.domain.com work across both.
+const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
+
+/**
+ * Get the root domain for cookie settings.
+ * Returns ".xivraidplanner.app" for production, or current hostname for dev.
+ */
+function getCookieDomain(): string {
+  const hostname = window.location.hostname;
+  // For localhost or IP addresses, don't set domain
+  if (hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return '';
+  }
+  // For production, use root domain with leading dot
+  // This makes the cookie accessible from both www.xivraidplanner.app and xivraidplanner.app
+  const parts = hostname.split('.');
+  if (parts.length >= 2) {
+    return '.' + parts.slice(-2).join('.');
+  }
+  return '';
+}
+
+/**
+ * Set OAuth state in a cookie that works across www/non-www subdomains.
+ */
+function setOAuthState(state: string): void {
+  const domain = getCookieDomain();
+  const domainAttr = domain ? `; domain=${domain}` : '';
+  // Short expiry (10 minutes) - just needs to survive the OAuth redirect
+  const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString();
+  document.cookie = `${OAUTH_STATE_COOKIE_NAME}=${state}; path=/; expires=${expires}; SameSite=Lax${domainAttr}`;
+  logger.info('OAuth state cookie set', { domain: domain || '(none)' });
+}
+
+/**
+ * Get OAuth state from cookie.
+ */
+function getOAuthState(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
+    if (name === OAUTH_STATE_COOKIE_NAME) {
+      return value;
+    }
+  }
+  return null;
+}
+
+/**
+ * Clear OAuth state cookie.
+ */
+function clearOAuthState(): void {
+  const domain = getCookieDomain();
+  const domainAttr = domain ? `; domain=${domain}` : '';
+  // Set expired date to delete the cookie
+  document.cookie = `${OAUTH_STATE_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${domainAttr}`;
+}
+
 /**
  * Get CSRF token from cookie for state-changing requests.
  */
@@ -198,8 +262,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authRequest<DiscordAuthUrl>('/api/auth/discord');
 
-          // Store state for verification
-          sessionStorage.setItem('oauth_state', data.state);
+          // Store state for verification in cookie (works across www/non-www subdomains)
+          setOAuthState(data.state);
 
           // Redirect to Discord
           window.location.href = data.url;
@@ -219,12 +283,17 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
 
         try {
-          // Verify state matches
-          const savedState = sessionStorage.getItem('oauth_state');
+          // Verify state matches (using cookie for cross-subdomain support)
+          const savedState = getOAuthState();
+          logger.info('Verifying OAuth state', {
+            hasState: !!state,
+            hasSavedState: !!savedState,
+            statesMatch: state === savedState,
+          });
           if (state !== savedState) {
             throw new Error('Invalid OAuth state - possible CSRF attack');
           }
-          sessionStorage.removeItem('oauth_state');
+          clearOAuthState();
 
           // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
           logger.info('Exchanging code for tokens');
