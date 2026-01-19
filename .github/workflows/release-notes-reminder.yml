@@ -1,12 +1,12 @@
-name: Release Notes Reminder
+name: Release Notes Check
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, labeled, unlabeled]
 
 jobs:
   check:
-    name: Check Release Notes
+    name: Release Notes Required
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -17,49 +17,106 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            try {
-              const { data: files } = await github.rest.pulls.listFiles({
+            // Use pagination to handle PRs with >30 files
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+
+            // Check if release notes were updated
+            const hasReleaseNotes = files.some(f =>
+              f.filename === 'frontend/src/data/releaseNotes.ts'
+            );
+
+            // Check for skip label
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const skipLabel = labels.includes('skip-release-notes');
+
+            // Patterns that don't require release notes
+            const excludePatterns = [
+              /^\.github\//,           // CI/workflow configs
+              /^docs\//,               // Documentation
+              /^.*\.md$/i,             // Markdown files
+              /^.*\.test\.[jt]sx?$/,   // Test files
+              /^.*\.spec\.[jt]sx?$/,   // Spec files
+              /^.*__tests__\/.*/,      // Test directories
+              /^frontend\/public\//,   // Static assets
+              /^scripts\//,            // Build/utility scripts
+              /^.*\.json$/,            // Config files (package.json, etc.)
+              /^.*\.ya?ml$/,           // YAML configs
+              /^.*\.lock$/,            // Lock files
+            ];
+
+            // Check if PR has meaningful code changes
+            const hasCodeChanges = files.some(f => {
+              // Skip excluded patterns
+              if (excludePatterns.some(p => p.test(f.filename))) {
+                return false;
+              }
+              // Check for actual source code changes
+              return (
+                f.filename.startsWith('frontend/src/') ||
+                f.filename.startsWith('backend/app/')
+              );
+            });
+
+            console.log(`Files changed: ${files.length}`);
+            console.log(`Has release notes: ${hasReleaseNotes}`);
+            console.log(`Has code changes: ${hasCodeChanges}`);
+            console.log(`Skip label: ${skipLabel}`);
+
+            // If no code changes, pass without needing release notes
+            if (!hasCodeChanges) {
+              console.log('No code changes detected - release notes not required');
+              return;
+            }
+
+            // If skip label is present, pass
+            if (skipLabel) {
+              console.log('skip-release-notes label present - bypassing check');
+              return;
+            }
+
+            // If code changes but no release notes, fail
+            if (!hasReleaseNotes) {
+              // Post a helpful comment if we haven't already
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: context.issue.number
+                issue_number: context.issue.number
               });
 
-              const hasReleaseNotes = files.some(f =>
-                f.filename === 'frontend/src/data/releaseNotes.ts'
+              const botComment = comments.find(c =>
+                (c.user.type === 'Bot' || c.user.login === 'github-actions[bot]') &&
+                typeof c.body === 'string' &&
+                c.body.includes('<!-- release-notes-check-bot -->')
               );
 
-              const labels = context.payload.pull_request.labels.map(l => l.name);
-              const skipLabel = labels.includes('skip-release-notes');
+              if (!botComment) {
+                const commentBody = [
+                  '<!-- release-notes-check-bot -->',
+                  '**Release notes required**',
+                  '',
+                  'This PR includes code changes but doesn\'t update release notes.',
+                  '',
+                  'Please update `frontend/src/data/releaseNotes.ts` with:',
+                  '1. Bump `CURRENT_VERSION` if this is a new release',
+                  '2. Add items to the `items` array describing the changes',
+                  '',
+                  'If this PR doesn\'t need release notes (e.g., internal refactoring), add the `skip-release-notes` label.',
+                ].join('\n');
 
-              if (!hasReleaseNotes && !skipLabel) {
-                // Check if we already commented
-                const { data: comments } = await github.rest.issues.listComments({
+                await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: context.issue.number
+                  issue_number: context.issue.number,
+                  body: commentBody,
                 });
-
-                const botComment = comments.find(c =>
-                  (c.user.type === 'Bot' || c.user.login === 'github-actions[bot]') &&
-                  typeof c.body === 'string' &&
-                  c.body.includes('<!-- release-notes-reminder-bot -->')
-                );
-
-                if (!botComment) {
-                  await github.rest.issues.createComment({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: context.issue.number,
-                    body: `<!-- release-notes-reminder-bot -->
-**Release notes reminder**
-
-This PR doesn't appear to update release notes. If this PR includes user-facing changes, please update \`frontend/src/data/releaseNotes.ts\`.
-
-Add the \`skip-release-notes\` label to dismiss this reminder.`
-                  });
-                }
               }
-            } catch (error) {
-              // Log the error but don't fail the workflow - this is a non-blocking reminder
-              console.error(`Release notes reminder failed: ${error.message}`);
+
+              core.setFailed('Release notes required for code changes. Update frontend/src/data/releaseNotes.ts or add skip-release-notes label.');
             }
+
+            console.log('Release notes check passed');
