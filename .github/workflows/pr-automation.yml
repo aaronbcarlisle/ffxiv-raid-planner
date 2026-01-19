@@ -62,7 +62,10 @@ jobs:
               }
             }
 
-            // Get changed files (max 100 per page - sufficient for most PRs)
+            // Get changed files (limited to first 100 files)
+            // Note: PRs with >100 files may not get complete labels based on file paths.
+            // This is acceptable because: (1) PRs that large are extremely rare, and
+            // (2) the most important files are usually in the first 100.
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
               repo: context.repo.repo,

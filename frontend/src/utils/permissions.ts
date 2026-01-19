@@ -50,6 +50,9 @@ export function getEffectiveRole(
   userRole: MemberRole | null | undefined,
   isAdmin?: boolean
 ): MemberRole | null | undefined {
+  // Note: isAdmin can be undefined during auth loading (between OAuth callback
+  // and fetchUser response). Treating undefined as falsy is intentional and
+  // provides fail-safe behavior - permissions default to the user's actual role.
   if (isAdmin) {
     return 'owner';
   }
