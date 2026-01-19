@@ -49,8 +49,10 @@ export function AuthCallback() {
     if (!code || !state) return;
 
     // Exchange code for tokens
+    logger.info('Starting handleCallback');
     handleCallback(code, state)
       .then(() => {
+        logger.info('handleCallback resolved successfully');
         setStatus('success');
         // Get redirect destination or default to home
         const redirect = sessionStorage.getItem('auth_redirect') || '/';
@@ -61,6 +63,14 @@ export function AuthCallback() {
         // a new component tree before Zustand state updates are processed.
         const verifyAndNavigate = () => {
           const authState = useAuthStore.getState();
+          logger.info('Checking auth state after handleCallback', {
+            hasUser: !!authState.user,
+            userName: authState.user?.displayName,
+            isAuthenticated: authState.isAuthenticated,
+            isLoading: authState.isLoading,
+            error: authState.error,
+          });
+
           if (authState.user && authState.isAuthenticated && !authState.isLoading) {
             // State is ready immediately - navigate after brief delay for visual feedback
             logger.info('Auth state ready immediately, navigating', { redirect });
@@ -68,7 +78,7 @@ export function AuthCallback() {
           } else {
             // State not ready yet - wait for next update
             // Use a completed flag to prevent race between subscription and timeout
-            logger.info('Auth state not ready, subscribing for updates', {
+            logger.warn('Auth state not ready after handleCallback completed', {
               hasUser: !!authState.user,
               isAuthenticated: authState.isAuthenticated,
               isLoading: authState.isLoading,
@@ -76,6 +86,11 @@ export function AuthCallback() {
             let completed = false;
 
             const unsubscribe = useAuthStore.subscribe((newState) => {
+              logger.info('Auth state subscription update', {
+                hasUser: !!newState.user,
+                isAuthenticated: newState.isAuthenticated,
+                isLoading: newState.isLoading,
+              });
               if (!completed && newState.user && newState.isAuthenticated && !newState.isLoading) {
                 completed = true;
                 unsubscribe();
@@ -89,7 +104,16 @@ export function AuthCallback() {
               if (!completed) {
                 completed = true;
                 unsubscribe();
-                logger.warn('Auth state timeout, navigating anyway', { redirect });
+                const finalState = useAuthStore.getState();
+                logger.warn('Auth state timeout, navigating anyway', {
+                  redirect,
+                  finalState: {
+                    hasUser: !!finalState.user,
+                    isAuthenticated: finalState.isAuthenticated,
+                    isLoading: finalState.isLoading,
+                    error: finalState.error,
+                  },
+                });
                 navigate(redirect, { replace: true });
               }
             }, AUTH_STATE_TIMEOUT_MS);

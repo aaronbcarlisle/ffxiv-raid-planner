@@ -12,6 +12,9 @@ import { persist } from 'zustand/middleware';
 import type { User, DiscordAuthUrl } from '../types';
 import { API_BASE_URL, isProduction, isLocalhostApi } from '../config';
 import { storeCSRFTokenFromResponse } from '../services/api';
+import { logger as baseLogger } from '../lib/logger';
+
+const logger = baseLogger.scope('auth-store');
 
 if (isProduction && isLocalhostApi) {
   console.error(
@@ -212,6 +215,7 @@ export const useAuthStore = create<AuthState>()(
        * Handle OAuth callback after Discord redirect
        */
       handleCallback: async (code: string, state: string) => {
+        logger.info('handleCallback started');
         set({ isLoading: true, error: null });
 
         try {
@@ -223,10 +227,12 @@ export const useAuthStore = create<AuthState>()(
           sessionStorage.removeItem('oauth_state');
 
           // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
+          logger.info('Exchanging code for tokens');
           const tokenResponse = await authRequest<TokenResponse>('/api/auth/discord/callback', {
             method: 'POST',
             body: JSON.stringify({ code, state }),
           });
+          logger.info('Token exchange successful', { expiresIn: tokenResponse.expiresIn });
 
           set({ isAuthenticated: true });
 
@@ -234,10 +240,21 @@ export const useAuthStore = create<AuthState>()(
           scheduleTokenRefresh(tokenResponse.expiresIn, get().refreshAccessToken);
 
           // Fetch user info
+          logger.info('Calling fetchUser');
           await get().fetchUser();
+
+          // Log final state after handleCallback completes
+          const finalState = get();
+          logger.info('handleCallback completed', {
+            hasUser: !!finalState.user,
+            userName: finalState.user?.displayName,
+            isAuthenticated: finalState.isAuthenticated,
+            isLoading: finalState.isLoading,
+          });
         } catch (error) {
           // Cancel any scheduled refresh since login failed
           cancelScheduledRefresh();
+          logger.error('handleCallback failed', { error: error instanceof Error ? error.message : String(error) });
           set({
             error: error instanceof Error ? error.message : 'Failed to complete login',
             isLoading: false,
@@ -366,28 +383,37 @@ export const useAuthStore = create<AuthState>()(
        * Fetch current user info using httpOnly cookie authentication
        */
       fetchUser: async () => {
+        logger.info('fetchUser started');
         set({ isLoading: true });
 
         try {
           const user = await authRequest<User>('/api/auth/me');
+          logger.info('fetchUser succeeded', { userName: user.displayName, userId: user.id });
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch {
+        } catch (err) {
+          logger.warn('fetchUser initial request failed, attempting refresh', {
+            error: err instanceof Error ? err.message : String(err),
+          });
           // Token might be expired - try refreshing
           const refreshed = await get().refreshAccessToken();
           if (refreshed) {
             // Retry with new cookies
             try {
               const user = await authRequest<User>('/api/auth/me');
+              logger.info('fetchUser retry succeeded', { userName: user.displayName, userId: user.id });
               set({
                 user,
                 isAuthenticated: true,
                 isLoading: false,
               });
-            } catch {
+            } catch (retryErr) {
+              logger.error('fetchUser retry failed', {
+                error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+              });
               set({
                 user: null,
                 isAuthenticated: false,
@@ -395,6 +421,7 @@ export const useAuthStore = create<AuthState>()(
               });
             }
           } else {
+            logger.error('fetchUser refresh failed, clearing auth state');
             set({
               user: null,
               isAuthenticated: false,
