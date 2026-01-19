@@ -476,6 +476,9 @@ const CATEGORY_COLORS = {
 // Discord embed description limit (actual limit is 4096, but we use a reasonable max)
 const RELEASE_DESCRIPTION_LIMIT = 3500;
 
+// Max items per category when truncating for length
+const MAX_ITEMS_PER_CATEGORY_WHEN_TRUNCATED = 5;
+
 /**
  * Build a footer string showing item counts by category
  * e.g., "3 features • 2 improvements • 1 fix"
@@ -560,8 +563,8 @@ function buildReleaseEmbeds(release) {
       iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
     });
 
-  // Only set timestamp when date is provided (undefined would set it to "now")
-  if (release.date) {
+  // Only set timestamp when date is provided (undefined/empty would set it to "now" or Invalid Date)
+  if (release.date && release.date.trim()) {
     embed.setTimestamp(new Date(release.date));
   }
 
@@ -622,15 +625,14 @@ function buildReleaseEmbeds(release) {
       // If still too long, limit items per category
       if (description.length > RELEASE_DESCRIPTION_LIMIT) {
         const limitedSections = [];
-        const maxItems = 5;
         for (const category of CATEGORY_ORDER) {
           const items = groupedItems[category];
           if (items && items.length > 0) {
             const label = CATEGORY_LABELS[category] || category;
-            const displayItems = items.slice(0, maxItems);
+            const displayItems = items.slice(0, MAX_ITEMS_PER_CATEGORY_WHEN_TRUNCATED);
             let itemList = displayItems.map(item => `• **${item.title}**`).join('\n');
-            if (items.length > maxItems) {
-              itemList += `\n*...and ${items.length - maxItems} more*`;
+            if (items.length > MAX_ITEMS_PER_CATEGORY_WHEN_TRUNCATED) {
+              itemList += `\n*...and ${items.length - MAX_ITEMS_PER_CATEGORY_WHEN_TRUNCATED} more*`;
             }
             limitedSections.push(`### ${CATEGORY_ARROW} ${label}\n${itemList}`);
           }
