@@ -281,6 +281,10 @@ export interface User {
    * Optional because it may be undefined when:
    * - Loading persisted user data from localStorage (before backend populates it)
    * - Between OAuth callback completion and fetchUser response
+   *
+   * Callers MUST handle the undefined case explicitly, e.g. by treating it as
+   * false for permission checks or by showing a loading state until the value
+   * has been populated by the backend.
    */
   isAdmin?: boolean;
   createdAt: string;
