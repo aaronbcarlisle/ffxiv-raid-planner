@@ -240,7 +240,7 @@ export function Header() {
   }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
-    <header className="bg-surface-raised border-b border-border-default">
+    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-4 min-w-0">

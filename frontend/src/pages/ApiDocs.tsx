@@ -79,7 +79,7 @@ const NAV_SECTIONS = NAV_GROUPS.flatMap(group => group.items);
 // Section header component
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="mb-12 scroll-mt-6">
+    <section id={id} className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-semibold text-accent mb-6 pb-2 border-b border-border-default">
         {title}
       </h2>
@@ -236,7 +236,7 @@ function NavSidebar({
   };
 
   return (
-    <nav className="sticky top-6 w-56 shrink-0 hidden lg:block self-start h-fit z-40">
+    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         <div
           className={`
@@ -249,7 +249,7 @@ function NavSidebar({
 
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
         >
           {NAV_GROUPS.map((group, groupIndex) => {
             const isCollapsed = collapsedGroups.has(group.label);

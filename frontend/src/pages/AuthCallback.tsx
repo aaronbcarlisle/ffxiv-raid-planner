@@ -23,12 +23,12 @@ export function AuthCallback() {
 
   // CRITICAL: Capture OAuth state cookie IMMEDIATELY on first render,
   // before any async code (like initializeAuth) can clear cookies.
-  // Using useRef to store the value so it persists across re-renders.
-  const savedOAuthState = useRef<string | null>(null);
-  if (savedOAuthState.current === null) {
-    savedOAuthState.current = getOAuthStateCookie();
-    console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', savedOAuthState.current);
-  }
+  // Using useState with lazy initializer ensures this runs exactly once on initial render.
+  const [savedOAuthState] = useState(() => {
+    const state = getOAuthStateCookie();
+    console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', state);
+    return state;
+  });
 
   // Guard against duplicate callback calls (OAuth codes are single-use).
   // This can happen if the effect runs twice due to dependency changes or re-renders.
@@ -73,7 +73,7 @@ export function AuthCallback() {
     // Exchange code for tokens, passing the pre-captured OAuth state
     // (captured before initializeAuth could clear cookies)
     logger.info('Starting handleCallback with captured state');
-    handleCallback(code, state, savedOAuthState.current)
+    handleCallback(code, state, savedOAuthState)
       .then(() => {
         logger.info('handleCallback resolved successfully');
         setStatus('success');

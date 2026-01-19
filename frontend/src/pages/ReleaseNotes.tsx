@@ -22,6 +22,8 @@ import {
   Link2,
 } from 'lucide-react';
 import { toast } from '../stores/toastStore';
+import { Button } from '../components/primitives/Button';
+import { IconButton } from '../components/primitives/IconButton';
 import {
   CURRENT_VERSION,
   RELEASES,
@@ -245,7 +247,7 @@ function VersionNav({
   };
 
   return (
-    <nav className="sticky top-6 w-48 shrink-0 hidden lg:block self-start h-fit z-40">
+    <nav className="sticky top-16 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         <div
           className={`
@@ -258,7 +260,7 @@ function VersionNav({
 
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
         >
           {/* Recent Versions */}
           <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
@@ -291,6 +293,7 @@ function VersionNav({
 
                   return (
                     <div key={monthKey}>
+                      {/* design-system-ignore - Collapsible month header, Button would add complexity */}
                       <button
                         onClick={() => toggleMonth(monthKey)}
                         aria-expanded={isExpanded}
@@ -368,9 +371,11 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
 
   return (
     <li className="group">
-      <button
+      {/* hover:bg-surface-elevated intentionally overrides ghost variant for subtle elevated effect */}
+      <Button
+        variant="ghost"
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
-        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg transition-colors ${
+        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg transition-colors h-auto justify-start ${
           hasExpandableContent
             ? 'hover:bg-surface-elevated cursor-pointer'
             : 'cursor-default'
@@ -390,10 +395,10 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             )}
           </div>
           {item.description && (
-            <p className="text-sm text-text-muted mt-0.5">{item.description}</p>
+            <p className="text-sm text-text-muted mt-0.5 font-normal whitespace-normal">{item.description}</p>
           )}
         </div>
-      </button>
+      </Button>
 
       {/* Expanded Content */}
       {isExpanded && hasExpandableContent && (
@@ -502,15 +507,17 @@ function ReleaseCard({
   return (
     <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-20">
       {/* Header - Always visible, clickable */}
-      <button
+      {/* hover:bg-surface-elevated/50 intentionally overrides ghost variant for subtle card hover */}
+      <Button
+        variant="ghost"
         onClick={handleToggle}
-        className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors"
+        className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors h-auto justify-start rounded-none"
       >
-        <header className="flex items-start justify-between gap-4">
+        <header className="flex items-start justify-between gap-4 w-full">
           <div className="flex items-center gap-4">
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                isExpanded ? 'bg-accent text-white' : 'bg-accent/10 text-accent'
+                isExpanded ? 'bg-accent text-accent-contrast' : 'bg-accent/10 text-accent'
               }`}
             >
               <ChevronDown
@@ -520,28 +527,30 @@ function ReleaseCard({
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-semibold text-text-primary">v{release.version}</h2>
-                <button
+                <IconButton
+                  icon={<Link2 className="w-4 h-4" />}
                   onClick={(e) => {
                     e.stopPropagation();
                     const url = `${window.location.origin}/docs/release-notes#v${release.version}`;
                     navigator.clipboard.writeText(url);
                     toast.success('Link copied to clipboard');
                   }}
-                  className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                  title="Copy link to this version"
-                >
-                  <Link2 className="w-4 h-4" />
-                </button>
+                  variant="ghost"
+                  className="text-text-muted hover:text-accent hover:bg-accent/10"
+                  aria-label="Copy link to this version"
+                  size="sm"
+                />
                 {isLatest && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-white rounded">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-accent-contrast rounded">
                     LATEST
                   </span>
                 )}
               </div>
-              {release.title && <p className="text-text-secondary">{release.title}</p>}
+              {/* font-normal and whitespace-normal override Button's inherited styles */}
+              {release.title && <p className="text-text-secondary font-normal whitespace-normal">{release.title}</p>}
             </div>
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-right shrink-0 font-normal">
             <time dateTime={release.date} className="text-sm text-text-muted block">
               {new Date(release.date).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -552,7 +561,7 @@ function ReleaseCard({
             <span className="text-xs text-text-muted">{totalItems} changes</span>
           </div>
         </header>
-      </button>
+      </Button>
 
       {/* Expanded Content */}
       {isExpanded && (
@@ -776,14 +785,6 @@ export default function ReleaseNotes() {
         />
 
         <main className="flex-1 min-w-0">
-          {/* Tip */}
-          <div className="mb-8 p-4 bg-accent/5 border border-accent/20 rounded-lg">
-            <p className="text-sm text-text-secondary">
-              <span className="font-medium text-accent">Tip:</span> Click on any release to expand it,
-              then click individual items to see detailed information and related commits.
-            </p>
-          </div>
-
           <div className="space-y-4">
             {RELEASES.map((release, idx) => (
               <ReleaseCard

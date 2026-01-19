@@ -225,6 +225,32 @@ body[data-scroll-locked][style] {
 }
 
 /* ================================
+   FOCUS MANAGEMENT
+   Only show focus rings for keyboard navigation
+   ================================ */
+
+/* Remove default focus ring for mouse/programmatic focus */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ================================
+   Z-INDEX SCALE
+   Consistent layering hierarchy
+   ================================ */
+/*
+ * z-50: Modals, overlays, dropdowns, toasts
+ * z-40: Sticky header (stays above content)
+ * z-30: Sticky sidebars (below header)
+ * z-20: Fixed UI elements
+ * z-10: Elevated content
+ */
+
+/* ================================
    GLOW EFFECTS
    ================================ */
 
