@@ -160,6 +160,7 @@ function VersionNav({
 
               return (
                 <li key={release.version} id={`nav-v${release.version}`}>
+                  {/* h-auto needed for multi-line button content (version + date) */}
                   <Button
                     variant="ghost"
                     onClick={() => handleClick(release.version)}

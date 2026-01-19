@@ -151,7 +151,6 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             icon={<X className="w-5 h-5" />}
             onClick={onClose}
             variant="ghost"
-            size="sm"
             aria-label="Close modal"
           />
         </div>
