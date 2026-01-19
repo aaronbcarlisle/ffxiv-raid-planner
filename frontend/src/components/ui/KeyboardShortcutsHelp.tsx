@@ -4,14 +4,21 @@
  * Shows available keyboard shortcuts in a grid layout when user presses '?'
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Keyboard } from 'lucide-react';
 import { Modal } from './Modal';
 import { areShortcutsEnabled, setShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
 
+interface ShortcutItem {
+  key: string;
+  description: string;
+  /** Only show if user is admin */
+  adminOnly?: boolean;
+}
+
 interface ShortcutGroup {
   title: string;
-  shortcuts: Array<{ key: string; description: string }>;
+  shortcuts: ShortcutItem[];
 }
 
 const SHORTCUT_GROUPS: ShortcutGroup[] = [
@@ -21,6 +28,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: '1-4', description: 'Switch main tabs' },
       { key: 'Alt+1-3', description: 'Switch sub tabs' },
       { key: 'Shift+S', description: 'My Statics' },
+      { key: 'Ctrl+Shift+S', description: 'Admin Dashboard', adminOnly: true },
     ],
   },
   {
@@ -75,11 +83,21 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 interface KeyboardShortcutsHelpProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Whether to show admin-only shortcuts */
+  isAdmin?: boolean;
 }
 
-export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelpProps) {
+export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false }: KeyboardShortcutsHelpProps) {
   // Initialize from localStorage
   const [enabled, setEnabled] = useState(() => areShortcutsEnabled());
+
+  // Filter out admin-only shortcuts if user is not admin
+  const filteredGroups = useMemo(() => {
+    return SHORTCUT_GROUPS.map(group => ({
+      ...group,
+      shortcuts: group.shortcuts.filter(s => !s.adminOnly || isAdmin),
+    }));
+  }, [isAdmin]);
 
   const handleToggle = () => {
     const newValue = !enabled;
@@ -97,22 +115,22 @@ export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelp
           Keyboard Shortcuts
         </span>
       }
-      size="3xl"
+      size="4xl"
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SHORTCUT_GROUPS.map((group) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredGroups.map((group) => (
           <div
             key={group.title}
-            className="bg-surface-elevated rounded-lg p-4 border border-border-default"
+            className="bg-surface-elevated rounded-lg p-4 border border-border-default min-w-[200px]"
           >
             <h3 className="text-sm font-bold text-accent mb-3 pb-2 border-b border-border-subtle">
               {group.title}
             </h3>
             <div className="space-y-1.5">
               {group.shortcuts.map((shortcut) => (
-                <div key={shortcut.key} className="flex items-center justify-between text-xs">
+                <div key={shortcut.key} className="flex items-center justify-between gap-2 text-xs">
                   <span className="text-text-secondary">{shortcut.description}</span>
-                  <kbd className="font-mono px-1.5 py-0.5 bg-surface-card border border-border-default rounded text-text-muted">
+                  <kbd className="font-mono px-1.5 py-0.5 bg-surface-card border border-border-default rounded text-text-muted whitespace-nowrap">
                     {shortcut.key}
                   </kbd>
                 </div>

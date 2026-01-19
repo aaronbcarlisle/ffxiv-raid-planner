@@ -85,18 +85,17 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
     )
 
 
-# CORS middleware
-# Supports both static origins list and regex pattern for Vercel previews
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_origin_regex=settings.cors_vercel_preview_pattern or None,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Middleware stack (applied in reverse order - last added runs first)
+#
+# IMPORTANT: CORSMiddleware MUST be added LAST (outermost) so that ALL responses
+# go through it, including early-return 403s from CSRFMiddleware. Without this,
+# CSRF validation failures return 403 without CORS headers, causing browsers to
+# report CORS errors instead of showing the actual 403 to JavaScript.
+#
+# Execution flow:
+#   Request:  CORS → RequestID → SizeLimit → CSRF → Security → Route
+#   Response: Route → Security → CSRF → SizeLimit → RequestID → CORS
+
 # 1. Security headers (innermost - just adds response headers)
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -106,8 +105,22 @@ app.add_middleware(CSRFMiddleware)
 # 3. Request size limit (reject oversized requests early)
 app.add_middleware(RequestSizeLimitMiddleware)
 
-# 4. Request ID (outermost - sets ID for all subsequent logging)
+# 4. Request ID (sets ID for all subsequent logging)
 app.add_middleware(RequestIDMiddleware)
+
+# 5. CORS (outermost - ensures ALL responses including 403s have CORS headers)
+# Supports both static origins list and regex pattern for Vercel previews
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_origin_regex=settings.cors_vercel_preview_pattern or None,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    # Expose CSRF token header for cross-domain scenarios where
+    # the frontend can't read cookies set by the API domain
+    expose_headers=["X-CSRF-Token"],
+)
 
 # Register centralized exception handlers
 register_exception_handlers(app)

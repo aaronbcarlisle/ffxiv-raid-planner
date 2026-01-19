@@ -1,0 +1,150 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  auto-assign-and-label:
+    name: Auto-assign and Label PR
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Auto-assign PR creator
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                assignees: [context.payload.pull_request.user.login]
+              });
+              console.log(`Assigned PR to ${context.payload.pull_request.user.login}`);
+            } catch (error) {
+              console.error(`Failed to auto-assign PR creator: ${error.message}`);
+              // Continue with labeling even if assignment fails
+            }
+
+      - name: Generate labels from PR title and files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title.toLowerCase();
+            const labels = new Set();
+
+            // Label based on conventional commit prefix
+            const prefixLabels = {
+              'fix:': 'bug',
+              'feat:': 'enhancement',
+              'docs:': 'documentation',
+              'chore:': 'chore',
+              'refactor:': 'refactor',
+              'test:': 'testing',
+              'style:': 'style',
+              'perf:': 'performance',
+              'ci:': 'ci/cd',
+              'build:': 'build'
+            };
+
+            for (const [prefix, label] of Object.entries(prefixLabels)) {
+              if (title.startsWith(prefix)) {
+                labels.add(label);
+                break;
+              }
+            }
+
+            // Get changed files (limited to first 100 files)
+            // Note: PRs with >100 files may not get complete labels based on file paths.
+            // This is acceptable because: (1) PRs that large are extremely rare, and
+            // (2) the most important files are usually in the first 100.
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const filePaths = files.map(f => f.filename);
+
+            // Label based on changed files
+            const hasBackend = filePaths.some(f => f.startsWith('backend/'));
+            const hasFrontend = filePaths.some(f => f.startsWith('frontend/'));
+            const hasWorkflows = filePaths.some(f => f.startsWith('.github/'));
+            const hasDocs = filePaths.some(f => f.endsWith('.md') || f.startsWith('docs/'));
+            const hasScripts = filePaths.some(f => f.startsWith('scripts/'));
+
+            if (hasBackend) labels.add('backend');
+            if (hasFrontend) labels.add('frontend');
+            if (hasWorkflows) labels.add('ci/cd');
+            if (hasDocs) labels.add('documentation');
+            if (hasScripts) labels.add('scripts');
+
+            // Apply labels if any were determined
+            if (labels.size > 0) {
+              const labelArray = Array.from(labels);
+              console.log(`Adding labels: ${labelArray.join(', ')}`);
+
+              // Ensure labels exist (create if they don't)
+              const colors = {
+                'bug': 'd73a4a',
+                'enhancement': 'a2eeef',
+                'documentation': '0075ca',
+                'chore': 'fef2c0',
+                'refactor': 'c5def5',
+                'testing': '5319e7',
+                'style': 'fbca04',
+                'performance': '7057ff',
+                'ci/cd': 'e99695',
+                'build': 'bfdadc',
+                'backend': '1d76db',
+                'frontend': 'd4c5f9',
+                'scripts': 'c2e0c6'
+              };
+
+              for (const label of labelArray) {
+                try {
+                  await github.rest.issues.getLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label
+                  });
+                } catch (e) {
+                  if (e.status === 404) {
+                    // Label doesn't exist, create it
+                    try {
+                      await github.rest.issues.createLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        name: label,
+                        color: colors[label] || 'ededed'
+                      });
+                      console.log(`Created label: ${label}`);
+                    } catch (createError) {
+                      console.error(`Failed to create label '${label}': ${createError.message}`);
+                      // Continue with other labels even if one fails to create
+                    }
+                  } else {
+                    // Log non-404 errors but continue processing
+                    console.error(`Error checking label '${label}': ${e.message} (status: ${e.status})`);
+                  }
+                }
+              }
+
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: labelArray
+              });
+            } else {
+              console.log('No labels to add');
+            }

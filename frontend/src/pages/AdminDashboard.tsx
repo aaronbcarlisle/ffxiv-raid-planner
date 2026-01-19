@@ -84,7 +84,7 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, authInitialized } = useAuthStore();
 
   const [groups, setGroups] = useState<AdminStaticGroupListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -331,15 +331,18 @@ export function AdminDashboard() {
   }, [isAuthenticated, page, debouncedSearch, sortField, sortDirection]);
 
   // Redirect if not authenticated or not admin
+  // Note: Wait for authInitialized to be true before making redirect decisions.
+  // This prevents redirecting based on stale persisted user data before
+  // initializeAuth() has fetched fresh user info from the backend.
   useEffect(() => {
-    if (!authLoading) {
+    if (authInitialized && !authLoading) {
       if (!isAuthenticated) {
         navigate('/');
-      } else if (user && !user.isAdmin) {
+      } else if (user && user.isAdmin === false) {
         navigate('/dashboard');
       }
     }
-  }, [authLoading, isAuthenticated, user, navigate]);
+  }, [authInitialized, authLoading, isAuthenticated, user, navigate]);
 
   // Fetch groups when params change
   useEffect(() => {
@@ -366,7 +369,11 @@ export function AdminDashboard() {
 
   const totalPages = Math.ceil(total / limit);
 
-  if (authLoading) {
+  // Show loading while:
+  // - Auth is loading (isLoading from authStore)
+  // - Auth hasn't been initialized yet (prevents decisions based on stale persisted data)
+  // - isAdmin is undefined (right after OAuth callback until fetchUser completes)
+  if (!authInitialized || authLoading || (isAuthenticated && user && user.isAdmin === undefined)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -374,8 +381,10 @@ export function AdminDashboard() {
     );
   }
 
-  if (!user?.isAdmin) {
-    return null; // Will redirect
+  // Only render null if we're certain this user isn't an admin (explicit false, not undefined)
+  // This prevents a flash of nothing while the redirect effect fires
+  if (!isAuthenticated || !user || user.isAdmin === false) {
+    return null; // Will redirect via effect above
   }
 
   return (

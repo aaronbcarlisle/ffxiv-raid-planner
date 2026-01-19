@@ -16,14 +16,35 @@ const logger = baseLogger.scope('api');
 // Re-export for backward compatibility
 export { API_BASE_URL } from '../config';
 
-// CSRF token cookie name (must match backend)
+// CSRF token cookie name and header (must match backend)
 const CSRF_COOKIE_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/**
+ * In-memory CSRF token storage for cross-domain scenarios.
+ * When frontend and API are on different domains, cookies aren't accessible,
+ * so we store the token from response headers instead.
+ */
+let csrfTokenFromHeader: string | null = null;
+
+/**
+ * Store CSRF token from a response header (for cross-domain scenarios).
+ * Called after every fetch to capture the token from the X-CSRF-Token header.
+ * Exported for use in authStore which makes direct fetch calls.
+ */
+export function storeCSRFTokenFromResponse(response: Response): void {
+  const headerToken = response.headers.get(CSRF_HEADER_NAME);
+  if (headerToken) {
+    csrfTokenFromHeader = headerToken;
+  }
+}
 
 /**
  * Get CSRF token from cookie for state-changing requests.
- * The backend sets this cookie on every response.
+ * Falls back to in-memory token from response headers for cross-domain scenarios.
  */
 function getCSRFToken(): string | null {
+  // Try cookie first (same-domain scenario)
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const trimmed = cookie.trim();
@@ -35,7 +56,8 @@ function getCSRFToken(): string | null {
       return value;
     }
   }
-  return null;
+  // Fall back to token from response header (cross-domain scenario)
+  return csrfTokenFromHeader;
 }
 
 /**
@@ -129,15 +151,17 @@ export async function authRequest<T>(
       // Always try to read cookie after refresh (might have succeeded even if it returned false)
       csrfToken = getCSRFToken();
 
-      // If still missing, try a simple GET request to trigger CSRF cookie setting
-      // Any response from the backend will set the CSRF cookie via middleware
+      // If still missing, try a simple GET request to trigger CSRF token retrieval
+      // The response header will contain the token even if cookies aren't accessible
       if (!csrfToken) {
         logger.warn('CSRF token still missing after refresh, trying fallback GET', { method, endpoint });
         try {
-          await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' });
+          const fallbackResponse = await fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' });
+          // Capture token from response header for cross-domain scenarios
+          storeCSRFTokenFromResponse(fallbackResponse);
           csrfToken = getCSRFToken();
         } catch {
-          // Ignore errors - we just want to trigger cookie setting
+          // Ignore errors - we just want to trigger CSRF token retrieval
         }
       }
 
@@ -159,6 +183,9 @@ export async function authRequest<T>(
       ...headers,
     },
   });
+
+  // Capture CSRF token from response header for cross-domain scenarios
+  storeCSRFTokenFromResponse(response);
 
   if (!response.ok) {
     const message = await extractErrorMessage(response, `HTTP ${response.status}`);
@@ -194,6 +221,9 @@ export async function authRequest<T>(
             ...headers,
           },
         });
+
+        // Capture CSRF token from response header for cross-domain scenarios
+        storeCSRFTokenFromResponse(retryResponse);
 
         if (!retryResponse.ok) {
           const retryMessage = await extractErrorMessage(

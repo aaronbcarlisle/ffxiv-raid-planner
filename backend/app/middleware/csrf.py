@@ -108,7 +108,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     def _ensure_csrf_cookie(
         self, request: Request, response: Response, settings
     ) -> Response:
-        """Ensure CSRF cookie is set on response."""
+        """Ensure CSRF cookie is set on response.
+
+        Also sets the token in a response header for cross-domain scenarios
+        where the frontend can't read cookies from the API domain.
+        """
         # Force new token on auth endpoints to ensure frontend has a valid token
         force_new_token = request.url.path in CSRF_FORCE_REFRESH_PATHS
 
@@ -116,7 +120,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             # Check if cookie already exists and is valid
             existing_token = request.cookies.get(CSRF_COOKIE_NAME)
             if existing_token and len(existing_token) == CSRF_TOKEN_LENGTH * 2:
-                # Token exists and looks valid, no need to regenerate
+                # Token exists and looks valid, but still set header for cross-domain
+                response.headers[CSRF_HEADER_NAME] = existing_token
                 return response
 
         # Generate new CSRF token
@@ -134,5 +139,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             max_age=86400,  # 24 hours
             path="/",
         )
+
+        # Also set token in response header for cross-domain scenarios
+        # Frontend must have CORS Access-Control-Expose-Headers configured
+        response.headers[CSRF_HEADER_NAME] = token
 
         return response
