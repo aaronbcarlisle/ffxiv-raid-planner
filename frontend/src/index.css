@@ -239,6 +239,18 @@ a:focus:not(:focus-visible),
 }
 
 /* ================================
+   Z-INDEX SCALE
+   Consistent layering hierarchy
+   ================================ */
+/*
+ * z-50: Modals, overlays, dropdowns, toasts
+ * z-40: Sticky header (stays above content)
+ * z-30: Sticky sidebars (below header)
+ * z-20: Fixed UI elements
+ * z-10: Elevated content
+ */
+
+/* ================================
    GLOW EFFECTS
    ================================ */
 

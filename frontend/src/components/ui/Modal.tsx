@@ -145,6 +145,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
+          {/* design-system-ignore - Simple close button, IconButton would add unnecessary complexity */}
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text-primary text-2xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card rounded"
