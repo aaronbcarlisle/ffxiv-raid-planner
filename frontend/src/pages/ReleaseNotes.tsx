@@ -22,6 +22,8 @@ import {
   Link2,
 } from 'lucide-react';
 import { toast } from '../stores/toastStore';
+import { Button } from '../components/primitives/Button';
+import { IconButton } from '../components/primitives/IconButton';
 import {
   CURRENT_VERSION,
   RELEASES,
@@ -158,10 +160,11 @@ function VersionNav({
 
               return (
                 <li key={release.version} id={`nav-v${release.version}`}>
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => handleClick(release.version)}
                     className={`
-                      w-full text-left px-2 py-1.5 rounded transition-colors
+                      w-full text-left px-2 py-1.5 rounded transition-colors justify-start h-auto
                       ${isActive
                         ? 'bg-accent/10 text-accent font-medium'
                         : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
@@ -170,22 +173,24 @@ function VersionNav({
                     aria-label={`Jump to version ${release.version}${isLatest ? ' (latest)' : ''}`}
                     aria-current={isActive ? 'true' : undefined}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[13px]">v{release.version}</span>
-                      {isLatest && (
-                        <span className="px-1 py-0.5 text-[9px] font-medium bg-accent/20 text-accent rounded">
-                          NEW
-                        </span>
-                      )}
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[13px]">v{release.version}</span>
+                        {isLatest && (
+                          <span className="px-1 py-0.5 text-[9px] font-medium bg-accent/20 text-accent rounded">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-text-muted mt-0.5">
+                        {new Date(release.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-text-muted mt-0.5">
-                      {new Date(release.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </div>
-                  </button>
+                  </Button>
                 </li>
               );
             })}
@@ -225,9 +230,10 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
 
   return (
     <li className="group">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
-        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg transition-colors ${
+        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg transition-colors h-auto justify-start ${
           hasExpandableContent
             ? 'hover:bg-surface-elevated cursor-pointer'
             : 'cursor-default'
@@ -250,7 +256,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             <p className="text-sm text-text-muted mt-0.5">{item.description}</p>
           )}
         </div>
-      </button>
+      </Button>
 
       {/* Expanded Content */}
       {isExpanded && hasExpandableContent && (
@@ -354,15 +360,16 @@ function ReleaseCard({
   return (
     <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-20">
       {/* Header - Always visible, clickable */}
-      <button
+      <Button
+        variant="ghost"
         onClick={handleToggle}
-        className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors"
+        className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors h-auto justify-start rounded-none"
       >
-        <header className="flex items-start justify-between gap-4">
+        <header className="flex items-start justify-between gap-4 w-full">
           <div className="flex items-center gap-4">
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                isExpanded ? 'bg-accent text-white' : 'bg-accent/10 text-accent'
+                isExpanded ? 'bg-accent text-accent-contrast' : 'bg-accent/10 text-accent'
               }`}
             >
               <ChevronDown
@@ -372,20 +379,20 @@ function ReleaseCard({
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-semibold text-text-primary">v{release.version}</h2>
-                <button
+                <IconButton
+                  icon={<Link2 className="w-4 h-4" />}
                   onClick={(e) => {
                     e.stopPropagation();
                     const url = `${window.location.origin}/docs/release-notes#v${release.version}`;
                     navigator.clipboard.writeText(url);
                     toast.success('Link copied to clipboard');
                   }}
-                  className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                  title="Copy link to this version"
-                >
-                  <Link2 className="w-4 h-4" />
-                </button>
+                  className="text-text-muted hover:text-accent hover:bg-accent/10"
+                  aria-label="Copy link to this version"
+                  size="sm"
+                />
                 {isLatest && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-white rounded">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-accent-contrast rounded">
                     LATEST
                   </span>
                 )}
@@ -404,7 +411,7 @@ function ReleaseCard({
             <span className="text-xs text-text-muted">{totalItems} changes</span>
           </div>
         </header>
-      </button>
+      </Button>
 
       {/* Expanded Content */}
       {isExpanded && (
@@ -628,14 +635,6 @@ export default function ReleaseNotes() {
         />
 
         <main className="flex-1 min-w-0">
-          {/* Tip */}
-          <div className="mb-8 p-4 bg-accent/5 border border-accent/20 rounded-lg">
-            <p className="text-sm text-text-secondary">
-              <span className="font-medium text-accent">Tip:</span> Click on any release to expand it,
-              then click individual items to see detailed information and related commits.
-            </p>
-          </div>
-
           <div className="space-y-4">
             {RELEASES.map((release, idx) => (
               <ReleaseCard

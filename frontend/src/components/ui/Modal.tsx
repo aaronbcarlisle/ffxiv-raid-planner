@@ -141,13 +141,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className={`bg-surface-card border border-border-default rounded-lg w-full ${sizeClass} max-h-[90vh] flex flex-col`}
+        className={`bg-surface-card border border-border-default rounded-lg w-full ${sizeClass} max-h-[90vh] flex flex-col focus:outline-none`}
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
           <button
             onClick={onClose}
-            className="text-text-muted hover:text-text-primary text-2xl leading-none"
+            className="text-text-muted hover:text-text-primary text-2xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card rounded"
             aria-label="Close modal"
           >
             &times;
