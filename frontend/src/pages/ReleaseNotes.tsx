@@ -535,6 +535,7 @@ function ReleaseCard({
                     navigator.clipboard.writeText(url);
                     toast.success('Link copied to clipboard');
                   }}
+                  variant="ghost"
                   className="text-text-muted hover:text-accent hover:bg-accent/10"
                   aria-label="Copy link to this version"
                   size="sm"

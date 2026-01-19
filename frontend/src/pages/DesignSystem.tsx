@@ -1771,7 +1771,7 @@ function NavSidebar({
   };
 
   return (
-    <nav className="sticky top-6 w-56 shrink-0 hidden lg:block self-start h-fit z-40">
+    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         {/* Top fade indicator */}
         <div
