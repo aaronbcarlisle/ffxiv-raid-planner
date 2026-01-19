@@ -50,7 +50,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         {/* design-system-ignore - Radix DropdownTrigger requires native button with asChild */}
         <button
           className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base ${className}`}
-          aria-label="User menu"
+          aria-label={`User menu for ${displayName}`}
         >
           <img
             src={avatarUrl}

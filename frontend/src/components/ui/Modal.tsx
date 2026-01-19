@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { IconButton } from '../primitives/IconButton';
 
 interface ModalProps {
   isOpen: boolean;
@@ -145,14 +147,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
-          {/* design-system-ignore - Simple close button, IconButton would add unnecessary complexity */}
-          <button
+          <IconButton
+            icon={<X className="w-5 h-5" />}
             onClick={onClose}
-            className="text-text-muted hover:text-text-primary text-2xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card rounded"
+            variant="ghost"
+            size="sm"
             aria-label="Close modal"
-          >
-            &times;
-          </button>
+          />
         </div>
         <div className="p-6 overflow-y-auto overflow-x-hidden flex-1">{children}</div>
       </div>
