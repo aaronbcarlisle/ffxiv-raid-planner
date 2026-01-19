@@ -333,6 +333,16 @@ function parseReleaseItems(itemsContent) {
  * Extract nested array content by counting brackets
  */
 function extractArrayContent(content, startIndex) {
+  // Validate inputs
+  if (!content || typeof content !== 'string') {
+    console.warn('extractArrayContent: invalid content provided');
+    return '';
+  }
+  if (startIndex < 0 || startIndex >= content.length) {
+    console.warn(`extractArrayContent: startIndex ${startIndex} out of bounds (content length: ${content.length})`);
+    return '';
+  }
+
   let depth = 0;
   let start = -1;
 
@@ -347,6 +357,12 @@ function extractArrayContent(content, startIndex) {
       }
     }
   }
+
+  // Unbalanced brackets - log warning for debugging
+  if (depth !== 0) {
+    console.warn(`extractArrayContent: unbalanced brackets (final depth: ${depth})`);
+  }
+
   return '';
 }
 

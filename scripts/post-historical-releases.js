@@ -18,56 +18,18 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Import shared embed builder from discord-changelog.js
-import { buildReleaseEmbeds } from './discord-changelog.js';
+// Import shared utilities from discord-changelog.js
+import {
+  buildReleaseEmbeds,
+  parseReleaseItems,
+  extractArrayContent,
+} from './discord-changelog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configuration
 const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts');
-
-/**
- * Parse release items from a release block
- * Extracts category, title, and description from each item
- */
-function parseReleaseItems(itemsContent) {
-  const items = [];
-
-  // Match each item object - look for category, title, and optional description
-  const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"](?:,\s*description:\s*['"]([^'"]*?)['"])?/g;
-  let match;
-  while ((match = itemPattern.exec(itemsContent)) !== null) {
-    items.push({
-      category: match[1],
-      title: match[2],
-      description: match[3] || null,
-    });
-  }
-
-  return items;
-}
-
-/**
- * Extract nested array content by counting brackets
- */
-function extractArrayContent(content, startIndex) {
-  let depth = 0;
-  let start = -1;
-
-  for (let i = startIndex; i < content.length; i++) {
-    if (content[i] === '[') {
-      if (depth === 0) start = i + 1;
-      depth++;
-    } else if (content[i] === ']') {
-      depth--;
-      if (depth === 0) {
-        return content.substring(start, i);
-      }
-    }
-  }
-  return '';
-}
 
 /**
  * Parse all releases from releaseNotes.ts

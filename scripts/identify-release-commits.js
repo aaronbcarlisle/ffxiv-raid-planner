@@ -26,7 +26,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts');
-const GITHUB_REPO = 'aaronbcarlisle/ffxiv-raid-planner-dev';
 
 // Conventional commit type mapping for suggested categorization
 const COMMIT_TYPE_CATEGORIES = {

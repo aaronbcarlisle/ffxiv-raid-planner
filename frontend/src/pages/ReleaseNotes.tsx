@@ -74,8 +74,9 @@ function groupReleasesByMonth(releases: Release[]): Map<string, Release[]> {
   const groups = new Map<string, Release[]>();
 
   for (const release of releases) {
-    const date = new Date(release.date);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    // Use string slice to avoid timezone issues with Date parsing
+    // release.date is a YYYY-MM-DD string
+    const key = release.date.slice(0, 7);
     const existing = groups.get(key) || [];
     existing.push(release);
     groups.set(key, existing);
@@ -165,8 +166,8 @@ function VersionNav({
   useEffect(() => {
     const olderRelease = olderReleases.find(r => r.version === activeVersion);
     if (olderRelease) {
-      const date = new Date(olderRelease.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      // Use string slice to avoid timezone issues with Date parsing
+      const monthKey = olderRelease.date.slice(0, 7);
       queueMicrotask(() => {
         setExpandedMonths(prev => {
           if (prev.has(monthKey)) return prev;
@@ -286,10 +287,14 @@ function VersionNav({
                   const isExpanded = expandedMonths.has(monthKey);
                   const hasActiveVersion = releases.some(r => r.version === activeVersion);
 
+                  const monthListId = `month-list-${monthKey}`;
+
                   return (
                     <div key={monthKey}>
                       <button
                         onClick={() => toggleMonth(monthKey)}
+                        aria-expanded={isExpanded}
+                        aria-controls={monthListId}
                         className={`
                           w-full text-left px-2 py-1.5 rounded transition-colors flex items-center justify-between
                           ${hasActiveVersion
@@ -307,7 +312,10 @@ function VersionNav({
                         </div>
                       </button>
                       {isExpanded && (
-                        <ul className="space-y-px ml-2 mt-1 border-l border-border-subtle pl-2">
+                        <ul
+                          id={monthListId}
+                          className="space-y-px ml-2 mt-1 border-l border-border-subtle pl-2"
+                        >
                           {releases.map((release) => (
                             <VersionNavItem
                               key={release.version}

@@ -17,10 +17,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: files } = await github.rest.pulls.listFiles({
+            // Use pagination to handle PRs with >30 files
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number
+              pull_number: context.issue.number,
+              per_page: 100,
             });
 
             // Check if release notes were updated
@@ -93,20 +95,24 @@ jobs:
               );
 
               if (!botComment) {
+                const commentBody = [
+                  '<!-- release-notes-check-bot -->',
+                  '**Release notes required**',
+                  '',
+                  'This PR includes code changes but doesn\'t update release notes.',
+                  '',
+                  'Please update `frontend/src/data/releaseNotes.ts` with:',
+                  '1. Bump `CURRENT_VERSION` if this is a new release',
+                  '2. Add items to the `items` array describing the changes',
+                  '',
+                  'If this PR doesn\'t need release notes (e.g., internal refactoring), add the `skip-release-notes` label.',
+                ].join('\n');
+
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.issue.number,
-                  body: `<!-- release-notes-check-bot -->
-            **Release notes required**
-
-            This PR includes code changes but doesn't update release notes.
-
-            Please update \`frontend/src/data/releaseNotes.ts\` with:
-            1. Bump \`CURRENT_VERSION\` if this is a new release
-            2. Add items to the \`items\` array describing the changes
-
-            If this PR doesn't need release notes (e.g., internal refactoring), add the \`skip-release-notes\` label.`
+                  body: commentBody,
                 });
               }
 
