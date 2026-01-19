@@ -5,9 +5,9 @@
  * Extracts code and state from URL, exchanges for tokens, and redirects.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, getOAuthStateCookie } from '../stores/authStore';
 import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-callback');
@@ -20,6 +20,19 @@ export function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { handleCallback, error, clearError } = useAuthStore();
+
+  // CRITICAL: Capture OAuth state cookie IMMEDIATELY on first render,
+  // before any async code (like initializeAuth) can clear cookies.
+  // Using useRef to store the value so it persists across re-renders.
+  const savedOAuthState = useRef<string | null>(null);
+  if (savedOAuthState.current === null) {
+    savedOAuthState.current = getOAuthStateCookie();
+    console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', savedOAuthState.current);
+  }
+
+  // Guard against duplicate callback calls (OAuth codes are single-use).
+  // This can happen if the effect runs twice due to dependency changes or re-renders.
+  const callbackInitiated = useRef(false);
 
   // Derive initial status from URL params
   const [status, setStatus] = useState<'processing' | 'error' | 'success'>(() => {
@@ -42,15 +55,25 @@ export function AuthCallback() {
     // Don't process if already in error state
     if (status === 'error') return;
 
+    // Prevent duplicate calls - OAuth codes are single-use and will fail on second attempt
+    if (callbackInitiated.current) {
+      logger.info('Callback already initiated, skipping duplicate call');
+      return;
+    }
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
     // These are guaranteed to exist since status would be 'error' otherwise
     if (!code || !state) return;
 
-    // Exchange code for tokens
-    logger.info('Starting handleCallback');
-    handleCallback(code, state)
+    // Mark as initiated BEFORE the async call to prevent race conditions
+    callbackInitiated.current = true;
+
+    // Exchange code for tokens, passing the pre-captured OAuth state
+    // (captured before initializeAuth could clear cookies)
+    logger.info('Starting handleCallback with captured state');
+    handleCallback(code, state, savedOAuthState.current)
       .then(() => {
         logger.info('handleCallback resolved successfully');
         setStatus('success');

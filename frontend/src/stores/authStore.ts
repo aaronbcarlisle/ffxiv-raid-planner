@@ -16,6 +16,9 @@ import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-store');
 
+// BUILD MARKER - If you see this in console, the Jan 18 21:38 fix is deployed
+console.log('[AUTH-STORE] Build version: 2026-01-18-2138 - Pre-capture OAuth state fix');
+
 if (isProduction && isLocalhostApi) {
   console.error(
     '[Auth Error] Production environment detected but API URL points to localhost!',
@@ -27,6 +30,82 @@ if (isProduction && isLocalhostApi) {
 
 // CSRF token cookie name (must match backend)
 const CSRF_COOKIE_NAME = 'csrf_token';
+
+// OAuth state cookie name - using cookie instead of sessionStorage
+// because sessionStorage is per-origin, and www.domain.com vs domain.com
+// are different origins. Cookies with domain=.domain.com work across both.
+const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
+
+/**
+ * Get the root domain for cookie settings.
+ * Returns ".xivraidplanner.app" for production, or current hostname for dev.
+ */
+function getCookieDomain(): string {
+  const hostname = window.location.hostname;
+  // For localhost or IP addresses, don't set domain
+  if (hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return '';
+  }
+  // For production, use root domain with leading dot
+  // This makes the cookie accessible from both www.xivraidplanner.app and xivraidplanner.app
+  const parts = hostname.split('.');
+  if (parts.length >= 2) {
+    return '.' + parts.slice(-2).join('.');
+  }
+  return '';
+}
+
+/**
+ * Set OAuth state in a cookie that works across www/non-www subdomains.
+ */
+function setOAuthState(state: string): void {
+  const domain = getCookieDomain();
+  const domainAttr = domain ? `; domain=${domain}` : '';
+  // Short expiry (10 minutes) - just needs to survive the OAuth redirect
+  const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString();
+  const cookieString = `${OAUTH_STATE_COOKIE_NAME}=${state}; path=/; expires=${expires}; SameSite=Lax${domainAttr}`;
+  console.log('[AUTH-STORE] Setting OAuth state cookie:', {
+    domain,
+    cookieString,
+    currentHostname: window.location.hostname,
+  });
+  document.cookie = cookieString;
+}
+
+/**
+ * Get OAuth state from cookie.
+ * Exported so AuthCallback can capture it immediately on render.
+ */
+export function getOAuthStateCookie(): string | null {
+  console.log('[AUTH-STORE] Reading OAuth state cookie:', {
+    currentHostname: window.location.hostname,
+    allCookies: document.cookie,
+  });
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const trimmed = cookie.trim();
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const name = trimmed.slice(0, eqIndex);
+    const value = trimmed.slice(eqIndex + 1);
+    if (name === OAUTH_STATE_COOKIE_NAME) {
+      console.log('[AUTH-STORE] Found OAuth state cookie:', value);
+      return value;
+    }
+  }
+  console.log('[AUTH-STORE] OAuth state cookie NOT found');
+  return null;
+}
+
+/**
+ * Clear OAuth state cookie.
+ */
+function clearOAuthState(): void {
+  const domain = getCookieDomain();
+  const domainAttr = domain ? `; domain=${domain}` : '';
+  // Set expired date to delete the cookie
+  document.cookie = `${OAUTH_STATE_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${domainAttr}`;
+}
 
 /**
  * Get CSRF token from cookie for state-changing requests.
@@ -129,7 +208,7 @@ interface AuthState {
 
   // Actions
   login: () => Promise<void>;
-  handleCallback: (code: string, state: string) => Promise<void>;
+  handleCallback: (code: string, state: string, capturedOAuthState?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
@@ -198,8 +277,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authRequest<DiscordAuthUrl>('/api/auth/discord');
 
-          // Store state for verification
-          sessionStorage.setItem('oauth_state', data.state);
+          // Store state for verification in cookie (works across www/non-www subdomains)
+          setOAuthState(data.state);
 
           // Redirect to Discord
           window.location.href = data.url;
@@ -213,18 +292,25 @@ export const useAuthStore = create<AuthState>()(
 
       /**
        * Handle OAuth callback after Discord redirect
+       * @param capturedOAuthState - Pre-captured OAuth state from cookie (captured before async init clears cookies)
        */
-      handleCallback: async (code: string, state: string) => {
+      handleCallback: async (code: string, state: string, capturedOAuthState?: string | null) => {
         logger.info('handleCallback started');
         set({ isLoading: true, error: null });
 
         try {
-          // Verify state matches
-          const savedState = sessionStorage.getItem('oauth_state');
+          // Use pre-captured state if provided, otherwise try reading from cookie
+          // (The cookie may have been cleared by initializeAuth before we get here)
+          const savedState = capturedOAuthState !== undefined ? capturedOAuthState : getOAuthStateCookie();
+          console.log('[AUTH-STORE] handleCallback verifying state:', {
+            urlState: state,
+            savedState,
+            usedCapturedState: capturedOAuthState !== undefined,
+          });
           if (state !== savedState) {
             throw new Error('Invalid OAuth state - possible CSRF attack');
           }
-          sessionStorage.removeItem('oauth_state');
+          clearOAuthState();
 
           // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
           logger.info('Exchanging code for tokens');
