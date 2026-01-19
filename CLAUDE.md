@@ -309,7 +309,7 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 
 ## What NOT To Do
 
-1. Don't use sticky/fixed panels - Use tab navigation
+1. Don't use sticky/fixed content panels - Use tab navigation (main header is sticky, that's fine)
 2. Don't require modals for quick edits - Use inline editing
 3. Don't use narrow containers - Use wide layout (120rem)
 4. Don't mix display order and priority order - They're separate
