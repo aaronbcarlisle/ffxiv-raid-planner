@@ -360,7 +360,7 @@ export function Dashboard() {
                   icon={<LayoutGrid className="w-4 h-4" />}
                   onClick={() => setViewMode('grid')}
                   variant={viewMode === 'grid' ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="md"
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
                   className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
@@ -371,7 +371,7 @@ export function Dashboard() {
                   icon={<List className="w-4 h-4" />}
                   onClick={() => setViewMode('list')}
                   variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="md"
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
                   className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
