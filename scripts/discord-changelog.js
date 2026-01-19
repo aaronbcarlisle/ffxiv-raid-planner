@@ -462,13 +462,8 @@ const CATEGORY_LABELS = {
 // Category order for display (features first, then improvements, fixes, breaking)
 const CATEGORY_ORDER = ['feature', 'improvement', 'fix', 'breaking'];
 
-// Category emoji colors (small colored squares)
-const CATEGORY_EMOJIS = {
-  feature: '🟩',
-  improvement: '🟦',
-  fix: '🟥',
-  breaking: '🟧',
-};
+// Category section arrow (used for H3 headers)
+const CATEGORY_ARROW = '▸';
 
 // Category colors for embed borders (hex values for Discord)
 const CATEGORY_COLORS = {
@@ -541,15 +536,6 @@ function getDominantCategoryColor(items) {
   return 0x14b8a6; // Teal fallback
 }
 
-/**
- * Format a single item for Discord display (plain bullet, no colored emoji)
- */
-function formatReleaseItem(item) {
-  if (item.description) {
-    return `• **${item.title}** — ${item.description}`;
-  }
-  return `• **${item.title}**`;
-}
 
 /**
  * Build release announcement embed - single embed with all categories
@@ -572,8 +558,12 @@ function buildReleaseEmbeds(release) {
       name: COMMIT_AUTHOR,
       url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
       iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
-    })
-    .setTimestamp(release.date ? new Date(release.date) : undefined);
+    });
+
+  // Only set timestamp when date is provided (undefined would set it to "now")
+  if (release.date) {
+    embed.setTimestamp(new Date(release.date));
+  }
 
   // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
   const footerText = buildReleaseFooter(release.items);
@@ -592,13 +582,12 @@ function buildReleaseEmbeds(release) {
       groupedItems[item.category].push(item);
     }
 
-    // Build description with H3 headers and plain bullets (no dash between emoji and label)
+    // Build description with H3 headers and plain bullets
     const sections = [];
     for (const category of CATEGORY_ORDER) {
       const items = groupedItems[category];
       if (items && items.length > 0) {
         const label = CATEGORY_LABELS[category] || category;
-        const emoji = CATEGORY_EMOJIS[category] || '⚪';
 
         // Build item list with plain bullets
         const itemList = items.map(item => {
@@ -608,8 +597,8 @@ function buildReleaseEmbeds(release) {
           return `• **${item.title}**`;
         }).join('\n');
 
-        // Build section with H3 header and colored emoji (no dash)
-        sections.push(`### ▸ ${label}\n${itemList}`);
+        // Build section with H3 header and arrow
+        sections.push(`### ${CATEGORY_ARROW} ${label}\n${itemList}`);
       }
     }
 
@@ -624,9 +613,8 @@ function buildReleaseEmbeds(release) {
         const items = groupedItems[category];
         if (items && items.length > 0) {
           const label = CATEGORY_LABELS[category] || category;
-          const emoji = CATEGORY_EMOJIS[category] || '⚪';
           const itemList = items.map(item => `• **${item.title}**`).join('\n');
-          shortSections.push(`### ▸ ${label}\n${itemList}`);
+          shortSections.push(`### ${CATEGORY_ARROW} ${label}\n${itemList}`);
         }
       }
       description = shortSections.join('\n\n');
@@ -639,13 +627,12 @@ function buildReleaseEmbeds(release) {
           const items = groupedItems[category];
           if (items && items.length > 0) {
             const label = CATEGORY_LABELS[category] || category;
-            const emoji = CATEGORY_EMOJIS[category] || '⚪';
             const displayItems = items.slice(0, maxItems);
             let itemList = displayItems.map(item => `• **${item.title}**`).join('\n');
             if (items.length > maxItems) {
               itemList += `\n*...and ${items.length - maxItems} more*`;
             }
-            limitedSections.push(`### ▸ ${label}\n${itemList}`);
+            limitedSections.push(`### ${CATEGORY_ARROW} ${label}\n${itemList}`);
           }
         }
         description = limitedSections.join('\n\n');
@@ -664,10 +651,10 @@ function buildReleaseEmbeds(release) {
 
 /**
  * Build a single release embed (legacy format for backward compatibility)
- * @deprecated Use buildReleaseEmbeds for the new multi-embed format
+ * @deprecated Use buildReleaseEmbeds which returns an array for consistent API
  */
 function buildReleaseEmbed(release) {
-  // Return just the first embed for backward compatibility with tests
+  // Return the first (and only) embed for backward compatibility with tests
   return buildReleaseEmbeds(release)[0];
 }
 
@@ -800,7 +787,7 @@ async function main() {
 
     const embeds = [];
 
-    // Add release embeds if new version (one header + one per category)
+    // Add release embed if new version
     if (isNewRelease && releaseInfo.latestRelease) {
       console.log(`New release detected: v${releaseInfo.latestRelease.version}`);
       const releaseEmbeds = buildReleaseEmbeds(releaseInfo.latestRelease);
@@ -845,7 +832,6 @@ export {
   buildCommitEmbed,
   buildReleaseEmbed,
   buildReleaseEmbeds,
-  formatReleaseItem,
   getCommitTypeColor,
   getDominantCategoryColor,
   buildReleaseFooter,
@@ -864,7 +850,7 @@ export {
   AI_TIMEOUT_MS,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
-  CATEGORY_EMOJIS,
+  CATEGORY_ARROW,
   CATEGORY_COLORS,
   RELEASE_DESCRIPTION_LIMIT,
   APP_THUMBNAIL_URL,
