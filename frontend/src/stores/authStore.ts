@@ -16,6 +16,9 @@ import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-store');
 
+// BUILD MARKER - If you see this in console, the Jan 18 21:05 fix is deployed
+console.log('[AUTH-STORE] Build version: 2026-01-18-2105 - Cookie-based OAuth state fix');
+
 if (isProduction && isLocalhostApi) {
   console.error(
     '[Auth Error] Production environment detected but API URL points to localhost!',
