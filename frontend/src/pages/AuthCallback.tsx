@@ -5,9 +5,9 @@
  * Extracts code and state from URL, exchanges for tokens, and redirects.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, getOAuthStateCookie } from '../stores/authStore';
 import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-callback');
@@ -20,6 +20,15 @@ export function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { handleCallback, error, clearError } = useAuthStore();
+
+  // CRITICAL: Capture OAuth state cookie IMMEDIATELY on first render,
+  // before any async code (like initializeAuth) can clear cookies.
+  // Using useRef to store the value so it persists across re-renders.
+  const savedOAuthState = useRef<string | null>(null);
+  if (savedOAuthState.current === null) {
+    savedOAuthState.current = getOAuthStateCookie();
+    console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', savedOAuthState.current);
+  }
 
   // Derive initial status from URL params
   const [status, setStatus] = useState<'processing' | 'error' | 'success'>(() => {
@@ -48,9 +57,10 @@ export function AuthCallback() {
     // These are guaranteed to exist since status would be 'error' otherwise
     if (!code || !state) return;
 
-    // Exchange code for tokens
-    logger.info('Starting handleCallback');
-    handleCallback(code, state)
+    // Exchange code for tokens, passing the pre-captured OAuth state
+    // (captured before initializeAuth could clear cookies)
+    logger.info('Starting handleCallback with captured state');
+    handleCallback(code, state, savedOAuthState.current)
       .then(() => {
         logger.info('handleCallback resolved successfully');
         setStatus('success');

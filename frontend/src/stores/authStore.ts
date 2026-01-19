@@ -16,8 +16,8 @@ import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-store');
 
-// BUILD MARKER - If you see this in console, the Jan 18 21:30 fix is deployed
-console.log('[AUTH-STORE] Build version: 2026-01-18-2130 - Cookie debug logging');
+// BUILD MARKER - If you see this in console, the Jan 18 21:38 fix is deployed
+console.log('[AUTH-STORE] Build version: 2026-01-18-2138 - Pre-capture OAuth state fix');
 
 if (isProduction && isLocalhostApi) {
   console.error(
@@ -74,8 +74,9 @@ function setOAuthState(state: string): void {
 
 /**
  * Get OAuth state from cookie.
+ * Exported so AuthCallback can capture it immediately on render.
  */
-function getOAuthState(): string | null {
+export function getOAuthStateCookie(): string | null {
   console.log('[AUTH-STORE] Reading OAuth state cookie:', {
     currentHostname: window.location.hostname,
     allCookies: document.cookie,
@@ -207,7 +208,7 @@ interface AuthState {
 
   // Actions
   login: () => Promise<void>;
-  handleCallback: (code: string, state: string) => Promise<void>;
+  handleCallback: (code: string, state: string, capturedOAuthState?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
@@ -291,18 +292,20 @@ export const useAuthStore = create<AuthState>()(
 
       /**
        * Handle OAuth callback after Discord redirect
+       * @param capturedOAuthState - Pre-captured OAuth state from cookie (captured before async init clears cookies)
        */
-      handleCallback: async (code: string, state: string) => {
+      handleCallback: async (code: string, state: string, capturedOAuthState?: string | null) => {
         logger.info('handleCallback started');
         set({ isLoading: true, error: null });
 
         try {
-          // Verify state matches (using cookie for cross-subdomain support)
-          const savedState = getOAuthState();
-          logger.info('Verifying OAuth state', {
-            hasState: !!state,
-            hasSavedState: !!savedState,
-            statesMatch: state === savedState,
+          // Use pre-captured state if provided, otherwise try reading from cookie
+          // (The cookie may have been cleared by initializeAuth before we get here)
+          const savedState = capturedOAuthState !== undefined ? capturedOAuthState : getOAuthStateCookie();
+          console.log('[AUTH-STORE] handleCallback verifying state:', {
+            urlState: state,
+            savedState,
+            usedCapturedState: capturedOAuthState !== undefined,
           });
           if (state !== savedState) {
             throw new Error('Invalid OAuth state - possible CSRF attack');
