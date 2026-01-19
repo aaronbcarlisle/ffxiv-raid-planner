@@ -172,7 +172,7 @@ function VersionNav({
                       }
                     `}
                     aria-label={`Jump to version ${release.version}${isLatest ? ' (latest)' : ''}`}
-                    aria-current={isActive ? 'true' : undefined}
+                    aria-current={isActive ? 'location' : undefined}
                   >
                     <div className="flex flex-col w-full">
                       <div className="flex items-center justify-between gap-2">
@@ -231,6 +231,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
 
   return (
     <li className="group">
+      {/* hover:bg-surface-elevated intentionally overrides ghost variant for subtle elevated effect */}
       <Button
         variant="ghost"
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
@@ -361,6 +362,7 @@ function ReleaseCard({
   return (
     <article id={`v${release.version}`} className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden scroll-mt-20">
       {/* Header - Always visible, clickable */}
+      {/* hover:bg-surface-elevated/50 intentionally overrides ghost variant for subtle card hover */}
       <Button
         variant="ghost"
         onClick={handleToggle}
