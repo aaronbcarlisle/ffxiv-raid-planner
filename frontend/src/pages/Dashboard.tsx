@@ -56,7 +56,7 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 export function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, authInitialized } = useAuthStore();
   const { groups, isLoading, error, fetchGroups, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateWizard, setShowCreateWizard] = useState(false);
@@ -214,11 +214,12 @@ export function Dashboard() {
   }, []);
 
   // Redirect if not authenticated
+  // Wait for authInitialized to prevent redirect during auth state propagation
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (authInitialized && !authLoading && !isAuthenticated) {
       navigate('/');
     }
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [authInitialized, authLoading, isAuthenticated, navigate]);
 
   // Fetch groups on mount
   useEffect(() => {
@@ -321,7 +322,8 @@ export function Dashboard() {
     ];
   };
 
-  if (authLoading) {
+  // Show loading while auth is initializing or loading
+  if (!authInitialized || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Spinner size="lg" label="Loading authentication" />
