@@ -48,8 +48,32 @@ export function AuthCallback() {
         // Get redirect destination or default to home
         const redirect = sessionStorage.getItem('auth_redirect') || '/';
         sessionStorage.removeItem('auth_redirect');
-        // Small delay to show success state
-        setTimeout(() => navigate(redirect, { replace: true }), 500);
+
+        // Verify auth state is fully propagated before navigating.
+        // This fixes a race condition where React Router navigation creates
+        // a new component tree before Zustand state updates are processed.
+        const verifyAndNavigate = () => {
+          const authState = useAuthStore.getState();
+          if (authState.user && authState.isAuthenticated && !authState.isLoading) {
+            // State is ready - navigate after brief delay for visual feedback
+            setTimeout(() => navigate(redirect, { replace: true }), 300);
+          } else {
+            // State not ready yet - wait for next update
+            const unsubscribe = useAuthStore.subscribe((newState) => {
+              if (newState.user && newState.isAuthenticated && !newState.isLoading) {
+                unsubscribe();
+                setTimeout(() => navigate(redirect, { replace: true }), 300);
+              }
+            });
+            // Fallback: navigate anyway after 2 seconds to prevent hanging
+            setTimeout(() => {
+              unsubscribe();
+              navigate(redirect, { replace: true });
+            }, 2000);
+          }
+        };
+
+        verifyAndNavigate();
       })
       .catch((err) => {
         console.error('OAuth callback failed:', err);
