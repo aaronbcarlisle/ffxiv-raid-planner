@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { ReleaseBanner } from './ReleaseBanner';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
+import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 
 export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -20,6 +21,13 @@ export function Layout() {
       window.removeEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
     };
   }, [handleShowKeyboardShortcuts]);
+
+  // Global keyboard shortcuts (Shift+S for My Statics, Shift+? for shortcuts help)
+  // These work on any page, not just GroupView
+  useGlobalKeyboardShortcuts({
+    onShowShortcuts: handleShowKeyboardShortcuts,
+    disabled: showKeyboardHelp, // Disable when modal is open
+  });
 
   return (
     <div className="min-h-screen bg-surface-base">
