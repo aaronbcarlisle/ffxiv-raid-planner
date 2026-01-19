@@ -117,6 +117,12 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  /**
+   * Whether initializeAuth() has completed.
+   * False until the initial auth check on app load finishes.
+   * Used to prevent components from making auth decisions based on stale persisted data.
+   */
+  authInitialized: boolean;
 
   // Actions
   login: () => Promise<void>;
@@ -178,6 +184,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      authInitialized: false,
 
       /**
        * Initiate Discord OAuth login
@@ -458,21 +465,28 @@ export async function initializeAuth(): Promise<void> {
     );
   }
 
-  // If we have a persisted user, verify session is still valid with backend
-  // This handles the case where httpOnly cookies have expired
-  if (user) {
-    await fetchUser();
+  try {
+    // If we have a persisted user, verify session is still valid with backend
+    // This handles the case where httpOnly cookies have expired
+    if (user) {
+      await fetchUser();
 
-    // If still authenticated after fetchUser, do a proactive refresh to
-    // establish the refresh schedule. This ensures we know when to refresh
-    // even if the initial fetchUser succeeded with an existing valid token.
-    const currentState = useAuthStore.getState();
-    if (currentState.isAuthenticated) {
-      // Await refresh to ensure consistent auth state; silent catch since
-      // failure just means user will re-auth on first API call
-      await refreshAccessToken().catch(() => {
-        // Silent - will re-auth on first API call if needed
-      });
+      // If still authenticated after fetchUser, do a proactive refresh to
+      // establish the refresh schedule. This ensures we know when to refresh
+      // even if the initial fetchUser succeeded with an existing valid token.
+      const currentState = useAuthStore.getState();
+      if (currentState.isAuthenticated) {
+        // Await refresh to ensure consistent auth state; silent catch since
+        // failure just means user will re-auth on first API call
+        await refreshAccessToken().catch(() => {
+          // Silent - will re-auth on first API call if needed
+        });
+      }
     }
+  } finally {
+    // Mark auth as initialized regardless of outcome
+    // This allows components to know that the initial auth check is complete
+    // and they can now trust the auth state (not stale persisted data)
+    useAuthStore.setState({ authInitialized: true });
   }
 }
