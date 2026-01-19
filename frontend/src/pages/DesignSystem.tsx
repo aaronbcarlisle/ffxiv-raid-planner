@@ -366,7 +366,7 @@ const NAV_SECTIONS = NAV_GROUPS.flatMap(group => group.items);
 // Section header component
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="mb-12 scroll-mt-6">
+    <section id={id} className="mb-12 scroll-mt-20">
       <h2 className="text-2xl font-semibold text-accent mb-6 pb-2 border-b border-border-default">
         {title}
       </h2>

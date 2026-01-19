@@ -395,7 +395,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             )}
           </div>
           {item.description && (
-            <p className="text-sm text-text-muted mt-0.5 font-normal">{item.description}</p>
+            <p className="text-sm text-text-muted mt-0.5 font-normal whitespace-normal">{item.description}</p>
           )}
         </div>
       </Button>
@@ -546,8 +546,8 @@ function ReleaseCard({
                   </span>
                 )}
               </div>
-              {/* font-normal overrides Button's inherited font-semibold */}
-              {release.title && <p className="text-text-secondary font-normal">{release.title}</p>}
+              {/* font-normal and whitespace-normal override Button's inherited styles */}
+              {release.title && <p className="text-text-secondary font-normal whitespace-normal">{release.title}</p>}
             </div>
           </div>
           <div className="text-right shrink-0 font-normal">
