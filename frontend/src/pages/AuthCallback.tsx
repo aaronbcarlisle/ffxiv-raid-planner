@@ -30,6 +30,10 @@ export function AuthCallback() {
     console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', savedOAuthState.current);
   }
 
+  // Guard against duplicate callback calls (OAuth codes are single-use).
+  // This can happen if the effect runs twice due to dependency changes or re-renders.
+  const callbackInitiated = useRef(false);
+
   // Derive initial status from URL params
   const [status, setStatus] = useState<'processing' | 'error' | 'success'>(() => {
     const errorParam = searchParams.get('error');
@@ -51,11 +55,20 @@ export function AuthCallback() {
     // Don't process if already in error state
     if (status === 'error') return;
 
+    // Prevent duplicate calls - OAuth codes are single-use and will fail on second attempt
+    if (callbackInitiated.current) {
+      logger.info('Callback already initiated, skipping duplicate call');
+      return;
+    }
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
     // These are guaranteed to exist since status would be 'error' otherwise
     if (!code || !state) return;
+
+    // Mark as initiated BEFORE the async call to prevent race conditions
+    callbackInitiated.current = true;
 
     // Exchange code for tokens, passing the pre-captured OAuth state
     // (captured before initializeAuth could clear cookies)
