@@ -8,6 +8,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { logger as baseLogger } from '../lib/logger';
+
+const logger = baseLogger.scope('auth-callback');
+
+// Timing constants for auth state verification
+const VISUAL_FEEDBACK_DELAY_MS = 300;
+const AUTH_STATE_TIMEOUT_MS = 2000;
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -55,21 +62,37 @@ export function AuthCallback() {
         const verifyAndNavigate = () => {
           const authState = useAuthStore.getState();
           if (authState.user && authState.isAuthenticated && !authState.isLoading) {
-            // State is ready - navigate after brief delay for visual feedback
-            setTimeout(() => navigate(redirect, { replace: true }), 300);
+            // State is ready immediately - navigate after brief delay for visual feedback
+            logger.info('Auth state ready immediately, navigating', { redirect });
+            setTimeout(() => navigate(redirect, { replace: true }), VISUAL_FEEDBACK_DELAY_MS);
           } else {
             // State not ready yet - wait for next update
+            // Use a completed flag to prevent race between subscription and timeout
+            logger.info('Auth state not ready, subscribing for updates', {
+              hasUser: !!authState.user,
+              isAuthenticated: authState.isAuthenticated,
+              isLoading: authState.isLoading,
+            });
+            let completed = false;
+
             const unsubscribe = useAuthStore.subscribe((newState) => {
-              if (newState.user && newState.isAuthenticated && !newState.isLoading) {
+              if (!completed && newState.user && newState.isAuthenticated && !newState.isLoading) {
+                completed = true;
                 unsubscribe();
-                setTimeout(() => navigate(redirect, { replace: true }), 300);
+                logger.info('Auth state ready via subscription, navigating', { redirect });
+                setTimeout(() => navigate(redirect, { replace: true }), VISUAL_FEEDBACK_DELAY_MS);
               }
             });
-            // Fallback: navigate anyway after 2 seconds to prevent hanging
+
+            // Fallback: navigate anyway after timeout to prevent hanging
             setTimeout(() => {
-              unsubscribe();
-              navigate(redirect, { replace: true });
-            }, 2000);
+              if (!completed) {
+                completed = true;
+                unsubscribe();
+                logger.warn('Auth state timeout, navigating anyway', { redirect });
+                navigate(redirect, { replace: true });
+              }
+            }, AUTH_STATE_TIMEOUT_MS);
           }
         };
 
