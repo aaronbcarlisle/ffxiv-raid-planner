@@ -21,7 +21,7 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, KeyboardShortcutsHelp } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -376,7 +376,6 @@ export function GroupView() {
       setShowSettingsModal(true);
     };
     const handleDeleteTierEvent = () => { setShowDeleteTierConfirm(true); };
-    const handleShowKeyboardShortcuts = () => { setShowKeyboardHelp(true); };
 
     window.addEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
     window.addEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
@@ -385,7 +384,7 @@ export function GroupView() {
     window.addEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
     window.addEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
     window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
-    window.addEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
+    // Note: 'show-keyboard-shortcuts' listener is in Layout.tsx for global access
 
     return () => {
       window.removeEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
@@ -395,9 +394,8 @@ export function GroupView() {
       window.removeEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
       window.removeEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
       window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
-      window.removeEventListener('show-keyboard-shortcuts', handleShowKeyboardShortcuts);
     };
-  }, [handleTierChange, handleAddPlayer, setShowCreateTierModal, setShowRolloverDialog, setShowSettingsModal, setShowDeleteTierConfirm, setShowKeyboardHelp]);
+  }, [handleTierChange, handleAddPlayer, setShowCreateTierModal, setShowRolloverDialog, setShowSettingsModal, setShowDeleteTierConfirm]);
 
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
@@ -847,11 +845,7 @@ export function GroupView() {
         />
       )}
 
-      {/* Keyboard Shortcuts Help */}
-      <KeyboardShortcutsHelp
-        isOpen={showKeyboardHelp}
-        onClose={() => setShowKeyboardHelp(false)}
-      />
+      {/* Keyboard Shortcuts Help is now rendered in Layout.tsx for global access */}
     </div>
   );
 }

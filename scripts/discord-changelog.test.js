@@ -4,7 +4,10 @@ import {
   parseReleaseNotes,
   buildCommitEmbed,
   buildReleaseEmbed,
+  buildReleaseEmbeds,
   getCommitTypeColor,
+  getDominantCategoryColor,
+  buildReleaseFooter,
   summarizeBody,
   summarizeWithAI,
   isAIOnlyCommit,
@@ -16,6 +19,7 @@ import {
   TRUNCATION_MESSAGE_RESERVE,
   RELEASE_NOTES_PATH,
   COMMIT_AUTHOR_GITHUB,
+  CATEGORY_COLORS,
 } from './discord-changelog.js';
 
 describe('discord-changelog', () => {
@@ -430,6 +434,122 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     });
   });
 
+  describe('getDominantCategoryColor', () => {
+    it('returns teal for empty items array', () => {
+      expect(getDominantCategoryColor([])).toBe(0x14b8a6);
+    });
+
+    it('returns teal for null/undefined items', () => {
+      expect(getDominantCategoryColor(null)).toBe(0x14b8a6);
+      expect(getDominantCategoryColor(undefined)).toBe(0x14b8a6);
+    });
+
+    it('returns breaking color when breaking changes present', () => {
+      const items = [
+        { category: 'feature', title: 'New feature' },
+        { category: 'breaking', title: 'Breaking change' },
+      ];
+      expect(getDominantCategoryColor(items)).toBe(CATEGORY_COLORS.breaking);
+    });
+
+    it('returns feature color when features present (no breaking)', () => {
+      const items = [
+        { category: 'feature', title: 'New feature' },
+        { category: 'improvement', title: 'Improvement' },
+        { category: 'fix', title: 'Bug fix' },
+      ];
+      expect(getDominantCategoryColor(items)).toBe(CATEGORY_COLORS.feature);
+    });
+
+    it('returns fix color when only fixes present', () => {
+      const items = [
+        { category: 'fix', title: 'Bug fix 1' },
+        { category: 'fix', title: 'Bug fix 2' },
+      ];
+      expect(getDominantCategoryColor(items)).toBe(CATEGORY_COLORS.fix);
+    });
+
+    it('returns improvement color when only improvements present', () => {
+      const items = [
+        { category: 'improvement', title: 'Enhancement 1' },
+      ];
+      expect(getDominantCategoryColor(items)).toBe(CATEGORY_COLORS.improvement);
+    });
+
+    it('respects priority order: breaking > feature > fix > improvement', () => {
+      // Test with all categories - breaking should win
+      const allCategories = [
+        { category: 'improvement', title: 'I1' },
+        { category: 'fix', title: 'F1' },
+        { category: 'feature', title: 'N1' },
+        { category: 'breaking', title: 'B1' },
+      ];
+      expect(getDominantCategoryColor(allCategories)).toBe(CATEGORY_COLORS.breaking);
+
+      // Without breaking - feature should win
+      const noBreaking = [
+        { category: 'improvement', title: 'I1' },
+        { category: 'fix', title: 'F1' },
+        { category: 'feature', title: 'N1' },
+      ];
+      expect(getDominantCategoryColor(noBreaking)).toBe(CATEGORY_COLORS.feature);
+
+      // Without breaking/feature - fix should win
+      const noFeature = [
+        { category: 'improvement', title: 'I1' },
+        { category: 'fix', title: 'F1' },
+      ];
+      expect(getDominantCategoryColor(noFeature)).toBe(CATEGORY_COLORS.fix);
+    });
+  });
+
+  describe('buildReleaseFooter', () => {
+    it('returns null for empty items', () => {
+      expect(buildReleaseFooter([])).toBeNull();
+      expect(buildReleaseFooter(null)).toBeNull();
+      expect(buildReleaseFooter(undefined)).toBeNull();
+    });
+
+    it('uses singular form for single items', () => {
+      const items = [{ category: 'feature', title: 'F1' }];
+      expect(buildReleaseFooter(items)).toBe('1 feature');
+    });
+
+    it('uses plural form for multiple items', () => {
+      const items = [
+        { category: 'feature', title: 'F1' },
+        { category: 'feature', title: 'F2' },
+      ];
+      expect(buildReleaseFooter(items)).toBe('2 features');
+    });
+
+    it('joins multiple categories with bullet separator', () => {
+      const items = [
+        { category: 'feature', title: 'F1' },
+        { category: 'fix', title: 'X1' },
+      ];
+      expect(buildReleaseFooter(items)).toBe('1 feature • 1 fix');
+    });
+
+    it('follows category order: feature, improvement, fix, breaking', () => {
+      const items = [
+        { category: 'breaking', title: 'B1' },
+        { category: 'fix', title: 'X1' },
+        { category: 'feature', title: 'F1' },
+        { category: 'improvement', title: 'I1' },
+      ];
+      expect(buildReleaseFooter(items)).toBe('1 feature • 1 improvement • 1 fix • 1 breaking change');
+    });
+
+    it('uses "breaking change" for breaking category', () => {
+      const items = [
+        { category: 'breaking', title: 'B1' },
+        { category: 'breaking', title: 'B2' },
+      ];
+      expect(buildReleaseFooter(items)).toBe('2 breaking changes');
+    });
+  });
+
   describe('buildReleaseEmbed', () => {
     it('creates embed with version and title', () => {
       const release = {
@@ -443,7 +563,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.title).toBe('v1.0.0 — Initial Release');
     });
 
-    it('includes highlights in description', () => {
+    it('includes highlights in description when no items', () => {
       const release = {
         version: '1.0.0',
         title: 'Test Release',
@@ -456,7 +576,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(data.description).toContain('• Highlight 2');
     });
 
-    it('handles empty highlights', () => {
+    it('handles empty highlights - no description set', () => {
       const release = {
         version: '1.0.0',
         title: 'No Highlights',
@@ -465,41 +585,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      // Should still have the link to release notes with version anchor
-      expect(data.description).toContain('view release notes for [v1.0.0]');
-      expect(data.description).toContain('#v1.0.0');
+      // With no items and no highlights, no description is set (title already links)
+      expect(data.description).toBeUndefined();
     });
 
-    it('does not have leading newlines when highlights are empty', () => {
-      const release = {
-        version: '1.0.0',
-        title: 'No Highlights',
-        highlights: [],
-      };
-      const embed = buildReleaseEmbed(release);
-      const data = embed.toJSON();
-
-      // Description should start with the link text, not newlines
-      expect(data.description.startsWith('view release notes for')).toBe(true);
-    });
-
-    it('does not have leading newlines when highlights overflow and get truncated to empty', () => {
-      // Create a release with extremely long highlights that would cause available=0
-      const veryLongHighlight = 'x'.repeat(1200);
-      const release = {
-        version: '1.0.0',
-        title: 'Overflow Test',
-        highlights: [veryLongHighlight],
-      };
-      const embed = buildReleaseEmbed(release);
-      const data = embed.toJSON();
-
-      // Description should not start with newlines even when highlights overflow
-      expect(data.description.charAt(0)).not.toBe('\n');
-      expect(data.description).toContain('view release notes for');
-    });
-
-    it('includes link to full release notes with version anchor in description', () => {
+    it('links to release notes via title URL instead of description', () => {
       const release = {
         version: '2.0.5',
         title: 'Test',
@@ -508,11 +598,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const embed = buildReleaseEmbed(release);
       const data = embed.toJSON();
 
-      expect(data.description).toContain('view release notes for [v2.0.5]');
-      expect(data.description).toContain('#v2.0.5');
+      // The URL is on the title, not in the description
+      expect(data.url).toContain('#v2.0.5');
     });
 
-    it('uses teal accent color', () => {
+    it('uses teal accent color when no items', () => {
       const release = {
         version: '1.0.0',
         title: 'Test',
@@ -522,6 +612,116 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const data = embed.toJSON();
 
       expect(data.color).toBe(0x14b8a6);
+    });
+
+    it('uses dominant category color when items present', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        items: [
+          { category: 'feature', title: 'New feature' },
+          { category: 'fix', title: 'Bug fix' },
+        ],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      // Feature has higher priority than fix
+      expect(data.color).toBe(CATEGORY_COLORS.feature);
+    });
+
+    it('uses description with H3 headers for items (no dash in headers)', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        items: [
+          { category: 'feature', title: 'New feature', description: 'A cool feature' },
+          { category: 'fix', title: 'Bug fix' },
+        ],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      // Should have description, not fields
+      expect(data.description).toBeDefined();
+
+      // Headers should be H3 with arrow, no dashes
+      expect(data.description).toContain('### ▸ New Features');
+      expect(data.description).toContain('### ▸ Bug Fixes');
+      expect(data.description).not.toContain(' - New Features');
+      expect(data.description).not.toContain(' - Bug Fixes');
+
+      // Should contain bullet items
+      expect(data.description).toContain('• **New feature** — A cool feature');
+      expect(data.description).toContain('• **Bug fix**');
+    });
+
+    it('includes footer with item counts', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        items: [
+          { category: 'feature', title: 'F1' },
+          { category: 'feature', title: 'F2' },
+          { category: 'fix', title: 'X1' },
+        ],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      expect(data.footer).toBeDefined();
+      expect(data.footer.text).toBe('2 features • 1 fix');
+    });
+
+    it('omits footer when no items', () => {
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        highlights: ['Some highlight'],
+      };
+      const embed = buildReleaseEmbed(release);
+      const data = embed.toJSON();
+
+      expect(data.footer).toBeUndefined();
+    });
+  });
+
+  describe('buildReleaseEmbeds description limits', () => {
+    it('truncates long descriptions by removing item descriptions first', () => {
+      // Create items with long descriptions that exceed limit
+      const longDesc = 'x'.repeat(500);
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        items: Array.from({ length: 10 }, (_, i) => ({
+          category: 'feature',
+          title: `Feature ${i + 1}`,
+          description: longDesc,
+        })),
+      };
+      const [embed] = buildReleaseEmbeds(release);
+      const data = embed.toJSON();
+
+      // Should have description within limit
+      expect(data.description).toBeDefined();
+      expect(data.description.length).toBeLessThanOrEqual(3500);
+    });
+
+    it('limits items when titles alone exceed limit', () => {
+      // Create many items with long titles
+      const release = {
+        version: '1.0.0',
+        title: 'Test',
+        items: Array.from({ length: 100 }, (_, i) => ({
+          category: 'feature',
+          title: `This is a very long feature title number ${i + 1} with extra text to make it longer`,
+        })),
+      };
+      const [embed] = buildReleaseEmbeds(release);
+      const data = embed.toJSON();
+
+      expect(data.description.length).toBeLessThanOrEqual(3500);
+      expect(data.description).toContain('...and'); // Truncation indicator
     });
   });
 

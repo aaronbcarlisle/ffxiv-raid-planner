@@ -12,6 +12,9 @@ import { persist } from 'zustand/middleware';
 import type { User, DiscordAuthUrl } from '../types';
 import { API_BASE_URL, isProduction, isLocalhostApi } from '../config';
 import { storeCSRFTokenFromResponse } from '../services/api';
+import { logger as baseLogger } from '../lib/logger';
+
+const logger = baseLogger.scope('auth-store');
 
 if (isProduction && isLocalhostApi) {
   console.error(
@@ -117,6 +120,12 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  /**
+   * Whether initializeAuth() has completed.
+   * False until the initial auth check on app load finishes.
+   * Used to prevent components from making auth decisions based on stale persisted data.
+   */
+  authInitialized: boolean;
 
   // Actions
   login: () => Promise<void>;
@@ -178,6 +187,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      authInitialized: false,
 
       /**
        * Initiate Discord OAuth login
@@ -205,6 +215,7 @@ export const useAuthStore = create<AuthState>()(
        * Handle OAuth callback after Discord redirect
        */
       handleCallback: async (code: string, state: string) => {
+        logger.info('handleCallback started');
         set({ isLoading: true, error: null });
 
         try {
@@ -216,10 +227,12 @@ export const useAuthStore = create<AuthState>()(
           sessionStorage.removeItem('oauth_state');
 
           // Exchange code for tokens (tokens are set as httpOnly cookies by backend)
+          logger.info('Exchanging code for tokens');
           const tokenResponse = await authRequest<TokenResponse>('/api/auth/discord/callback', {
             method: 'POST',
             body: JSON.stringify({ code, state }),
           });
+          logger.info('Token exchange successful', { expiresIn: tokenResponse.expiresIn });
 
           set({ isAuthenticated: true });
 
@@ -227,10 +240,21 @@ export const useAuthStore = create<AuthState>()(
           scheduleTokenRefresh(tokenResponse.expiresIn, get().refreshAccessToken);
 
           // Fetch user info
+          logger.info('Calling fetchUser');
           await get().fetchUser();
+
+          // Log final state after handleCallback completes
+          const finalState = get();
+          logger.info('handleCallback completed', {
+            hasUser: !!finalState.user,
+            userName: finalState.user?.displayName,
+            isAuthenticated: finalState.isAuthenticated,
+            isLoading: finalState.isLoading,
+          });
         } catch (error) {
           // Cancel any scheduled refresh since login failed
           cancelScheduledRefresh();
+          logger.error('handleCallback failed', { error: error instanceof Error ? error.message : String(error) });
           set({
             error: error instanceof Error ? error.message : 'Failed to complete login',
             isLoading: false,
@@ -359,28 +383,37 @@ export const useAuthStore = create<AuthState>()(
        * Fetch current user info using httpOnly cookie authentication
        */
       fetchUser: async () => {
+        logger.info('fetchUser started');
         set({ isLoading: true });
 
         try {
           const user = await authRequest<User>('/api/auth/me');
+          logger.info('fetchUser succeeded', { userName: user.displayName, userId: user.id });
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch {
+        } catch (err) {
+          logger.warn('fetchUser initial request failed, attempting refresh', {
+            error: err instanceof Error ? err.message : String(err),
+          });
           // Token might be expired - try refreshing
           const refreshed = await get().refreshAccessToken();
           if (refreshed) {
             // Retry with new cookies
             try {
               const user = await authRequest<User>('/api/auth/me');
+              logger.info('fetchUser retry succeeded', { userName: user.displayName, userId: user.id });
               set({
                 user,
                 isAuthenticated: true,
                 isLoading: false,
               });
-            } catch {
+            } catch (retryErr) {
+              logger.error('fetchUser retry failed', {
+                error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+              });
               set({
                 user: null,
                 isAuthenticated: false,
@@ -388,6 +421,7 @@ export const useAuthStore = create<AuthState>()(
               });
             }
           } else {
+            logger.error('fetchUser refresh failed, clearing auth state');
             set({
               user: null,
               isAuthenticated: false,
@@ -458,21 +492,28 @@ export async function initializeAuth(): Promise<void> {
     );
   }
 
-  // If we have a persisted user, verify session is still valid with backend
-  // This handles the case where httpOnly cookies have expired
-  if (user) {
-    await fetchUser();
+  try {
+    // If we have a persisted user, verify session is still valid with backend
+    // This handles the case where httpOnly cookies have expired
+    if (user) {
+      await fetchUser();
 
-    // If still authenticated after fetchUser, do a proactive refresh to
-    // establish the refresh schedule. This ensures we know when to refresh
-    // even if the initial fetchUser succeeded with an existing valid token.
-    const currentState = useAuthStore.getState();
-    if (currentState.isAuthenticated) {
-      // Await refresh to ensure consistent auth state; silent catch since
-      // failure just means user will re-auth on first API call
-      await refreshAccessToken().catch(() => {
-        // Silent - will re-auth on first API call if needed
-      });
+      // If still authenticated after fetchUser, do a proactive refresh to
+      // establish the refresh schedule. This ensures we know when to refresh
+      // even if the initial fetchUser succeeded with an existing valid token.
+      const currentState = useAuthStore.getState();
+      if (currentState.isAuthenticated) {
+        // Await refresh to ensure consistent auth state; silent catch since
+        // failure just means user will re-auth on first API call
+        await refreshAccessToken().catch(() => {
+          // Silent - will re-auth on first API call if needed
+        });
+      }
     }
+  } finally {
+    // Mark auth as initialized regardless of outcome
+    // This allows components to know that the initial auth check is complete
+    // and they can now trust the auth state (not stale persisted data)
+    useAuthStore.setState({ authInitialized: true });
   }
 }

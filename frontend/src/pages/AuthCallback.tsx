@@ -8,6 +8,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { logger as baseLogger } from '../lib/logger';
+
+const logger = baseLogger.scope('auth-callback');
+
+// Timing constants for auth state verification
+const VISUAL_FEEDBACK_DELAY_MS = 300;
+const AUTH_STATE_TIMEOUT_MS = 2000;
 
 export function AuthCallback() {
   const navigate = useNavigate();
@@ -42,14 +49,78 @@ export function AuthCallback() {
     if (!code || !state) return;
 
     // Exchange code for tokens
+    logger.info('Starting handleCallback');
     handleCallback(code, state)
       .then(() => {
+        logger.info('handleCallback resolved successfully');
         setStatus('success');
         // Get redirect destination or default to home
         const redirect = sessionStorage.getItem('auth_redirect') || '/';
         sessionStorage.removeItem('auth_redirect');
-        // Small delay to show success state
-        setTimeout(() => navigate(redirect, { replace: true }), 500);
+
+        // Verify auth state is fully propagated before navigating.
+        // This fixes a race condition where React Router navigation creates
+        // a new component tree before Zustand state updates are processed.
+        const verifyAndNavigate = () => {
+          const authState = useAuthStore.getState();
+          logger.info('Checking auth state after handleCallback', {
+            hasUser: !!authState.user,
+            userName: authState.user?.displayName,
+            isAuthenticated: authState.isAuthenticated,
+            isLoading: authState.isLoading,
+            error: authState.error,
+          });
+
+          if (authState.user && authState.isAuthenticated && !authState.isLoading) {
+            // State is ready immediately - navigate after brief delay for visual feedback
+            logger.info('Auth state ready immediately, navigating', { redirect });
+            setTimeout(() => navigate(redirect, { replace: true }), VISUAL_FEEDBACK_DELAY_MS);
+          } else {
+            // State not ready yet - wait for next update
+            // Use a completed flag to prevent race between subscription and timeout
+            logger.warn('Auth state not ready after handleCallback completed', {
+              hasUser: !!authState.user,
+              isAuthenticated: authState.isAuthenticated,
+              isLoading: authState.isLoading,
+            });
+            let completed = false;
+
+            const unsubscribe = useAuthStore.subscribe((newState) => {
+              logger.info('Auth state subscription update', {
+                hasUser: !!newState.user,
+                isAuthenticated: newState.isAuthenticated,
+                isLoading: newState.isLoading,
+              });
+              if (!completed && newState.user && newState.isAuthenticated && !newState.isLoading) {
+                completed = true;
+                unsubscribe();
+                logger.info('Auth state ready via subscription, navigating', { redirect });
+                setTimeout(() => navigate(redirect, { replace: true }), VISUAL_FEEDBACK_DELAY_MS);
+              }
+            });
+
+            // Fallback: navigate anyway after timeout to prevent hanging
+            setTimeout(() => {
+              if (!completed) {
+                completed = true;
+                unsubscribe();
+                const finalState = useAuthStore.getState();
+                logger.warn('Auth state timeout, navigating anyway', {
+                  redirect,
+                  finalState: {
+                    hasUser: !!finalState.user,
+                    isAuthenticated: finalState.isAuthenticated,
+                    isLoading: finalState.isLoading,
+                    error: finalState.error,
+                  },
+                });
+                navigate(redirect, { replace: true });
+              }
+            }, AUTH_STATE_TIMEOUT_MS);
+          }
+        };
+
+        verifyAndNavigate();
       })
       .catch((err) => {
         console.error('OAuth callback failed:', err);
