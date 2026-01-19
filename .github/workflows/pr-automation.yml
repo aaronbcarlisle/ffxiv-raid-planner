@@ -62,11 +62,12 @@ jobs:
               }
             }
 
-            // Get changed files
+            // Get changed files (max 100 per page - sufficient for most PRs)
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: pr.number
+              pull_number: pr.number,
+              per_page: 100
             });
 
             const filePaths = files.map(f => f.filename);
