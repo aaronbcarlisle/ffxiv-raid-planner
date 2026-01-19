@@ -149,7 +149,7 @@ function NavSidebar({
 
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
         >
           {NAV_GROUPS.map((group, groupIndex) => {
             const isCollapsed = collapsedGroups.has(group.label);

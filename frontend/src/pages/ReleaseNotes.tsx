@@ -395,7 +395,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             )}
           </div>
           {item.description && (
-            <p className="text-sm text-text-muted mt-0.5">{item.description}</p>
+            <p className="text-sm text-text-muted mt-0.5 font-normal">{item.description}</p>
           )}
         </div>
       </Button>
@@ -546,10 +546,11 @@ function ReleaseCard({
                   </span>
                 )}
               </div>
-              {release.title && <p className="text-text-secondary">{release.title}</p>}
+              {/* font-normal overrides Button's inherited font-semibold */}
+              {release.title && <p className="text-text-secondary font-normal">{release.title}</p>}
             </div>
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-right shrink-0 font-normal">
             <time dateTime={release.date} className="text-sm text-text-muted block">
               {new Date(release.date).toLocaleDateString('en-US', {
                 year: 'numeric',
