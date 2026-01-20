@@ -900,7 +900,7 @@ export function GroupView() {
             <span className="text-status-error">Error</span>
           </span>
         }
-        size="md"
+        size="lg"
       >
         <div className="space-y-4">
           {/* Main error message */}
