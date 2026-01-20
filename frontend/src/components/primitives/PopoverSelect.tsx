@@ -278,10 +278,10 @@ export function createRoleColorClasses(
 }
 
 /**
- * Creates option classes for gear source colors (raid, tome, crafted)
+ * Creates option classes for gear source colors (raid, tome, base_tome, crafted)
  */
 export function createGearSourceColorClasses(
-  source: 'raid' | 'tome' | 'crafted'
+  source: 'raid' | 'tome' | 'base_tome' | 'crafted'
 ): { selected: string; unselected: string } {
   if (source === 'raid') {
     return {
@@ -289,7 +289,7 @@ export function createGearSourceColorClasses(
       unselected: 'bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30',
     };
   }
-  if (source === 'tome') {
+  if (source === 'tome' || source === 'base_tome') {
     return {
       selected: 'bg-gear-tome text-surface-base',
       unselected: 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30',

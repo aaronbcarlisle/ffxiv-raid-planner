@@ -27,11 +27,17 @@ import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
  * Calculate item level for a single gear slot, mirroring calculateAverageItemLevel logic.
  */
 function getSlotItemLevel(
-  slot: { slot: GearSlot; hasItem: boolean; bisSource: GearSource; isAugmented: boolean; itemLevel?: number; currentSource?: string },
+  slot: { slot: GearSlot; hasItem: boolean; bisSource: GearSource | null; isAugmented: boolean; itemLevel?: number; currentSource?: string },
   tierId: string
 ): number {
-  // Special case: tome BiS with item but NOT augmented
+  // Special case: 'tome' BiS with item but NOT augmented
   if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
+    const isWeapon = slot.slot === 'weapon';
+    return getItemLevelForCategory(tierId, 'tome', isWeapon);
+  }
+
+  // Special case: 'base_tome' BiS - use base tome iLv
+  if (slot.hasItem && slot.bisSource === 'base_tome') {
     const isWeapon = slot.slot === 'weapon';
     return getItemLevelForCategory(tierId, 'tome', isWeapon);
   }

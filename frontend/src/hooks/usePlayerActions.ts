@@ -7,8 +7,8 @@
 
 import { useCallback } from 'react';
 import { useTierStore } from '../stores/tierStore';
-import type { SnapshotPlayer, GearSlotStatus, ResetMode, SortPreset, AssignPlayerRequest } from '../types';
-import { GEAR_SLOTS } from '../types';
+import type { SnapshotPlayer, ResetMode, SortPreset, AssignPlayerRequest } from '../types';
+import { resetGearProgress, unlinkBisData, resetGearCompletely } from '../utils/gearDefaults';
 
 interface UsePlayerActionsParams {
   groupId: string | undefined;
@@ -142,15 +142,8 @@ export function usePlayerActions({
     switch (mode) {
       case 'progress': {
         // Reset progress only (keep BiS config)
-        const progressResetGear = player.gear.map(slot => ({
-          ...slot,
-          hasItem: false,
-          isAugmented: false,
-          currentSource: 'crafted' as const, // Reset to crafted since no item
-          // Keep: bisSource, itemName, itemIcon, itemLevel, itemStats
-        }));
         updates = {
-          gear: progressResetGear,
+          gear: resetGearProgress(player.gear),
           tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
         };
         break;
@@ -158,43 +151,17 @@ export function usePlayerActions({
 
       case 'unlink': {
         // Unlink BiS (keep progress and sources)
-        // Recalculate currentSource based on current hasItem/isAugmented state
-        const unlinkGear = player.gear.map(slot => {
-          let currentSource: 'savage' | 'tome' | 'tome_up' | 'crafted' = 'crafted';
-          if (slot.hasItem) {
-            if (slot.bisSource === 'raid') {
-              currentSource = 'savage';
-            } else {
-              currentSource = slot.isAugmented ? 'tome_up' : 'tome';
-            }
-          }
-          return {
-            slot: slot.slot,
-            bisSource: slot.bisSource,
-            hasItem: slot.hasItem,
-            isAugmented: slot.isAugmented,
-            currentSource,
-            // Clear: itemName, itemIcon, itemLevel, itemStats
-          };
-        });
         updates = {
-          gear: unlinkGear,
+          gear: unlinkBisData(player.gear),
           bisLink: '',
         };
         break;
       }
 
       case 'all': {
-        // Reset everything
-        const defaultGear: GearSlotStatus[] = GEAR_SLOTS.map((slot) => ({
-          slot,
-          bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
-          hasItem: false,
-          isAugmented: false,
-          currentSource: 'crafted' as const, // Reset to crafted since no item
-        }));
+        // Reset everything to smart defaults
         updates = {
-          gear: defaultGear,
+          gear: resetGearCompletely(),
           tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
           bisLink: '',
         };

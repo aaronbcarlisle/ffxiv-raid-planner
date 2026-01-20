@@ -5,7 +5,7 @@ interface ItemHoverCardProps {
   itemLevel: number;
   itemIcon?: string;
   itemStats?: ItemStats;
-  bisSource: GearSource;
+  bisSource: GearSource | null;
   /** Whether the player has this item (shows "missing" indicator if false) */
   hasItem?: boolean;
   /** Whether the tome item is augmented (only relevant when bisSource is 'tome') */
@@ -83,6 +83,25 @@ export function ItemHoverCard({
   const leftStats = sortedStats.slice(0, midPoint);
   const rightStats = sortedStats.slice(midPoint);
 
+  // Get color class for BiS source
+  const getSourceColorClass = () => {
+    if (bisSource === 'raid') return 'text-source-raid';
+    if (bisSource === 'crafted') return 'text-orange-400';
+    if (bisSource === 'tome' || bisSource === 'base_tome') return 'text-accent';
+    return 'text-text-muted'; // null/unset
+  };
+
+  // Get source badge info
+  const getSourceBadge = () => {
+    if (bisSource === 'raid') return { text: 'Savage', classes: 'bg-source-raid/20 text-source-raid' };
+    if (bisSource === 'crafted') return { text: 'Crafted', classes: 'bg-orange-400/20 text-orange-400' };
+    if (bisSource === 'tome') return { text: 'Tome (Aug.)', classes: 'bg-accent/20 text-accent' };
+    if (bisSource === 'base_tome') return { text: 'Base Tome', classes: 'bg-accent/20 text-accent' };
+    return { text: 'Unset', classes: 'bg-surface-interactive text-text-muted' };
+  };
+
+  const sourceBadge = getSourceBadge();
+
   return (
     <div className="min-w-[200px] max-w-[280px]">
       {/* Header with icon and name */}
@@ -95,12 +114,7 @@ export function ItemHoverCard({
           />
         )}
         <div className="flex-1 min-w-0">
-          <div
-            className={`text-sm font-medium leading-tight ${
-              bisSource === 'raid' ? 'text-source-raid' :
-              bisSource === 'crafted' ? 'text-orange-400' : 'text-accent'
-            }`}
-          >
+          <div className={`text-sm font-medium leading-tight ${getSourceColorClass()}`}>
             {itemName}
             {missingText && (
               <span className="ml-1 text-text-muted">
@@ -139,16 +153,8 @@ export function ItemHoverCard({
 
       {/* Source badge */}
       <div className="border-t border-border-default mt-2 pt-2">
-        <span
-          className={`text-xs px-1.5 py-0.5 rounded ${
-            bisSource === 'raid'
-              ? 'bg-source-raid/20 text-source-raid'
-              : bisSource === 'crafted'
-                ? 'bg-orange-400/20 text-orange-400'
-                : 'bg-accent/20 text-accent'
-          }`}
-        >
-          {bisSource === 'raid' ? 'Savage' : bisSource === 'crafted' ? 'Crafted' : 'Tomestone'}
+        <span className={`text-xs px-1.5 py-0.5 rounded ${sourceBadge.classes}`}>
+          {sourceBadge.text}
         </span>
       </div>
     </div>

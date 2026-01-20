@@ -23,19 +23,29 @@ export type GearSlot =
   | 'ring2';
 
 // Where the BiS gear comes from
-export type GearSource = 'raid' | 'tome' | 'crafted';
+export type GearSource = 'raid' | 'tome' | 'base_tome' | 'crafted';
 
-// Display names for BiS sources (short labels for UI)
+// Display names for BiS sources (abbreviated for compact UI)
 export const BIS_SOURCE_NAMES: Record<GearSource, string> = {
+  raid: 'R',
+  tome: 'T',
+  base_tome: 'BT',
+  crafted: 'C',
+};
+
+// Full display names for BiS sources (for tooltips)
+export const BIS_SOURCE_FULL_NAMES: Record<GearSource, string> = {
   raid: 'Raid',
-  tome: 'Tome',
-  crafted: 'Craft',
+  tome: 'Tome (Aug.)',
+  base_tome: 'Base Tome',
+  crafted: 'Crafted',
 };
 
 // Color classes for BiS sources
 export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
   raid: 'text-gear-raid',
   tome: 'text-gear-tome',
+  base_tome: 'text-gear-tome',
   crafted: 'text-orange-400',
 };
 
@@ -43,6 +53,7 @@ export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
 export const BIS_SOURCE_BG_COLORS: Record<GearSource, string> = {
   raid: 'bg-gear-raid/20',
   tome: 'bg-gear-tome/20',
+  base_tome: 'bg-gear-tome/20',
   crafted: 'bg-orange-400/20',
 };
 
@@ -156,7 +167,7 @@ export interface ItemStats {
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
-  bisSource: GearSource;         // BiS target (raid or tome)
+  bisSource: GearSource | null;  // BiS target (null = unset, displays as "--")
   currentSource?: GearSourceCategory; // What's actually equipped (9 categories)
   hasItem: boolean;
   isAugmented: boolean;

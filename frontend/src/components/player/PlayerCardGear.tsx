@@ -110,7 +110,7 @@ export function PlayerCardGear({
               <div className="text-sm">
                 <span className="font-medium">{slotName}</span>
                 <span className="text-text-muted ml-1">
-                  ({BIS_SOURCE_NAMES[slotData.bisSource]})
+                  ({slotData.bisSource ? BIS_SOURCE_NAMES[slotData.bisSource] : '--'})
                 </span>
                 {!slotData.hasItem && (
                   <span className="text-text-muted ml-1">(missing)</span>

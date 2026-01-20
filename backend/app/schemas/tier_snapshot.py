@@ -24,7 +24,11 @@ class CamelModel(BaseModel):
 # --- Gear Source Categories ---
 
 # BiS source: where the best-in-slot gear comes from
-GearBisSource = Literal["raid", "tome", "crafted"]
+# - raid: Raid drop (savage)
+# - tome: Tomestone gear that needs augmentation
+# - base_tome: Tomestone gear where base version is BiS (no augmentation needed)
+# - crafted: Crafted pentamelded gear
+GearBisSource = Literal["raid", "tome", "base_tome", "crafted"]
 
 GearSourceCategory = Literal[
     "savage",    # iLv 790/795 - Raid drop gear
