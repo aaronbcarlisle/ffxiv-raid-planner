@@ -111,6 +111,11 @@ export function GroupView() {
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
 
+  // Reset errorCopied when error clears (modal closes)
+  useEffect(() => {
+    if (!error) setErrorCopied(false);
+  }, [error]);
+
   // Handle viewAs URL parameter
   useEffect(() => {
     const viewAsUserId = searchParams.get('viewAs');
@@ -443,8 +448,8 @@ export function GroupView() {
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
-  // Match errorStack to its corresponding error to avoid displaying mismatched stack traces
-  const errorStack = groupError ? groupErrorStack : tierErrorStack;
+  // Match errorStack to whichever error is being displayed
+  const errorStack = error === groupError ? groupErrorStack : tierErrorStack;
 
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
