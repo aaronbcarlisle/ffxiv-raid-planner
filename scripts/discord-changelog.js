@@ -439,7 +439,12 @@ function parseReleaseNotes() {
 /**
  * Check if the release notes file was modified in this commit.
  * Any modification to releaseNotes.ts triggers a release announcement.
- * This is simpler and more reliable than checking for CURRENT_VERSION changes specifically.
+ *
+ * Trade-off: This approach trades precision for simplicity. We treat any change
+ * as a potential new release instead of parsing CURRENT_VERSION, avoiding the
+ * previous bug-prone grep logic. Since all changes to main require code review,
+ * non-release edits (typo fixes in old notes) can be batched with version bumps
+ * or the duplicate announcement is acceptable.
  */
 function didVersionChange() {
   try {

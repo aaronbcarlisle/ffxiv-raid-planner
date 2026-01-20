@@ -133,7 +133,6 @@ async function deleteAllMessages(channel) {
     const messages = await channel.messages.fetch({ limit: 100 });
 
     if (messages.size === 0) {
-      hasMore = false;
       break;
     }
 

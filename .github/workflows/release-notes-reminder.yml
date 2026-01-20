@@ -94,7 +94,7 @@ jobs:
               const releasesMatch = content.match(/export const RELEASES:\s*Release\[\]\s*=\s*\[([\s\S]*?)^\];/m);
               if (releasesMatch) {
                 // Validate date format (must be full ISO 8601: YYYY-MM-DDTHH:MM:SSZ)
-                const datePattern = /date:\s*['"](\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?)['"]}/g;
+                const datePattern = /date:\s*['"](\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)['"]/g;
                 const invalidDates = [];
                 let dateMatch;
                 while ((dateMatch = datePattern.exec(releasesMatch[1])) !== null) {
