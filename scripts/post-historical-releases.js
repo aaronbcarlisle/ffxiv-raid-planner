@@ -127,8 +127,14 @@ async function deleteAllMessages(channel) {
   console.log('Deleting all messages in channel...');
   let totalDeleted = 0;
   let hasMore = true;
+  let iterations = 0;
+  const MAX_ITERATIONS = 100; // Safety limit: 100 batches = 10,000 messages max
+  let lastDeletedCount = -1;
 
-  while (hasMore) {
+  while (hasMore && iterations < MAX_ITERATIONS) {
+    iterations++;
+    const deletedThisIteration = totalDeleted;
+
     // Fetch up to 100 messages at a time
     const messages = await channel.messages.fetch({ limit: 100 });
 
@@ -143,14 +149,22 @@ async function deleteAllMessages(channel) {
 
     // Bulk delete recent messages (much faster)
     if (recentMessages.size > 1) {
-      await channel.bulkDelete(recentMessages);
-      totalDeleted += recentMessages.size;
-      console.log(`  Bulk deleted ${recentMessages.size} recent messages`);
+      try {
+        await channel.bulkDelete(recentMessages);
+        totalDeleted += recentMessages.size;
+        console.log(`  Bulk deleted ${recentMessages.size} recent messages`);
+      } catch (error) {
+        console.warn(`  Warning: Bulk delete failed: ${error.message}`);
+      }
     } else if (recentMessages.size === 1) {
       // bulkDelete requires at least 2 messages
-      await recentMessages.first().delete();
-      totalDeleted += 1;
-      console.log(`  Deleted 1 recent message`);
+      try {
+        await recentMessages.first().delete();
+        totalDeleted += 1;
+        console.log(`  Deleted 1 recent message`);
+      } catch (error) {
+        console.warn(`  Warning: Could not delete recent message: ${error.message}`);
+      }
     }
 
     // Delete old messages one by one (slower but necessary)
@@ -174,11 +188,21 @@ async function deleteAllMessages(channel) {
       hasMore = false;
     }
 
+    // Safety check: if no messages were deleted this iteration, we're stuck
+    if (totalDeleted === deletedThisIteration && messages.size > 0) {
+      console.warn(`  Warning: No messages deleted in iteration ${iterations}, breaking to avoid infinite loop`);
+      break;
+    }
+
     // Small delay between batches
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  console.log(`  ✓ Deleted ${totalDeleted} total messages`);
+  if (iterations >= MAX_ITERATIONS) {
+    console.warn(`  Warning: Reached maximum iterations (${MAX_ITERATIONS}), some messages may remain`);
+  }
+
+  console.log(`  ✓ Deleted ${totalDeleted} total messages in ${iterations} iterations`);
   return totalDeleted;
 }
 

@@ -274,7 +274,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.9',
-    date: '2026-01-17T02:11:28Z',
+    date: '2026-01-15T22:56:32Z',
     title: 'Session Stability',
     highlights: ['Fixed session timeouts', 'Improved token refresh'],
     items: [
@@ -494,7 +494,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.5',
-    date: '2026-01-11T11:12:41Z',
+    date: '2026-01-10T18:28:06Z',
     title: 'Shortcuts & Polish',
     highlights: ['Redesigned shortcuts', 'Shortcut hints in menus'],
     items: [
