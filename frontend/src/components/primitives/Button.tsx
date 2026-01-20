@@ -75,7 +75,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading ? (
-          <Spinner size="sm" label="Loading" />
+          <Spinner size="sm" color="current" label="Loading" />
         ) : (
           leftIcon
         )}

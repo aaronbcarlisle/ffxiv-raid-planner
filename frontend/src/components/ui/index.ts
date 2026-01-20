@@ -32,7 +32,7 @@ export {
   StaticListItemSkeleton,
   StaticListSkeleton,
 } from './Skeleton';
-export { Spinner, SpinnerOverlay, type SpinnerSize } from './Spinner';
+export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { TextArea, type TextAreaProps } from './TextArea';

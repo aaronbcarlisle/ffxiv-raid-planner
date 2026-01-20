@@ -152,8 +152,8 @@ export function InlineError({
  * ```
  */
 export interface ErrorBoxProps {
-  /** The error message to display */
-  message: string;
+  /** The error message to display. Returns null if falsy (empty string, null, undefined). */
+  message?: string | null;
   /** Additional CSS classes */
   className?: string;
   /** Size variant - sm has tighter padding */
