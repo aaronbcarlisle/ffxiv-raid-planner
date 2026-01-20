@@ -36,7 +36,10 @@ import {
   DropdownSubContent,
 } from '../components/primitives/Dropdown';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/primitives/Popover';
-import type { GearSourceCategory } from '../types';
+import { PopoverSelect, createGearSourceColorClasses } from '../components/primitives/PopoverSelect';
+import { PositionSelector } from '../components/player/PositionSelector';
+import { TankRoleSelector } from '../components/player/TankRoleSelector';
+import type { GearSourceCategory, GearSource, RaidPosition, TankRole, SnapshotPlayer } from '../types';
 
 // Import Lucide icons directly for the icon library display
 import {
@@ -344,6 +347,7 @@ const NAV_GROUPS = [
       { id: 'icon-library', label: 'Icon Library' },
       { id: 'job-icons', label: 'Job Icons' },
       { id: 'tooltips', label: 'Tooltips' },
+      { id: 'popover', label: 'Popover' },
       { id: 'tables', label: 'Tables' },
     ],
   },
@@ -1164,7 +1168,218 @@ import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
   );
 }
 
-// Menus & Navigation Section
+// Popover Section - Floating content and badge-style selectors
+function PopoverSection() {
+  const [bisSourceValue, setBisSourceValue] = useState<GearSource>('raid');
+  const [positionValue, setPositionValue] = useState<RaidPosition | null>('T1');
+  const [tankRoleValue, setTankRoleValue] = useState<TankRole | null>('MT');
+
+  // Derive role from selected position (T→tank, H→healer, M→melee, R→ranged)
+  const getRoleFromPosition = (pos: RaidPosition | null): 'tank' | 'healer' | 'melee' | 'ranged' => {
+    if (!pos) return 'tank';
+    if (pos.startsWith('T')) return 'tank';
+    if (pos.startsWith('H')) return 'healer';
+    if (pos.startsWith('M')) return 'melee';
+    return 'ranged';
+  };
+  const derivedRole = getRoleFromPosition(positionValue);
+
+  // Mock player for selector demos (owner role allows editing)
+  const mockPlayer: SnapshotPlayer = {
+    id: 'demo-player',
+    tierSnapshotId: 'demo-tier',
+    name: 'Demo Player',
+    job: 'PLD',
+    role: derivedRole,
+    position: positionValue ?? undefined,
+    tankRole: tankRoleValue ?? undefined,
+    configured: true,
+    sortOrder: 0,
+    gear: [],
+    tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
+    weaponPriorities: [],
+    weaponPrioritiesLocked: false,
+    isSubstitute: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  return (
+    <Section id="popover" title="Popover">
+      <p className="text-text-secondary mb-6">
+        Floating content triggered by user interaction. Use for custom content (forms, grids) or standardized badge-style selectors.
+      </p>
+
+      {/* Basic Popover */}
+      <Subsection title="Basic Popover">
+        <p className="text-sm text-text-muted mb-4">
+          For custom floating content. Unlike dropdowns, can contain any content (forms, grids, etc).
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <Popover>
+            <PopoverTrigger>
+              <Button variant="secondary">Simple Popover</Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-4 w-64">
+              <h4 className="font-medium text-text-primary mb-2">Popover Title</h4>
+              <p className="text-sm text-text-secondary">
+                This is a simple popover with text content. Click outside to close.
+              </p>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger>
+              <Button variant="secondary">With Form</Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-4 w-72">
+              <h4 className="font-medium text-text-primary mb-3">Quick Edit</h4>
+              <div className="space-y-3">
+                <div>
+                  <Label size="sm">Name</Label>
+                  <Input
+                    value=""
+                    onChange={() => {}}
+                    placeholder="Enter name..."
+                    size="sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="primary">Save</Button>
+                  <Button size="sm" variant="ghost">Cancel</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger>
+              <Button variant="secondary">Position Options</Button>
+            </PopoverTrigger>
+            <PopoverContent side="right" align="start" className="p-4">
+              <p className="text-sm text-text-secondary">Opens to the right</p>
+              <p className="text-xs text-text-muted mt-1">side="right" align="start"</p>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </Subsection>
+
+      {/* PopoverSelect - Badge-style Selectors */}
+      <Subsection title="PopoverSelect (Badge-style Selectors)">
+        <p className="text-sm text-text-muted mb-4">
+          Standardized badge-style popover selectors. Used for compact selections like Position, Tank Role, and BiS Source.
+          All share consistent styling: <code className="text-xs bg-surface-elevated px-1 rounded">text-xs font-bold</code>, solid background when selected, 20% opacity when not.
+        </p>
+
+        {/* Design Standards */}
+        <div className="bg-surface-elevated rounded-lg p-4 mb-4">
+          <h4 className="font-medium text-text-primary mb-2">Design Standards</h4>
+          <div className="grid grid-cols-2 gap-4 text-xs mb-4">
+            <div>
+              <div className="text-text-muted mb-1">Trigger</div>
+              <code className="text-accent">px-1.5 py-0.5 rounded text-xs font-bold</code>
+            </div>
+            <div>
+              <div className="text-text-muted mb-1">Dropdown Items</div>
+              <code className="text-accent">px-2 py-1.5 rounded text-xs font-bold</code>
+            </div>
+            <div>
+              <div className="text-text-muted mb-1">Selected State</div>
+              <code className="text-accent">bg-{'{color}'} text-surface-base</code>
+            </div>
+            <div>
+              <div className="text-text-muted mb-1">Suggested (Unselected)</div>
+              <code className="text-accent">bg-{'{color}'}/20 text-{'{color}'} hover:bg-{'{color}'}/30</code>
+            </div>
+          </div>
+          <div className="text-xs border-t border-border-default pt-3">
+            <div className="text-text-muted mb-1">Not Suggested (Grayed Out)</div>
+            <code className="text-accent">bg-surface-base text-text-muted hover:bg-surface-interactive</code>
+            <p className="text-text-muted mt-2">
+              For PositionSelector, only positions matching the player's role are colored. Others are grayed out to guide selection.
+            </p>
+          </div>
+        </div>
+
+        {/* Interactive Examples */}
+        <div className="flex flex-wrap items-start gap-8">
+          {/* Position Selector */}
+          <div>
+            <div className="text-xs text-text-muted mb-2">PositionSelector</div>
+            <PositionSelector
+              position={positionValue ?? undefined}
+              role={derivedRole}
+              onSelect={(pos) => setPositionValue(pos ?? null)}
+              player={mockPlayer}
+              userRole="owner"
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Role derived from position: <code className="bg-surface-elevated px-1 rounded">{derivedRole}</code>
+            </p>
+          </div>
+
+          {/* Tank Role Selector */}
+          <div>
+            <div className="text-xs text-text-muted mb-2">TankRoleSelector</div>
+            <TankRoleSelector
+              tankRole={tankRoleValue ?? undefined}
+              onSelect={(role) => setTankRoleValue(role ?? null)}
+              player={mockPlayer}
+              userRole="owner"
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Current: <code className="bg-surface-elevated px-1 rounded">{tankRoleValue ?? 'none'}</code>
+            </p>
+          </div>
+
+          {/* BiS Source Selector */}
+          <div>
+            <div className="text-xs text-text-muted mb-2">BiS Source (PopoverSelect)</div>
+            <PopoverSelect
+              value={bisSourceValue}
+              options={[
+                { value: 'raid', label: 'Raid', colorClasses: createGearSourceColorClasses('raid') },
+                { value: 'tome', label: 'Tome', colorClasses: createGearSourceColorClasses('tome') },
+                { value: 'crafted', label: 'Crafted', colorClasses: createGearSourceColorClasses('crafted') },
+              ]}
+              onSelect={(v) => setBisSourceValue(v as GearSource ?? 'raid')}
+              layout="vertical"
+              placeholder="--"
+              triggerWidth="w-16"
+              contentWidth="w-20"
+              showIcons={false}
+              getTriggerClasses={(v) => {
+                if (!v) return 'bg-surface-interactive text-text-muted hover:text-text-secondary';
+                if (v === 'raid') return 'bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30';
+                if (v === 'tome') return 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30';
+                return 'bg-orange-400/20 text-orange-400 hover:bg-orange-400/30';
+              }}
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Current: <code className="bg-surface-elevated px-1 rounded">{bisSourceValue}</code>
+            </p>
+          </div>
+
+        </div>
+      </Subsection>
+
+      {/* Color Helpers */}
+      <Subsection title="Color Helpers">
+        <div className="bg-surface-elevated rounded-lg p-4">
+          <div className="text-sm text-text-secondary space-y-2">
+            <p><code className="text-accent">createRoleColorClasses('T')</code> → Tank colors (blue)</p>
+            <p><code className="text-accent">createRoleColorClasses('H')</code> → Healer colors (green)</p>
+            <p><code className="text-accent">createRoleColorClasses('M')</code> → DPS colors (red)</p>
+            <p><code className="text-accent">createGearSourceColorClasses('raid')</code> → Raid colors (pink)</p>
+            <p><code className="text-accent">createGearSourceColorClasses('tome')</code> → Tome colors (teal)</p>
+            <p><code className="text-accent">createGearSourceColorClasses('crafted')</code> → Crafted colors (orange)</p>
+          </div>
+        </div>
+      </Subsection>
+    </Section>
+  );
+}
+
 function MenusSection() {
   const [dropdownCheckbox1, setDropdownCheckbox1] = useState(true);
   const [dropdownCheckbox2, setDropdownCheckbox2] = useState(false);
@@ -1333,60 +1548,6 @@ function MenusSection() {
             }}
           />
         )}
-      </Subsection>
-
-      {/* Popover */}
-      <Subsection title="Popover">
-        <p className="text-sm text-text-muted mb-4">
-          For custom floating content. Unlike dropdowns, can contain any content (forms, grids, etc).
-        </p>
-        <div className="flex flex-wrap gap-4">
-          <Popover>
-            <PopoverTrigger>
-              <Button variant="secondary">Simple Popover</Button>
-            </PopoverTrigger>
-            <PopoverContent className="p-4 w-64">
-              <h4 className="font-medium text-text-primary mb-2">Popover Title</h4>
-              <p className="text-sm text-text-secondary">
-                This is a simple popover with text content. Click outside to close.
-              </p>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger>
-              <Button variant="secondary">With Form</Button>
-            </PopoverTrigger>
-            <PopoverContent className="p-4 w-72">
-              <h4 className="font-medium text-text-primary mb-3">Quick Edit</h4>
-              <div className="space-y-3">
-                <div>
-                  <Label size="sm">Name</Label>
-                  <Input
-                    value=""
-                    onChange={() => {}}
-                    placeholder="Enter name..."
-                    size="sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="primary">Save</Button>
-                  <Button size="sm" variant="ghost">Cancel</Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger>
-              <Button variant="secondary">Position Options</Button>
-            </PopoverTrigger>
-            <PopoverContent side="right" align="start" className="p-4">
-              <p className="text-sm text-text-secondary">Opens to the right</p>
-              <p className="text-xs text-text-muted mt-1">side="right" align="start"</p>
-            </PopoverContent>
-          </Popover>
-        </div>
       </Subsection>
 
       {/* Tab Navigation */}
@@ -2487,6 +2648,9 @@ export function DesignSystem() {
             </Tooltip>
           </div>
         </Section>
+
+        {/* Popover */}
+        <PopoverSection />
 
         {/* Forms & Inputs */}
         <FormsSection />

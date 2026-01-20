@@ -12,9 +12,9 @@ import { useState } from 'react';
 import { Checkbox } from '../ui/Checkbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
-import { Tooltip, TooltipProvider } from '../primitives';
+import { Tooltip, TooltipProvider, PopoverSelect, createGearSourceColorClasses } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_NAMES, BIS_SOURCE_COLORS, BIS_SOURCE_BG_COLORS } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_NAMES } from '../../types';
 import { requiresAugmentation } from '../../utils/calculations';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
@@ -431,13 +431,6 @@ interface GearTableProps {
   tierId?: string;
 }
 
-// Helper to cycle through BiS sources: raid → tome → crafted → raid
-function getNextBisSource(current: GearSource): GearSource {
-  if (current === 'raid') return 'tome';
-  if (current === 'tome') return 'crafted';
-  return 'raid';
-}
-
 export function GearTable({
   gear,
   tomeWeapon,
@@ -463,13 +456,12 @@ export function GearTable({
     };
   };
 
-  const handleSourceChange = (slot: string, currentSource: GearSource) => {
+  const handleSourceChange = (slot: string, newSource: GearSource) => {
     if (!gearPermission.allowed) {
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
       return;
     }
-    const nextSource = getNextBisSource(currentSource);
-    onGearChange(slot, { bisSource: nextSource });
+    onGearChange(slot, { bisSource: newSource });
   };
 
   const handleHasItemChange = (slot: string, hasItem: boolean) => {
@@ -649,20 +641,27 @@ export function GearTable({
                 </td>
                 <td className="py-1 text-center">
                   <div className="flex justify-center">
-                    <Tooltip
-                      content={!gearPermission.allowed ? gearPermission.reason : 'Click to cycle BiS source (Raid → Tome → Craft)'}
-                    >
-                      <button
-                        onClick={() => handleSourceChange(slot, status.bisSource)}
-                        className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${BIS_SOURCE_BG_COLORS[status.bisSource]} ${BIS_SOURCE_COLORS[status.bisSource]} ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
-                        disabled={!gearPermission.allowed}
-                      >
-                        {BIS_SOURCE_NAMES[status.bisSource]}
-                        <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                        </svg>
-                      </button>
-                    </Tooltip>
+                    <PopoverSelect
+                      value={status.bisSource}
+                      options={[
+                        { value: 'raid' as GearSource, label: 'Raid', description: 'BiS gear from Savage raids', colorClasses: createGearSourceColorClasses('raid') },
+                        { value: 'tome' as GearSource, label: 'Tome', description: 'BiS gear from tomestone vendor (may need augmentation)', colorClasses: createGearSourceColorClasses('tome') },
+                        { value: 'crafted' as GearSource, label: 'Crafted', description: 'BiS gear from crafted pentamelded gear', colorClasses: createGearSourceColorClasses('crafted') },
+                      ]}
+                      onSelect={(source) => handleSourceChange(slot, source as GearSource)}
+                      disabled={!gearPermission.allowed}
+                      disabledReason={gearPermission.reason}
+                      triggerWidth="w-14"
+                      contentWidth="w-20"
+                      layout="vertical"
+                      showIcons={false}
+                      getTriggerClasses={(v) => {
+                        if (!v) return 'bg-surface-interactive text-text-muted';
+                        if (v === 'raid') return 'bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30';
+                        if (v === 'tome') return 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30';
+                        return 'bg-orange-400/20 text-orange-400 hover:bg-orange-400/30';
+                      }}
+                    />
                   </div>
                 </td>
                 <td className="py-1">
