@@ -13,7 +13,7 @@ import { useState } from 'react';
 import type { GearSource, TomeWeaponStatus } from '../../types';
 import { BIS_SOURCE_FULL_NAMES } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
-import { Tooltip } from '../primitives/Tooltip';
+import { Tooltip } from '../primitives/Tooltip'; // Only used for WeaponBiSSelector
 
 // BiS source display info
 const BIS_SOURCE_INFO: Record<GearSource, { short: string; label: string; description: string }> = {
@@ -56,10 +56,15 @@ function getSourceButtonClasses(source: GearSource, isSelected: boolean): string
       ? `${baseClasses} bg-gear-raid text-surface-base`
       : `${baseClasses} bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30`;
   }
-  if (source === 'tome' || source === 'base_tome') {
+  if (source === 'tome') {
     return isSelected
       ? `${baseClasses} bg-gear-tome text-surface-base`
       : `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
+  }
+  if (source === 'base_tome') {
+    return isSelected
+      ? `${baseClasses} bg-gear-base-tome text-surface-base`
+      : `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30`;
   }
   // crafted
   return isSelected
@@ -77,13 +82,15 @@ function getTriggerClasses(source: GearSource | null, disabled: boolean): string
   if (disabled) {
     if (!source) return `${baseClasses} bg-surface-interactive text-text-muted opacity-50 cursor-not-allowed`;
     if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid opacity-50 cursor-not-allowed`;
-    if (source === 'tome' || source === 'base_tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome opacity-50 cursor-not-allowed`;
+    if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome opacity-50 cursor-not-allowed`;
+    if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome opacity-50 cursor-not-allowed`;
     return `${baseClasses} bg-orange-400/20 text-orange-400 opacity-50 cursor-not-allowed`;
   }
 
   if (!source) return `${baseClasses} bg-surface-interactive text-text-muted hover:text-text-secondary`;
   if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30`;
-  if (source === 'tome' || source === 'base_tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
+  if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
+  if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30`;
   return `${baseClasses} bg-orange-400/20 text-orange-400 hover:bg-orange-400/30`;
 }
 
@@ -116,38 +123,26 @@ export function BiSSourceSelector({
     setOpen(false);
   };
 
-  // Get display label
+  // Get display label and ARIA label
   const displayLabel = bisSource ? BIS_SOURCE_INFO[bisSource].short : '--';
-
-  // Tooltip content
-  const tooltipContent = disabled
+  const ariaLabel = disabled && disabledReason
     ? disabledReason
     : bisSource
-      ? (
-        <div>
-          <div className="font-medium">{BIS_SOURCE_FULL_NAMES[bisSource]}</div>
-          <div className="text-text-secondary text-xs mt-0.5">
-            {BIS_SOURCE_INFO[bisSource].description}
-          </div>
-        </div>
-      )
-      : 'Click to set BiS source';
+      ? `BiS source: ${BIS_SOURCE_FULL_NAMES[bisSource]}`
+      : 'BiS source not set';
 
   return (
     <Popover open={open && !disabled} onOpenChange={setOpen}>
-      <Tooltip content={tooltipContent}>
-        <span className="inline-flex">
-          <PopoverTrigger asChild>
-            {/* design-system-ignore: Badge-style button with specific toggle styling */}
-            <button
-              className={getTriggerClasses(bisSource, disabled)}
-              disabled={disabled}
-            >
-              {displayLabel}
-            </button>
-          </PopoverTrigger>
-        </span>
-      </Tooltip>
+      <PopoverTrigger asChild>
+        {/* design-system-ignore: Badge-style button with specific toggle styling */}
+        <button
+          className={getTriggerClasses(bisSource, disabled)}
+          disabled={disabled}
+          aria-label={ariaLabel}
+        >
+          {displayLabel}
+        </button>
+      </PopoverTrigger>
 
       <PopoverContent align="start" sideOffset={4} className="p-2 w-auto">
         {/* 2x2 grid layout */}
@@ -155,18 +150,15 @@ export function BiSSourceSelector({
           {GRID_LAYOUT.flat().map((source) => {
             const isSelected = bisSource === source;
             return (
-              <Tooltip
+              <button
                 key={source}
-                content={BIS_SOURCE_INFO[source].description}
-                side="top"
+                onClick={() => handleSelect(source)}
+                className={`${getSourceButtonClasses(source, isSelected)} min-w-[4rem] text-center`}
+                aria-label={`${BIS_SOURCE_INFO[source].label}: ${BIS_SOURCE_INFO[source].description}`}
+                aria-pressed={isSelected}
               >
-                <button
-                  onClick={() => handleSelect(source)}
-                  className={`${getSourceButtonClasses(source, isSelected)} min-w-[4rem] text-center`}
-                >
-                  {BIS_SOURCE_INFO[source].label}
-                </button>
-              </Tooltip>
+                {BIS_SOURCE_INFO[source].label}
+              </button>
             );
           })}
         </div>

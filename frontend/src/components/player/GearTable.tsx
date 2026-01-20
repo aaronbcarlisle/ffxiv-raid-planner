@@ -21,26 +21,6 @@ import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 import { FileSearch } from 'lucide-react';
 
-// Helper function to get upgrade material tooltip based on gear slot
-function getUpgradeMaterialTooltip(slot: GearSlot): string {
-  // Accessories need Glaze
-  if (['earring', 'necklace', 'bracelet', 'ring1', 'ring2'].includes(slot)) {
-    return 'Get Glaze from Floor 1 (M9S) or Floor 2 (M10S)';
-  }
-
-  // Left-side armor needs Twine
-  if (['head', 'body', 'hands', 'legs', 'feet'].includes(slot)) {
-    return 'Get Twine from Floor 3 (M11S)';
-  }
-
-  // Weapon needs Solvent
-  if (slot === 'weapon') {
-    return 'Get Solvent from Floor 3 (M11S)';
-  }
-
-  return 'Augmentation needed';
-}
-
 // Reusable slot icon component with optional item icon and hover card
 function SlotIcon({
   slot,
@@ -290,25 +270,15 @@ function WeaponSlotRow({
           />
         </td>
         <td className="py-1">
-          <Tooltip
-            content={
-              disabled && disabledTooltip
-                ? disabledTooltip
-                : status.hasItem
-                  ? 'Raid weapon acquired'
-                  : 'Click when you have the raid weapon'
-            }
-          >
-            <div className="flex justify-center">
-              <GearStatusCircle
-                state={toGearState(status.hasItem, status.isAugmented)}
-                bisSource="raid"
-                requiresAugmentation={false}
-                disabled={disabled}
-                onChange={onGearStateChange}
-              />
-            </div>
-          </Tooltip>
+          <div className="flex justify-center">
+            <GearStatusCircle
+              state={toGearState(status.hasItem, status.isAugmented)}
+              bisSource="raid"
+              requiresAugmentation={false}
+              disabled={disabled}
+              onChange={onGearStateChange}
+            />
+          </div>
         </td>
       </tr>
 
@@ -334,27 +304,15 @@ function WeaponSlotRow({
             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs text-gear-tome font-bold ${disabled ? 'opacity-50' : ''}`}>T</span>
           </td>
           <td className="py-1">
-            <Tooltip
-              content={
-                disabled && disabledTooltip
-                  ? disabledTooltip
-                  : !tomeWeapon.hasItem
-                    ? 'Click when you have the tome weapon'
-                    : !tomeWeapon.isAugmented
-                      ? 'Click again to mark as augmented (needs Solvent from M11S)'
-                      : 'Tome weapon augmented'
-              }
-            >
-              <div className="flex justify-center">
-                <GearStatusCircle
-                  state={toGearState(tomeWeapon.hasItem, tomeWeapon.isAugmented)}
-                  bisSource="tome"
-                  requiresAugmentation={true}
-                  disabled={disabled}
-                  onChange={handleTomeWeaponStateChange}
-                />
-              </div>
-            </Tooltip>
+            <div className="flex justify-center">
+              <GearStatusCircle
+                state={toGearState(tomeWeapon.hasItem, tomeWeapon.isAugmented)}
+                bisSource="tome"
+                requiresAugmentation={true}
+                disabled={disabled}
+                onChange={handleTomeWeaponStateChange}
+              />
+            </div>
           </td>
         </tr>
       )}
@@ -408,9 +366,18 @@ export function GearTable({
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
       return;
     }
-    // When clearing bisSource, also reset hasItem and isAugmented
+    // When clearing bisSource, reset everything including item metadata
     if (newSource === null) {
-      onGearChange(slot, { bisSource: null, hasItem: false, isAugmented: false });
+      onGearChange(slot, {
+        bisSource: null,
+        hasItem: false,
+        isAugmented: false,
+        currentSource: undefined,
+        itemName: undefined,
+        itemLevel: undefined,
+        itemIcon: undefined,
+        itemStats: undefined,
+      });
     } else {
       onGearChange(slot, { bisSource: newSource });
     }
@@ -586,31 +553,15 @@ export function GearTable({
                   </div>
                 </td>
                 <td className="py-1">
-                  <Tooltip
-                    content={
-                      !gearPermission.allowed
-                        ? gearPermission.reason
-                        : !status.bisSource
-                          ? 'Set BiS source first'
-                          : !status.hasItem
-                            ? 'Click when you have this gear'
-                            : status.bisSource === 'tome' && needsAug && !status.isAugmented
-                              ? `Click again to mark as augmented (${getUpgradeMaterialTooltip(status.slot)})`
-                              : status.bisSource === 'tome' && !needsAug
-                                ? 'Complete (base tome is BiS)'
-                                : 'Complete'
-                    }
-                  >
-                    <div className="flex justify-center">
-                      <GearStatusCircle
-                        state={toGearState(status.hasItem, status.isAugmented)}
-                        bisSource={status.bisSource}
-                        requiresAugmentation={needsAug}
-                        disabled={!gearPermission.allowed}
-                        onChange={(newState) => handleGearStateChange(slot, newState)}
-                      />
-                    </div>
-                  </Tooltip>
+                  <div className="flex justify-center">
+                    <GearStatusCircle
+                      state={toGearState(status.hasItem, status.isAugmented)}
+                      bisSource={status.bisSource}
+                      requiresAugmentation={needsAug}
+                      disabled={!gearPermission.allowed}
+                      onChange={(newState) => handleGearStateChange(slot, newState)}
+                    />
+                  </div>
                 </td>
               </tr>
             );

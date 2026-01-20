@@ -45,7 +45,7 @@ export const BIS_SOURCE_FULL_NAMES: Record<GearSource, string> = {
 export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
   raid: 'text-gear-raid',
   tome: 'text-gear-tome',
-  base_tome: 'text-gear-tome',
+  base_tome: 'text-gear-base-tome',
   crafted: 'text-orange-400',
 };
 
@@ -53,7 +53,7 @@ export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
 export const BIS_SOURCE_BG_COLORS: Record<GearSource, string> = {
   raid: 'bg-gear-raid/20',
   tome: 'bg-gear-tome/20',
-  base_tome: 'bg-gear-tome/20',
+  base_tome: 'bg-gear-base-tome/20',
   crafted: 'bg-orange-400/20',
 };
 

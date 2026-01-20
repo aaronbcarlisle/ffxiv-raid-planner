@@ -289,10 +289,16 @@ export function createGearSourceColorClasses(
       unselected: 'bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30',
     };
   }
-  if (source === 'tome' || source === 'base_tome') {
+  if (source === 'tome') {
     return {
       selected: 'bg-gear-tome text-surface-base',
       unselected: 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30',
+    };
+  }
+  if (source === 'base_tome') {
+    return {
+      selected: 'bg-gear-base-tome text-surface-base',
+      unselected: 'bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30',
     };
   }
   return {

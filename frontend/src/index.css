@@ -64,7 +64,8 @@
      Distinct from status colors
      ================================ */
   --color-gear-raid: #f87171;          /* Lighter red, distinct from error */
-  --color-gear-tome: #2dd4bf;          /* Bright teal */
+  --color-gear-tome: #2dd4bf;          /* Bright teal - augmented tome */
+  --color-gear-base-tome: #60a5fa;     /* Blue-400 - base tome (no aug needed) */
   --color-gear-augmented: #fcd34d;     /* Gold/amber */
   --color-gear-crafted: #c4b5fd;       /* Soft purple */
 

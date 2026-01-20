@@ -13,7 +13,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Job selector | `JobPicker` | `components/player/JobPicker.tsx` |
 | Position selector (T1-R2) | `PositionSelector` | `components/player/PositionSelector.tsx` |
 | Tank role (MT/OT) | `TankRoleSelector` | `components/player/TankRoleSelector.tsx` |
-| BiS source (Raid/Tome/Craft) | `BiSSourceSelector` | `components/player/BiSSourceSelector.tsx` |
+| BiS source (R/T/BT/C) | `BiSSourceSelector` | `components/player/BiSSourceSelector.tsx` |
 | Badge-style popover select | `PopoverSelect` | `components/primitives/PopoverSelect.tsx` |
 | Text input | `Input` | `components/ui/Input.tsx` |
 | Dropdown select | `Select` | `components/ui/Select.tsx` |
@@ -345,6 +345,9 @@ const tankClasses = createRoleColorClasses('T');
 // Gear source colors
 const tomeClasses = createGearSourceColorClasses('tome');
 // { selected: 'bg-gear-tome text-surface-base', unselected: 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30' }
+
+const baseTomeClasses = createGearSourceColorClasses('base_tome');
+// { selected: 'bg-gear-base-tome text-surface-base', unselected: 'bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30' }
 ```
 
 **Usage:**
@@ -800,23 +803,27 @@ import { TankRoleSelector } from '../components/player/TankRoleSelector';
 
 **Path:** `components/player/BiSSourceSelector.tsx`
 
-**Purpose:** BiS gear source selector (Raid/Tome/Crafted) for gear table rows.
+**Purpose:** BiS gear source selector (Raid/Tome/B. Tome/Crafted) for gear table rows.
 
 **Props:**
 ```typescript
 interface BiSSourceSelectorProps {
-  bisSource: GearSource;  // 'raid' | 'tome' | 'crafted'
-  onSelect: (source: GearSource) => void;
+  bisSource: GearSource | null;  // 'raid' | 'tome' | 'base_tome' | 'crafted' | null
+  onSelect: (source: GearSource | null) => void;
   disabled?: boolean;
   disabledReason?: string;
 }
 ```
 
 **Features:**
-- Vertical list layout with icons
-- Stone icon for Tomestone, Sword for Raid, Hammer for Crafted
-- Color-coded: Raid (pink/red), Tome (teal), Crafted (orange)
-- Tooltips with descriptions
+- 2x2 grid layout in popover
+- Four BiS sources with distinct colors:
+  - **Raid** (R) - Red - Savage drops
+  - **Tome** (T) - Teal - Tomestone gear that needs augmentation
+  - **B. Tome** (BT) - Blue - Base tomestone where unaugmented version is BiS
+  - **Crafted** (C) - Orange - Crafted pentamelded gear
+- Clear Slot option to reset to unset state
+- ARIA labels for accessibility
 
 **Usage:**
 ```tsx
@@ -1188,8 +1195,9 @@ Always use semantic color classes, never hardcode hex values.
 <span className="text-status-error">Error</span>
 
 // Gear source colors
-<span className="text-gear-raid">Raid</span>
-<span className="text-gear-tome">Tome</span>
+<span className="text-gear-raid">Raid</span>           // Red - Savage drops
+<span className="text-gear-tome">Tome</span>           // Teal - Augmented tomestone
+<span className="text-gear-base-tome">Base Tome</span> // Blue - Base tomestone (no aug needed)
 <span className="text-gear-augmented">Augmented</span>
 
 // Material colors
