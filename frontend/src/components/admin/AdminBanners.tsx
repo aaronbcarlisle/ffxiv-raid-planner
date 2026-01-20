@@ -12,9 +12,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 export interface AdminBannersProps {
   isAdminAccess: boolean;
+  /** Callback triggered when exiting admin mode - used to refresh group data */
+  onExitAdminMode?: () => void;
 }
 
-export function AdminBanners({ isAdminAccess }: AdminBannersProps) {
+export function AdminBanners({ isAdminAccess, onExitAdminMode }: AdminBannersProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,6 +32,9 @@ export function AdminBanners({ isAdminAccess }: AdminBannersProps) {
     const newSearch = params.toString();
     const newPath = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
     navigate(newPath, { replace: true });
+
+    // Trigger group refetch to get correct permissions without admin elevation
+    onExitAdminMode?.();
   };
 
   return (

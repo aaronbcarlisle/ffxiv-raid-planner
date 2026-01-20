@@ -600,7 +600,15 @@ export function GroupView() {
       )}
 
       {/* Admin access banner (View As banner is in Layout) */}
-      <AdminBanners isAdminAccess={isAdminAccess} />
+      <AdminBanners
+        isAdminAccess={isAdminAccess}
+        onExitAdminMode={() => {
+          // Refetch group to get correct permissions without admin elevation
+          if (shareCode) {
+            fetchGroupByShareCode(shareCode);
+          }
+        }}
+      />
 
       {/* Content when tier exists */}
       {currentTier && (
