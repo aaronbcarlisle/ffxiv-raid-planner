@@ -121,8 +121,8 @@ export function TankRoleSelector({
                 className={`
                   px-3 py-1.5 rounded text-xs font-bold transition-colors
                   ${isSelected
-                    ? 'bg-accent text-surface-base'
-                    : 'bg-surface-base text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                    ? 'bg-role-tank text-surface-base'
+                    : 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
                   }
                 `}
               >
