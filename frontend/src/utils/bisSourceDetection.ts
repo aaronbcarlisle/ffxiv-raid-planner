@@ -59,9 +59,8 @@ export function getCorrectBisSource(status: GearSlotStatus): GearSource | null {
 
   // Check for base_tome miscategorization:
   // Name matches tome pattern, doesn't have "Aug." prefix, but bisSource isn't 'base_tome'
-  // Also skip if bisSource is already 'tome' - augmented tome gear may not have Aug. prefix
-  // depending on import source, and we don't want false positives
-  if (status.bisSource !== 'base_tome' && status.bisSource !== 'tome') {
+  // This catches cases where base tome items are incorrectly set to 'tome' (augmented)
+  if (status.bisSource !== 'base_tome') {
     const hasAugPrefix = nameLower.startsWith('aug.') || nameLower.startsWith('augmented');
     if (!hasAugPrefix) {
       for (const pattern of TOME_PATTERNS) {
