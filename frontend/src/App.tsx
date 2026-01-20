@@ -33,6 +33,7 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
       <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
         <h2 className="text-xl font-display text-status-error mb-2">Something went wrong</h2>
         <p className="text-text-secondary text-sm mb-4">{error.message}</p>
+{/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}
           className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
