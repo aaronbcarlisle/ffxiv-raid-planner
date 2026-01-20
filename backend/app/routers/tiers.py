@@ -761,14 +761,17 @@ async def update_snapshot_player(
         raise NotFound("Player not found")
 
     # Check permissions: admins and leads/owners can edit anyone, members can only edit their own
-    can_edit_all = user_is_admin or (membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value))
+    is_owner_or_lead = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+    can_edit_anyone = user_is_admin or is_owner_or_lead
     is_own_player = player.user_id == current_user.id
 
-    if not can_edit_all and not is_own_player:
+    if not can_edit_anyone and not is_own_player:
         raise PermissionDenied("You can only edit your own character")
 
     # Members can only update their own player's fields
-    if not can_edit_all and is_own_player:
+    # Note: Field restrictions are based on membership role only, not admin status.
+    # Admins editing their own card as a regular member are still subject to restrictions.
+    if not is_owner_or_lead and is_own_player:
         allowed_fields = {
             "gear", "tome_weapon", "bis_link", "lodestone_id",
             "job", "name", "role", "position", "tank_role"
