@@ -476,8 +476,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       expect(getDominantCategoryColor(items)).toBe(CATEGORY_COLORS.improvement);
     });
 
-    it('respects priority order: breaking > feature > fix > improvement', () => {
-      // Test with all categories - breaking should win
+    it('breaks ties using priority order: breaking > feature > fix > improvement', () => {
+      // Test with all categories (1 each = tie) - breaking should win
       const allCategories = [
         { category: 'improvement', title: 'I1' },
         { category: 'fix', title: 'F1' },
@@ -486,7 +486,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       ];
       expect(getDominantCategoryColor(allCategories)).toBe(CATEGORY_COLORS.breaking);
 
-      // Without breaking - feature should win
+      // Without breaking (1 each = tie) - feature should win
       const noBreaking = [
         { category: 'improvement', title: 'I1' },
         { category: 'fix', title: 'F1' },
@@ -494,12 +494,51 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       ];
       expect(getDominantCategoryColor(noBreaking)).toBe(CATEGORY_COLORS.feature);
 
-      // Without breaking/feature - fix should win
+      // Without breaking/feature (1 each = tie) - fix should win
       const noFeature = [
         { category: 'improvement', title: 'I1' },
         { category: 'fix', title: 'F1' },
       ];
       expect(getDominantCategoryColor(noFeature)).toBe(CATEGORY_COLORS.fix);
+    });
+
+    it('selects category with most items over higher-priority categories', () => {
+      // 8 fixes should beat 3 features, even though feature has higher priority
+      const manyFixes = [
+        { category: 'fix', title: 'F1' },
+        { category: 'fix', title: 'F2' },
+        { category: 'fix', title: 'F3' },
+        { category: 'fix', title: 'F4' },
+        { category: 'fix', title: 'F5' },
+        { category: 'fix', title: 'F6' },
+        { category: 'fix', title: 'F7' },
+        { category: 'fix', title: 'F8' },
+        { category: 'feature', title: 'N1' },
+        { category: 'feature', title: 'N2' },
+        { category: 'feature', title: 'N3' },
+      ];
+      expect(getDominantCategoryColor(manyFixes)).toBe(CATEGORY_COLORS.fix);
+
+      // 5 improvements should beat 2 fixes
+      const manyImprovements = [
+        { category: 'improvement', title: 'I1' },
+        { category: 'improvement', title: 'I2' },
+        { category: 'improvement', title: 'I3' },
+        { category: 'improvement', title: 'I4' },
+        { category: 'improvement', title: 'I5' },
+        { category: 'fix', title: 'F1' },
+        { category: 'fix', title: 'F2' },
+      ];
+      expect(getDominantCategoryColor(manyImprovements)).toBe(CATEGORY_COLORS.improvement);
+
+      // 3 fixes + 1 breaking → fixes should win (count over priority)
+      const fixesOverBreaking = [
+        { category: 'fix', title: 'F1' },
+        { category: 'fix', title: 'F2' },
+        { category: 'fix', title: 'F3' },
+        { category: 'breaking', title: 'B1' },
+      ];
+      expect(getDominantCategoryColor(fixesOverBreaking)).toBe(CATEGORY_COLORS.fix);
     });
   });
 

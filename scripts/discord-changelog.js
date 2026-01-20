@@ -558,11 +558,7 @@ function getDominantCategoryColor(items) {
     }
   }
 
-  if (dominantCategory && CATEGORY_COLORS[dominantCategory]) {
-    return CATEGORY_COLORS[dominantCategory];
-  }
-
-  return 0x14b8a6; // Teal fallback
+  return CATEGORY_COLORS[dominantCategory] || 0x14b8a6; // Teal fallback
 }
 
 
