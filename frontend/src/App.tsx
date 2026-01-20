@@ -26,6 +26,7 @@ const MembersGuideDocs = lazy(() => import('./pages/MembersGuideDocs'));
 const CommonTasksDocs = lazy(() => import('./pages/CommonTasksDocs'));
 const ReleaseNotes = lazy(() => import('./pages/ReleaseNotes'));
 const RoadmapDocs = lazy(() => import('./pages/RoadmapDocs'));
+const QuickStartGuide = lazy(() => import('./pages/QuickStartGuide'));
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
   return (
@@ -69,6 +70,7 @@ function App() {
             <Route path="group/:shareCode" element={<GroupView />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
+            <Route path="docs/quick-start" element={<QuickStartGuide />} />
             <Route path="docs/design-system" element={<DesignSystemPage />} />
             <Route path="docs/loot-math" element={<LootMathDocs />} />
             <Route path="docs/api" element={<ApiDocs />} />
