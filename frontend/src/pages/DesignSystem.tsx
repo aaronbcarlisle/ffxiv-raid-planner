@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { CodeBlock } from '../components/docs';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import { IconButton } from '../components/primitives/IconButton';
@@ -552,9 +553,9 @@ function IconLibrarySection() {
 
       {/* Usage Code Example */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Import directly
+        <CodeBlock
+          language="tsx"
+          code={`// Import directly
 import { Settings, Trash2, Plus } from 'lucide-react';
 
 // Use in JSX
@@ -568,9 +569,8 @@ import { Settings, Trash2, Plus } from 'lucide-react';
 <IconButton
   icon={<Settings className="w-4 h-4" />}
   label="Settings"
-/>`}</code>
-          </pre>
-        </div>
+/>`}
+        />
       </Subsection>
     </Section>
   );
@@ -946,7 +946,7 @@ function FormsSection() {
             <li>• <strong>Colored Headers</strong> - Each group uses its semantic color (CSS variables)</li>
             <li>• <strong>Smart Filtering</strong> - Search matches both labels AND group names</li>
             <li>• <strong>Keyboard Navigation</strong> - Arrow keys work seamlessly across groups</li>
-            <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-base px-1 py-0.5 rounded">color-mix</code> with 15% group color</li>
+            <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">color-mix</code> with 15% group color</li>
           </ul>
         </div>
         <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
@@ -1126,9 +1126,9 @@ const options = users.map(u => ({
 
       {/* Usage Code */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Import components
+        <CodeBlock
+          language="tsx"
+          code={`// Import components
 import { Input, TextArea, Label, InputGroup, Checkbox, Select } from '@/components/ui';
 import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
 
@@ -1160,9 +1160,8 @@ import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
 <ThreeStateCheckbox
   state={gearState}  // 'none' | 'have' | 'augmented'
   onChange={setGearState}
-/>`}</code>
-          </pre>
-        </div>
+/>`}
+        />
       </Subsection>
     </Section>
   );
@@ -1268,7 +1267,7 @@ function PopoverSection() {
       <Subsection title="PopoverSelect (Badge-style Selectors)">
         <p className="text-sm text-text-muted mb-4">
           Standardized badge-style popover selectors. Used for compact selections like Position, Tank Role, and BiS Source.
-          All share consistent styling: <code className="text-xs bg-surface-elevated px-1 rounded">text-xs font-bold</code>, solid background when selected, 20% opacity when not.
+          All share consistent styling: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">text-xs font-bold</code>, solid background when selected, 20% opacity when not.
         </p>
 
         {/* Design Standards */}
@@ -1277,24 +1276,24 @@ function PopoverSection() {
           <div className="grid grid-cols-2 gap-4 text-xs mb-4">
             <div>
               <div className="text-text-muted mb-1">Trigger</div>
-              <code className="text-accent">px-1.5 py-0.5 rounded text-xs font-bold</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">px-1.5 py-0.5 rounded text-xs font-bold</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Dropdown Items</div>
-              <code className="text-accent">px-2 py-1.5 rounded text-xs font-bold</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">px-2 py-1.5 rounded text-xs font-bold</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Selected State</div>
-              <code className="text-accent">bg-{'{color}'} text-surface-base</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-{'{color}'} text-surface-base</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Suggested (Unselected)</div>
-              <code className="text-accent">bg-{'{color}'}/20 text-{'{color}'} hover:bg-{'{color}'}/30</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-{'{color}'}/20 text-{'{color}'} hover:bg-{'{color}'}/30</code>
             </div>
           </div>
           <div className="text-xs border-t border-border-default pt-3">
             <div className="text-text-muted mb-1">Not Suggested (Grayed Out)</div>
-            <code className="text-accent">bg-surface-base text-text-muted hover:bg-surface-interactive</code>
+            <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-surface-base text-text-muted hover:bg-surface-interactive</code>
             <p className="text-text-muted mt-2">
               For PositionSelector, only positions matching the player's role are colored. Others are grayed out to guide selection.
             </p>
@@ -1314,7 +1313,7 @@ function PopoverSection() {
               userRole="owner"
             />
             <p className="text-xs text-text-muted mt-1">
-              Role derived from position: <code className="bg-surface-elevated px-1 rounded">{derivedRole}</code>
+              Role derived from position: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{derivedRole}</code>
             </p>
           </div>
 
@@ -1328,7 +1327,7 @@ function PopoverSection() {
               userRole="owner"
             />
             <p className="text-xs text-text-muted mt-1">
-              Current: <code className="bg-surface-elevated px-1 rounded">{tankRoleValue ?? 'none'}</code>
+              Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{tankRoleValue ?? 'none'}</code>
             </p>
           </div>
 
@@ -1356,7 +1355,7 @@ function PopoverSection() {
               }}
             />
             <p className="text-xs text-text-muted mt-1">
-              Current: <code className="bg-surface-elevated px-1 rounded">{bisSourceValue}</code>
+              Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{bisSourceValue}</code>
             </p>
           </div>
 
@@ -1367,12 +1366,12 @@ function PopoverSection() {
       <Subsection title="Color Helpers">
         <div className="bg-surface-elevated rounded-lg p-4">
           <div className="text-sm text-text-secondary space-y-2">
-            <p><code className="text-accent">createRoleColorClasses('T')</code> → Tank colors (blue)</p>
-            <p><code className="text-accent">createRoleColorClasses('H')</code> → Healer colors (green)</p>
-            <p><code className="text-accent">createRoleColorClasses('M')</code> → DPS colors (red)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('raid')</code> → Raid colors (pink)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('tome')</code> → Tome colors (teal)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('crafted')</code> → Crafted colors (orange)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('T')</code> → Tank colors (blue)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('H')</code> → Healer colors (green)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('M')</code> → DPS colors (red)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('raid')</code> → Raid colors (pink)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('tome')</code> → Tome colors (teal)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('crafted')</code> → Crafted colors (orange)</p>
           </div>
         </div>
       </Subsection>
@@ -1577,7 +1576,7 @@ function MenusSection() {
           ))}
         </div>
         <p className="text-xs text-text-muted mt-2">
-          Current: <code className="bg-surface-elevated px-1 rounded">{activeTab}</code>
+          Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{activeTab}</code>
         </p>
       </Subsection>
 
@@ -1622,9 +1621,9 @@ function MenusSection() {
 
       {/* Usage Code */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Dropdown Menu
+        <CodeBlock
+          language="tsx"
+          code={`// Dropdown Menu
 import {
   Dropdown, DropdownTrigger, DropdownContent,
   DropdownItem, DropdownSeparator, DropdownLabel,
@@ -1654,9 +1653,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/primitives
   <PopoverContent side="bottom" align="start" className="p-4">
     {/* Custom content */}
   </PopoverContent>
-</Popover>`}</code>
-          </pre>
-        </div>
+</Popover>`}
+        />
       </Subsection>
     </Section>
   );
@@ -1842,9 +1840,9 @@ function ContainersSection() {
         <p className="text-sm text-text-muted mb-4">
           Import PageContainer from layout or use Tailwind classes directly.
         </p>
-        <div className="bg-surface-overlay rounded-lg p-4 border border-border-default">
-          <pre className="text-sm text-text-secondary overflow-x-auto">
-            <code>{`// Using PageContainer component
+        <CodeBlock
+          language="tsx"
+          code={`// Using PageContainer component
 import { PageContainer } from '../components/layout';
 
 <PageContainer variant="data">
@@ -1854,9 +1852,8 @@ import { PageContainer } from '../components/layout';
 // Or use Tailwind classes directly
 <div className="max-w-[160rem] mx-auto">
   <PlayerGrid />
-</div>`}</code>
-          </pre>
-        </div>
+</div>`}
+        />
       </Subsection>
 
       {/* Grid Breakpoints */}
@@ -2088,6 +2085,24 @@ export function DesignSystem() {
         id: s.id,
         element: document.getElementById(s.id)
       })).filter(s => s.element);
+
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection(prev => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
 
       // Find sections whose heading has been scrolled past (top <= threshold)
       // Among those, pick the one with the highest top (most recently crossed)
@@ -2702,7 +2717,7 @@ export function DesignSystem() {
                   Header contains static switcher + tabs. Contextual toolbar below.
                 </p>
                 <div className="text-xs text-text-muted">
-                  <code className="text-accent">max-w-[160rem]</code> - Expands to 6 columns on ultrawide
+                  <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-[160rem]</code> - Expands to 6 columns on ultrawide
                 </div>
               </div>
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
@@ -2717,7 +2732,7 @@ export function DesignSystem() {
                   persistent navigation. Contained in visible boundary.
                 </p>
                 <div className="text-xs text-text-muted">
-                  <code className="text-accent">max-w-[120rem]</code> - Readable width with sidebar
+                  <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-[120rem]</code> - Readable width with sidebar
                 </div>
               </div>
             </div>
@@ -2804,35 +2819,35 @@ export function DesignSystem() {
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Data Grid</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">160rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">160rem</code></td>
                     <td className="py-3">Static switcher + tabs + toolbar</td>
                     <td className="py-3">GroupView, Dashboard</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Documentation</td>
                     <td className="py-3"><span className="text-status-success">Sticky nav</span></td>
-                    <td className="py-3"><code className="text-accent">120rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">120rem</code></td>
                     <td className="py-3">Breadcrumb + title</td>
                     <td className="py-3">Design System, Guides</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Form/Settings</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">max-w-2xl</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-2xl</code></td>
                     <td className="py-3">Centered with title</td>
                     <td className="py-3">Create Static, Settings</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Landing</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">80rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">80rem</code></td>
                     <td className="py-3">Marketing hero + CTA</td>
                     <td className="py-3">Home, Docs Index</td>
                   </tr>
                   <tr>
                     <td className="py-3 font-medium text-text-primary">Modal</td>
                     <td className="py-3"><span className="text-text-muted">N/A</span></td>
-                    <td className="py-3"><code className="text-accent">md - 4xl</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">md - 4xl</code></td>
                     <td className="py-3">Dialog title + close</td>
                     <td className="py-3">BiS Import, Settings</td>
                   </tr>
@@ -2993,55 +3008,55 @@ export function DesignSystem() {
                 </thead>
                 <tbody className="text-text-secondary">
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">base</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">base</code></td>
                     <td className="py-2">0px</td>
                     <td className="py-2">1</td>
                     <td className="py-2">Mobile portrait</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">sm:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">sm:</code></td>
                     <td className="py-2">640px</td>
                     <td className="py-2">2</td>
                     <td className="py-2">Mobile landscape, small tablets</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">md:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">md:</code></td>
                     <td className="py-2">768px</td>
                     <td className="py-2">2</td>
                     <td className="py-2">Tablets</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">lg:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">lg:</code></td>
                     <td className="py-2">1024px</td>
                     <td className="py-2">3</td>
                     <td className="py-2">Desktop (show sidebars)</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">xl:</code></td>
                     <td className="py-2">1280px</td>
                     <td className="py-2">3</td>
                     <td className="py-2">Large desktop</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">2xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">2xl:</code></td>
                     <td className="py-2">1536px</td>
                     <td className="py-2">4</td>
                     <td className="py-2">Wide desktop</td>
                   </tr>
                   <tr className="border-b border-border-subtle bg-accent/5">
-                    <td className="py-2"><code className="text-accent">3xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">3xl:</code></td>
                     <td className="py-2">1920px</td>
                     <td className="py-2">5</td>
                     <td className="py-2">Full HD / 1080p monitors</td>
                   </tr>
                   <tr className="border-b border-border-subtle bg-accent/5">
-                    <td className="py-2"><code className="text-accent">4xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">4xl:</code></td>
                     <td className="py-2">2560px</td>
                     <td className="py-2">6</td>
                     <td className="py-2">QHD / 1440p monitors</td>
                   </tr>
                   <tr className="bg-accent/5">
-                    <td className="py-2"><code className="text-accent">5xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">5xl:</code></td>
                     <td className="py-2">3440px</td>
                     <td className="py-2">6+</td>
                     <td className="py-2">Ultrawide monitors</td>
@@ -3162,10 +3177,11 @@ export function DesignSystem() {
           {/* Code Examples */}
           <Subsection title="Implementation Examples">
             <div className="space-y-4">
-              <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
+              <div>
                 <div className="text-xs text-accent mb-2">// Data-First Page (GroupView, Dashboard)</div>
-                <pre className="text-sm text-text-secondary">
-                  <code>{`<div className="min-h-screen bg-[#020203]">
+                <CodeBlock
+                  language="tsx"
+                  code={`<div className="min-h-screen bg-[#020203]">
   {/* Header: Static switcher + tabs */}
   <header className="bg-surface-raised border-b border-border-default">
     <div className="px-6 py-3 flex items-center justify-between">
@@ -3188,13 +3204,14 @@ export function DesignSystem() {
       {players.map(player => <PlayerCard key={player.id} {...player} />)}
     </div>
   </main>
-</div>`}</code>
-                </pre>
+</div>`}
+                />
               </div>
-              <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
+              <div>
                 <div className="text-xs text-accent mb-2">// Documentation Page (Design System)</div>
-                <pre className="text-sm text-text-secondary">
-                  <code>{`<div className="min-h-screen bg-surface-base">
+                <CodeBlock
+                  language="tsx"
+                  code={`<div className="min-h-screen bg-surface-base">
   {/* Header: Breadcrumb navigation */}
   <header className="bg-surface-raised border-b border-border-default">
     <div className="max-w-[120rem] mx-auto px-6 py-6">
@@ -3212,8 +3229,8 @@ export function DesignSystem() {
       {/* Section content */}
     </main>
   </div>
-</div>`}</code>
-                </pre>
+</div>`}
+                />
               </div>
             </div>
           </Subsection>
@@ -3301,7 +3318,7 @@ export function DesignSystem() {
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <div className="font-medium text-text-primary mb-2">aria-sort Attribute</div>
                 <p className="text-sm text-text-secondary mb-3">
-                  Active sort column must include <code className="text-accent">aria-sort</code> for screen readers.
+                  Active sort column must include <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">aria-sort</code> for screen readers.
                 </p>
                 <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
                   <div className="text-text-muted">// Active column</div>
@@ -3638,17 +3655,17 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                 <tbody className="text-text-secondary">
                   <tr className="border-b border-border-subtle">
                     <td className="py-2">Compact</td>
-                    <td className="py-2"><code className="text-accent">w-48</code> (192px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-48</code> (192px)</td>
                     <td className="py-2">Short labels, flat list</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-2">Standard</td>
-                    <td className="py-2"><code className="text-accent">w-56</code> (224px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-56</code> (224px)</td>
                     <td className="py-2">Grouped navigation with counts</td>
                   </tr>
                   <tr>
                     <td className="py-2">Wide</td>
-                    <td className="py-2"><code className="text-accent">w-64</code> (256px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-64</code> (256px)</td>
                     <td className="py-2">Icons, nested items, long labels</td>
                   </tr>
                 </tbody>

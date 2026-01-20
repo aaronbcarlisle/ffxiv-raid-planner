@@ -9,7 +9,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ExternalLink, Check, ArrowRight } from 'lucide-react';
+import { ChevronDown, Check, ExternalLink } from 'lucide-react';
+import { LinkCard } from '../components/docs';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -110,47 +111,6 @@ function InfoBox({
       {title && <h4 className="font-medium mb-2">{title}</h4>}
       <div className="text-text-secondary text-sm">{children}</div>
     </div>
-  );
-}
-
-function LinkCard({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  const isExternal = href.startsWith('http');
-  const className =
-    'group flex items-center gap-3 p-3 rounded-lg bg-surface-card border border-border-subtle hover:border-accent/50 transition-colors';
-
-  const content = (
-    <>
-      <div className="flex-1">
-        <div className="font-medium text-text-primary group-hover:text-accent transition-colors flex items-center gap-1">
-          {title}
-          {isExternal && <ExternalLink className="w-3 h-3" />}
-        </div>
-        <div className="text-sm text-text-muted">{description}</div>
-      </div>
-      <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" />
-    </>
-  );
-
-  if (isExternal) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={href} className={className}>
-      {content}
-    </Link>
   );
 }
 
@@ -283,6 +243,9 @@ export default function HowToDocs() {
           document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       }
+    } else {
+      // No hash - scroll to top to prevent browser scroll restoration from jumping to wrong section
+      window.scrollTo(0, 0);
     }
   }, [location.hash]);
 
@@ -297,10 +260,30 @@ export default function HowToDocs() {
       }
 
       const threshold = 120;
+      const viewportHeight = window.innerHeight;
       const sections = NAV_SECTIONS.map((s) => ({
         id: s.id,
         element: document.getElementById(s.id),
       })).filter((s) => s.element);
+
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection((prev) => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       let bestSection: string | null = null;
       let bestTop = -Infinity;
 
@@ -318,7 +301,7 @@ export default function HowToDocs() {
         for (const section of sections) {
           if (section.element) {
             const rect = section.element.getBoundingClientRect();
-            if (rect.top >= 0 && rect.top < window.innerHeight) {
+            if (rect.top >= 0 && rect.top < viewportHeight) {
               bestSection = section.id;
               break;
             }

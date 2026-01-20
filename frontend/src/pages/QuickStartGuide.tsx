@@ -291,6 +291,9 @@ export default function QuickStartGuide() {
           document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       }
+    } else {
+      // No hash - scroll to top to prevent browser scroll restoration from jumping to wrong section
+      window.scrollTo(0, 0);
     }
   }, [location.hash]);
 
@@ -305,10 +308,30 @@ export default function QuickStartGuide() {
       }
 
       const threshold = 120;
+      const viewportHeight = window.innerHeight;
       const sections = NAV_SECTIONS.map((s) => ({
         id: s.id,
         element: document.getElementById(s.id),
       })).filter((s) => s.element);
+
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection((prev) => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       let bestSection: string | null = null;
       let bestTop = -Infinity;
 
@@ -326,7 +349,7 @@ export default function QuickStartGuide() {
         for (const section of sections) {
           if (section.element) {
             const rect = section.element.getBoundingClientRect();
-            if (rect.top >= 0 && rect.top < window.innerHeight) {
+            if (rect.top >= 0 && rect.top < viewportHeight) {
               bestSection = section.id;
               break;
             }
@@ -527,7 +550,7 @@ export default function QuickStartGuide() {
 
             <div className="mt-4">
               <LinkCard
-                href="/docs/how-to#bis-import"
+                href="/docs/how-to#import-bis"
                 title="More import options"
                 description="XIVGear, Etro, presets, and troubleshooting"
               />

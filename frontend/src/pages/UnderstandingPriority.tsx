@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight, ArrowRight, ExternalLink } from 'lucide-react';
+import { CodeBlock } from '../components/docs';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -96,6 +97,35 @@ function InfoBox({
   );
 }
 
+// Formula display components for better readability
+function FormulaDisplay({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="border border-border-subtle rounded-lg p-4 font-mono text-sm overflow-x-auto" style={{ backgroundColor: 'rgba(6, 6, 8, 1)' }}>
+      {children}
+    </div>
+  );
+}
+
+function FormulaLine({ children }: { children: React.ReactNode }) {
+  return <div className="mb-1 last:mb-0">{children}</div>;
+}
+
+function Variable({ children }: { children: React.ReactNode }) {
+  return <span className="text-accent font-medium">{children}</span>;
+}
+
+function Operator({ children }: { children: React.ReactNode }) {
+  return <span className="text-text-muted">{children}</span>;
+}
+
+function Num({ children }: { children: React.ReactNode }) {
+  return <span className="text-status-warning">{children}</span>;
+}
+
+function Comment({ children }: { children: React.ReactNode }) {
+  return <div className="text-text-muted mt-3 first:mt-0">{children}</div>;
+}
+
 function LinkCard({
   href,
   title,
@@ -163,14 +193,6 @@ function Collapsible({
       </button>
       {isOpen && <div className="px-4 pb-4 pt-0">{children}</div>}
     </div>
-  );
-}
-
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <pre className="bg-surface-elevated border border-border-subtle rounded-lg p-4 overflow-x-auto">
-      <code className="text-sm text-text-primary font-mono whitespace-pre">{code}</code>
-    </pre>
   );
 }
 
@@ -293,6 +315,9 @@ export default function UnderstandingPriority() {
           document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       }
+    } else {
+      // No hash - scroll to top to prevent browser scroll restoration from jumping to wrong section
+      window.scrollTo(0, 0);
     }
   }, [location.hash]);
 
@@ -307,10 +332,31 @@ export default function UnderstandingPriority() {
       }
 
       const threshold = 120;
+      const viewportHeight = window.innerHeight;
       const sections = NAV_SECTIONS.map((s) => ({
         id: s.id,
         element: document.getElementById(s.id),
       })).filter((s) => s.element);
+
+      // Check if at bottom of page - select last section
+      // Detect bottom by checking if we've scrolled past where we could scroll
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection((prev) => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       let bestSection: string | null = null;
       let bestTop = -Infinity;
 
@@ -328,7 +374,7 @@ export default function UnderstandingPriority() {
         for (const section of sections) {
           if (section.element) {
             const rect = section.element.getBoundingClientRect();
-            if (rect.top >= 0 && rect.top < window.innerHeight) {
+            if (rect.top >= 0 && rect.top < viewportHeight) {
               bestSection = section.id;
               break;
             }
@@ -694,37 +740,63 @@ export default function UnderstandingPriority() {
             </InfoBox>
 
             <Collapsible title="Gear priority formula">
-              <CodeBlock
-                code={`Priority = rolePriority + (weightedNeed × 10) - (lootAdjustment × 15)
+              <FormulaDisplay>
+                <FormulaLine>
+                  <Variable>Priority</Variable> <Operator>=</Operator> <Variable>rolePriority</Variable> <Operator>+</Operator> <Operator>(</Operator><Variable>weightedNeed</Variable> <Operator>×</Operator> <Num>10</Num><Operator>)</Operator> <Operator>-</Operator> <Operator>(</Operator><Variable>lootAdjustment</Variable> <Operator>×</Operator> <Num>15</Num><Operator>)</Operator>
+                </FormulaLine>
 
-Where:
-  rolePriority = (5 - roleIndex) × 25
-  roleIndex = position in static's priority order (0-4)
-  weightedNeed = sum of slot weights for incomplete slots
-  lootAdjustment = manual adjustment for roster changes`}
-              />
+                <Comment>Where:</Comment>
+                <FormulaLine>
+                  <Variable>rolePriority</Variable> <Operator>=</Operator> <Operator>(</Operator><Num>5</Num> <Operator>-</Operator> <Variable>roleIndex</Variable><Operator>)</Operator> <Operator>×</Operator> <Num>25</Num>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>roleIndex</Variable> <Operator>=</Operator> <span className="text-text-secondary">position in static's priority order (0-4)</span>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>weightedNeed</Variable> <Operator>=</Operator> <span className="text-text-secondary">sum of slot weights for incomplete slots</span>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>lootAdjustment</Variable> <Operator>=</Operator> <span className="text-text-secondary">manual adjustment for roster changes</span>
+                </FormulaLine>
+              </FormulaDisplay>
             </Collapsible>
 
             <Collapsible title="Weapon priority formula">
-              <CodeBlock
-                code={`weaponScore = roleScore + rankScore + mainJobBonus
+              <FormulaDisplay>
+                <FormulaLine>
+                  <Variable>weaponScore</Variable> <Operator>=</Operator> <Variable>roleScore</Variable> <Operator>+</Operator> <Variable>rankScore</Variable> <Operator>+</Operator> <Variable>mainJobBonus</Variable>
+                </FormulaLine>
 
-Where:
-  roleScore = (5 - roleIndex) × 100 (main job only)
-  rankScore = 1000 - (rank × 100)
-  mainJobBonus = 2000 (main job only)
-  rank = position in player's weapon priority list (0-based)`}
-              />
+                <Comment>Where:</Comment>
+                <FormulaLine>
+                  <Variable>roleScore</Variable> <Operator>=</Operator> <Operator>(</Operator><Num>5</Num> <Operator>-</Operator> <Variable>roleIndex</Variable><Operator>)</Operator> <Operator>×</Operator> <Num>100</Num> <span className="text-text-muted italic text-xs ml-2">(main job only)</span>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>rankScore</Variable> <Operator>=</Operator> <Num>1000</Num> <Operator>-</Operator> <Operator>(</Operator><Variable>rank</Variable> <Operator>×</Operator> <Num>100</Num><Operator>)</Operator>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>mainJobBonus</Variable> <Operator>=</Operator> <Num>2000</Num> <span className="text-text-muted italic text-xs ml-2">(main job only)</span>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>rank</Variable> <Operator>=</Operator> <span className="text-text-secondary">position in player's weapon priority list (0-based)</span>
+                </FormulaLine>
+              </FormulaDisplay>
             </Collapsible>
 
             <Collapsible title="Material priority formula">
-              <CodeBlock
-                code={`materialPriority = basePriority + (unaugmentedCount × 15)
+              <FormulaDisplay>
+                <FormulaLine>
+                  <Variable>materialPriority</Variable> <Operator>=</Operator> <Variable>basePriority</Variable> <Operator>+</Operator> <Operator>(</Operator><Variable>unaugmentedCount</Variable> <Operator>×</Operator> <Num>15</Num><Operator>)</Operator>
+                </FormulaLine>
 
-Where:
-  basePriority = standard gear priority score
-  unaugmentedCount = number of unaugmented tome pieces`}
-              />
+                <Comment>Where:</Comment>
+                <FormulaLine>
+                  <Variable>basePriority</Variable> <Operator>=</Operator> <span className="text-text-secondary">standard gear priority score</span>
+                </FormulaLine>
+                <FormulaLine>
+                  <Variable>unaugmentedCount</Variable> <Operator>=</Operator> <span className="text-text-secondary">number of unaugmented tome pieces</span>
+                </FormulaLine>
+              </FormulaDisplay>
             </Collapsible>
           </Section>
 
@@ -737,6 +809,7 @@ Where:
 
             <Collapsible title="Slot value weights">
               <CodeBlock
+                language="typescript"
                 code={`const SLOT_VALUE_WEIGHTS = {
   weapon: 3.0,
   body: 1.5,
@@ -755,6 +828,7 @@ Where:
 
             <Collapsible title="Book exchange costs">
               <CodeBlock
+                language="typescript"
                 code={`const BOOK_COSTS = {
   weapon: 8,   // Book IV
   body: 6,     // Book III
@@ -773,6 +847,7 @@ Where:
 
             <Collapsible title="Tomestone costs">
               <CodeBlock
+                language="typescript"
                 code={`const TOME_COSTS = {
   weapon: 500,  // + weapon token from normal raid
   body: 825,
