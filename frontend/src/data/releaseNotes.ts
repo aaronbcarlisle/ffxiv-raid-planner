@@ -48,9 +48,9 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Discord release announcement detection',
-        description: 'Version changes now properly trigger release embeds',
+        description: 'Now triggers on any releaseNotes.ts change',
         details:
-          'Fixed a bug where the Discord changelog workflow failed to detect version changes due to a grep command failing silently. The version detection now parses git diff output directly in JavaScript instead of piping through grep.',
+          'Simplified version detection to trigger a release announcement whenever releaseNotes.ts is modified, rather than specifically checking for CURRENT_VERSION line changes. This is more reliable and less error-prone.',
         commits: [{ hash: 'fbe6b03', message: 'fix(discord): improve version change detection reliability' }],
       },
     ],

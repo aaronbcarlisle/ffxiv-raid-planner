@@ -437,50 +437,21 @@ function parseReleaseNotes() {
 }
 
 /**
- * Check if the version changed in this commit
+ * Check if the release notes file was modified in this commit.
+ * Any modification to releaseNotes.ts triggers a release announcement.
+ * This is simpler and more reliable than checking for CURRENT_VERSION changes specifically.
  */
 function didVersionChange() {
   try {
-    // Check if releaseNotes.ts was modified in this commit
     const diffOutput = execSync(
       'git diff HEAD~1 --name-only -- frontend/src/data/releaseNotes.ts',
       { encoding: 'utf-8' }
     ).trim();
 
     console.log(`Release notes file changed: ${diffOutput ? 'yes' : 'no'}`);
-
-    if (!diffOutput) {
-      return false;
-    }
-
-    // Get the full diff for releaseNotes.ts (without piping through grep)
-    const fullDiff = execSync(
-      'git diff HEAD~1 -- frontend/src/data/releaseNotes.ts',
-      { encoding: 'utf-8' }
-    );
-
-    // Check if CURRENT_VERSION specifically changed by looking for both - and + lines
-    const lines = fullDiff.split('\n');
-    let hasOldVersion = false;
-    let hasNewVersion = false;
-
-    for (const line of lines) {
-      if (line.startsWith('-') && line.includes('export const CURRENT_VERSION')) {
-        hasOldVersion = true;
-        console.log(`Found old version line: ${line}`);
-      }
-      if (line.startsWith('+') && line.includes('export const CURRENT_VERSION')) {
-        hasNewVersion = true;
-        console.log(`Found new version line: ${line}`);
-      }
-    }
-
-    const versionChanged = hasOldVersion && hasNewVersion;
-    console.log(`Version changed: ${versionChanged}`);
-
-    return versionChanged;
+    return diffOutput.length > 0;
   } catch (error) {
-    console.error('Error checking version change:', error.message);
+    console.error('Error checking for release notes changes:', error.message);
     return false;
   }
 }
@@ -604,8 +575,11 @@ function buildReleaseEmbeds(release) {
     });
 
   // Only set timestamp when date is provided (undefined/empty would set it to "now" or Invalid Date)
+  // Append T12:00:00 (noon UTC) to date-only strings so the date displays correctly across timezones
+  // Without this, '2026-01-19' is parsed as midnight UTC, which shows as the previous day in US timezones
   if (release.date && release.date.trim()) {
-    embed.setTimestamp(new Date(release.date));
+    const dateStr = release.date.includes('T') ? release.date : `${release.date}T12:00:00`;
+    embed.setTimestamp(new Date(dateStr));
   }
 
   // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
