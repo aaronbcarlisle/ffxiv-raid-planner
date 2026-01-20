@@ -151,6 +151,8 @@ export function PopoverSelect<T extends string>({
   const triggerClasses = [
     // Base styles
     'rounded text-xs font-bold transition-colors',
+    // Focus styles for keyboard accessibility
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base',
     // Size
     triggerWidth ?? 'px-1.5',
     'py-0.5',

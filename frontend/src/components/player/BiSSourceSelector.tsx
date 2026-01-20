@@ -194,6 +194,10 @@ export function BiSSourceSelector({
       }
       setConfirmModal(null);
       setOpen(false);
+    } catch (error) {
+      // Error during onSelect callback - log but don't crash
+      // Parent component is responsible for error handling/toast display
+      console.error('BiSSourceSelector: Error during source change', error);
     } finally {
       setIsPending(false);
     }
@@ -283,6 +287,7 @@ export function BiSSourceSelector({
             className={getTriggerClasses(bisSource, disabled)}
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-disabled={disabled}
           >
             {displayLabel}
           </button>

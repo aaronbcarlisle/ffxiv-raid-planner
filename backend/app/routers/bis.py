@@ -296,11 +296,11 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
     """
     Determine if item is raid, tome (augmented), base_tome (unaugmented), or crafted.
 
-    For current tier (7.4 - AAC Heavyweight Savage):
-    - Savage: 790 armor, 795 weapon
-    - Tome (augmented): 790 armor, 795 weapon (name: "Aug. ...")
-    - Base Tome (unaugmented): 780 armor, 785 weapon
-    - Crafted: 770 (pentamelded HQ gear)
+    Typical tier item level relationships (armor/weapon):
+    - Savage: highest tier iLv (e.g., 790/795)
+    - Tome (augmented): same as savage (e.g., 790/795), name starts with "Aug."
+    - Base Tome (unaugmented): 10 iLv below (e.g., 780/785)
+    - Crafted: 20 iLv below savage (e.g., 770)
 
     Key insight: Only tome gear can be augmented in FFXIV.
     - "Aug." prefix = tome (augmented version is BiS, needs augmentation)

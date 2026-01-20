@@ -78,6 +78,7 @@ export function resetGearProgress(gear: GearSlotStatus[]): GearSlotStatus[] {
 export function unlinkBisData(gear: GearSlotStatus[]): GearSlotStatus[] {
   return gear.map((slot) => {
     // Recalculate currentSource based on current state
+    // Default to 'crafted' for tier start or when bisSource is null/unset
     let currentSource: 'savage' | 'tome' | 'tome_up' | 'crafted' = 'crafted';
     if (slot.hasItem) {
       if (slot.bisSource === 'raid') {
@@ -87,6 +88,9 @@ export function unlinkBisData(gear: GearSlotStatus[]): GearSlotStatus[] {
       } else if (slot.bisSource === 'crafted') {
         currentSource = 'crafted';
       }
+      // Note: bisSource === null with hasItem === true is an edge case
+      // (manually marked item without BiS set). Default to 'crafted' is reasonable
+      // as it represents "has gear but source unknown" which is tier-start behavior.
     }
     return {
       slot: slot.slot,

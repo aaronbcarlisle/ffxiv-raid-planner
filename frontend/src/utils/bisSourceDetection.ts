@@ -44,8 +44,9 @@ const TOME_PATTERNS = [
 
 // Item level thresholds for secondary validation (current tier: 7.4)
 // These prevent false positives when name patterns overlap
-const CRAFTED_ILV_MAX = 780; // Crafted is typically ≤770, allow some buffer
-const TOME_ILV_MIN = 775;    // Base tome is typically 780+
+// Crafted: 770, Base tome: 780, Augmented tome/Savage: 790
+const CRAFTED_ILV_MAX = 775; // Crafted is 770, small buffer avoids false positives with base tome (780)
+const TOME_ILV_MIN = 775;    // Base tome is 780, small buffer below
 
 /**
  * Check if a gear slot is miscategorized and return the correct BiS source.

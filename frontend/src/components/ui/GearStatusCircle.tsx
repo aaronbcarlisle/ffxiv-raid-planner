@@ -138,7 +138,10 @@ export function GearStatusCircle({
     ariaLabel = 'Have (needs augmentation)';
   }
 
-  // If unset, show gray/disabled state
+  // Null bisSource: Show placeholder state indicating no target set yet
+  // This is intentionally different from disabled (which shows the actual state but non-interactive):
+  // - null bisSource = "no target defined" (gray placeholder)
+  // - disabled with bisSource = "target defined but can't change" (shows actual state)
   if (!bisSource) {
     return (
       <div

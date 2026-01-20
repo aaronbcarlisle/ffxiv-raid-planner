@@ -39,12 +39,14 @@ function getNextState(
   bisSource: GearSource,
   requiresAug: boolean
 ): GearState {
-  // Raid and Crafted: 2-state cycle (missing → have → missing)
-  if (bisSource === 'raid' || bisSource === 'crafted') {
+  // Raid, Crafted, and Base Tome: 2-state cycle (missing → have → missing)
+  // These sources never require augmentation
+  if (bisSource === 'raid' || bisSource === 'crafted' || bisSource === 'base_tome') {
     return currentState === 'missing' ? 'have' : 'missing';
   }
 
   // Tome where base is BiS (no aug needed): 2-state cycle
+  // This is for backward compatibility with 'tome' bisSource that doesn't need augmentation
   if (bisSource === 'tome' && !requiresAug) {
     return currentState === 'missing' ? 'have' : 'missing';
   }

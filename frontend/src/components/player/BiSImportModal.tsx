@@ -306,7 +306,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
             slot: slot.slot,
             slotName: GEAR_SLOT_NAMES[slot.slot] || slot.slot,
             fromItem: currentGear.itemName || (currentGear.bisSource ? BIS_SOURCE_NAMES[currentGear.bisSource] : '--'),
-            toItem: slot.itemName || (slot.source ? BIS_SOURCE_NAMES[slot.source as keyof typeof BIS_SOURCE_NAMES] : '--') || slot.source,
+            toItem: slot.itemName || (slot.source && slot.source in BIS_SOURCE_NAMES ? BIS_SOURCE_NAMES[slot.source as keyof typeof BIS_SOURCE_NAMES] : slot.source || '--'),
             sourceChanged,
           });
         }
