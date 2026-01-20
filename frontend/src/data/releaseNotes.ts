@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.0.12';
+export const CURRENT_VERSION = '1.0.13';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.13',
+    date: '2026-01-19',
+    title: 'Discord Changelog Improvements',
+    highlights: ['Release-only embeds', 'Dominant category colors'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Release-only Discord embeds',
+        description: 'Version releases now post a single clean embed',
+        details:
+          'When a new version is released, only the release announcement embed is posted to Discord. Previously, both a release embed and a commit embed were posted, cluttering the changelog channel.',
+        commits: [{ hash: '8f38e0d', message: 'fix(discord): post release-only embeds and use dominant category color' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Dominant category embed colors',
+        description: 'Discord embed borders reflect the most common change type',
+        details:
+          'The left border color on Discord release embeds now reflects the dominant category. A release with 8 fixes and 3 features shows red (fix color). Previously used priority order where any release with features always showed green.',
+        commits: [{ hash: '8f38e0d', message: 'fix(discord): post release-only embeds and use dominant category color' }],
+      },
+    ],
+  },
   {
     version: '1.0.12',
     date: '2026-01-19',
