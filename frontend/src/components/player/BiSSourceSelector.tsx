@@ -1,8 +1,10 @@
 /**
- * BiSSourceSelector - Horizontal button group for BiS source selection
+ * BiSSourceSelector - 2x2 grid BiS source selection
  *
- * Standard slots: [R] [T] [BT] [C] - Horizontal button group
- * Weapon slot: [R] [+] - R is fixed, + toggles tome weapon tracking
+ * Popover layout:
+ *   [  Raid ] [  Tome ]
+ *   [Crafted] [B. Tome]
+ *        Clear Slot
  *
  * Based on TankRoleSelector pattern with Popover.
  */
@@ -13,28 +15,35 @@ import { BIS_SOURCE_FULL_NAMES } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 
-// BiS source order for display
-const BIS_SOURCES: GearSource[] = ['raid', 'tome', 'base_tome', 'crafted'];
-
 // BiS source display info
-const BIS_SOURCE_INFO: Record<GearSource, { short: string; description: string }> = {
+const BIS_SOURCE_INFO: Record<GearSource, { short: string; label: string; description: string }> = {
   raid: {
     short: 'R',
+    label: 'Raid',
     description: 'BiS gear from Savage raids',
   },
   tome: {
     short: 'T',
+    label: 'Tome',
     description: 'Tomestone gear that needs augmentation',
   },
   base_tome: {
     short: 'BT',
+    label: 'B. Tome',
     description: 'Tomestone gear where base version is BiS',
   },
   crafted: {
     short: 'C',
+    label: 'Crafted',
     description: 'Crafted pentamelded gear',
   },
 };
+
+// Grid layout: 2 rows x 2 columns
+const GRID_LAYOUT: GearSource[][] = [
+  ['raid', 'tome'],
+  ['crafted', 'base_tome'],
+];
 
 /**
  * Get color classes for a BiS source button
@@ -60,9 +69,10 @@ function getSourceButtonClasses(source: GearSource, isSelected: boolean): string
 
 /**
  * Get trigger button classes based on current source
+ * Fixed width (w-7) to accommodate 2-character labels like "BT"
  */
 function getTriggerClasses(source: GearSource | null, disabled: boolean): string {
-  const baseClasses = 'px-2 py-0.5 rounded text-xs font-bold transition-colors';
+  const baseClasses = 'w-7 py-0.5 rounded text-xs font-bold transition-colors text-center';
 
   if (disabled) {
     if (!source) return `${baseClasses} bg-surface-interactive text-text-muted opacity-50 cursor-not-allowed`;
@@ -140,9 +150,9 @@ export function BiSSourceSelector({
       </Tooltip>
 
       <PopoverContent align="center" sideOffset={4} className="p-2 w-auto">
-        {/* Horizontal button group */}
-        <div className="flex gap-1">
-          {BIS_SOURCES.map((source) => {
+        {/* 2x2 grid layout */}
+        <div className="grid grid-cols-2 gap-1">
+          {GRID_LAYOUT.flat().map((source) => {
             const isSelected = bisSource === source;
             return (
               <Tooltip
@@ -152,9 +162,9 @@ export function BiSSourceSelector({
               >
                 <button
                   onClick={() => handleSelect(source)}
-                  className={getSourceButtonClasses(source, isSelected)}
+                  className={`${getSourceButtonClasses(source, isSelected)} min-w-[4rem] text-center`}
                 >
-                  {BIS_SOURCE_INFO[source].short}
+                  {BIS_SOURCE_INFO[source].label}
                 </button>
               </Tooltip>
             );
@@ -162,14 +172,12 @@ export function BiSSourceSelector({
         </div>
 
         {/* Clear button */}
-        {bisSource !== null && (
-          <button
-            onClick={handleClear}
-            className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
-          >
-            Clear Slot
-          </button>
-        )}
+        <button
+          onClick={handleClear}
+          className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
+        >
+          Clear Slot
+        </button>
       </PopoverContent>
     </Popover>
   );
@@ -200,8 +208,8 @@ export function WeaponBiSSelector({
 }: WeaponBiSSelectorProps) {
   return (
     <div className="flex justify-center gap-1">
-      {/* Raid is always on for weapon */}
-      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-bold ${disabled ? 'opacity-50' : ''}`}>
+      {/* Raid is always on for weapon - fixed width to match other BiS badges */}
+      <span className={`inline-flex items-center justify-center w-7 py-0.5 rounded text-xs bg-gear-raid/20 text-gear-raid font-bold ${disabled ? 'opacity-50' : ''}`}>
         R
       </span>
       {/* + is a toggle for interim tome weapon */}
@@ -216,7 +224,7 @@ export function WeaponBiSSelector({
       >
         <button
           onClick={() => onTomeWeaponChange({ pursuing: !tomeWeapon.pursuing })}
-          className={`inline-flex items-center justify-center w-6 h-5 rounded text-xs font-bold transition-colors ${
+          className={`inline-flex items-center justify-center w-6 py-0.5 rounded text-xs font-bold transition-colors ${
             tomeWeapon.pursuing
               ? 'bg-gear-tome/20 text-gear-tome'
               : `bg-surface-interactive text-text-muted ${!disabled ? 'hover:text-text-secondary' : ''}`
