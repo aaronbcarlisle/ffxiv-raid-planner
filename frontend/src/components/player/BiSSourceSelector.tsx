@@ -145,8 +145,10 @@ export function BiSSourceSelector({
   } | null>(null);
 
   const handleSelect = (source: GearSource) => {
-    // If slot has item data and source is changing, show confirmation
-    if (hasItemData && source !== bisSource) {
+    // If slot has item data OR progress (hasItem/isAugmented) and source is changing, show confirmation
+    // This prevents accidental loss of both imported BiS metadata and gear progress
+    const hasDataToLose = hasItemData || hasItem || isAugmented;
+    if (hasDataToLose && source !== bisSource) {
       setConfirmModal({ type: 'source-change', pendingSource: source });
       return;
     }
@@ -155,8 +157,9 @@ export function BiSSourceSelector({
   };
 
   const handleClear = () => {
-    // Show confirmation if there's any data to clear
-    if (bisSource !== null || hasItemData) {
+    // Show confirmation if there's any data to clear (bisSource, item metadata, or progress)
+    const hasDataToClear = bisSource !== null || hasItemData || hasItem || isAugmented;
+    if (hasDataToClear) {
       setConfirmModal({ type: 'clear' });
       return;
     }

@@ -857,7 +857,7 @@ export const PlayerCard = memo(function PlayerCard({
           player={player}
           userRole={userRole}
           currentUserId={currentUserId ?? null}
-          isAdminAccess={isAdminAccess}
+          isAdminAccess={isAdminAccess ?? false}
           onFixAllSources={handleFixAllBisSources}
         />
       )}

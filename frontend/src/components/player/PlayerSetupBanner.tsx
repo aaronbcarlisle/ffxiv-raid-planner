@@ -52,7 +52,8 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   let buttonIcon: React.ReactNode;
   let buttonTooltip: string;
   let onClick: (() => void) | undefined;
-  const variant: 'info' | 'warning' = 'info';
+  // All current banner states use 'info' variant (warning variant was for 'needs-bis-update' which is now handled by BiSSourceFixBanner)
+  const variant = 'info' as const;
 
   switch (bannerState) {
     case 'unclaimed-owner':
@@ -110,7 +111,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       <Tooltip content={buttonTooltip}>
         <Button
           size="sm"
-          variant={variant === 'warning' ? 'warning' : 'secondary'}
+          variant="secondary"
           leftIcon={buttonIcon}
           onClick={(e) => {
             e.stopPropagation();

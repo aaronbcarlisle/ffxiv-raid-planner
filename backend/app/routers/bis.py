@@ -395,6 +395,8 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
             return "base_tome"
 
     # For armor/accessories: 790 = savage or augmented tome, 780 = base tome
+    # Note: Augmented tome is already caught above by the "Aug." prefix check (line 317-318)
+    # So any iLv 790 item reaching here that doesn't match patterns is assumed to be raid
     if item_level >= 790:
         return "raid"
     return "base_tome"
