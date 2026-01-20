@@ -86,7 +86,7 @@ export function ItemHoverCard({
   // Get color class for BiS source
   const getSourceColorClass = () => {
     if (bisSource === 'raid') return 'text-gear-raid';
-    if (bisSource === 'crafted') return 'text-orange-400';
+    if (bisSource === 'crafted') return 'text-gear-crafted';
     if (bisSource === 'tome') return 'text-gear-tome';
     if (bisSource === 'base_tome') return 'text-gear-base-tome';
     return 'text-text-muted'; // null/unset
@@ -95,7 +95,7 @@ export function ItemHoverCard({
   // Get source badge info
   const getSourceBadge = () => {
     if (bisSource === 'raid') return { text: 'Savage', classes: 'bg-gear-raid/20 text-gear-raid' };
-    if (bisSource === 'crafted') return { text: 'Crafted', classes: 'bg-orange-400/20 text-orange-400' };
+    if (bisSource === 'crafted') return { text: 'Crafted', classes: 'bg-gear-crafted/20 text-gear-crafted' };
     if (bisSource === 'tome') return { text: 'Tome (Aug.)', classes: 'bg-gear-tome/20 text-gear-tome' };
     if (bisSource === 'base_tome') return { text: 'Base Tome', classes: 'bg-gear-base-tome/20 text-gear-base-tome' };
     return { text: 'Unset', classes: 'bg-surface-interactive text-text-muted' };

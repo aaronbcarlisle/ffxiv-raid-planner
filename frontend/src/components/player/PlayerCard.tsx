@@ -20,6 +20,7 @@ import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
+import { isSlotComplete } from '../../utils/calculations';
 import {
   Copy,
   ClipboardPaste,
@@ -132,17 +133,9 @@ export const PlayerCard = memo(function PlayerCard({
   const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
 
-  // Calculate completion count
-  // Raid, base_tome, and crafted are complete when hasItem is true
-  // Tome requires both hasItem AND isAugmented
-  const completedSlots = player.gear.filter((g) => {
-    if (!g.bisSource) return false; // Unset slots don't count
-    if (g.bisSource === 'raid' || g.bisSource === 'base_tome' || g.bisSource === 'crafted') {
-      return g.hasItem;
-    }
-    // Tome requires augmentation
-    return g.hasItem && g.isAugmented;
-  }).length;
+  // Calculate completion count using shared isSlotComplete logic
+  // This properly handles all BiS sources and augmentation requirements
+  const completedSlots = player.gear.filter((g) => isSlotComplete(g)).length;
   const totalSlots = player.gear.length;
 
   // Calculate needs for footer

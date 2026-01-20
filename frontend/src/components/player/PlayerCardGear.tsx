@@ -78,10 +78,11 @@ export function PlayerCardGear({
 
             // Check if this tome slot requires augmentation
             const needsAug = requiresAugmentation(slotData);
-            // Complete: has item AND (raid/crafted OR (tome AND (augmented OR aug not required)))
+            // Complete: has item AND (raid/crafted/base_tome OR (tome AND (augmented OR aug not required)))
             const isComplete = slotData.hasItem && (
               slotData.bisSource === 'raid' ||
               slotData.bisSource === 'crafted' ||
+              slotData.bisSource === 'base_tome' ||
               (slotData.bisSource === 'tome' && (!needsAug || slotData.isAugmented))
             );
 

@@ -71,8 +71,8 @@ function getSourceButtonClasses(source: GearSource, isSelected: boolean): string
   }
   // crafted
   return isSelected
-    ? `${baseClasses} bg-orange-400 text-surface-base`
-    : `${baseClasses} bg-orange-400/20 text-orange-400 hover:bg-orange-400/30`;
+    ? `${baseClasses} bg-gear-crafted text-surface-base`
+    : `${baseClasses} bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30`;
 }
 
 /**
@@ -87,14 +87,14 @@ function getTriggerClasses(source: GearSource | null, disabled: boolean): string
     if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid opacity-50 cursor-not-allowed`;
     if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome opacity-50 cursor-not-allowed`;
     if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome opacity-50 cursor-not-allowed`;
-    return `${baseClasses} bg-orange-400/20 text-orange-400 opacity-50 cursor-not-allowed`;
+    return `${baseClasses} bg-gear-crafted/20 text-gear-crafted opacity-50 cursor-not-allowed`;
   }
 
   if (!source) return `${baseClasses} bg-surface-interactive text-text-muted hover:text-text-secondary`;
   if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30`;
   if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
   if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30`;
-  return `${baseClasses} bg-orange-400/20 text-orange-400 hover:bg-orange-400/30`;
+  return `${baseClasses} bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30`;
 }
 
 interface BiSSourceSelectorProps {

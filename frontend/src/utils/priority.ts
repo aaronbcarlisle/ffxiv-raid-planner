@@ -187,6 +187,8 @@ export function getPriorityForUpgradeMaterial(
     .filter((p) => {
       // Count unaugmented tome pieces for this material type
       // Only include slots where augmentation is actually required
+      // Note: Only 'tome' BiS (not 'base_tome') requires augmentation materials
+      // base_tome slots don't need materials since the unaugmented item is BiS
       const unaugmented = p.gear.filter(
         (g) =>
           applicableSlots.includes(g.slot) &&

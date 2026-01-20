@@ -84,6 +84,8 @@ export function unlinkBisData(gear: GearSlotStatus[]): GearSlotStatus[] {
         currentSource = 'savage';
       } else if (slot.bisSource === 'tome' || slot.bisSource === 'base_tome') {
         currentSource = slot.isAugmented ? 'tome_up' : 'tome';
+      } else if (slot.bisSource === 'crafted') {
+        currentSource = 'crafted';
       }
     }
     return {

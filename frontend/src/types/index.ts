@@ -46,7 +46,7 @@ export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
   raid: 'text-gear-raid',
   tome: 'text-gear-tome',
   base_tome: 'text-gear-base-tome',
-  crafted: 'text-orange-400',
+  crafted: 'text-gear-crafted',
 };
 
 // Background color classes for BiS source badges
@@ -54,7 +54,7 @@ export const BIS_SOURCE_BG_COLORS: Record<GearSource, string> = {
   raid: 'bg-gear-raid/20',
   tome: 'bg-gear-tome/20',
   base_tome: 'bg-gear-base-tome/20',
-  crafted: 'bg-orange-400/20',
+  crafted: 'bg-gear-crafted/20',
 };
 
 // Current gear source category (9 options for tracking actual equipped gear)
@@ -89,7 +89,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
   catchup: 'text-blue-400',     // Blue for catch-up
   tome: 'text-teal-400/70',     // Dimmer teal for unaugmented tome
   relic: 'text-yellow-300',     // Yellow for relic
-  crafted: 'text-orange-400',   // Orange for crafted
+  crafted: 'text-gear-crafted',   // Orange for crafted
   prep: 'text-purple-300',      // Purple for previous tier
   normal: 'text-gray-400',      // Gray for normal raid
   unknown: 'text-gray-500',     // Muted for unknown

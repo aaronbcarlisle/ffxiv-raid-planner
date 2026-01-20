@@ -67,7 +67,7 @@ function getRingColor(bisSource: GearSource | null): string {
   if (bisSource === 'raid') return 'border-gear-raid';
   if (bisSource === 'tome') return 'border-gear-tome';
   if (bisSource === 'base_tome') return 'border-gear-base-tome';
-  return 'border-orange-400'; // crafted
+  return 'border-gear-crafted'; // crafted
 }
 
 /**
@@ -78,7 +78,7 @@ function getFillColor(bisSource: GearSource | null): string {
   if (bisSource === 'raid') return 'bg-gear-raid';
   if (bisSource === 'tome') return 'bg-gear-tome';
   if (bisSource === 'base_tome') return 'bg-gear-base-tome';
-  return 'bg-orange-400'; // crafted
+  return 'bg-gear-crafted'; // crafted
 }
 
 /**

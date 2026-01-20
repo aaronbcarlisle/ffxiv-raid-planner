@@ -59,8 +59,8 @@ export function createGearSourceColorClasses(
     };
   }
   return {
-    selected: 'bg-orange-400 text-surface-base',
-    unselected: 'bg-orange-400/20 text-orange-400 hover:bg-orange-400/30',
+    selected: 'bg-gear-crafted text-surface-base',
+    unselected: 'bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30',
   };
 }
 

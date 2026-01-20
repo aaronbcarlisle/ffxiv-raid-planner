@@ -1352,7 +1352,7 @@ function PopoverSection() {
                 if (!v) return 'bg-surface-interactive text-text-muted hover:text-text-secondary';
                 if (v === 'raid') return 'bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30';
                 if (v === 'tome') return 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30';
-                return 'bg-orange-400/20 text-orange-400 hover:bg-orange-400/30';
+                return 'bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30';
               }}
             />
             <p className="text-xs text-text-muted mt-1">
