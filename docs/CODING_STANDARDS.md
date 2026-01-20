@@ -12,6 +12,7 @@ This document defines the coding standards, naming conventions, and patterns use
 - [UI Component Selection](#ui-component-selection) ← **Read before implementing UI**
 - [State Management](#state-management)
 - [Git Conventions](#git-conventions)
+- [Versioning](#versioning) ← **Follow semver for releases**
 - [Documentation](#documentation)
 - [Testing](#testing)
 
@@ -641,6 +642,77 @@ refactor/group-view-hooks
 ```
 
 **IMPORTANT:** Never add AI attribution to commits or PRs.
+
+---
+
+## Versioning
+
+This project follows [Semantic Versioning 2.0.0](https://semver.org/). Version numbers follow the format `MAJOR.MINOR.PATCH`.
+
+### Version Bump Rules
+
+| Change Type | Version Bump | Examples |
+|-------------|--------------|----------|
+| **MAJOR** (x.0.0) | Breaking changes, backward incompatible API changes | Removing endpoints, changing data formats, major UI overhauls that break workflows |
+| **MINOR** (0.x.0) | New features, backward compatible additions | New components, new API endpoints, new user-facing functionality |
+| **PATCH** (0.0.x) | Bug fixes, security patches, internal improvements | Fixing crashes, security hardening, performance improvements, CI/tooling fixes |
+
+### Decision Guide
+
+**Bump MINOR when:**
+- Adding a new user-facing feature (new modal, new panel, new functionality)
+- Adding a new API endpoint
+- Adding new components to the design system
+- Adding new hooks or utilities that enable new capabilities
+
+**Bump PATCH when:**
+- Fixing bugs (crashes, incorrect behavior, visual glitches)
+- Security improvements (CSRF, auth hardening, etc.)
+- Performance optimizations
+- Internal refactoring without feature changes
+- CI/CD and tooling improvements
+- Documentation updates
+
+**Bump MAJOR when:**
+- Removing or renaming API endpoints
+- Changing response formats in breaking ways
+- Major UI redesigns that change user workflows
+- Dropping support for older data formats
+
+### Release Notes Format
+
+When creating a release in `frontend/src/data/releaseNotes.ts`:
+
+```typescript
+{
+  version: '1.9.0',  // Follow semver rules above
+  date: '2026-01-20T08:00:00Z',  // ISO 8601 format
+  title: 'Short Descriptive Title',
+  highlights: ['Key feature 1', 'Key feature 2'],  // 1-2 items max
+  items: [
+    {
+      category: 'feature',  // feature | fix | improvement | breaking
+      title: 'Feature name',
+      description: 'Brief description',
+      details: 'Extended explanation (optional)',
+      commits: [{ hash: 'abc1234', message: 'commit message' }],
+    },
+  ],
+}
+```
+
+### Category Guidelines
+
+| Category | When to Use |
+|----------|-------------|
+| `feature` | New user-facing functionality |
+| `improvement` | Enhancements to existing features |
+| `fix` | Bug fixes |
+| `breaking` | Breaking changes (should be rare) |
+
+### Historical Note
+
+Prior to v1.9.0 (January 2026), versioning was not strictly following semver - many feature releases were incorrectly tagged as patches. The version history was corrected in v1.9.0 to properly reflect the scope of each release.
 
 ---
 

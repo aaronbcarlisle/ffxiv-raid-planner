@@ -1,22 +1,26 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 19, 2026
-**Current Version:** v1.0.14
+**Last Updated:** January 20, 2026
+**Current Version:** v1.9.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `fix/discord-version-detection` (PR #50 in review)
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/50
+**Current Branch:** `feature/bis-source-improvements` (PR #52 open)
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/52
 
 **Recent Completions:**
-- PR #48 merged: UI Consistency Sprint (v1.0.12)
-- PR #49 merged: Discord release-only embeds and dominant category colors (v1.0.13)
-- PR #50 pending: Simplified version detection, full ISO timestamps, historical release script (v1.0.14)
+- PR #48 merged: UI Consistency Sprint (v1.8.2)
+- PR #49 merged: Discord release-only embeds and dominant category colors (v1.8.3)
+- PR #50 merged: Simplified version detection, full ISO timestamps, historical release script (v1.8.4)
+- PR #51 merged: BiS source selector improvements (base_tome colors, tooltips disabled, bug fixes)
+- PR #52 pending: BiS source change confirmation dialogs (v1.9.0)
 
-**To continue:** Merge PR #50, then proceed with Session 4 (MembersPanel) or P3 items.
+**Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
+
+**To continue:** Merge PR #52, then proceed with Session 4 (MembersPanel) or P3 items.
 
 ---
 
@@ -180,7 +184,7 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 
 ---
 
-## Recently Verified as Complete (v1.0.8+)
+## Recently Verified as Complete (v1.7.0+)
 
 ### Session 7: UI Consistency Sprint (January 19, 2026)
 

@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.1.0';
+export const CURRENT_VERSION = '1.9.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -40,7 +40,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '1.1.0',
+    version: '1.9.0',
     date: '2026-01-20T08:00:00Z',
     title: 'BiS Source Confirmation Dialogs',
     highlights: ['Confirmation when changing BiS source with imported data', 'Gear progress reset on source change'],
@@ -70,7 +70,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.15',
+    version: '1.8.5',
     date: '2026-01-20T02:15:00Z',
     title: 'Discord Workflow Path Fix',
     highlights: ['Fixed version detection from scripts directory'],
@@ -85,7 +85,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.14',
+    version: '1.8.4',
     date: '2026-01-20T00:41:13Z',
     title: 'Discord Version Detection Fix',
     highlights: ['Fixed release announcement detection'],
@@ -101,7 +101,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.13',
+    version: '1.8.3',
     date: '2026-01-20T00:27:08Z',
     title: 'Discord Changelog Improvements',
     highlights: ['Release-only embeds', 'Dominant category colors'],
@@ -125,7 +125,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.12',
+    version: '1.8.2',
     date: '2026-01-19T23:51:47Z',
     title: 'UI Consistency Sprint',
     highlights: ['Unified loading spinners', 'Consistent border radius'],
@@ -163,7 +163,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.11',
+    version: '1.8.1',
     date: '2026-01-18T18:27:33Z',
     title: 'Security Hardening Sprint',
     highlights: ['CSRF protection', 'OAuth hardening'],
@@ -235,7 +235,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.10',
+    version: '1.8.0',
     date: '2026-01-16T11:32:44Z',
     title: 'Loot Priority UX & Score Tooltips',
     highlights: ['Weapon priority tie styling redesign', 'Priority score breakdown tooltips'],
@@ -318,7 +318,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.9',
+    version: '1.7.1',
     date: '2026-01-15T22:56:32Z',
     title: 'Session Stability',
     highlights: ['Fixed session timeouts', 'Improved token refresh'],
@@ -342,7 +342,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.8',
+    version: '1.7.0',
     date: '2026-01-11T19:05:13Z',
     title: 'Admin Assignment & Polish',
     highlights: ['Assign players to users', 'Role-colored badges'],
@@ -422,7 +422,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.7',
+    version: '1.6.0',
     date: '2026-01-11T10:04:21Z',
     title: 'Audit Complete',
     highlights: ['Skeleton loaders', 'Reusable hooks'],
@@ -482,7 +482,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.6',
+    version: '1.5.1',
     date: '2026-01-11T03:23:27Z',
     title: 'Security Hardening',
     highlights: ['httpOnly cookie auth', 'XSS protection'],
@@ -538,7 +538,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.5',
+    version: '1.5.0',
     date: '2026-01-10T18:28:06Z',
     title: 'Shortcuts & Polish',
     highlights: ['Redesigned shortcuts', 'Shortcut hints in menus'],
@@ -597,7 +597,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.4',
+    version: '1.4.0',
     date: '2026-01-10T23:52:39Z',
     title: 'Design System & UX',
     highlights: ['Cross-week navigation', 'Enhanced shortcuts'],
@@ -677,7 +677,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.3',
+    version: '1.3.0',
     date: '2026-01-09T23:53:42Z',
     title: 'Keyboard Shortcuts',
     highlights: ['Keyboard shortcuts', 'Documentation updates'],
@@ -701,7 +701,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.2',
+    version: '1.2.0',
     date: '2026-01-09T23:06:02Z',
     title: 'UX Improvements',
     highlights: ['Grid view for loot logging', 'Material editing & sub filtering'],
@@ -863,7 +863,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: '1.0.1',
+    version: '1.1.0',
     date: '2026-01-09T11:35:01Z',
     title: 'Performance & Reliability',
     highlights: ['Bulk group duplication', '228 automated tests'],
