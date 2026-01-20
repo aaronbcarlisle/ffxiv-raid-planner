@@ -327,6 +327,20 @@ PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `
 
 ---
 
+## Claude Code Commands
+
+Custom slash commands for Claude Code (invoke with `/project:`):
+
+| Command | Description |
+|---------|-------------|
+| `/project:audit-user-docs` | Audit user documentation against style guide, check for staleness, produce report |
+
+**Related docs for documentation work:**
+- `docs/DOCS_STYLE_GUIDE.md` - Tone, formatting, component usage for user docs
+- `docs/DOCS_IMPLEMENTATION_PLAN.md` - Phased restructure plan (if active)
+
+---
+
 ## Additional Documentation
 
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**
@@ -335,6 +349,7 @@ PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `
 - **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - Remaining work, prioritized
 - **[SETUP_WIZARD_PLAN.md](./docs/SETUP_WIZARD_PLAN.md)** - Setup wizard implementation plan
 - **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
+- **[DOCS_STYLE_GUIDE.md](./docs/DOCS_STYLE_GUIDE.md)** - User documentation style guide
 
 ---
 
