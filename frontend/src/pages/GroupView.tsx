@@ -441,7 +441,8 @@ export function GroupView() {
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
-  const errorStack = tierErrorStack || groupErrorStack;
+  // Match errorStack to its corresponding error to avoid displaying mismatched stack traces
+  const errorStack = groupError ? groupErrorStack : tierErrorStack;
 
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
@@ -909,7 +910,7 @@ export function GroupView() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-text-muted uppercase tracking-wide">Technical Details</span>
-              <Tooltip content="Copy error details">
+              <Tooltip content={errorCopied ? "Copied to clipboard" : "Copy error details"}>
                 <button
                   onClick={handleCopyError}
                   className="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-surface-elevated hover:bg-black/20 border border-border-default transition-colors"
