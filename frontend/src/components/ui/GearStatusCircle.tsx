@@ -81,15 +81,16 @@ function getFillColor(bisSource: GearSource | null): string {
 
 /**
  * Get size classes
+ * Using larger sizes and 2px borders for cleaner anti-aliasing
  */
 function getSizeClasses(size: 'sm' | 'md' | 'lg'): { outer: string; inner: string; border: string } {
   switch (size) {
     case 'sm':
-      return { outer: 'w-3 h-3', inner: 'w-1.5 h-1.5', border: 'border' };
+      return { outer: 'w-4 h-4', inner: 'w-2 h-2', border: 'border-2' };
     case 'lg':
-      return { outer: 'w-5 h-5', inner: 'w-2.5 h-2.5', border: 'border-2' };
+      return { outer: 'w-6 h-6', inner: 'w-3 h-3', border: 'border-2' };
     default: // md
-      return { outer: 'w-4 h-4', inner: 'w-2 h-2', border: 'border-[1.5px]' };
+      return { outer: 'w-5 h-5', inner: 'w-2.5 h-2.5', border: 'border-2' };
   }
 }
 
