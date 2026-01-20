@@ -129,7 +129,6 @@ async function deleteAllMessages(channel) {
   let hasMore = true;
   let iterations = 0;
   const MAX_ITERATIONS = 100; // Safety limit: 100 batches = 10,000 messages max
-  let lastDeletedCount = -1;
 
   while (hasMore && iterations < MAX_ITERATIONS) {
     iterations++;
