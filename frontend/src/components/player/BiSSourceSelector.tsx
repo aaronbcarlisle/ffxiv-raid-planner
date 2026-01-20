@@ -161,6 +161,7 @@ export function BiSSourceSelector({
     type: 'source-change' | 'clear';
     pendingSource?: GearSource;
   } | null>(null);
+  const [isPending, setIsPending] = useState(false);
 
   const handleSelect = (source: GearSource) => {
     // Check if confirmation is needed before changing source
@@ -182,14 +183,20 @@ export function BiSSourceSelector({
     setOpen(false);
   };
 
-  const handleConfirm = () => {
-    if (confirmModal?.type === 'source-change' && confirmModal.pendingSource) {
-      onSelect(confirmModal.pendingSource);
-    } else if (confirmModal?.type === 'clear') {
-      onSelect(null);
+  const handleConfirm = async () => {
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      if (confirmModal?.type === 'source-change' && confirmModal.pendingSource) {
+        await Promise.resolve(onSelect(confirmModal.pendingSource));
+      } else if (confirmModal?.type === 'clear') {
+        await Promise.resolve(onSelect(null));
+      }
+      setConfirmModal(null);
+      setOpen(false);
+    } finally {
+      setIsPending(false);
     }
-    setConfirmModal(null);
-    setOpen(false);
   };
 
   const handleCancelConfirm = () => {
@@ -230,11 +237,27 @@ export function BiSSourceSelector({
     return (
       <div className="flex items-center justify-center gap-2 p-3 bg-surface-base rounded-lg border border-border-default text-sm">
         <Tooltip content={hoverCardContent}>
-          <img src={itemIcon} alt={itemName || 'Current gear'} className="w-6 h-6 rounded flex-shrink-0 cursor-help" />
+          <img
+            src={itemIcon}
+            alt={itemName || 'Current gear'}
+            className="w-6 h-6 rounded flex-shrink-0 cursor-help"
+            onError={(e) => {
+              // Fall back to slot icon if item icon fails to load
+              if (slotIcon) (e.target as HTMLImageElement).src = slotIcon;
+            }}
+          />
         </Tooltip>
         <span className="text-text-secondary truncate min-w-0">{itemName}</span>
         <ArrowRight className="w-4 h-4 text-text-muted flex-shrink-0" />
-        <img src={slotIcon} alt={targetLabel} className="w-6 h-6 opacity-50 flex-shrink-0" />
+        <img
+          src={slotIcon}
+          alt={targetLabel}
+          className="w-6 h-6 opacity-50 flex-shrink-0"
+          onError={(e) => {
+            // Hide broken image icon
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
         <span className="text-text-muted flex-shrink-0">{targetLabel}</span>
       </div>
     );

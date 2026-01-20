@@ -63,6 +63,16 @@ describe('inferCurrentSource', () => {
     expect(inferCurrentSource(slot)).toBe('tome');
   });
 
+  it('returns "tome" when hasItem is true and bisSource is "base_tome"', () => {
+    const slot = createGearSlot({ hasItem: true, bisSource: 'base_tome' });
+    expect(inferCurrentSource(slot)).toBe('tome');
+  });
+
+  it('returns "crafted" when hasItem is true and bisSource is "crafted"', () => {
+    const slot = createGearSlot({ hasItem: true, bisSource: 'crafted' });
+    expect(inferCurrentSource(slot)).toBe('crafted');
+  });
+
   it('returns "crafted" when hasItem is false (tier start default)', () => {
     const slot = createGearSlot({ hasItem: false });
     expect(inferCurrentSource(slot)).toBe('crafted');

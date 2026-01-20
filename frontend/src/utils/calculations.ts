@@ -61,8 +61,11 @@ export function requiresAugmentation(slot: GearSlotStatus): boolean {
   // base_tome, raid, and crafted are all 2-state
   if (slot.bisSource !== 'tome') return false;
 
-  // For 'tome' bisSource, check if BiS item name indicates augmented version
-  // This is a fallback for backward compatibility
+  // BACKWARD COMPATIBILITY: For legacy data imported before the base_tome category existed,
+  // check if the item name indicates this is actually a base tome item (no Aug. prefix).
+  // New imports will correctly set bisSource='base_tome' for such items, making this check
+  // unnecessary for new data. This allows existing 'tome' entries with non-augmented items
+  // to be marked complete without migration.
   if (slot.itemName) {
     const name = slot.itemName.toLowerCase();
     // "Aug. Item Name" or "Augmented Item Name" = BiS is augmented version

@@ -3,6 +3,18 @@
  *
  * Functions for detecting miscategorized gear BiS sources based on item names.
  * Uses the same name-based pattern matching as the backend (bis.py).
+ *
+ * PATTERN ASYMMETRY NOTE:
+ * The backend (bis.py) also has raid_patterns, but we intentionally don't check them here.
+ * This is because:
+ * 1. 'raid' is the default bisSource for imported gear
+ * 2. If someone manually sets bisSource to 'tome' or 'crafted' for raid gear, they likely
+ *    did so intentionally (e.g., planning to use a different piece)
+ * 3. We only want to detect and fix COMMON miscategorizations from BiS imports:
+ *    - Crafted gear incorrectly marked as 'raid' (common with XIVGear imports)
+ *    - Base tome gear incorrectly marked as 'tome' (augmented)
+ *
+ * The backend checks raid patterns for IMPORT source detection, not miscategorization fixing.
  */
 
 import type { GearSlotStatus, GearSource } from '../types';
