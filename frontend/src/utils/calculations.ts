@@ -3,43 +3,62 @@
  */
 
 import type { SnapshotPlayer, GearSlotStatus, TeamSummary } from '../types';
+
+// ==================== Gear State Types ====================
+
+/**
+ * Triple-state for gear tracking:
+ * - missing: Don't have the item
+ * - have: Have the item (but may need augmentation for tome)
+ * - augmented: Have augmented tome item (complete)
+ */
+export type GearState = 'missing' | 'have' | 'augmented';
+
+/**
+ * Convert hasItem/isAugmented to GearState
+ */
+export function toGearState(hasItem: boolean, isAugmented: boolean): GearState {
+  if (!hasItem) return 'missing';
+  if (isAugmented) return 'augmented';
+  return 'have';
+}
+
+/**
+ * Convert GearState to hasItem/isAugmented
+ */
+export function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boolean } {
+  return {
+    hasItem: state !== 'missing',
+    isAugmented: state === 'augmented',
+  };
+}
 import {
   BOOK_COSTS,
   BOOK_TYPE_FOR_SLOT,
   getUpgradeMaterialForSlot,
 } from '../gamedata';
-import { getTierById } from '../gamedata/raid-tiers';
 
 /**
  * Check if a tome BiS slot requires augmentation to be complete.
  *
- * Returns false if the base tome (e.g., 780 iLv) is the BiS target,
- * meaning the slot is complete without augmentation.
+ * Uses item name prefix from BiS import to determine if augmented version is BiS.
+ * Item names from XIVAPI definitively include "Aug." prefix for augmented items.
  *
  * @param slot - The gear slot status
- * @param tierId - The current tier ID for iLv comparison
  * @returns true if augmentation is needed, false if base tome is BiS
  */
-export function requiresAugmentation(
-  slot: GearSlotStatus,
-  tierId?: string
-): boolean {
+export function requiresAugmentation(slot: GearSlotStatus): boolean {
   // Only tome BiS can require augmentation
   if (slot.bisSource !== 'tome') return false;
 
-  // If we have target itemLevel from BiS import, compare it
-  if (slot.itemLevel && tierId) {
-    const tier = getTierById(tierId);
-    if (tier) {
-      // If target iLv matches base tome, no augment needed
-      const isWeapon = slot.slot === 'weapon';
-      // Tome weapon is +5 iLv above armor
-      const baseTomeILv = tier.itemLevels.tome + (isWeapon ? 5 : 0);
-      return slot.itemLevel > baseTomeILv;
-    }
+  // Check if BiS item name indicates augmented version
+  if (slot.itemName) {
+    const name = slot.itemName.toLowerCase();
+    // "Aug. Item Name" or "Augmented Item Name" = BiS is augmented version
+    return name.startsWith('aug.') || name.startsWith('augmented');
   }
 
-  // No item level data - assume augmented is target (safer default)
+  // No item name data - assume augmented is target (safer default)
   return true;
 }
 
@@ -47,15 +66,14 @@ export function requiresAugmentation(
  * Check if a gear slot is complete (BiS achieved)
  *
  * @param status - The gear slot status
- * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function isSlotComplete(status: GearSlotStatus, tierId?: string): boolean {
+export function isSlotComplete(status: GearSlotStatus): boolean {
   if (!status.hasItem) return false;
   if (status.bisSource === 'raid') return true;
   if (status.bisSource === 'crafted') return true;
 
   // Tome BiS - check if augmentation is required
-  if (!requiresAugmentation(status, tierId)) return true;
+  if (!requiresAugmentation(status)) return true;
   return status.isAugmented;
 }
 
@@ -63,10 +81,9 @@ export function isSlotComplete(status: GearSlotStatus, tierId?: string): boolean
  * Calculate completion percentage for a player
  *
  * @param gear - Player's gear array
- * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculatePlayerCompletion(gear: GearSlotStatus[], tierId?: string): number {
-  const completed = gear.filter((slot) => isSlotComplete(slot, tierId)).length;
+export function calculatePlayerCompletion(gear: GearSlotStatus[]): number {
+  const completed = gear.filter((slot) => isSlotComplete(slot)).length;
   return gear.length > 0 ? Math.round((completed / gear.length) * 100) : 0;
 }
 
@@ -74,12 +91,8 @@ export function calculatePlayerCompletion(gear: GearSlotStatus[], tierId?: strin
  * Calculate upgrade materials needed for a player
  *
  * @param gear - Player's gear array
- * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculatePlayerMaterials(
-  gear: GearSlotStatus[],
-  tierId?: string
-): {
+export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
   twine: number;
   glaze: number;
   solvent: number;
@@ -92,7 +105,7 @@ export function calculatePlayerMaterials(
     // Already augmented = no material needed
     if (slot.isAugmented) return;
     // Skip if base tome is BiS (no augmentation needed)
-    if (!requiresAugmentation(slot, tierId)) return;
+    if (!requiresAugmentation(slot)) return;
 
     const material = getUpgradeMaterialForSlot(slot.slot);
     materials[material]++;
@@ -131,9 +144,8 @@ export function calculatePlayerBooks(gear: GearSlotStatus[]): {
  * Calculate team-wide summary
  *
  * @param players - Array of players
- * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculateTeamSummary(players: SnapshotPlayer[], tierId?: string): TeamSummary {
+export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
   const totalPlayers = players.length;
 
   if (totalPlayers === 0) {
@@ -154,11 +166,11 @@ export function calculateTeamSummary(players: SnapshotPlayer[], tierId?: string)
 
   players.forEach((player) => {
     // Completion
-    totalCompleted += player.gear.filter((slot) => isSlotComplete(slot, tierId)).length;
+    totalCompleted += player.gear.filter((slot) => isSlotComplete(slot)).length;
     totalSlots += player.gear.length;
 
     // Materials
-    const playerMaterials = calculatePlayerMaterials(player.gear, tierId);
+    const playerMaterials = calculatePlayerMaterials(player.gear);
     materials.twine += playerMaterials.twine;
     materials.glaze += playerMaterials.glaze;
     materials.solvent += playerMaterials.solvent;

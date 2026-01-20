@@ -163,9 +163,9 @@ export function TeamSummaryEnhanced({
     return players
       .filter(p => p.configured)
       .map(player => {
-        const gearPercent = calculatePlayerCompletion(player.gear, tierId);
+        const gearPercent = calculatePlayerCompletion(player.gear);
         const booksNeededCalc = calculatePlayerBooks(player.gear);
-        const matsNeededCalc = calculatePlayerMaterials(player.gear, tierId);
+        const matsNeededCalc = calculatePlayerMaterials(player.gear);
 
         // Get balances from store
         const pageBalance = pageBalanceMap.get(player.id);
@@ -198,7 +198,7 @@ export function TeamSummaryEnhanced({
           },
         };
       });
-  }, [players, pageBalanceMap, materialBalanceMap, tierId]);
+  }, [players, pageBalanceMap, materialBalanceMap]);
 
   // Calculate totals
   const totals = useMemo(() => {

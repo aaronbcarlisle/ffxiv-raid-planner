@@ -23,6 +23,9 @@ class CamelModel(BaseModel):
 
 # --- Gear Source Categories ---
 
+# BiS source: where the best-in-slot gear comes from
+GearBisSource = Literal["raid", "tome", "crafted"]
+
 GearSourceCategory = Literal[
     "savage",    # iLv 790/795 - Raid drop gear
     "tome_up",   # iLv 790 - Augmented tomestone
@@ -42,7 +45,7 @@ class GearSlotStatus(CamelModel):
     """Gear slot status"""
 
     slot: str
-    bis_source: Literal["raid", "tome"] = "raid"
+    bis_source: GearBisSource = "raid"
     current_source: GearSourceCategory = "unknown"  # What's actually equipped
     has_item: bool = False
     is_augmented: bool = False

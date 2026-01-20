@@ -33,8 +33,6 @@ interface PlayerCardGearProps {
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
-  /** Tier ID for augmentation requirement checks */
-  tierId?: string;
 }
 
 export function PlayerCardGear({
@@ -49,7 +47,6 @@ export function PlayerCardGear({
   onTomeWeaponChange,
   slotsWithLootEntries,
   onNavigateToLootEntry,
-  tierId,
 }: PlayerCardGearProps) {
   if (isExpanded) {
     return (
@@ -65,7 +62,6 @@ export function PlayerCardGear({
           isAdminAccess={isAdminAccess}
           slotsWithLootEntries={slotsWithLootEntries}
           onNavigateToLootEntry={onNavigateToLootEntry}
-          tierId={tierId}
         />
       </div>
     );
@@ -81,7 +77,7 @@ export function PlayerCardGear({
             if (!slotData) return null;
 
             // Check if this tome slot requires augmentation
-            const needsAug = requiresAugmentation(slotData, tierId);
+            const needsAug = requiresAugmentation(slotData);
             // Complete: has item AND (raid/crafted OR (tome AND (augmented OR aug not required)))
             const isComplete = slotData.hasItem && (
               slotData.bisSource === 'raid' ||

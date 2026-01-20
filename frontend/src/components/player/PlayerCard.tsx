@@ -934,7 +934,6 @@ export const PlayerCard = memo(function PlayerCard({
         onTomeWeaponChange={handleTomeWeaponChange}
         slotsWithLootEntries={slotsWithLootEntries}
         onNavigateToLootEntry={onNavigateToLootEntry}
-        tierId={tierId}
       />
 
       {/* Expanded mode: spacer after gear (fills remaining space, footer hidden) */}

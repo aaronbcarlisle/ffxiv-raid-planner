@@ -8,6 +8,10 @@ import {
   getEffectiveCurrentSource,
   calculateAverageItemLevel,
   calculateTeamAverageItemLevel,
+  requiresAugmentation,
+  isSlotComplete,
+  toGearState,
+  fromGearState,
 } from './calculations';
 import type { GearSlotStatus, SnapshotPlayer } from '../types';
 
@@ -233,5 +237,122 @@ describe('calculateTeamAverageItemLevel', () => {
     ];
     // Only player1 counts
     expect(calculateTeamAverageItemLevel(players, 'aac-heavyweight')).toBe(790);
+  });
+});
+
+describe('requiresAugmentation', () => {
+  it('returns false for raid BiS (no augmentation ever needed)', () => {
+    const slot = createGearSlot({ bisSource: 'raid', itemName: 'Savage Body' });
+    expect(requiresAugmentation(slot)).toBe(false);
+  });
+
+  it('returns false for crafted BiS (no augmentation ever needed)', () => {
+    const slot = createGearSlot({ bisSource: 'crafted', itemName: 'Crafted Body' });
+    expect(requiresAugmentation(slot)).toBe(false);
+  });
+
+  it('returns true for tome BiS with "Aug." prefix item name', () => {
+    const slot = createGearSlot({ bisSource: 'tome', itemName: 'Aug. Quetzalli Coat' });
+    expect(requiresAugmentation(slot)).toBe(true);
+  });
+
+  it('returns true for tome BiS with "Augmented" prefix item name', () => {
+    const slot = createGearSlot({ bisSource: 'tome', itemName: 'Augmented Quetzalli Coat' });
+    expect(requiresAugmentation(slot)).toBe(true);
+  });
+
+  it('returns false for tome BiS with non-augmented item name (base tome is BiS)', () => {
+    const slot = createGearSlot({ bisSource: 'tome', itemName: 'Quetzalli Coat' });
+    expect(requiresAugmentation(slot)).toBe(false);
+  });
+
+  it('returns true for tome BiS with no item name (safe default)', () => {
+    const slot = createGearSlot({ bisSource: 'tome' });
+    expect(requiresAugmentation(slot)).toBe(true);
+  });
+
+  it('is case-insensitive for item name prefix', () => {
+    const slot1 = createGearSlot({ bisSource: 'tome', itemName: 'aug. Quetzalli Coat' });
+    const slot2 = createGearSlot({ bisSource: 'tome', itemName: 'AUG. Quetzalli Coat' });
+    const slot3 = createGearSlot({ bisSource: 'tome', itemName: 'AUGMENTED Quetzalli Coat' });
+    expect(requiresAugmentation(slot1)).toBe(true);
+    expect(requiresAugmentation(slot2)).toBe(true);
+    expect(requiresAugmentation(slot3)).toBe(true);
+  });
+});
+
+describe('isSlotComplete', () => {
+  it('returns false when hasItem is false', () => {
+    const slot = createGearSlot({ hasItem: false, bisSource: 'raid' });
+    expect(isSlotComplete(slot)).toBe(false);
+  });
+
+  it('returns true for raid BiS when hasItem is true', () => {
+    const slot = createGearSlot({ hasItem: true, bisSource: 'raid' });
+    expect(isSlotComplete(slot)).toBe(true);
+  });
+
+  it('returns true for crafted BiS when hasItem is true', () => {
+    const slot = createGearSlot({ hasItem: true, bisSource: 'crafted' });
+    expect(isSlotComplete(slot)).toBe(true);
+  });
+
+  it('returns true for tome BiS when hasItem is true and base tome is BiS', () => {
+    const slot = createGearSlot({
+      hasItem: true,
+      bisSource: 'tome',
+      itemName: 'Quetzalli Coat', // No "Aug." prefix = base tome is BiS
+      isAugmented: false,
+    });
+    expect(isSlotComplete(slot)).toBe(true);
+  });
+
+  it('returns false for tome BiS when hasItem is true but needs augmentation and not augmented', () => {
+    const slot = createGearSlot({
+      hasItem: true,
+      bisSource: 'tome',
+      itemName: 'Aug. Quetzalli Coat', // "Aug." prefix = needs augmentation
+      isAugmented: false,
+    });
+    expect(isSlotComplete(slot)).toBe(false);
+  });
+
+  it('returns true for tome BiS when hasItem is true and needs augmentation and IS augmented', () => {
+    const slot = createGearSlot({
+      hasItem: true,
+      bisSource: 'tome',
+      itemName: 'Aug. Quetzalli Coat', // "Aug." prefix = needs augmentation
+      isAugmented: true,
+    });
+    expect(isSlotComplete(slot)).toBe(true);
+  });
+});
+
+describe('toGearState', () => {
+  it('returns "missing" when hasItem is false', () => {
+    expect(toGearState(false, false)).toBe('missing');
+    expect(toGearState(false, true)).toBe('missing');
+  });
+
+  it('returns "have" when hasItem is true and not augmented', () => {
+    expect(toGearState(true, false)).toBe('have');
+  });
+
+  it('returns "augmented" when hasItem is true and augmented', () => {
+    expect(toGearState(true, true)).toBe('augmented');
+  });
+});
+
+describe('fromGearState', () => {
+  it('returns { hasItem: false, isAugmented: false } for "missing"', () => {
+    expect(fromGearState('missing')).toEqual({ hasItem: false, isAugmented: false });
+  });
+
+  it('returns { hasItem: true, isAugmented: false } for "have"', () => {
+    expect(fromGearState('have')).toEqual({ hasItem: true, isAugmented: false });
+  });
+
+  it('returns { hasItem: true, isAugmented: true } for "augmented"', () => {
+    expect(fromGearState('augmented')).toEqual({ hasItem: true, isAugmented: true });
   });
 });

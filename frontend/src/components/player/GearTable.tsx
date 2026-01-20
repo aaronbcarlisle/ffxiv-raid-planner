@@ -9,13 +9,13 @@
  */
 
 import { useState } from 'react';
-import { Checkbox } from '../ui/Checkbox';
+import { GearStatusCheckbox } from '../ui/GearStatusCheckbox';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip, TooltipProvider, PopoverSelect, createGearSourceColorClasses } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_NAMES } from '../../types';
-import { requiresAugmentation } from '../../utils/calculations';
+import { requiresAugmentation, toGearState, fromGearState, type GearState } from '../../utils/calculations';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 import { FileSearch } from 'lucide-react';
@@ -227,8 +227,8 @@ function SlotIcon({
 interface WeaponSlotRowProps {
   status: GearSlotStatus;
   tomeWeapon: TomeWeaponStatus;
-  onGearChange: (updates: Partial<GearSlotStatus>) => void;
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
+  onGearStateChange: (newState: GearState) => void;
   disabled?: boolean;
   disabledTooltip?: string;
   hasLootEntry?: boolean;
@@ -238,13 +238,19 @@ interface WeaponSlotRowProps {
 function WeaponSlotRow({
   status,
   tomeWeapon,
-  onGearChange,
   onTomeWeaponChange,
+  onGearStateChange,
   disabled = false,
   disabledTooltip,
   hasLootEntry = false,
   onNavigateToLootEntry,
 }: WeaponSlotRowProps) {
+  // Handle tome weapon state change (3-state cycle: missing → have → augmented)
+  const handleTomeWeaponStateChange = (newState: GearState) => {
+    const { hasItem, isAugmented } = fromGearState(newState);
+    onTomeWeaponChange({ hasItem, isAugmented });
+  };
+
   return (
     <>
       {/* Main weapon row */}
@@ -303,31 +309,25 @@ function WeaponSlotRow({
           </div>
         </td>
         <td className="py-1">
-          {disabled && disabledTooltip ? (
-            <Tooltip content={disabledTooltip}>
-              <div className="flex justify-center">
-                <Checkbox
-                  checked={status.hasItem}
-                  onChange={(checked) => onGearChange({ hasItem: checked })}
-                  disabled={disabled}
-                />
-              </div>
-            </Tooltip>
-          ) : (
+          <Tooltip
+            content={
+              disabled && disabledTooltip
+                ? disabledTooltip
+                : status.hasItem
+                  ? 'Raid weapon acquired'
+                  : 'Click when you have the raid weapon'
+            }
+          >
             <div className="flex justify-center">
-              <Checkbox
-                checked={status.hasItem}
-                onChange={(checked) => onGearChange({ hasItem: checked })}
+              <GearStatusCheckbox
+                state={toGearState(status.hasItem, status.isAugmented)}
+                bisSource={status.bisSource}
+                requiresAugmentation={false}
                 disabled={disabled}
+                onChange={onGearStateChange}
               />
             </div>
-          )}
-        </td>
-        <td className="py-1">
-          <div className="flex justify-center text-text-muted">
-            {/* Show + when tome weapon tracking enabled, otherwise — */}
-            {tomeWeapon.pursuing ? '+' : '—'}
-          </div>
+          </Tooltip>
         </td>
       </tr>
 
@@ -353,55 +353,24 @@ function WeaponSlotRow({
             <span className={`inline-flex items-center text-xs text-gear-tome font-medium ${disabled ? 'opacity-50' : ''}`}>Tome</span>
           </td>
           <td className="py-1">
-            {disabled && disabledTooltip ? (
-              <Tooltip content={disabledTooltip}>
-                <div className="flex justify-center">
-                  <Checkbox
-                    checked={tomeWeapon.hasItem}
-                    onChange={(checked) => {
-                      if (!checked) {
-                        onTomeWeaponChange({ hasItem: checked, isAugmented: false });
-                      } else {
-                        onTomeWeaponChange({ hasItem: checked });
-                      }
-                    }}
-                    disabled={disabled}
-                  />
-                </div>
-              </Tooltip>
-            ) : (
-              <div className="flex justify-center">
-                <Checkbox
-                  checked={tomeWeapon.hasItem}
-                  onChange={(checked) => {
-                    if (!checked) {
-                      onTomeWeaponChange({ hasItem: checked, isAugmented: false });
-                    } else {
-                      onTomeWeaponChange({ hasItem: checked });
-                    }
-                  }}
-                  disabled={disabled}
-                />
-              </div>
-            )}
-          </td>
-          <td className="py-1">
             <Tooltip
               content={
-                disabled
-                  ? disabledTooltip || 'Get the tome weapon first'
+                disabled && disabledTooltip
+                  ? disabledTooltip
                   : !tomeWeapon.hasItem
-                    ? 'Get the tome weapon first'
+                    ? 'Click when you have the tome weapon'
                     : !tomeWeapon.isAugmented
-                      ? 'Get Solvent from Floor 3 (M11S)'
+                      ? 'Click again to mark as augmented (needs Solvent from M11S)'
                       : 'Tome weapon augmented'
               }
             >
               <div className="flex justify-center">
-                <Checkbox
-                  checked={tomeWeapon.isAugmented}
-                  onChange={(checked) => onTomeWeaponChange({ isAugmented: checked })}
-                  disabled={disabled || !tomeWeapon.hasItem}
+                <GearStatusCheckbox
+                  state={toGearState(tomeWeapon.hasItem, tomeWeapon.isAugmented)}
+                  bisSource="tome"
+                  requiresAugmentation={true}
+                  disabled={disabled}
+                  onChange={handleTomeWeaponStateChange}
                 />
               </div>
             </Tooltip>
@@ -427,8 +396,6 @@ interface GearTableProps {
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
-  /** Tier ID for augmentation requirement checks */
-  tierId?: string;
 }
 
 export function GearTable({
@@ -443,7 +410,6 @@ export function GearTable({
   isAdminAccess,
   slotsWithLootEntries,
   onNavigateToLootEntry,
-  tierId,
 }: GearTableProps) {
   // Check gear edit permission - use isAdminAccess to respect View As context
   const gearPermission = canEditGear(userRole, player, currentUserId, isAdminAccess);
@@ -464,25 +430,13 @@ export function GearTable({
     onGearChange(slot, { bisSource: newSource });
   };
 
-  const handleHasItemChange = (slot: string, hasItem: boolean) => {
+  const handleGearStateChange = (slot: string, newState: GearState) => {
     if (!gearPermission.allowed) {
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
       return;
     }
-    // When unchecking "Have", also uncheck "Augmented" to keep state consistent
-    if (!hasItem) {
-      onGearChange(slot, { hasItem, isAugmented: false });
-    } else {
-      onGearChange(slot, { hasItem });
-    }
-  };
-
-  const handleAugmentedChange = (slot: string, isAugmented: boolean) => {
-    if (!gearPermission.allowed) {
-      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
-      return;
-    }
-    onGearChange(slot, { isAugmented });
+    const { hasItem, isAugmented } = fromGearState(newState);
+    onGearChange(slot, { hasItem, isAugmented });
   };
 
   const handleTomeWeaponUpdate = (updates: Partial<TomeWeaponStatus>) => {
@@ -499,7 +453,7 @@ export function GearTable({
         {GEAR_SLOTS.map((slot) => {
           const status = getSlotStatus(slot);
           // Slot is complete if: has item AND (raid/crafted OR (tome AND (augmented OR aug not required)))
-          const needsAug = requiresAugmentation(status, tierId);
+          const needsAug = requiresAugmentation(status);
           const isComplete = status.hasItem && (
             status.bisSource === 'raid' ||
             status.bisSource === 'crafted' ||
@@ -576,13 +530,8 @@ export function GearTable({
             <th className="text-center py-1 font-medium hidden">Current</th>
             <th className="text-center py-1 font-medium w-16">BiS</th>
             <th className="text-center py-1 font-medium w-16">
-              <Tooltip content="Mark gear as acquired">
-                <span className="cursor-help">Have</span>
-              </Tooltip>
-            </th>
-            <th className="text-center py-1 font-medium w-16">
-              <Tooltip content="Mark tome gear as augmented">
-                <span className="cursor-help">Aug</span>
+              <Tooltip content="Click to cycle: missing → have → augmented (for tome)">
+                <span className="cursor-help">Status</span>
               </Tooltip>
             </th>
           </tr>
@@ -599,8 +548,8 @@ export function GearTable({
                   key={slot}
                   status={status}
                   tomeWeapon={tomeWeapon}
-                  onGearChange={(updates) => onGearChange(slot, updates)}
                   onTomeWeaponChange={handleTomeWeaponUpdate}
+                  onGearStateChange={(newState) => handleGearStateChange(slot, newState)}
                   disabled={!gearPermission.allowed}
                   disabledTooltip={gearPermission.reason}
                   hasLootEntry={slotsWithLootEntries?.has('weapon')}
@@ -610,9 +559,7 @@ export function GearTable({
             }
 
             // Check if this tome slot requires augmentation
-            const needsAug = requiresAugmentation(status, tierId);
-            // Can augment only if: tome BiS, has item, and augmentation is required
-            const canAugment = status.bisSource === 'tome' && status.hasItem && needsAug;
+            const needsAug = requiresAugmentation(status);
 
             return (
               <tr key={slot} className="border-t border-border-default/50">
@@ -669,53 +616,25 @@ export function GearTable({
                     content={
                       !gearPermission.allowed
                         ? gearPermission.reason
-                        : status.hasItem
-                          ? 'Uncheck to mark as not acquired'
-                          : 'Check when you have this gear'
+                        : !status.hasItem
+                          ? 'Click when you have this gear'
+                          : status.bisSource === 'tome' && needsAug && !status.isAugmented
+                            ? `Click again to mark as augmented (${getUpgradeMaterialTooltip(status.slot)})`
+                            : status.bisSource === 'tome' && !needsAug
+                              ? 'Complete (base tome is BiS)'
+                              : 'Complete'
                     }
                   >
                     <div className="flex justify-center">
-                      <Checkbox
-                        checked={status.hasItem}
-                        onChange={(checked) => handleHasItemChange(slot, checked)}
+                      <GearStatusCheckbox
+                        state={toGearState(status.hasItem, status.isAugmented)}
+                        bisSource={status.bisSource}
+                        requiresAugmentation={needsAug}
                         disabled={!gearPermission.allowed}
+                        onChange={(newState) => handleGearStateChange(slot, newState)}
                       />
                     </div>
                   </Tooltip>
-                </td>
-                <td className="py-1">
-                  {status.bisSource === 'raid' || status.bisSource === 'crafted' ? (
-                    <div className="flex justify-center">
-                      {/* Raid/Crafted gear can't be augmented - empty cell */}
-                    </div>
-                  ) : status.bisSource === 'tome' && !needsAug ? (
-                    <div className="flex justify-center">
-                      {/* Base tome is BiS - show checkmark or indicator that aug not needed */}
-                      <Tooltip content="Base tome is BiS (no augment needed)">
-                        <span className="text-status-success text-xs">✓</span>
-                      </Tooltip>
-                    </div>
-                  ) : (
-                    <Tooltip
-                      content={
-                        !gearPermission.allowed
-                          ? gearPermission.reason
-                          : !status.hasItem
-                            ? 'Get tome gear first'
-                            : !status.isAugmented
-                              ? getUpgradeMaterialTooltip(status.slot)
-                              : 'Gear augmented'
-                      }
-                    >
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={status.isAugmented}
-                          onChange={(checked) => handleAugmentedChange(slot, checked)}
-                          disabled={!gearPermission.allowed || !canAugment}
-                        />
-                      </div>
-                    </Tooltip>
-                  )}
                 </td>
               </tr>
             );
