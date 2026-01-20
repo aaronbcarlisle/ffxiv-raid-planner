@@ -319,6 +319,7 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
 
     # Crafted gear patterns (pentamelded HQ gear)
     # These are recognizable by tier-specific naming conventions
+    # NOTE: Keep in sync with frontend/src/utils/bisSourceDetection.ts
     crafted_patterns = [
         "claro-",      # 7.4 crafted (placeholder - update when known)
         "agonist",     # 7.2 crafted
@@ -350,6 +351,7 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
     # Tomestone gear patterns (base names without Aug. prefix)
     # These return "base_tome" since they don't have the Aug. prefix,
     # meaning the BiS is the base version that doesn't need augmentation
+    # NOTE: Keep in sync with frontend/src/utils/bisSourceDetection.ts
     tome_patterns = [
         "bygone",        # 7.4 tome gear (placeholder - update when known)
         "quetzalli",     # 7.2 tome gear
@@ -380,8 +382,10 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
         return "raid"
 
     # Current tier iLv thresholds (7.4: savage=790/795, tome=780/785, crafted=770)
-    # Crafted is typically exactly 20 iLv below savage
-    if item_level <= 770:
+    # Only classify as crafted if iLv is in the current crafted range (765-770)
+    # Old tier gear (e.g., 630, 710) should fall through to base_tome default
+    # This prevents false positives on legacy BiS sets
+    if 765 <= item_level <= 770:
         return "crafted"
 
     # For weapon, higher threshold

@@ -9,6 +9,7 @@ import type { GearSlotStatus, GearSource } from '../types';
 
 // Name patterns for detecting gear source miscategorization
 // These patterns match item names from various expansion tiers
+// NOTE: Keep in sync with backend/app/routers/bis.py determine_source() patterns
 const CRAFTED_PATTERNS = [
   'claro-',        // 7.4 crafted
   'agonist',       // 7.2 crafted
@@ -58,7 +59,9 @@ export function getCorrectBisSource(status: GearSlotStatus): GearSource | null {
 
   // Check for base_tome miscategorization:
   // Name matches tome pattern, doesn't have "Aug." prefix, but bisSource isn't 'base_tome'
-  if (status.bisSource !== 'base_tome') {
+  // Also skip if bisSource is already 'tome' - augmented tome gear may not have Aug. prefix
+  // depending on import source, and we don't want false positives
+  if (status.bisSource !== 'base_tome' && status.bisSource !== 'tome') {
     const hasAugPrefix = nameLower.startsWith('aug.') || nameLower.startsWith('augmented');
     if (!hasAugPrefix) {
       for (const pattern of TOME_PATTERNS) {

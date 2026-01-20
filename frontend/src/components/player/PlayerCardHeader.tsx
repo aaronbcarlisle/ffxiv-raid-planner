@@ -42,6 +42,12 @@ function getSlotItemLevel(
     return getItemLevelForCategory(tierId, 'tome', isWeapon);
   }
 
+  // Special case: 'crafted' BiS - use crafted iLv
+  if (slot.hasItem && slot.bisSource === 'crafted') {
+    const isWeapon = slot.slot === 'weapon';
+    return getItemLevelForCategory(tierId, 'crafted', isWeapon);
+  }
+
   // Use itemLevel from BiS import if player has the item
   if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
     return slot.itemLevel;
