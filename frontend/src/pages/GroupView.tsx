@@ -111,11 +111,6 @@ export function GroupView() {
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
 
-  // Reset errorCopied when error clears (modal closes)
-  useEffect(() => {
-    if (!error) setErrorCopied(false);
-  }, [error]);
-
   // Handle viewAs URL parameter
   useEffect(() => {
     const viewAsUserId = searchParams.get('viewAs');
@@ -451,6 +446,11 @@ export function GroupView() {
   // Match errorStack to whichever error is being displayed
   const errorStack = error === groupError ? groupErrorStack : tierErrorStack;
 
+  // Reset errorCopied when error clears (modal closes)
+  useEffect(() => {
+    if (!error) setErrorCopied(false);
+  }, [error]);
+
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
   const existingTierIds = tiers.map(t => t.tierId);
@@ -469,11 +469,13 @@ export function GroupView() {
     return map;
   }, [lootLog]);
 
-  // Check if any modal is open
+  // Check if any modal is open (including error modal)
+  const isErrorModalOpen = !!error && !!currentGroup;
   const isAnyModalOpen = showSettingsModal || showRolloverDialog ||
                           showDeleteTierConfirm || showCreateTierModal ||
                           showKeyboardHelp || showLogLootModal ||
                           showLogMaterialModal || showMarkFloorClearedModal ||
+                          isErrorModalOpen ||
                           playerModalCount > 0;
 
   // Use extracted keyboard shortcuts hook
@@ -920,6 +922,7 @@ export function GroupView() {
               <Tooltip content={errorCopied ? "Copied to clipboard" : "Copy error details"}>
                 <button
                   onClick={handleCopyError}
+                  aria-label={errorCopied ? "Copied to clipboard" : "Copy error details"}
                   className="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-surface-elevated hover:bg-black/20 border border-border-default transition-colors"
                 >
                   {errorCopied ? (

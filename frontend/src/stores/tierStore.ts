@@ -81,6 +81,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch tiers',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isLoading: false,
       });
     }
@@ -98,6 +99,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch tier',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isLoading: false,
       });
     }
@@ -126,6 +128,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to create tier',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -155,6 +158,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to set active tier',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -181,6 +185,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to delete tier',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -218,6 +223,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to rollover',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -366,6 +372,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to add player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -400,6 +407,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to remove player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -449,6 +457,7 @@ export const useTierStore = create<TierState>((set, get) => ({
       set({
         currentTier: previousTier,
         error: error instanceof Error ? error.message : 'Failed to reorder players',
+        errorStack: error instanceof Error ? error.stack || null : null,
       });
     }
   },
@@ -487,6 +496,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to claim player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -525,6 +535,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to release player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -572,6 +583,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to assign player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -619,6 +631,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to assign player',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -668,6 +681,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to update weapon priorities',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -706,6 +720,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to lock weapon priorities',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -744,6 +759,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to unlock weapon priorities',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
@@ -772,6 +788,7 @@ export const useTierStore = create<TierState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to update weapon priority settings',
+        errorStack: error instanceof Error ? error.stack || null : null,
         isSaving: false,
       });
       throw error;
