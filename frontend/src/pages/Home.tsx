@@ -292,7 +292,7 @@ export function Home() {
           </div>
           <div className="grid md:grid-cols-3 gap-4">
             <Link
-              to="/docs/getting-started"
+              to="/docs/quick-start"
               className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
             >
               <div className="flex items-center gap-3 mb-2">
@@ -300,15 +300,15 @@ export function Home() {
                   <Users className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  Getting Started
+                  Quick Start
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                Guides for static leads and members
+                Get your static set up in 5 minutes
               </p>
             </Link>
             <Link
-              to="/docs/loot-math"
+              to="/docs/understanding-priority"
               className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
             >
               <div className="flex items-center gap-3 mb-2">
@@ -316,15 +316,15 @@ export function Home() {
                   <Calculator className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  Loot & Priority Math
+                  Understanding Priority
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                How priority calculations work
+                How loot distribution works
               </p>
             </Link>
             <Link
-              to="/docs/release-notes"
+              to="/docs/how-to"
               className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
             >
               <div className="flex items-center gap-3 mb-2">
@@ -332,11 +332,11 @@ export function Home() {
                   <Sparkles className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  Release Notes
+                  How-To Guides
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                Latest updates and features
+                Step-by-step guides for common tasks
               </p>
             </Link>
           </div>

@@ -8,8 +8,25 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
-import { CodeBlock, DualCodeBlock } from '../components/docs';
+import { Terminal, FileText } from 'lucide-react';
+import { CodeBlock, TripleCodeBlock, NavSidebar } from '../components/docs';
+
+// Language icons (from CodeBlock.tsx)
+function PythonIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z" />
+    </svg>
+  );
+}
+
+function CSharpIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M12 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0zM9.426 7.12a5.55 5.55 0 013.19-.94c.271 0 .541.02.81.058v2.37a3.991 3.991 0 00-.824-.084 3.565 3.565 0 00-2.443 1.035 3.558 3.558 0 00-1.024 2.55 3.558 3.558 0 001.024 2.55 3.565 3.565 0 002.443 1.035c.283 0 .558-.03.824-.084v2.37c-.269.039-.539.058-.81.058a5.55 5.55 0 01-3.19-.94 5.626 5.626 0 01-1.917-2.443 7.273 7.273 0 01-.675-3.086 7.273 7.273 0 01.675-3.086 5.626 5.626 0 011.917-2.442zm6.902 1.708h.894l.342 1.026h.01l.342-1.026h.894v3.456h-.72v-2.11h-.01l-.407 1.095h-.62l-.407-1.095h-.01v2.11h-.72V8.828h.002zm2.962 0h.894l.342 1.026h.01l.342-1.026h.894v3.456h-.72v-2.11h-.01l-.407 1.095h-.62l-.407-1.095h-.01v2.11h-.72V8.828h.002z"/>
+    </svg>
+  );
+}
 
 // Navigation items grouped by category
 const NAV_GROUPS = [
@@ -91,136 +108,37 @@ function InfoBox({
   );
 }
 
-// Sidebar Navigation Component
-function NavSidebar({
-  activeSection,
-  onSectionClick
-}: {
-  activeSection: string;
-  onSectionClick: (id: string) => void;
-}) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
-  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll();
-    }
-  }, []);
+// Tab components for setup section
+interface TabGroupProps {
+  tabs: { id: string; label: string; icon?: React.ReactNode }[];
+  activeTab: string;
+  onTabChange: (id: string) => void;
+  children: React.ReactNode;
+}
 
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  };
-
-  const handleClick = (id: string) => {
-    onSectionClick(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
+function TabGroup({ tabs, activeTab, onTabChange, children }: TabGroupProps) {
   return (
-    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
-      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
-        <div
-          className={`
-            absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10
-            bg-gradient-to-b from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.top ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-
-        <div
-          ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
-        >
-          {NAV_GROUPS.map((group, groupIndex) => {
-            const isCollapsed = collapsedGroups.has(group.label);
-            const itemCount = group.items.length;
-
-            return (
-              <div key={group.label} className={groupIndex > 0 ? 'mt-3' : ''}>
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="
-                    w-full flex items-center justify-between
-                    text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em]
-                    mb-1 px-1 py-0.5 rounded
-                    hover:text-text-muted hover:bg-surface-interactive cursor-pointer
-                  "
-                >
-                  <span>{group.label}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-[9px] font-normal tracking-normal opacity-60">
-                      {itemCount}
-                    </span>
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
-                    />
-                  </span>
-                </button>
-
-                {!isCollapsed && (
-                  <ul className="space-y-px">
-                    {group.items.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          onClick={() => handleClick(section.id)}
-                          className={`
-                            w-full text-left pl-3 pr-2 py-1.5 text-[13px] rounded transition-colors
-                            ${activeSection === section.id
-                              ? 'bg-accent/10 text-accent font-medium'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                            }
-                          `}
-                        >
-                          {section.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {isCollapsed && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="w-full text-left pl-3 pr-2 py-1.5 text-[12px] text-text-muted hover:text-text-secondary rounded hover:bg-surface-interactive transition-colors"
-                  >
-                    {itemCount} items...
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div
-          className={`
-            absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10
-            bg-gradient-to-t from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
+    <div className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden mb-6">
+      <div className="flex border-b border-border-subtle">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === tab.id
+                ? 'bg-surface-elevated text-accent border-b-2 border-accent -mb-px'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
       </div>
-    </nav>
+      <div className="p-6">
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -236,6 +154,7 @@ export default function ApiCookbook() {
     }
     return 'intro';
   });
+  const [setupTab, setSetupTab] = useState<'python' | 'csharp' | 'curl'>('python');
   const isScrollingRef = useRef(false);
   const scrollEndTimeoutRef = useRef<number | null>(null);
 
@@ -250,6 +169,9 @@ export default function ApiCookbook() {
           element.scrollIntoView({ behavior: 'smooth' });
         }, 100);
       }
+    } else {
+      // No hash - scroll to top to prevent browser scroll restoration from jumping to wrong section
+      window.scrollTo(0, 0);
     }
   }, [location.hash]);
 
@@ -279,6 +201,24 @@ export default function ApiCookbook() {
         id: s.id,
         element: document.getElementById(s.id)
       })).filter(s => s.element);
+
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection(prev => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
 
       let bestSection: string | null = null;
       let bestTop = -Infinity;
@@ -334,31 +274,38 @@ export default function ApiCookbook() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <a href="/docs" className="hover:text-accent transition-colors">Documentation</a>
             <span>/</span>
             <a href="/docs/api" className="hover:text-accent transition-colors">API Reference</a>
             <span>/</span>
             <span className="text-text-secondary">Cookbook</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
-          <p className="text-text-secondary mt-2">
-            Practical examples for common API workflows with Python and curl
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
+              <p className="text-text-secondary mt-1">
+                Practical examples for common API workflows with Python, curl, and C#
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Content with Sidebar */}
       <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8 flex gap-8">
-        <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
+        <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
           {/* Introduction */}
           <Section id="intro" title="Introduction">
             <p className="text-text-secondary mb-6">
               This cookbook provides practical, copy-paste examples for integrating with the
-              FFXIV Raid Planner API. Each example is shown in both Python (using httpx) and
-              curl for maximum flexibility.
+              FFXIV Raid Planner API. Each example is shown in Python (using httpx), curl,
+              and C# (using HttpClient) for maximum flexibility.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -381,22 +328,32 @@ export default function ApiCookbook() {
 
           {/* Setup & Installation */}
           <Section id="setup" title="Setup & Installation">
-            <Subsection title="Python Setup">
-              <p className="text-text-secondary mb-4">
-                Install the required Python packages:
-              </p>
-              <CodeBlock
-                language="bash"
-                code={`pip install httpx python-dotenv`}
-              />
+            <TabGroup
+              tabs={[
+                { id: 'python', label: 'Python', icon: <PythonIcon className="w-4 h-4" /> },
+                { id: 'csharp', label: 'C#', icon: <CSharpIcon className="w-4 h-4" /> },
+                { id: 'curl', label: 'curl', icon: <Terminal className="w-4 h-4" /> },
+              ]}
+              activeTab={setupTab}
+              onTabChange={(id) => setSetupTab(id as 'python' | 'csharp' | 'curl')}
+            >
+              {setupTab === 'python' && (
+                <>
+                  <p className="text-text-secondary mb-4">
+                    Install the required Python packages:
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`pip install httpx python-dotenv`}
+                  />
 
-              <p className="text-text-secondary mb-4">
-                Create a helper module for API calls:
-              </p>
-              <CodeBlock
-                language="python"
-                title="raid_planner.py"
-                code={`import httpx
+                  <p className="text-text-secondary mt-6 mb-4">
+                    Create a helper module for API calls:
+                  </p>
+                  <CodeBlock
+                    language="python"
+                    title="raid_planner.py"
+                    code={`import httpx
 import os
 from dotenv import load_dotenv
 
@@ -443,20 +400,187 @@ def api_delete(path: str):
         response = client.delete(path)
         response.raise_for_status()
         return response.status_code == 204`}
-              />
-            </Subsection>
+                  />
 
-            <Subsection title="Environment Variables">
-              <p className="text-text-secondary mb-4">
-                Create a <code>.env</code> file with your configuration:
-              </p>
-              <CodeBlock
-                language="bash"
-                title=".env"
-                code={`RAID_PLANNER_URL=http://localhost:8000/api
+                  <p className="text-text-secondary mt-6 mb-4">
+                    Create a <code>.env</code> file with your configuration:
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    title=".env"
+                    code={`RAID_PLANNER_URL=http://localhost:8000/api
 RAID_PLANNER_TOKEN=your-access-token-here`}
-              />
-            </Subsection>
+                  />
+                </>
+              )}
+
+              {setupTab === 'csharp' && (
+                <>
+                  <p className="text-text-secondary mb-4">
+                    Create a new .NET project and add required packages:
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`dotnet new console -n RaidPlannerClient
+cd RaidPlannerClient
+dotnet add package System.Net.Http.Json`}
+                  />
+
+                  <p className="text-text-secondary mt-6 mb-4">
+                    Create a helper class for API calls:
+                  </p>
+                  <CodeBlock
+                    language="csharp"
+                    title="RaidPlannerClient.cs"
+                    code={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class RaidPlannerClient : IDisposable
+{
+    private readonly HttpClient _client;
+    private readonly string _baseUrl;
+
+    public RaidPlannerClient(string? baseUrl = null, string? token = null)
+    {
+        _baseUrl = baseUrl ?? Environment.GetEnvironmentVariable("RAID_PLANNER_URL")
+                   ?? "http://localhost:8000/api";
+        var accessToken = token ?? Environment.GetEnvironmentVariable("RAID_PLANNER_TOKEN") ?? "";
+
+        _client = new HttpClient
+        {
+            BaseAddress = new Uri(_baseUrl),
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+
+        _client.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            _client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", accessToken);
+        }
+    }
+
+    public async Task<JsonDocument> GetAsync(string path)
+    {
+        var response = await _client.GetAsync(path);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonDocument>()
+               ?? throw new Exception("Empty response");
+    }
+
+    public async Task<JsonDocument> PostAsync(string path, object data)
+    {
+        var response = await _client.PostAsJsonAsync(path, data);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonDocument>()
+               ?? throw new Exception("Empty response");
+    }
+
+    public async Task<JsonDocument> PutAsync(string path, object data)
+    {
+        var response = await _client.PutAsJsonAsync(path, data);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonDocument>()
+               ?? throw new Exception("Empty response");
+    }
+
+    public async Task DeleteAsync(string path)
+    {
+        var response = await _client.DeleteAsync(path);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public void Dispose()
+    {
+        _client?.Dispose();
+    }
+}`}
+                  />
+
+                  <p className="text-text-secondary mt-6 mb-4">
+                    Set environment variables (Windows PowerShell):
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`$env:RAID_PLANNER_URL = "http://localhost:8000/api"
+$env:RAID_PLANNER_TOKEN = "your-access-token-here"`}
+                  />
+
+                  <p className="text-text-secondary mt-6 mb-4">
+                    Or create a <code>appsettings.json</code> file:
+                  </p>
+                  <CodeBlock
+                    language="json"
+                    title="appsettings.json"
+                    code={`{
+  "RaidPlanner": {
+    "BaseUrl": "http://localhost:8000/api",
+    "AccessToken": "your-access-token-here"
+  }
+}`}
+                  />
+                </>
+              )}
+
+              {setupTab === 'curl' && (
+                <>
+                  <p className="text-text-secondary mb-4">
+                    curl is pre-installed on most systems (macOS, Linux, Windows 10+). Verify installation:
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`curl --version`}
+                  />
+
+                  <p className="text-text-secondary mt-6 mb-4">
+                    For convenience, set environment variables in your shell:
+                  </p>
+
+                  <p className="text-text-secondary mb-2">
+                    <strong>Bash/Zsh (Linux/macOS):</strong>
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`export RAID_PLANNER_URL="http://localhost:8000/api"
+export TOKEN="your-access-token-here"
+
+# Add to ~/.bashrc or ~/.zshrc to persist across sessions`}
+                  />
+
+                  <p className="text-text-secondary mt-4 mb-2">
+                    <strong>PowerShell (Windows):</strong>
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`$env:RAID_PLANNER_URL = "http://localhost:8000/api"
+$env:TOKEN = "your-access-token-here"
+
+# Add to $PROFILE to persist across sessions`}
+                  />
+
+                  <p className="text-text-secondary mt-4 mb-2">
+                    <strong>CMD (Windows):</strong>
+                  </p>
+                  <CodeBlock
+                    language="bash"
+                    code={`set RAID_PLANNER_URL=http://localhost:8000/api
+set TOKEN=your-access-token-here`}
+                  />
+
+                  <InfoBox type="tip" title="Using curl with environment variables">
+                    Throughout this guide, curl examples use <code>$TOKEN</code> and <code>$STATIC_ID</code>
+                    placeholders. Replace them with actual values or set them as environment variables for
+                    easy copy-paste.
+                  </InfoBox>
+                </>
+              )}
+            </TabGroup>
           </Section>
 
           {/* Authentication Flow */}
@@ -469,7 +593,7 @@ RAID_PLANNER_TOKEN=your-access-token-here`}
               <p className="text-text-secondary mb-4">
                 First, get the Discord OAuth authorization URL:
               </p>
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`import httpx
 
 BASE_URL = "http://localhost:8000/api"
@@ -487,6 +611,24 @@ print(f"State token: {data['state']}")`}
 #   "url": "https://discord.com/oauth2/authorize?...",
 #   "state": "random-state-token"
 # }`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var baseUrl = "http://localhost:8000/api";
+using var client = new HttpClient();
+
+// Get the Discord OAuth URL
+var response = await client.GetAsync($"{baseUrl}/auth/discord");
+response.EnsureSuccessStatusCode();
+
+var data = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var url = data.RootElement.GetProperty("url").GetString();
+var state = data.RootElement.GetProperty("state").GetString();
+
+Console.WriteLine($"Redirect user to: {url}");
+Console.WriteLine($"State token: {state}");`}
               />
             </Subsection>
 
@@ -494,7 +636,7 @@ print(f"State token: {data['state']}")`}
               <p className="text-text-secondary mb-4">
                 After user authorizes, Discord redirects with a code. Exchange it for tokens:
               </p>
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`import httpx
 
 BASE_URL = "http://localhost:8000/api"
@@ -518,6 +660,33 @@ print(f"Expires In: {tokens['expiresIn']} seconds")`}
     "code": "discord-auth-code-from-redirect",
     "state": "state-from-url"
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var baseUrl = "http://localhost:8000/api";
+using var client = new HttpClient();
+
+// Exchange the authorization code for tokens
+var payload = new
+{
+    code = "discord-auth-code-from-redirect",
+    state = "state-from-url"
+};
+
+var response = await client.PostAsJsonAsync($"{baseUrl}/auth/discord/callback", payload);
+response.EnsureSuccessStatusCode();
+
+var tokens = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var accessToken = tokens.RootElement.GetProperty("accessToken").GetString();
+var refreshToken = tokens.RootElement.GetProperty("refreshToken").GetString();
+var expiresIn = tokens.RootElement.GetProperty("expiresIn").GetInt32();
+
+Console.WriteLine($"Access Token: {accessToken}");
+Console.WriteLine($"Refresh Token: {refreshToken}");
+Console.WriteLine($"Expires In: {expiresIn} seconds");`}
               />
             </Subsection>
 
@@ -525,7 +694,7 @@ print(f"Expires In: {tokens['expiresIn']} seconds")`}
               <p className="text-text-secondary mb-4">
                 Access tokens expire after 15 minutes. Use the refresh token to get new ones:
               </p>
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`import httpx
 
 BASE_URL = "http://localhost:8000/api"
@@ -541,6 +710,24 @@ print(f"New Access Token: {new_tokens['accessToken']}")`}
                 curl={`curl -X POST "http://localhost:8000/api/auth/refresh" \\
   -H "Content-Type: application/json" \\
   -d '{"refreshToken": "your-refresh-token"}'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var baseUrl = "http://localhost:8000/api";
+var refreshToken = "your-refresh-token";
+using var client = new HttpClient();
+
+var payload = new { refreshToken };
+var response = await client.PostAsJsonAsync($"{baseUrl}/auth/refresh", payload);
+response.EnsureSuccessStatusCode();
+
+var newTokens = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var newAccessToken = newTokens.RootElement.GetProperty("accessToken").GetString();
+
+Console.WriteLine($"New Access Token: {newAccessToken}");`}
               />
             </Subsection>
           </Section>
@@ -551,7 +738,7 @@ print(f"New Access Token: {new_tokens['accessToken']}")`}
               Create a new static group where your raid team can track gear and loot.
             </p>
 
-            <DualCodeBlock
+            <TripleCodeBlock
               title="Create a new static group"
               python={`from raid_planner import api_post
 
@@ -576,6 +763,39 @@ print(f"Share Code: {static['shareCode']}")`}
       "lootPriority": ["melee", "ranged", "caster", "tank", "healer"]
     }
   }'`}
+              csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var baseUrl = "http://localhost:8000/api";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Create a new static group
+var payload = new
+{
+    name = "My Awesome Static",
+    isPublic = false,
+    settings = new
+    {
+        lootPriority = new[] { "melee", "ranged", "caster", "tank", "healer" }
+    }
+};
+
+var response = await client.PostAsJsonAsync($"{baseUrl}/static-groups", payload);
+response.EnsureSuccessStatusCode();
+
+var staticGroup = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var id = staticGroup.RootElement.GetProperty("id").GetString();
+var shareCode = staticGroup.RootElement.GetProperty("shareCode").GetString();
+
+Console.WriteLine($"Static ID: {id}");
+Console.WriteLine($"Share Code: {shareCode}");`}
             />
 
             <InfoBox type="tip" title="Share Code">
@@ -590,7 +810,7 @@ print(f"Share Code: {static['shareCode']}")`}
               Create a tier snapshot to track gear progress for a specific raid tier.
             </p>
 
-            <DualCodeBlock
+            <TripleCodeBlock
               title="Create a tier snapshot"
               python={`from raid_planner import api_post
 
@@ -613,6 +833,36 @@ print(f"Tier: {tier['tierId']}")`}
     "contentType": "savage",
     "isActive": true
   }'`}
+              csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Create a new tier snapshot
+var payload = new
+{
+    tierId = "aac-heavyweight",
+    contentType = "savage",
+    isActive = true
+};
+
+var response = await client.PostAsJsonAsync($"http://localhost:8000/api/static-groups/{staticId}/tiers", payload);
+response.EnsureSuccessStatusCode();
+
+var tier = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var id = tier.RootElement.GetProperty("id").GetString();
+var tierId = tier.RootElement.GetProperty("tierId").GetString();
+
+Console.WriteLine($"Tier Snapshot ID: {id}");
+Console.WriteLine($"Tier: {tierId}");`}
             />
 
             <Subsection title="Available Tier IDs">
@@ -629,7 +879,7 @@ print(f"Tier: {tier['tierId']}")`}
           {/* Manage Players */}
           <Section id="manage-players" title="Manage Players">
             <Subsection title="Add a Player">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_post
 
 static_id = "your-static-uuid"
@@ -657,11 +907,46 @@ print(f"Job: {player['job']}")`}
     "role": "melee",
     "position": "M1"
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Add a new player
+var payload = new
+{
+    name = "Warrior of Light",
+    job = "DRG",
+    role = "melee",
+    position = "M1"
+};
+
+var response = await client.PostAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players",
+    payload
+);
+response.EnsureSuccessStatusCode();
+
+var player = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var id = player.RootElement.GetProperty("id").GetString();
+var job = player.RootElement.GetProperty("job").GetString();
+
+Console.WriteLine($"Player ID: {id}");
+Console.WriteLine($"Job: {job}");`}
               />
             </Subsection>
 
             <Subsection title="Update Player Gear">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_put
 
 static_id = "your-static-uuid"
@@ -699,11 +984,42 @@ print("Gear updated successfully")`}
       {"slot": "body", "bisSource": "tome", "hasItem": true, "isAugmented": true}
     ]
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var playerId = "your-player-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Update player's gear status
+var payload = new
+{
+    gear = new[]
+    {
+        new { slot = "weapon", bisSource = "raid", hasItem = true, isAugmented = false },
+        new { slot = "body", bisSource = "tome", hasItem = true, isAugmented = true }
+    }
+};
+
+var response = await client.PutAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
+    payload
+);
+response.EnsureSuccessStatusCode();
+
+Console.WriteLine("Gear updated successfully");`}
               />
             </Subsection>
 
             <Subsection title="List All Players">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get
 
 static_id = "your-static-uuid"
@@ -717,6 +1033,36 @@ for player in tier['players']:
     print(f"{player['name']} ({player['job']}): {bis_count}/11 BiS")`}
                 curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID" \\
   -H "Authorization: Bearer $TOKEN"`}
+                csharp={`using System;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get tier with all players
+var response = await client.GetAsync($"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}");
+response.EnsureSuccessStatusCode();
+
+var tier = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var players = tier.RootElement.GetProperty("players").EnumerateArray();
+
+foreach (var player in players)
+{
+    var name = player.GetProperty("name").GetString();
+    var job = player.GetProperty("job").GetString();
+    var gear = player.GetProperty("gear").EnumerateArray();
+    var bisCount = gear.Count(g => g.TryGetProperty("hasItem", out var hasItem) && hasItem.GetBoolean());
+
+    Console.WriteLine($"{name} ({job}): {bisCount}/11 BiS");
+}`}
               />
             </Subsection>
           </Section>
@@ -728,7 +1074,7 @@ for player in tier['players']:
             </p>
 
             <Subsection title="From XIVGear">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get, api_put
 
 static_id = "your-static-uuid"
@@ -768,11 +1114,57 @@ curl -X PUT "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/p
   -H "Authorization: Bearer $TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"gear": [...], "bisLink": "..."}'`}
+                csharp={`using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var playerId = "your-player-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Fetch BiS data from XIVGear
+var xivgearUrl = "https://xivgear.app/?page=sl|12345678-1234-1234-1234-123456789abc";
+var bisResponse = await client.GetAsync($"http://localhost:8000/api/bis/xivgear/{xivgearUrl}");
+bisResponse.EnsureSuccessStatusCode();
+
+var bisData = await bisResponse.Content.ReadFromJsonAsync<JsonDocument>();
+var slots = bisData.RootElement.GetProperty("slots").EnumerateArray();
+
+// Convert to gear array format
+var gear = slots.Select(slotData => new
+{
+    slot = slotData.GetProperty("slot").GetString(),
+    bisSource = slotData.GetProperty("source").GetString(),
+    itemName = slotData.GetProperty("itemName").GetString(),
+    itemLevel = slotData.GetProperty("itemLevel").GetInt32(),
+    itemIcon = slotData.GetProperty("itemIcon").GetString(),
+    hasItem = false,
+    isAugmented = false
+}).ToArray();
+
+// Update player with BiS data
+var updatePayload = new { gear, bisLink = xivgearUrl };
+var updateResponse = await client.PutAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
+    updatePayload
+);
+updateResponse.EnsureSuccessStatusCode();
+
+Console.WriteLine($"Imported {gear.Length} gear slots from XIVGear");`}
               />
             </Subsection>
 
             <Subsection title="From Presets">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get
 
 # Get available presets for a job
@@ -794,6 +1186,43 @@ curl -X GET "http://localhost:8000/api/bis/presets/DRG?category=savage" \\
 # Then fetch the preset data
 curl -X GET "http://localhost:8000/api/bis/xivgear/$PRESET_UUID" \\
   -H "Authorization: Bearer $TOKEN"`}
+                csharp={`using System;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var token = Environment.GetEnvironmentVariable("TOKEN");
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get available presets for a job
+var presetsResponse = await client.GetAsync("http://localhost:8000/api/bis/presets/DRG?category=savage");
+presetsResponse.EnsureSuccessStatusCode();
+
+var presetsData = await presetsResponse.Content.ReadFromJsonAsync<JsonDocument>();
+var presets = presetsData.RootElement.GetProperty("presets").EnumerateArray().ToList();
+
+Console.WriteLine("Available presets for DRG:");
+foreach (var preset in presets)
+{
+    var name = preset.GetProperty("name").GetString();
+    var gcd = preset.TryGetProperty("gcd", out var gcdProp) ? gcdProp.GetString() : "N/A";
+    Console.WriteLine($"  - {name} (GCD: {gcd})");
+}
+
+// Use a preset UUID with the xivgear endpoint
+if (presets.Any())
+{
+    var presetUuid = presets[0].GetProperty("uuid").GetString();
+    var bisResponse = await client.GetAsync($"http://localhost:8000/api/bis/xivgear/{presetUuid}");
+    bisResponse.EnsureSuccessStatusCode();
+
+    var bisData = await bisResponse.Content.ReadFromJsonAsync<JsonDocument>();
+    var bisName = bisData.RootElement.GetProperty("name").GetString();
+    Console.WriteLine($"Loaded preset: {bisName}");
+}`}
               />
             </Subsection>
           </Section>
@@ -805,7 +1234,7 @@ curl -X GET "http://localhost:8000/api/bis/xivgear/$PRESET_UUID" \\
             </p>
 
             <Subsection title="Log a Drop">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_post
 
 static_id = "your-static-uuid"
@@ -834,11 +1263,45 @@ print(f"Logged loot entry #{loot_entry['id']}")`}
     "recipientPlayerId": "player-uuid",
     "method": "drop"
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Log a loot drop
+var payload = new
+{
+    weekNumber = 1,
+    floor = "M9S",
+    itemSlot = "earring",
+    recipientPlayerId = "player-uuid",
+    method = "drop"  // or "book", "tome"
+};
+
+var response = await client.PostAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/loot-log",
+    payload
+);
+response.EnsureSuccessStatusCode();
+
+var lootEntry = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var id = lootEntry.RootElement.GetProperty("id").GetString();
+
+Console.WriteLine($"Logged loot entry #{id}");`}
               />
             </Subsection>
 
             <Subsection title="Get Loot History">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get
 
 static_id = "your-static-uuid"
@@ -865,6 +1328,44 @@ for week, entries in sorted(by_week.items()):
 # Filter by week
 curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log?week=1" \\
   -H "Authorization: Bearer $TOKEN"`}
+                csharp={`using System;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get all loot entries
+var response = await client.GetAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/loot-log"
+);
+response.EnsureSuccessStatusCode();
+
+var lootLog = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var entries = lootLog.RootElement.EnumerateArray();
+
+// Group by week
+var byWeek = entries.GroupBy(e => e.GetProperty("weekNumber").GetInt32())
+                    .OrderBy(g => g.Key);
+
+foreach (var week in byWeek)
+{
+    Console.WriteLine($"\nWeek {week.Key}:");
+    foreach (var entry in week)
+    {
+        var floor = entry.GetProperty("floor").GetString();
+        var itemSlot = entry.GetProperty("itemSlot").GetString();
+        var playerName = entry.GetProperty("recipientPlayerName").GetString();
+        Console.WriteLine($"  {floor} {itemSlot} -> {playerName}");
+    }
+}`}
               />
             </Subsection>
           </Section>
@@ -876,7 +1377,7 @@ curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/l
             </p>
 
             <Subsection title="Mark Floor Cleared">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_post
 
 static_id = "your-static-uuid"
@@ -906,11 +1407,45 @@ print("Floor clear marked for all players")`}
     "floor": "M9S",
     "playerIds": ["uuid1", "uuid2", "uuid3", "uuid4", "uuid5", "uuid6", "uuid7", "uuid8"]
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Mark a floor as cleared for multiple players
+var payload = new
+{
+    weekNumber = 1,
+    floor = "M9S",
+    playerIds = new[]
+    {
+        "player-uuid-1",
+        "player-uuid-2",
+        "player-uuid-3",
+        // ... all 8 players who cleared
+    }
+};
+
+var response = await client.PostAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/mark-floor-cleared",
+    payload
+);
+response.EnsureSuccessStatusCode();
+
+Console.WriteLine("Floor clear marked for all players");`}
               />
             </Subsection>
 
             <Subsection title="Get Page Balances">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get
 
 static_id = "your-static-uuid"
@@ -925,6 +1460,39 @@ for player in balances:
     print(f"{player['playerName']:20} I:{player['bookI']:2} II:{player['bookII']:2} III:{player['bookIII']:2} IV:{player['bookIV']:2}")`}
                 curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/page-balances" \\
   -H "Authorization: Bearer $TOKEN"`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var tierId = "your-tier-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get current book balances for all players
+var response = await client.GetAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/page-balances"
+);
+response.EnsureSuccessStatusCode();
+
+var balances = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var players = balances.RootElement.EnumerateArray();
+
+Console.WriteLine("Book Balances:");
+Console.WriteLine(new string('-', 50));
+foreach (var player in players)
+{
+    var name = player.GetProperty("playerName").GetString();
+    var bookI = player.GetProperty("bookI").GetInt32();
+    var bookII = player.GetProperty("bookII").GetInt32();
+    var bookIII = player.GetProperty("bookIII").GetInt32();
+    var bookIV = player.GetProperty("bookIV").GetInt32();
+    Console.WriteLine($"{name,-20} I:{bookI,2} II:{bookII,2} III:{bookIII,2} IV:{bookIV,2}");
+}`}
               />
             </Subsection>
           </Section>
@@ -936,7 +1504,7 @@ for player in balances:
             </p>
 
             <Subsection title="Create an Invite">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_post
 
 static_id = "your-static-uuid"
@@ -962,11 +1530,45 @@ print(f"Expires: {invite['expiresAt']}")`}
     "expiresInDays": 7,
     "maxUses": 10
   }'`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Create an invitation link
+var payload = new
+{
+    role = "member",  // or "lead", "viewer"
+    expiresInDays = 7,
+    maxUses = 10
+};
+
+var response = await client.PostAsJsonAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/invitations",
+    payload
+);
+response.EnsureSuccessStatusCode();
+
+var invite = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var inviteCode = invite.RootElement.GetProperty("inviteCode").GetString();
+var expiresAt = invite.RootElement.GetProperty("expiresAt").GetString();
+
+Console.WriteLine($"Invite Code: {inviteCode}");
+Console.WriteLine($"Invite URL: https://yoursite.com/invite/{inviteCode}");
+Console.WriteLine($"Expires: {expiresAt}");`}
               />
             </Subsection>
 
             <Subsection title="List Active Invites">
-              <DualCodeBlock
+              <TripleCodeBlock
                 python={`from raid_planner import api_get
 
 static_id = "your-static-uuid"
@@ -980,6 +1582,37 @@ for invite in invites:
         print(f"  {invite['inviteCode']} - {invite['role']} ({invite['useCount']}/{invite['maxUses']} uses)")`}
                 curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/invitations" \\
   -H "Authorization: Bearer $TOKEN"`}
+                csharp={`using System;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var staticId = "your-static-uuid";
+var token = Environment.GetEnvironmentVariable("TOKEN");
+
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+// Get all invitations
+var response = await client.GetAsync(
+    $"http://localhost:8000/api/static-groups/{staticId}/invitations"
+);
+response.EnsureSuccessStatusCode();
+
+var invites = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var inviteList = invites.RootElement.EnumerateArray();
+
+Console.WriteLine("Active Invitations:");
+foreach (var invite in inviteList.Where(i => i.GetProperty("isValid").GetBoolean()))
+{
+    var code = invite.GetProperty("inviteCode").GetString();
+    var role = invite.GetProperty("role").GetString();
+    var useCount = invite.GetProperty("useCount").GetInt32();
+    var maxUses = invite.GetProperty("maxUses").GetInt32();
+    Console.WriteLine($"  {code} - {role} ({useCount}/{maxUses} uses)");
+}`}
               />
             </Subsection>
           </Section>
@@ -1039,10 +1672,9 @@ while True:
               Properly handle API errors for a robust integration.
             </p>
 
-            <Subsection title="Python Error Handling">
-              <CodeBlock
-                language="python"
-                code={`import httpx
+            <Subsection title="Error Handling Examples">
+              <TripleCodeBlock
+                python={`import httpx
 from raid_planner import BASE_URL, get_client
 
 def safe_api_call(method: str, path: str, data: dict = None):
@@ -1083,6 +1715,103 @@ def safe_api_call(method: str, path: str, data: dict = None):
     except httpx.RequestError as e:
         print(f"Network error: {e}")
         return None`}
+                curl={`# Example: Handle 404 error
+curl -X GET "http://localhost:8000/api/static-groups/invalid-id" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -w "\\nHTTP Status: %{http_code}\\n"
+
+# Response:
+# HTTP Status: 404
+# {
+#   "detail": "Static group not found"
+# }
+
+# Example: Handle 403 permission denied
+curl -X DELETE "http://localhost:8000/api/static-groups/{id}" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -w "\\nHTTP Status: %{http_code}\\n"
+
+# Response:
+# HTTP Status: 403
+# {
+#   "detail": "Only the owner can delete this group"
+# }
+
+# Example: Handle 429 rate limit
+curl -X POST "http://localhost:8000/api/static-groups" \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Test"}' \\
+  -w "\\nHTTP Status: %{http_code}\\nRetry-After: %{header_retry_after}\\n"
+
+# Response:
+# HTTP Status: 429
+# Retry-After: 60
+# {
+#   "detail": "Too many requests"
+# }`}
+                csharp={`using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public async Task<T> SafeApiCall<T>(
+    HttpClient client,
+    HttpMethod method,
+    string path,
+    object data = null)
+{
+    try
+    {
+        var request = new HttpRequestMessage(method, path);
+
+        if (data != null && (method == HttpMethod.Post || method == HttpMethod.Put))
+        {
+            request.Content = JsonContent.Create(data);
+        }
+
+        var response = await client.SendAsync(request);
+
+        // Handle specific status codes
+        if (!response.IsSuccessStatusCode)
+        {
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.Unauthorized:
+                    Console.WriteLine("Authentication failed - refresh your token");
+                    break;
+                case HttpStatusCode.Forbidden:
+                    Console.WriteLine("Permission denied - check your role");
+                    break;
+                case HttpStatusCode.NotFound:
+                    Console.WriteLine("Resource not found");
+                    break;
+                case (HttpStatusCode)429: // TooManyRequests
+                    Console.WriteLine("Rate limited - wait and retry");
+                    var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds ?? 60;
+                    Console.WriteLine($"Retry after {retryAfter} seconds");
+                    break;
+                default:
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    var errorJson = JsonDocument.Parse(errorBody);
+                    var message = errorJson.RootElement.GetProperty("detail").GetString();
+                    Console.WriteLine($"API Error: {message}");
+                    break;
+            }
+
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.WriteLine($"Network error: {ex.Message}");
+        return default;
+    }
+}`}
               />
             </Subsection>
 

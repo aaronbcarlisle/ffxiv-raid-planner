@@ -9,7 +9,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ExternalLink, Check, ArrowRight } from 'lucide-react';
+import { Check, Crown } from 'lucide-react';
+import { LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -88,38 +89,6 @@ function InfoBox({ type = 'info', title, children }: { type?: 'info' | 'tip' | '
   );
 }
 
-function LinkCard({ href, title, description }: { href: string; title: string; description: string }) {
-  const isExternal = href.startsWith('http');
-  const className = "group flex items-center gap-3 p-3 rounded-lg bg-surface-card border border-border-subtle hover:border-accent/50 transition-colors";
-
-  const content = (
-    <>
-      <div className="flex-1">
-        <div className="font-medium text-text-primary group-hover:text-accent transition-colors flex items-center gap-1">
-          {title}
-          {isExternal && <ExternalLink className="w-3 h-3" />}
-        </div>
-        <div className="text-sm text-text-muted">{description}</div>
-      </div>
-      <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors" />
-    </>
-  );
-
-  if (isExternal) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={href} className={className}>
-      {content}
-    </Link>
-  );
-}
-
 function PermissionBadge({ allowed }: { allowed: boolean }) {
   return allowed ? (
     <span className="inline-flex items-center gap-1 text-status-success text-sm">
@@ -127,82 +96,6 @@ function PermissionBadge({ allowed }: { allowed: boolean }) {
     </span>
   ) : (
     <span className="text-text-muted text-sm">No</span>
-  );
-}
-
-// Sidebar Navigation
-function NavSidebar({ activeSection, onSectionClick }: { activeSection: string; onSectionClick: (id: string) => void }) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
-  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll();
-    }
-  }, []);
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-  };
-
-  const handleClick = (id: string) => {
-    onSectionClick(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  return (
-    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
-      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
-        <div className={`absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10 bg-gradient-to-b from-surface-card to-transparent transition-opacity duration-150 ${scrollState.top ? 'opacity-0' : 'opacity-100'}`} />
-        <div ref={scrollContainerRef} className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin">
-          {NAV_GROUPS.map((group, groupIndex) => {
-            const isCollapsed = collapsedGroups.has(group.label);
-            return (
-              <div key={group.label} className={groupIndex > 0 ? 'mt-3' : ''}>
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-1 px-1 py-0.5 rounded hover:text-text-muted hover:bg-surface-interactive cursor-pointer"
-                >
-                  <span>{group.label}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`} />
-                </button>
-                {!isCollapsed && (
-                  <ul className="space-y-px">
-                    {group.items.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          onClick={() => handleClick(section.id)}
-                          className={`w-full text-left pl-3 pr-2 py-1.5 text-[13px] rounded transition-colors ${
-                            activeSection === section.id
-                              ? 'bg-accent/10 text-accent font-medium'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                          }`}
-                        >
-                          {section.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className={`absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10 bg-gradient-to-t from-surface-card to-transparent transition-opacity duration-150 ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}`} />
-      </div>
-    </nav>
   );
 }
 
@@ -250,7 +143,27 @@ export default function LeadsGuideDocs() {
       }
 
       const threshold = 120;
+      const viewportHeight = window.innerHeight;
       const sections = NAV_SECTIONS.map(s => ({ id: s.id, element: document.getElementById(s.id) })).filter(s => s.element);
+
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection(prev => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       let bestSection: string | null = null;
       let bestTop = -Infinity;
 
@@ -268,7 +181,7 @@ export default function LeadsGuideDocs() {
         for (const section of sections) {
           if (section.element) {
             const rect = section.element.getBoundingClientRect();
-            if (rect.top >= 0 && rect.top < window.innerHeight) {
+            if (rect.top >= 0 && rect.top < viewportHeight) {
               bestSection = section.id;
               break;
             }
@@ -299,23 +212,30 @@ export default function LeadsGuideDocs() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">Documentation</Link>
             <span>/</span>
             <Link to="/docs/getting-started" className="hover:text-accent transition-colors">Getting Started</Link>
             <span>/</span>
             <span className="text-text-secondary">For Leads</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">Guide for Static Leads</h1>
-          <p className="text-text-secondary mt-2">
-            Create your static, set up your roster, and start tracking loot
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Crown className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Guide for Static Leads</h1>
+              <p className="text-text-secondary mt-1">
+                Create your static, set up your roster, and start tracking loot
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Content */}
       <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8 flex gap-8">
-        <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
+        <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
           {/* Overview */}

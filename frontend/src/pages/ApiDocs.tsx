@@ -9,7 +9,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
+import { Code } from 'lucide-react';
+import { CodeBlock, LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items grouped by category
 const NAV_GROUPS = [
@@ -137,32 +138,14 @@ function EndpointCard({
       <p className="text-text-secondary text-sm mb-3">{description}</p>
       {requestBody && (
         <div className="mb-3">
-          <div className="text-xs text-text-muted mb-1">Request Body:</div>
-          <pre className="bg-surface-elevated rounded p-2 text-xs overflow-x-auto">
-            <code className="text-text-primary font-mono">{requestBody}</code>
-          </pre>
+          <CodeBlock language="json" title="Request Body" code={requestBody} />
         </div>
       )}
       {responseBody && (
         <div>
-          <div className="text-xs text-text-muted mb-1">Response:</div>
-          <pre className="bg-surface-elevated rounded p-2 text-xs overflow-x-auto">
-            <code className="text-text-primary font-mono">{responseBody}</code>
-          </pre>
+          <CodeBlock language="json" title="Response" code={responseBody} />
         </div>
       )}
-    </div>
-  );
-}
-
-// Code block component
-function CodeBlock({ code, title }: { code: string; title?: string }) {
-  return (
-    <div className="mb-4">
-      {title && <div className="text-xs text-text-muted mb-1">{title}</div>}
-      <pre className="bg-surface-elevated border border-border-subtle rounded-lg p-4 overflow-x-auto">
-        <code className="text-sm text-text-primary font-mono whitespace-pre">{code}</code>
-      </pre>
     </div>
   );
 }
@@ -188,139 +171,6 @@ function InfoBox({
       {title && <h4 className="font-medium mb-2">{title}</h4>}
       <div className="text-text-secondary text-sm">{children}</div>
     </div>
-  );
-}
-
-// Sidebar Navigation Component
-function NavSidebar({
-  activeSection,
-  onSectionClick
-}: {
-  activeSection: string;
-  onSectionClick: (id: string) => void;
-}) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
-  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll();
-    }
-  }, []);
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  };
-
-  const handleClick = (id: string) => {
-    onSectionClick(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
-      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
-        <div
-          className={`
-            absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10
-            bg-gradient-to-b from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.top ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-
-        <div
-          ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
-        >
-          {NAV_GROUPS.map((group, groupIndex) => {
-            const isCollapsed = collapsedGroups.has(group.label);
-            const itemCount = group.items.length;
-
-            return (
-              <div key={group.label} className={groupIndex > 0 ? 'mt-3' : ''}>
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="
-                    w-full flex items-center justify-between
-                    text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em]
-                    mb-1 px-1 py-0.5 rounded
-                    hover:text-text-muted hover:bg-surface-interactive cursor-pointer
-                  "
-                >
-                  <span>{group.label}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-[9px] font-normal tracking-normal opacity-60">
-                      {itemCount}
-                    </span>
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
-                    />
-                  </span>
-                </button>
-
-                {!isCollapsed && (
-                  <ul className="space-y-px">
-                    {group.items.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          onClick={() => handleClick(section.id)}
-                          className={`
-                            w-full text-left pl-3 pr-2 py-1.5 text-[13px] rounded transition-colors
-                            ${activeSection === section.id
-                              ? 'bg-accent/10 text-accent font-medium'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                            }
-                          `}
-                        >
-                          {section.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {isCollapsed && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="w-full text-left pl-3 pr-2 py-1.5 text-[12px] text-text-muted hover:text-text-secondary rounded hover:bg-surface-interactive transition-colors"
-                  >
-                    {itemCount} items...
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div
-          className={`
-            absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10
-            bg-gradient-to-t from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-      </div>
-    </nav>
   );
 }
 
@@ -380,6 +230,24 @@ export default function ApiDocs() {
         element: document.getElementById(s.id)
       })).filter(s => s.element);
 
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection(prev => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       let bestSection: string | null = null;
       let bestTop = -Infinity;
 
@@ -434,21 +302,28 @@ export default function ApiDocs() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <a href="/docs" className="hover:text-accent transition-colors">Documentation</a>
             <span>/</span>
             <span className="text-text-secondary">API Reference</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">API Reference</h1>
-          <p className="text-text-secondary mt-2">
-            REST API documentation for developers integrating with FFXIV Raid Planner
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Code className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">API Reference</h1>
+              <p className="text-text-secondary mt-1">
+                REST API documentation for developers integrating with FFXIV Raid Planner
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Content with Sidebar */}
       <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8 flex gap-8">
-        <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
+        <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
           {/* Overview */}
@@ -474,25 +349,11 @@ export default function ApiDocs() {
               and <code>/redoc</code> (ReDoc) on the backend server.
             </InfoBox>
 
-            <div className="bg-surface-card border border-accent/30 rounded-lg p-4 mt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-text-primary">API Cookbook</h4>
-                  <p className="text-sm text-text-secondary">
-                    Looking for practical examples? Check out our{' '}
-                    <a href="/docs/api/cookbook" className="text-accent hover:underline">
-                      API Cookbook
-                    </a>{' '}
-                    with Python and curl examples for common workflows.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <LinkCard
+              href="/docs/api/cookbook"
+              title="API Cookbook"
+              description="Practical examples in Python, C#, and curl for common workflows"
+            />
           </Section>
 
           {/* Authentication */}
@@ -517,7 +378,10 @@ export default function ApiDocs() {
               <p className="text-text-secondary mb-4">
                 Include the access token in the Authorization header:
               </p>
-              <CodeBlock code={`Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`} />
+              <CodeBlock
+                language="bash"
+                code={`Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`}
+              />
             </Subsection>
 
             <Subsection title="Token Refresh">
@@ -525,6 +389,7 @@ export default function ApiDocs() {
                 Access tokens expire after 15 minutes. Use the refresh token to get a new access token:
               </p>
               <CodeBlock
+                language="json"
                 title="POST /api/auth/refresh"
                 code={`{
   "refreshToken": "your-refresh-token"
@@ -540,6 +405,7 @@ export default function ApiDocs() {
             </p>
 
             <CodeBlock
+              language="json"
               title="Error Response Format"
               code={`{
   "error": "error_code",
@@ -717,31 +583,80 @@ export default function ApiDocs() {
               method="GET"
               path="/api/static-groups/by-code/{shareCode}"
               description="Get a static group by its share code. Returns the group if public or user is a member."
+              responseBody={`{
+  "id": "uuid",
+  "name": "My Static",
+  "shareCode": "ABC12345",
+  "isPublic": false,
+  "ownerId": "uuid",
+  "owner": {
+    "id": "uuid",
+    "discordUsername": "Owner",
+    "avatarUrl": "..."
+  },
+  "members": [...],
+  "userRole": "member",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}`}
             />
 
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}"
-              description="Get a static group by ID."
-              auth={true}
+              description="Get a static group by ID. Public groups allow anonymous access."
+              responseBody={`{
+  "id": "uuid",
+  "name": "My Static",
+  "shareCode": "ABC12345",
+  "isPublic": false,
+  "ownerId": "uuid",
+  "owner": {
+    "id": "uuid",
+    "discordUsername": "Owner",
+    "avatarUrl": "..."
+  },
+  "members": [...],
+  "settings": {
+    "lootPriority": ["melee", "ranged", "caster", "tank", "healer"]
+  },
+  "userRole": "member",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}`}
             />
 
             <EndpointCard
               method="PUT"
               path="/api/static-groups/{id}"
-              description="Update a static group. Requires Lead or Owner role."
+              description="Update a static group. Name/settings require Lead+. Visibility requires Owner."
               auth={true}
               requestBody={`{
   "name": "Updated Name",
-  "isPublic": true
+  "isPublic": true,
+  "settings": {
+    "lootPriority": ["tank", "healer", "melee", "ranged", "caster"]
+  }
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "name": "Updated Name",
+  "shareCode": "ABC12345",
+  "isPublic": true,
+  "ownerId": "uuid",
+  "memberCount": 8,
+  "userRole": "owner",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}"
-              description="Delete a static group. Requires Owner role."
+              description="Delete a static group and all associated data (tiers, players, loot logs). Requires Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
           </Section>
 
@@ -769,27 +684,51 @@ export default function ApiDocs() {
             <EndpointCard
               method="PUT"
               path="/api/static-groups/{id}/members/{userId}"
-              description="Update a member's role. Requires Lead or Owner role."
+              description="Update a member's role. Requires Lead or Owner role. Leads can only manage members/viewers, not other leads."
               auth={true}
               requestBody={`{
   "role": "lead"
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "userId": "uuid",
+  "staticGroupId": "uuid",
+  "role": "lead",
+  "joinedAt": "2024-01-01T00:00:00Z",
+  "user": {
+    "id": "uuid",
+    "discordUsername": "Player",
+    "avatarUrl": "..."
+  }
 }`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/members/{userId}"
-              description="Remove a member from the group. Requires Lead+ or self-removal."
+              description="Remove a member from the group. Requires Lead+ or self-removal. Owner cannot leave without transferring ownership first."
               auth={true}
+              responseBody="204 No Content"
             />
 
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/transfer-ownership"
-              description="Transfer group ownership to another member. Requires Owner role."
+              description="Transfer group ownership to another member. Current owner is demoted to Lead. Requires Owner role."
               auth={true}
               requestBody={`{
   "newOwnerId": "uuid"
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "name": "My Static",
+  "shareCode": "ABC12345",
+  "isPublic": false,
+  "ownerId": "new-uuid",
+  "memberCount": 8,
+  "userRole": "lead",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
           </Section>
@@ -815,12 +754,35 @@ export default function ApiDocs() {
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/tiers"
-              description="Create a new tier snapshot. Requires Lead or Owner role."
+              description="Create a new tier snapshot with 8 template player slots. Requires Lead or Owner role."
               auth={true}
               requestBody={`{
   "tierId": "aac-cruiserweight",
   "contentType": "savage",
   "isActive": true
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "staticGroupId": "uuid",
+  "tierId": "aac-cruiserweight",
+  "contentType": "savage",
+  "isActive": true,
+  "players": [
+    {
+      "id": "uuid",
+      "name": "",
+      "job": "",
+      "role": "",
+      "position": "T1",
+      "tankRole": "MT",
+      "configured": false,
+      "sortOrder": 0,
+      "gear": [...],
+      ...
+    }
+  ],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
 
@@ -847,18 +809,29 @@ export default function ApiDocs() {
             <EndpointCard
               method="PUT"
               path="/api/static-groups/{id}/tiers/{tierId}"
-              description="Update tier settings (e.g., set as active)."
+              description="Update tier settings (e.g., set as active). Setting a tier as active deactivates all other tiers. Requires Lead or Owner role."
               auth={true}
               requestBody={`{
   "isActive": true
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "staticGroupId": "uuid",
+  "tierId": "aac-heavyweight",
+  "contentType": "savage",
+  "isActive": true,
+  "playerCount": 8,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/tiers/{tierId}"
-              description="Delete a tier snapshot and all associated data."
+              description="Delete a tier snapshot and all associated data (players, loot logs, page ledger entries). Requires Lead or Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
           </Section>
 
@@ -892,6 +865,30 @@ export default function ApiDocs() {
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/players"
               description="List all players in a tier snapshot."
+              responseBody={`[
+  {
+    "id": "uuid",
+    "tierSnapshotId": "uuid",
+    "userId": "uuid",
+    "linkedUser": {
+      "id": "uuid",
+      "discordUsername": "Player",
+      "membershipRole": "member"
+    },
+    "name": "Player Name",
+    "job": "DRG",
+    "role": "melee",
+    "position": "M1",
+    "configured": true,
+    "sortOrder": 0,
+    "isSubstitute": false,
+    "gear": [...],
+    "tomeWeapon": {...},
+    "weaponPriorities": [],
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  }
+]`}
             />
 
             <EndpointCard
@@ -903,26 +900,66 @@ export default function ApiDocs() {
   "name": "New Player",
   "job": "WHM",
   "role": "healer",
-  "position": "H1"
+  "position": "H1",
+  "tankRole": null,
+  "configured": true,
+  "sortOrder": 8,
+  "isSubstitute": false
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "tierSnapshotId": "uuid",
+  "userId": null,
+  "linkedUser": null,
+  "name": "New Player",
+  "job": "WHM",
+  "role": "healer",
+  "position": "H1",
+  "configured": true,
+  "sortOrder": 8,
+  "isSubstitute": false,
+  "gear": [...],
+  "tomeWeapon": {...},
+  "weaponPriorities": [],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
 
             <EndpointCard
               method="PUT"
               path="/api/static-groups/{id}/tiers/{tierId}/players/{playerId}"
-              description="Update a player's information. Requires Lead+, Owner, or ownership of the player card."
+              description="Update a player's information. Requires Lead+, Owner, or ownership of the player card. Members can only update their own player."
               auth={true}
               requestBody={`{
   "name": "Updated Name",
   "job": "AST",
+  "bisLink": "https://xivgear.app/?page=...",
   "gear": [
     {
       "slot": "weapon",
       "bisSource": "raid",
+      "currentSource": "savage",
       "hasItem": true,
-      "isAugmented": false
+      "isAugmented": false,
+      "itemName": "Skyruin Staff",
+      "itemLevel": 735
     }
   ]
+}`}
+              responseBody={`{
+  "id": "uuid",
+  "tierSnapshotId": "uuid",
+  "userId": "uuid",
+  "linkedUser": {...},
+  "name": "Updated Name",
+  "job": "AST",
+  "role": "healer",
+  "position": "H1",
+  "bisLink": "https://xivgear.app/?page=...",
+  "gear": [...],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }`}
             />
 
@@ -931,6 +968,7 @@ export default function ApiDocs() {
               path="/api/static-groups/{id}/tiers/{tierId}/players/{playerId}"
               description="Remove a player from the tier. Requires Lead or Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
           </Section>
 
@@ -939,15 +977,54 @@ export default function ApiDocs() {
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/tiers/{tierId}/players/{playerId}/claim"
-              description="Link your user account to a player card. Allows you to edit the player."
+              description="Link your user account to a player card. Allows you to edit the player. Must be a group member."
               auth={true}
+              responseBody={`{
+  "id": "uuid",
+  "tierSnapshotId": "uuid",
+  "userId": "uuid",
+  "linkedUser": {
+    "id": "uuid",
+    "discordId": "123456789",
+    "discordUsername": "Player",
+    "discordAvatar": "abc123",
+    "avatarUrl": "https://cdn.discordapp.com/...",
+    "displayName": "Player",
+    "membershipRole": "member"
+  },
+  "name": "Player Name",
+  "job": "DRG",
+  "role": "melee",
+  "position": "M1",
+  "configured": true,
+  "sortOrder": 0,
+  "isSubstitute": false,
+  "gear": [...],
+  "tomeWeapon": {...},
+  "weaponPriorities": [],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/tiers/{tierId}/players/{playerId}/claim"
-              description="Unlink your user account from a player card."
+              description="Unlink your user account from a player card. You can release yourself, or Owner can release anyone."
               auth={true}
+              responseBody={`{
+  "id": "uuid",
+  "tierSnapshotId": "uuid",
+  "userId": null,
+  "linkedUser": null,
+  "name": "Player Name",
+  "job": "DRG",
+  "role": "melee",
+  "configured": true,
+  "gear": [...],
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}`}
             />
 
             <InfoBox type="info" title="Permissions">
@@ -961,17 +1038,23 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/loot-log"
-              description="Get loot log entries. Optionally filter by week."
+              description="Get loot log entries. Optionally filter by week using ?week=N query parameter."
               responseBody={`[
   {
     "id": 1,
+    "tierSnapshotId": "uuid",
     "weekNumber": 1,
     "floor": "M9S",
     "itemSlot": "earring",
     "recipientPlayerId": "uuid",
     "recipientPlayerName": "Player",
     "method": "drop",
-    "createdAt": "2024-01-01T00:00:00Z"
+    "notes": "Optional notes",
+    "weaponJob": "DRG",
+    "isExtra": false,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "createdByUserId": "uuid",
+    "createdByUsername": "User"
   }
 ]`}
             />
@@ -986,22 +1069,68 @@ export default function ApiDocs() {
   "floor": "M9S",
   "itemSlot": "earring",
   "recipientPlayerId": "uuid",
-  "method": "drop"
+  "method": "drop",
+  "notes": "Optional notes",
+  "weaponJob": "DRG",
+  "isExtra": false
+}`}
+              responseBody={`{
+  "id": 1,
+  "tierSnapshotId": "uuid",
+  "weekNumber": 1,
+  "floor": "M9S",
+  "itemSlot": "earring",
+  "recipientPlayerId": "uuid",
+  "recipientPlayerName": "Player",
+  "method": "drop",
+  "notes": "Optional notes",
+  "weaponJob": "DRG",
+  "isExtra": false,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "createdByUserId": "uuid",
+  "createdByUsername": "User"
 }`}
             />
 
             <EndpointCard
               method="PUT"
               path="/api/static-groups/{id}/tiers/{tierId}/loot-log/{entryId}"
-              description="Update a loot log entry."
+              description="Update a loot log entry. Requires Lead or Owner role."
               auth={true}
+              requestBody={`{
+  "weekNumber": 2,
+  "floor": "M10S",
+  "itemSlot": "weapon",
+  "recipientPlayerId": "new-uuid",
+  "method": "book",
+  "notes": "Updated notes",
+  "weaponJob": "WHM",
+  "isExtra": true
+}`}
+              responseBody={`{
+  "id": 1,
+  "tierSnapshotId": "uuid",
+  "weekNumber": 2,
+  "floor": "M10S",
+  "itemSlot": "weapon",
+  "recipientPlayerId": "new-uuid",
+  "recipientPlayerName": "Player",
+  "method": "book",
+  "notes": "Updated notes",
+  "weaponJob": "WHM",
+  "isExtra": true,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "createdByUserId": "uuid",
+  "createdByUsername": "User"
+}`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/tiers/{tierId}/loot-log/{entryId}"
-              description="Delete a loot log entry."
+              description="Delete a loot log entry. Requires Lead or Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
           </Section>
 
@@ -1010,13 +1139,30 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/page-ledger"
-              description="Get page ledger entries for book tracking."
+              description="Get page ledger entries for book tracking. Optionally filter by week using ?week=N query parameter."
+              responseBody={`[
+  {
+    "id": 1,
+    "tierSnapshotId": "uuid",
+    "playerId": "uuid",
+    "playerName": "Player",
+    "weekNumber": 1,
+    "floor": "M9S",
+    "bookType": "I",
+    "transactionType": "earned",
+    "quantity": 1,
+    "notes": "Optional notes",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "createdByUserId": "uuid",
+    "createdByUsername": "User"
+  }
+]`}
             />
 
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/tiers/{tierId}/page-ledger"
-              description="Create a page ledger entry."
+              description="Create a page ledger entry. Requires Lead or Owner role."
               auth={true}
               requestBody={`{
   "playerId": "uuid",
@@ -1024,7 +1170,23 @@ export default function ApiDocs() {
   "floor": "M9S",
   "bookType": "I",
   "transactionType": "earned",
-  "quantity": 1
+  "quantity": 1,
+  "notes": "Optional notes"
+}`}
+              responseBody={`{
+  "id": 1,
+  "tierSnapshotId": "uuid",
+  "playerId": "uuid",
+  "playerName": "Player",
+  "weekNumber": 1,
+  "floor": "M9S",
+  "bookType": "I",
+  "transactionType": "earned",
+  "quantity": 1,
+  "notes": "Optional notes",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "createdByUserId": "uuid",
+  "createdByUsername": "User"
 }`}
             />
 
@@ -1047,12 +1209,16 @@ export default function ApiDocs() {
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/tiers/{tierId}/mark-floor-cleared"
-              description="Batch add 'earned' entries for multiple players clearing a floor."
+              description="Batch add 'earned' entries for multiple players clearing a floor. Automatically determines book type from floor. Requires Lead or Owner role."
               auth={true}
               requestBody={`{
   "weekNumber": 1,
   "floor": "M9S",
-  "playerIds": ["uuid1", "uuid2", ...]
+  "playerIds": ["uuid1", "uuid2", ...],
+  "notes": "Optional notes"
+}`}
+              responseBody={`{
+  "message": "Marked 8 players as having cleared M9S"
 }`}
             />
           </Section>
@@ -1062,27 +1228,57 @@ export default function ApiDocs() {
             <EndpointCard
               method="GET"
               path="/api/static-groups/{id}/tiers/{tierId}/material-log"
-              description="Get material log entries (Twine, Glaze, Solvent)."
+              description="Get material log entries (Twine, Glaze, Solvent, Universal Tomestone). Optionally filter by week using ?week=N query parameter."
+              responseBody={`[
+  {
+    "id": 1,
+    "tierSnapshotId": "uuid",
+    "weekNumber": 1,
+    "floor": "M11S",
+    "materialType": "twine",
+    "recipientPlayerId": "uuid",
+    "recipientPlayerName": "Player",
+    "notes": "Optional notes",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "createdByUserId": "uuid",
+    "createdByUsername": "User"
+  }
+]`}
             />
 
             <EndpointCard
               method="POST"
               path="/api/static-groups/{id}/tiers/{tierId}/material-log"
-              description="Log a material drop."
+              description="Log a material drop. Requires Lead or Owner role."
               auth={true}
               requestBody={`{
   "weekNumber": 1,
   "floor": "M11S",
   "materialType": "twine",
-  "recipientPlayerId": "uuid"
+  "recipientPlayerId": "uuid",
+  "notes": "Optional notes"
+}`}
+              responseBody={`{
+  "id": 1,
+  "tierSnapshotId": "uuid",
+  "weekNumber": 1,
+  "floor": "M11S",
+  "materialType": "twine",
+  "recipientPlayerId": "uuid",
+  "recipientPlayerName": "Player",
+  "notes": "Optional notes",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "createdByUserId": "uuid",
+  "createdByUsername": "User"
 }`}
             />
 
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/tiers/{tierId}/material-log/{entryId}"
-              description="Delete a material log entry."
+              description="Delete a material log entry. Requires Lead or Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
 
             <EndpointCard
@@ -1194,8 +1390,9 @@ export default function ApiDocs() {
             <EndpointCard
               method="DELETE"
               path="/api/static-groups/{id}/invitations/{inviteId}"
-              description="Revoke an invitation."
+              description="Revoke (deactivate) an invitation. Soft delete - sets is_active to false. Requires Lead or Owner role."
               auth={true}
+              responseBody="204 No Content"
             />
           </Section>
 

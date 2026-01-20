@@ -1,8 +1,56 @@
 # XIV Raid Planner Documentation Implementation Plan
 
+**Status:** ✅ Phases 1-6 Complete | Phase 7 Optional/Not Implemented
+
 This document provides phase-by-phase tasks for restructuring the user documentation. Each phase is designed to be a single PR.
 
 **Reference:** See `DOCS_STYLE_GUIDE.md` for tone, formatting, and component usage.
+
+---
+
+## Implementation Status
+
+### ✅ Completed Phases (v1.9.0)
+
+| Phase | Status | Commit | Description |
+|-------|--------|--------|-------------|
+| **Phase 1** | ✅ Complete | `4cae678` | Create unified Quick Start Guide (QuickStartGuide.tsx) |
+| **Phase 2** | ✅ Complete | `4eb5bdb` | Restructure Common Tasks → How-To (HowToDocs.tsx) |
+| **Phase 3** | ✅ Complete | `fe32a81` | Simplify Loot Math → Understanding Priority (UnderstandingPriority.tsx) |
+| **Phase 4** | ✅ Complete | `a0030ef` | Create FAQ page (FAQDocs.tsx) |
+| **Phase 5** | ✅ Complete | `fdb1b9f` | Simplify docs landing page (DocsIndex.tsx) |
+| **Phase 6** | ✅ Complete | `fdb1b9f` | Set up redirects from old URLs to new pages |
+| **Phase 7** | ⏸️ Optional | - | Add screenshots (deferred) |
+
+**Completion Date:** January 20, 2026
+**Total Commits:** 5 main commits across all phases
+**Lines Added:** ~3,162 (new pages)
+**Lines Changed:** ~135 (redirects and landing page)
+
+### Old Documentation Files
+
+**Status:** Kept for reference/rollback capability
+
+Old doc pages remain in codebase but are unreachable via routing:
+- `frontend/src/pages/QuickStartDocs.tsx` (8.7K)
+- `frontend/src/pages/LeadsGuideDocs.tsx` (26K)
+- `frontend/src/pages/MembersGuideDocs.tsx` (27K)
+- `frontend/src/pages/CommonTasksDocs.tsx` (36K)
+- `frontend/src/pages/LootMathDocs.tsx` (37K)
+
+**Total:** ~135KB of unreachable code
+
+**Rationale for keeping:**
+- No negative impact (redirects prevent broken links)
+- Allows easy rollback if issues discovered
+- Historical reference for content decisions
+- Can be deleted anytime if desired
+
+### Phase 7 (Screenshots) - Optional
+
+**Status:** Not implemented, marked as optional enhancement
+
+Screenshot additions can be done at any time without impacting existing documentation. See Phase 7 section below for implementation guide if desired.
 
 ---
 

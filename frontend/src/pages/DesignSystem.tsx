@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { CodeBlock, NavSidebar } from '../components/docs';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import { IconButton } from '../components/primitives/IconButton';
@@ -74,6 +75,7 @@ import {
   Swords, Sword, ShieldHalf, Wand, Wand2, Book, BookOpen, BookMarked, Scroll, Gem, Coins, Package, Gift, Box, Layers,
   // Misc UI
   LogIn, LogOut, Home, Circle, Square, Triangle, Hash, AtSign, Percent, BarChart, BarChart2, PieChart, TrendingUp, TrendingDown,
+  Palette,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -552,9 +554,9 @@ function IconLibrarySection() {
 
       {/* Usage Code Example */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Import directly
+        <CodeBlock
+          language="tsx"
+          code={`// Import directly
 import { Settings, Trash2, Plus } from 'lucide-react';
 
 // Use in JSX
@@ -568,9 +570,8 @@ import { Settings, Trash2, Plus } from 'lucide-react';
 <IconButton
   icon={<Settings className="w-4 h-4" />}
   label="Settings"
-/>`}</code>
-          </pre>
-        </div>
+/>`}
+        />
       </Subsection>
     </Section>
   );
@@ -946,13 +947,12 @@ function FormsSection() {
             <li>• <strong>Colored Headers</strong> - Each group uses its semantic color (CSS variables)</li>
             <li>• <strong>Smart Filtering</strong> - Search matches both labels AND group names</li>
             <li>• <strong>Keyboard Navigation</strong> - Arrow keys work seamlessly across groups</li>
-            <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-base px-1 py-0.5 rounded">color-mix</code> with 15% group color</li>
+            <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">color-mix</code> with 15% group color</li>
           </ul>
         </div>
-        <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
+        <div className="mt-4">
           <h4 className="text-sm font-medium text-text-primary mb-3">Usage</h4>
-          <pre className="text-xs text-text-secondary overflow-x-auto">
-{`const GROUP_CONFIG = {
+          <CodeBlock language="tsx" code={`const GROUP_CONFIG = {
   owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
   lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
   member: { name: 'Members', color: 'var(--color-membership-member)' },
@@ -969,8 +969,7 @@ const options = users.map(u => ({
   options={options}
   groupOrder={Object.values(GROUP_CONFIG)}
   ...
-/>`}
-          </pre>
+/>`} />
         </div>
       </Subsection>
 
@@ -1126,9 +1125,9 @@ const options = users.map(u => ({
 
       {/* Usage Code */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Import components
+        <CodeBlock
+          language="tsx"
+          code={`// Import components
 import { Input, TextArea, Label, InputGroup, Checkbox, Select } from '@/components/ui';
 import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
 
@@ -1160,9 +1159,8 @@ import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
 <ThreeStateCheckbox
   state={gearState}  // 'none' | 'have' | 'augmented'
   onChange={setGearState}
-/>`}</code>
-          </pre>
-        </div>
+/>`}
+        />
       </Subsection>
     </Section>
   );
@@ -1268,7 +1266,7 @@ function PopoverSection() {
       <Subsection title="PopoverSelect (Badge-style Selectors)">
         <p className="text-sm text-text-muted mb-4">
           Standardized badge-style popover selectors. Used for compact selections like Position, Tank Role, and BiS Source.
-          All share consistent styling: <code className="text-xs bg-surface-elevated px-1 rounded">text-xs font-bold</code>, solid background when selected, 20% opacity when not.
+          All share consistent styling: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">text-xs font-bold</code>, solid background when selected, 20% opacity when not.
         </p>
 
         {/* Design Standards */}
@@ -1277,24 +1275,24 @@ function PopoverSection() {
           <div className="grid grid-cols-2 gap-4 text-xs mb-4">
             <div>
               <div className="text-text-muted mb-1">Trigger</div>
-              <code className="text-accent">px-1.5 py-0.5 rounded text-xs font-bold</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">px-1.5 py-0.5 rounded text-xs font-bold</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Dropdown Items</div>
-              <code className="text-accent">px-2 py-1.5 rounded text-xs font-bold</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">px-2 py-1.5 rounded text-xs font-bold</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Selected State</div>
-              <code className="text-accent">bg-{'{color}'} text-surface-base</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-{'{color}'} text-surface-base</code>
             </div>
             <div>
               <div className="text-text-muted mb-1">Suggested (Unselected)</div>
-              <code className="text-accent">bg-{'{color}'}/20 text-{'{color}'} hover:bg-{'{color}'}/30</code>
+              <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-{'{color}'}/20 text-{'{color}'} hover:bg-{'{color}'}/30</code>
             </div>
           </div>
           <div className="text-xs border-t border-border-default pt-3">
             <div className="text-text-muted mb-1">Not Suggested (Grayed Out)</div>
-            <code className="text-accent">bg-surface-base text-text-muted hover:bg-surface-interactive</code>
+            <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">bg-surface-base text-text-muted hover:bg-surface-interactive</code>
             <p className="text-text-muted mt-2">
               For PositionSelector, only positions matching the player's role are colored. Others are grayed out to guide selection.
             </p>
@@ -1314,7 +1312,7 @@ function PopoverSection() {
               userRole="owner"
             />
             <p className="text-xs text-text-muted mt-1">
-              Role derived from position: <code className="bg-surface-elevated px-1 rounded">{derivedRole}</code>
+              Role derived from position: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{derivedRole}</code>
             </p>
           </div>
 
@@ -1328,7 +1326,7 @@ function PopoverSection() {
               userRole="owner"
             />
             <p className="text-xs text-text-muted mt-1">
-              Current: <code className="bg-surface-elevated px-1 rounded">{tankRoleValue ?? 'none'}</code>
+              Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{tankRoleValue ?? 'none'}</code>
             </p>
           </div>
 
@@ -1356,7 +1354,7 @@ function PopoverSection() {
               }}
             />
             <p className="text-xs text-text-muted mt-1">
-              Current: <code className="bg-surface-elevated px-1 rounded">{bisSourceValue}</code>
+              Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{bisSourceValue}</code>
             </p>
           </div>
 
@@ -1367,12 +1365,12 @@ function PopoverSection() {
       <Subsection title="Color Helpers">
         <div className="bg-surface-elevated rounded-lg p-4">
           <div className="text-sm text-text-secondary space-y-2">
-            <p><code className="text-accent">createRoleColorClasses('T')</code> → Tank colors (blue)</p>
-            <p><code className="text-accent">createRoleColorClasses('H')</code> → Healer colors (green)</p>
-            <p><code className="text-accent">createRoleColorClasses('M')</code> → DPS colors (red)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('raid')</code> → Raid colors (pink)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('tome')</code> → Tome colors (teal)</p>
-            <p><code className="text-accent">createGearSourceColorClasses('crafted')</code> → Crafted colors (orange)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('T')</code> → Tank colors (blue)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('H')</code> → Healer colors (green)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createRoleColorClasses('M')</code> → DPS colors (red)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('raid')</code> → Raid colors (pink)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('tome')</code> → Tome colors (teal)</p>
+            <p><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">createGearSourceColorClasses('crafted')</code> → Crafted colors (orange)</p>
           </div>
         </div>
       </Subsection>
@@ -1577,7 +1575,7 @@ function MenusSection() {
           ))}
         </div>
         <p className="text-xs text-text-muted mt-2">
-          Current: <code className="bg-surface-elevated px-1 rounded">{activeTab}</code>
+          Current: <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">{activeTab}</code>
         </p>
       </Subsection>
 
@@ -1622,9 +1620,9 @@ function MenusSection() {
 
       {/* Usage Code */}
       <Subsection title="Usage">
-        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
-          <pre className="text-sm text-text-secondary">
-            <code>{`// Dropdown Menu
+        <CodeBlock
+          language="tsx"
+          code={`// Dropdown Menu
 import {
   Dropdown, DropdownTrigger, DropdownContent,
   DropdownItem, DropdownSeparator, DropdownLabel,
@@ -1654,9 +1652,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/primitives
   <PopoverContent side="bottom" align="start" className="p-4">
     {/* Custom content */}
   </PopoverContent>
-</Popover>`}</code>
-          </pre>
-        </div>
+</Popover>`}
+        />
       </Subsection>
     </Section>
   );
@@ -1842,9 +1839,9 @@ function ContainersSection() {
         <p className="text-sm text-text-muted mb-4">
           Import PageContainer from layout or use Tailwind classes directly.
         </p>
-        <div className="bg-surface-overlay rounded-lg p-4 border border-border-default">
-          <pre className="text-sm text-text-secondary overflow-x-auto">
-            <code>{`// Using PageContainer component
+        <CodeBlock
+          language="tsx"
+          code={`// Using PageContainer component
 import { PageContainer } from '../components/layout';
 
 <PageContainer variant="data">
@@ -1854,9 +1851,8 @@ import { PageContainer } from '../components/layout';
 // Or use Tailwind classes directly
 <div className="max-w-[160rem] mx-auto">
   <PlayerGrid />
-</div>`}</code>
-          </pre>
-        </div>
+</div>`}
+        />
       </Subsection>
 
       {/* Grid Breakpoints */}
@@ -1880,149 +1876,6 @@ import { PageContainer } from '../components/layout';
         </div>
       </Subsection>
     </Section>
-  );
-}
-
-// Sidebar Navigation Component
-function NavSidebar({
-  activeSection,
-  onSectionClick
-}: {
-  activeSection: string;
-  onSectionClick: (id: string) => void;
-}) {
-  // Track collapsed state for groups (Colors starts collapsed due to length)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  // Track scroll position for fade indicators
-  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
-  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll(); // Initial check
-    }
-  }, []);
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  };
-
-  const handleClick = (id: string) => {
-    // Set active immediately for responsive feedback
-    onSectionClick(id);
-    // Then scroll to section
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
-      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
-        {/* Top fade indicator */}
-        <div
-          className={`
-            absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10
-            bg-gradient-to-b from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.top ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-
-        {/* Scrollable content */}
-        <div
-          ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
-        >
-          {NAV_GROUPS.map((group, groupIndex) => {
-            const isCollapsed = collapsedGroups.has(group.label);
-            const itemCount = group.items.length;
-
-            return (
-              <div key={group.label} className={groupIndex > 0 ? 'mt-3' : ''}>
-                {/* Group header - all groups are collapsible for consistency */}
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="
-                    w-full flex items-center justify-between
-                    text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em]
-                    mb-1 px-1 py-0.5 rounded
-                    hover:text-text-muted hover:bg-surface-interactive cursor-pointer
-                  "
-                >
-                  <span>{group.label}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-[9px] font-normal tracking-normal opacity-60">
-                      {itemCount}
-                    </span>
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
-                    />
-                  </span>
-                </button>
-
-                {/* Group items */}
-                {!isCollapsed && (
-                  <ul className="space-y-px">
-                    {group.items.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          onClick={() => handleClick(section.id)}
-                          className={`
-                            w-full text-left pl-3 pr-2 py-1.5 text-[13px] rounded transition-colors
-                            ${activeSection === section.id
-                              ? 'bg-accent/10 text-accent font-medium'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                            }
-                          `}
-                        >
-                          {section.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {/* Collapsed preview */}
-                {isCollapsed && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="w-full text-left pl-3 pr-2 py-1.5 text-[12px] text-text-muted hover:text-text-secondary rounded hover:bg-surface-interactive transition-colors"
-                  >
-                    {itemCount} items...
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom fade indicator */}
-        <div
-          className={`
-            absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10
-            bg-gradient-to-t from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-      </div>
-    </nav>
   );
 }
 
@@ -2089,6 +1942,24 @@ export function DesignSystem() {
         element: document.getElementById(s.id)
       })).filter(s => s.element);
 
+      // Check if at bottom of page - select last section
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const documentHeight = document.documentElement.scrollHeight;
+      const maxScroll = documentHeight - viewportHeight;
+      const scrollRemaining = maxScroll - scrollTop;
+
+      // If less than 100px of scroll remaining, we're at the bottom
+      if (scrollRemaining < 100 && sections.length > 0) {
+        const lastSection = sections[sections.length - 1];
+        setActiveSection(prev => {
+          if (prev !== lastSection.id) {
+            window.history.replaceState(null, '', `#${lastSection.id}`);
+          }
+          return lastSection.id;
+        });
+        return;
+      }
+
       // Find sections whose heading has been scrolled past (top <= threshold)
       // Among those, pick the one with the highest top (most recently crossed)
       let bestSection: string | null = null;
@@ -2150,21 +2021,28 @@ export function DesignSystem() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <a href="/docs" className="hover:text-accent transition-colors">Documentation</a>
             <span>/</span>
             <span className="text-text-secondary">Design System</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">Design System</h1>
-          <p className="text-text-secondary mt-2">
-            FFXIV Raid Planner visual reference guide - v2.7.0
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Palette className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Design System</h1>
+              <p className="text-text-secondary mt-1">
+                FFXIV Raid Planner visual reference guide - v2.7.0
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Content with Sidebar - wider max-width for better ultrawide support */}
       <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8 flex gap-8">
-        <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
+        <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
           {/* Introduction */}
@@ -2702,7 +2580,7 @@ export function DesignSystem() {
                   Header contains static switcher + tabs. Contextual toolbar below.
                 </p>
                 <div className="text-xs text-text-muted">
-                  <code className="text-accent">max-w-[160rem]</code> - Expands to 6 columns on ultrawide
+                  <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-[160rem]</code> - Expands to 6 columns on ultrawide
                 </div>
               </div>
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
@@ -2717,7 +2595,7 @@ export function DesignSystem() {
                   persistent navigation. Contained in visible boundary.
                 </p>
                 <div className="text-xs text-text-muted">
-                  <code className="text-accent">max-w-[120rem]</code> - Readable width with sidebar
+                  <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-[120rem]</code> - Readable width with sidebar
                 </div>
               </div>
             </div>
@@ -2804,35 +2682,35 @@ export function DesignSystem() {
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Data Grid</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">160rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">160rem</code></td>
                     <td className="py-3">Static switcher + tabs + toolbar</td>
                     <td className="py-3">GroupView, Dashboard</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Documentation</td>
                     <td className="py-3"><span className="text-status-success">Sticky nav</span></td>
-                    <td className="py-3"><code className="text-accent">120rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">120rem</code></td>
                     <td className="py-3">Breadcrumb + title</td>
                     <td className="py-3">Design System, Guides</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Form/Settings</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">max-w-2xl</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">max-w-2xl</code></td>
                     <td className="py-3">Centered with title</td>
                     <td className="py-3">Create Static, Settings</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-3 font-medium text-text-primary">Landing</td>
                     <td className="py-3"><span className="text-status-error">None</span></td>
-                    <td className="py-3"><code className="text-accent">80rem</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">80rem</code></td>
                     <td className="py-3">Marketing hero + CTA</td>
                     <td className="py-3">Home, Docs Index</td>
                   </tr>
                   <tr>
                     <td className="py-3 font-medium text-text-primary">Modal</td>
                     <td className="py-3"><span className="text-text-muted">N/A</span></td>
-                    <td className="py-3"><code className="text-accent">md - 4xl</code></td>
+                    <td className="py-3"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">md - 4xl</code></td>
                     <td className="py-3">Dialog title + close</td>
                     <td className="py-3">BiS Import, Settings</td>
                   </tr>
@@ -2993,55 +2871,55 @@ export function DesignSystem() {
                 </thead>
                 <tbody className="text-text-secondary">
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">base</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">base</code></td>
                     <td className="py-2">0px</td>
                     <td className="py-2">1</td>
                     <td className="py-2">Mobile portrait</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">sm:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">sm:</code></td>
                     <td className="py-2">640px</td>
                     <td className="py-2">2</td>
                     <td className="py-2">Mobile landscape, small tablets</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">md:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">md:</code></td>
                     <td className="py-2">768px</td>
                     <td className="py-2">2</td>
                     <td className="py-2">Tablets</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">lg:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">lg:</code></td>
                     <td className="py-2">1024px</td>
                     <td className="py-2">3</td>
                     <td className="py-2">Desktop (show sidebars)</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">xl:</code></td>
                     <td className="py-2">1280px</td>
                     <td className="py-2">3</td>
                     <td className="py-2">Large desktop</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
-                    <td className="py-2"><code className="text-accent">2xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">2xl:</code></td>
                     <td className="py-2">1536px</td>
                     <td className="py-2">4</td>
                     <td className="py-2">Wide desktop</td>
                   </tr>
                   <tr className="border-b border-border-subtle bg-accent/5">
-                    <td className="py-2"><code className="text-accent">3xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">3xl:</code></td>
                     <td className="py-2">1920px</td>
                     <td className="py-2">5</td>
                     <td className="py-2">Full HD / 1080p monitors</td>
                   </tr>
                   <tr className="border-b border-border-subtle bg-accent/5">
-                    <td className="py-2"><code className="text-accent">4xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">4xl:</code></td>
                     <td className="py-2">2560px</td>
                     <td className="py-2">6</td>
                     <td className="py-2">QHD / 1440p monitors</td>
                   </tr>
                   <tr className="bg-accent/5">
-                    <td className="py-2"><code className="text-accent">5xl:</code></td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">5xl:</code></td>
                     <td className="py-2">3440px</td>
                     <td className="py-2">6+</td>
                     <td className="py-2">Ultrawide monitors</td>
@@ -3162,10 +3040,11 @@ export function DesignSystem() {
           {/* Code Examples */}
           <Subsection title="Implementation Examples">
             <div className="space-y-4">
-              <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
+              <div>
                 <div className="text-xs text-accent mb-2">// Data-First Page (GroupView, Dashboard)</div>
-                <pre className="text-sm text-text-secondary">
-                  <code>{`<div className="min-h-screen bg-[#020203]">
+                <CodeBlock
+                  language="tsx"
+                  code={`<div className="min-h-screen bg-[#020203]">
   {/* Header: Static switcher + tabs */}
   <header className="bg-surface-raised border-b border-border-default">
     <div className="px-6 py-3 flex items-center justify-between">
@@ -3188,13 +3067,14 @@ export function DesignSystem() {
       {players.map(player => <PlayerCard key={player.id} {...player} />)}
     </div>
   </main>
-</div>`}</code>
-                </pre>
+</div>`}
+                />
               </div>
-              <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle overflow-x-auto">
+              <div>
                 <div className="text-xs text-accent mb-2">// Documentation Page (Design System)</div>
-                <pre className="text-sm text-text-secondary">
-                  <code>{`<div className="min-h-screen bg-surface-base">
+                <CodeBlock
+                  language="tsx"
+                  code={`<div className="min-h-screen bg-surface-base">
   {/* Header: Breadcrumb navigation */}
   <header className="bg-surface-raised border-b border-border-default">
     <div className="max-w-[120rem] mx-auto px-6 py-6">
@@ -3212,8 +3092,8 @@ export function DesignSystem() {
       {/* Section content */}
     </main>
   </div>
-</div>`}</code>
-                </pre>
+</div>`}
+                />
               </div>
             </div>
           </Subsection>
@@ -3290,37 +3170,37 @@ export function DesignSystem() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-              <div className="text-text-muted mb-2">// Import from lucide-react</div>
-              <div>import {'{'} ChevronUp, ChevronDown, ChevronsUpDown {'}'} from 'lucide-react';</div>
-            </div>
+            <CodeBlock language="tsx" code={`// Import from lucide-react
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';`} />
           </Subsection>
 
           <Subsection title="Accessibility">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex flex-col">
                 <div className="font-medium text-text-primary mb-2">aria-sort Attribute</div>
                 <p className="text-sm text-text-secondary mb-3">
-                  Active sort column must include <code className="text-accent">aria-sort</code> for screen readers.
+                  Active sort column must include <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">aria-sort</code> for screen readers.
                 </p>
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-                  <div className="text-text-muted">// Active column</div>
-                  <div>{'<th aria-sort="ascending">Name</th>'}</div>
-                  <div>{'<th aria-sort="descending">Date</th>'}</div>
-                  <div className="mt-2 text-text-muted">// Inactive column (omit attribute)</div>
-                  <div>{'<th>Status</th>'}</div>
+                <div className="flex-1 [&>div]:mb-0 [&>div]:h-full [&>div>div]:h-full [&_pre]:h-full">
+                  <CodeBlock language="tsx" code={`// Active column
+<th aria-sort="ascending">Name</th>
+<th aria-sort="descending">Date</th>
+
+// Inactive column (omit attribute)
+<th>Status</th>`} />
                 </div>
               </div>
-              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex flex-col">
                 <div className="font-medium text-text-primary mb-2">Keyboard Support</div>
                 <p className="text-sm text-text-secondary mb-3">
                   Sortable headers should be focusable and activated with Enter/Space.
                 </p>
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-                  <div className="text-text-muted">// Use button or role="button"</div>
-                  <div>{'<th onClick={handleSort} tabIndex={0}>'}</div>
-                  <div className="mt-2 text-text-muted">// Or wrap in button</div>
-                  <div>{'<th><button onClick={...}>Name</button></th>'}</div>
+                <div className="flex-1 [&>div]:mb-0 [&>div]:h-full [&>div>div]:h-full [&_pre]:h-full">
+                  <CodeBlock language="tsx" code={`// Use button or role="button"
+<th onClick={handleSort} tabIndex={0}>
+
+// Or wrap in button
+<th><button onClick={...}>Name</button></th>`} />
                 </div>
               </div>
             </div>
@@ -3330,8 +3210,7 @@ export function DesignSystem() {
             <p className="text-sm text-text-muted mb-4">
               Extract sortable header logic into a reusable component to avoid code duplication and ensure consistency.
             </p>
-            <div className="bg-surface-elevated rounded-lg p-4 text-xs font-mono text-text-secondary overflow-x-auto">
-              <pre className="whitespace-pre">{`interface SortableHeaderProps {
+            <CodeBlock language="tsx" code={`interface SortableHeaderProps {
   field: string;
   label: string;
   currentField: string;
@@ -3364,8 +3243,7 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
       </span>
     </th>
   );
-}`}</pre>
-            </div>
+}`} />
           </Subsection>
         </Section>
 
@@ -3572,23 +3450,24 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                 </p>
               </div>
             </div>
-            <div className="mt-4 bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-              <div className="text-text-muted mb-2">// "Most recently scrolled past" algorithm</div>
-              <div>const threshold = 120;</div>
-              <div>let bestSection = null, bestTop = -Infinity;</div>
-              <div className="mt-1">for (const section of sections) {'{'}</div>
-              <div className="ml-2">const top = section.getBoundingClientRect().top;</div>
-              <div className="ml-2 text-text-muted">// Heading scrolled past if top {'<='} threshold</div>
-              <div className="ml-2">if (top {'<='} threshold && top {'>'} bestTop) {'{'}</div>
-              <div className="ml-4">bestTop = top;</div>
-              <div className="ml-4">bestSection = section.id;</div>
-              <div className="ml-2">{'}'}</div>
-              <div>{'}'}</div>
+            <div className="mt-4">
+              <CodeBlock language="typescript" code={`// "Most recently scrolled past" algorithm
+const threshold = 120;
+let bestSection = null, bestTop = -Infinity;
+
+for (const section of sections) {
+  const top = section.getBoundingClientRect().top;
+  // Heading scrolled past if top <= threshold
+  if (top <= threshold && top > bestTop) {
+    bestTop = top;
+    bestSection = section.id;
+  }
+}`} />
             </div>
           </Subsection>
 
           <Subsection title="Item States">
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-stretch">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-3 w-56">
                 <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
                   Interactive States
@@ -3605,22 +3484,16 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                   </div>
                 </div>
               </div>
-              <div className="flex-1 min-w-[200px]">
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary space-y-2">
-                  <div>
-                    <span className="text-text-muted">// Default</span><br/>
-                    text-text-secondary
-                  </div>
-                  <div>
-                    <span className="text-text-muted">// Hover</span><br/>
-                    hover:bg-surface-interactive<br/>
-                    hover:text-text-primary
-                  </div>
-                  <div>
-                    <span className="text-text-muted">// Active</span><br/>
-                    bg-accent/10 text-accent font-medium
-                  </div>
-                </div>
+              <div className="flex-1 min-w-[200px] [&>div]:mb-0 [&>div>div>pre]:h-full">
+                <CodeBlock language="css" code={`/* Default */
+text-text-secondary
+
+/* Hover */
+hover:bg-surface-interactive
+hover:text-text-primary
+
+/* Active */
+bg-accent/10 text-accent font-medium`} />
               </div>
             </div>
           </Subsection>
@@ -3638,17 +3511,17 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                 <tbody className="text-text-secondary">
                   <tr className="border-b border-border-subtle">
                     <td className="py-2">Compact</td>
-                    <td className="py-2"><code className="text-accent">w-48</code> (192px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-48</code> (192px)</td>
                     <td className="py-2">Short labels, flat list</td>
                   </tr>
                   <tr className="border-b border-border-subtle">
                     <td className="py-2">Standard</td>
-                    <td className="py-2"><code className="text-accent">w-56</code> (224px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-56</code> (224px)</td>
                     <td className="py-2">Grouped navigation with counts</td>
                   </tr>
                   <tr>
                     <td className="py-2">Wide</td>
-                    <td className="py-2"><code className="text-accent">w-64</code> (256px)</td>
+                    <td className="py-2"><code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">w-64</code> (256px)</td>
                     <td className="py-2">Icons, nested items, long labels</td>
                   </tr>
                 </tbody>

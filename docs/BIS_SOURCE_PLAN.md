@@ -1,11 +1,36 @@
-# BiS Source Improvements - Updated Plan
+# BiS Source Improvements - Implementation Complete
 
-**Branch:** `feature/bis-source-improvements`
-**Status:** In Progress - Issues Found During Testing
+**Branch:** `feature/bis-source-improvements` (merged to main in v1.9.0)
+**Status:** ✅ Complete - Implemented with architectural changes
 
 ---
 
-## Current Issues (Found During Testing)
+## Implementation Summary
+
+This plan was completed with a **bifurcated architecture approach** that separates concerns:
+
+1. **BiS Source Selector** (`BiSSourceSelector.tsx`) - Core gear source selection UI
+   - 2x2 grid with 4 sources: Raid, Tome, Base Tome, Crafted
+   - Target-style status circles (`GearStatusCircle.tsx`)
+   - Color differentiation: base_tome (blue) vs tome (teal)
+   - Backend schema updated to accept `null` for unset BiS sources
+
+2. **BiS Source Fix Banner** (`BiSSourceFixBanner.tsx`) - Separate miscategorization detection
+   - Detects gear incorrectly categorized (e.g., crafted gear marked as raid BiS)
+   - Uses item name prefix matching for accurate detection
+   - Shows contextual messages guiding users to fix categorization
+   - Does NOT modify BiSSourceSelector - independent component
+
+3. **Augmentation Detection** - Uses item name prefix (authoritative)
+   - `requiresAugmentation()` checks for "Aug." or "Augmented" prefix in item name
+   - More reliable than iLv comparison (no tier lookup needed, no edge cases)
+   - Only `tome` BiS requires augmentation, not `base_tome` or `crafted`
+
+**Key Architectural Decision:** Initial plan proposed integrating triple-state checkbox and auto-detection into a single component. Final implementation separated these concerns for better maintainability and clearer user experience.
+
+---
+
+## Original Issues (Resolved)
 
 ### Issue 1: Augmentation Detection is Broken
 
@@ -72,7 +97,60 @@ export function requiresAugmentation(slot: GearSlotStatus): boolean {
 
 ---
 
-## Implementation Plan
+## Final Implementation (What Was Actually Done)
+
+### Completed Changes
+
+1. **BiSSourceSelector Component** ✅
+   - 2x2 grid layout with Raid, Tome, Base Tome, Crafted
+   - Left-aligned popover (align="start")
+   - Fixed-width trigger badges (w-7)
+   - "Clear Slot" button for null bisSource
+   - ARIA labels for accessibility
+
+2. **GearStatusCircle Component** ✅
+   - Target-style status indicator (replaces checkbox)
+   - Three visual states: missing (gray), have (colored ring), complete (ring + fill)
+   - Color by source: raid=red, tome=teal, base_tome=blue, crafted=orange
+   - Sizes: sm/md/lg with 2px borders for anti-aliasing
+
+3. **BiSSourceFixBanner Component** ✅
+   - Separate from PlayerSetupBanner
+   - Detects miscategorized gear using item name/iLv comparison
+   - Shows "Base Tome gear detected" or "Crafted gear detected" messages
+   - Links to BiS import modal for correction
+
+4. **Backend Schema Updates** ✅
+   - `GearBisSource` allows `null` for unset slots
+   - Added `base_tome` to allowed BiS sources
+   - `determine_source()` in `bis.py` distinguishes tome vs base_tome by "Aug." prefix
+
+5. **Calculation Updates** ✅
+   - `requiresAugmentation()` uses item name prefix (authoritative detection)
+   - `isSlotComplete()` handles `null` bisSource
+   - `calculatePlayerMaterials()` only counts `tome` for upgrade materials
+   - Progress ring calculation correctly counts `base_tome` and `crafted` as complete without aug
+
+6. **Color System** ✅
+   - Added `--color-gear-base-tome: #60a5fa` (Blue-400)
+   - Updated all color mappings across components
+   - Tooltips removed, ARIA labels added
+
+### What Was NOT Done (Deferred/Changed)
+
+- **Triple-state GearStatusCheckbox integration** - GearStatusCheckbox.tsx exists but not integrated
+  - Reason: GearStatusCircle proved sufficient, checkbox adds complexity
+  - Current approach: Separate status circle + BiS source selector works well
+  - File kept for potential future use
+
+- **Manual augmentation override** - No toggle for aug requirement
+  - Reason: Item name detection is reliable enough
+  - Users can re-import BiS if detection is wrong
+  - Can add in future if needed
+
+---
+
+## Original Implementation Plan (For Reference)
 
 ### Phase 1: Fix Augmentation Detection
 

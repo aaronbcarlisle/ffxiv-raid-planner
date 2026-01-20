@@ -7,9 +7,9 @@
 
 ## Project Status Overview
 
-### Current Version: v1.0.14
+### Current Version: v1.9.0
 
-**Branch:** `fix/discord-version-detection` (PR #50)
+**Branch:** `docs/user-docs` (Documentation audit and updates)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -54,10 +54,21 @@
 | **Design System V2** | 6.6 | ✅ Complete | Semantic tokens, 5-tier containers, new primitives |
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
+| **User Documentation Restructure** | 6.7 | ✅ Complete | Phases 1-6 complete - unified guides, simplified landing, FAQ |
 
 ---
 
 ## Version History
+
+### v1.9.0 - BiS Source Improvements & User Docs Restructure (January 20, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **BiS Source Selector Redesign** | ✅ Complete | 2x2 grid with base_tome support, target-style status circles |
+| **BiS Source Miscategorization Detection** | ✅ Complete | BiSSourceFixBanner component for detecting incorrectly categorized gear |
+| **User Documentation Restructure (Phases 1-6)** | ✅ Complete | Unified Quick Start, task-oriented How-To, progressive Priority guide, FAQ page |
+| **Tooltip Cleanup** | ✅ Complete | Removed tooltips from gear UI elements, added ARIA labels |
+| **Color Differentiation** | ✅ Complete | base_tome (blue) vs tome (teal) visual distinction |
 
 ### v1.0.14 - Discord Version Detection Fix (January 19, 2026)
 

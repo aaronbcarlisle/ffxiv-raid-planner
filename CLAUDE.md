@@ -37,6 +37,11 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 3. **Use design system primitives** - Never raw `<button>`, `<input>`, `<select>`, `<label>`, `<textarea>`
 4. **Use semantic color tokens** - Never hardcode colors
 
+**Automated enforcement:**
+- ESLint will warn on raw HTML elements (see `eslint-design-system-plugin.js`)
+- CI blocks PRs with design system violations
+- Run `pnpm lint` to see violations in your code
+
 ### Component Reference
 
 | Need | Component | Path |
@@ -327,14 +332,37 @@ PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `
 
 ---
 
+## Claude Code Commands
+
+Custom slash commands for Claude Code (invoke with `/project:`):
+
+| Command | Description |
+|---------|-------------|
+| `/project:audit-user-docs` | Audit user documentation against style guide, check for staleness, produce report |
+
+**Related docs for documentation work:**
+- `docs/DOCS_STYLE_GUIDE.md` - Tone, formatting, component usage for user docs
+- `docs/DOCS_IMPLEMENTATION_PLAN.md` - Phased restructure plan (if active)
+
+---
+
 ## Additional Documentation
 
+### Design System
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**
+- **[DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md)** - Design system integration quick reference
+- **[DESIGN_SYSTEM_ENFORCEMENT.md](./docs/DESIGN_SYSTEM_ENFORCEMENT.md)** - How design system is enforced
+- **[/docs/design-system](http://localhost:5173/docs/design-system)** - Interactive visual reference (dev server)
+
+### Development
 - **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Code style and patterns
 - **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Version history, resolved issues
 - **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - Remaining work, prioritized
 - **[SETUP_WIZARD_PLAN.md](./docs/SETUP_WIZARD_PLAN.md)** - Setup wizard implementation plan
+
+### Reference
 - **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
+- **[DOCS_STYLE_GUIDE.md](./docs/DOCS_STYLE_GUIDE.md)** - User documentation style guide
 
 ---
 
