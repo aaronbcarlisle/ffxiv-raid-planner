@@ -36,7 +36,7 @@ import {
   DropdownSubContent,
 } from '../components/primitives/Dropdown';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/primitives/Popover';
-import { PopoverSelect, createGearSourceColorClasses } from '../components/primitives/PopoverSelect';
+import { PopoverSelect, createGearSourceColorClasses } from '../components/primitives';
 import { PositionSelector } from '../components/player/PositionSelector';
 import { TankRoleSelector } from '../components/player/TankRoleSelector';
 import type { GearSourceCategory, GearSource, RaidPosition, TankRole, SnapshotPlayer } from '../types';

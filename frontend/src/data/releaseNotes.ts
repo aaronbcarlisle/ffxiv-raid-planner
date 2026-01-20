@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.0.15';
+export const CURRENT_VERSION = '1.1.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,36 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.1.0',
+    date: '2026-01-20T08:00:00Z',
+    title: 'BiS Source Confirmation Dialogs',
+    highlights: ['Confirmation when changing BiS source with imported data', 'Gear progress reset on source change'],
+    items: [
+      {
+        category: 'feature',
+        title: 'BiS source change confirmation',
+        description: 'Shows confirmation when changing BiS source on slots with imported item data',
+        details:
+          'When you change the BiS source (Raid/Tome/Crafted) on a slot that has imported item data, a confirmation dialog now appears showing a visual comparison of your current gear icon and name versus the new source. Full item tooltip available on hover. Helps prevent accidental loss of imported BiS configurations.',
+        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Gear progress reset on source change',
+        description: 'Changing BiS source now properly resets all gear progress and metadata',
+        details:
+          'When changing BiS source, hasItem, isAugmented, and all item metadata are now reset. Switching to Tome starts unchecked. This ensures accurate tracking when you change your BiS target.',
+        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+      },
+      {
+        category: 'improvement',
+        title: 'ConfirmModal header prop',
+        description: 'ConfirmModal now supports custom header content above the warning box',
+        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+      },
+    ],
+  },
   {
     version: '1.0.15',
     date: '2026-01-20T02:15:00Z',
