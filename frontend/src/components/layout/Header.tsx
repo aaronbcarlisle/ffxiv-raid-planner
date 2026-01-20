@@ -50,8 +50,16 @@ export function Header() {
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
 
-  // Check if user is a member of the current group
-  const actualUserRole = currentGroup?.userRole;
+  // Admin mode is determined by URL param (navigated from Admin Dashboard)
+  const adminModeParam = searchParams.get('adminMode') === 'true';
+  const isAdmin = user?.isAdmin ?? false;
+
+  // Get the role from API, but ignore admin-elevated role when not in admin mode.
+  // This ensures exiting admin mode correctly shows the user has no role for this static
+  // (since isAdminAccess from API means the role was granted via admin privileges, not membership).
+  const actualUserRole = (currentGroup?.isAdminAccess && !adminModeParam)
+    ? null
+    : currentGroup?.userRole;
 
   // Effective role: when viewing as someone, use their role; otherwise use actual role
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
@@ -60,8 +68,6 @@ export function Header() {
   // - User is an admin (user.isAdmin)
   // - adminMode=true URL param is present (navigated from Admin Dashboard)
   // - NOT viewing as another user (viewAs disables admin privileges)
-  const adminModeParam = searchParams.get('adminMode') === 'true';
-  const isAdmin = user?.isAdmin ?? false;
   const isAdminAccess = !viewAsUser && isAdmin && adminModeParam;
 
   // Always show admin controls if user is admin (even without adminMode param)

@@ -318,13 +318,17 @@ export function GroupView() {
     }
   };
 
-  // When viewing as another user, use their role instead of actual role
-  const actualUserRole = currentGroup?.userRole;
-  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   // Admin access only when navigating from Admin Dashboard with adminMode=true
   const adminModeParam = searchParams.get('adminMode') === 'true';
-  const isAdminAccess = !viewAsUser && (user?.isAdmin ?? false) && adminModeParam;
   const isAdmin = user?.isAdmin ?? false; // Separate flag for admin features (always true for admins)
+  const isAdminAccess = !viewAsUser && isAdmin && adminModeParam;
+
+  // Get the role from API, but ignore admin-elevated role when not in admin mode.
+  // This ensures exiting admin mode correctly shows the user has no role for this static.
+  const actualUserRole = (currentGroup?.isAdminAccess && !adminModeParam)
+    ? null
+    : currentGroup?.userRole;
+  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
