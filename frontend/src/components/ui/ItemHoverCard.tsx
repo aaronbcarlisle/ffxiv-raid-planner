@@ -1,11 +1,11 @@
-import type { ItemStats } from '../../types';
+import type { ItemStats, GearSource } from '../../types';
 
 interface ItemHoverCardProps {
   itemName: string;
   itemLevel: number;
   itemIcon?: string;
   itemStats?: ItemStats;
-  bisSource: 'raid' | 'tome';
+  bisSource: GearSource;
   /** Whether the player has this item (shows "missing" indicator if false) */
   hasItem?: boolean;
   /** Whether the tome item is augmented (only relevant when bisSource is 'tome') */
@@ -97,7 +97,8 @@ export function ItemHoverCard({
         <div className="flex-1 min-w-0">
           <div
             className={`text-sm font-medium leading-tight ${
-              bisSource === 'raid' ? 'text-source-raid' : 'text-accent'
+              bisSource === 'raid' ? 'text-source-raid' :
+              bisSource === 'crafted' ? 'text-orange-400' : 'text-accent'
             }`}
           >
             {itemName}
@@ -142,10 +143,12 @@ export function ItemHoverCard({
           className={`text-xs px-1.5 py-0.5 rounded ${
             bisSource === 'raid'
               ? 'bg-source-raid/20 text-source-raid'
-              : 'bg-accent/20 text-accent'
+              : bisSource === 'crafted'
+                ? 'bg-orange-400/20 text-orange-400'
+                : 'bg-accent/20 text-accent'
           }`}
         >
-          {bisSource === 'raid' ? 'Savage' : 'Tomestone'}
+          {bisSource === 'raid' ? 'Savage' : bisSource === 'crafted' ? 'Crafted' : 'Tomestone'}
         </span>
       </div>
     </div>

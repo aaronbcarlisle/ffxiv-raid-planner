@@ -42,7 +42,7 @@ VALID_TIERS = frozenset({
 class GearSlotData(BaseModel):
     """Data for a single gear slot from BiS import"""
     slot: str
-    source: str  # 'raid' or 'tome'
+    source: str  # 'raid', 'tome', or 'crafted'
     itemId: Optional[int] = None
     itemName: Optional[str] = None
     itemLevel: Optional[int] = None
@@ -294,11 +294,12 @@ async def fetch_item_from_garland(item_id: int) -> dict:
 
 def determine_source(item_name: str, item_level: int, slot: str) -> str:
     """
-    Determine if item is raid or tome based on item name patterns.
+    Determine if item is raid, tome, or crafted based on item name patterns.
 
-    For current tier (7.2 - AAC Cruiserweight Savage):
-    - Savage: 790 armor, 795 weapon (name: "Grand Champion's...")
-    - Tome: 780 unaugmented, 790 augmented (name: "Aug. Bygone Brass...")
+    For current tier (7.4 - AAC Heavyweight Savage):
+    - Savage: 790 armor, 795 weapon
+    - Tome: 780 unaugmented, 790 augmented (name: "Aug. ...")
+    - Crafted: 770 (pentamelded HQ gear)
 
     Key insight: Only tome gear can be augmented in FFXIV, so "Aug." prefix = tome.
     """
@@ -312,15 +313,30 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
     if item_name_lower.startswith("aug.") or item_name_lower.startswith("augmented"):
         return "tome"
 
-    # Savage/raid gear patterns (check these first - they're more specific)
+    # Crafted gear patterns (pentamelded HQ gear)
+    # These are recognizable by tier-specific naming conventions
+    crafted_patterns = [
+        "claro-",      # 7.4 crafted (placeholder - update when known)
+        "agonist",     # 7.2 crafted
+        "archeo kingdom",  # 7.0 crafted (careful: sometimes confused with savage)
+        "diadochos",   # 6.4 crafted
+        "rinascita",   # 6.2 crafted (careful: could be tome)
+        "classical",   # 6.0 crafted
+        "pactmaker",   # 6.x crafted
+    ]
+
+    # Note: Some gear names can overlap between crafted and other categories
+    # We prioritize by checking crafted item levels first
+
+    # Savage/raid gear patterns (check these - they're more specific)
     raid_patterns = [
-        "grand champion",  # 7.2 savage
-        "archeo kingdom",  # 7.1 savage
-        "ascension",       # 6.x savage
-        "asphodelos",      # 6.0 savage
-        "abyssos",         # 6.2 savage
-        "anabaseios",      # 6.4 savage
-        "diadochos",       # Other savage
+        "grand champion",      # 7.4 savage
+        "cruiserweight champion",  # 7.2 savage
+        "light-heavyweight champion",  # 7.0 savage
+        "ascension",           # 6.x savage
+        "asphodelos",          # 6.0 savage
+        "abyssos",             # 6.2 savage
+        "anabaseios",          # 6.4 savage
     ]
 
     for pattern in raid_patterns:
@@ -329,11 +345,11 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
 
     # Tomestone gear patterns (base names without Aug. prefix)
     tome_patterns = [
-        "bygone",        # 7.2 tome gear
-        "quetzalli",     # 7.1 tome gear
+        "bygone",        # 7.4 tome gear (placeholder - update when known)
+        "quetzalli",     # 7.2 tome gear
+        "neo kingdom",   # 7.0 tome gear
         "credendum",     # 6.x tome gear
         "lunar envoy",   # 6.4 tome
-        "rinascita",     # 6.2 tome
         "moonward",      # 6.0 tome
         "radiant",       # Other tome
     ]
@@ -342,17 +358,33 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
         if pattern in item_name_lower:
             return "tome"
 
-    # Fallback to item level heuristic (for older/unknown gear)
+    # Check for crafted patterns
+    for pattern in crafted_patterns:
+        if pattern in item_name_lower:
+            # Verify by item level (crafted is typically 20 iLv below savage)
+            # Current tier: 770 crafted, 790 savage, 780 tome
+            if item_level > 0 and item_level <= 780:
+                return "crafted"
+            # If iLv is higher, it's probably been confused with raid/tome
+            break
+
+    # Item level-based detection for unlisted gear
     if item_level <= 0:
         return "raid"
+
+    # Current tier iLv thresholds (7.4: savage=790, tome=780, crafted=770)
+    # Crafted is typically exactly 20 iLv below savage
+    if item_level <= 770:
+        return "crafted"
 
     # For weapon, higher threshold
     if slot == "weapon":
         return "raid" if item_level >= 795 else "tome"
 
-    # For armor/accessories: in current tier, 790 could be either
-    # Default to raid for high iLvl unknown items
-    return "raid" if item_level >= 790 else "tome"
+    # For armor/accessories: 790 = savage, 780 = tome
+    if item_level >= 790:
+        return "raid"
+    return "tome"
 
 
 async def fetch_bis_from_github(job: str, tier: str) -> dict:

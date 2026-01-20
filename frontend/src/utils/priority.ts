@@ -10,7 +10,7 @@
 import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
-import { isSlotComplete } from './calculations';
+import { isSlotComplete, requiresAugmentation } from './calculations';
 
 export interface PriorityEntry {
   player: SnapshotPlayer;
@@ -34,6 +34,8 @@ export interface PriorityScoreBreakdown {
 export interface PriorityScoreOptions {
   /** Include lootAdjustment in score (for mid-tier roster changes) */
   includeLootAdjustment?: boolean;
+  /** Tier ID for augmentation requirement checks */
+  tierId?: string;
 }
 
 /**
@@ -54,7 +56,7 @@ export function calculatePriorityScore(
   const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
 
   const weightedNeed = player.gear
-    .filter((g) => !isSlotComplete(g))
+    .filter((g) => !isSlotComplete(g, options?.tierId))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
   let score = Math.round(rolePriority + weightedNeed * 10);
@@ -81,7 +83,7 @@ export function calculatePriorityScoreWithBreakdown(
   const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
 
   const weightedNeed = player.gear
-    .filter((g) => !isSlotComplete(g))
+    .filter((g) => !isSlotComplete(g, options?.tierId))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
   const weightedNeedBonus = Math.round(weightedNeed * 10);
@@ -156,12 +158,19 @@ export function getPriorityForRing(
  *
  * If materialLog is provided, subtracts already-received materials from need count.
  * This allows the priority list to update as materials are distributed.
+ *
+ * @param players - Array of players
+ * @param material - Material type to check
+ * @param settings - Static settings for loot priority
+ * @param materialLog - Optional material log for tracking already-received materials
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
 export function getPriorityForUpgradeMaterial(
   players: SnapshotPlayer[],
   material: 'twine' | 'glaze' | 'solvent',
   settings: StaticSettings,
-  materialLog?: MaterialLogEntry[]
+  materialLog?: MaterialLogEntry[],
+  tierId?: string
 ): PriorityEntry[] {
   const applicableSlots = UPGRADE_MATERIAL_SLOTS[material];
 
@@ -181,12 +190,14 @@ export function getPriorityForUpgradeMaterial(
   return players
     .filter((p) => {
       // Count unaugmented tome pieces for this material type
+      // Only include slots where augmentation is actually required
       const unaugmented = p.gear.filter(
         (g) =>
           applicableSlots.includes(g.slot) &&
           g.bisSource === 'tome' &&
           g.hasItem &&
-          !g.isAugmented
+          !g.isAugmented &&
+          requiresAugmentation(g, tierId)
       );
 
       let totalNeed = unaugmented.length;
@@ -211,7 +222,8 @@ export function getPriorityForUpgradeMaterial(
           applicableSlots.includes(g.slot) &&
           g.bisSource === 'tome' &&
           g.hasItem &&
-          !g.isAugmented
+          !g.isAugmented &&
+          requiresAugmentation(g, tierId)
       ).length;
 
       // For solvent, add tome weapon if it needs augmentation
@@ -229,7 +241,7 @@ export function getPriorityForUpgradeMaterial(
 
       return {
         player,
-        score: calculatePriorityScore(player, settings) + effectiveNeed * 15,
+        score: calculatePriorityScore(player, settings, { tierId }) + effectiveNeed * 15,
       };
     })
     .sort((a, b) => b.score - a.score);
@@ -290,8 +302,11 @@ export function getPriorityForUniversalTomestone(
  * Includes tome weapon tracking when player is pursuing it:
  * - Tome weapon costs 500 tomestones + Universal Tomestone (from M6S)
  * - Augmenting tome weapon requires Solvent (from M7S)
+ *
+ * @param player - The player to calculate needs for
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
+export function calculatePlayerNeeds(player: SnapshotPlayer, tierId?: string): PlayerNeeds {
   let raidNeed = 0;
   let tomeNeed = 0;
   let upgrades = 0;
@@ -304,10 +319,12 @@ export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
       if (!g.hasItem) {
         tomeNeed++;
         tomestoneCost += TOMESTONE_COSTS[g.slot] || 0;
-      } else if (!g.isAugmented) {
+      } else if (!g.isAugmented && requiresAugmentation(g, tierId)) {
         upgrades++;
       }
     }
+    // Crafted BiS: no resource tracking needed (player obtains independently)
+    // If crafted slot is missing, it doesn't affect raid/tome needs
   });
 
   // Include tome weapon if player is pursuing it

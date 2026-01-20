@@ -23,7 +23,28 @@ export type GearSlot =
   | 'ring2';
 
 // Where the BiS gear comes from
-export type GearSource = 'raid' | 'tome';
+export type GearSource = 'raid' | 'tome' | 'crafted';
+
+// Display names for BiS sources (short labels for UI)
+export const BIS_SOURCE_NAMES: Record<GearSource, string> = {
+  raid: 'Raid',
+  tome: 'Tome',
+  crafted: 'Craft',
+};
+
+// Color classes for BiS sources
+export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
+  raid: 'text-gear-raid',
+  tome: 'text-gear-tome',
+  crafted: 'text-orange-400',
+};
+
+// Background color classes for BiS source badges
+export const BIS_SOURCE_BG_COLORS: Record<GearSource, string> = {
+  raid: 'bg-gear-raid/20',
+  tome: 'bg-gear-tome/20',
+  crafted: 'bg-orange-400/20',
+};
 
 // Current gear source category (9 options for tracking actual equipped gear)
 export type GearSourceCategory =

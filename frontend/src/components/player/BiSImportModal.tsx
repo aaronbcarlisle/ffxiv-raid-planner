@@ -9,7 +9,7 @@ import {
   fetchBiSPresets,
   detectBiSSource,
 } from '../../services/api';
-import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, BIS_SOURCE_NAMES } from '../../types';
 import type {
   BiSImportData,
   BiSPreset,
@@ -305,8 +305,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           changedSlots.push({
             slot: slot.slot,
             slotName: GEAR_SLOT_NAMES[slot.slot] || slot.slot,
-            fromItem: currentGear.itemName || (currentGear.bisSource === 'raid' ? 'Raid' : 'Tome'),
-            toItem: slot.itemName || (slot.source === 'raid' ? 'Raid' : 'Tome'),
+            fromItem: currentGear.itemName || BIS_SOURCE_NAMES[currentGear.bisSource],
+            toItem: slot.itemName || BIS_SOURCE_NAMES[slot.source as keyof typeof BIS_SOURCE_NAMES] || slot.source,
             sourceChanged,
           });
         }
@@ -375,6 +375,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           // Use currentSlot.bisSource - the gear they have was acquired for the old BiS
           if (currentSlot.bisSource === 'raid') {
             currentSource = 'savage';
+          } else if (currentSlot.bisSource === 'crafted') {
+            currentSource = 'crafted';
           } else {
             currentSource = effectiveIsAugmented ? 'tome_up' : 'tome';
           }

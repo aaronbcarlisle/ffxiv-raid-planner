@@ -17,7 +17,7 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot } from '../../types';
+import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot, GearSource } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { calculateAverageItemLevel, getEffectiveCurrentSource } from '../../utils/calculations';
@@ -27,7 +27,7 @@ import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
  * Calculate item level for a single gear slot, mirroring calculateAverageItemLevel logic.
  */
 function getSlotItemLevel(
-  slot: { slot: GearSlot; hasItem: boolean; bisSource: 'raid' | 'tome'; isAugmented: boolean; itemLevel?: number; currentSource?: string },
+  slot: { slot: GearSlot; hasItem: boolean; bisSource: GearSource; isAugmented: boolean; itemLevel?: number; currentSource?: string },
   tierId: string
 ): number {
   // Special case: tome BiS with item but NOT augmented

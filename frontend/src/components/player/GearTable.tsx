@@ -14,7 +14,8 @@ import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_NAMES, BIS_SOURCE_COLORS, BIS_SOURCE_BG_COLORS } from '../../types';
+import { requiresAugmentation } from '../../utils/calculations';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
 import { FileSearch } from 'lucide-react';
@@ -426,6 +427,15 @@ interface GearTableProps {
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Tier ID for augmentation requirement checks */
+  tierId?: string;
+}
+
+// Helper to cycle through BiS sources: raid → tome → crafted → raid
+function getNextBisSource(current: GearSource): GearSource {
+  if (current === 'raid') return 'tome';
+  if (current === 'tome') return 'crafted';
+  return 'raid';
 }
 
 export function GearTable({
@@ -440,6 +450,7 @@ export function GearTable({
   isAdminAccess,
   slotsWithLootEntries,
   onNavigateToLootEntry,
+  tierId,
 }: GearTableProps) {
   // Check gear edit permission - use isAdminAccess to respect View As context
   const gearPermission = canEditGear(userRole, player, currentUserId, isAdminAccess);
@@ -452,12 +463,13 @@ export function GearTable({
     };
   };
 
-  const handleSourceChange = (slot: string, source: GearSource) => {
+  const handleSourceChange = (slot: string, currentSource: GearSource) => {
     if (!gearPermission.allowed) {
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
       return;
     }
-    onGearChange(slot, { bisSource: source });
+    const nextSource = getNextBisSource(currentSource);
+    onGearChange(slot, { bisSource: nextSource });
   };
 
   const handleHasItemChange = (slot: string, hasItem: boolean) => {
@@ -494,7 +506,13 @@ export function GearTable({
       <div className="grid grid-cols-11 gap-1 text-xs">
         {GEAR_SLOTS.map((slot) => {
           const status = getSlotStatus(slot);
-          const isComplete = status.hasItem && (status.bisSource === 'raid' || status.isAugmented);
+          // Slot is complete if: has item AND (raid/crafted OR (tome AND (augmented OR aug not required)))
+          const needsAug = requiresAugmentation(status, tierId);
+          const isComplete = status.hasItem && (
+            status.bisSource === 'raid' ||
+            status.bisSource === 'crafted' ||
+            (status.bisSource === 'tome' && (!needsAug || status.isAugmented))
+          );
 
           // Use actual item icon if available, otherwise placeholder
           const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
@@ -506,17 +524,18 @@ export function GearTable({
             // Actual item icons - adjust opacity based on state
             if (!status.hasItem) {
               iconClass = 'opacity-50 grayscale';
-            } else if (status.bisSource === 'tome' && !status.isAugmented) {
+            } else if (status.bisSource === 'tome' && needsAug && !status.isAugmented) {
               iconClass = 'opacity-75';
             }
           } else {
             // Placeholder icons - use brightness inversion
             iconClass = 'opacity-40'; // Default: empty/grey
             if (status.hasItem) {
-              if (status.bisSource === 'raid') {
+              if (status.bisSource === 'raid' || status.bisSource === 'crafted') {
                 iconClass = 'brightness-0 invert opacity-90';
               } else {
-                iconClass = status.isAugmented
+                // Tome: check if augmentation is needed
+                iconClass = (!needsAug || status.isAugmented)
                   ? 'brightness-0 invert opacity-90'
                   : 'brightness-0 invert opacity-50';
               }
@@ -525,8 +544,9 @@ export function GearTable({
 
           // Build title with item name if available
           const itemInfo = status.itemName ? `${status.itemName} (iLvl ${status.itemLevel})` : GEAR_SLOT_NAMES[slot];
-          const sourceInfo = status.bisSource === 'raid' ? 'Raid' : 'Tome';
-          const stateInfo = `${status.hasItem ? ' ✓' : ''}${status.isAugmented ? ' Aug' : ''}`;
+          const sourceInfo = BIS_SOURCE_NAMES[status.bisSource];
+          const augInfo = status.bisSource === 'tome' && needsAug ? (status.isAugmented ? ' Aug' : ' (needs Aug)') : '';
+          const stateInfo = `${status.hasItem ? ' ✓' : ''}${augInfo}`;
 
           return (
             <Tooltip key={slot} content={`${itemInfo}: ${sourceInfo}${stateInfo}`}>
@@ -597,7 +617,10 @@ export function GearTable({
               );
             }
 
-            const canAugment = status.bisSource === 'tome' && status.hasItem;
+            // Check if this tome slot requires augmentation
+            const needsAug = requiresAugmentation(status, tierId);
+            // Can augment only if: tome BiS, has item, and augmentation is required
+            const canAugment = status.bisSource === 'tome' && status.hasItem && needsAug;
 
             return (
               <tr key={slot} className="border-t border-border-default/50">
@@ -627,18 +650,14 @@ export function GearTable({
                 <td className="py-1 text-center">
                   <div className="flex justify-center">
                     <Tooltip
-                      content={!gearPermission.allowed ? gearPermission.reason : 'Click to toggle BiS source'}
+                      content={!gearPermission.allowed ? gearPermission.reason : 'Click to cycle BiS source (Raid → Tome → Craft)'}
                     >
                       <button
-                        onClick={() => handleSourceChange(slot, status.bisSource === 'raid' ? 'tome' : 'raid')}
-                        className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${
-                          status.bisSource === 'raid'
-                            ? 'bg-gear-raid/20 text-gear-raid'
-                            : 'bg-gear-tome/20 text-gear-tome'
-                        } ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
+                        onClick={() => handleSourceChange(slot, status.bisSource)}
+                        className={`inline-flex items-center justify-center gap-1 w-14 py-0.5 rounded text-xs font-medium transition-colors ${BIS_SOURCE_BG_COLORS[status.bisSource]} ${BIS_SOURCE_COLORS[status.bisSource]} ${!gearPermission.allowed ? 'opacity-50 cursor-not-allowed' : 'hover:ring-1 hover:ring-white/20'}`}
                         disabled={!gearPermission.allowed}
                       >
-                        {status.bisSource === 'raid' ? 'Raid' : 'Tome'}
+                        {BIS_SOURCE_NAMES[status.bisSource]}
                         <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                         </svg>
@@ -666,9 +685,16 @@ export function GearTable({
                   </Tooltip>
                 </td>
                 <td className="py-1">
-                  {status.bisSource === 'raid' ? (
+                  {status.bisSource === 'raid' || status.bisSource === 'crafted' ? (
                     <div className="flex justify-center">
-                      {/* Raid gear can't be augmented - empty cell */}
+                      {/* Raid/Crafted gear can't be augmented - empty cell */}
+                    </div>
+                  ) : status.bisSource === 'tome' && !needsAug ? (
+                    <div className="flex justify-center">
+                      {/* Base tome is BiS - show checkmark or indicator that aug not needed */}
+                      <Tooltip content="Base tome is BiS (no augment needed)">
+                        <span className="text-status-success text-xs">✓</span>
+                      </Tooltip>
                     </div>
                   ) : (
                     <Tooltip

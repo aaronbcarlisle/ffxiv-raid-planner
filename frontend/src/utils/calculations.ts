@@ -8,29 +8,78 @@ import {
   BOOK_TYPE_FOR_SLOT,
   getUpgradeMaterialForSlot,
 } from '../gamedata';
+import { getTierById } from '../gamedata/raid-tiers';
+
+/**
+ * Check if a tome BiS slot requires augmentation to be complete.
+ *
+ * Returns false if the base tome (e.g., 780 iLv) is the BiS target,
+ * meaning the slot is complete without augmentation.
+ *
+ * @param slot - The gear slot status
+ * @param tierId - The current tier ID for iLv comparison
+ * @returns true if augmentation is needed, false if base tome is BiS
+ */
+export function requiresAugmentation(
+  slot: GearSlotStatus,
+  tierId?: string
+): boolean {
+  // Only tome BiS can require augmentation
+  if (slot.bisSource !== 'tome') return false;
+
+  // If we have target itemLevel from BiS import, compare it
+  if (slot.itemLevel && tierId) {
+    const tier = getTierById(tierId);
+    if (tier) {
+      // If target iLv matches base tome, no augment needed
+      const isWeapon = slot.slot === 'weapon';
+      // Tome weapon is +5 iLv above armor
+      const baseTomeILv = tier.itemLevels.tome + (isWeapon ? 5 : 0);
+      return slot.itemLevel > baseTomeILv;
+    }
+  }
+
+  // No item level data - assume augmented is target (safer default)
+  return true;
+}
 
 /**
  * Check if a gear slot is complete (BiS achieved)
+ *
+ * @param status - The gear slot status
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function isSlotComplete(status: GearSlotStatus): boolean {
+export function isSlotComplete(status: GearSlotStatus, tierId?: string): boolean {
   if (!status.hasItem) return false;
   if (status.bisSource === 'raid') return true;
-  // Tome gear must be augmented to be complete
+  if (status.bisSource === 'crafted') return true;
+
+  // Tome BiS - check if augmentation is required
+  if (!requiresAugmentation(status, tierId)) return true;
   return status.isAugmented;
 }
 
 /**
  * Calculate completion percentage for a player
+ *
+ * @param gear - Player's gear array
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculatePlayerCompletion(gear: GearSlotStatus[]): number {
-  const completed = gear.filter(isSlotComplete).length;
+export function calculatePlayerCompletion(gear: GearSlotStatus[], tierId?: string): number {
+  const completed = gear.filter((slot) => isSlotComplete(slot, tierId)).length;
   return gear.length > 0 ? Math.round((completed / gear.length) * 100) : 0;
 }
 
 /**
  * Calculate upgrade materials needed for a player
+ *
+ * @param gear - Player's gear array
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
+export function calculatePlayerMaterials(
+  gear: GearSlotStatus[],
+  tierId?: string
+): {
   twine: number;
   glaze: number;
   solvent: number;
@@ -42,6 +91,8 @@ export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
     if (slot.bisSource !== 'tome') return;
     // Already augmented = no material needed
     if (slot.isAugmented) return;
+    // Skip if base tome is BiS (no augmentation needed)
+    if (!requiresAugmentation(slot, tierId)) return;
 
     const material = getUpgradeMaterialForSlot(slot.slot);
     materials[material]++;
@@ -78,8 +129,11 @@ export function calculatePlayerBooks(gear: GearSlotStatus[]): {
 
 /**
  * Calculate team-wide summary
+ *
+ * @param players - Array of players
+ * @param tierId - Optional tier ID for augmentation requirement checks
  */
-export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
+export function calculateTeamSummary(players: SnapshotPlayer[], tierId?: string): TeamSummary {
   const totalPlayers = players.length;
 
   if (totalPlayers === 0) {
@@ -100,11 +154,11 @@ export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
 
   players.forEach((player) => {
     // Completion
-    totalCompleted += player.gear.filter(isSlotComplete).length;
+    totalCompleted += player.gear.filter((slot) => isSlotComplete(slot, tierId)).length;
     totalSlots += player.gear.length;
 
     // Materials
-    const playerMaterials = calculatePlayerMaterials(player.gear);
+    const playerMaterials = calculatePlayerMaterials(player.gear, tierId);
     materials.twine += playerMaterials.twine;
     materials.glaze += playerMaterials.glaze;
     materials.solvent += playerMaterials.solvent;

@@ -401,7 +401,7 @@ export function LootPriorityPanel({
   const materialPriorities = lootTable.upgradeMaterials.map((material) => {
     // Use different priority calculation for Universal Tomestone vs slot-based materials
     const baseEntries = isSlotAugmentationMaterial(material)
-      ? getPriorityForUpgradeMaterial(players, material, settings, materialLog)
+      ? getPriorityForUpgradeMaterial(players, material, settings, materialLog, tierId)
       : getPriorityForUniversalTomestone(players, settings, materialLog);
 
     return {

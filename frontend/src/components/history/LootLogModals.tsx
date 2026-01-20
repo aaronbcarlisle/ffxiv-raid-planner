@@ -196,6 +196,7 @@ export function LootLogModals({
           presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
           suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
           editEntry={materialEntryToEdit}
+          tierId={tierId}
         />
       )}
 

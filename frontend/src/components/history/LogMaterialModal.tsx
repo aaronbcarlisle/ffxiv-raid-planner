@@ -37,6 +37,8 @@ interface LogMaterialModalProps {
   presetFloor?: string;
   /** If provided, modal operates in edit mode */
   editEntry?: MaterialLogEntry;
+  /** Tier ID for augmentation requirement checks */
+  tierId?: string;
 }
 
 /**
@@ -63,6 +65,7 @@ export function LogMaterialModal({
   suggestedMaterial,
   presetFloor,
   editEntry,
+  tierId,
 }: LogMaterialModalProps) {
   const isEditMode = !!editEntry;
   // Determine initial floor: use preset if valid, otherwise find first floor with materials
@@ -187,7 +190,7 @@ export function LogMaterialModal({
     // Pass materialLog to account for materials already received
     // Use different priority function for universal_tomestone vs augmentation materials
     const priorityList = isSlotAugmentationMaterial(selectedMaterial)
-      ? getPriorityForUpgradeMaterial(eligiblePlayers, selectedMaterial, settings, materialLog)
+      ? getPriorityForUpgradeMaterial(eligiblePlayers, selectedMaterial, settings, materialLog, tierId)
       : getPriorityForUniversalTomestone(eligiblePlayers, settings, materialLog);
 
     // Also include players who don't need the material (at the bottom)
@@ -211,7 +214,7 @@ export function LogMaterialModal({
       }));
 
     return [...playersWithPriority, ...playersWithoutNeed];
-  }, [players, selectedMaterial, settings, materialLog, includeSubs]);
+  }, [players, selectedMaterial, settings, materialLog, includeSubs, tierId]);
 
   // Filter recipients based on checkbox states
   // Logic:
