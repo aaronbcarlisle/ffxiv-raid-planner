@@ -82,12 +82,15 @@ pnpm dev                          # Frontend only
 pnpm build && pnpm tsc --noEmit   # Build + type check
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
-pnpm test                         # Frontend tests (319)
+pnpm test                         # Frontend tests (351)
 
 # Backend
 cd backend && source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
-pytest tests/ -q                  # Backend tests (160)
+pytest tests/ -q                  # Backend tests (209)
+
+# Scripts
+cd scripts && npm test            # Scripts tests (87)
 ```
 
 ---
@@ -116,7 +119,7 @@ pytest tests/ -q                  # Backend tests (160)
 - `hooks/useDoubleClickConfirm.ts` - Double-click confirm pattern
 
 ### Pages
-- `pages/GroupView.tsx` - Main group view (788 lines)
+- `pages/GroupView.tsx` - Main group view (~850 lines)
 - `pages/AdminDashboard.tsx` - Admin-only static browser
 
 ### Key Components

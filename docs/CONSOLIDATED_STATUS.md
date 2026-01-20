@@ -64,7 +64,10 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Simplified Version Detection** | ✅ Complete | `didVersionChange()` now detects any releaseNotes.ts modification |
-| **Timezone Display Fix** | ✅ Complete | Date strings use noon UTC to prevent day-shift in US timezones |
+| **Full ISO Timestamps** | ✅ Complete | releaseNotes.ts uses YYYY-MM-DDTHH:MM:SSZ format with actual merge times |
+| **Historical Timestamp Backfill** | ✅ Complete | All 24 releases backfilled with accurate git commit timestamps |
+| **Historical Release Script** | ✅ Complete | Added `--all` option to delete channel and repost all releases |
+| **CI Date Validation** | ✅ Complete | Release notes workflow validates ISO timestamp format |
 
 ---
 
@@ -122,7 +125,7 @@
 | **P1-DEVOPS-001** | ✅ Fixed | Removed dual lockfiles, standardized on pnpm |
 | **P1-SEC-004** | ⏭️ N/A | ecdsa CVE not exploitable (we use HS256, not ECDSA) |
 
-**Test Coverage:** 191 backend + 351 frontend = 542 tests passing
+**Test Coverage:** 209 backend + 351 frontend + 87 scripts = 647 tests passing
 
 ---
 

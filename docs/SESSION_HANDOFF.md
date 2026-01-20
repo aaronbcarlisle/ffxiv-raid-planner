@@ -12,8 +12,10 @@
 
 ### v1.0.14 - Discord Version Detection Fix (Jan 19)
 - Simplified `didVersionChange()` to detect any releaseNotes.ts modification
-- Fixed timezone display issue where dates showed as previous day in US timezones
-- Added noon UTC (T12:00:00) to date strings for consistent display
+- Fixed timezone display using full ISO timestamps from releaseNotes.ts
+- Backfilled all 24 releases with accurate timestamps from git commit history
+- Added `--all` option to post-historical-releases.js (deletes channel and reposts all)
+- Added date format validation to CI workflow
 
 ### v1.0.13 - Discord Changelog Improvements (Jan 19)
 - Release-only Discord embeds (no commit embed for version releases)
@@ -51,7 +53,7 @@ From `docs/SETUP_WIZARD_PLAN.md`:
 - L-001: Page Layout Consistency
 - L-002: Design System Comprehensive Audit
 - L-004: Documentation Tasks
-- TD-001 through TD-005: Lint/type cleanup
+- TD-001: React Hooks Dependency Warnings (15 warnings, ~2 hours)
 
 ---
 
