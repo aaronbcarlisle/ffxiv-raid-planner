@@ -51,7 +51,7 @@ export const RELEASES: Release[] = [
         description: 'Version changes now properly trigger release embeds',
         details:
           'Fixed a bug where the Discord changelog workflow failed to detect version changes due to a grep command failing silently. The version detection now parses git diff output directly in JavaScript instead of piping through grep.',
-        commits: [{ hash: 'afab5c0', message: 'fix(discord): improve version change detection reliability' }],
+        commits: [{ hash: 'fbe6b03', message: 'fix(discord): improve version change detection reliability' }],
       },
     ],
   },
