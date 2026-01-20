@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.0.13';
+export const CURRENT_VERSION = '1.0.14';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,22 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.14',
+    date: '2026-01-19',
+    title: 'Discord Version Detection Fix',
+    highlights: ['Fixed release announcement detection'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Discord release announcement detection',
+        description: 'Version changes now properly trigger release embeds',
+        details:
+          'Fixed a bug where the Discord changelog workflow failed to detect version changes due to a grep command failing silently. The version detection now parses git diff output directly in JavaScript instead of piping through grep.',
+        commits: [{ hash: 'afab5c0', message: 'fix(discord): improve version change detection reliability' }],
+      },
+    ],
+  },
   {
     version: '1.0.13',
     date: '2026-01-19',

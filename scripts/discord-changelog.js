@@ -447,22 +447,40 @@ function didVersionChange() {
       { encoding: 'utf-8' }
     ).trim();
 
+    console.log(`Release notes file changed: ${diffOutput ? 'yes' : 'no'}`);
+
     if (!diffOutput) {
       return false;
     }
 
-    // Check if CURRENT_VERSION specifically changed
-    const versionDiff = execSync(
-      'git diff HEAD~1 -- frontend/src/data/releaseNotes.ts | grep -E "^[+-]export const CURRENT_VERSION"',
-      { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim();
+    // Get the full diff for releaseNotes.ts (without piping through grep)
+    const fullDiff = execSync(
+      'git diff HEAD~1 -- frontend/src/data/releaseNotes.ts',
+      { encoding: 'utf-8' }
+    );
 
-    // If we see both a - and + line for CURRENT_VERSION, it changed
-    return versionDiff.includes('-export const CURRENT_VERSION') &&
-           versionDiff.includes('+export const CURRENT_VERSION');
+    // Check if CURRENT_VERSION specifically changed by looking for both - and + lines
+    const lines = fullDiff.split('\n');
+    let hasOldVersion = false;
+    let hasNewVersion = false;
+
+    for (const line of lines) {
+      if (line.startsWith('-') && line.includes('export const CURRENT_VERSION')) {
+        hasOldVersion = true;
+        console.log(`Found old version line: ${line}`);
+      }
+      if (line.startsWith('+') && line.includes('export const CURRENT_VERSION')) {
+        hasNewVersion = true;
+        console.log(`Found new version line: ${line}`);
+      }
+    }
+
+    const versionChanged = hasOldVersion && hasNewVersion;
+    console.log(`Version changed: ${versionChanged}`);
+
+    return versionChanged;
   } catch (error) {
-    // grep returns exit code 1 if no matches, which throws
-    // This means the version didn't change
+    console.error('Error checking version change:', error.message);
     return false;
   }
 }
