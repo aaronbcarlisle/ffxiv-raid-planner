@@ -149,7 +149,7 @@ export function BiSSourceSelector({
         </span>
       </Tooltip>
 
-      <PopoverContent align="center" sideOffset={4} className="p-2 w-auto">
+      <PopoverContent align="start" sideOffset={4} className="p-2 w-auto">
         {/* 2x2 grid layout */}
         <div className="grid grid-cols-2 gap-1">
           {GRID_LAYOUT.flat().map((source) => {
