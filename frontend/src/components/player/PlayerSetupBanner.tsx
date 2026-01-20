@@ -10,10 +10,10 @@
 
 import { memo } from 'react';
 import { Button, Tooltip } from '../primitives';
-import { Link2, UserCheck, FileDown } from 'lucide-react';
+import { Link2, UserCheck, FileDown, RefreshCw } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
-import { getBannerState } from './playerSetupBannerUtils';
+import { getBannerState, type BannerState } from './playerSetupBannerUtils';
 
 export interface PlayerSetupBannerProps {
   player: SnapshotPlayer;
@@ -52,6 +52,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   let buttonIcon: React.ReactNode;
   let buttonTooltip: string;
   let onClick: (() => void) | undefined;
+  let variant: 'info' | 'warning' = 'info';
 
   switch (bannerState) {
     case 'unclaimed-owner':
@@ -81,21 +82,44 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       onClick = onOpenBiSImport;
       break;
 
+    case 'needs-bis-update':
+      message = 'BiS may need update';
+      buttonLabel = 'Update BiS';
+      buttonIcon = <RefreshCw className="w-3.5 h-3.5" />;
+      buttonTooltip = 'Re-import to get improved base tome and crafted gear detection';
+      onClick = onOpenBiSImport;
+      variant = 'warning';
+      break;
+
     default:
       return null;
   }
 
+  // Styling based on variant
+  const variantStyles: Record<'info' | 'warning', { container: string; text: string }> = {
+    info: {
+      container: 'bg-accent/10 border-accent',
+      text: 'text-accent',
+    },
+    warning: {
+      container: 'bg-status-warning/10 border-status-warning',
+      text: 'text-status-warning',
+    },
+  };
+
+  const styles = variantStyles[variant];
+
   return (
     <div
-      className="mx-3 mb-2 px-3 py-2 rounded-lg bg-accent/10 border-l-4 border-accent flex items-center justify-between gap-3"
+      className={`mx-3 mb-2 px-3 py-2 rounded-lg border-l-4 flex items-center justify-between gap-3 ${styles.container}`}
       role="status"
       aria-label={`Setup needed: ${message}`}
     >
-      <span className="text-sm text-accent">{message}</span>
+      <span className={`text-sm ${styles.text}`}>{message}</span>
       <Tooltip content={buttonTooltip}>
         <Button
           size="sm"
-          variant="secondary"
+          variant={variant === 'warning' ? 'warning' : 'secondary'}
           leftIcon={buttonIcon}
           onClick={(e) => {
             e.stopPropagation();

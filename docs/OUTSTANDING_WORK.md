@@ -20,7 +20,26 @@
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
 
-**To continue:** Merge PR #52, then proceed with Session 4 (MembersPanel) or P3 items.
+### Current Work In Progress (PR #52)
+
+**BiS Update Banner** - Added but has bugs to fix:
+
+1. **Crafted detection bug**: Banner incorrectly shows when `bisSource` is already `crafted` with iLv 770.
+   - Current logic: `slot.bisSource !== 'crafted' && slot.itemLevel <= 770`
+   - Problem: Triggers false positives. Need to verify item is ACTUALLY miscategorized.
+   - File: `frontend/src/components/player/playerSetupBannerUtils.ts` - `isSlotMiscategorized()`
+
+2. **Messaging too vague**: "BiS may need update" should be explicit about WHY:
+   - "Base Tome gear detected, update BiS" (for base_tome issues)
+   - "Crafted gear detected, update BiS" (for crafted issues)
+   - File: `frontend/src/components/player/PlayerSetupBanner.tsx`
+
+3. **Tests need updating**: After fixing logic, update test assertions
+   - File: `frontend/src/components/player/PlayerSetupBanner.test.ts`
+
+**Key insight from user**: The crafted detection fires even when the card already has `bisSource: 'crafted'` set correctly. Need to reconsider the detection logic - perhaps only detect base_tome issues (tome without Aug. prefix) since that's the clearer case.
+
+**To continue:** Fix crafted detection or remove it, improve messaging, commit and push.
 
 ---
 

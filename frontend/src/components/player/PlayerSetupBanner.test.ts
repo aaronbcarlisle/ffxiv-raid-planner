@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getBannerState } from './playerSetupBannerUtils';
-import type { SnapshotPlayer } from '../../types';
+import { getBannerState, needsBisUpdate } from './playerSetupBannerUtils';
+import type { SnapshotPlayer, GearSlotStatus } from '../../types';
 
 // Helper to create a minimal player for testing
 function createPlayer(overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer {
@@ -204,5 +204,226 @@ describe('PlayerSetupBanner - state transitions', () => {
     });
     // From owner's perspective, card is now fully configured
     expect(getBannerState(assignedPlayer, 'owner-1', 'owner', false)).toBe('hidden');
+  });
+});
+
+// Helper to create gear slots for testing
+function createGearSlot(overrides: Partial<GearSlotStatus> = {}): GearSlotStatus {
+  return {
+    slot: 'weapon',
+    bisSource: 'raid',
+    hasItem: false,
+    isAugmented: false,
+    ...overrides,
+  };
+}
+
+describe('needsBisUpdate', () => {
+  it('returns false when player has no bisLink', () => {
+    const player = createPlayer({ bisLink: undefined, gear: [] });
+    expect(needsBisUpdate(player)).toBe(false);
+  });
+
+  it('returns false when player has bisLink but no item data in gear', () => {
+    const player = createPlayer({
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'weapon', bisSource: 'raid' }),
+        createGearSlot({ slot: 'head', bisSource: 'tome' }),
+      ],
+    });
+    expect(needsBisUpdate(player)).toBe(false);
+  });
+
+  it('returns false when all gear is correctly categorized', () => {
+    const player = createPlayer({
+      bisLink: 'etro-uuid-123',
+      gear: [
+        // Raid gear - correctly set
+        createGearSlot({ slot: 'weapon', bisSource: 'raid', itemName: 'Savage Weapon', itemLevel: 795 }),
+        // Augmented tome - correctly set (has Aug. prefix)
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Aug. Tome Head', itemLevel: 790 }),
+        // Base tome - correctly set
+        createGearSlot({ slot: 'body', bisSource: 'base_tome', itemName: 'Quetzalli Body', itemLevel: 780 }),
+        // Crafted - correctly set
+        createGearSlot({ slot: 'ring1', bisSource: 'crafted', itemName: 'Crafted Ring', itemLevel: 770 }),
+      ],
+    });
+    expect(needsBisUpdate(player)).toBe(false);
+  });
+
+  describe('base_tome miscategorization', () => {
+    it('returns true when tome slot has item WITHOUT Aug. prefix', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // This should be base_tome, not tome - item name doesn't have Aug.
+          createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(true);
+    });
+
+    it('returns false when tome slot has item WITH Aug. prefix', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // Correctly set - has Aug. prefix so needs augmentation
+          createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Aug. Quetzalli Hood', itemLevel: 790 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(false);
+    });
+
+    it('returns false when tome slot has item WITH Augmented prefix', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // Correctly set - has Augmented prefix
+          createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Augmented Neo Kingdom Hood', itemLevel: 790 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(false);
+    });
+  });
+
+  describe('crafted miscategorization', () => {
+    it('returns true when raid slot has crafted-tier item level (770)', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // This should be crafted, not raid - iLv 770 is crafted tier
+          createGearSlot({ slot: 'ring1', bisSource: 'raid', itemName: 'Claro Ring', itemLevel: 770 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(true);
+    });
+
+    it('returns true when tome slot has crafted-tier item level', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // This should be crafted, not tome - iLv 770 is crafted tier
+          createGearSlot({ slot: 'ring1', bisSource: 'tome', itemName: 'Crafted Ring', itemLevel: 770 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(true);
+    });
+
+    it('returns false when crafted slot has crafted-tier item level', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // Correctly set
+          createGearSlot({ slot: 'ring1', bisSource: 'crafted', itemName: 'Claro Ring', itemLevel: 770 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(false);
+    });
+
+    it('returns false when raid slot has proper raid-tier item level', () => {
+      const player = createPlayer({
+        bisLink: 'etro-uuid-123',
+        gear: [
+          // Correctly set - iLv 790 is savage tier
+          createGearSlot({ slot: 'body', bisSource: 'raid', itemName: 'Savage Body', itemLevel: 790 }),
+        ],
+      });
+      expect(needsBisUpdate(player)).toBe(false);
+    });
+  });
+});
+
+describe('PlayerSetupBanner - needs-bis-update state', () => {
+  it('returns needs-bis-update for owner viewing player with miscategorized base_tome', () => {
+    const player = createPlayer({
+      userId: 'member-1',
+      bisLink: 'etro-uuid-123',
+      gear: [
+        // tome but no Aug. prefix = should be base_tome
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+      ],
+    });
+    const result = getBannerState(player, 'owner-1', 'owner', false);
+    expect(result).toBe('needs-bis-update');
+  });
+
+  it('returns needs-bis-update for lead viewing player with miscategorized crafted', () => {
+    const player = createPlayer({
+      userId: 'member-1',
+      bisLink: 'etro-uuid-123',
+      gear: [
+        // raid but iLv 770 = should be crafted
+        createGearSlot({ slot: 'ring1', bisSource: 'raid', itemName: 'Claro Ring', itemLevel: 770 }),
+      ],
+    });
+    const result = getBannerState(player, 'lead-1', 'lead', false);
+    expect(result).toBe('needs-bis-update');
+  });
+
+  it('returns needs-bis-update for member viewing their own card with miscategorized gear', () => {
+    const player = createPlayer({
+      userId: 'user-1',
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+      ],
+    });
+    const result = getBannerState(player, 'user-1', 'member', true);
+    expect(result).toBe('needs-bis-update');
+  });
+
+  it('returns hidden for member viewing another players card with miscategorized gear', () => {
+    const player = createPlayer({
+      userId: 'other-user',
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+      ],
+    });
+    const result = getBannerState(player, 'user-1', 'member', true);
+    expect(result).toBe('hidden');
+  });
+
+  it('returns hidden when all gear is correctly categorized', () => {
+    const player = createPlayer({
+      userId: 'user-1',
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'weapon', bisSource: 'raid', itemName: 'Savage Weapon', itemLevel: 795 }),
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Aug. Quetzalli Hood', itemLevel: 790 }),
+        createGearSlot({ slot: 'body', bisSource: 'base_tome', itemName: 'Quetzalli Coat', itemLevel: 780 }),
+        createGearSlot({ slot: 'ring1', bisSource: 'crafted', itemName: 'Claro Ring', itemLevel: 770 }),
+      ],
+    });
+    const result = getBannerState(player, 'user-1', 'member', true);
+    expect(result).toBe('hidden');
+  });
+
+  it('transitions from needs-bis-update to hidden after re-importing with correct sources', () => {
+    const userId = 'user-1';
+
+    // Before re-import (miscategorized)
+    const legacyPlayer = createPlayer({
+      userId,
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'weapon', bisSource: 'raid', itemName: 'Savage Weapon', itemLevel: 795 }),
+        // Miscategorized: tome but no Aug. prefix
+        createGearSlot({ slot: 'head', bisSource: 'tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+      ],
+    });
+    expect(getBannerState(legacyPlayer, userId, 'member', true)).toBe('needs-bis-update');
+
+    // After re-import (correctly categorized)
+    const updatedPlayer = createPlayer({
+      userId,
+      bisLink: 'etro-uuid-123',
+      gear: [
+        createGearSlot({ slot: 'weapon', bisSource: 'raid', itemName: 'Savage Weapon', itemLevel: 795 }),
+        createGearSlot({ slot: 'head', bisSource: 'base_tome', itemName: 'Quetzalli Hood', itemLevel: 780 }),
+      ],
+    });
+    expect(getBannerState(updatedPlayer, userId, 'member', true)).toBe('hidden');
   });
 });
