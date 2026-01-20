@@ -773,7 +773,8 @@ async def update_snapshot_player(
             "gear", "tome_weapon", "bis_link", "lodestone_id",
             "job", "name", "role", "position", "tank_role"
         }
-        update_data = data.model_dump(exclude_unset=True)
+        # Use by_alias=False to get Python field names (snake_case) not JSON aliases (camelCase)
+        update_data = data.model_dump(exclude_unset=True, by_alias=False)
         for field in update_data:
             if field not in allowed_fields:
                 raise PermissionDenied(f"Members cannot update '{field}'")
