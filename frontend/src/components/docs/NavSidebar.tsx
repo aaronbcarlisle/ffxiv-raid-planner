@@ -112,7 +112,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
                               ? 'bg-accent/10 text-accent font-medium'
                               : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
                           }`}
-                          aria-current={activeSection === section.id ? 'true' : undefined}
+                          aria-current={activeSection === section.id ? 'location' : undefined}
                         >
                           {section.label}
                         </button>

@@ -18,13 +18,14 @@ export default {
           rawButton: 'Use <Button> or <IconButton> instead of raw <button>. See docs/UI_COMPONENTS.md',
         },
         fixable: null,
+        schema: [],
       },
       create(context) {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'button') {
               // Check for design-system-ignore comment
-              const sourceCode = context.getSourceCode();
+              const sourceCode = context.sourceCode;
               const comments = sourceCode.getCommentsBefore(node);
               const hasIgnore = comments.some(comment =>
                 comment.value.includes('design-system-ignore')
@@ -51,12 +52,13 @@ export default {
         messages: {
           rawInput: 'Use <Input>, <Checkbox>, or <NumberInput> instead of raw <input>. See docs/UI_COMPONENTS.md',
         },
+        schema: [],
       },
       create(context) {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'input') {
-              const sourceCode = context.getSourceCode();
+              const sourceCode = context.sourceCode;
               const comments = sourceCode.getCommentsBefore(node);
               const hasIgnore = comments.some(comment =>
                 comment.value.includes('design-system-ignore')
@@ -83,12 +85,13 @@ export default {
         messages: {
           rawSelect: 'Use <Select> or <SearchableSelect> instead of raw <select>. See docs/UI_COMPONENTS.md',
         },
+        schema: [],
       },
       create(context) {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'select') {
-              const sourceCode = context.getSourceCode();
+              const sourceCode = context.sourceCode;
               const comments = sourceCode.getCommentsBefore(node);
               const hasIgnore = comments.some(comment =>
                 comment.value.includes('design-system-ignore')
@@ -115,12 +118,13 @@ export default {
         messages: {
           rawLabel: 'Use <Label> instead of raw <label>. See docs/UI_COMPONENTS.md',
         },
+        schema: [],
       },
       create(context) {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'label') {
-              const sourceCode = context.getSourceCode();
+              const sourceCode = context.sourceCode;
               const comments = sourceCode.getCommentsBefore(node);
               const hasIgnore = comments.some(comment =>
                 comment.value.includes('design-system-ignore')
@@ -147,12 +151,13 @@ export default {
         messages: {
           rawTextarea: 'Use <TextArea> instead of raw <textarea>. See docs/UI_COMPONENTS.md',
         },
+        schema: [],
       },
       create(context) {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'textarea') {
-              const sourceCode = context.getSourceCode();
+              const sourceCode = context.sourceCode;
               const comments = sourceCode.getCommentsBefore(node);
               const hasIgnore = comments.some(comment =>
                 comment.value.includes('design-system-ignore')
