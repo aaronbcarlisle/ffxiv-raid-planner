@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.0.14';
+export const CURRENT_VERSION = '1.0.15';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.0.15',
+    date: '2026-01-20T02:15:00Z',
+    title: 'Discord Workflow Path Fix',
+    highlights: ['Fixed version detection from scripts directory'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Version detection working directory',
+        description:
+          'Fixed git diff path resolution when Discord changelog script runs from scripts/ directory. Now uses absolute path via git rev-parse.',
+        commits: [{ hash: '55122f4', message: 'fix: use absolute path in didVersionChange for workflow compatibility' }],
+      },
+    ],
+  },
   {
     version: '1.0.14',
     date: '2026-01-20T00:41:13Z',

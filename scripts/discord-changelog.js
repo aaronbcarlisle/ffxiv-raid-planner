@@ -448,8 +448,12 @@ function parseReleaseNotes() {
  */
 function didVersionChange() {
   try {
+    // Get the git root directory to ensure path works from any working directory
+    const gitRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
+    const releaseNotesPath = `${gitRoot}/frontend/src/data/releaseNotes.ts`;
+
     const diffOutput = execSync(
-      'git diff HEAD~1 --name-only -- frontend/src/data/releaseNotes.ts',
+      `git diff HEAD~1 --name-only -- "${releaseNotesPath}"`,
       { encoding: 'utf-8' }
     ).trim();
 
