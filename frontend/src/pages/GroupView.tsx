@@ -138,10 +138,12 @@ export function GroupView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clear tiers when shareCode changes (switching groups)
+  // Clear tiers and errors when shareCode changes (switching groups)
   useEffect(() => {
     clearTiers();
-  }, [shareCode, clearTiers]);
+    clearGroupError();
+    clearTierError();
+  }, [shareCode, clearTiers, clearGroupError, clearTierError]);
 
   // Fetch group on mount
   useEffect(() => {
