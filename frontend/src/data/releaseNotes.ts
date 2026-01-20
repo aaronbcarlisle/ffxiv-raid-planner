@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.9.0';
+export const CURRENT_VERSION = '1.9.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,22 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.9.1',
+    date: '2026-01-20T17:00:00Z',
+    title: 'Error Modal Overlay',
+    highlights: ['Errors display as dismissible modal', 'One-click bug reporting'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Error modal overlay',
+        description: 'Errors now display as a dismissible modal overlay instead of redirecting to a full-page error',
+        details:
+          'When an error occurs while viewing a static, you now see a modal overlay instead of losing your current view. The modal includes the error message, technical details (URL, timestamp, stack trace), a copy button for bug reports, and a direct link to the Discord #bug-reports channel. Dismiss with X button or Esc key. Full-page errors are only shown for initial load failures when no content exists.',
+        commits: [{ hash: 'a4a8525', message: 'feat: show errors as dismissible modal overlay instead of full page redirect' }],
+      },
+    ],
+  },
   {
     version: '1.9.0',
     date: '2026-01-20T08:00:00Z',
