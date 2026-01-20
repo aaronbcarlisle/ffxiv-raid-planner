@@ -1400,7 +1400,7 @@ function MenusSection() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors border
+                flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border
                 ${
                   activeTab === tab
                     ? 'bg-surface-elevated text-text-primary border-accent'

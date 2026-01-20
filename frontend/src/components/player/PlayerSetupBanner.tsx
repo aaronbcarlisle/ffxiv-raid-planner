@@ -87,7 +87,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
 
   return (
     <div
-      className="mx-3 mb-2 px-3 py-2 rounded-md bg-accent/10 border-l-4 border-accent flex items-center justify-between gap-3"
+      className="mx-3 mb-2 px-3 py-2 rounded-lg bg-accent/10 border-l-4 border-accent flex items-center justify-between gap-3"
       role="status"
       aria-label={`Setup needed: ${message}`}
     >

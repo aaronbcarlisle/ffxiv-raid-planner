@@ -37,7 +37,7 @@ export function GroupViewToggle({ enabled, onToggle, disabled = false }: GroupVi
       <button
         onClick={() => onToggle(!enabled)}
         disabled={disabled}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           enabled
             ? 'bg-accent/20 text-accent border border-accent/50'
             : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'

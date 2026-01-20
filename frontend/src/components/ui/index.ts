@@ -9,7 +9,7 @@ export { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 export { Label, type LabelProps } from './Label';
 export { Modal } from './Modal';
 export { ConfirmModal } from './ConfirmModal';
-export { ErrorMessage, InlineError, type ErrorMessageProps } from './ErrorMessage';
+export { ErrorMessage, InlineError, ErrorBox, type ErrorMessageProps, type ErrorBoxProps } from './ErrorMessage';
 export { NumberInput, type NumberInputProps } from './NumberInput';
 export { ProgressRing } from './ProgressRing';
 export { RadioGroup, type RadioGroupProps, type RadioOption } from './RadioGroup';
@@ -32,7 +32,7 @@ export {
   StaticListItemSkeleton,
   StaticListSkeleton,
 } from './Skeleton';
-export { Spinner, SpinnerOverlay } from './Spinner';
+export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { TextArea, type TextAreaProps } from './TextArea';

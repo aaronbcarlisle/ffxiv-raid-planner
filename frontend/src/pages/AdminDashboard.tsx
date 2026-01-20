@@ -11,7 +11,7 @@ import { useAuthStore } from '../stores/authStore';
 import { api, ApiError } from '../services/api';
 import { Eye, ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '../stores/toastStore';
-import { Input, ErrorMessage } from '../components/ui';
+import { Input, ErrorMessage, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../types';
 
@@ -376,7 +376,7 @@ export function AdminDashboard() {
   if (!authInitialized || authLoading || (isAuthenticated && user && user.isAdmin === undefined)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" label="Loading admin dashboard" />
       </div>
     );
   }
@@ -434,7 +434,7 @@ export function AdminDashboard() {
       {/* Loading */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <Spinner size="lg" label="Loading groups" />
         </div>
       ) : groups.length === 0 ? (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -612,7 +612,7 @@ export function AdminDashboard() {
             <div className="p-4 max-h-80 overflow-y-auto">
               {viewAsMembersLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                  <Spinner size="md" label="Loading members" />
                 </div>
               ) : viewAsMembers.length === 0 ? (
                 <p className="text-text-muted text-center py-8">

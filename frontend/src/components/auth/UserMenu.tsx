@@ -48,8 +48,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
     <Dropdown>
       <DropdownTrigger>
         {/* design-system-ignore - Radix DropdownTrigger requires native button with asChild */}
+        {/* a11y-exception: Focus ring intentionally removed per user request - avatar border provides sufficient visual indicator */}
         <button
-          className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base ${className}`}
+          className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none ${className}`}
           aria-label={`User menu for ${displayName}`}
         >
           <img

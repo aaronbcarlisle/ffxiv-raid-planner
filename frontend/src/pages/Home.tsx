@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore, useAuthHydrated } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { LoginButton } from '../components/auth';
-import { Input } from '../components/ui';
+import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
 import { BookOpen, Users, Calculator, Sparkles } from 'lucide-react';
 import type { MemberRole } from '../types';
@@ -122,7 +122,7 @@ export function Home() {
       {/* Primary CTA */}
       <div className="mb-8">
         {authLoading ? (
-          <div className="w-10 h-10 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <Spinner size="xl" className="mx-auto" label="Checking authentication" />
         ) : user ? (
           <Link
             to="/dashboard"

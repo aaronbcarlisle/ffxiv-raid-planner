@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Copy } from 'lucide-react';
-import { Modal, Select, RadioGroup, Label } from '../ui';
+import { Modal, Select, RadioGroup, Label, ErrorBox } from '../ui';
 import { Button } from '../primitives';
 import { useTierStore } from '../../stores/tierStore';
 import { getTierById, RAID_TIERS } from '../../gamedata';
@@ -78,11 +78,7 @@ export function RolloverDialog({ groupId, currentTier, existingTierIds, onClose 
       }
     >
       <div className="space-y-4">
-        {error && (
-          <div className="p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
-            {error}
-          </div>
-        )}
+        {error && <ErrorBox message={error} size="sm" />}
 
         {/* Source Tier */}
         <div className="p-3 bg-surface-elevated rounded border border-border-subtle">

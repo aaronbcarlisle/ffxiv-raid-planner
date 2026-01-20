@@ -354,13 +354,13 @@ export function Dashboard() {
           )}
           {/* View mode toggle */}
           {groups.length > 0 && (
-            <div className="flex bg-surface-raised rounded-md border border-border-default">
+            <div className="flex bg-surface-raised rounded-lg border border-border-default">
               <Tooltip content="Display statics as cards">
                 <IconButton
                   icon={<LayoutGrid className="w-4 h-4" />}
                   onClick={() => setViewMode('grid')}
                   variant={viewMode === 'grid' ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="md"
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
                   className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
@@ -371,7 +371,7 @@ export function Dashboard() {
                   icon={<List className="w-4 h-4" />}
                   onClick={() => setViewMode('list')}
                   variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                  size="sm"
+                  size="md"
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
                   className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
@@ -727,7 +727,7 @@ export function Dashboard() {
           }
         >
           <div className="space-y-4">
-            <div className="p-3 bg-status-error/10 border border-status-error/30 rounded">
+            <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
               <p className="text-status-error font-medium mb-2">Delete this static?</p>
               <p className="text-text-secondary text-sm">
                 This will permanently delete <strong className="text-text-primary">{selectedGroup.name}</strong> and all its tier snapshots.

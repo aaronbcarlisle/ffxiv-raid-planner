@@ -8,6 +8,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { authRequest } from '../../services/api';
 import { JobIcon } from '../ui/JobIcon';
+import { Spinner } from '../ui/Spinner';
+import { ErrorBox } from '../ui/ErrorMessage';
 import { Select, type SelectOption } from '../ui/Select';
 import { Tooltip } from '../primitives/Tooltip';
 import { eventBus, Events } from '../../lib/eventBus';
@@ -106,18 +108,14 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <Spinner size="md" label="Loading members" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="p-3 bg-status-error/10 border border-status-error/30 rounded text-status-error text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorBox message={error} size="sm" />}
 
       {/* Members Section */}
       <div>

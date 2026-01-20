@@ -549,7 +549,7 @@ export const PlayerCard = memo(function PlayerCard({
             top: cursorTooltip.y + 12,
           }}
         >
-          <div className="rounded-md bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default">
+          <div className="rounded bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default">
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px] font-mono">Shift+Click</kbd>
