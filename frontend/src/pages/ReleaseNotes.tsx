@@ -753,7 +753,7 @@ export default function ReleaseNotes() {
     <div className="min-h-screen bg-surface-base">
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
-        <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-8">
+        <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
           <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">
               Documentation
@@ -774,7 +774,7 @@ export default function ReleaseNotes() {
       </header>
 
       {/* Content with Sidebar */}
-      <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-12 flex gap-8">
+      <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-12 flex gap-8">
         <VersionNav
           activeVersion={activeVersion}
           onVersionClick={handleVersionClick}
