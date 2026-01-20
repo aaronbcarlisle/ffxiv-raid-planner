@@ -7,13 +7,14 @@
  * Auto-hides when all slots are correctly categorized.
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Button, Tooltip } from '../primitives';
 import { RefreshCw } from 'lucide-react';
 import type { GearSlotStatus, GearSource } from '../../types';
 import { getMiscategorizedSlots } from '../../utils/bisSourceDetection';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import type { SnapshotPlayer } from '../../types';
+import { toast } from '../../stores/toastStore';
 
 export interface BiSSourceFixBannerProps {
   gear: GearSlotStatus[];
@@ -32,6 +33,8 @@ export const BiSSourceFixBanner = memo(function BiSSourceFixBanner({
   isAdminAccess,
   onFixAllSources,
 }: BiSSourceFixBannerProps) {
+  const [isFixing, setIsFixing] = useState(false);
+
   // Check permission to edit gear
   const gearPermission = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess);
 
@@ -43,12 +46,22 @@ export const BiSSourceFixBanner = memo(function BiSSourceFixBanner({
     return null;
   }
 
-  const handleFixAll = () => {
+  const handleFixAll = async () => {
     const fixes = miscategorizedSlots.map(({ slot, correctSource }) => ({
       slot,
       bisSource: correctSource,
     }));
-    onFixAllSources(fixes);
+
+    setIsFixing(true);
+    try {
+      await Promise.resolve(onFixAllSources(fixes));
+      toast.success(`Updated ${fixes.length} BiS source${fixes.length > 1 ? 's' : ''}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to update BiS sources: ${message}`);
+    } finally {
+      setIsFixing(false);
+    }
   };
 
   const slotCount = miscategorizedSlots.length;
@@ -67,13 +80,14 @@ export const BiSSourceFixBanner = memo(function BiSSourceFixBanner({
         <Button
           size="sm"
           variant="warning"
-          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+          leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${isFixing ? 'animate-spin' : ''}`} />}
+          disabled={isFixing}
           onClick={(e) => {
             e.stopPropagation();
             handleFixAll();
           }}
         >
-          Update BiS Source
+          {isFixing ? 'Updating...' : 'Update BiS Source'}
         </Button>
       </Tooltip>
     </div>

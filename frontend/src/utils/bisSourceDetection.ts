@@ -30,12 +30,17 @@ const TOME_PATTERNS = [
   'radiant',       // Other tome
 ];
 
+// Item level thresholds for secondary validation (current tier: 7.4)
+// These prevent false positives when name patterns overlap
+const CRAFTED_ILV_MAX = 780; // Crafted is typically ≤770, allow some buffer
+const TOME_ILV_MIN = 775;    // Base tome is typically 780+
+
 /**
  * Check if a gear slot is miscategorized and return the correct BiS source.
  * Returns null if the slot is correctly categorized or can't be determined.
  *
- * Uses name-based pattern matching (same approach as backend bis.py) rather than
- * item level, which avoids false positives on old-tier gear.
+ * Uses name-based pattern matching (same approach as backend bis.py) with
+ * item level validation as a secondary check to avoid false positives.
  *
  * Detects:
  * - crafted: item name matches crafted pattern but bisSource !== 'crafted'
@@ -46,13 +51,18 @@ export function getCorrectBisSource(status: GearSlotStatus): GearSource | null {
   if (!status.itemName) return null;
 
   const nameLower = status.itemName.toLowerCase();
+  const itemLevel = status.itemLevel ?? 0;
 
   // Check for crafted miscategorization:
   // Name matches crafted pattern but bisSource isn't 'crafted'
+  // Item level validation: crafted gear is typically ≤770
   if (status.bisSource !== 'crafted') {
     for (const pattern of CRAFTED_PATTERNS) {
       if (nameLower.includes(pattern)) {
-        return 'crafted';
+        // Only flag if item level is in crafted range (or unknown)
+        if (itemLevel === 0 || itemLevel <= CRAFTED_ILV_MAX) {
+          return 'crafted';
+        }
       }
     }
   }
@@ -65,7 +75,10 @@ export function getCorrectBisSource(status: GearSlotStatus): GearSource | null {
     if (!hasAugPrefix) {
       for (const pattern of TOME_PATTERNS) {
         if (nameLower.includes(pattern)) {
-          return 'base_tome';
+          // Only flag if item level is in tome range (or unknown)
+          if (itemLevel === 0 || itemLevel >= TOME_ILV_MIN) {
+            return 'base_tome';
+          }
         }
       }
     }

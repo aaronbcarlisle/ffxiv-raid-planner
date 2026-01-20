@@ -124,6 +124,24 @@ interface BiSSourceSelectorProps {
   isAugmented?: boolean;
 }
 
+/**
+ * Determine if confirmation is needed for a source change operation.
+ * Returns true if the slot has any data that would be lost.
+ */
+function shouldConfirmSourceChange(
+  hasItemData: boolean,
+  hasItem: boolean | undefined,
+  isAugmented: boolean | undefined,
+  currentSource: GearSource | null,
+  newSource: GearSource | null
+): boolean {
+  // No confirmation needed if not actually changing
+  if (newSource !== null && newSource === currentSource) return false;
+
+  // Confirm if any data would be lost
+  return hasItemData || !!hasItem || !!isAugmented || (newSource === null && currentSource !== null);
+}
+
 export function BiSSourceSelector({
   bisSource,
   onSelect,
@@ -145,10 +163,8 @@ export function BiSSourceSelector({
   } | null>(null);
 
   const handleSelect = (source: GearSource) => {
-    // If slot has item data OR progress (hasItem/isAugmented) and source is changing, show confirmation
-    // This prevents accidental loss of both imported BiS metadata and gear progress
-    const hasDataToLose = hasItemData || hasItem || isAugmented;
-    if (hasDataToLose && source !== bisSource) {
+    // Check if confirmation is needed before changing source
+    if (shouldConfirmSourceChange(hasItemData, hasItem, isAugmented, bisSource, source)) {
       setConfirmModal({ type: 'source-change', pendingSource: source });
       return;
     }
@@ -157,9 +173,8 @@ export function BiSSourceSelector({
   };
 
   const handleClear = () => {
-    // Show confirmation if there's any data to clear (bisSource, item metadata, or progress)
-    const hasDataToClear = bisSource !== null || hasItemData || hasItem || isAugmented;
-    if (hasDataToClear) {
+    // Check if confirmation is needed before clearing
+    if (shouldConfirmSourceChange(hasItemData, hasItem, isAugmented, bisSource, null)) {
       setConfirmModal({ type: 'clear' });
       return;
     }
