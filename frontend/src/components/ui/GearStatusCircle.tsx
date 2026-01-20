@@ -1,9 +1,9 @@
 /**
  * GearStatusCircle - Target-style status indicator for gear tracking
  *
- * Visual states matching WhoNeedsItMatrix style:
- * - Missing: Gray circle (empty)
- * - Have (needs aug): Colored ring only, no fill
+ * Visual states:
+ * - Missing: Solid gray filled circle (no ring)
+ * - Have (needs aug): Colored ring only, no inner fill
  * - Complete: Colored ring + filled inner circle
  *
  * State cycles vary by BiS source:
@@ -145,7 +145,7 @@ export function GearStatusCircle({
         aria-label="BiS source not set"
         className={`
           ${sizeClasses.outer} rounded-full
-          bg-surface-interactive border border-border-subtle
+          bg-text-muted/40
           flex items-center justify-center
           opacity-30 cursor-not-allowed
         `}
@@ -153,10 +153,36 @@ export function GearStatusCircle({
     );
   }
 
+  // Missing state: solid gray filled circle (no ring)
+  if (isMissing) {
+    return (
+      <div
+        role="checkbox"
+        aria-checked={false}
+        aria-disabled={disabled}
+        aria-label={ariaLabel}
+        tabIndex={disabled ? -1 : 0}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        className={`
+          ${sizeClasses.outer} rounded-full
+          bg-text-muted/50
+          flex items-center justify-center
+          transition-all duration-150
+          ${disabled
+            ? 'opacity-50 cursor-not-allowed'
+            : 'cursor-pointer hover:scale-110 hover:bg-text-muted/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-1'
+          }
+        `}
+      />
+    );
+  }
+
+  // Have or Complete state: colored ring with optional inner fill
   return (
     <div
       role="checkbox"
-      aria-checked={isComplete ? true : isPartial ? 'mixed' : false}
+      aria-checked={isComplete ? true : 'mixed'}
       aria-disabled={disabled}
       aria-label={ariaLabel}
       tabIndex={disabled ? -1 : 0}
@@ -165,22 +191,22 @@ export function GearStatusCircle({
       className={`
         ${sizeClasses.outer} rounded-full
         ${sizeClasses.border} ${ringColor}
+        bg-transparent
         flex items-center justify-center
         transition-all duration-150
-        ${isMissing ? 'bg-surface-elevated' : 'bg-transparent'}
         ${disabled
           ? 'opacity-50 cursor-not-allowed'
           : 'cursor-pointer hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-1'
         }
       `}
     >
-      {/* Inner fill circle - only shown when have or augmented */}
-      {(isComplete || isPartial) && (
+      {/* Inner fill circle - only shown when complete (not partial) */}
+      {isComplete && (
         <div
           className={`
             ${sizeClasses.inner} rounded-full
             transition-all duration-150
-            ${isComplete ? fillColor : 'bg-transparent'}
+            ${fillColor}
           `}
         />
       )}

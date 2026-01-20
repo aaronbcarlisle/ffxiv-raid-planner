@@ -49,7 +49,7 @@ class GearSlotStatus(CamelModel):
     """Gear slot status"""
 
     slot: str
-    bis_source: GearBisSource = "raid"
+    bis_source: GearBisSource | None = "raid"  # None = unset (displays as "--")
     current_source: GearSourceCategory = "unknown"  # What's actually equipped
     has_item: bool = False
     is_augmented: bool = False
