@@ -51,7 +51,7 @@ const mockClearError = vi.fn();
 const mockGetOAuthStateCookie = vi.fn();
 
 // Type for the mocked useAuthStore
-type MockUseAuthStore = ReturnType<typeof vi.fn>;
+type MockedAuthStore = ReturnType<typeof vi.fn>;
 
 vi.mock('../stores/authStore', () => ({
   useAuthStore: vi.fn(),
@@ -79,7 +79,7 @@ describe('AuthCallback', () => {
   describe('Error states from URL parameters', () => {
     it('shows error when OAuth error parameter is present', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -97,7 +97,7 @@ describe('AuthCallback', () => {
 
     it('shows error when code parameter is missing', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -114,7 +114,7 @@ describe('AuthCallback', () => {
 
     it('shows error when state parameter is missing', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -131,7 +131,7 @@ describe('AuthCallback', () => {
 
     it('shows error UI with return home button', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -153,7 +153,7 @@ describe('AuthCallback', () => {
       // Simulate in-progress authentication
       const pendingCallback = vi.fn(() => new Promise(() => {})); // Never resolves
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: true,
@@ -174,7 +174,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       mockGetOAuthStateCookie.mockReturnValue('captured-state');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -195,7 +195,7 @@ describe('AuthCallback', () => {
       // This tests the fix for the OAuth state cookie race condition
       mockGetOAuthStateCookie.mockReturnValue('cookie-state');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -214,7 +214,7 @@ describe('AuthCallback', () => {
     it('prevents duplicate callback invocations on re-render', async () => {
       const { useAuthStore } = await import('../stores/authStore');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -243,7 +243,7 @@ describe('AuthCallback', () => {
     it('does not call handleCallback when already in error state', async () => {
       const { useAuthStore } = await import('../stores/authStore');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -267,14 +267,16 @@ describe('AuthCallback', () => {
       const mockUser: User = {
         id: 'user-123',
         discordId: 'discord-123',
+        discordUsername: 'testuser',
         displayName: 'Test User',
-        avatarUrl: null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         isAdmin: false,
       };
 
       // Start with processing state
-      let currentState = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let currentState: any = {
         user: null,
         isAuthenticated: false,
         isLoading: true,
@@ -283,7 +285,7 @@ describe('AuthCallback', () => {
         clearError: mockClearError,
       };
 
-      (useAuthStore as MockUseAuthStore).mockImplementation(() => currentState);
+      (useAuthStore as unknown as MockedAuthStore).mockImplementation(() => currentState);
 
       renderAuthCallback('?code=auth-code&state=valid-state');
 
@@ -308,7 +310,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       const callbackError = new Error('Network error');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -338,7 +340,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       sessionStorage.setItem('auth_redirect', '/dashboard');
 
-      (useAuthStore as MockUseAuthStore).mockReturnValue({
+      (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -381,7 +383,7 @@ describe('AuthCallback - Timing-sensitive scenarios', () => {
       return null;
     });
 
-    (useAuthStore as MockUseAuthStore).mockReturnValue({
+    (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -407,7 +409,7 @@ describe('AuthCallback - Timing-sensitive scenarios', () => {
     // and setTimeout to fully test the race condition prevention
     // For now, we verify the callback is invoked
     
-    (useAuthStore as MockUseAuthStore).mockReturnValue({
+    (useAuthStore as unknown as MockedAuthStore).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,
