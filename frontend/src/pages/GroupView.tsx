@@ -36,12 +36,13 @@ import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculatio
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
+import { DISCORD_BUG_REPORT_URL } from '../config';
 import type { SnapshotPlayer, GearSlot, SortPreset } from '../types';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
-  const { currentGroup, groups, isLoading: groupLoading, error: groupError, fetchGroupByShareCode, clearError: clearGroupError } = useStaticGroupStore();
+  const { currentGroup, groups, isLoading: groupLoading, error: groupError, errorStack: groupErrorStack, fetchGroupByShareCode, clearError: clearGroupError } = useStaticGroupStore();
   const {
     tiers,
     currentTier,
@@ -440,7 +441,7 @@ export function GroupView() {
 
   const isLoading = groupLoading || tierLoading;
   const error = groupError || tierError;
-  const errorStack = tierErrorStack; // Currently only tier store captures stack
+  const errorStack = tierErrorStack || groupErrorStack;
 
   // Get tier info for display
   const tierInfo = currentTier ? getTierById(currentTier.tierId) : null;
@@ -537,6 +538,16 @@ export function GroupView() {
     toast.success('Link copied to clipboard');
   }, []);
 
+  // Helper to format error details for display and copying
+  const formatErrorDetails = useCallback((errorMessage: string | null, stack: string | null) => {
+    return [
+      `Error: ${errorMessage}`,
+      `URL: ${window.location.href}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      stack ? `\nStack Trace:\n${stack}` : '',
+    ].filter(Boolean).join('\n');
+  }, []);
+
   // Helper to dismiss error - must be before early returns to satisfy React hooks rules
   const handleDismissError = useCallback(() => {
     clearGroupError();
@@ -547,17 +558,11 @@ export function GroupView() {
   // Helper to copy error to clipboard
   const handleCopyError = useCallback(() => {
     if (error) {
-      const errorText = [
-        `Error: ${error}`,
-        `URL: ${window.location.href}`,
-        `Timestamp: ${new Date().toISOString()}`,
-        errorStack ? `\nStack Trace:\n${errorStack}` : '',
-      ].filter(Boolean).join('\n');
-      navigator.clipboard.writeText(errorText);
+      navigator.clipboard.writeText(formatErrorDetails(error, errorStack));
       setErrorCopied(true);
       setTimeout(() => setErrorCopied(false), 2000);
     }
-  }, [error, errorStack]);
+  }, [error, errorStack, formatErrorDetails]);
 
   // Loading state
   if (isLoading && !currentGroup) {
@@ -924,19 +929,14 @@ export function GroupView() {
               </Tooltip>
             </div>
             <pre className="bg-surface-elevated border border-border-default rounded-lg p-3 text-xs text-text-muted overflow-x-auto max-h-32">
-              <code>{[
-                `Error: ${error}`,
-                `URL: ${window.location.href}`,
-                `Timestamp: ${new Date().toISOString()}`,
-                errorStack ? `\nStack Trace:\n${errorStack}` : '',
-              ].filter(Boolean).join('\n')}</code>
+              <code>{formatErrorDetails(error, errorStack)}</code>
             </pre>
           </div>
 
           {/* Report Bug button - centered, users can use X or Esc to dismiss */}
           <div className="flex justify-center pt-2">
             <a
-              href="https://discord.com/channels/1461997093399957527/1462005836841750587"
+              href={DISCORD_BUG_REPORT_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-discord hover:bg-discord-hover text-white font-medium rounded transition-colors"

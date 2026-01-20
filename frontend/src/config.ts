@@ -13,3 +13,8 @@ export const isBrowser = typeof window !== 'undefined';
 export const hostname = isBrowser ? window.location.hostname : '';
 export const isProduction = isBrowser && hostname !== 'localhost' && hostname !== '127.0.0.1';
 export const isLocalhostApi = API_BASE_URL.includes('localhost');
+
+// Discord integration
+export const DISCORD_BUG_REPORT_URL =
+  import.meta.env.VITE_DISCORD_BUG_REPORT_URL ||
+  'https://discord.com/channels/1461997093399957527/1462005836841750587';
