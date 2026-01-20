@@ -171,8 +171,8 @@ export function DocsIndex() {
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-accent" />
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <BookOpen className="w-7 h-7 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Documentation</h1>

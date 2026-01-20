@@ -406,8 +406,8 @@ export default function LootMathDocs() {
             <span className="text-text-secondary">Loot & Priority Math</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Target className="w-6 h-6 text-accent" />
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Target className="w-7 h-7 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Loot & Priority Math</h1>

@@ -15,7 +15,6 @@ import {
   Bug,
   Zap,
   AlertTriangle,
-  ChevronLeft,
   ChevronDown,
   ChevronRight,
   GitCommit,
@@ -754,19 +753,17 @@ export default function ReleaseNotes() {
     <div className="min-h-screen bg-surface-base">
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
-        <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-12">
+        <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-8">
           <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
-            <Link
-              to="/docs"
-              className="hover:text-accent transition-colors flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
+            <Link to="/docs" className="hover:text-accent transition-colors">
               Documentation
             </Link>
+            <span>/</span>
+            <span className="text-text-secondary">Release Notes</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-accent" />
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Release Notes</h1>

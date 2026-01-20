@@ -387,8 +387,8 @@ export default function QuickStartGuide() {
             <span className="text-text-secondary">Quick Start</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Rocket className="w-6 h-6 text-accent" />
+            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Rocket className="w-7 h-7 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Get Started with XIV Raid Planner</h1>
