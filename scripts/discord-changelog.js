@@ -531,7 +531,7 @@ function buildReleaseFooter(items) {
 
 /**
  * Determine the dominant category color for an embed based on item counts
- * Priority order: breaking > feature > fix > improvement
+ * Uses the category with the most items. Ties broken by priority: breaking > feature > fix > improvement
  * Falls back to teal if no items match
  */
 function getDominantCategoryColor(items) {
@@ -544,12 +544,22 @@ function getDominantCategoryColor(items) {
     counts[item.category] = (counts[item.category] || 0) + 1;
   }
 
-  // Priority: breaking > feature > fix > improvement
+  // Find the category with the most items
+  // Ties broken by priority: breaking > feature > fix > improvement
   const priority = ['breaking', 'feature', 'fix', 'improvement'];
+  let dominantCategory = null;
+  let maxCount = 0;
+
   for (const cat of priority) {
-    if (counts[cat] > 0) {
-      return CATEGORY_COLORS[cat];
+    const count = counts[cat] || 0;
+    if (count > maxCount) {
+      maxCount = count;
+      dominantCategory = cat;
     }
+  }
+
+  if (dominantCategory && CATEGORY_COLORS[dominantCategory]) {
+    return CATEGORY_COLORS[dominantCategory];
   }
 
   return 0x14b8a6; // Teal fallback
@@ -805,17 +815,17 @@ async function main() {
 
     const embeds = [];
 
-    // Add release embed if new version
+    // Add release embed if new version (skip commit embed for releases)
     if (isNewRelease && releaseInfo.latestRelease) {
       console.log(`New release detected: v${releaseInfo.latestRelease.version}`);
       const releaseEmbeds = buildReleaseEmbeds(releaseInfo.latestRelease);
       embeds.push(...releaseEmbeds);
       console.log(`Generated ${releaseEmbeds.length} release embeds`);
+    } else {
+      // Only add commit embed for non-release commits
+      console.log('Generating commit summary...');
+      embeds.push(await buildCommitEmbed(commitSha, commitMessage, repository));
     }
-
-    // Add commit embed (async due to AI summarization)
-    console.log('Generating commit summary...');
-    embeds.push(await buildCommitEmbed(commitSha, commitMessage, repository));
 
     // Send the message (Discord allows up to 10 embeds per message)
     console.log(`Sending ${embeds.length} embeds to Discord...`);
