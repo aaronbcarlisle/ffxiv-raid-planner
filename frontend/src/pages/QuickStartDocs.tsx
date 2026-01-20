@@ -18,6 +18,7 @@ import {
   Swords,
   Book,
   Shield,
+  Rocket,
 } from 'lucide-react';
 
 // Role path card component
@@ -115,10 +116,17 @@ export default function QuickStartDocs() {
             <span>/</span>
             <span className="text-text-secondary">Getting Started</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent mb-2">Getting Started</h1>
-          <p className="text-text-secondary text-lg">
-            Welcome to FFXIV Raid Planner! Choose your path to get started.
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Rocket className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Getting Started</h1>
+              <p className="text-text-secondary mt-1">
+                Welcome to FFXIV Raid Planner! Choose your path to get started.
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ExternalLink, Check, ArrowRight } from 'lucide-react';
+import { ChevronDown, ExternalLink, Check, ArrowRight, Crown } from 'lucide-react';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -319,17 +319,24 @@ export default function LeadsGuideDocs() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">Documentation</Link>
             <span>/</span>
             <Link to="/docs/getting-started" className="hover:text-accent transition-colors">Getting Started</Link>
             <span>/</span>
             <span className="text-text-secondary">For Leads</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">Guide for Static Leads</h1>
-          <p className="text-text-secondary mt-2">
-            Create your static, set up your roster, and start tracking loot
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Crown className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Guide for Static Leads</h1>
+              <p className="text-text-secondary mt-1">
+                Create your static, set up your roster, and start tracking loot
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 

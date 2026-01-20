@@ -343,8 +343,8 @@ export default function RoadmapDocs() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
-              <Wrench className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Wrench className="w-6 h-6 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Roadmap & Status</h1>

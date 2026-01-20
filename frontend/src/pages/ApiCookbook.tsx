@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Terminal } from 'lucide-react';
+import { ChevronDown, Terminal, FileText } from 'lucide-react';
 import { CodeBlock, TripleCodeBlock } from '../components/docs';
 
 // Language icons (from CodeBlock.tsx)
@@ -407,17 +407,24 @@ export default function ApiCookbook() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <a href="/docs" className="hover:text-accent transition-colors">Documentation</a>
             <span>/</span>
             <a href="/docs/api" className="hover:text-accent transition-colors">API Reference</a>
             <span>/</span>
             <span className="text-text-secondary">Cookbook</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
-          <p className="text-text-secondary mt-2">
-            Practical examples for common API workflows with Python, curl, and C#
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
+              <p className="text-text-secondary mt-1">
+                Practical examples for common API workflows with Python, curl, and C#
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 

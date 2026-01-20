@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ExternalLink, Check } from 'lucide-react';
+import { ChevronDown, ExternalLink, Check, ListChecks } from 'lucide-react';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -335,17 +335,24 @@ export default function CommonTasksDocs() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">Documentation</Link>
             <span>/</span>
             <Link to="/docs/getting-started" className="hover:text-accent transition-colors">Getting Started</Link>
             <span>/</span>
             <span className="text-text-secondary">Common Tasks</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">Common Tasks Reference</h1>
-          <p className="text-text-secondary mt-2">
-            Detailed guides for tasks used by both leads and members
-          </p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <ListChecks className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Common Tasks Reference</h1>
+              <p className="text-text-secondary mt-1">
+                Detailed guides for tasks used by both leads and members
+              </p>
+            </div>
+          </div>
         </div>
       </header>
 

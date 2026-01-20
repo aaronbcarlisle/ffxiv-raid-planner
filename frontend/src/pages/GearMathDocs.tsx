@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ArrowRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ArrowRight, ExternalLink, Calculator } from 'lucide-react';
 import { CodeBlock } from '../components/docs';
 
 // Navigation items
@@ -401,15 +401,22 @@ export default function GearMathDocs() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-2">
+          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">
               Documentation
             </Link>
             <span>/</span>
             <span className="text-text-secondary">Gear Math Reference</span>
           </div>
-          <h1 className="text-3xl font-bold text-accent">Gear Math Reference</h1>
-          <p className="text-text-secondary mt-2">Technical documentation for calculation systems</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <Calculator className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-accent">Gear Math Reference</h1>
+              <p className="text-text-secondary mt-1">Technical documentation for calculation systems</p>
+            </div>
+          </div>
         </div>
       </header>
 
