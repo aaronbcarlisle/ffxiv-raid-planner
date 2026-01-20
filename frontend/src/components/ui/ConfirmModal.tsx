@@ -15,6 +15,8 @@ interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
   message: ReactNode;
+  /** Optional content rendered above the warning box (e.g., preview of what will change) */
+  header?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'warning' | 'default';
@@ -30,6 +32,7 @@ export function ConfirmModal({
   isOpen,
   title,
   message,
+  header,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'danger',
@@ -95,6 +98,9 @@ export function ConfirmModal({
       size={size}
     >
       <div className="space-y-4">
+        {/* Optional header content above warning box */}
+        {header}
+
         {/* Warning/Info message */}
         <div className={`flex items-start gap-3 p-3 rounded-lg border ${styles.bg}`}>
           {variant === 'danger' || variant === 'warning' ? (

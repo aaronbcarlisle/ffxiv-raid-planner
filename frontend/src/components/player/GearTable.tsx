@@ -366,10 +366,15 @@ export function GearTable({
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
       return;
     }
-    // When clearing bisSource, reset everything including item metadata
-    if (newSource === null) {
+
+    const currentStatus = getSlotStatus(slot);
+    const isSourceChanging = newSource !== currentStatus.bisSource;
+
+    // When clearing or changing source, reset progress and item metadata
+    // This ensures consistent state (e.g., switching to Tome starts unchecked, not half-checked)
+    if (newSource === null || isSourceChanging) {
       onGearChange(slot, {
-        bisSource: null,
+        bisSource: newSource,
         hasItem: false,
         isAugmented: false,
         currentSource: undefined,
@@ -549,6 +554,14 @@ export function GearTable({
                       onSelect={(source) => handleSourceChange(slot, source)}
                       disabled={!gearPermission.allowed}
                       disabledReason={gearPermission.reason}
+                      hasItemData={!!status.itemName}
+                      itemName={status.itemName}
+                      itemIcon={status.itemIcon}
+                      slotIcon={GEAR_SLOT_ICONS[slot]}
+                      itemLevel={status.itemLevel}
+                      itemStats={status.itemStats}
+                      hasItem={status.hasItem}
+                      isAugmented={status.isAugmented}
                     />
                   </div>
                 </td>

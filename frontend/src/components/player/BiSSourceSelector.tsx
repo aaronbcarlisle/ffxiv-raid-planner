@@ -10,10 +10,13 @@
  */
 
 import { useState } from 'react';
-import type { GearSource, TomeWeaponStatus } from '../../types';
+import type { GearSource, TomeWeaponStatus, ItemStats } from '../../types';
 import { BIS_SOURCE_FULL_NAMES } from '../../types';
 import { Popover, PopoverContent, PopoverTrigger } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip'; // Only used for WeaponBiSSelector
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { ArrowRight } from 'lucide-react';
 
 // BiS source display info
 const BIS_SOURCE_INFO: Record<GearSource, { short: string; label: string; description: string }> = {
@@ -103,6 +106,22 @@ interface BiSSourceSelectorProps {
   disabled?: boolean;
   /** Reason shown in tooltip when disabled */
   disabledReason?: string;
+  /** Whether slot has imported item data that would be cleared on source change */
+  hasItemData?: boolean;
+  /** Item name for confirmation message */
+  itemName?: string;
+  /** Current item icon URL (from BiS import) */
+  itemIcon?: string;
+  /** Generic slot icon URL (fallback/placeholder) */
+  slotIcon?: string;
+  /** Item level for hover card */
+  itemLevel?: number;
+  /** Item stats for hover card */
+  itemStats?: ItemStats;
+  /** Whether player has this item */
+  hasItem?: boolean;
+  /** Whether item is augmented */
+  isAugmented?: boolean;
 }
 
 export function BiSSourceSelector({
@@ -110,17 +129,53 @@ export function BiSSourceSelector({
   onSelect,
   disabled = false,
   disabledReason,
+  hasItemData = false,
+  itemName,
+  itemIcon,
+  slotIcon,
+  itemLevel,
+  itemStats,
+  hasItem,
+  isAugmented,
 }: BiSSourceSelectorProps) {
   const [open, setOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    type: 'source-change' | 'clear';
+    pendingSource?: GearSource;
+  } | null>(null);
 
   const handleSelect = (source: GearSource) => {
+    // If slot has item data and source is changing, show confirmation
+    if (hasItemData && source !== bisSource) {
+      setConfirmModal({ type: 'source-change', pendingSource: source });
+      return;
+    }
     onSelect(source);
     setOpen(false);
   };
 
   const handleClear = () => {
+    // Show confirmation if there's any data to clear
+    if (bisSource !== null || hasItemData) {
+      setConfirmModal({ type: 'clear' });
+      return;
+    }
     onSelect(null);
     setOpen(false);
+  };
+
+  const handleConfirm = () => {
+    if (confirmModal?.type === 'source-change' && confirmModal.pendingSource) {
+      onSelect(confirmModal.pendingSource);
+    } else if (confirmModal?.type === 'clear') {
+      onSelect(null);
+    }
+    setConfirmModal(null);
+    setOpen(false);
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmModal(null);
   };
 
   // Get display label and ARIA label
@@ -131,47 +186,107 @@ export function BiSSourceSelector({
       ? `BiS source: ${BIS_SOURCE_FULL_NAMES[bisSource]}`
       : 'BiS source not set';
 
+  // Icon comparison header for confirmation dialogs - compact horizontal layout with dark background
+  const getConfirmHeader = () => {
+    if (!itemIcon || !slotIcon) return undefined;
+
+    // For source changes, show the new source label; for clear, show "Empty"
+    const isSourceChange = confirmModal?.type === 'source-change' && confirmModal.pendingSource;
+    const targetLabel = isSourceChange
+      ? BIS_SOURCE_INFO[confirmModal.pendingSource!].label
+      : 'Empty';
+
+    // Render hover card content if we have full item data
+    const hoverCardContent = itemName && itemLevel ? (
+      <ItemHoverCard
+        itemName={itemName}
+        itemLevel={itemLevel}
+        itemIcon={itemIcon}
+        itemStats={itemStats}
+        bisSource={bisSource}
+        hasItem={hasItem}
+        isAugmented={isAugmented}
+      />
+    ) : itemName;
+
+    return (
+      <div className="flex items-center justify-center gap-2 p-3 bg-surface-base rounded-lg border border-border-default text-sm">
+        <Tooltip content={hoverCardContent}>
+          <img src={itemIcon} alt={itemName || 'Current gear'} className="w-6 h-6 rounded flex-shrink-0 cursor-help" />
+        </Tooltip>
+        <span className="text-text-secondary truncate min-w-0">{itemName}</span>
+        <ArrowRight className="w-4 h-4 text-text-muted flex-shrink-0" />
+        <img src={slotIcon} alt={targetLabel} className="w-6 h-6 opacity-50 flex-shrink-0" />
+        <span className="text-text-muted flex-shrink-0">{targetLabel}</span>
+      </div>
+    );
+  };
+
+  // Determine confirmation message
+  const getConfirmMessage = () => {
+    if (confirmModal?.type === 'source-change') {
+      const newSourceLabel = confirmModal.pendingSource
+        ? BIS_SOURCE_INFO[confirmModal.pendingSource].label
+        : '';
+      return `Changing BiS source to ${newSourceLabel} will clear the current gear data for this slot.`;
+    }
+    return 'Clear this slot? All gear data will be reset.';
+  };
+
   return (
-    <Popover open={open && !disabled} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {/* design-system-ignore: Badge-style button with specific toggle styling */}
-        <button
-          className={getTriggerClasses(bisSource, disabled)}
-          disabled={disabled}
-          aria-label={ariaLabel}
-        >
-          {displayLabel}
-        </button>
-      </PopoverTrigger>
+    <>
+      <Popover open={open && !disabled} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          {/* design-system-ignore: Badge-style button with specific toggle styling */}
+          <button
+            className={getTriggerClasses(bisSource, disabled)}
+            disabled={disabled}
+            aria-label={ariaLabel}
+          >
+            {displayLabel}
+          </button>
+        </PopoverTrigger>
 
-      <PopoverContent align="start" sideOffset={4} className="p-2 w-auto">
-        {/* 2x2 grid layout */}
-        <div className="grid grid-cols-2 gap-1">
-          {GRID_LAYOUT.flat().map((source) => {
-            const isSelected = bisSource === source;
-            return (
-              <button
-                key={source}
-                onClick={() => handleSelect(source)}
-                className={`${getSourceButtonClasses(source, isSelected)} min-w-[4rem] text-center`}
-                aria-label={`${BIS_SOURCE_INFO[source].label}: ${BIS_SOURCE_INFO[source].description}`}
-                aria-pressed={isSelected}
-              >
-                {BIS_SOURCE_INFO[source].label}
-              </button>
-            );
-          })}
-        </div>
+        <PopoverContent align="start" sideOffset={4} className="p-2 w-auto">
+          {/* 2x2 grid layout */}
+          <div className="grid grid-cols-2 gap-1">
+            {GRID_LAYOUT.flat().map((source) => {
+              const isSelected = bisSource === source;
+              return (
+                <button
+                  key={source}
+                  onClick={() => handleSelect(source)}
+                  className={`${getSourceButtonClasses(source, isSelected)} min-w-[4rem] text-center`}
+                  aria-label={`${BIS_SOURCE_INFO[source].label}: ${BIS_SOURCE_INFO[source].description}`}
+                  aria-pressed={isSelected}
+                >
+                  {BIS_SOURCE_INFO[source].label}
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Clear button */}
-        <button
-          onClick={handleClear}
-          className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
-        >
-          Clear Slot
-        </button>
-      </PopoverContent>
-    </Popover>
+          {/* Clear button */}
+          <button
+            onClick={handleClear}
+            className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
+          >
+            Clear Slot
+          </button>
+        </PopoverContent>
+      </Popover>
+
+      <ConfirmModal
+        isOpen={confirmModal !== null}
+        title={confirmModal?.type === 'source-change' ? 'Change BiS Source' : 'Clear Slot'}
+        header={getConfirmHeader()}
+        message={getConfirmMessage()}
+        confirmLabel={confirmModal?.type === 'source-change' ? 'Change' : 'Clear'}
+        variant="warning"
+        onConfirm={handleConfirm}
+        onCancel={handleCancelConfirm}
+      />
+    </>
   );
 }
 
