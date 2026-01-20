@@ -26,6 +26,7 @@ interface TierState {
 
   // Error state
   error: string | null;
+  errorStack: string | null;
 
   // Tier actions
   fetchTiers: (groupId: string) => Promise<void>;
@@ -64,6 +65,7 @@ export const useTierStore = create<TierState>((set, get) => ({
   isLoading: false,
   isSaving: false,
   error: null,
+  errorStack: null,
 
   /**
    * Fetch all tier snapshots for a group
@@ -233,14 +235,14 @@ export const useTierStore = create<TierState>((set, get) => ({
    * Clear all tier state (when switching groups)
    */
   clearTiers: () => {
-    set({ tiers: [], currentTier: null, error: null });
+    set({ tiers: [], currentTier: null, error: null, errorStack: null });
   },
 
   /**
    * Clear error state
    */
   clearError: () => {
-    set({ error: null });
+    set({ error: null, errorStack: null });
   },
 
   // ==================== Player Actions ====================
@@ -296,6 +298,9 @@ export const useTierStore = create<TierState>((set, get) => ({
         return { isSaving: false };
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update player';
+      const errorStack = error instanceof Error ? error.stack || null : null;
+
       // Rollback to previous state on error
       if (previousPlayer && previousTier) {
         set((state) => {
@@ -307,7 +312,8 @@ export const useTierStore = create<TierState>((set, get) => ({
                   p.id === playerId ? previousPlayer : p
                 ),
               },
-              error: error instanceof Error ? error.message : 'Failed to update player',
+              error: errorMessage,
+              errorStack,
               isSaving: false,
             };
           }
@@ -315,7 +321,8 @@ export const useTierStore = create<TierState>((set, get) => ({
         });
       } else {
         set({
-          error: error instanceof Error ? error.message : 'Failed to update player',
+          error: errorMessage,
+          errorStack,
           isSaving: false,
         });
       }
