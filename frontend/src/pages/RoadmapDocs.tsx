@@ -392,11 +392,11 @@ export default function RoadmapDocs() {
                 <div className="text-sm text-text-muted">Jobs Supported</div>
               </div>
               <div className="bg-surface-elevated rounded-lg p-4">
-                <div className="text-2xl font-bold text-accent mb-1">4</div>
+                <div className="text-2xl font-bold text-accent mb-1">5</div>
                 <div className="text-sm text-text-muted">Permission Levels</div>
               </div>
               <div className="bg-surface-elevated rounded-lg p-4">
-                <div className="text-2xl font-bold text-accent mb-1">3</div>
+                <div className="text-2xl font-bold text-accent mb-1">4</div>
                 <div className="text-sm text-text-muted">BiS Import Sources</div>
               </div>
             </div>

@@ -18,9 +18,8 @@ import {
   DropdownTrigger,
 } from '../primitives';
 import {
-  BookOpen,
-  Users,
-  UserPlus,
+  Rocket,
+  CircleHelp,
   ListChecks,
   Calculator,
   Code,
@@ -29,6 +28,7 @@ import {
   Wrench,
   Shield,
   Keyboard,
+  BookOpen,
 } from 'lucide-react';
 
 interface UserMenuProps {
@@ -113,33 +113,33 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           </DropdownSubTrigger>
           <DropdownSubContent>
             <DropdownItem icon={<BookOpen className="w-4 h-4" />} href="/docs">
-              All Docs
+              All Documentation
+            </DropdownItem>
+            <DropdownSeparator />
+            <DropdownItem icon={<Rocket className="w-4 h-4" />} href="/docs/quick-start">
+              Quick Start
+            </DropdownItem>
+            <DropdownItem icon={<CircleHelp className="w-4 h-4" />} href="/docs/faq">
+              FAQ
+            </DropdownItem>
+            <DropdownItem icon={<ListChecks className="w-4 h-4" />} href="/docs/how-to">
+              How-To Guides
+            </DropdownItem>
+            <DropdownItem icon={<Calculator className="w-4 h-4" />} href="/docs/understanding-priority">
+              Understanding Priority
+            </DropdownItem>
+            <DropdownSeparator />
+            <DropdownItem icon={<Code className="w-4 h-4" />} href="/docs/api">
+              API Reference
+            </DropdownItem>
+            <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
+              Design System
             </DropdownItem>
             <DropdownItem icon={<Sparkles className="w-4 h-4" />} href="/docs/release-notes">
               Release Notes
             </DropdownItem>
             <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">
               Roadmap
-            </DropdownItem>
-            <DropdownSeparator />
-            <DropdownItem icon={<Users className="w-4 h-4" />} href="/docs/guides/leads">
-              Guide for Leads
-            </DropdownItem>
-            <DropdownItem icon={<UserPlus className="w-4 h-4" />} href="/docs/guides/members">
-              Guide for Members
-            </DropdownItem>
-            <DropdownItem icon={<ListChecks className="w-4 h-4" />} href="/docs/guides/common-tasks">
-              Common Tasks
-            </DropdownItem>
-            <DropdownSeparator />
-            <DropdownItem icon={<Calculator className="w-4 h-4" />} href="/docs/loot-math">
-              Loot & Priority Math
-            </DropdownItem>
-            <DropdownItem icon={<Code className="w-4 h-4" />} href="/docs/api">
-              API Reference
-            </DropdownItem>
-            <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
-              Design System
             </DropdownItem>
           </DropdownSubContent>
         </DropdownSub>

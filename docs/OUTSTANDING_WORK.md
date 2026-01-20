@@ -8,38 +8,33 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/bis-source-improvements` (PR #52 open)
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/52
+**Current Branch:** `docs/user-docs` (Documentation audit and updates)
 
 **Recent Completions:**
 - PR #48 merged: UI Consistency Sprint (v1.8.2)
 - PR #49 merged: Discord release-only embeds and dominant category colors (v1.8.3)
 - PR #50 merged: Simplified version detection, full ISO timestamps, historical release script (v1.8.4)
 - PR #51 merged: BiS source selector improvements (base_tome colors, tooltips disabled, bug fixes)
-- PR #52 pending: BiS source change confirmation dialogs (v1.9.0)
+- PR #52 merged: BiS source change confirmation dialogs (v1.9.0)
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
 
-### Current Work In Progress (PR #52)
+### Recent Work: User Documentation Restructure (Phases 1-6)
 
-**BiS Update Banner** - Added but has bugs to fix:
+**User Documentation Restructure** - Phases 1-6 complete:
+- Unified Quick Start Guide created (654 lines) - replaces three-page getting started flow
+- How-To Guides restructured (969 lines) - task-oriented instead of reference dump
+- Understanding Priority page simplified (798 lines) - progressive disclosure approach
+- FAQ page created (490 lines) - consolidated Q&A from scattered sources
+- Docs landing page simplified (231 lines) - clear visual hierarchy
+- Old documentation pages deprecated with redirects in place
 
-1. **Crafted detection bug**: Banner incorrectly shows when `bisSource` is already `crafted` with iLv 770.
-   - Current logic: `slot.bisSource !== 'crafted' && slot.itemLevel <= 770`
-   - Problem: Triggers false positives. Need to verify item is ACTUALLY miscategorized.
-   - File: `frontend/src/components/player/playerSetupBannerUtils.ts` - `isSlotMiscategorized()`
-
-2. **Messaging too vague**: "BiS may need update" should be explicit about WHY:
-   - "Base Tome gear detected, update BiS" (for base_tome issues)
-   - "Crafted gear detected, update BiS" (for crafted issues)
-   - File: `frontend/src/components/player/PlayerSetupBanner.tsx`
-
-3. **Tests need updating**: After fixing logic, update test assertions
-   - File: `frontend/src/components/player/PlayerSetupBanner.test.ts`
-
-**Key insight from user**: The crafted detection fires even when the card already has `bisSource: 'crafted'` set correctly. Need to reconsider the detection logic - perhaps only detect base_tome issues (tome without Aug. prefix) since that's the clearer case.
-
-**To continue:** Fix crafted detection or remove it, improve messaging, commit and push.
+**BiS Source Miscategorization Detection** - Implemented with bifurcated approach:
+- Core BiS source selector redesigned (2x2 grid, base_tome support, target-style circles)
+- Separate `BiSSourceFixBanner.tsx` component added for detecting miscategorized gear
+- Detection uses item name prefix matching for augmented tome gear
+- Banner shows contextual messages for base_tome and crafted miscategorization cases
+- Implementation complete in v1.9.0 (PR #52 merged)
 
 ---
 
@@ -147,6 +142,7 @@
 
 **Last Audited:** January 19, 2026
 **Current Warning Count:** 15 (down from ~49)
+**Note:** Warning count should be verified with `pnpm lint` after any major changes
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
 

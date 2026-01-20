@@ -24,6 +24,7 @@ const RoadmapDocs = lazy(() => import('./pages/RoadmapDocs'));
 const QuickStartGuide = lazy(() => import('./pages/QuickStartGuide'));
 const HowToDocs = lazy(() => import('./pages/HowToDocs'));
 const UnderstandingPriority = lazy(() => import('./pages/UnderstandingPriority'));
+const GearMathDocs = lazy(() => import('./pages/GearMathDocs'));
 const FAQDocs = lazy(() => import('./pages/FAQDocs'));
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
@@ -75,6 +76,7 @@ function App() {
             <Route path="docs/design-system" element={<DesignSystemPage />} />
             <Route path="docs/api" element={<ApiDocs />} />
             <Route path="docs/api/cookbook" element={<ApiCookbook />} />
+            <Route path="docs/gear-math" element={<GearMathDocs />} />
             <Route path="docs/release-notes" element={<ReleaseNotes />} />
             {/* Redirects from old documentation routes */}
             <Route path="docs/getting-started" element={<Navigate to="/docs/quick-start" replace />} />

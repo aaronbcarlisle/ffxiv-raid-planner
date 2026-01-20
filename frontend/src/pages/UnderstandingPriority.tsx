@@ -9,8 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, ArrowRight, ExternalLink } from 'lucide-react';
-import { CodeBlock } from '../components/docs';
+import { ChevronDown, ArrowRight, ExternalLink } from 'lucide-react';
 
 // Navigation items
 const NAV_GROUPS = [
@@ -41,13 +40,6 @@ const NAV_GROUPS = [
     items: [
       { id: 'book-system', label: 'Book system' },
       { id: 'exchange-costs', label: 'Exchange costs' },
-    ],
-  },
-  {
-    label: 'Technical Reference',
-    items: [
-      { id: 'formulas', label: 'Formulas' },
-      { id: 'tables', label: 'Data tables' },
     ],
   },
 ];
@@ -97,35 +89,6 @@ function InfoBox({
   );
 }
 
-// Formula display components for better readability
-function FormulaDisplay({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border border-border-subtle rounded-lg p-4 font-mono text-sm overflow-x-auto" style={{ backgroundColor: 'rgba(6, 6, 8, 1)' }}>
-      {children}
-    </div>
-  );
-}
-
-function FormulaLine({ children }: { children: React.ReactNode }) {
-  return <div className="mb-1 last:mb-0">{children}</div>;
-}
-
-function Variable({ children }: { children: React.ReactNode }) {
-  return <span className="text-accent font-medium">{children}</span>;
-}
-
-function Operator({ children }: { children: React.ReactNode }) {
-  return <span className="text-text-muted">{children}</span>;
-}
-
-function Num({ children }: { children: React.ReactNode }) {
-  return <span className="text-status-warning">{children}</span>;
-}
-
-function Comment({ children }: { children: React.ReactNode }) {
-  return <div className="text-text-muted mt-3 first:mt-0">{children}</div>;
-}
-
 function LinkCard({
   href,
   title,
@@ -164,35 +127,6 @@ function LinkCard({
     <Link to={href} className={className}>
       {content}
     </Link>
-  );
-}
-
-function Collapsible({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-border-subtle rounded-lg my-4">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-2 p-4 text-left hover:bg-surface-interactive transition-colors rounded-lg"
-      >
-        {isOpen ? (
-          <ChevronDown className="w-4 h-4 text-accent" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-text-muted" />
-        )}
-        <span className="font-medium text-text-primary">{title}</span>
-      </button>
-      {isOpen && <div className="px-4 pb-4 pt-0">{children}</div>}
-    </div>
   );
 }
 
@@ -421,6 +355,22 @@ export default function UnderstandingPriority() {
         <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
+          {/* Developer Reference Link */}
+          <div className="mb-8">
+            <Link
+              to="/docs/gear-math"
+              className="group flex items-center gap-4 p-4 rounded-lg bg-accent/10 border border-accent/30 hover:bg-accent/20 hover:border-accent/50 transition-all"
+            >
+              <div className="flex-1">
+                <div className="font-semibold text-accent mb-1">Looking for the technical details?</div>
+                <div className="text-sm text-text-secondary">
+                  See complete formulas, TypeScript source code, and all calculation constants in the Gear Math Reference.
+                </div>
+              </div>
+              <ArrowRight className="w-5 h-5 text-accent group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
           {/* How It Works */}
           <Section id="how-it-works" title="How priority works">
             <p className="text-text-secondary mb-4">
@@ -730,141 +680,7 @@ export default function UnderstandingPriority() {
                 description="See how to check earned vs spent books"
               />
             </div>
-          </Section>
 
-          {/* Formulas */}
-          <Section id="formulas" title="Formulas">
-            <InfoBox type="info">
-              This section is for the curious. You don't need to understand the math to use the
-              tool—it handles all calculations automatically.
-            </InfoBox>
-
-            <Collapsible title="Gear priority formula">
-              <FormulaDisplay>
-                <FormulaLine>
-                  <Variable>Priority</Variable> <Operator>=</Operator> <Variable>rolePriority</Variable> <Operator>+</Operator> <Operator>(</Operator><Variable>weightedNeed</Variable> <Operator>×</Operator> <Num>10</Num><Operator>)</Operator> <Operator>-</Operator> <Operator>(</Operator><Variable>lootAdjustment</Variable> <Operator>×</Operator> <Num>15</Num><Operator>)</Operator>
-                </FormulaLine>
-
-                <Comment>Where:</Comment>
-                <FormulaLine>
-                  <Variable>rolePriority</Variable> <Operator>=</Operator> <Operator>(</Operator><Num>5</Num> <Operator>-</Operator> <Variable>roleIndex</Variable><Operator>)</Operator> <Operator>×</Operator> <Num>25</Num>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>roleIndex</Variable> <Operator>=</Operator> <span className="text-text-secondary">position in static's priority order (0-4)</span>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>weightedNeed</Variable> <Operator>=</Operator> <span className="text-text-secondary">sum of slot weights for incomplete slots</span>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>lootAdjustment</Variable> <Operator>=</Operator> <span className="text-text-secondary">manual adjustment for roster changes</span>
-                </FormulaLine>
-              </FormulaDisplay>
-            </Collapsible>
-
-            <Collapsible title="Weapon priority formula">
-              <FormulaDisplay>
-                <FormulaLine>
-                  <Variable>weaponScore</Variable> <Operator>=</Operator> <Variable>roleScore</Variable> <Operator>+</Operator> <Variable>rankScore</Variable> <Operator>+</Operator> <Variable>mainJobBonus</Variable>
-                </FormulaLine>
-
-                <Comment>Where:</Comment>
-                <FormulaLine>
-                  <Variable>roleScore</Variable> <Operator>=</Operator> <Operator>(</Operator><Num>5</Num> <Operator>-</Operator> <Variable>roleIndex</Variable><Operator>)</Operator> <Operator>×</Operator> <Num>100</Num> <span className="text-text-muted italic text-xs ml-2">(main job only)</span>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>rankScore</Variable> <Operator>=</Operator> <Num>1000</Num> <Operator>-</Operator> <Operator>(</Operator><Variable>rank</Variable> <Operator>×</Operator> <Num>100</Num><Operator>)</Operator>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>mainJobBonus</Variable> <Operator>=</Operator> <Num>2000</Num> <span className="text-text-muted italic text-xs ml-2">(main job only)</span>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>rank</Variable> <Operator>=</Operator> <span className="text-text-secondary">position in player's weapon priority list (0-based)</span>
-                </FormulaLine>
-              </FormulaDisplay>
-            </Collapsible>
-
-            <Collapsible title="Material priority formula">
-              <FormulaDisplay>
-                <FormulaLine>
-                  <Variable>materialPriority</Variable> <Operator>=</Operator> <Variable>basePriority</Variable> <Operator>+</Operator> <Operator>(</Operator><Variable>unaugmentedCount</Variable> <Operator>×</Operator> <Num>15</Num><Operator>)</Operator>
-                </FormulaLine>
-
-                <Comment>Where:</Comment>
-                <FormulaLine>
-                  <Variable>basePriority</Variable> <Operator>=</Operator> <span className="text-text-secondary">standard gear priority score</span>
-                </FormulaLine>
-                <FormulaLine>
-                  <Variable>unaugmentedCount</Variable> <Operator>=</Operator> <span className="text-text-secondary">number of unaugmented tome pieces</span>
-                </FormulaLine>
-              </FormulaDisplay>
-            </Collapsible>
-          </Section>
-
-          {/* Tables */}
-          <Section id="tables" title="Data tables">
-            <InfoBox type="info">
-              Reference tables for developers and power users. These values are defined in the
-              frontend utility files.
-            </InfoBox>
-
-            <Collapsible title="Slot value weights">
-              <CodeBlock
-                language="typescript"
-                code={`const SLOT_VALUE_WEIGHTS = {
-  weapon: 3.0,
-  body: 1.5,
-  legs: 1.5,
-  head: 1.0,
-  hands: 1.0,
-  feet: 1.0,
-  earring: 0.8,
-  necklace: 0.8,
-  bracelet: 0.8,
-  ring1: 0.8,
-  ring2: 0.8,
-};`}
-              />
-            </Collapsible>
-
-            <Collapsible title="Book exchange costs">
-              <CodeBlock
-                language="typescript"
-                code={`const BOOK_COSTS = {
-  weapon: 8,   // Book IV
-  body: 6,     // Book III
-  legs: 6,     // Book III
-  head: 4,     // Book II
-  hands: 4,    // Book II
-  feet: 4,     // Book II
-  earring: 3,  // Book I
-  necklace: 3, // Book I
-  bracelet: 3, // Book I
-  ring1: 3,    // Book I
-  ring2: 3,    // Book I
-};`}
-              />
-            </Collapsible>
-
-            <Collapsible title="Tomestone costs">
-              <CodeBlock
-                language="typescript"
-                code={`const TOME_COSTS = {
-  weapon: 500,  // + weapon token from normal raid
-  body: 825,
-  legs: 825,
-  head: 495,
-  hands: 495,
-  feet: 495,
-  earring: 375,
-  necklace: 375,
-  bracelet: 375,
-  ring1: 375,
-  ring2: 375,
-};
-
-const WEEKLY_CAP = 450;  // Tomestones per week`}
-              />
-            </Collapsible>
           </Section>
         </main>
       </div>
