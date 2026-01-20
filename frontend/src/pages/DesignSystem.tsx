@@ -949,10 +949,9 @@ function FormsSection() {
             <li>• <strong>Subtle Highlighting</strong> - Selection uses <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">color-mix</code> with 15% group color</li>
           </ul>
         </div>
-        <div className="mt-4 p-4 bg-surface-elevated rounded-lg">
+        <div className="mt-4">
           <h4 className="text-sm font-medium text-text-primary mb-3">Usage</h4>
-          <pre className="text-xs text-text-secondary overflow-x-auto">
-{`const GROUP_CONFIG = {
+          <CodeBlock language="tsx" code={`const GROUP_CONFIG = {
   owner: { name: 'Owners', color: 'var(--color-membership-owner)' },
   lead: { name: 'Leads', color: 'var(--color-membership-lead)' },
   member: { name: 'Members', color: 'var(--color-membership-member)' },
@@ -969,8 +968,7 @@ const options = users.map(u => ({
   options={options}
   groupOrder={Object.values(GROUP_CONFIG)}
   ...
-/>`}
-          </pre>
+/>`} />
         </div>
       </Subsection>
 
@@ -3307,37 +3305,37 @@ export function DesignSystem() {
                 </div>
               </div>
             </div>
-            <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-              <div className="text-text-muted mb-2">// Import from lucide-react</div>
-              <div>import {'{'} ChevronUp, ChevronDown, ChevronsUpDown {'}'} from 'lucide-react';</div>
-            </div>
+            <CodeBlock language="tsx" code={`// Import from lucide-react
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';`} />
           </Subsection>
 
           <Subsection title="Accessibility">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex flex-col">
                 <div className="font-medium text-text-primary mb-2">aria-sort Attribute</div>
                 <p className="text-sm text-text-secondary mb-3">
                   Active sort column must include <code className="text-xs bg-surface-elevated px-1.5 py-0.5 rounded font-mono text-accent">aria-sort</code> for screen readers.
                 </p>
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-                  <div className="text-text-muted">// Active column</div>
-                  <div>{'<th aria-sort="ascending">Name</th>'}</div>
-                  <div>{'<th aria-sort="descending">Date</th>'}</div>
-                  <div className="mt-2 text-text-muted">// Inactive column (omit attribute)</div>
-                  <div>{'<th>Status</th>'}</div>
+                <div className="flex-1 [&>div]:mb-0 [&>div]:h-full [&>div>div]:h-full [&_pre]:h-full">
+                  <CodeBlock language="tsx" code={`// Active column
+<th aria-sort="ascending">Name</th>
+<th aria-sort="descending">Date</th>
+
+// Inactive column (omit attribute)
+<th>Status</th>`} />
                 </div>
               </div>
-              <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
+              <div className="bg-surface-card border border-border-subtle rounded-lg p-4 flex flex-col">
                 <div className="font-medium text-text-primary mb-2">Keyboard Support</div>
                 <p className="text-sm text-text-secondary mb-3">
                   Sortable headers should be focusable and activated with Enter/Space.
                 </p>
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-                  <div className="text-text-muted">// Use button or role="button"</div>
-                  <div>{'<th onClick={handleSort} tabIndex={0}>'}</div>
-                  <div className="mt-2 text-text-muted">// Or wrap in button</div>
-                  <div>{'<th><button onClick={...}>Name</button></th>'}</div>
+                <div className="flex-1 [&>div]:mb-0 [&>div]:h-full [&>div>div]:h-full [&_pre]:h-full">
+                  <CodeBlock language="tsx" code={`// Use button or role="button"
+<th onClick={handleSort} tabIndex={0}>
+
+// Or wrap in button
+<th><button onClick={...}>Name</button></th>`} />
                 </div>
               </div>
             </div>
@@ -3347,8 +3345,7 @@ export function DesignSystem() {
             <p className="text-sm text-text-muted mb-4">
               Extract sortable header logic into a reusable component to avoid code duplication and ensure consistency.
             </p>
-            <div className="bg-surface-elevated rounded-lg p-4 text-xs font-mono text-text-secondary overflow-x-auto">
-              <pre className="whitespace-pre">{`interface SortableHeaderProps {
+            <CodeBlock language="tsx" code={`interface SortableHeaderProps {
   field: string;
   label: string;
   currentField: string;
@@ -3381,8 +3378,7 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
       </span>
     </th>
   );
-}`}</pre>
-            </div>
+}`} />
           </Subsection>
         </Section>
 
@@ -3589,23 +3585,24 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                 </p>
               </div>
             </div>
-            <div className="mt-4 bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary">
-              <div className="text-text-muted mb-2">// "Most recently scrolled past" algorithm</div>
-              <div>const threshold = 120;</div>
-              <div>let bestSection = null, bestTop = -Infinity;</div>
-              <div className="mt-1">for (const section of sections) {'{'}</div>
-              <div className="ml-2">const top = section.getBoundingClientRect().top;</div>
-              <div className="ml-2 text-text-muted">// Heading scrolled past if top {'<='} threshold</div>
-              <div className="ml-2">if (top {'<='} threshold && top {'>'} bestTop) {'{'}</div>
-              <div className="ml-4">bestTop = top;</div>
-              <div className="ml-4">bestSection = section.id;</div>
-              <div className="ml-2">{'}'}</div>
-              <div>{'}'}</div>
+            <div className="mt-4">
+              <CodeBlock language="typescript" code={`// "Most recently scrolled past" algorithm
+const threshold = 120;
+let bestSection = null, bestTop = -Infinity;
+
+for (const section of sections) {
+  const top = section.getBoundingClientRect().top;
+  // Heading scrolled past if top <= threshold
+  if (top <= threshold && top > bestTop) {
+    bestTop = top;
+    bestSection = section.id;
+  }
+}`} />
             </div>
           </Subsection>
 
           <Subsection title="Item States">
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-stretch">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-3 w-56">
                 <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
                   Interactive States
@@ -3622,22 +3619,16 @@ function SortableHeader({ field, label, currentField, currentDirection, onSort, 
                   </div>
                 </div>
               </div>
-              <div className="flex-1 min-w-[200px]">
-                <div className="bg-surface-elevated rounded-lg p-3 text-xs font-mono text-text-secondary space-y-2">
-                  <div>
-                    <span className="text-text-muted">// Default</span><br/>
-                    text-text-secondary
-                  </div>
-                  <div>
-                    <span className="text-text-muted">// Hover</span><br/>
-                    hover:bg-surface-interactive<br/>
-                    hover:text-text-primary
-                  </div>
-                  <div>
-                    <span className="text-text-muted">// Active</span><br/>
-                    bg-accent/10 text-accent font-medium
-                  </div>
-                </div>
+              <div className="flex-1 min-w-[200px] [&>div]:mb-0 [&>div>div>pre]:h-full">
+                <CodeBlock language="css" code={`/* Default */
+text-text-secondary
+
+/* Hover */
+hover:bg-surface-interactive
+hover:text-text-primary
+
+/* Active */
+bg-accent/10 text-accent font-medium`} />
               </div>
             </div>
           </Subsection>

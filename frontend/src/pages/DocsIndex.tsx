@@ -18,6 +18,7 @@ import {
   FileText,
   Map,
   ChevronRight,
+  Calculator,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -74,6 +75,12 @@ const DEVELOPER_CARDS: DocCard[] = [
     href: '/docs/api/cookbook',
     icon: FileText,
   },
+  {
+    title: 'Gear Math Reference',
+    description: 'Calculation formulas and source code',
+    href: '/docs/gear-math',
+    icon: Calculator,
+  },
 ];
 
 // Project info cards
@@ -105,8 +112,8 @@ function PrimaryCard({ card }: { card: DocCard }) {
       to={card.href}
       className="group flex flex-col items-center text-center p-8 bg-surface-card border border-border-subtle rounded-xl hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 transition-all"
     >
-      <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-        <Icon className="w-8 h-8 text-white" />
+      <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-accent/20 transition-all">
+        <Icon className="w-8 h-8 text-accent" />
       </div>
       <h2 className="text-xl font-semibold text-text-primary group-hover:text-accent transition-colors mb-2">
         {card.title}
@@ -159,13 +166,13 @@ function SmallCard({ card }: { card: DocCard }) {
 
 export function DocsIndex() {
   return (
-    <div className="min-h-screen bg-surface-base">
+    <div className="bg-surface-base">
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-accent" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-accent">Documentation</h1>
