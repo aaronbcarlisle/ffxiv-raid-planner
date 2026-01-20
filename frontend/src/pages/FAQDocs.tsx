@@ -308,8 +308,9 @@ export default function FAQDocs() {
 
             <Question question="Does it work on mobile?">
               <p>
-                Yes, the app is fully responsive. You can check gear, log loot, and manage your
-                static from your phone.
+                The app is designed for desktop use. While it's technically accessible on mobile,
+                the interface hasn't been optimized for smaller screens yet. Mobile optimization
+                is on the roadmap.
               </p>
             </Question>
           </Section>

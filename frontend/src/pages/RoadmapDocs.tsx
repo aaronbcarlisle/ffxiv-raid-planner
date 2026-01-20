@@ -177,7 +177,19 @@ const PHASES: Phase[] = [
       { title: 'FFLogs integration for parse data' },
       { title: 'Week-over-week progress tracking' },
       { title: 'Discord bot for notifications' },
-      { title: 'PWA offline mode', description: 'Use the app without internet' },
+    ],
+  },
+  {
+    id: 'phase-9',
+    number: '9',
+    title: 'Mobile Optimization',
+    status: 'planned',
+    icon: Smartphone,
+    items: [
+      { title: 'Responsive layouts for phones and tablets' },
+      { title: 'Touch-friendly interactions', description: 'Larger tap targets, swipe gestures' },
+      { title: 'Mobile-specific navigation' },
+      { title: 'PWA support', description: 'Install to home screen, offline mode' },
     ],
   },
 ];

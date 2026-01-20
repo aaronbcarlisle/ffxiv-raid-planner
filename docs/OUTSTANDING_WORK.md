@@ -186,6 +186,12 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - Commands for priority lookup
 - Integration with static group channels
 
+### Phase 10: Mobile Optimization
+- Responsive layouts for phone/tablet screens
+- Touch-friendly interactions (larger tap targets, swipe gestures)
+- Mobile-specific navigation patterns
+- PWA support for home screen installation
+
 ### Alt Job Tracking (Deferred)
 - Track multiple jobs per player
 - Separate BiS configurations per job

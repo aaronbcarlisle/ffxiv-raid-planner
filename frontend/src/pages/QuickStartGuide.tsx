@@ -434,10 +434,6 @@ export default function QuickStartGuide() {
                 avatar will appear in the header.
               </p>
             </Step>
-
-            <InfoBox type="tip">
-              You can log in on mobile too. The app works great on phones and tablets.
-            </InfoBox>
           </Section>
 
           {/* Create Static */}
