@@ -51,6 +51,7 @@ export const RELEASES: Release[] = [
         description: 'Automatically detects and offers to fix miscategorized BiS sources for crafted and base tome gear',
         details:
           'When BiS is imported with crafted gear (e.g., Rinascita, Claro) or unaugmented tome gear (e.g., Bygone Brass), the system now detects if the BiS source is incorrectly set. A warning banner appears with "Update BiS Source" to fix all slots at once, or use individual fix buttons on each row. Fixes preserve your gear progress and item metadata.',
+        commits: [{ hash: '08f8bce', message: 'feat: add BiS source auto-detection for crafted and base tome gear' }],
       },
       {
         category: 'feature',
