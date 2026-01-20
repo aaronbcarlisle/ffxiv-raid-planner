@@ -42,9 +42,16 @@ export const RELEASES: Release[] = [
   {
     version: '1.9.0',
     date: '2026-01-20T08:00:00Z',
-    title: 'BiS Source Confirmation Dialogs',
-    highlights: ['Confirmation when changing BiS source with imported data', 'Gear progress reset on source change'],
+    title: 'BiS Support for Crafted and Base Tome Gear',
+    highlights: ['Auto-detect miscategorized BiS sources', 'One-click fix for crafted and base tome slots'],
     items: [
+      {
+        category: 'feature',
+        title: 'BiS source auto-detection and fix',
+        description: 'Automatically detects and offers to fix miscategorized BiS sources for crafted and base tome gear',
+        details:
+          'When BiS is imported with crafted gear (e.g., Rinascita, Claro) or unaugmented tome gear (e.g., Bygone Brass), the system now detects if the BiS source is incorrectly set. A warning banner appears with "Update BiS Source" to fix all slots at once, or use individual fix buttons on each row. Fixes preserve your gear progress and item metadata.',
+      },
       {
         category: 'feature',
         title: 'BiS source change confirmation',

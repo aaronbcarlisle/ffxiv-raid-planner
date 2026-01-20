@@ -9,6 +9,7 @@ import { useState, useEffect, memo, useMemo } from 'react';
 import { PlayerCardHeader } from './PlayerCardHeader';
 import { PlayerCardStatus } from './PlayerCardStatus';
 import { PlayerSetupBanner } from './PlayerSetupBanner';
+import { BiSSourceFixBanner } from './BiSSourceFixBanner';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
@@ -219,6 +220,24 @@ export const PlayerCard = memo(function PlayerCard({
   const handleTomeWeaponChange = async (updates: Partial<typeof player.tomeWeapon>) => {
     try {
       await onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
+    } catch (_error) {
+      // Error already handled by api.ts (toast shown)
+    }
+  };
+
+  // Handler for fixing multiple BiS sources at once (from BiSSourceFixBanner)
+  const handleFixAllBisSources = async (fixes: Array<{ slot: string; bisSource: GearSlotStatus['bisSource'] }>) => {
+    // Apply all fixes to gear array (only update bisSource, preserve other fields)
+    const newGear = player.gear.map((g) => {
+      const fix = fixes.find((f) => f.slot === g.slot);
+      if (fix) {
+        return { ...g, bisSource: fix.bisSource };
+      }
+      return g;
+    });
+
+    try {
+      await onUpdate({ gear: newGear });
     } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }
@@ -830,6 +849,18 @@ export const PlayerCard = memo(function PlayerCard({
         } : undefined}
         onOpenBiSImport={() => setShowBiSImport(true)}
       />
+
+      {/* BiS Source Fix Banner - shows when gear slots need source correction */}
+      {isExpanded && (
+        <BiSSourceFixBanner
+          gear={player.gear}
+          player={player}
+          userRole={userRole}
+          currentUserId={currentUserId ?? null}
+          isAdminAccess={isAdminAccess}
+          onFixAllSources={handleFixAllBisSources}
+        />
+      )}
 
       {/* Compact mode: spacer before gear (aligns icons at bottom across cards with/without badges) */}
       {!isExpanded && <div className="flex-1" />}

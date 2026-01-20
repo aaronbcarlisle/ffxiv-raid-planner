@@ -19,7 +19,8 @@ import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_S
 import { requiresAugmentation, toGearState, fromGearState, type GearState } from '../../utils/calculations';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
 import { toast } from '../../stores/toastStore';
-import { FileSearch } from 'lucide-react';
+import { getCorrectBisSource } from '../../utils/bisSourceDetection';
+import { RefreshCw, FileSearch } from 'lucide-react';
 
 // Reusable slot icon component with optional item icon and hover card
 function SlotIcon({
@@ -388,6 +389,17 @@ export function GearTable({
     }
   };
 
+  // Handler for fixing BiS source without resetting progress or item metadata
+  // Used by the inline warning buttons to correct miscategorized items
+  const handleBisSourceFix = (slot: string, newSource: GearSource) => {
+    if (!gearPermission.allowed) {
+      toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
+      return;
+    }
+    // Only update bisSource - preserve hasItem, isAugmented, and item metadata
+    onGearChange(slot, { bisSource: newSource });
+  };
+
   const handleGearStateChange = (slot: string, newState: GearState) => {
     if (!gearPermission.allowed) {
       toast.warning(gearPermission.reason || 'You do not have permission to edit gear');
@@ -548,22 +560,41 @@ export function GearTable({
                   )}
                 </td>
                 <td className="py-1 text-center">
-                  <div className="flex justify-center">
-                    <BiSSourceSelector
-                      bisSource={status.bisSource}
-                      onSelect={(source) => handleSourceChange(slot, source)}
-                      disabled={!gearPermission.allowed}
-                      disabledReason={gearPermission.reason}
-                      hasItemData={!!status.itemName}
-                      itemName={status.itemName}
-                      itemIcon={status.itemIcon}
-                      slotIcon={GEAR_SLOT_ICONS[slot]}
-                      itemLevel={status.itemLevel}
-                      itemStats={status.itemStats}
-                      hasItem={status.hasItem}
-                      isAugmented={status.isAugmented}
-                    />
-                  </div>
+                  {(() => {
+                    const correctSource = getCorrectBisSource(status);
+                    return (
+                      <div className="relative flex justify-center items-center">
+                        {/* Fix button positioned to left, doesn't affect BiS selector position */}
+                        {correctSource && gearPermission.allowed && (
+                          <div className="absolute right-full mr-0.5">
+                            <Tooltip content={`Fix: Set to ${BIS_SOURCE_FULL_NAMES[correctSource]}`}>
+                              <button
+                                aria-label={`Fix BiS source to ${BIS_SOURCE_FULL_NAMES[correctSource]}`}
+                                className="w-6 h-6 flex items-center justify-center rounded border bg-status-warning/20 text-status-warning border-status-warning/40 hover:bg-status-warning/30 transition-colors"
+                                onClick={() => handleBisSourceFix(slot, correctSource)}
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
+                          </div>
+                        )}
+                        <BiSSourceSelector
+                          bisSource={status.bisSource}
+                          onSelect={(source) => handleSourceChange(slot, source)}
+                          disabled={!gearPermission.allowed}
+                          disabledReason={gearPermission.reason}
+                          hasItemData={!!status.itemName}
+                          itemName={status.itemName}
+                          itemIcon={status.itemIcon}
+                          slotIcon={GEAR_SLOT_ICONS[slot]}
+                          itemLevel={status.itemLevel}
+                          itemStats={status.itemStats}
+                          hasItem={status.hasItem}
+                          isAugmented={status.isAugmented}
+                        />
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="py-1">
                   <div className="flex justify-center">

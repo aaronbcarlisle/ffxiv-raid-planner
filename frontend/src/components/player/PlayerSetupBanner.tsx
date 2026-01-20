@@ -10,10 +10,10 @@
 
 import { memo } from 'react';
 import { Button, Tooltip } from '../primitives';
-import { Link2, UserCheck, FileDown, RefreshCw } from 'lucide-react';
+import { Link2, UserCheck, FileDown } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
-import { getBannerState, type BannerState } from './playerSetupBannerUtils';
+import { getBannerState } from './playerSetupBannerUtils';
 
 export interface PlayerSetupBannerProps {
   player: SnapshotPlayer;
@@ -52,7 +52,7 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   let buttonIcon: React.ReactNode;
   let buttonTooltip: string;
   let onClick: (() => void) | undefined;
-  let variant: 'info' | 'warning' = 'info';
+  const variant: 'info' | 'warning' = 'info';
 
   switch (bannerState) {
     case 'unclaimed-owner':
@@ -80,15 +80,6 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       buttonIcon = <FileDown className="w-3.5 h-3.5" />;
       buttonTooltip = 'Import gear set from XIVGear or Etro';
       onClick = onOpenBiSImport;
-      break;
-
-    case 'needs-bis-update':
-      message = 'BiS may need update';
-      buttonLabel = 'Update BiS';
-      buttonIcon = <RefreshCw className="w-3.5 h-3.5" />;
-      buttonTooltip = 'Re-import to get improved base tome and crafted gear detection';
-      onClick = onOpenBiSImport;
-      variant = 'warning';
       break;
 
     default:
