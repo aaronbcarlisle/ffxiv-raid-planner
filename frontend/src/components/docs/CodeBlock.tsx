@@ -144,6 +144,7 @@ export function CodeBlock({
           {language}
         </span>
         <Tooltip content="Copy to clipboard">
+          {/* design-system-ignore: copy button uses custom positioning and opacity */}
           <button
             onClick={handleCopy}
             className="absolute top-2 right-2 p-1.5 rounded bg-surface-card/80 border border-border-subtle opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-interactive"
@@ -176,6 +177,7 @@ export function DualCodeBlock({ python, curl, title }: DualCodeBlockProps) {
     <div className="mb-6">
       {title && <div className="text-xs text-text-muted mb-2">{title}</div>}
       <div className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
+        {/* design-system-ignore: tab buttons use custom tab styling */}
         <div className="flex border-b border-border-subtle">
           <button
             onClick={() => setActiveTab('python')}
@@ -227,6 +229,7 @@ export function TripleCodeBlock({ python, curl, csharp, title }: TripleCodeBlock
     <div className="mb-6">
       {title && <div className="text-xs text-text-muted mb-2">{title}</div>}
       <div className="bg-surface-card border border-border-subtle rounded-lg overflow-hidden">
+        {/* design-system-ignore: tab buttons use custom tab styling */}
         <div className="flex border-b border-border-subtle">
           <button
             onClick={() => setActiveTab('python')}

@@ -8,8 +8,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, Terminal, FileText } from 'lucide-react';
-import { CodeBlock, TripleCodeBlock } from '../components/docs';
+import { Terminal, FileText } from 'lucide-react';
+import { CodeBlock, TripleCodeBlock, NavSidebar } from '../components/docs';
 
 // Language icons (from CodeBlock.tsx)
 function PythonIcon({ className }: { className?: string }) {
@@ -139,139 +139,6 @@ function TabGroup({ tabs, activeTab, onTabChange, children }: TabGroupProps) {
         {children}
       </div>
     </div>
-  );
-}
-
-// Sidebar Navigation Component
-function NavSidebar({
-  activeSection,
-  onSectionClick
-}: {
-  activeSection: string;
-  onSectionClick: (id: string) => void;
-}) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [scrollState, setScrollState] = useState({ top: true, bottom: false });
-  const scrollContainerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        setScrollState({
-          top: scrollTop < 10,
-          bottom: scrollTop + clientHeight >= scrollHeight - 10,
-        });
-      };
-      node.addEventListener('scroll', handleScroll);
-      handleScroll();
-    }
-  }, []);
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  };
-
-  const handleClick = (id: string) => {
-    onSectionClick(id);
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <nav className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30">
-      <div className="relative bg-surface-card border border-border-subtle rounded-lg">
-        <div
-          className={`
-            absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10
-            bg-gradient-to-b from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.top ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-
-        <div
-          ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
-        >
-          {NAV_GROUPS.map((group, groupIndex) => {
-            const isCollapsed = collapsedGroups.has(group.label);
-            const itemCount = group.items.length;
-
-            return (
-              <div key={group.label} className={groupIndex > 0 ? 'mt-3' : ''}>
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  className="
-                    w-full flex items-center justify-between
-                    text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em]
-                    mb-1 px-1 py-0.5 rounded
-                    hover:text-text-muted hover:bg-surface-interactive cursor-pointer
-                  "
-                >
-                  <span>{group.label}</span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-[9px] font-normal tracking-normal opacity-60">
-                      {itemCount}
-                    </span>
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
-                    />
-                  </span>
-                </button>
-
-                {!isCollapsed && (
-                  <ul className="space-y-px">
-                    {group.items.map((section) => (
-                      <li key={section.id}>
-                        <button
-                          onClick={() => handleClick(section.id)}
-                          className={`
-                            w-full text-left pl-3 pr-2 py-1.5 text-[13px] rounded transition-colors
-                            ${activeSection === section.id
-                              ? 'bg-accent/10 text-accent font-medium'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-                            }
-                          `}
-                        >
-                          {section.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {isCollapsed && (
-                  <button
-                    onClick={() => toggleGroup(group.label)}
-                    className="w-full text-left pl-3 pr-2 py-1.5 text-[12px] text-text-muted hover:text-text-secondary rounded hover:bg-surface-interactive transition-colors"
-                  >
-                    {itemCount} items...
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div
-          className={`
-            absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10
-            bg-gradient-to-t from-surface-card to-transparent
-            transition-opacity duration-150
-            ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}
-          `}
-        />
-      </div>
-    </nav>
   );
 }
 
@@ -430,7 +297,7 @@ export default function ApiCookbook() {
 
       {/* Content with Sidebar */}
       <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8 flex gap-8">
-        <NavSidebar activeSection={activeSection} onSectionClick={handleNavClick} />
+        <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
         <main className="flex-1 min-w-0">
           {/* Introduction */}
