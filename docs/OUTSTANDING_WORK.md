@@ -1,25 +1,22 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 19, 2026 (UI Consistency Sprint Complete)
-**Current Version:** v1.0.12
+**Last Updated:** January 19, 2026
+**Current Version:** v1.0.14
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/ui-consistency-sprint` (pushed, PR #48 in review)
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/48
+**Current Branch:** `fix/discord-version-detection` (PR #50 in review)
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/50
 
-**Session 7 status (UI Consistency Sprint):**
-- Completed M-014: Unified Spinner component with size variants (sm/md/lg/xl/2xl)
-- Completed M-013: Standardized border radius (rounded → tooltips, rounded-lg → containers)
-- Completed M-002: ErrorBox component for simple inline errors
-- Fixed Dashboard grid/list toggle size to match adjacent buttons
-- Added release notes commit tracking for v1.0.4-v1.0.12
-- CI passing, PR in review loop
+**Recent Completions:**
+- PR #48 merged: UI Consistency Sprint (v1.0.12)
+- PR #49 merged: Discord release-only embeds and dominant category colors (v1.0.13)
+- PR #50 pending: Simplified version detection, full ISO timestamps, historical release script (v1.0.14)
 
-**To continue:** Complete PR review loop for #48, then proceed with remaining P3 items or future phases.
+**To continue:** Merge PR #50, then proceed with Session 4 (MembersPanel) or P3 items.
 
 ---
 
@@ -30,10 +27,10 @@
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 0 | 0 |
 | **Medium (P2)** | 0 | 0 |
-| **Low (P3)** | 9 | 23 |
-| **Tech Debt - Lint (P3)** | 5 | 11 |
+| **Low (P3)** | 9 | 20.5 |
+| **Tech Debt - Lint (P3)** | 1 | 2 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 19 | ~34 hrs |
+| **Total** | 15 | ~22.5 hrs |
 
 ---
 
@@ -107,13 +104,12 @@
 - **Note:** Backend tests pass - issue likely frontend
 - **Effort:** 2 hours investigation
 
-### L-008: PR #11 Minor Issues
-- **File:** AdminDashboard.tsx
-- **Issues:**
-  1. Deprecated execCommand clipboard (line 162) - should show toast on fallback failure
-  2. Stale members on fetch failure - clear viewAsMembers on API failure
-  3. View As state race condition - add cancellation (low impact)
-- **Effort:** 1 hour
+### L-008: Deprecated execCommand Clipboard
+- **Files:** Dashboard.tsx:209, Home.tsx:58, Header.tsx:122,148
+- **Issue:** Using deprecated `document.execCommand('copy')` as fallback
+- **Note:** AdminDashboard.tsx no longer uses execCommand (was refactored)
+- **Fix:** Show toast on fallback failure, consider removing fallback entirely
+- **Effort:** 30 minutes
 
 ### L-009: Etro Relic Weapon Import
 - **File:** `backend/app/routers/bis.py:405-427`
@@ -126,64 +122,31 @@
 
 ## Technical Debt - Lint Issues (P3)
 
-**Added:** January 15, 2026
-**Current Error Count:** ~49 (down from 65 after quick fixes)
+**Last Audited:** January 19, 2026
+**Current Warning Count:** 15 (down from ~49)
 
-These are ESLint errors that don't affect functionality but should be addressed for code quality.
+All lint errors resolved; only warnings remain. These don't affect functionality.
 
-### TD-001: Explicit `any` Types (21 occurrences)
-- **Rule:** `@typescript-eslint/no-explicit-any`
-- **Files Affected:**
-  - `components/history/SectionedLogView.tsx` (~18 occurrences)
-  - Various other components (3 occurrences)
-- **Fix:** Add proper TypeScript types
-- **Effort:** 4 hours
-
-### TD-002: React Compiler Warnings (24 occurrences)
-- **Rule:** React compiler (react-compiler)
-- **Issues:**
-  - "Calling setState synchronously within an effect" (18)
-  - "Compilation Skipped: Existing memoization" (6)
-- **Files Affected:**
-  - Various docs pages (ApiCookbook, ApiDocs, CommonTasksDocs, etc.)
-  - AuthCallback.tsx, HistoryView.tsx, ReleaseBanner.tsx
-  - JobPicker.tsx, BiSImportModal.tsx, ContextMenu.tsx, TipsCarousel.tsx
-  - WeaponPriorityEditor.tsx, KeyboardShortcutsHelp.tsx, ReleaseNotes.tsx
-- **Fix:** Wrap setState calls in setTimeout or restructure effects
-- **Effort:** 3 hours
-
-### TD-003: React Hooks Dependency Warnings (11 warnings)
+### TD-001: React Hooks Dependency Warnings (15 warnings)
 - **Rule:** `react-hooks/exhaustive-deps`
 - **Files Affected:**
-  - `stores/lootTrackingStore.ts`
-  - `hooks/useLootActions.ts`, `hooks/useModal.ts`, `hooks/useDebounce.ts`
-  - `components/player/PlayerGrid.tsx`
-  - `components/team/TeamSummaryEnhanced.tsx`
-  - `components/loot/FilterBar.tsx`, `components/loot/LootPriorityPanel.tsx`
-- **Fix:** Review dependencies, add missing deps or refactor to avoid infinite loops
+  - `components/layout/Header.tsx` - dispatchHeaderEvent needs useCallback
+  - `components/player/AssignUserModal.tsx` - missing ROLE_GROUP_CONFIG
+  - `components/player/PlayerGrid.tsx` - unnecessary toast dependency (2 instances)
+  - `components/weapon-priority/WeaponPriorityEditor.tsx` - handleAddMultipleJobs needs useCallback
+  - `hooks/useLootActions.ts` - players logical expression (2 instances)
+  - `hooks/useModal.ts` - unused eslint-disable + missing deps (4 instances)
+  - `pages/AuthCallback.tsx` - missing savedOAuthState
+- **Fix:** Wrap functions in useCallback, add missing deps, remove unused eslint-disable
 - **Effort:** 2 hours
 
-### TD-004: React Refresh Export Warnings (5 occurrences)
-- **Rule:** `react-refresh/only-export-components`
-- **Files Affected:**
-  - `components/loot/RoleSection.tsx`
-  - `components/ui/ThreeStateCheckbox.tsx`
-  - `components/weapon-priority/WeaponJobSelector.tsx`
-  - Other files exporting constants alongside components
-- **Fix:** Move non-component exports to separate files
-- **Effort:** 1 hour
-
-### TD-005: Refs During Render (2 occurrences)
-- **Rule:** React compiler
-- **Files:** `components/history/WeeklyLootGrid.tsx`, `components/player/BiSImportModal.tsx`
-- **Fix:** Move ref access to effects or callbacks
-- **Effort:** 1 hour
-
-### Quick Wins Completed (January 15, 2026)
-- ✅ Added ESLint rule to ignore `_`-prefixed unused variables
-- ✅ Fixed 7 unused variable errors by adding `_` prefix
-- ✅ Fixed `prefer-const` error in eventBus.test.ts
-- ✅ Fixed `no-constant-condition` error in uxHelpers.test.ts
+### Completed (January 19, 2026)
+- ✅ TD-002 through TD-005 from original list - resolved
+- ✅ Explicit `any` types - resolved
+- ✅ React Compiler warnings - resolved
+- ✅ React Refresh warnings - resolved
+- ✅ Refs during render - resolved
+- ✅ Earlier quick wins (unused variables, prefer-const, no-constant-condition)
 
 ---
 

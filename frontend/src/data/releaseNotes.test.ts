@@ -52,7 +52,7 @@ describe('releaseNotes', () => {
         expect(release.version).toBeDefined();
         expect(release.version).toMatch(/^\d+\.\d+\.\d+$/);
         expect(release.date).toBeDefined();
-        expect(release.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(release.date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
         expect(Array.isArray(release.items)).toBe(true);
       });
     });

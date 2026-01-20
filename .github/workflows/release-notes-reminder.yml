@@ -93,6 +93,23 @@ jobs:
               // Extract the first (latest) release from the RELEASES array
               const releasesMatch = content.match(/export const RELEASES:\s*Release\[\]\s*=\s*\[([\s\S]*?)^\];/m);
               if (releasesMatch) {
+                // Validate date format (must be full ISO 8601: YYYY-MM-DDTHH:MM:SSZ)
+                // Use loose pattern to capture ANY date value, then validate strictly
+                const datePattern = /date:\s*['"]([^'"]+)['"]/g;
+                const invalidDates = [];
+                let dateMatch;
+                while ((dateMatch = datePattern.exec(releasesMatch[1])) !== null) {
+                  const dateValue = dateMatch[1];
+                  if (!dateValue.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)) {
+                    invalidDates.push(dateValue);
+                  }
+                }
+
+                if (invalidDates.length > 0) {
+                  core.setFailed(`Invalid date format in releaseNotes.ts. Dates must be full ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ). Invalid dates: ${invalidDates.join(', ')}`);
+                  return;
+                }
+
                 // Find items without commits in the first release block
                 // Match the first release object (up to the next version declaration or end)
                 const firstReleaseMatch = releasesMatch[1].match(/\{\s*version:\s*['"][^'"]+['"][\s\S]*?items:\s*\[([\s\S]*?)\],?\s*\}/);

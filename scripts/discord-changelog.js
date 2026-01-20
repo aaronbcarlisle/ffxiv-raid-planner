@@ -437,32 +437,26 @@ function parseReleaseNotes() {
 }
 
 /**
- * Check if the version changed in this commit
+ * Check if the release notes file was modified in this commit.
+ * Any modification to releaseNotes.ts triggers a release announcement.
+ *
+ * Trade-off: This approach trades precision for simplicity. We treat any change
+ * as a potential new release instead of parsing CURRENT_VERSION, avoiding the
+ * previous bug-prone grep logic. Since all changes to main require code review,
+ * non-release edits (typo fixes in old notes) can be batched with version bumps
+ * or the duplicate announcement is acceptable.
  */
 function didVersionChange() {
   try {
-    // Check if releaseNotes.ts was modified in this commit
     const diffOutput = execSync(
       'git diff HEAD~1 --name-only -- frontend/src/data/releaseNotes.ts',
       { encoding: 'utf-8' }
     ).trim();
 
-    if (!diffOutput) {
-      return false;
-    }
-
-    // Check if CURRENT_VERSION specifically changed
-    const versionDiff = execSync(
-      'git diff HEAD~1 -- frontend/src/data/releaseNotes.ts | grep -E "^[+-]export const CURRENT_VERSION"',
-      { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim();
-
-    // If we see both a - and + line for CURRENT_VERSION, it changed
-    return versionDiff.includes('-export const CURRENT_VERSION') &&
-           versionDiff.includes('+export const CURRENT_VERSION');
+    console.log(`Release notes file changed: ${diffOutput ? 'yes' : 'no'}`);
+    return diffOutput.length > 0;
   } catch (error) {
-    // grep returns exit code 1 if no matches, which throws
-    // This means the version didn't change
+    console.error('Error checking for release notes changes:', error.message);
     return false;
   }
 }
@@ -585,10 +579,9 @@ function buildReleaseEmbeds(release) {
       iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
     });
 
-  // Only set timestamp when date is provided (undefined/empty would set it to "now" or Invalid Date)
-  if (release.date && release.date.trim()) {
-    embed.setTimestamp(new Date(release.date));
-  }
+  // Use the release.date which contains the full ISO timestamp from releaseNotes.ts
+  // This is the accurate merge/release time, backfilled from git commit history
+  embed.setTimestamp(new Date(release.date));
 
   // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
   const footerText = buildReleaseFooter(release.items);

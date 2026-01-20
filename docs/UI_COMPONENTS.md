@@ -23,6 +23,8 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Dropdown menu | `Dropdown` | `components/primitives/Dropdown.tsx` |
 | Right-click menu | `ContextMenu` | `components/ui/ContextMenu.tsx` |
 | Error display | `ErrorMessage` | `components/ui/ErrorMessage.tsx` |
+| Inline error | `ErrorBox` | `components/ui/ErrorMessage.tsx` |
+| Loading spinner | `Spinner` | `components/ui/Spinner.tsx` |
 | Loading placeholder | `Skeleton` | `components/ui/Skeleton.tsx` |
 | Job icon | `JobIcon` | `components/ui/JobIcon.tsx` |
 | Tooltip | `Tooltip` | `components/primitives/Tooltip.tsx` |
@@ -883,7 +885,80 @@ import { ErrorMessage } from '../components/ui/ErrorMessage';
 )}
 ```
 
-**When to use:** API errors, fetch failures, validation errors.
+**When to use:** Dismissible/retryable API errors, fetch failures.
+
+---
+
+### ErrorBox (v1.0.12)
+
+**Path:** `components/ui/ErrorMessage.tsx`
+
+**Purpose:** Simple inline error display for modals and panels.
+
+**Props:**
+```typescript
+interface ErrorBoxProps {
+  message: string;
+  size?: 'sm' | 'md';
+  className?: string;
+}
+```
+
+**Usage:**
+```tsx
+import { ErrorBox } from '../components/ui/ErrorMessage';
+
+{error && <ErrorBox message={error} size="sm" />}
+```
+
+**When to use:** Simple inline errors in modals, panels, forms (no retry/dismiss needed).
+
+**Error Component Pattern:**
+- `ErrorMessage` - Dismissible/retryable, for page-level errors
+- `ErrorBox` - Simple inline, for contextual errors
+- `InlineError` - Form validation, attached to inputs
+- Toast - Transient notifications
+
+---
+
+### Spinner (v1.0.12)
+
+**Path:** `components/ui/Spinner.tsx`
+
+**Purpose:** Unified loading spinner with consistent sizing.
+
+**Props:**
+```typescript
+interface SpinnerProps {
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  color?: 'accent' | 'current' | 'white' | 'muted';
+  className?: string;
+  label?: string;  // For accessibility
+}
+```
+
+**Size Reference:**
+- `sm` - 16px (inline, buttons)
+- `md` - 24px (default)
+- `lg` - 32px (sections)
+- `xl` - 48px (panels)
+- `2xl` - 64px (full-page)
+
+**Usage:**
+```tsx
+import { Spinner, SpinnerOverlay } from '../components/ui/Spinner';
+
+// Inline spinner
+<Spinner size="sm" />
+
+// Full area overlay
+<SpinnerOverlay size="lg" label="Loading players..." />
+
+// Button loading state (uses Spinner internally)
+<Button loading={isLoading}>Save</Button>
+```
+
+**When to use:** Any loading state. Prefer this over custom spinners.
 
 ---
 

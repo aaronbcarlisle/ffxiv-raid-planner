@@ -7,6 +7,8 @@
  * Usage:
  *   node post-historical-releases.js --releases 0.1.0,0.2.0,0.3.0
  *   node post-historical-releases.js --releases 0.1.0 --dry-run
+ *   node post-historical-releases.js --all              # Delete all messages and repost all releases
+ *   node post-historical-releases.js --all --dry-run    # Preview all releases without posting
  *
  * Environment variables:
  *   DISCORD_BOT_TOKEN - Discord bot token
@@ -118,23 +120,114 @@ function previewEmbeds(release, embeds) {
 }
 
 /**
+ * Delete all messages in a channel
+ * Discord API limits bulk delete to messages < 14 days old and 100 at a time
+ */
+async function deleteAllMessages(channel) {
+  console.log('Deleting all messages in channel...');
+  let totalDeleted = 0;
+  let hasMore = true;
+  let iterations = 0;
+  const MAX_ITERATIONS = 100; // Safety limit: 100 batches = 10,000 messages max
+
+  while (hasMore && iterations < MAX_ITERATIONS) {
+    iterations++;
+    const deletedThisIteration = totalDeleted;
+
+    // Fetch up to 100 messages at a time
+    const messages = await channel.messages.fetch({ limit: 100 });
+
+    if (messages.size === 0) {
+      break;
+    }
+
+    // Separate messages by age (bulk delete only works for messages < 14 days old)
+    const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const recentMessages = messages.filter(m => m.createdTimestamp > twoWeeksAgo);
+    const oldMessages = messages.filter(m => m.createdTimestamp <= twoWeeksAgo);
+
+    // Bulk delete recent messages (much faster)
+    if (recentMessages.size > 1) {
+      try {
+        await channel.bulkDelete(recentMessages);
+        totalDeleted += recentMessages.size;
+        console.log(`  Bulk deleted ${recentMessages.size} recent messages`);
+      } catch (error) {
+        console.warn(`  Warning: Bulk delete failed: ${error.message}`);
+      }
+    } else if (recentMessages.size === 1) {
+      // bulkDelete requires at least 2 messages
+      try {
+        await recentMessages.first().delete();
+        totalDeleted += 1;
+        console.log(`  Deleted 1 recent message`);
+      } catch (error) {
+        console.warn(`  Warning: Could not delete recent message: ${error.message}`);
+      }
+    }
+
+    // Delete old messages one by one (slower but necessary)
+    for (const [, message] of oldMessages) {
+      try {
+        await message.delete();
+        totalDeleted += 1;
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.warn(`  Warning: Could not delete message ${message.id}: ${error.message}`);
+      }
+    }
+
+    if (oldMessages.size > 0) {
+      console.log(`  Deleted ${oldMessages.size} older messages individually`);
+    }
+
+    // If we got fewer than 100 messages, we've reached the end
+    if (messages.size < 100) {
+      hasMore = false;
+    }
+
+    // Safety check: if no messages were deleted this iteration, we're stuck
+    if (totalDeleted === deletedThisIteration && messages.size > 0) {
+      console.warn(`  Warning: No messages deleted in iteration ${iterations}, breaking to avoid infinite loop`);
+      break;
+    }
+
+    // Small delay between batches
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  if (iterations >= MAX_ITERATIONS) {
+    console.warn(`  Warning: Reached maximum iterations (${MAX_ITERATIONS}), some messages may remain`);
+  }
+
+  console.log(`  ✓ Deleted ${totalDeleted} total messages in ${iterations} iterations`);
+  return totalDeleted;
+}
+
+/**
  * Main function
  */
 async function main() {
   // Parse command line arguments
   const args = process.argv.slice(2);
   const releasesArg = args.find(a => a.startsWith('--releases=')) || args[args.indexOf('--releases') + 1];
+  const allReleases = args.includes('--all');
   const dryRun = args.includes('--dry-run');
 
-  if (!releasesArg || releasesArg.startsWith('--')) {
+  if (!allReleases && (!releasesArg || releasesArg.startsWith('--'))) {
     console.error('Usage: node post-historical-releases.js --releases 0.1.0,0.2.0,0.3.0 [--dry-run]');
+    console.error('       node post-historical-releases.js --all [--dry-run]');
     console.error('\nOptions:');
     console.error('  --releases  Comma-separated list of version numbers to post');
+    console.error('  --all       Delete all messages in channel and repost ALL releases');
     console.error('  --dry-run   Preview embeds without posting to Discord');
     process.exit(1);
   }
 
-  const requestedVersions = releasesArg.replace('--releases=', '').split(',').map(v => v.trim());
+  const requestedVersions = allReleases
+    ? null  // Will be populated from all releases
+    : releasesArg.replace('--releases=', '').split(',').map(v => v.trim());
 
   // Validate environment variables (unless dry run)
   const token = process.env.DISCORD_BOT_TOKEN;
@@ -153,19 +246,26 @@ async function main() {
 
   // Parse releases from file
   console.log('Parsing release notes...');
-  const allReleases = parseAllReleases();
-  console.log(`Found ${allReleases.length} releases`);
+  const parsedReleases = parseAllReleases();
+  console.log(`Found ${parsedReleases.length} releases`);
 
   // Find requested releases
-  const releasesToPost = [];
-  for (const version of requestedVersions) {
-    const release = allReleases.find(r => r.version === version);
-    if (!release) {
-      console.error(`Release v${version} not found in releaseNotes.ts`);
-      console.error('Available versions:', allReleases.map(r => r.version).join(', '));
-      process.exit(1);
+  let releasesToPost = [];
+  if (allReleases) {
+    // Post all releases
+    releasesToPost = [...parsedReleases];
+    console.log('\n--all specified: Will delete all channel messages and repost all releases');
+  } else {
+    // Post specific releases
+    for (const version of requestedVersions) {
+      const release = parsedReleases.find(r => r.version === version);
+      if (!release) {
+        console.error(`Release v${version} not found in releaseNotes.ts`);
+        console.error('Available versions:', parsedReleases.map(r => r.version).join(', '));
+        process.exit(1);
+      }
+      releasesToPost.push(release);
     }
-    releasesToPost.push(release);
   }
 
   // Sort by version (oldest first for chronological posting)
@@ -204,6 +304,12 @@ async function main() {
     if (!channel || !channel.isTextBased()) {
       console.error(`Channel ${channelId} not found or not a text channel`);
       process.exit(1);
+    }
+
+    // If --all, delete all existing messages first
+    if (allReleases) {
+      await deleteAllMessages(channel);
+      console.log('');  // Blank line for readability
     }
 
     // Post each release with a small delay between them

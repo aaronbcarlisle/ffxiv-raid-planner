@@ -56,7 +56,7 @@ describe('discord-changelog', () => {
       expect(result.currentVersion).toMatch(/^\d+\.\d+\.\d+$/);
       expect(result.latestRelease).toBeDefined();
       expect(result.latestRelease.version).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(result.latestRelease.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(result.latestRelease.date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
       expect(Array.isArray(result.latestRelease.highlights)).toBe(true);
     });
 
@@ -593,6 +593,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('creates embed with version and title', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Initial Release',
         highlights: ['Feature 1', 'Feature 2'],
       };
@@ -605,6 +606,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('includes highlights in description when no items', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test Release',
         highlights: ['Highlight 1', 'Highlight 2'],
       };
@@ -618,6 +620,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('handles empty highlights - no description set', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'No Highlights',
         highlights: [],
       };
@@ -631,6 +634,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('links to release notes via title URL instead of description', () => {
       const release = {
         version: '2.0.5',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         highlights: [],
       };
@@ -644,6 +648,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('uses teal accent color when no items', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         highlights: [],
       };
@@ -656,6 +661,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('uses dominant category color when items present', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         items: [
           { category: 'feature', title: 'New feature' },
@@ -672,6 +678,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('uses description with H3 headers for items (no dash in headers)', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         items: [
           { category: 'feature', title: 'New feature', description: 'A cool feature' },
@@ -698,6 +705,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('includes footer with item counts', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         items: [
           { category: 'feature', title: 'F1' },
@@ -715,6 +723,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('omits footer when no items', () => {
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         highlights: ['Some highlight'],
       };
@@ -731,6 +740,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const longDesc = 'x'.repeat(500);
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         items: Array.from({ length: 10 }, (_, i) => ({
           category: 'feature',
@@ -750,6 +760,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       // Create many items with long titles
       const release = {
         version: '1.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Test',
         items: Array.from({ length: 100 }, (_, i) => ({
           category: 'feature',
@@ -769,6 +780,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       // Simulates scenario where a version bump commit triggers both embeds
       const release = {
         version: '1.0.5',
+        date: '2026-01-20T00:00:00Z',
         title: 'New Features',
         highlights: ['Feature A', 'Feature B'],
       };
@@ -795,6 +807,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     it('release and commit embeds have compatible structure for Discord API', async () => {
       const release = {
         version: '2.0.0',
+        date: '2026-01-20T00:00:00Z',
         title: 'Major Release',
         highlights: ['Breaking changes'],
       };
