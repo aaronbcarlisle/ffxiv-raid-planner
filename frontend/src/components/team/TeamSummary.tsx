@@ -3,11 +3,11 @@ import type { RaidTier } from '../../gamedata/raid-tiers';
 import { getCurrentTier } from '../../gamedata';
 import { Users, Target, Wrench, Calendar, BookOpen } from 'lucide-react';
 
-// Material colors for visual distinction
+// Material colors for visual distinction (using semantic tokens)
 const MATERIAL_COLORS = {
-  twine: 'text-orange-400',
-  glaze: 'text-blue-400',
-  solvent: 'text-purple-400',
+  twine: 'text-material-twine',
+  glaze: 'text-material-glaze',
+  solvent: 'text-material-solvent',
 };
 
 interface TeamSummaryProps {

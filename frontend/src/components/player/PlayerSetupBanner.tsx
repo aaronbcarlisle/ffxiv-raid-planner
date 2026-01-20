@@ -52,6 +52,8 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   let buttonIcon: React.ReactNode;
   let buttonTooltip: string;
   let onClick: (() => void) | undefined;
+  // All current banner states use 'info' variant (warning variant was for 'needs-bis-update' which is now handled by BiSSourceFixBanner)
+  const variant = 'info' as const;
 
   switch (bannerState) {
     case 'unclaimed-owner':
@@ -85,13 +87,27 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
       return null;
   }
 
+  // Styling based on variant
+  const variantStyles: Record<'info' | 'warning', { container: string; text: string }> = {
+    info: {
+      container: 'bg-accent/10 border-accent',
+      text: 'text-accent',
+    },
+    warning: {
+      container: 'bg-status-warning/10 border-status-warning',
+      text: 'text-status-warning',
+    },
+  };
+
+  const styles = variantStyles[variant];
+
   return (
     <div
-      className="mx-3 mb-2 px-3 py-2 rounded-lg bg-accent/10 border-l-4 border-accent flex items-center justify-between gap-3"
+      className={`mx-3 mb-2 px-3 py-2 rounded-lg border-l-4 flex items-center justify-between gap-3 ${styles.container}`}
       role="status"
       aria-label={`Setup needed: ${message}`}
     >
-      <span className="text-sm text-accent">{message}</span>
+      <span className={`text-sm ${styles.text}`}>{message}</span>
       <Tooltip content={buttonTooltip}>
         <Button
           size="sm"

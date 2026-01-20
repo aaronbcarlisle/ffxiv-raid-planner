@@ -10,7 +10,7 @@
 import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
-import { isSlotComplete } from './calculations';
+import { isSlotComplete, requiresAugmentation } from './calculations';
 
 export interface PriorityEntry {
   player: SnapshotPlayer;
@@ -156,6 +156,11 @@ export function getPriorityForRing(
  *
  * If materialLog is provided, subtracts already-received materials from need count.
  * This allows the priority list to update as materials are distributed.
+ *
+ * @param players - Array of players
+ * @param material - Material type to check
+ * @param settings - Static settings for loot priority
+ * @param materialLog - Optional material log for tracking already-received materials
  */
 export function getPriorityForUpgradeMaterial(
   players: SnapshotPlayer[],
@@ -181,12 +186,16 @@ export function getPriorityForUpgradeMaterial(
   return players
     .filter((p) => {
       // Count unaugmented tome pieces for this material type
+      // Only include slots where augmentation is actually required
+      // Note: Only 'tome' BiS (not 'base_tome') requires augmentation materials
+      // base_tome slots don't need materials since the unaugmented item is BiS
       const unaugmented = p.gear.filter(
         (g) =>
           applicableSlots.includes(g.slot) &&
           g.bisSource === 'tome' &&
           g.hasItem &&
-          !g.isAugmented
+          !g.isAugmented &&
+          requiresAugmentation(g)
       );
 
       let totalNeed = unaugmented.length;
@@ -211,7 +220,8 @@ export function getPriorityForUpgradeMaterial(
           applicableSlots.includes(g.slot) &&
           g.bisSource === 'tome' &&
           g.hasItem &&
-          !g.isAugmented
+          !g.isAugmented &&
+          requiresAugmentation(g)
       ).length;
 
       // For solvent, add tome weapon if it needs augmentation
@@ -290,6 +300,8 @@ export function getPriorityForUniversalTomestone(
  * Includes tome weapon tracking when player is pursuing it:
  * - Tome weapon costs 500 tomestones + Universal Tomestone (from M6S)
  * - Augmenting tome weapon requires Solvent (from M7S)
+ *
+ * @param player - The player to calculate needs for
  */
 export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
   let raidNeed = 0;
@@ -304,10 +316,12 @@ export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
       if (!g.hasItem) {
         tomeNeed++;
         tomestoneCost += TOMESTONE_COSTS[g.slot] || 0;
-      } else if (!g.isAugmented) {
+      } else if (!g.isAugmented && requiresAugmentation(g)) {
         upgrades++;
       }
     }
+    // Crafted BiS: no resource tracking needed (player obtains independently)
+    // If crafted slot is missing, it doesn't affect raid/tome needs
   });
 
   // Include tome weapon if player is pursuing it

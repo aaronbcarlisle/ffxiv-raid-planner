@@ -13,6 +13,8 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Job selector | `JobPicker` | `components/player/JobPicker.tsx` |
 | Position selector (T1-R2) | `PositionSelector` | `components/player/PositionSelector.tsx` |
 | Tank role (MT/OT) | `TankRoleSelector` | `components/player/TankRoleSelector.tsx` |
+| BiS source (R/T/BT/C) | `BiSSourceSelector` | `components/player/BiSSourceSelector.tsx` |
+| Badge-style popover select | `PopoverSelect` | `components/primitives/PopoverSelect.tsx` |
 | Text input | `Input` | `components/ui/Input.tsx` |
 | Dropdown select | `Select` | `components/ui/Select.tsx` |
 | Searchable dropdown | `SearchableSelect` | `components/ui/SearchableSelect.tsx` |
@@ -278,6 +280,101 @@ import { Popover, PopoverTrigger, PopoverContent } from '../components/primitive
 **When to use:** Custom layouts in floating panels, settings forms, complex selectors.
 
 **Use Dropdown instead for:** Menu-style lists of actions.
+
+---
+
+### PopoverSelect
+
+**Path:** `components/primitives/PopoverSelect.tsx`
+
+**Purpose:** Standardized badge-style popover selector. Used for compact selectors like Position (T1-R2), Tank Role (MT/OT), and BiS Source (Raid/Tome/Crafted).
+
+**Design Standards:**
+
+| Element | Style |
+|---------|-------|
+| **Trigger** | `px-1.5 py-0.5 rounded text-xs font-bold` |
+| **Dropdown items** | `px-2 py-1.5 rounded text-xs font-bold` |
+| **Unselected** | `bg-{color}/20 text-{color} hover:bg-{color}/30` |
+| **Selected** | `bg-{color} text-surface-base` (solid bg, dark text) |
+| **Disabled** | `opacity-50 cursor-not-allowed` |
+| **Clear button** | `w-full mt-2 px-2 py-1 text-xs text-text-muted` |
+
+**Props:**
+```typescript
+interface PopoverSelectOption<T extends string> {
+  value: T;
+  label: string;
+  icon?: ReactNode;
+  description?: string;
+  colorClasses?: { selected: string; unselected: string };
+}
+
+interface PopoverSelectProps<T extends string> {
+  value: T | null | undefined;
+  options: PopoverSelectOption<T>[];
+  onSelect: (value: T | undefined) => void;
+  disabled?: boolean;
+  disabledReason?: string;
+  tooltipContent?: ReactNode;
+  clearable?: boolean;
+  clearText?: string;
+  layout?: 'vertical' | 'horizontal' | 'grid';
+  gridCols?: number;
+  align?: 'start' | 'center' | 'end';
+  getOptionClasses?: (option, isSelected) => string;
+  getTriggerClasses?: (value) => string;
+  placeholder?: string;
+  triggerWidth?: string;
+  showIcons?: boolean;
+}
+```
+
+**Color Helpers:**
+```tsx
+import {
+  PopoverSelect,
+  createRoleColorClasses,
+  createGearSourceColorClasses,
+} from '../components/primitives';
+
+// Role colors (tank, healer, dps)
+const tankClasses = createRoleColorClasses('T');
+// { selected: 'bg-role-tank text-surface-base', unselected: 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30' }
+
+// Gear source colors
+const tomeClasses = createGearSourceColorClasses('tome');
+// { selected: 'bg-gear-tome text-surface-base', unselected: 'bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30' }
+
+const baseTomeClasses = createGearSourceColorClasses('base_tome');
+// { selected: 'bg-gear-base-tome text-surface-base', unselected: 'bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30' }
+```
+
+**Usage:**
+```tsx
+import { PopoverSelect, createGearSourceColorClasses } from '../components/primitives';
+
+const options = [
+  { value: 'raid', label: 'Raid', colorClasses: createGearSourceColorClasses('raid') },
+  { value: 'tome', label: 'Tome', colorClasses: createGearSourceColorClasses('tome') },
+  { value: 'crafted', label: 'Crafted', colorClasses: createGearSourceColorClasses('crafted') },
+];
+
+<PopoverSelect
+  value={bisSource}
+  options={options}
+  onSelect={setBisSource}
+  layout="vertical"
+  showIcons
+/>
+```
+
+**When to use:** Badge-style selectors where selection is from a small set of options.
+
+**Specialized wrappers:** Use the domain-specific components instead when available:
+- `PositionSelector` - Raid positions with role suggestions
+- `TankRoleSelector` - MT/OT selection
+- `BiSSourceSelector` - BiS gear source
 
 ---
 
@@ -702,6 +799,50 @@ import { TankRoleSelector } from '../components/player/TankRoleSelector';
 
 ---
 
+### BiSSourceSelector
+
+**Path:** `components/player/BiSSourceSelector.tsx`
+
+**Purpose:** BiS gear source selector (Raid/Tome/B. Tome/Crafted) for gear table rows.
+
+**Props:**
+```typescript
+interface BiSSourceSelectorProps {
+  bisSource: GearSource | null;  // 'raid' | 'tome' | 'base_tome' | 'crafted' | null
+  onSelect: (source: GearSource | null) => void;
+  disabled?: boolean;
+  disabledReason?: string;
+}
+```
+
+**Features:**
+- 2x2 grid layout in popover
+- Four BiS sources with distinct colors:
+  - **Raid** (R) - Red - Savage drops
+  - **Tome** (T) - Teal - Tomestone gear that needs augmentation
+  - **B. Tome** (BT) - Blue - Base tomestone where unaugmented version is BiS
+  - **Crafted** (C) - Orange - Crafted pentamelded gear
+- Clear Slot option to reset to unset state
+- ARIA labels for accessibility
+
+**Usage:**
+```tsx
+import { BiSSourceSelector } from '../components/player/BiSSourceSelector';
+
+<BiSSourceSelector
+  bisSource={gearSlot.bisSource}
+  onSelect={(source) => updateGearSlot({ bisSource: source })}
+  disabled={!canEdit}
+  disabledReason="You don't have permission to edit"
+/>
+```
+
+**When to use:** BiS source selection in GearTable rows.
+
+**NEVER recreate:** Use this component for any BiS source selection.
+
+---
+
 ## UI Patterns
 
 ### Modal
@@ -1054,8 +1195,9 @@ Always use semantic color classes, never hardcode hex values.
 <span className="text-status-error">Error</span>
 
 // Gear source colors
-<span className="text-gear-raid">Raid</span>
-<span className="text-gear-tome">Tome</span>
+<span className="text-gear-raid">Raid</span>           // Red - Savage drops
+<span className="text-gear-tome">Tome</span>           // Teal - Augmented tomestone
+<span className="text-gear-base-tome">Base Tome</span> // Blue - Base tomestone (no aug needed)
 <span className="text-gear-augmented">Augmented</span>
 
 // Material colors

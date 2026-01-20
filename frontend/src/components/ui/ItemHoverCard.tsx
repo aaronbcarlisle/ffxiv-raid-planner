@@ -1,11 +1,11 @@
-import type { ItemStats } from '../../types';
+import type { ItemStats, GearSource } from '../../types';
 
 interface ItemHoverCardProps {
   itemName: string;
   itemLevel: number;
   itemIcon?: string;
   itemStats?: ItemStats;
-  bisSource: 'raid' | 'tome';
+  bisSource: GearSource | null;
   /** Whether the player has this item (shows "missing" indicator if false) */
   hasItem?: boolean;
   /** Whether the tome item is augmented (only relevant when bisSource is 'tome') */
@@ -83,6 +83,26 @@ export function ItemHoverCard({
   const leftStats = sortedStats.slice(0, midPoint);
   const rightStats = sortedStats.slice(midPoint);
 
+  // Get color class for BiS source
+  const getSourceColorClass = () => {
+    if (bisSource === 'raid') return 'text-gear-raid';
+    if (bisSource === 'crafted') return 'text-gear-crafted';
+    if (bisSource === 'tome') return 'text-gear-tome';
+    if (bisSource === 'base_tome') return 'text-gear-base-tome';
+    return 'text-text-muted'; // null/unset
+  };
+
+  // Get source badge info
+  const getSourceBadge = () => {
+    if (bisSource === 'raid') return { text: 'Savage', classes: 'bg-gear-raid/20 text-gear-raid' };
+    if (bisSource === 'crafted') return { text: 'Crafted', classes: 'bg-gear-crafted/20 text-gear-crafted' };
+    if (bisSource === 'tome') return { text: 'Tome (Aug.)', classes: 'bg-gear-tome/20 text-gear-tome' };
+    if (bisSource === 'base_tome') return { text: 'Base Tome', classes: 'bg-gear-base-tome/20 text-gear-base-tome' };
+    return { text: 'Unset', classes: 'bg-surface-interactive text-text-muted' };
+  };
+
+  const sourceBadge = getSourceBadge();
+
   return (
     <div className="min-w-[200px] max-w-[280px]">
       {/* Header with icon and name */}
@@ -95,11 +115,7 @@ export function ItemHoverCard({
           />
         )}
         <div className="flex-1 min-w-0">
-          <div
-            className={`text-sm font-medium leading-tight ${
-              bisSource === 'raid' ? 'text-source-raid' : 'text-accent'
-            }`}
-          >
+          <div className={`text-sm font-medium leading-tight ${getSourceColorClass()}`}>
             {itemName}
             {missingText && (
               <span className="ml-1 text-text-muted">
@@ -138,14 +154,8 @@ export function ItemHoverCard({
 
       {/* Source badge */}
       <div className="border-t border-border-default mt-2 pt-2">
-        <span
-          className={`text-xs px-1.5 py-0.5 rounded ${
-            bisSource === 'raid'
-              ? 'bg-source-raid/20 text-source-raid'
-              : 'bg-accent/20 text-accent'
-          }`}
-        >
-          {bisSource === 'raid' ? 'Savage' : 'Tomestone'}
+        <span className={`text-xs px-1.5 py-0.5 rounded ${sourceBadge.classes}`}>
+          {sourceBadge.text}
         </span>
       </div>
     </div>

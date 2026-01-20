@@ -23,7 +23,39 @@ export type GearSlot =
   | 'ring2';
 
 // Where the BiS gear comes from
-export type GearSource = 'raid' | 'tome';
+export type GearSource = 'raid' | 'tome' | 'base_tome' | 'crafted';
+
+// Display names for BiS sources (abbreviated for compact UI)
+export const BIS_SOURCE_NAMES: Record<GearSource, string> = {
+  raid: 'R',
+  tome: 'T',
+  base_tome: 'BT',
+  crafted: 'C',
+};
+
+// Full display names for BiS sources (for tooltips)
+export const BIS_SOURCE_FULL_NAMES: Record<GearSource, string> = {
+  raid: 'Raid',
+  tome: 'Tome (Aug.)',
+  base_tome: 'Base Tome',
+  crafted: 'Crafted',
+};
+
+// Color classes for BiS sources
+export const BIS_SOURCE_COLORS: Record<GearSource, string> = {
+  raid: 'text-gear-raid',
+  tome: 'text-gear-tome',
+  base_tome: 'text-gear-base-tome',
+  crafted: 'text-gear-crafted',
+};
+
+// Background color classes for BiS source badges
+export const BIS_SOURCE_BG_COLORS: Record<GearSource, string> = {
+  raid: 'bg-gear-raid/20',
+  tome: 'bg-gear-tome/20',
+  base_tome: 'bg-gear-base-tome/20',
+  crafted: 'bg-gear-crafted/20',
+};
 
 // Current gear source category (9 options for tracking actual equipped gear)
 export type GearSourceCategory =
@@ -57,7 +89,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
   catchup: 'text-blue-400',     // Blue for catch-up
   tome: 'text-teal-400/70',     // Dimmer teal for unaugmented tome
   relic: 'text-yellow-300',     // Yellow for relic
-  crafted: 'text-orange-400',   // Orange for crafted
+  crafted: 'text-gear-crafted',   // Orange for crafted
   prep: 'text-purple-300',      // Purple for previous tier
   normal: 'text-gray-400',      // Gray for normal raid
   unknown: 'text-gray-500',     // Muted for unknown
@@ -135,7 +167,7 @@ export interface ItemStats {
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
-  bisSource: GearSource;         // BiS target (raid or tome)
+  bisSource: GearSource | null;  // BiS target (null = unset, displays as "--")
   currentSource?: GearSourceCategory; // What's actually equipped (9 categories)
   hasItem: boolean;
   isAugmented: boolean;

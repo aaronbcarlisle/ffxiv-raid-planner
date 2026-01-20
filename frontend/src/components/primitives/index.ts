@@ -18,5 +18,11 @@ export {
 } from './Dropdown';
 export { IconButton } from './IconButton';
 export { Popover, PopoverClose, PopoverContent, PopoverTrigger } from './Popover';
+export { PopoverSelect, type PopoverSelectOption, type PopoverSelectProps } from './PopoverSelect';
+export {
+  createRoleColorClasses,
+  createGearSourceColorClasses,
+  createColoredTriggerClasses,
+} from './popoverSelectHelpers';
 export { Tooltip, TooltipProvider } from './Tooltip';
 export { VisuallyHidden } from './VisuallyHidden';

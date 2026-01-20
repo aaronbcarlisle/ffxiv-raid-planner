@@ -3,6 +3,35 @@
  */
 
 import type { SnapshotPlayer, GearSlotStatus, TeamSummary } from '../types';
+
+// ==================== Gear State Types ====================
+
+/**
+ * Triple-state for gear tracking:
+ * - missing: Don't have the item
+ * - have: Have the item (but may need augmentation for tome)
+ * - augmented: Have augmented tome item (complete)
+ */
+export type GearState = 'missing' | 'have' | 'augmented';
+
+/**
+ * Convert hasItem/isAugmented to GearState
+ */
+export function toGearState(hasItem: boolean, isAugmented: boolean): GearState {
+  if (!hasItem) return 'missing';
+  if (isAugmented) return 'augmented';
+  return 'have';
+}
+
+/**
+ * Convert GearState to hasItem/isAugmented
+ */
+export function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boolean } {
+  return {
+    hasItem: state !== 'missing',
+    isAugmented: state === 'augmented',
+  };
+}
 import {
   BOOK_COSTS,
   BOOK_TYPE_FOR_SLOT,
@@ -10,25 +39,82 @@ import {
 } from '../gamedata';
 
 /**
+ * Check if a BiS slot requires augmentation to be complete.
+ *
+ * With the new BiS source system:
+ * - 'raid': No augmentation (2-state)
+ * - 'base_tome': No augmentation (2-state) - base tome is BiS
+ * - 'crafted': No augmentation (2-state)
+ * - 'tome': Requires augmentation (3-state)
+ * - null: Unset slot (no augmentation possible)
+ *
+ * Also checks item name prefix from BiS import for backward compatibility.
+ *
+ * @param slot - The gear slot status
+ * @returns true if augmentation is needed, false otherwise
+ */
+export function requiresAugmentation(slot: GearSlotStatus): boolean {
+  // Null/unset bisSource - no augmentation possible
+  if (!slot.bisSource) return false;
+
+  // Only 'tome' requires augmentation
+  // base_tome, raid, and crafted are all 2-state
+  if (slot.bisSource !== 'tome') return false;
+
+  // BACKWARD COMPATIBILITY: For legacy data imported before the base_tome category existed,
+  // check if the item name indicates this is actually a base tome item (no Aug. prefix).
+  // New imports will correctly set bisSource='base_tome' for such items, making this check
+  // unnecessary for new data. This allows existing 'tome' entries with non-augmented items
+  // to be marked complete without migration.
+  if (slot.itemName) {
+    const name = slot.itemName.toLowerCase();
+    // "Aug. Item Name" or "Augmented Item Name" = BiS is augmented version
+    return name.startsWith('aug.') || name.startsWith('augmented');
+  }
+
+  // 'tome' bisSource with no item name - assume augmented is target (safer default)
+  return true;
+}
+
+/**
  * Check if a gear slot is complete (BiS achieved)
+ *
+ * @param status - The gear slot status
  */
 export function isSlotComplete(status: GearSlotStatus): boolean {
+  // Unset bisSource = incomplete (must set BiS first)
+  if (!status.bisSource) return false;
+
+  // Must have the item
   if (!status.hasItem) return false;
+
+  // Raid, base_tome, and crafted are complete when you have the item
   if (status.bisSource === 'raid') return true;
-  // Tome gear must be augmented to be complete
+  if (status.bisSource === 'base_tome') return true;
+  if (status.bisSource === 'crafted') return true;
+
+  // Tome BiS - check if augmentation is required
+  if (!requiresAugmentation(status)) return true;
   return status.isAugmented;
 }
 
 /**
  * Calculate completion percentage for a player
+ *
+ * @param gear - Player's gear array
  */
 export function calculatePlayerCompletion(gear: GearSlotStatus[]): number {
-  const completed = gear.filter(isSlotComplete).length;
+  const completed = gear.filter((slot) => isSlotComplete(slot)).length;
   return gear.length > 0 ? Math.round((completed / gear.length) * 100) : 0;
 }
 
 /**
  * Calculate upgrade materials needed for a player
+ *
+ * Only 'tome' bisSource requires augmentation materials.
+ * 'base_tome' does not need augmentation (base version is BiS).
+ *
+ * @param gear - Player's gear array
  */
 export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
   twine: number;
@@ -38,10 +124,12 @@ export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
   const materials = { twine: 0, glaze: 0, solvent: 0 };
 
   gear.forEach((slot) => {
-    // Only tome pieces need upgrade materials
+    // Only 'tome' pieces need upgrade materials (not base_tome)
     if (slot.bisSource !== 'tome') return;
     // Already augmented = no material needed
     if (slot.isAugmented) return;
+    // Skip if augmentation is not required (backward compat check)
+    if (!requiresAugmentation(slot)) return;
 
     const material = getUpgradeMaterialForSlot(slot.slot);
     materials[material]++;
@@ -78,6 +166,8 @@ export function calculatePlayerBooks(gear: GearSlotStatus[]): {
 
 /**
  * Calculate team-wide summary
+ *
+ * @param players - Array of players
  */
 export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
   const totalPlayers = players.length;
@@ -100,7 +190,7 @@ export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
 
   players.forEach((player) => {
     // Completion
-    totalCompleted += player.gear.filter(isSlotComplete).length;
+    totalCompleted += player.gear.filter((slot) => isSlotComplete(slot)).length;
     totalSlots += player.gear.length;
 
     // Materials
@@ -244,8 +334,19 @@ export function inferCurrentSource(status: GearSlotStatus): GearSourceCategory {
     if (status.bisSource === 'raid') {
       return 'savage';
     }
-    // Tome BiS: augmented or not
-    return status.isAugmented ? 'tome_up' : 'tome';
+    if (status.bisSource === 'tome') {
+      // 'tome' = augmented tome is BiS
+      return status.isAugmented ? 'tome_up' : 'tome';
+    }
+    if (status.bisSource === 'base_tome') {
+      // 'base_tome' = base tome is BiS (no augmentation)
+      return 'tome';
+    }
+    if (status.bisSource === 'crafted') {
+      return 'crafted';
+    }
+    // Null bisSource with hasItem - assume savage
+    return 'savage';
   }
   // No item yet - default to crafted (reasonable tier-start assumption)
   return 'crafted';
@@ -278,9 +379,20 @@ export function calculateAverageItemLevel(
   let validSlots = 0;
 
   for (const slot of gear) {
-    // Special case: tome BiS with item but NOT augmented
+    // Special case: 'tome' BiS with item but NOT augmented
     // itemLevel from BiS is augmented iLv, but player only has base tome
     if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
+      const isWeapon = slot.slot === 'weapon';
+      const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
+      if (iLv > 0) {
+        totalILv += iLv;
+        validSlots++;
+      }
+      continue;
+    }
+
+    // 'base_tome' BiS - use base tome iLv (not augmented)
+    if (slot.hasItem && slot.bisSource === 'base_tome') {
       const isWeapon = slot.slot === 'weapon';
       const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
       if (iLv > 0) {

@@ -1,22 +1,45 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 19, 2026
-**Current Version:** v1.0.14
+**Last Updated:** January 20, 2026
+**Current Version:** v1.9.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `fix/discord-version-detection` (PR #50 in review)
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/50
+**Current Branch:** `feature/bis-source-improvements` (PR #52 open)
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/52
 
 **Recent Completions:**
-- PR #48 merged: UI Consistency Sprint (v1.0.12)
-- PR #49 merged: Discord release-only embeds and dominant category colors (v1.0.13)
-- PR #50 pending: Simplified version detection, full ISO timestamps, historical release script (v1.0.14)
+- PR #48 merged: UI Consistency Sprint (v1.8.2)
+- PR #49 merged: Discord release-only embeds and dominant category colors (v1.8.3)
+- PR #50 merged: Simplified version detection, full ISO timestamps, historical release script (v1.8.4)
+- PR #51 merged: BiS source selector improvements (base_tome colors, tooltips disabled, bug fixes)
+- PR #52 pending: BiS source change confirmation dialogs (v1.9.0)
 
-**To continue:** Merge PR #50, then proceed with Session 4 (MembersPanel) or P3 items.
+**Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
+
+### Current Work In Progress (PR #52)
+
+**BiS Update Banner** - Added but has bugs to fix:
+
+1. **Crafted detection bug**: Banner incorrectly shows when `bisSource` is already `crafted` with iLv 770.
+   - Current logic: `slot.bisSource !== 'crafted' && slot.itemLevel <= 770`
+   - Problem: Triggers false positives. Need to verify item is ACTUALLY miscategorized.
+   - File: `frontend/src/components/player/playerSetupBannerUtils.ts` - `isSlotMiscategorized()`
+
+2. **Messaging too vague**: "BiS may need update" should be explicit about WHY:
+   - "Base Tome gear detected, update BiS" (for base_tome issues)
+   - "Crafted gear detected, update BiS" (for crafted issues)
+   - File: `frontend/src/components/player/PlayerSetupBanner.tsx`
+
+3. **Tests need updating**: After fixing logic, update test assertions
+   - File: `frontend/src/components/player/PlayerSetupBanner.test.ts`
+
+**Key insight from user**: The crafted detection fires even when the card already has `bisSource: 'crafted'` set correctly. Need to reconsider the detection logic - perhaps only detect base_tome issues (tome without Aug. prefix) since that's the clearer case.
+
+**To continue:** Fix crafted detection or remove it, improve messaging, commit and push.
 
 ---
 
@@ -180,7 +203,7 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 
 ---
 
-## Recently Verified as Complete (v1.0.8+)
+## Recently Verified as Complete (v1.7.0+)
 
 ### Session 7: UI Consistency Sprint (January 19, 2026)
 

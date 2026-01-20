@@ -119,24 +119,24 @@ describe('releaseNotes', () => {
     });
   });
 
-  describe('v1.0.2 release', () => {
-    const v102 = RELEASES.find((r) => r.version === '1.0.2');
+  describe('v1.2.0 release (formerly v1.0.2)', () => {
+    const v120 = RELEASES.find((r) => r.version === '1.2.0');
 
     it('exists in releases', () => {
-      expect(v102).toBeDefined();
+      expect(v120).toBeDefined();
     });
 
     it('has UX Improvements title', () => {
-      expect(v102?.title).toBe('UX Improvements');
+      expect(v120?.title).toBe('UX Improvements');
     });
 
     it('has appropriate highlights', () => {
-      expect(v102?.highlights).toContain('Grid view for loot logging');
-      expect(v102?.highlights).toContain('Material editing & sub filtering');
+      expect(v120?.highlights).toContain('Grid view for loot logging');
+      expect(v120?.highlights).toContain('Material editing & sub filtering');
     });
 
     it('has feature items', () => {
-      const features = v102?.items.filter((i) => i.category === 'feature');
+      const features = v120?.items.filter((i) => i.category === 'feature');
       expect(features?.length).toBeGreaterThan(0);
 
       const featureTitles = features?.map((f) => f.title) || [];
@@ -148,7 +148,7 @@ describe('releaseNotes', () => {
     });
 
     it('has improvement items', () => {
-      const improvements = v102?.items.filter(
+      const improvements = v120?.items.filter(
         (i) => i.category === 'improvement'
       );
       expect(improvements?.length).toBeGreaterThan(0);
@@ -160,7 +160,7 @@ describe('releaseNotes', () => {
     });
 
     it('has fix items', () => {
-      const fixes = v102?.items.filter((i) => i.category === 'fix');
+      const fixes = v120?.items.filter((i) => i.category === 'fix');
       expect(fixes?.length).toBeGreaterThan(0);
 
       const fixTitles = fixes?.map((f) => f.title) || [];
@@ -171,7 +171,7 @@ describe('releaseNotes', () => {
     });
 
     it('all items have descriptions', () => {
-      v102?.items.forEach((item) => {
+      v120?.items.forEach((item) => {
         expect(item.description).toBeDefined();
         expect(typeof item.description).toBe('string');
         expect(item.description!.length).toBeGreaterThan(0);

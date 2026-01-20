@@ -17,7 +17,7 @@ import {
   getRoleColor,
   type Role,
 } from '../../gamedata';
-import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot } from '../../types';
+import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot, GearSource } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { calculateAverageItemLevel, getEffectiveCurrentSource } from '../../utils/calculations';
@@ -27,23 +27,35 @@ import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
  * Calculate item level for a single gear slot, mirroring calculateAverageItemLevel logic.
  */
 function getSlotItemLevel(
-  slot: { slot: GearSlot; hasItem: boolean; bisSource: 'raid' | 'tome'; isAugmented: boolean; itemLevel?: number; currentSource?: string },
+  slot: { slot: GearSlot; hasItem: boolean; bisSource: GearSource | null; isAugmented: boolean; itemLevel?: number; currentSource?: string },
   tierId: string
 ): number {
-  // Special case: tome BiS with item but NOT augmented
+  const isWeapon = slot.slot === 'weapon';
+
+  // Special case: 'tome' BiS with item but NOT augmented
   if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
-    const isWeapon = slot.slot === 'weapon';
     return getItemLevelForCategory(tierId, 'tome', isWeapon);
   }
 
-  // Use itemLevel from BiS import if player has the item
+  // Special case: 'base_tome' BiS - use base tome iLv
+  if (slot.hasItem && slot.bisSource === 'base_tome') {
+    return getItemLevelForCategory(tierId, 'tome', isWeapon);
+  }
+
+  // Special case: 'crafted' BiS - use crafted iLv
+  if (slot.hasItem && slot.bisSource === 'crafted') {
+    return getItemLevelForCategory(tierId, 'crafted', isWeapon);
+  }
+
+  // Use itemLevel from BiS import if player has the item (any bisSource including null)
   if (slot.hasItem && slot.itemLevel && slot.itemLevel > 0) {
     return slot.itemLevel;
   }
 
-  // Calculate from currentSource for unacquired gear
+  // Fall through to currentSource calculation:
+  // - For acquired items with null bisSource or no itemLevel, infer from currentSource
+  // - For unacquired items, use currentSource (typically 'crafted' at tier start)
   const currentSource = getEffectiveCurrentSource(slot as Parameters<typeof getEffectiveCurrentSource>[0]);
-  const isWeapon = slot.slot === 'weapon';
   const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
   return getItemLevelForCategory(tierId, effectiveSource, isWeapon);
 }

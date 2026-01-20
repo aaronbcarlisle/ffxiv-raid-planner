@@ -9,8 +9,9 @@ import { GearTable } from './GearTable';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer, GearSlot } from '../../types';
-import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, BIS_SOURCE_NAMES } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
+import { requiresAugmentation } from '../../utils/calculations';
 
 // Slot order for compact display
 const SLOT_ORDER: (keyof typeof GEAR_SLOT_ICONS)[] = [
@@ -75,11 +76,18 @@ export function PlayerCardGear({
             const slotData = gear.find((g) => g.slot === slotKey);
             if (!slotData) return null;
 
-            const isComplete = slotData.bisSource === 'raid'
-              ? slotData.hasItem
-              : slotData.hasItem && slotData.isAugmented;
+            // Check if this tome slot requires augmentation
+            const needsAug = requiresAugmentation(slotData);
+            // Complete: has item AND (raid/crafted/base_tome OR (tome AND (augmented OR aug not required)))
+            const isComplete = slotData.hasItem && (
+              slotData.bisSource === 'raid' ||
+              slotData.bisSource === 'crafted' ||
+              slotData.bisSource === 'base_tome' ||
+              (slotData.bisSource === 'tome' && (!needsAug || slotData.isAugmented))
+            );
 
-            const hasPartial = slotData.bisSource === 'tome' && slotData.hasItem && !slotData.isAugmented;
+            // Partial: tome BiS, has item, needs augmentation but not yet augmented
+            const hasPartial = slotData.bisSource === 'tome' && slotData.hasItem && needsAug && !slotData.isAugmented;
 
             // Use actual item icon if available, otherwise placeholder
             const iconUrl = slotData.itemIcon || GEAR_SLOT_ICONS[slotKey];
@@ -103,7 +111,7 @@ export function PlayerCardGear({
               <div className="text-sm">
                 <span className="font-medium">{slotName}</span>
                 <span className="text-text-muted ml-1">
-                  ({slotData.bisSource === 'raid' ? 'Savage' : 'Tome'})
+                  ({slotData.bisSource ? BIS_SOURCE_NAMES[slotData.bisSource] : '--'})
                 </span>
                 {!slotData.hasItem && (
                   <span className="text-text-muted ml-1">(missing)</span>

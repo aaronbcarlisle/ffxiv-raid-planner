@@ -42,7 +42,7 @@ VALID_TIERS = frozenset({
 class GearSlotData(BaseModel):
     """Data for a single gear slot from BiS import"""
     slot: str
-    source: str  # 'raid' or 'tome'
+    source: str  # 'raid', 'tome', 'base_tome', or 'crafted'
     itemId: Optional[int] = None
     itemName: Optional[str] = None
     itemLevel: Optional[int] = None
@@ -294,13 +294,17 @@ async def fetch_item_from_garland(item_id: int) -> dict:
 
 def determine_source(item_name: str, item_level: int, slot: str) -> str:
     """
-    Determine if item is raid or tome based on item name patterns.
+    Determine if item is raid, tome (augmented), base_tome (unaugmented), or crafted.
 
-    For current tier (7.2 - AAC Cruiserweight Savage):
-    - Savage: 790 armor, 795 weapon (name: "Grand Champion's...")
-    - Tome: 780 unaugmented, 790 augmented (name: "Aug. Bygone Brass...")
+    Typical tier item level relationships (armor/weapon):
+    - Savage: highest tier iLv (e.g., 790/795)
+    - Tome (augmented): same as savage (e.g., 790/795), name starts with "Aug."
+    - Base Tome (unaugmented): 10 iLv below (e.g., 780/785)
+    - Crafted: 20 iLv below savage (e.g., 770)
 
-    Key insight: Only tome gear can be augmented in FFXIV, so "Aug." prefix = tome.
+    Key insight: Only tome gear can be augmented in FFXIV.
+    - "Aug." prefix = tome (augmented version is BiS, needs augmentation)
+    - Tome gear WITHOUT "Aug." prefix = base_tome (base version is BiS, no augmentation needed)
     """
     if not item_name or item_name == "Unknown":
         return "raid"  # Unknown, default to raid
@@ -309,18 +313,35 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
 
     # DEFINITIVE CHECK: "Aug." prefix means augmented tome gear
     # Only tomestone gear can be augmented, so this is 100% reliable
+    # Return "tome" which indicates augmentation IS required
     if item_name_lower.startswith("aug.") or item_name_lower.startswith("augmented"):
         return "tome"
 
-    # Savage/raid gear patterns (check these first - they're more specific)
+    # Crafted gear patterns (pentamelded HQ gear)
+    # These are recognizable by tier-specific naming conventions
+    # NOTE: Keep in sync with frontend/src/utils/bisSourceDetection.ts
+    crafted_patterns = [
+        "claro-",      # 7.4 crafted (placeholder - update when known)
+        "agonist",     # 7.2 crafted
+        "archeo kingdom",  # 7.0 crafted (careful: sometimes confused with savage)
+        "diadochos",   # 6.4 crafted
+        "rinascita",   # 6.2 crafted (careful: could be tome)
+        "classical",   # 6.0 crafted
+        "pactmaker",   # 6.x crafted
+    ]
+
+    # Note: Some gear names can overlap between crafted and other categories
+    # We prioritize by checking crafted item levels first
+
+    # Savage/raid gear patterns (check these - they're more specific)
     raid_patterns = [
-        "grand champion",  # 7.2 savage
-        "archeo kingdom",  # 7.1 savage
-        "ascension",       # 6.x savage
-        "asphodelos",      # 6.0 savage
-        "abyssos",         # 6.2 savage
-        "anabaseios",      # 6.4 savage
-        "diadochos",       # Other savage
+        "grand champion",      # 7.4 savage
+        "cruiserweight champion",  # 7.2 savage
+        "light-heavyweight champion",  # 7.0 savage
+        "ascension",           # 6.x savage
+        "asphodelos",          # 6.0 savage
+        "abyssos",             # 6.2 savage
+        "anabaseios",          # 6.4 savage
     ]
 
     for pattern in raid_patterns:
@@ -328,31 +349,61 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
             return "raid"
 
     # Tomestone gear patterns (base names without Aug. prefix)
+    # These return "base_tome" since they don't have the Aug. prefix,
+    # meaning the BiS is the base version that doesn't need augmentation
+    # NOTE: Keep in sync with frontend/src/utils/bisSourceDetection.ts
     tome_patterns = [
-        "bygone",        # 7.2 tome gear
-        "quetzalli",     # 7.1 tome gear
+        "bygone",        # 7.4 tome gear (placeholder - update when known)
+        "quetzalli",     # 7.2 tome gear
+        "neo kingdom",   # 7.0 tome gear
         "credendum",     # 6.x tome gear
         "lunar envoy",   # 6.4 tome
-        "rinascita",     # 6.2 tome
         "moonward",      # 6.0 tome
         "radiant",       # Other tome
     ]
 
     for pattern in tome_patterns:
         if pattern in item_name_lower:
-            return "tome"
+            # Base tome gear (no Aug. prefix) = base_tome
+            return "base_tome"
 
-    # Fallback to item level heuristic (for older/unknown gear)
+    # Check for crafted patterns
+    for pattern in crafted_patterns:
+        if pattern in item_name_lower:
+            # Verify by item level (crafted is typically 20 iLv below savage)
+            # Current tier: 770 crafted, 790 savage, 780 tome
+            if item_level > 0 and item_level <= 780:
+                return "crafted"
+            # If iLv is higher, it's probably been confused with raid/tome
+            break
+
+    # Item level-based detection for unlisted gear
     if item_level <= 0:
         return "raid"
 
+    # Current tier iLv thresholds (7.4: savage=790/795, tome=780/785, crafted=770)
+    # Only classify as crafted if iLv is in the current crafted range (765-770)
+    # Old tier gear (e.g., 630, 710) should fall through to base_tome default
+    # This prevents false positives on legacy BiS sets
+    if 765 <= item_level <= 770:
+        return "crafted"
+
     # For weapon, higher threshold
     if slot == "weapon":
-        return "raid" if item_level >= 795 else "tome"
+        # 795 = savage, 790 = augmented tome (needs aug), 785 = base tome
+        if item_level >= 795:
+            return "raid"
+        elif item_level >= 790:
+            return "tome"  # Augmented tome weapon
+        else:
+            return "base_tome"
 
-    # For armor/accessories: in current tier, 790 could be either
-    # Default to raid for high iLvl unknown items
-    return "raid" if item_level >= 790 else "tome"
+    # For armor/accessories: 790 = savage or augmented tome, 780 = base tome
+    # Note: Augmented tome is already caught above by the "Aug." prefix check (line 317-318)
+    # So any iLv 790 item reaching here that doesn't match patterns is assumed to be raid
+    if item_level >= 790:
+        return "raid"
+    return "base_tome"
 
 
 async def fetch_bis_from_github(job: str, tier: str) -> dict:
