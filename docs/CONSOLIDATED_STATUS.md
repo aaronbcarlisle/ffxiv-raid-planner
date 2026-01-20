@@ -1,15 +1,15 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 17, 2026 (Security Audit Sessions 1-3 Complete)
+**Last Updated:** January 19, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.0.10
+### Current Version: v1.0.14
 
-**Branch:** `feature/start-next-week`
+**Branch:** `fix/discord-version-detection` (PR #50)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -19,11 +19,11 @@
 | **Tooltip Audit** | ✅ Complete | Comprehensive tooltip improvements across UI |
 | **Week Management** | ✅ Complete | Start next week, revert week, improved selectors |
 
-### 🔨 Current Priority: Session 4
+### 🔨 Next Up: Session 4 (Optional)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **MembersPanel Enhancement** | 🔨 Pending | Session 4: Linked Card dropdown per member |
+| **MembersPanel Enhancement** | Pending | Add Linked Card dropdown per member (see SETUP_WIZARD_PLAN.md) |
 
 ### ✅ Completed Features (Production Ready)
 
@@ -58,6 +58,50 @@
 ---
 
 ## Version History
+
+### v1.0.14 - Discord Version Detection Fix (January 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Simplified Version Detection** | ✅ Complete | `didVersionChange()` now detects any releaseNotes.ts modification |
+| **Timezone Display Fix** | ✅ Complete | Date strings use noon UTC to prevent day-shift in US timezones |
+
+---
+
+### v1.0.13 - Discord Changelog Improvements (January 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Release-Only Embeds** | ✅ Complete | Version releases now post a single clean embed (no commit embed) |
+| **Dominant Category Colors** | ✅ Complete | Discord embed border reflects most common change type |
+
+---
+
+### v1.0.12 - UI Consistency Sprint (January 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Unified Spinner Component** | ✅ Complete | Consistent loading indicators with sm/md/lg/xl/2xl sizes |
+| **Standardized Border Radius** | ✅ Complete | rounded (tooltips), rounded-lg (containers), rounded-xl (features) |
+| **ErrorBox Component** | ✅ Complete | Simple inline errors for modals and panels |
+| **Dashboard Toggle Fix** | ✅ Complete | Grid/list toggle matches adjacent button sizes |
+
+---
+
+### v1.0.11 - Security Hardening Sprint (January 18, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **CSRF Protection** | ✅ Complete | Double-submit cookie pattern for state-changing requests |
+| **OAuth State Hardening** | ✅ Complete | Client fingerprint binding prevents session fixation |
+| **SSRF Protection** | ✅ Complete | Redirect rejection on all external API calls |
+| **Request Size Limits** | ✅ Complete | 10MB limit prevents DoS attacks |
+| **Request ID Tracking** | ✅ Complete | UUID correlation for all requests |
+| **JWT Algorithm Restriction** | ✅ Complete | Type-safe HS256/384/512 only |
+| **Security Event Logging** | ✅ Complete | Permission denials and admin access logged |
+| **Database Constraints** | ✅ Complete | CHECK constraints on week_number columns |
+
+---
 
 ### Security Audit - Sessions 1-3 (January 17, 2026)
 
@@ -236,9 +280,9 @@
 
 ## Test Coverage
 
-**Total: 479+ tests (160 backend + 319 frontend)**
+**Total: 647 tests (209 backend + 351 frontend + 87 scripts)**
 
-### Backend (160 tests)
+### Backend (209 tests)
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
@@ -249,10 +293,11 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests
 - `test_player_assignment.py` - Admin player assignment endpoints
+- Security middleware tests (CSRF, rate limiting, request size)
 
-### Frontend (319 tests)
+### Frontend (351 tests)
 ```bash
-pnpm test
+cd frontend && pnpm test
 ```
 - `errorHandler.test.ts` - Error parsing utilities
 - `logger.test.ts` - Logging utility
@@ -267,18 +312,30 @@ pnpm test
 - `useDebounce.test.ts` - Debounce utilities
 - `PlayerSetupBanner.test.ts` - Banner visibility logic (20 tests)
 
+### Scripts (87 tests)
+```bash
+cd scripts && npm test
+```
+- `discord-changelog.test.js` - Discord webhook, embed building, release parsing
+
 ---
 
 ## Next Steps
 
-### 🔨 Current Priority: Session 4 (MembersPanel Enhancement)
+### Immediate Options
 
-**Task:** Add "Linked Card" dropdown to each member row in MembersPanel
+**Option A: Session 4 (MembersPanel Enhancement)**
+Add "Linked Card" dropdown to each member row in MembersPanel:
 - Show available cards: unclaimed OR already claimed by this member
 - On selection, call existing assign endpoint
 - Pre-select if member already has a linked card
 
 See `docs/SETUP_WIZARD_PLAN.md` for implementation details.
+
+**Option B: P3 Items (Low Priority)**
+See `docs/OUTSTANDING_WORK.md` for prioritized remaining work:
+- L-001 through L-009: Various low-priority improvements
+- TD-001 through TD-005: Technical debt (lint issues)
 
 ### Future Phases
 
@@ -286,12 +343,14 @@ See `docs/SETUP_WIZARD_PLAN.md` for implementation details.
 - **Phase 8:** FFLogs integration - Parse logs for gear verification
 - **Phase 9:** Discord bot - Notifications and commands
 
-### Technical Debt (See OUTSTANDING_WORK.md)
+### Completed Audit Sessions
 
-- **H-001-H-005:** Security headers, SSRF fix, pagination, indexes, request IDs
-- **Audit Sessions 4-12:** Combined audit plan in `docs/plans/`
-
-*Note: C-001 (N+1 Query) fixed in Session 1 & 2. Sessions 1-3 complete.*
+All critical (P0) and high (P1) security issues have been resolved:
+- Sessions 1-2: Critical auth hardening, admin N+1 query
+- Session 3: Dependency security (react-router CVEs)
+- Session 4: CSP header, SSRF fix
+- Session 5: Security hardening sprint (CSRF, OAuth binding, etc.)
+- Session 7: UI Consistency Sprint
 
 ---
 

@@ -1,71 +1,68 @@
-# Session Handoff - January 16, 2026
+# Session Handoff - January 19, 2026
 
 ## Current State
 
-**Version:** v1.0.10 (Complete)
-**Branch:** `feature/start-next-week`
-**Build Status:** Passing (`pnpm tsc --noEmit`)
+**Version:** v1.0.14
+**Branch:** `fix/discord-version-detection` (PR #50)
+**Build Status:** All checks passing
 
 ---
 
-## Recently Completed (v1.0.10)
+## Recently Completed
 
-### Loot Priority UX & Score Tooltips
-- Weapon priority connector line styling with collapsible tie sections
-- Priority score breakdown tooltips (hover to see calculation)
-- Gear slot icons in Gear Priority and Who Needs It panels
-- Icon Gallery developer tool (`/icon-gallery.html`)
+### v1.0.14 - Discord Version Detection Fix (Jan 19)
+- Simplified `didVersionChange()` to detect any releaseNotes.ts modification
+- Fixed timezone display issue where dates showed as previous day in US timezones
+- Added noon UTC (T12:00:00) to date strings for consistent display
 
-### Week Management
-- Start next week functionality with confirmation
-- Revert week option with proper messaging
-- Improved week selector UX
+### v1.0.13 - Discord Changelog Improvements (Jan 19)
+- Release-only Discord embeds (no commit embed for version releases)
+- Dominant category embed colors (reflects most common change type)
 
-### Tooltip Audit (15+ files)
-- TabNavigation, ProgressRing, GroupViewToggle
-- GearSourceBadge, TankRoleSelector, PositionSelector
-- PlayerCardStatus, Home, Dashboard, AdminDashboard
-- LightPartyHeader, GearTable, WhoNeedsItMatrix
-- SectionedLogView, PageBalancesPanel
+### v1.0.12 - UI Consistency Sprint (Jan 19)
+- Unified Spinner component with size variants (sm/md/lg/xl/2xl)
+- Standardized border radius (rounded → tooltips, rounded-lg → containers)
+- ErrorBox component for simple inline errors
+- Dashboard grid/list toggle size fix
+
+### v1.0.11 - Security Hardening Sprint (Jan 18)
+- CSRF protection with double-submit cookie pattern
+- OAuth state hardening with client fingerprint binding
+- SSRF protection on all external API calls
+- Request size limits (10MB)
+- Request ID tracking
+- JWT algorithm restriction
 
 ---
 
-## Immediate Next Step: Session 4
+## Immediate Next Steps
 
-**Task:** MembersPanel Enhancement (from SETUP_WIZARD_PLAN.md)
-
-Add "Linked Card" dropdown to each member row in MembersPanel:
+### Option A: Complete Session 4 (MembersPanel Enhancement)
+From `docs/SETUP_WIZARD_PLAN.md`:
+- Add "Linked Card" dropdown to each member row in MembersPanel
 - Show available cards: unclaimed OR already claimed by this member
-- On selection, call existing assign endpoint (`POST .../players/{id}/assign`)
-- Pre-select if member already has a linked card
+- On selection, call existing assign endpoint
 
 **Key files:**
-- `components/static-group/MembersPanel.tsx` (modify)
-- `components/player/AssignUserModal.tsx` (reference for patterns)
-- `stores/tierStore.ts` (player data)
+- `components/static-group/MembersPanel.tsx`
+- `components/player/AssignUserModal.tsx` (reference)
+
+### Option B: Address P3 Items from OUTSTANDING_WORK.md
+- L-001: Page Layout Consistency
+- L-002: Design System Comprehensive Audit
+- L-004: Documentation Tasks
+- TD-001 through TD-005: Lint/type cleanup
 
 ---
 
-## Remaining Tooltip Work (Lower Priority)
+## Test Coverage
 
-### Missing Tooltips:
-- [ ] iLv display on player cards - show iLv breakdown in tooltip
-- [ ] Book entry values
-- [ ] Reset Dropdown and Dropdown Items
-- [ ] Log > Grid/List views and By Floor/Timeline subtabs
-- [ ] Log Buttons in Gear and Weapon Priority Tabs
-- [ ] Roll button in Weapon Priority tab
-- [ ] Assign Player/Take Ownership/Import BiS in PlayerSetupBanner
-- [ ] Have and Aug checkboxes on player cards
-- [ ] Tier Selector, Static Selector
-- [ ] Card/List view toggles in My Statics Dashboard
-- [ ] Create Static Button, G1/G2/SUB header badges
-
-### Design System Polish:
-- [ ] Tier selector styling
-- [ ] Delete Tier danger indicator in Action menu
-- [ ] Sort dropdown spacing issue
-- [ ] Role dropdown spacing in Static Settings
+| Suite | Tests | Command |
+|-------|-------|---------|
+| Backend | 209 | `cd backend && pytest tests/ -q` |
+| Frontend | 351 | `cd frontend && pnpm test` |
+| Scripts | 87 | `cd scripts && npm test` |
+| **Total** | **647** | |
 
 ---
 
@@ -73,14 +70,11 @@ Add "Linked Card" dropdown to each member row in MembersPanel:
 
 | File | Purpose |
 |------|---------|
-| `components/wizard/SetupWizard.tsx` | Main wizard orchestrator |
-| `components/player/PlayerSetupBanner.tsx` | Setup prompts on player cards |
-| `components/player/AssignUserModal.tsx` | User assignment modal |
-| `components/loot/LootPriorityPanel.tsx` | Priority with score tooltips |
-| `components/loot/WeaponPriorityList.tsx` | Weapon priority with connector styling |
-| `components/static-group/MembersPanel.tsx` | Target for Session 4 |
-| `docs/SETUP_WIZARD_PLAN.md` | Implementation plan with session status |
-| `docs/OUTSTANDING_WORK.md` | Full prioritized remaining work |
+| `scripts/discord-changelog.js` | Discord webhook for releases |
+| `frontend/src/data/releaseNotes.ts` | Version tracking, release history |
+| `docs/OUTSTANDING_WORK.md` | Prioritized remaining work |
+| `docs/SETUP_WIZARD_PLAN.md` | Wizard implementation plan |
+| `docs/UI_COMPONENTS.md` | Component inventory |
 
 ---
 
@@ -88,13 +82,16 @@ Add "Linked Card" dropdown to each member row in MembersPanel:
 
 ```bash
 # Build verification
-pnpm tsc --noEmit
+cd frontend && pnpm tsc --noEmit
 pnpm check:design-system:strict
 pnpm test
 pnpm build
 
 # Backend tests
 cd backend && source venv/bin/activate && pytest tests/ -q
+
+# Scripts tests
+cd scripts && npm test
 ```
 
 ---
@@ -102,24 +99,16 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 ## Copy/Paste Prompt for New Session
 
 ```
-Continue working on branch feature/start-next-week in the FFXIV Raid Planner project.
+Continue work on the FFXIV Raid Planner project.
 
 Current state:
-- v1.0.10 complete
-- Build passes (pnpm tsc --noEmit)
+- v1.0.14 (PR #50 pending merge)
+- All tests passing (647 total)
+- Build passes
 
-Next task: Session 4 from docs/SETUP_WIZARD_PLAN.md
+Options for next work:
+1. Session 4 from docs/SETUP_WIZARD_PLAN.md (MembersPanel linked card dropdown)
+2. P3 items from docs/OUTSTANDING_WORK.md
 
-Session 4: MembersPanel Enhancement
-- Add "Linked Card" dropdown to each member row in MembersPanel
-- Show available cards: unclaimed OR already claimed by this member
-- On selection, call existing assign endpoint (POST .../players/{id}/assign)
-- Pre-select if member already has a linked card
-
-Key files:
-- components/static-group/MembersPanel.tsx (modify)
-- components/player/AssignUserModal.tsx (reference for patterns)
-- stores/tierStore.ts (player data)
-
-Run `pnpm build` to verify everything works.
+Read docs/OUTSTANDING_WORK.md for prioritized remaining work.
 ```

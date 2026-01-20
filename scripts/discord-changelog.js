@@ -574,13 +574,9 @@ function buildReleaseEmbeds(release) {
       iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
     });
 
-  // Only set timestamp when date is provided (undefined/empty would set it to "now" or Invalid Date)
-  // Append T12:00:00 (noon UTC) to date-only strings so the date displays correctly across timezones
-  // Without this, '2026-01-19' is parsed as midnight UTC, which shows as the previous day in US timezones
-  if (release.date && release.date.trim()) {
-    const dateStr = release.date.includes('T') ? release.date : `${release.date}T12:00:00`;
-    embed.setTimestamp(new Date(dateStr));
-  }
+  // Use the release.date which contains the full ISO timestamp from releaseNotes.ts
+  // This is the accurate merge/release time, backfilled from git commit history
+  embed.setTimestamp(new Date(release.date));
 
   // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
   const footerText = buildReleaseFooter(release.items);

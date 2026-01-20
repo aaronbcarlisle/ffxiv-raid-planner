@@ -31,7 +31,7 @@ export interface ReleaseItem {
 
 export interface Release {
   version: string;
-  date: string; // ISO format: 'YYYY-MM-DD'
+  date: string; // Full ISO 8601 format: 'YYYY-MM-DDTHH:MM:SSZ'
   title?: string;
   highlights?: string[]; // 1-2 key items for banner display
   items: ReleaseItem[];
@@ -41,7 +41,7 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.0.14',
-    date: '2026-01-19',
+    date: '2026-01-20T00:41:13Z',
     title: 'Discord Version Detection Fix',
     highlights: ['Fixed release announcement detection'],
     items: [
@@ -57,7 +57,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.13',
-    date: '2026-01-19',
+    date: '2026-01-20T00:27:08Z',
     title: 'Discord Changelog Improvements',
     highlights: ['Release-only embeds', 'Dominant category colors'],
     items: [
@@ -81,7 +81,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.12',
-    date: '2026-01-19',
+    date: '2026-01-19T23:51:47Z',
     title: 'UI Consistency Sprint',
     highlights: ['Unified loading spinners', 'Consistent border radius'],
     items: [
@@ -119,7 +119,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.11',
-    date: '2026-01-18',
+    date: '2026-01-18T18:27:33Z',
     title: 'Security Hardening Sprint',
     highlights: ['CSRF protection', 'OAuth hardening'],
     items: [
@@ -191,7 +191,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.10',
-    date: '2026-01-16',
+    date: '2026-01-16T11:32:44Z',
     title: 'Loot Priority UX & Score Tooltips',
     highlights: ['Weapon priority tie styling redesign', 'Priority score breakdown tooltips'],
     items: [
@@ -274,7 +274,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.9',
-    date: '2026-01-15',
+    date: '2026-01-17T02:11:28Z',
     title: 'Session Stability',
     highlights: ['Fixed session timeouts', 'Improved token refresh'],
     items: [
@@ -298,7 +298,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.8',
-    date: '2026-01-11',
+    date: '2026-01-11T19:05:13Z',
     title: 'Admin Assignment & Polish',
     highlights: ['Assign players to users', 'Role-colored badges'],
     items: [
@@ -378,7 +378,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.7',
-    date: '2026-01-11',
+    date: '2026-01-11T10:04:21Z',
     title: 'Audit Complete',
     highlights: ['Skeleton loaders', 'Reusable hooks'],
     items: [
@@ -438,7 +438,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.6',
-    date: '2026-01-11',
+    date: '2026-01-11T03:23:27Z',
     title: 'Security Hardening',
     highlights: ['httpOnly cookie auth', 'XSS protection'],
     items: [
@@ -494,7 +494,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.5',
-    date: '2026-01-10',
+    date: '2026-01-11T11:12:41Z',
     title: 'Shortcuts & Polish',
     highlights: ['Redesigned shortcuts', 'Shortcut hints in menus'],
     items: [
@@ -553,7 +553,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.4',
-    date: '2026-01-10',
+    date: '2026-01-10T23:52:39Z',
     title: 'Design System & UX',
     highlights: ['Cross-week navigation', 'Enhanced shortcuts'],
     items: [
@@ -633,7 +633,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.3',
-    date: '2026-01-09',
+    date: '2026-01-09T23:53:42Z',
     title: 'Keyboard Shortcuts',
     highlights: ['Keyboard shortcuts', 'Documentation updates'],
     items: [
@@ -657,7 +657,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.2',
-    date: '2026-01-09',
+    date: '2026-01-09T23:06:02Z',
     title: 'UX Improvements',
     highlights: ['Grid view for loot logging', 'Material editing & sub filtering'],
     items: [
@@ -819,7 +819,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.1',
-    date: '2026-01-09',
+    date: '2026-01-09T11:35:01Z',
     title: 'Performance & Reliability',
     highlights: ['Bulk group duplication', '228 automated tests'],
     items: [
@@ -929,7 +929,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.0.0',
-    date: '2026-01-09',
+    date: '2026-01-09T06:19:03Z',
     title: 'Documentation & Polish',
     highlights: ['Comprehensive documentation', 'Deep linking & Copy URL'],
     items: [
@@ -1034,7 +1034,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.9.0',
-    date: '2026-01-04',
+    date: '2026-01-05T01:30:50Z',
     title: 'Design System v2 & Accessibility',
     highlights: ['WCAG compliance', 'Improved components'],
     items: [
@@ -1086,7 +1086,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.8.0',
-    date: '2025-12-28',
+    date: '2026-01-03T20:08:30Z',
     title: 'UX Enhancements',
     highlights: ['Player card redesign', 'Weekly loot grid'],
     items: [
@@ -1141,7 +1141,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.7.0',
-    date: '2025-12-20',
+    date: '2026-01-02T23:03:29Z',
     title: 'Parity Implementation',
     highlights: ['Gear categories', 'iLv tracking'],
     items: [
@@ -1179,7 +1179,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.6.0',
-    date: '2025-12-15',
+    date: '2026-01-02T02:34:34Z',
     title: 'Loot Tracking Redesign',
     highlights: ['Week selector', 'Unified overview'],
     items: [
@@ -1235,7 +1235,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.5.0',
-    date: '2025-12-08',
+    date: '2025-12-28T16:38:52Z',
     title: 'BiS Import System',
     highlights: ['XIVGear integration', 'Item hover cards'],
     items: [
@@ -1279,7 +1279,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.4.0',
-    date: '2025-12-01',
+    date: '2025-12-28T04:48:02Z',
     title: 'Design & Branding',
     highlights: ['Teal Glow theme', 'Drag-and-drop'],
     items: [
@@ -1335,7 +1335,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.3.0',
-    date: '2025-11-20',
+    date: '2025-12-28T08:19:41Z',
     title: 'Teams & Invitations',
     highlights: ['Invitation system', 'Player ownership'],
     items: [
@@ -1382,7 +1382,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.2.0',
-    date: '2025-11-10',
+    date: '2025-12-27T18:33:42Z',
     title: 'Authentication & Groups',
     highlights: ['Discord login', 'Static groups'],
     items: [
@@ -1429,7 +1429,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '0.1.0',
-    date: '2025-11-01',
+    date: '2025-12-23T00:31:38Z',
     title: 'Initial Release',
     highlights: ['Core features', 'Loot priority'],
     items: [

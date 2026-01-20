@@ -1,25 +1,22 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 19, 2026 (UI Consistency Sprint Complete)
-**Current Version:** v1.0.12
+**Last Updated:** January 19, 2026
+**Current Version:** v1.0.14
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/ui-consistency-sprint` (pushed, PR #48 in review)
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/48
+**Current Branch:** `fix/discord-version-detection` (PR #50 in review)
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/50
 
-**Session 7 status (UI Consistency Sprint):**
-- Completed M-014: Unified Spinner component with size variants (sm/md/lg/xl/2xl)
-- Completed M-013: Standardized border radius (rounded → tooltips, rounded-lg → containers)
-- Completed M-002: ErrorBox component for simple inline errors
-- Fixed Dashboard grid/list toggle size to match adjacent buttons
-- Added release notes commit tracking for v1.0.4-v1.0.12
-- CI passing, PR in review loop
+**Recent Completions:**
+- PR #48 merged: UI Consistency Sprint (v1.0.12)
+- PR #49 merged: Discord release-only embeds and dominant category colors (v1.0.13)
+- PR #50 pending: Simplified version detection, timezone fix (v1.0.14)
 
-**To continue:** Complete PR review loop for #48, then proceed with remaining P3 items or future phases.
+**To continue:** Merge PR #50, then proceed with Session 4 (MembersPanel) or P3 items.
 
 ---
 
