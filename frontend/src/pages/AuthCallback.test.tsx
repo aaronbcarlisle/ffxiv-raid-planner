@@ -50,6 +50,9 @@ const mockHandleCallback = vi.fn();
 const mockClearError = vi.fn();
 const mockGetOAuthStateCookie = vi.fn();
 
+// Type for the mocked useAuthStore
+type MockUseAuthStore = ReturnType<typeof vi.fn>;
+
 vi.mock('../stores/authStore', () => ({
   useAuthStore: vi.fn(),
   getOAuthStateCookie: () => mockGetOAuthStateCookie(),
@@ -76,7 +79,7 @@ describe('AuthCallback', () => {
   describe('Error states from URL parameters', () => {
     it('shows error when OAuth error parameter is present', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -94,7 +97,7 @@ describe('AuthCallback', () => {
 
     it('shows error when code parameter is missing', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -111,7 +114,7 @@ describe('AuthCallback', () => {
 
     it('shows error when state parameter is missing', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -128,7 +131,7 @@ describe('AuthCallback', () => {
 
     it('shows error UI with return home button', async () => {
       const { useAuthStore } = await import('../stores/authStore');
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -150,7 +153,7 @@ describe('AuthCallback', () => {
       // Simulate in-progress authentication
       const pendingCallback = vi.fn(() => new Promise(() => {})); // Never resolves
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: true,
@@ -171,7 +174,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       mockGetOAuthStateCookie.mockReturnValue('captured-state');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -192,7 +195,7 @@ describe('AuthCallback', () => {
       // This tests the fix for the OAuth state cookie race condition
       mockGetOAuthStateCookie.mockReturnValue('cookie-state');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -211,7 +214,7 @@ describe('AuthCallback', () => {
     it('prevents duplicate callback invocations on re-render', async () => {
       const { useAuthStore } = await import('../stores/authStore');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -240,7 +243,7 @@ describe('AuthCallback', () => {
     it('does not call handleCallback when already in error state', async () => {
       const { useAuthStore } = await import('../stores/authStore');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -280,7 +283,7 @@ describe('AuthCallback', () => {
         clearError: mockClearError,
       };
 
-      (useAuthStore as any).mockImplementation(() => currentState);
+      (useAuthStore as MockUseAuthStore).mockImplementation(() => currentState);
 
       renderAuthCallback('?code=auth-code&state=valid-state');
 
@@ -305,7 +308,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       const callbackError = new Error('Network error');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -335,7 +338,7 @@ describe('AuthCallback', () => {
       const { useAuthStore } = await import('../stores/authStore');
       sessionStorage.setItem('auth_redirect', '/dashboard');
 
-      (useAuthStore as any).mockReturnValue({
+      (useAuthStore as MockUseAuthStore).mockReturnValue({
         user: null,
         isAuthenticated: false,
         isLoading: false,
@@ -378,7 +381,7 @@ describe('AuthCallback - Timing-sensitive scenarios', () => {
       return null;
     });
 
-    (useAuthStore as any).mockReturnValue({
+    (useAuthStore as MockUseAuthStore).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,
@@ -400,21 +403,11 @@ describe('AuthCallback - Timing-sensitive scenarios', () => {
   it('handles race condition between subscription and timeout fallback', async () => {
     const { useAuthStore } = await import('../stores/authStore');
     
-    // Mock the store to simulate delayed state ready
-    const mockUser: User = {
-      id: 'user-123',
-      discordId: 'discord-123',
-      displayName: 'Test User',
-      avatarUrl: null,
-      createdAt: new Date().toISOString(),
-      isAdmin: false,
-    };
-
     // This test would need more complex mocking of useAuthStore.subscribe
     // and setTimeout to fully test the race condition prevention
     // For now, we verify the callback is invoked
     
-    (useAuthStore as any).mockReturnValue({
+    (useAuthStore as MockUseAuthStore).mockReturnValue({
       user: null,
       isAuthenticated: false,
       isLoading: false,
