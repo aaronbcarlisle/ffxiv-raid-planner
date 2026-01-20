@@ -161,6 +161,8 @@ export interface ErrorBoxProps {
 }
 
 export function ErrorBox({ message, className = '', size = 'md' }: ErrorBoxProps) {
+  if (!message) return null;
+
   const padding = size === 'sm' ? 'p-3' : 'p-4';
 
   return (

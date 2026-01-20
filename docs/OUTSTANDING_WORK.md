@@ -1,35 +1,25 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 18, 2026 (Session 6 Complete)
-**Current Version:** v1.0.11
+**Last Updated:** January 19, 2026 (UI Consistency Sprint Complete)
+**Current Version:** v1.0.12
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/security-hardening-sprint` (pushed, PR #38 ready for merge)
-**Latest Commit:** `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
-**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/38
+**Current Branch:** `feature/ui-consistency-sprint` (pushed, PR #48 in review)
+**PR URL:** https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/pull/48
 
-**Session 6 status (PR review loop complete):**
-- PR #38 created with security hardening sprint work
-- Addressed 7 inline review comments from Copilot (all resolved)
-- Addressed 4 "Must Fix" items from Claude bot PR comment
-- Addressed 1 issue from Cursor bot (logout CSRF exempt)
-- Addressed 1 additional Copilot comment (CSRF header spreading order)
-- All 8 review threads resolved
-- CI passing, Vercel deployed
-- Ready for merge
+**Session 7 status (UI Consistency Sprint):**
+- Completed M-014: Unified Spinner component with size variants (sm/md/lg/xl/2xl)
+- Completed M-013: Standardized border radius (rounded → tooltips, rounded-lg → containers)
+- Completed M-002: ErrorBox component for simple inline errors
+- Fixed Dashboard grid/list toggle size to match adjacent buttons
+- Added release notes commit tracking for v1.0.4-v1.0.12
+- CI passing, PR in review loop
 
-**Commits in PR #38:**
-1. `a398392` - feat: security hardening sprint (original 14 items)
-2. `8c98561` - docs: add session continuity notes
-3. `6650351` - fix: address PR review feedback from Copilot (6 items)
-4. `4ad07e0` - fix: address Claude bot security review feedback (4 items)
-5. `1357ac7` - fix: ensure CSRF token cannot be overwritten by caller headers
-
-**To continue:** Merge PR #38, then proceed with remaining P2/P3 items or future phases.
+**To continue:** Complete PR review loop for #48, then proceed with remaining P3 items or future phases.
 
 ---
 
@@ -39,11 +29,11 @@
 |----------|-------|-----------------|
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 0 | 0 |
-| **Medium (P2)** | 3 | 7 |
+| **Medium (P2)** | 0 | 0 |
 | **Low (P3)** | 9 | 23 |
 | **Tech Debt - Lint (P3)** | 5 | 11 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 22 | ~41 hrs |
+| **Total** | 19 | ~34 hrs |
 
 ---
 
@@ -61,23 +51,7 @@
 
 ## Medium Priority (P2) - Complete This Month
 
-### M-002: Inconsistent Error Display Patterns
-- **File:** Various stores
-- **Issue:** Mix of toast, inline, and modal error displays without clear pattern
-- **Fix:** Standardize: Toast for user actions, Inline for validation, Modal for critical
-- **Effort:** 3 hours
-
-### M-013: Inconsistent Border Radius
-- **Pattern:** Across codebase
-- **Issue:** Mix of rounded, rounded-lg, rounded-md used inconsistently
-- **Fix:** Establish scale: rounded-sm (2px), rounded (4px), rounded-lg (8px), rounded-xl (12px)
-- **Effort:** 2 hours
-
-### M-014: Inconsistent Loading States
-- **Files:** Dashboard.tsx, LootLogPanel.tsx, Button components
-- **Issue:** Different spinners, text, and animations for loading
-- **Fix:** Create unified Spinner component with size variants
-- **Effort:** 2 hours
+*All P2 items completed in Session 7. See "Recently Verified as Complete" section.*
 
 ---
 
@@ -244,6 +218,16 @@ These are ESLint errors that don't affect functionality but should be addressed 
 ---
 
 ## Recently Verified as Complete (v1.0.8+)
+
+### Session 7: UI Consistency Sprint (January 19, 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **M-014: Inconsistent Loading States** | ✅ FIXED | Unified Spinner component with sm/md/lg/xl/2xl sizes |
+| **M-013: Inconsistent Border Radius** | ✅ FIXED | Standardized to rounded (tooltips), rounded-lg (containers/buttons), rounded-xl (features) |
+| **M-002: Inconsistent Error Display** | ✅ FIXED | ErrorBox component for simple inline errors; pattern: ErrorMessage (dismissible), ErrorBox (inline), InlineError (validation), toast (transient) |
+| **Dashboard Toggle Size** | ✅ FIXED | Grid/list view toggle now matches adjacent button sizes |
+| **Release Notes Commits** | ✅ FIXED | Added commit references to v1.0.4-v1.0.12 release notes |
 
 ### Session 6: PR #38 Review Feedback (January 18, 2026)
 

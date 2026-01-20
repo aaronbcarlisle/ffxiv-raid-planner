@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.0.11';
+export const CURRENT_VERSION = '1.0.12';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -40,6 +40,44 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.0.12',
+    date: '2026-01-19',
+    title: 'UI Consistency Sprint',
+    highlights: ['Unified loading spinners', 'Consistent border radius'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Unified Spinner Component',
+        description: 'Consistent loading indicators across all pages',
+        details:
+          'All loading spinners now use a unified Spinner component with consistent sizing (sm/md/lg/xl/2xl) and styling. Button loading states also use the same component.',
+        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Standardized Border Radius',
+        description: 'Consistent rounded corners throughout the UI',
+        details:
+          'Eliminated mixed border radius values. Now uses a clear scale: rounded (4px) for tooltips, rounded-lg (8px) for cards/buttons/containers, rounded-xl (12px) for feature sections.',
+        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+      },
+      {
+        category: 'improvement',
+        title: 'ErrorBox Component',
+        description: 'Simple inline error display for modals and panels',
+        details:
+          'New ErrorBox component for contextual errors. Pattern: ErrorMessage (dismissible/retryable), ErrorBox (simple inline), InlineError (form validation), toast (transient).',
+        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+      },
+      {
+        category: 'fix',
+        title: 'Dashboard Toggle Size',
+        description: 'Grid/list toggle now matches adjacent button sizes',
+        commits: [{ hash: '541ed19', message: 'fix: dashboard toggle size and user menu focus ring' }],
+      },
+    ],
+  },
+  {
     version: '1.0.11',
     date: '2026-01-18',
     title: 'Security Hardening Sprint',
@@ -51,6 +89,7 @@ export const RELEASES: Release[] = [
         description: 'Double-submit cookie pattern for all state-changing requests',
         details:
           'All POST, PUT, DELETE requests now require a CSRF token to prevent cross-site request forgery attacks. The token is automatically handled by the frontend API client.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
       {
         category: 'improvement',
@@ -58,6 +97,7 @@ export const RELEASES: Release[] = [
         description: 'Client fingerprint binding prevents session fixation',
         details:
           'OAuth state tokens are now bound to client fingerprints, preventing session fixation attacks where an attacker could trick a user into authenticating to the attacker\'s account.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
       {
         category: 'improvement',
@@ -65,6 +105,7 @@ export const RELEASES: Release[] = [
         description: 'Redirect rejection on all external API calls',
         details:
           'All external HTTP requests (BiS imports from XIVGear, Etro, etc.) now reject redirects to prevent server-side request forgery attacks that could access internal services.',
+        commits: [{ hash: '2262f5c', message: 'fix(security): Session 4 - CSP header and SSRF prevention (#33)' }],
       },
       {
         category: 'improvement',
@@ -72,6 +113,7 @@ export const RELEASES: Release[] = [
         description: '10MB limit prevents DoS attacks',
         details:
           'All API requests are now limited to 10MB to prevent denial-of-service attacks through oversized payloads.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
       {
         category: 'improvement',
@@ -79,6 +121,7 @@ export const RELEASES: Release[] = [
         description: 'UUID correlation for all requests',
         details:
           'Every API request now receives a unique request ID for correlation in logs. Makes debugging and security auditing much easier.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
       {
         category: 'improvement',
@@ -86,6 +129,7 @@ export const RELEASES: Release[] = [
         description: 'Type-safe HS256/384/512 only',
         details:
           'JWT token verification is now restricted to HMAC algorithms only (HS256, HS384, HS512), preventing algorithm confusion attacks.',
+        commits: [{ hash: '4db4624', message: 'fix: Phase 1 Critical Issues - Auth Hardening & Admin Performance (#31)' }],
       },
       {
         category: 'improvement',
@@ -93,6 +137,7 @@ export const RELEASES: Release[] = [
         description: 'Permission denials and admin access logged',
         details:
           'Security-relevant events like permission denials and admin access are now logged for audit purposes.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
       {
         category: 'fix',
@@ -100,6 +145,7 @@ export const RELEASES: Release[] = [
         description: 'CHECK constraints on week_number columns',
         details:
           'Added CHECK constraints to ensure week_number values are always positive integers, preventing invalid data from being stored.',
+        commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
       },
     ],
   },
@@ -198,6 +244,7 @@ export const RELEASES: Release[] = [
         description: 'Fixed 401 errors that occurred after ~15 minutes of active use',
         details:
           'The access token expires every 15 minutes and should automatically refresh. However, when multiple API calls failed simultaneously, each tried to refresh independently, hitting rate limits and causing errors. Now uses a singleton pattern where all failing requests share a single refresh, preventing rate limit issues.',
+        commits: [{ hash: 'a611b64', message: 'fix: session expiry auth handling and UI improvements (#30)' }],
       },
       {
         category: 'improvement',
@@ -205,6 +252,7 @@ export const RELEASES: Release[] = [
         description: 'Admin Dashboard and View As now use the shared API wrapper',
         details:
           'Previously, admin pages used raw fetch() calls that bypassed automatic token refresh. Now they use the standard API client with automatic 401 handling, retry logic, and proper error types.',
+        commits: [{ hash: 'e4080bb', message: 'fix: use api wrapper for automatic token refresh in admin pages (#24)' }],
       },
     ],
   },
@@ -220,6 +268,7 @@ export const RELEASES: Release[] = [
         description: 'Owners and admins can assign Discord users to player cards',
         details:
           'Right-click a player card and select "Assign Player" to link a Discord user. Choose from existing members or enter a user ID manually. The assigned user can then edit their own player card. If the user isn\'t already a member, they\'ll be added with Member role automatically.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'feature',
@@ -227,6 +276,7 @@ export const RELEASES: Release[] = [
         description: 'Linked users show their membership role with colored badges',
         details:
           'Player cards now display the linked user\'s role with color-coded badges: Owner (teal), Lead (purple), Member (blue), and Linked-only (amber for users linked but not members). Makes it easy to see who has what permissions at a glance.',
+        commits: [{ hash: '94850ad', message: 'feat(admin): navigation-based admin mode + player badge colors (#22)' }],
       },
       {
         category: 'feature',
@@ -234,6 +284,7 @@ export const RELEASES: Release[] = [
         description: 'Dangerous actions require click-to-arm, click-to-confirm',
         details:
           'Destructive actions like revoking invitations or clearing history now use a double-click confirmation pattern. First click arms the button (shows "Confirm?"), second click executes. Auto-resets after 3 seconds or when you click away.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'improvement',
@@ -241,6 +292,7 @@ export const RELEASES: Release[] = [
         description: 'All modals now have contextual icons in their headers',
         details:
           'Modals display relevant icons next to their titles for better visual context. Danger modals show trash/reset icons in red/warning colors, action modals show contextual icons like package for loot or gem for materials.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'improvement',
@@ -248,6 +300,7 @@ export const RELEASES: Release[] = [
         description: 'Loot recipient selectors show job icons',
         details:
           'When selecting a loot recipient, you now see job icons next to player names, making it easier to identify the correct player especially when multiple players have similar names.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'improvement',
@@ -255,6 +308,7 @@ export const RELEASES: Release[] = [
         description: 'Tab icons and proper danger button styling',
         details:
           'The Static Settings modal now displays icons on each tab and uses proper danger button styling for destructive actions like deleting a static or leaving a group.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'fix',
@@ -262,6 +316,7 @@ export const RELEASES: Release[] = [
         description: 'Membership creation handles concurrent requests gracefully',
         details:
           'When two requests try to create the same membership simultaneously, the system now handles this gracefully by returning the existing membership instead of throwing an error. Prevents "already a member" errors during rapid operations.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'fix',
@@ -269,6 +324,7 @@ export const RELEASES: Release[] = [
         description: 'Discord ID and UUID format validation in assignment modal',
         details:
           'The manual user ID input now validates the format before submission. Accepts Discord IDs (17-19 digit snowflakes) or UUIDs. Shows inline error message for invalid formats.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
       {
         category: 'improvement',
@@ -276,6 +332,7 @@ export const RELEASES: Release[] = [
         description: '23 new backend tests for player assignment',
         details:
           'Added comprehensive test coverage for the admin player assignment feature, including permission checks, edge cases, race conditions, and integration tests. Backend now has 160 tests total.',
+        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
       },
     ],
   },
@@ -291,6 +348,7 @@ export const RELEASES: Release[] = [
         description: 'Loading placeholders for Dashboard static cards',
         details:
           'Dashboard now shows skeleton placeholders while loading your statics instead of a blank screen. Both grid and list views have dedicated skeleton components that match the final layout, improving perceived performance.',
+        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
       },
       {
         category: 'feature',
@@ -298,6 +356,7 @@ export const RELEASES: Release[] = [
         description: 'Reusable modal state management',
         details:
           'New useModal and useModalWithData hooks eliminate boilerplate for modal open/close state. useModalWithData also handles passing data to the modal when opening it.',
+        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
       },
       {
         category: 'feature',
@@ -305,6 +364,7 @@ export const RELEASES: Release[] = [
         description: 'Debounce utilities for values and callbacks',
         details:
           'New useDebounce hook for debouncing values (useful for search inputs) and useDebouncedCallback for debouncing function calls. Prevents excessive API calls and re-renders during rapid input.',
+        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
       },
       {
         category: 'feature',
@@ -312,6 +372,7 @@ export const RELEASES: Release[] = [
         description: 'Error display with retry button',
         details:
           'New ErrorMessage component displays errors consistently with an optional retry button. InlineError variant for compact inline display. Both support custom styling and messaging.',
+        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
       },
       {
         category: 'improvement',
@@ -319,6 +380,7 @@ export const RELEASES: Release[] = [
         description: 'Added success and link button variants',
         details:
           'Button component now has 7 variants: primary, secondary, danger, warning, success, ghost, and link. All variants support loading states, disabled states, and icon placement.',
+        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
       },
       {
         category: 'improvement',
@@ -326,6 +388,11 @@ export const RELEASES: Release[] = [
         description: 'All actionable audit items resolved',
         details:
           'Completed all P0-P2 audit items from v1.0.1-v1.0.6 audits. Only R-002 (props drilling) remains intentionally deferred as hooks adequately mitigate the issue.',
+        commits: [
+          { hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' },
+          { hash: 'd10870b', message: 'perf: Add React.memo to list items to prevent unnecessary re-renders (MEDIUM-002) (#20)' },
+          { hash: '39b13c1', message: 'refactor: Split SectionedLogView component (HIGH-008) (#19)' },
+        ],
       },
     ],
   },
@@ -341,6 +408,7 @@ export const RELEASES: Release[] = [
         description: 'Tokens now stored in secure httpOnly cookies instead of localStorage',
         details:
           'Authentication tokens are now stored in httpOnly cookies that JavaScript cannot access. This protects against XSS attacks that could steal tokens from localStorage. Cookies are automatically sent with requests via credentials: include.',
+        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
       },
       {
         category: 'improvement',
@@ -348,6 +416,7 @@ export const RELEASES: Release[] = [
         description: 'Cookies set with SameSite=Lax to prevent CSRF attacks',
         details:
           'All authentication cookies use SameSite=Lax attribute, preventing cross-site request forgery attacks. Cookies are only sent with same-site requests or top-level navigation.',
+        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
       },
       {
         category: 'improvement',
@@ -355,6 +424,7 @@ export const RELEASES: Release[] = [
         description: 'Cookies only sent over HTTPS in production',
         details:
           'Authentication cookies in production are marked with the Secure flag, ensuring they are only transmitted over encrypted HTTPS connections.',
+        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
       },
       {
         category: 'improvement',
@@ -362,6 +432,7 @@ export const RELEASES: Release[] = [
         description: 'Logout requires authentication to prevent CSRF logout attacks',
         details:
           'The logout endpoint now requires a valid access token. This prevents malicious sites from forcing users to logout via cross-site requests.',
+        commits: [{ hash: 'da9e2d5', message: 'security: protect logout endpoint from CSRF by requiring authentication' }],
       },
       {
         category: 'fix',
@@ -369,6 +440,7 @@ export const RELEASES: Release[] = [
         description: 'Logout now works even with expired access tokens',
         details:
           'If your access token has expired when you click logout, the app now automatically refreshes it first to ensure cookies are properly cleared on the server.',
+        commits: [{ hash: 'd57d175', message: 'fix: address cookie security issues in logout' }],
       },
       {
         category: 'fix',
@@ -376,6 +448,7 @@ export const RELEASES: Release[] = [
         description: 'Fixed stale authentication state after cookie expiry',
         details:
           'The app no longer persists isAuthenticated to localStorage, preventing cases where the UI showed you as logged in after cookies expired. Auth state is now verified with the backend on app load.',
+        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
       },
     ],
   },
@@ -391,6 +464,7 @@ export const RELEASES: Release[] = [
         description: 'Browser-friendly shortcuts that never conflict with browser defaults',
         details:
           'Management shortcuts changed from Ctrl+P/T/R to Alt+Shift+P/N/R/S to avoid conflicts with browser Print, New Tab, and Refresh. Week navigation now uses Alt+Arrow instead of Ctrl+Arrow. All shortcuts now work reliably across Chrome, Firefox, and Safari.',
+        commits: [{ hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' }],
       },
       {
         category: 'feature',
@@ -398,6 +472,7 @@ export const RELEASES: Release[] = [
         description: 'Keyboard shortcuts shown in the gear icon dropdown menu',
         details:
           'The settings gear menu now displays keyboard shortcuts next to each action (Add Player, New Tier, etc.). Makes shortcuts more discoverable without opening the help modal.',
+        commits: [{ hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' }],
       },
       {
         category: 'improvement',
@@ -405,6 +480,7 @@ export const RELEASES: Release[] = [
         description: 'Shortcuts shown as Ctrl+S instead of symbols like ⌃S',
         details:
           'All keyboard shortcuts throughout the app now use word notation (Ctrl+, Alt+, Shift+) instead of Mac-style symbols. More readable for all users regardless of platform.',
+        commits: [{ hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' }],
       },
       {
         category: 'feature',
@@ -412,6 +488,7 @@ export const RELEASES: Release[] = [
         description: 'Rotating tips and tricks shown in the header bar',
         details:
           'A subtle tips carousel in the header shows helpful hints that cycle every 15 seconds. Tips are context-aware based on your current tab. Click to cycle faster, or dismiss permanently.',
+        commits: [{ hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' }],
       },
       {
         category: 'fix',
@@ -419,6 +496,7 @@ export const RELEASES: Release[] = [
         description: 'Expand/collapse all now works on the Loot tab weapon priorities',
         details:
           'Pressing V on the Loot tab now properly toggles expand/collapse on the Weapon Priorities view. Previously only worked on Players and Log tabs.',
+        commits: [{ hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' }],
       },
       {
         category: 'fix',
@@ -426,6 +504,10 @@ export const RELEASES: Release[] = [
         description: 'Alt+Arrow now properly navigates weeks on Log tab',
         details:
           'Fixed the week navigation keyboard shortcuts on the Log tab. Alt+Left goes to previous week, Alt+Right to next week. Previously used Ctrl+Arrow which conflicted with browser cursor navigation.',
+        commits: [
+          { hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' },
+          { hash: 'dbe36ec', message: 'fix: Resolve duplicate View As banners, focus ring artifacts, and Shift+S navigation' },
+        ],
       },
     ],
   },
@@ -441,6 +523,7 @@ export const RELEASES: Release[] = [
         description: 'Jump to loot entries in any week from player cards',
         details:
           'Clicking "Go to loot entry" from a player card now automatically switches to the correct week and highlights the entry. Previously required manually selecting the week first.',
+        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
       },
       {
         category: 'feature',
@@ -448,6 +531,7 @@ export const RELEASES: Release[] = [
         description: 'New shortcuts for logging and navigation',
         details:
           'Alt+L opens Log Loot modal, Alt+M opens Log Material modal, Alt+B opens Mark Floor Cleared. Shift+S navigates to My Statics. Shift+? shows keyboard shortcuts help. All shortcuts shown in menus and tooltips.',
+        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
       },
       {
         category: 'feature',
@@ -455,6 +539,7 @@ export const RELEASES: Release[] = [
         description: 'Quick link copying from player cards and loot entries',
         details:
           'Shift+Click on player cards or loot entries in the grid view to instantly copy a shareable link. Faster than right-click > Copy URL for power users.',
+        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
       },
       {
         category: 'feature',
@@ -462,6 +547,7 @@ export const RELEASES: Release[] = [
         description: 'Quick access to shortcuts help from user dropdown',
         details:
           'New "Keyboard Shortcuts" item in the user dropdown menu with "?" hotkey hint. Opens the same help modal as pressing Shift+?.',
+        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
       },
       {
         category: 'improvement',
@@ -469,6 +555,7 @@ export const RELEASES: Release[] = [
         description: 'Keyboard shortcuts shown in tooltips and menus',
         details:
           'Action buttons (Log Loot, Log Material, Mark Floor Cleared) now show their hotkey in tooltips. My Statics menu item shows Shift+S hint. Improved discoverability for power users.',
+        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
       },
       {
         category: 'improvement',
@@ -476,6 +563,7 @@ export const RELEASES: Release[] = [
         description: 'Cleaner gear table with better visual hierarchy',
         details:
           'Removed cramped Item name column for better small-screen support. CurrentSource column hidden by default (available in code for future use). BiS source toggle converted to compact button.',
+        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
       },
       {
         category: 'improvement',
@@ -483,6 +571,7 @@ export const RELEASES: Release[] = [
         description: 'Job and gear icons in import modal',
         details:
           'BiS Import modal now shows job icons in preset list and gear slot icons when previewing imported sets. Easier to verify you\'re importing the right configuration.',
+        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
       },
       {
         category: 'fix',
@@ -490,6 +579,7 @@ export const RELEASES: Release[] = [
         description: 'Loot entries now appear immediately when navigating across weeks',
         details:
           'Fixed bug where loot entries wouldn\'t appear after jumping to a different week via player card navigation. Required refresh or manual week toggle before. Now updates instantly.',
+        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
       },
       {
         category: 'fix',
@@ -497,6 +587,7 @@ export const RELEASES: Release[] = [
         description: 'Proper confirmation when changing player job',
         details:
           'Changing a player\'s job now shows a confirmation dialog warning about gear reset. Player card highlights briefly after job change to confirm the update.',
+        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
       },
     ],
   },
