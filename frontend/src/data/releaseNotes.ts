@@ -43,7 +43,7 @@ export const RELEASES: Release[] = [
     version: '1.9.0',
     date: '2026-01-20T08:00:00Z',
     title: 'BiS Support for Crafted and Base Tome Gear',
-    highlights: ['Auto-detect miscategorized BiS sources', 'One-click fix for crafted and base tome slots'],
+    highlights: ['BiS support for crafted and base tome gear', 'One-click fix for miscategorized slots'],
     items: [
       {
         category: 'feature',
