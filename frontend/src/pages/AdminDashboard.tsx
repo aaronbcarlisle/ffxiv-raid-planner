@@ -14,6 +14,10 @@ import { toast } from '../stores/toastStore';
 import { Input, ErrorMessage, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
 import type { AdminStaticGroupListItem, AdminStaticGroupListResponse, MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../types';
+import { logger as baseLogger } from '../lib/logger';
+import { ROLE_COLORS, ROLE_LABELS } from '../utils/roleConstants';
+
+const logger = baseLogger.scope('admin-dashboard');
 
 // Extended member info with role for View As modal
 interface ViewAsMemberInfo extends MemberInfo {
@@ -24,21 +28,6 @@ interface ViewAsMemberInfo extends MemberInfo {
 // Sortable columns
 type SortField = 'name' | 'owner' | 'memberCount' | 'tierCount' | 'isPublic' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
-
-// Role badge colors - using semantic membership tokens
-const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
-  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
-  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
-  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
-};
-
-const ROLE_LABELS: Record<MemberRole, string> = {
-  owner: 'Owner',
-  lead: 'Lead',
-  member: 'Member',
-  viewer: 'Viewer',
-};
 
 interface SortableHeaderProps {
   field: SortField;
@@ -193,11 +182,11 @@ export function AdminDashboard() {
       // Use api wrapper for automatic token refresh on 401
       const [members, linkedPlayers] = await Promise.all([
         api.get<Membership[]>(`/api/static-groups/${groupId}/members`).catch((error) => {
-          console.error(`Failed to fetch members for group ${groupId}:`, error);
+          logger.error(`Failed to fetch members for group ${groupId}:`, error);
           return [] as Membership[];
         }),
         api.get<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`).catch((error) => {
-          console.error(`Failed to fetch linked players for group ${groupId}:`, error);
+          logger.error(`Failed to fetch linked players for group ${groupId}:`, error);
           return [] as LinkedPlayerInfo[];
         }),
       ]);
@@ -231,7 +220,7 @@ export function AdminDashboard() {
 
       setViewAsMembers(allUsers);
     } catch (error) {
-      console.error('Failed to fetch members:', error);
+      logger.error('Failed to fetch members:', error);
       setViewAsMembers([]);
     } finally {
       setViewAsMembersLoading(false);

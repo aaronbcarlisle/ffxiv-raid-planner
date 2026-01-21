@@ -17,6 +17,9 @@ import { Tooltip } from '../primitives/Tooltip'; // Only used for WeaponBiSSelec
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { ArrowRight } from 'lucide-react';
+import { logger as baseLogger } from '../../lib/logger';
+
+const logger = baseLogger.scope('bis-source');
 
 // BiS source display info
 const BIS_SOURCE_INFO: Record<GearSource, { short: string; label: string; description: string }> = {
@@ -49,30 +52,25 @@ const GRID_LAYOUT: GearSource[][] = [
 ];
 
 /**
+ * Color mapping for BiS sources - uses gear color tokens from design system
+ */
+const SOURCE_COLORS: Record<GearSource, { bg: string; text: string; bgFaded: string; bgHover: string }> = {
+  raid: { bg: 'bg-gear-raid', text: 'text-gear-raid', bgFaded: 'bg-gear-raid/20', bgHover: 'hover:bg-gear-raid/30' },
+  tome: { bg: 'bg-gear-tome', text: 'text-gear-tome', bgFaded: 'bg-gear-tome/20', bgHover: 'hover:bg-gear-tome/30' },
+  base_tome: { bg: 'bg-gear-base-tome', text: 'text-gear-base-tome', bgFaded: 'bg-gear-base-tome/20', bgHover: 'hover:bg-gear-base-tome/30' },
+  crafted: { bg: 'bg-gear-crafted', text: 'text-gear-crafted', bgFaded: 'bg-gear-crafted/20', bgHover: 'hover:bg-gear-crafted/30' },
+};
+
+/**
  * Get color classes for a BiS source button
  */
 function getSourceButtonClasses(source: GearSource, isSelected: boolean): string {
   const baseClasses = 'px-2 py-1 rounded text-xs font-bold transition-colors';
+  const colors = SOURCE_COLORS[source];
 
-  if (source === 'raid') {
-    return isSelected
-      ? `${baseClasses} bg-gear-raid text-surface-base`
-      : `${baseClasses} bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30`;
-  }
-  if (source === 'tome') {
-    return isSelected
-      ? `${baseClasses} bg-gear-tome text-surface-base`
-      : `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
-  }
-  if (source === 'base_tome') {
-    return isSelected
-      ? `${baseClasses} bg-gear-base-tome text-surface-base`
-      : `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30`;
-  }
-  // crafted
   return isSelected
-    ? `${baseClasses} bg-gear-crafted text-surface-base`
-    : `${baseClasses} bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30`;
+    ? `${baseClasses} ${colors.bg} text-surface-base`
+    : `${baseClasses} ${colors.bgFaded} ${colors.text} ${colors.bgHover}`;
 }
 
 /**
@@ -82,19 +80,16 @@ function getSourceButtonClasses(source: GearSource, isSelected: boolean): string
 function getTriggerClasses(source: GearSource | null, disabled: boolean): string {
   const baseClasses = 'w-7 py-0.5 rounded text-xs font-bold transition-colors text-center';
 
-  if (disabled) {
-    if (!source) return `${baseClasses} bg-surface-interactive text-text-muted opacity-50 cursor-not-allowed`;
-    if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid opacity-50 cursor-not-allowed`;
-    if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome opacity-50 cursor-not-allowed`;
-    if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome opacity-50 cursor-not-allowed`;
-    return `${baseClasses} bg-gear-crafted/20 text-gear-crafted opacity-50 cursor-not-allowed`;
+  if (!source) {
+    return disabled
+      ? `${baseClasses} bg-surface-interactive text-text-muted opacity-50 cursor-not-allowed`
+      : `${baseClasses} bg-surface-interactive text-text-muted hover:text-text-secondary`;
   }
 
-  if (!source) return `${baseClasses} bg-surface-interactive text-text-muted hover:text-text-secondary`;
-  if (source === 'raid') return `${baseClasses} bg-gear-raid/20 text-gear-raid hover:bg-gear-raid/30`;
-  if (source === 'tome') return `${baseClasses} bg-gear-tome/20 text-gear-tome hover:bg-gear-tome/30`;
-  if (source === 'base_tome') return `${baseClasses} bg-gear-base-tome/20 text-gear-base-tome hover:bg-gear-base-tome/30`;
-  return `${baseClasses} bg-gear-crafted/20 text-gear-crafted hover:bg-gear-crafted/30`;
+  const colors = SOURCE_COLORS[source];
+  return disabled
+    ? `${baseClasses} ${colors.bgFaded} ${colors.text} opacity-50 cursor-not-allowed`
+    : `${baseClasses} ${colors.bgFaded} ${colors.text} ${colors.bgHover}`;
 }
 
 interface BiSSourceSelectorProps {
@@ -197,7 +192,7 @@ export function BiSSourceSelector({
     } catch (error) {
       // Error during onSelect callback - log but don't crash
       // Parent component is responsible for error handling/toast display
-      console.error('BiSSourceSelector: Error during source change', error);
+      logger.error('Error during source change:', error);
     } finally {
       setIsPending(false);
     }

@@ -5,7 +5,7 @@
  * On other pages: [Logo] ... [User]
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Copy, UserPlus } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -164,9 +164,9 @@ export function Header() {
   };
 
   // Dispatch custom event helper
-  const dispatchHeaderEvent = (eventName: string, detail?: unknown) => {
+  const dispatchHeaderEvent = useCallback((eventName: string, detail?: unknown) => {
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
-  };
+  }, []);
 
   // Check permissions - pass isAdminAccess for elevated admin privileges
   const tierPermission = canManageTiers(userRole, isAdminAccess);
