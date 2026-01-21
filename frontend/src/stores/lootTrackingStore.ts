@@ -166,7 +166,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     } catch (error) {
       // Silently fail - week selector will fall back to basic display
       // Log error for debugging week selector enhancement issues
-      console.error('Failed to fetch week data types:', { groupId, tierId, error });
+      logger.error('Failed to fetch week data types:', { groupId, tierId, error });
     }
   },
 

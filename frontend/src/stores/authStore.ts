@@ -16,15 +16,12 @@ import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('auth-store');
 
-// BUILD MARKER - If you see this in console, the Jan 18 21:38 fix is deployed
-console.log('[AUTH-STORE] Build version: 2026-01-18-2138 - Pre-capture OAuth state fix');
-
 if (isProduction && isLocalhostApi) {
-  console.error(
-    '[Auth Error] Production environment detected but API URL points to localhost!',
-    '\nCurrent API URL:', API_BASE_URL,
-    '\nThis will cause authentication to fail.',
-    '\nEnsure VITE_API_URL is set correctly during build.'
+  logger.error(
+    'Production environment detected but API URL points to localhost!',
+    'Current API URL:', API_BASE_URL,
+    'This will cause authentication to fail.',
+    'Ensure VITE_API_URL is set correctly during build.'
   );
 }
 
@@ -64,11 +61,7 @@ function setOAuthState(state: string): void {
   // Short expiry (10 minutes) - just needs to survive the OAuth redirect
   const expires = new Date(Date.now() + 10 * 60 * 1000).toUTCString();
   const cookieString = `${OAUTH_STATE_COOKIE_NAME}=${state}; path=/; expires=${expires}; SameSite=Lax${domainAttr}`;
-  console.log('[AUTH-STORE] Setting OAuth state cookie:', {
-    domain,
-    cookieString,
-    currentHostname: window.location.hostname,
-  });
+  logger.debug('Setting OAuth state cookie:', { domain, currentHostname: window.location.hostname });
   document.cookie = cookieString;
 }
 
@@ -77,10 +70,7 @@ function setOAuthState(state: string): void {
  * Exported so AuthCallback can capture it immediately on render.
  */
 export function getOAuthStateCookie(): string | null {
-  console.log('[AUTH-STORE] Reading OAuth state cookie:', {
-    currentHostname: window.location.hostname,
-    allCookies: document.cookie,
-  });
+  logger.debug('Reading OAuth state cookie:', { currentHostname: window.location.hostname });
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
     const trimmed = cookie.trim();
@@ -89,11 +79,11 @@ export function getOAuthStateCookie(): string | null {
     const name = trimmed.slice(0, eqIndex);
     const value = trimmed.slice(eqIndex + 1);
     if (name === OAUTH_STATE_COOKIE_NAME) {
-      console.log('[AUTH-STORE] Found OAuth state cookie:', value);
+      logger.debug('Found OAuth state cookie');
       return value;
     }
   }
-  console.log('[AUTH-STORE] OAuth state cookie NOT found');
+  logger.debug('OAuth state cookie NOT found');
   return null;
 }
 
@@ -178,7 +168,7 @@ function scheduleTokenRefresh(expiresIn: number, refreshFn: () => Promise<boolea
     try {
       await refreshFn();
     } catch (error) {
-      console.error('[Auth] Proactive token refresh failed:', error);
+      logger.error('Proactive token refresh failed:', error);
     }
   }, refreshInMs);
 }
@@ -302,7 +292,7 @@ export const useAuthStore = create<AuthState>()(
           // Use pre-captured state if provided, otherwise try reading from cookie
           // (The cookie may have been cleared by initializeAuth before we get here)
           const savedState = capturedOAuthState !== undefined ? capturedOAuthState : getOAuthStateCookie();
-          console.log('[AUTH-STORE] handleCallback verifying state:', {
+          logger.debug('handleCallback verifying state:', {
             urlState: state,
             savedState,
             usedCapturedState: capturedOAuthState !== undefined,
@@ -570,11 +560,11 @@ export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
   const { user, fetchUser, refreshAccessToken } = state;
 
-  // Warn in console if in production with localhost API
+  // Warn if in production with localhost API
   if (isProduction && isLocalhostApi) {
-    console.warn(
-      '[Auth] Session may not persist - API URL misconfiguration detected.',
-      '\nCheck browser console for details.'
+    logger.warn(
+      'Session may not persist - API URL misconfiguration detected.',
+      'Check browser console for details.'
     );
   }
 

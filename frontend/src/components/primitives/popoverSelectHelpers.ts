@@ -5,6 +5,10 @@
  * rule which requires component files to only export components.
  */
 
+import { logger as baseLogger } from '../../lib/logger';
+
+const logger = baseLogger.scope('popover-select');
+
 /** Default trigger classes when no value selected */
 export const DEFAULT_TRIGGER_UNSELECTED =
   'bg-surface-interactive text-text-muted hover:text-text-secondary';
@@ -90,7 +94,7 @@ export function createColoredTriggerClasses(color: string, hasValue: boolean): s
   if (!hasValue) return DEFAULT_TRIGGER_UNSELECTED;
   const classes = COLORED_TRIGGER_MAP[color];
   if (!classes) {
-    console.warn(`createColoredTriggerClasses: Unknown color "${color}", using default`);
+    logger.warn(`createColoredTriggerClasses: Unknown color "${color}", using default`);
     return DEFAULT_TRIGGER_UNSELECTED;
   }
   return classes;

@@ -5,6 +5,47 @@
  * design system components.
  */
 
+/**
+ * Check if a JSX element has a design-system-ignore comment before it.
+ * Handles both JavaScript comments and JSX expression comments.
+ *
+ * The comment must appear within 5 lines of the element to be recognized.
+ * Supported formats:
+ *   - JSX: {/* design-system-ignore: reason *​/}
+ *   - JS:  // design-system-ignore: reason
+ *   - JS:  /* design-system-ignore: reason *​/
+ */
+function hasIgnoreComment(node, context) {
+  const sourceCode = context.sourceCode;
+
+  // Check for JavaScript comments before the node (handles // and /* */ outside JSX)
+  const comments = sourceCode.getCommentsBefore(node);
+  if (comments.some(comment => comment.value.includes('design-system-ignore'))) {
+    return true;
+  }
+
+  // Check for JSX comments by examining the source text on preceding lines
+  // JSX comments look like: {/* design-system-ignore: reason */}
+  // We look back up to 500 chars to handle cases with blank lines or longer comments
+  const nodeStart = node.range[0];
+  const lookbackChars = 500;
+  const textBefore = sourceCode.text.slice(Math.max(0, nodeStart - lookbackChars), nodeStart);
+
+  // Quick check: if directive not in lookback range at all, skip detailed analysis
+  if (!textBefore.includes('design-system-ignore')) {
+    return false;
+  }
+
+  // Split into lines and check the last 5 lines (allowing for blank lines between comment and element)
+  const lines = textBefore.split('\n');
+  const recentLines = lines.slice(-5).join('\n');
+
+  // Match the directive within a comment context to reduce false positives
+  // This matches: {/* ... design-system-ignore ... */} or // ... design-system-ignore ...
+  const commentPattern = /(?:\/\*[\s\S]*?design-system-ignore[\s\S]*?\*\/|\/\/.*design-system-ignore)/;
+  return commentPattern.test(recentLines);
+}
+
 export default {
   rules: {
     'no-raw-button': {
@@ -24,14 +65,7 @@ export default {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'button') {
-              // Check for design-system-ignore comment
-              const sourceCode = context.sourceCode;
-              const comments = sourceCode.getCommentsBefore(node);
-              const hasIgnore = comments.some(comment =>
-                comment.value.includes('design-system-ignore')
-              );
-
-              if (!hasIgnore) {
+              if (!hasIgnoreComment(node, context)) {
                 context.report({
                   node,
                   messageId: 'rawButton',
@@ -58,13 +92,7 @@ export default {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'input') {
-              const sourceCode = context.sourceCode;
-              const comments = sourceCode.getCommentsBefore(node);
-              const hasIgnore = comments.some(comment =>
-                comment.value.includes('design-system-ignore')
-              );
-
-              if (!hasIgnore) {
+              if (!hasIgnoreComment(node, context)) {
                 context.report({
                   node,
                   messageId: 'rawInput',
@@ -91,13 +119,7 @@ export default {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'select') {
-              const sourceCode = context.sourceCode;
-              const comments = sourceCode.getCommentsBefore(node);
-              const hasIgnore = comments.some(comment =>
-                comment.value.includes('design-system-ignore')
-              );
-
-              if (!hasIgnore) {
+              if (!hasIgnoreComment(node, context)) {
                 context.report({
                   node,
                   messageId: 'rawSelect',
@@ -124,13 +146,7 @@ export default {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'label') {
-              const sourceCode = context.sourceCode;
-              const comments = sourceCode.getCommentsBefore(node);
-              const hasIgnore = comments.some(comment =>
-                comment.value.includes('design-system-ignore')
-              );
-
-              if (!hasIgnore) {
+              if (!hasIgnoreComment(node, context)) {
                 context.report({
                   node,
                   messageId: 'rawLabel',
@@ -157,13 +173,7 @@ export default {
         return {
           JSXOpeningElement(node) {
             if (node.name.name === 'textarea') {
-              const sourceCode = context.sourceCode;
-              const comments = sourceCode.getCommentsBefore(node);
-              const hasIgnore = comments.some(comment =>
-                comment.value.includes('design-system-ignore')
-              );
-
-              if (!hasIgnore) {
+              if (!hasIgnoreComment(node, context)) {
                 context.report({
                   node,
                   messageId: 'rawTextarea',

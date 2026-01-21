@@ -25,6 +25,10 @@ import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
 import { Tooltip } from '../primitives';
+import { logger as baseLogger } from '../../lib/logger';
+import { useSyncExternalModal } from '../../hooks/useSyncExternalModal';
+
+const logger = baseLogger.scope('sectioned-log');
 
 interface SectionedLogViewProps {
   groupId: string;
@@ -88,28 +92,29 @@ export function SectionedLogView({
   const [showMaterialModal, setShowMaterialModal] = useState(false);
   const [showFloorClearedModal, setShowFloorClearedModal] = useState(false);
 
+  // State for grid view pre-filled modal and entry editing
+  const [gridModalState, setGridModalState] = useState<{
+    type: 'loot' | 'material';
+    floor: FloorNumber;
+    slot?: string;
+    materialType?: string;
+  } | null>(null);
+  const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | undefined>(undefined);
+  const [materialEntryToEdit, setMaterialEntryToEdit] = useState<MaterialLogEntry | undefined>(undefined);
+
   // Sync external modal state (from keyboard shortcuts) with internal state
-  useEffect(() => {
-    if (openLogLootModal && !showLootModal) {
-      setShowLootModal(true);
-      setGridModalState(null);
-      setEntryToEdit(undefined);
-    }
-  }, [openLogLootModal, showLootModal]);
+  // Note: useSyncExternalModal stores callbacks in refs, so memoization is not required
+  useSyncExternalModal(openLogLootModal, showLootModal, setShowLootModal, () => {
+    setGridModalState(null);
+    setEntryToEdit(undefined);
+  });
 
-  useEffect(() => {
-    if (openLogMaterialModal && !showMaterialModal) {
-      setShowMaterialModal(true);
-      setGridModalState(null);
-      setMaterialEntryToEdit(undefined);
-    }
-  }, [openLogMaterialModal, showMaterialModal]);
+  useSyncExternalModal(openLogMaterialModal, showMaterialModal, setShowMaterialModal, () => {
+    setGridModalState(null);
+    setMaterialEntryToEdit(undefined);
+  });
 
-  useEffect(() => {
-    if (openMarkFloorClearedModal && !showFloorClearedModal) {
-      setShowFloorClearedModal(true);
-    }
-  }, [openMarkFloorClearedModal, showFloorClearedModal]);
+  useSyncExternalModal(openMarkFloorClearedModal, showFloorClearedModal, setShowFloorClearedModal);
 
   // Book view mode: 'week' or 'allTime'
   // Priority: URL param > default
@@ -143,8 +148,6 @@ export function SectionedLogView({
     playerId: string;
     playerName: string;
   } | null>(null);
-  const [entryToEdit, setEntryToEdit] = useState<LootLogEntry | undefined>(undefined);
-  const [materialEntryToEdit, setMaterialEntryToEdit] = useState<MaterialLogEntry | undefined>(undefined);
   const [resetModalType, setResetModalType] = useState<ResetType | null>(null);
 
   // Confirmation modal state
@@ -334,7 +337,7 @@ export function SectionedLogView({
       const resetLabel = resetModalType === 'loot' ? 'loot log' : resetModalType === 'books' ? 'book balances' : 'all data';
       toast.success(`Reset ${resetLabel} complete`);
     } catch (error) {
-      console.error('Reset failed:', error);
+      logger.error('Reset failed:', error);
       toast.error('Reset failed');
     } finally {
       setResetModalType(null);
@@ -548,14 +551,6 @@ export function SectionedLogView({
       return next;
     });
   }, [setExpandedFloors]);
-
-  // State for grid view pre-filled modal
-  const [gridModalState, setGridModalState] = useState<{
-    type: 'loot' | 'material';
-    floor: FloorNumber;
-    slot?: string;
-    materialType?: string;
-  } | null>(null);
 
   // Counter to force fresh modal mount when opening from grid
   const [lootModalKey, setLootModalKey] = useState(0);

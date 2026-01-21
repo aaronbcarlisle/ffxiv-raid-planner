@@ -27,7 +27,7 @@ export function AuthCallback() {
   // Using useState with lazy initializer ensures this runs exactly once on initial render.
   const [savedOAuthState] = useState(() => {
     const state = getOAuthStateCookie();
-    console.log('[AUTH-CALLBACK] Captured OAuth state on initial render:', state);
+    logger.debug('Captured OAuth state on initial render:', state ? 'found' : 'not found');
     return state;
   });
 
@@ -42,11 +42,11 @@ export function AuthCallback() {
     const state = searchParams.get('state');
 
     if (errorParam) {
-      console.error('Discord OAuth error:', errorParam, searchParams.get('error_description'));
+      logger.error('Discord OAuth error:', errorParam, searchParams.get('error_description'));
       return 'error';
     }
     if (!code || !state) {
-      console.error('Missing code or state in OAuth callback');
+      logger.error('Missing code or state in OAuth callback');
       return 'error';
     }
     return 'processing';
@@ -147,7 +147,7 @@ export function AuthCallback() {
         verifyAndNavigate();
       })
       .catch((err) => {
-        console.error('OAuth callback failed:', err);
+        logger.error('OAuth callback failed:', err);
         setStatus('error');
       });
   }, [searchParams, handleCallback, navigate, status]);

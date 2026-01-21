@@ -12,6 +12,9 @@ import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Tooltip } from '../primitives/Tooltip';
 import type { MemberInfo, LinkedPlayerInfo, MemberRole, Membership } from '../../types';
+import { logger as baseLogger } from '../../lib/logger';
+
+const logger = baseLogger.scope('view-as-banner');
 
 // Extended member info with role for user swapping
 interface SwapUserInfo extends MemberInfo {
@@ -19,8 +22,9 @@ interface SwapUserInfo extends MemberInfo {
   isLinkedPlayer?: boolean;
 }
 
-// Role badge colors - using semantic membership tokens
-const ROLE_COLORS: Record<string, string> = {
+// Role badge colors - higher opacity values than shared constants because
+// these badges appear on a warning banner background (bg-status-warning/20)
+const ROLE_COLORS: Record<MemberRole, string> = {
   owner: 'bg-membership-owner/30 text-membership-owner border-membership-owner/50',
   lead: 'bg-membership-lead/30 text-membership-lead border-membership-lead/50',
   member: 'bg-membership-member/30 text-membership-member border-membership-member/50',
@@ -47,11 +51,11 @@ export function ViewAsBanner() {
         // Use api wrapper for automatic token refresh on 401
         const [members, linkedPlayers] = await Promise.all([
           api.get<Membership[]>(`/api/static-groups/${viewAsUser.groupId}/members`).catch((error) => {
-            console.error('Failed to fetch group members for ViewAsBanner:', error);
+            logger.error('Failed to fetch group members:', error);
             return [] as Membership[];
           }),
           api.get<LinkedPlayerInfo[]>(`/api/static-groups/${viewAsUser.groupId}/linked-players`).catch((error) => {
-            console.error('Failed to fetch linked players for ViewAsBanner:', error);
+            logger.error('Failed to fetch linked players:', error);
             return [] as LinkedPlayerInfo[];
           }),
         ]);
@@ -85,7 +89,7 @@ export function ViewAsBanner() {
 
         setAvailableUsers(allUsers);
       } catch (error) {
-        console.error('Failed to fetch users:', error);
+        logger.error('Failed to fetch users:', error);
       } finally {
         setIsLoadingUsers(false);
       }

@@ -14,26 +14,13 @@ import { Select, type SelectOption } from '../ui/Select';
 import { Tooltip } from '../primitives/Tooltip';
 import { eventBus, Events } from '../../lib/eventBus';
 import type { Membership, MemberRole, LinkedPlayerInfo } from '../../types';
+import { ROLE_COLORS, ROLE_LABELS } from '../../utils/roleConstants';
 
 interface MembersPanelProps {
   groupId: string;
   currentUserRole?: MemberRole;
   isAdmin?: boolean;
 }
-
-const ROLE_COLORS: Record<MemberRole, string> = {
-  owner: 'bg-membership-owner/20 text-membership-owner border-membership-owner/30',
-  lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
-  member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
-  viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
-};
-
-const ROLE_LABELS: Record<MemberRole, string> = {
-  owner: 'Owner',
-  lead: 'Lead',
-  member: 'Member',
-  viewer: 'Viewer',
-};
 
 export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanelProps) {
   const [members, setMembers] = useState<Membership[]>([]);
