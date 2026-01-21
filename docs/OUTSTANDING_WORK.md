@@ -8,7 +8,7 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `docs/user-docs` (Documentation audit and updates)
+**Current Branch:** `main`
 
 **Recent Completions:**
 - PR #48 merged: UI Consistency Sprint (v1.8.2)
@@ -46,9 +46,9 @@
 | **High (P1)** | 0 | 0 |
 | **Medium (P2)** | 0 | 0 |
 | **Low (P3)** | 9 | 20.5 |
-| **Tech Debt - Lint (P3)** | 1 | 2 |
+| **Tech Debt - Lint (P3)** | 2 | 6 |
 | **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 15 | ~22.5 hrs |
+| **Total** | 16 | ~26.5 hrs |
 
 ---
 
@@ -140,8 +140,8 @@
 
 ## Technical Debt - Lint Issues (P3)
 
-**Last Audited:** January 19, 2026
-**Current Warning Count:** 15 (down from ~49)
+**Last Audited:** January 20, 2026
+**Current Warning Count:** 138 (15 react-hooks + 123 design-system)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
@@ -159,8 +159,14 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - **Fix:** Wrap functions in useCallback, add missing deps, remove unused eslint-disable
 - **Effort:** 2 hours
 
+### TD-002: Design System Raw Element Warnings (123 warnings)
+- **Rule:** `design-system/no-raw-button`
+- **Files Affected:** AdminDashboard.tsx, GroupView.tsx, ApiCookbook.tsx, docs pages, etc.
+- **Note:** Many are in documentation pages where design system components aren't strictly required
+- **Effort:** 4 hours (low priority - doesn't affect functionality)
+
 ### Completed (January 19, 2026)
-- ✅ TD-002 through TD-005 from original list - resolved
+- ✅ TD-003 through TD-005 from original list - resolved
 - ✅ Explicit `any` types - resolved
 - ✅ React Compiler warnings - resolved
 - ✅ React Refresh warnings - resolved
