@@ -147,11 +147,6 @@
 All lint errors resolved; only warnings remain. These don't affect functionality.
 
 ### TD-001: React Hooks Dependency Warnings (15 warnings)
-### TD-002: Design System Raw Element Warnings (123 warnings)
-- **Rule:** `design-system/no-raw-button`
-- **Files Affected:** AdminDashboard.tsx, GroupView.tsx, ApiCookbook.tsx, docs pages, etc.
-- **Note:** Many are in documentation pages where design system components aren't strictly required
-- **Effort:** 4 hours (low priority - doesn't affect functionality)
 - **Rule:** `react-hooks/exhaustive-deps`
 - **Files Affected:**
   - `components/layout/Header.tsx` - dispatchHeaderEvent needs useCallback
@@ -164,8 +159,14 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - **Fix:** Wrap functions in useCallback, add missing deps, remove unused eslint-disable
 - **Effort:** 2 hours
 
+### TD-002: Design System Raw Element Warnings (123 warnings)
+- **Rule:** `design-system/no-raw-button`
+- **Files Affected:** AdminDashboard.tsx, GroupView.tsx, ApiCookbook.tsx, docs pages, etc.
+- **Note:** Many are in documentation pages where design system components aren't strictly required
+- **Effort:** 4 hours (low priority - doesn't affect functionality)
+
 ### Completed (January 19, 2026)
-- ✅ TD-002 through TD-005 from original list - resolved
+- ✅ TD-003 through TD-005 from original list - resolved
 - ✅ Explicit `any` types - resolved
 - ✅ React Compiler warnings - resolved
 - ✅ React Refresh warnings - resolved
