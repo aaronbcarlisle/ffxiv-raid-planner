@@ -9,7 +9,7 @@
 
 ### Current Version: v1.9.0
 
-**Branch:** `docs/user-docs` (Documentation audit and updates)
+**Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|

@@ -124,7 +124,7 @@ cd scripts && npm test            # Scripts tests (87)
 - `hooks/useDoubleClickConfirm.ts` - Double-click confirm pattern
 
 ### Pages
-- `pages/GroupView.tsx` - Main group view (~850 lines)
+- `pages/GroupView.tsx` - Main group view (~970 lines)
 - `pages/AdminDashboard.tsx` - Admin-only static browser
 
 ### Key Components
