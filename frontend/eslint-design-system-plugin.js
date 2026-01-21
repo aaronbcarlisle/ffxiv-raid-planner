@@ -8,11 +8,17 @@
 /**
  * Check if a JSX element has a design-system-ignore comment before it.
  * Handles both JavaScript comments and JSX expression comments.
+ *
+ * The comment must appear within 5 lines of the element to be recognized.
+ * Supported formats:
+ *   - JSX: {/* design-system-ignore: reason *​/}
+ *   - JS:  // design-system-ignore: reason
+ *   - JS:  /* design-system-ignore: reason *​/
  */
 function hasIgnoreComment(node, context) {
   const sourceCode = context.sourceCode;
 
-  // Check for JavaScript comments before the node
+  // Check for JavaScript comments before the node (handles // and /* */ outside JSX)
   const comments = sourceCode.getCommentsBefore(node);
   if (comments.some(comment => comment.value.includes('design-system-ignore'))) {
     return true;
@@ -20,22 +26,24 @@ function hasIgnoreComment(node, context) {
 
   // Check for JSX comments by examining the source text on preceding lines
   // JSX comments look like: {/* design-system-ignore: reason */}
+  // We look back up to 500 chars to handle cases with blank lines or longer comments
   const nodeStart = node.range[0];
-  const textBefore = sourceCode.text.slice(Math.max(0, nodeStart - 200), nodeStart);
+  const lookbackChars = 500;
+  const textBefore = sourceCode.text.slice(Math.max(0, nodeStart - lookbackChars), nodeStart);
 
-  // Look for the ignore directive in the preceding text (within a few lines)
-  // This handles both {/* comment */} and // comment styles
-  if (textBefore.includes('design-system-ignore')) {
-    // Make sure it's on a preceding line, not earlier in the file
-    const lines = textBefore.split('\n');
-    // Check the last few lines (the comment should be close to the element)
-    const recentLines = lines.slice(-3).join('\n');
-    if (recentLines.includes('design-system-ignore')) {
-      return true;
-    }
+  // Quick check: if directive not in lookback range at all, skip detailed analysis
+  if (!textBefore.includes('design-system-ignore')) {
+    return false;
   }
 
-  return false;
+  // Split into lines and check the last 5 lines (allowing for blank lines between comment and element)
+  const lines = textBefore.split('\n');
+  const recentLines = lines.slice(-5).join('\n');
+
+  // Match the directive within a comment context to reduce false positives
+  // This matches: {/* ... design-system-ignore ... */} or // ... design-system-ignore ...
+  const commentPattern = /(?:\/\*[\s\S]*?design-system-ignore[\s\S]*?\*\/|\/\/.*design-system-ignore)/;
+  return commentPattern.test(recentLines);
 }
 
 export default {

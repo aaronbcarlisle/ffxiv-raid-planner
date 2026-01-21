@@ -103,17 +103,16 @@ export function SectionedLogView({
   const [materialEntryToEdit, setMaterialEntryToEdit] = useState<MaterialLogEntry | undefined>(undefined);
 
   // Sync external modal state (from keyboard shortcuts) with internal state
-  const onLootModalSync = useCallback(() => {
+  // Note: useSyncExternalModal stores callbacks in refs, so memoization is not required
+  useSyncExternalModal(openLogLootModal, showLootModal, setShowLootModal, () => {
     setGridModalState(null);
     setEntryToEdit(undefined);
-  }, []);
-  useSyncExternalModal(openLogLootModal, showLootModal, setShowLootModal, onLootModalSync);
+  });
 
-  const onMaterialModalSync = useCallback(() => {
+  useSyncExternalModal(openLogMaterialModal, showMaterialModal, setShowMaterialModal, () => {
     setGridModalState(null);
     setMaterialEntryToEdit(undefined);
-  }, []);
-  useSyncExternalModal(openLogMaterialModal, showMaterialModal, setShowMaterialModal, onMaterialModalSync);
+  });
 
   useSyncExternalModal(openMarkFloorClearedModal, showFloorClearedModal, setShowFloorClearedModal);
 
