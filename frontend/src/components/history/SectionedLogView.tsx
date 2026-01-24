@@ -1148,7 +1148,11 @@ export function SectionedLogView({
                   </table>
                 )}
 
-                {/* Mark Floor Cleared - at bottom of Books section, hidden from members */}
+                {/* Mark Floor Cleared - at bottom of Books section, hidden from members.
+                    Note: We check both canEdit AND userRole !== 'member' because:
+                    - canEdit is false for members (they can't edit all rows)
+                    - But we also want to hide this from members who have per-row edit access
+                    - This button awards books to ALL players, so it's a lead/owner action */}
                 {canEdit && userRole !== 'member' && (
                   <div className="p-2 border-t border-border-subtle">
                     <Tooltip
