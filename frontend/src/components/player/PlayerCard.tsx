@@ -365,8 +365,13 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
-    // Edit Books - only visible to members on their own card
-    ...(userRole === 'member' && player.userId === currentUserId && onNavigateToBooksPanel ? [{
+    // Edit Books - visible to owners/leads/admins on any card, members on their own card
+    ...(onNavigateToBooksPanel && (
+      userRole === 'owner' ||
+      userRole === 'lead' ||
+      isAdminAccess ||
+      (userRole === 'member' && player.userId === currentUserId)
+    ) ? [{
       label: 'Edit Books',
       icon: <BookOpen className="w-4 h-4" />,
       onClick: () => onNavigateToBooksPanel(player.id),
