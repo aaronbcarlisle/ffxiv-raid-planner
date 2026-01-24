@@ -234,23 +234,26 @@ async def fetch_materia_for_github(identifier: str) -> dict[str, list[dict]]:
     Fetch materia data from GitHub curated BiS presets.
 
     Args:
-        identifier: Format "bis|{job}|{tier}|{index}"
+        identifier: Format "bis|{job}|{tier}|{index}" or legacy "bis|{job}|{tier}"
 
     Returns:
         Dict mapping slot names to materia lists
     """
-    # Parse identifier: bis|{job}|{tier}|{index}
+    # Parse identifier: bis|{job}|{tier}|{index} (index optional, defaults to 0)
     parts = identifier.split("|")
-    if len(parts) < 4:
+    if len(parts) < 3:
         logger.warning(f"Invalid GitHub preset format: {identifier}")
         return {}
 
     job = parts[1].lower()
     tier = parts[2].lower()
-    try:
-        set_index = int(parts[3])
-    except ValueError:
-        set_index = 0
+    # Index is optional - default to 0 for legacy 3-part format
+    set_index = 0
+    if len(parts) >= 4:
+        try:
+            set_index = int(parts[3])
+        except ValueError:
+            set_index = 0
 
     # Fetch from GitHub
     url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/{tier}.json"
