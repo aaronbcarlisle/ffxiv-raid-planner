@@ -130,6 +130,7 @@ function SlotIcon({
                   bisSource={bisSource}
                   hasItem={hasItem}
                   isAugmented={isAugmented}
+                  materia={status.materia}
                 />
                 <div className="mt-2 pt-2 border-t border-border-subtle text-xs text-text-muted">
                   <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to loot entry
@@ -144,6 +145,7 @@ function SlotIcon({
                 bisSource={bisSource}
                 hasItem={hasItem}
                 isAugmented={isAugmented}
+                materia={status.materia}
               />
             )
           }

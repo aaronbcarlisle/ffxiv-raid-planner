@@ -394,6 +394,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         itemLevel: importedSlot.itemLevel,
         itemIcon: importedSlot.itemIcon,
         itemStats: importedSlot.itemStats,
+        materia: importedSlot.materia,
         // Reset progress if checkbox is checked and source changed
         hasItem: effectiveHasItem,
         isAugmented: effectiveIsAugmented,
@@ -642,6 +643,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                                 itemIcon={newSlotData.itemIcon}
                                 itemStats={newSlotData.itemStats}
                                 bisSource={newSlotData.source}
+                                materia={newSlotData.materia}
                               />
                             }
                             side="right"

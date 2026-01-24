@@ -164,6 +164,15 @@ export interface ItemStats {
   Piety?: number;
 }
 
+// Materia slot from BiS import
+export interface MateriaSlot {
+  itemId: number;
+  itemName: string;
+  stat?: string;  // e.g., "Critical Hit"
+  tier?: number;  // e.g., 12
+  icon?: string;
+}
+
 // Gear slot status for a player
 export interface GearSlotStatus {
   slot: GearSlot;
@@ -175,6 +184,7 @@ export interface GearSlotStatus {
   itemLevel?: number;
   itemIcon?: string;
   itemStats?: ItemStats;
+  materia?: MateriaSlot[];  // Melded materia from BiS import
 }
 
 // Static (raid group) settings
@@ -617,6 +627,7 @@ export interface BiSGearSlotData {
   itemLevel?: number;
   itemIcon?: string;
   itemStats?: ItemStats;
+  materia?: MateriaSlot[];  // Melded materia
 }
 
 // BiS import response from XIVGear

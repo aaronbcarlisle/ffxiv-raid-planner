@@ -46,7 +46,7 @@ from ..constants import (
     create_default_gear_ring2_tome,
     create_default_tome_weapon,
 )
-from ..schemas.tier_snapshot import GearSlotStatus, TomeWeaponStatus
+from ..schemas.tier_snapshot import GearSlotStatus, MateriaSlot, TomeWeaponStatus
 
 router = APIRouter(prefix="/api/static-groups", tags=["tiers"])
 
@@ -120,6 +120,16 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
             item_level=g.get("itemLevel"),
             item_icon=g.get("itemIcon"),
             item_stats=g.get("itemStats"),
+            materia=[
+                MateriaSlot(
+                    item_id=m.get("itemId", 0),
+                    item_name=m.get("itemName", ""),
+                    stat=m.get("stat"),
+                    tier=m.get("tier"),
+                    icon=m.get("icon"),
+                )
+                for m in g.get("materia", [])
+            ],
         )
         for g in (player.gear or [])
     ]

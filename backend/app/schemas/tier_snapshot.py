@@ -45,6 +45,16 @@ GearSourceCategory = Literal[
 # --- Gear Status Schemas (reused from player) ---
 
 
+class MateriaSlot(CamelModel):
+    """A single materia slot on an item"""
+
+    item_id: int
+    item_name: str
+    stat: str | None = None  # e.g., "Critical Hit"
+    tier: int | None = None  # e.g., 12
+    icon: str | None = None
+
+
 class GearSlotStatus(CamelModel):
     """Gear slot status"""
 
@@ -57,6 +67,7 @@ class GearSlotStatus(CamelModel):
     item_level: int | None = None
     item_icon: str | None = None
     item_stats: dict[str, int] | None = None
+    materia: list[MateriaSlot] = []  # Melded materia from BiS import
 
 
 class TomeWeaponStatus(CamelModel):

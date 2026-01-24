@@ -1,4 +1,4 @@
-import type { ItemStats, GearSource } from '../../types';
+import type { ItemStats, GearSource, MateriaSlot } from '../../types';
 
 interface ItemHoverCardProps {
   itemName: string;
@@ -10,6 +10,8 @@ interface ItemHoverCardProps {
   hasItem?: boolean;
   /** Whether the tome item is augmented (only relevant when bisSource is 'tome') */
   isAugmented?: boolean;
+  /** Materia melds on this item */
+  materia?: MateriaSlot[];
 }
 
 // Abbreviations for stat names
@@ -44,6 +46,44 @@ const STAT_ORDER = [
   'Piety',
 ];
 
+// Convert tier number to Roman numeral for display
+const toRoman = (num: number): string => {
+  const romanNumerals: [number, string][] = [
+    [12, 'XII'],
+    [11, 'XI'],
+    [10, 'X'],
+    [9, 'IX'],
+    [8, 'VIII'],
+    [7, 'VII'],
+    [6, 'VI'],
+    [5, 'V'],
+    [4, 'IV'],
+    [3, 'III'],
+    [2, 'II'],
+    [1, 'I'],
+  ];
+  for (const [value, numeral] of romanNumerals) {
+    if (num >= value) return numeral;
+  }
+  return String(num);
+};
+
+// Materia stat bonus by tier (secondary stats)
+const MATERIA_STAT_VALUES: Record<number, number> = {
+  12: 54,
+  11: 36,
+  10: 18,
+  9: 12,
+  8: 6,
+  7: 6,
+  6: 6,
+  5: 6,
+  4: 5,
+  3: 4,
+  2: 3,
+  1: 1,
+};
+
 export function ItemHoverCard({
   itemName,
   itemLevel,
@@ -52,6 +92,7 @@ export function ItemHoverCard({
   bisSource,
   hasItem,
   isAugmented,
+  materia,
 }: ItemHoverCardProps) {
   // Sort and filter stats
   const sortedStats = itemStats
@@ -148,6 +189,41 @@ export function ItemHoverCard({
                 </div>
               ))}
             </div>
+          </div>
+        </>
+      )}
+
+      {/* Materia melds - horizontal layout */}
+      {materia && materia.length > 0 && (
+        <>
+          <div className="border-t border-border-default my-2" />
+          <div className="flex flex-wrap gap-3 text-xs">
+            {materia.map((m, idx) => {
+              const statValue = m.tier ? MATERIA_STAT_VALUES[m.tier] || 0 : 0;
+              const statAbbrev = STAT_ABBREV[m.stat || ''] || m.stat || '';
+              const fullStatName = m.stat || m.itemName;
+              const tooltipText = `${m.itemName}: +${statValue} ${fullStatName}`;
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center gap-1 cursor-default"
+                  title={tooltipText}
+                >
+                  {m.icon && (
+                    <img
+                      src={m.icon}
+                      alt={m.itemName}
+                      className="w-5 h-5 rounded-full"
+                    />
+                  )}
+                  <span className="text-text-primary">
+                    {statValue > 0 && <span className="text-text-muted">{statValue} </span>}
+                    {statAbbrev}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

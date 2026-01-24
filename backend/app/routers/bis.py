@@ -1,5 +1,6 @@
 """BiS Import Router - Fetches gear sets from external tools"""
 
+import asyncio
 import re
 from typing import Optional
 import httpx
@@ -39,6 +40,15 @@ VALID_TIERS = frozenset({
 })
 
 
+class MateriaSlot(BaseModel):
+    """A single materia slot on an item"""
+    itemId: int
+    itemName: str
+    stat: Optional[str] = None   # e.g., "Critical Hit"
+    tier: Optional[int] = None   # e.g., 12
+    icon: Optional[str] = None
+
+
 class GearSlotData(BaseModel):
     """Data for a single gear slot from BiS import"""
     slot: str
@@ -48,6 +58,7 @@ class GearSlotData(BaseModel):
     itemLevel: Optional[int] = None
     itemIcon: Optional[str] = None  # Full icon URL from XIVAPI
     itemStats: Optional[dict[str, int]] = None  # Base stats (e.g., {"Strength": 847, "Vitality": 943})
+    materia: list[MateriaSlot] = []  # Melded materia
 
 
 class BiSImportResponse(BaseModel):
@@ -131,7 +142,6 @@ ETRO_SLOT_MAP = {
     "fingerL": "ring1",
     "fingerR": "ring2",
 }
-
 
 def extract_bis_path(url_or_uuid: str) -> tuple[str, str | None]:
     """
@@ -220,17 +230,134 @@ def extract_item_stats(fields: dict) -> dict[str, int]:
     return stats
 
 
-def build_icon_url_from_id(icon_id: int | str) -> str | None:
-    """Build XIVAPI icon URL from icon ID (e.g., 31676 -> /i/031000/031676.png)."""
+def build_icon_url_from_id(icon_id: int | str, high_res: bool = False) -> str | None:
+    """Build XIVAPI icon URL from icon ID.
+
+    Args:
+        icon_id: Icon ID (e.g., 31676 or "t/31676")
+        high_res: If True, use high-resolution version (_hr1 suffix)
+
+    Examples:
+        31676 -> /i/031000/031676.png
+        31676, high_res=True -> /i/031000/031676_hr1.png
+    """
     if not icon_id:
         return None
     try:
         icon_num = int(str(icon_id).lstrip("t/"))
         # Calculate folder (floor to nearest 1000)
         folder = (icon_num // 1000) * 1000
-        return f"https://xivapi.com/i/{folder:06d}/{icon_num:06d}.png"
+        suffix = "_hr1" if high_res else ""
+        return f"https://xivapi.com/i/{folder:06d}/{icon_num:06d}{suffix}.png"
     except (ValueError, TypeError):
         return None
+
+
+# Materia stat name mappings (from materia names to stat names)
+MATERIA_STAT_MAP = {
+    "savage aim": "Critical Hit",
+    "savage might": "Determination",
+    "heavens' eye": "Direct Hit Rate",
+    "quickarm": "Skill Speed",
+    "quicktongue": "Spell Speed",
+    "battledance": "Tenacity",
+    "piety": "Piety",
+}
+
+# Roman numeral to integer mapping (ordered longest to shortest for matching)
+ROMAN_NUMERALS = [
+    ("XV", 15), ("XIV", 14), ("XIII", 13), ("XII", 12), ("XI", 11),
+    ("X", 10), ("IX", 9), ("VIII", 8), ("VII", 7), ("VI", 6),
+    ("V", 5), ("IV", 4), ("III", 3), ("II", 2), ("I", 1),
+]
+
+
+def parse_materia_name(name: str) -> tuple[str | None, int | None]:
+    """
+    Parse materia name to extract stat type and tier.
+
+    Examples:
+        "Savage Might Materia XII" -> ("Determination", 12)
+        "Heavens' Eye Materia X" -> ("Direct Hit Rate", 10)
+
+    Returns:
+        Tuple of (stat_name, tier) or (None, None) if parsing fails.
+    """
+    if not name:
+        return None, None
+
+    # Lowercase for matching
+    name_lower = name.lower()
+
+    # Extract tier from end (e.g., "Materia XII")
+    # Iterate longest to shortest to avoid matching "I" when "XII" is present
+    tier = None
+    for numeral, value in ROMAN_NUMERALS:
+        if name_lower.endswith(f" {numeral.lower()}"):
+            tier = value
+            break
+
+    # Extract stat from beginning
+    stat = None
+    for pattern, stat_name in MATERIA_STAT_MAP.items():
+        if pattern in name_lower:
+            stat = stat_name
+            break
+
+    return stat, tier
+
+
+async def fetch_materia_from_garland(materia_id: int) -> MateriaSlot | None:
+    """
+    Fetch materia details from Garland Tools API with caching.
+
+    Returns a MateriaSlot or None if fetch fails.
+    """
+    cache_key = f"materia_{materia_id}"
+
+    # Check cache first
+    cached = await xivapi_item_cache.get(cache_key)
+    if cached:
+        return MateriaSlot(**cached)
+
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        try:
+            response = await client.get(
+                f"https://www.garlandtools.org/db/doc/item/en/3/{materia_id}.json",
+                timeout=10.0
+            )
+            # Reject redirects to prevent SSRF
+            if 300 <= response.status_code < 400:
+                logger.warning("garland_materia_unexpected_redirect", item_id=materia_id, status=response.status_code)
+                return None
+            if response.status_code == 200:
+                data = response.json()
+                item = data.get("item", {})
+                name = item.get("name", "Unknown Materia")
+
+                # Parse stat and tier from name
+                stat, tier = parse_materia_name(name)
+
+                # Get high-res icon for materia
+                icon_path = item.get("icon", "")
+                icon_url = build_icon_url_from_id(icon_path, high_res=True)
+
+                result = MateriaSlot(
+                    itemId=materia_id,
+                    itemName=name,
+                    stat=stat,
+                    tier=tier,
+                    icon=icon_url,
+                )
+
+                # Cache the result
+                await xivapi_item_cache.set(cache_key, result.model_dump())
+                logger.debug("garland_materia_cached", item_id=materia_id, name=name)
+                return result
+        except Exception as e:
+            logger.warning("garland_materia_fetch_error", item_id=materia_id, error=str(e))
+
+    return None
 
 
 async def fetch_item_from_garland(item_id: int) -> dict:
@@ -694,10 +821,32 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
 
         if item_data and "id" in item_data:
             item_id = item_data["id"]
-            # Fetch item details from XIVAPI
+            # Fetch item details from Garland Tools
             item_info = await fetch_item_from_garland(item_id)
 
             source = determine_source(item_info["name"], item_info["level"], our_slot)
+
+            # Extract materia from item data
+            # XIVGear stores materia as array of objects: [{"id": 33942}, {"id": 33942}]
+            raw_materia = item_data.get("materia", [])
+            materia_list: list[MateriaSlot] = []
+            if raw_materia:
+                # Extract IDs from materia objects, filtering out empty slots (id=-1)
+                materia_ids = [
+                    m.get("id") if isinstance(m, dict) else m
+                    for m in raw_materia
+                ]
+                materia_ids = [mid for mid in materia_ids if mid and mid > 0]
+
+                if materia_ids:
+                    # Fetch materia details in parallel
+                    materia_results = await asyncio.gather(
+                        *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                        return_exceptions=True
+                    )
+                    for result in materia_results:
+                        if isinstance(result, MateriaSlot):
+                            materia_list.append(result)
 
             slots.append(GearSlotData(
                 slot=our_slot,
@@ -707,6 +856,7 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
                 itemLevel=item_info["level"],
                 itemIcon=item_info.get("icon"),
                 itemStats=item_info.get("stats") or None,
+                materia=materia_list,
             ))
         else:
             # No item in this slot - default to raid
@@ -743,17 +893,57 @@ async def fetch_etro_bis(request: Request, uuid_or_url: str):
     set_name = data.get("name", "Etro Import")
     job = data.get("jobAbbrev", "Unknown")
 
-    # Build slot data using existing XIVAPI lookups
+    # Build slot data using existing Garland Tools lookups
     slots: list[GearSlotData] = []
+
+    # Etro stores materia in a separate object keyed by item ID
+    # Format: {"46457": {"1": 41772, "2": 41772}, ...}
+    etro_materia = data.get("materia", {})
 
     for etro_slot, our_slot in ETRO_SLOT_MAP.items():
         item_id = data.get(etro_slot)
 
         if item_id:
-            # Fetch item details from XIVAPI
+            # Fetch item details from Garland Tools
             item_info = await fetch_item_from_garland(item_id)
 
             source = determine_source(item_info["name"], item_info["level"], our_slot)
+
+            # Extract materia from Etro response
+            # Materia is stored in a separate object keyed by item ID
+            # For rings, Etro uses "46083L" and "46083R" suffixes
+            materia_list: list[MateriaSlot] = []
+            item_id_str = str(item_id)
+
+            # Check for ring suffixes (Etro uses L/R for left/right rings)
+            if our_slot == "ring1":
+                materia_key = f"{item_id_str}L"
+            elif our_slot == "ring2":
+                materia_key = f"{item_id_str}R"
+            else:
+                materia_key = item_id_str
+
+            item_materia = etro_materia.get(materia_key, {})
+            if not item_materia and our_slot in ("ring1", "ring2"):
+                # Fallback to plain item ID if suffix not found
+                item_materia = etro_materia.get(item_id_str, {})
+
+            if item_materia:
+                # Extract materia IDs from slot values (keys are "1", "2", etc.)
+                materia_ids = [
+                    mid for mid in item_materia.values()
+                    if mid and isinstance(mid, int) and mid > 0
+                ]
+
+                if materia_ids:
+                    # Fetch materia details in parallel
+                    materia_results = await asyncio.gather(
+                        *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                        return_exceptions=True
+                    )
+                    for result in materia_results:
+                        if isinstance(result, MateriaSlot):
+                            materia_list.append(result)
 
             slots.append(GearSlotData(
                 slot=our_slot,
@@ -763,6 +953,7 @@ async def fetch_etro_bis(request: Request, uuid_or_url: str):
                 itemLevel=item_info["level"],
                 itemIcon=item_info.get("icon"),
                 itemStats=item_info.get("stats") or None,
+                materia=materia_list,
             ))
         else:
             # No item in this slot - default to raid
