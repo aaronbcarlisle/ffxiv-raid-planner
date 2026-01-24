@@ -52,6 +52,7 @@ export const RELEASES: Release[] = [
           'Fixed an issue where the BiS badge would link to the wrong set when using XIVGear presets with multiple gear sets (e.g., DNC 7.4 Baseline vs 7.4 BiS)',
         details:
           'Jobs affected: DNC, WHM, BLM, PCT, SMN. When these jobs import BiS from presets with multiple sets, the system now correctly remembers which set was selected. Re-importing will use the same set, and the BiS badge will link directly to it.',
+        commits: [{ hash: '3f7403f', message: 'fix: store setIndex in shortlink bisLinks for multi-set XIVGear sheets' }],
       },
     ],
   },
