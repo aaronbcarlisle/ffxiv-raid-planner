@@ -248,6 +248,10 @@ async def migrate_player(session: AsyncSession, player: SnapshotPlayer) -> tuple
     if len(parts) >= 3:
         return False, "already has setIndex"
 
+    # Validate we have a UUID (protect against malformed 'sl|' entries)
+    if len(parts) < 2 or not parts[1]:
+        return False, "malformed shortlink (missing UUID)"
+
     uuid = parts[1]
 
     # Fetch XIVGear data
@@ -328,6 +332,7 @@ async def run_migration():
         updated_count = 0
         skipped_count = 0
         error_count = 0
+        batch_size = 10  # Commit every N players for resilience
 
         for i, player in enumerate(players, 1):
             print(f"[{i}/{len(players)}] {player.name} ({player.job})")
@@ -345,11 +350,16 @@ async def run_migration():
                 print(f"    -> Error: {e}")
                 error_count += 1
 
+            # Commit in batches for resilience (script is idempotent, safe to re-run)
+            if i % batch_size == 0:
+                await session.commit()
+                print(f"    [Committed batch {i // batch_size}]")
+
             # Rate limit
             if i < len(players):
                 await asyncio.sleep(API_DELAY)
 
-        # Commit all changes
+        # Commit any remaining changes
         await session.commit()
 
         print()
