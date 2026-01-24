@@ -74,6 +74,8 @@ export interface UseGroupViewStateReturn {
   setHighlightedPlayerId: (id: string | null) => void;
   highlightedEntry: HighlightedEntry | null;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
+  highlightedBookPlayerId: string | null;
+  setHighlightedBookPlayerId: (id: string | null) => void;
 }
 
 export function useGroupViewState(): UseGroupViewStateReturn {
@@ -167,6 +169,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Highlight state =====
   const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
   const [highlightedEntry, setHighlightedEntry] = useState<HighlightedEntry | null>(null);
+  const [highlightedBookPlayerId, setHighlightedBookPlayerId] = useState<string | null>(null);
 
   // ===== Wrapper functions that sync state, localStorage, and URL =====
 
@@ -355,5 +358,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setHighlightedPlayerId,
     highlightedEntry,
     setHighlightedEntry,
+    highlightedBookPlayerId,
+    setHighlightedBookPlayerId,
   };
 }

@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.9.1';
+export const CURRENT_VERSION = '1.9.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,37 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.9.2',
+    date: '2026-01-24T15:30:00Z',
+    title: 'Member Permissions & Edit Books',
+    highlights: ['Members can only edit their own cards', 'Edit Books shortcut for members'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Member permissions fix',
+        description: 'Members can now only edit name, position, and tank role on their own player cards',
+        details:
+          'Fixed a bug where members could edit other players\' name, position, and tank role. Now properly enforces that members can only edit their own claimed player card. Owners, leads, and admins retain full editing access to all cards.',
+        commits: [{ hash: 'fb13b60', message: 'fix: member permissions and add Edit Books feature' }],
+      },
+      {
+        category: 'feature',
+        title: 'Edit Books context menu',
+        description: 'Quick access to edit your book counts from the player card context menu',
+        details:
+          'Members now see an "Edit Books" option in their player card context menu. Clicking it navigates to the Log tab and highlights their row in the Books panel. Members can edit only their own book cells and view their own book history. Owners and leads see this option on all player cards.',
+        commits: [{ hash: '7fc96a8', message: 'fix: show Edit Books menu for owners/leads/admins on any card' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Mark Floor Cleared hidden from members',
+        description: 'The "Mark Floor Cleared" button is now only visible to owners and leads',
+        details:
+          'Members no longer see the "Mark Floor Cleared" button in the Books panel, since awarding books to the party is a lead/owner responsibility. Members can still edit their own individual book counts.',
+      },
+    ],
+  },
   {
     version: '1.9.1',
     date: '2026-01-20T17:00:00Z',

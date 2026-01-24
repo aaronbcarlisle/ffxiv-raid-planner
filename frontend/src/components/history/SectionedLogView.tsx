@@ -37,6 +37,12 @@ interface SectionedLogViewProps {
   floors: string[];
   currentWeek: number;
   canEdit: boolean;
+  /** Current user ID for per-row edit permissions */
+  currentUserId?: string;
+  /** User role for per-row edit permissions */
+  userRole?: 'owner' | 'lead' | 'member' | 'viewer' | null;
+  /** Highlighted book player ID (from navigation) */
+  highlightedBookPlayerId?: string | null;
   onWeekChange?: (weekNumber: number) => void;
   onNavigateToPlayer?: (playerId: string) => void;
   /** External highlighted entry ID (e.g., from navigation) */
@@ -61,6 +67,9 @@ export function SectionedLogView({
   floors,
   currentWeek,
   canEdit,
+  currentUserId,
+  userRole,
+  highlightedBookPlayerId,
   onWeekChange,
   onNavigateToPlayer,
   highlightedEntryId: externalHighlightedEntryId,
@@ -1073,8 +1082,17 @@ export function SectionedLogView({
                         // Skip substitute players
                         if (!player || player.isSubstitute) return null;
 
+                        // Per-row edit check: members can only edit their own row
+                        const isOwnRow = player.userId === currentUserId;
+                        const canEditThisRow = canEdit || (userRole === 'member' && isOwnRow);
+                        const isHighlightedRow = highlightedBookPlayerId === balance.playerId;
+
                         return (
-                          <tr key={balance.playerId} className="border-t border-border-subtle hover:bg-surface-elevated/50">
+                          <tr
+                            key={balance.playerId}
+                            id={`book-row-${balance.playerId}`}
+                            className={`border-t border-border-subtle hover:bg-surface-elevated/50 ${isHighlightedRow ? 'highlight-pulse' : ''}`}
+                          >
                             <td className="py-2 px-1">
                               <div className="flex items-center gap-1.5">
                                 <JobIcon job={player.job} size="sm" />
@@ -1083,7 +1101,7 @@ export function SectionedLogView({
                             </td>
                             {(['I', 'II', 'III', 'IV'] as const).map((book) => {
                               const value = balance[`book${book}` as keyof typeof balance] as number;
-                              return canEdit ? (
+                              return canEditThisRow ? (
                                 <Tooltip key={book} content={`Book ${book}: ${value} — Click to adjust`}>
                                   <td
                                     className="text-center py-2 px-1 cursor-pointer hover:bg-accent/20 rounded transition-colors"
@@ -1108,16 +1126,20 @@ export function SectionedLogView({
                               );
                             })}
                             <td className="py-1.5 px-1">
-                              <Tooltip content={`View book history for ${player.name}`}>
-                                <button
-                                  onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
-                                  className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                  </svg>
-                                </button>
-                              </Tooltip>
+                              {canEditThisRow ? (
+                                <Tooltip content={`View book history for ${player.name}`}>
+                                  <button
+                                    onClick={() => setLedgerState({ playerId: balance.playerId, playerName: player.name })}
+                                    className="p-1 rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
+                                  </button>
+                                </Tooltip>
+                              ) : (
+                                <div className="w-6" /> // Empty spacer to keep layout consistent
+                              )}
                             </td>
                           </tr>
                         );
@@ -1126,8 +1148,12 @@ export function SectionedLogView({
                   </table>
                 )}
 
-                {/* Mark Floor Cleared - at bottom of Books section */}
-                {canEdit && (
+                {/* Mark Floor Cleared - at bottom of Books section, hidden from members.
+                    Note: We check both canEdit AND userRole !== 'member' because:
+                    - canEdit is false for members (they can't edit all rows)
+                    - But we also want to hide this from members who have per-row edit access
+                    - This button awards books to ALL players, so it's a lead/owner action */}
+                {canEdit && userRole !== 'member' && (
                   <div className="p-2 border-t border-border-subtle">
                     <Tooltip
                       content={

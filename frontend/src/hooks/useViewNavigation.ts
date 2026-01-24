@@ -5,7 +5,7 @@
  * Handles navigating to player cards and loot entries with scroll and highlight.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { toast } from '../stores/toastStore';
 import type { PageMode, LootLogEntry } from '../types';
 
@@ -19,6 +19,7 @@ interface UseViewNavigationParams {
   setPageMode: (mode: PageMode) => void;
   setHighlightedPlayerId: (id: string | null) => void;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
+  setHighlightedBookPlayerId: (id: string | null) => void;
   lootLog: LootLogEntry[];
 }
 
@@ -28,16 +29,36 @@ export interface UseViewNavigationReturn {
 
   /** Navigate to a loot entry from a player's gear slot */
   handleNavigateToLootEntry: (playerId: string, slot: string) => void;
+
+  /** Navigate to the Books panel and highlight the player's row */
+  handleNavigateToBooksPanel: (playerId: string) => void;
 }
 
 export function useViewNavigation({
   setPageMode,
   setHighlightedPlayerId,
   setHighlightedEntry,
+  setHighlightedBookPlayerId,
   lootLog,
 }: UseViewNavigationParams): UseViewNavigationReturn {
+  // Track timeout IDs for cleanup to prevent stale state updates
+  const playerHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const entryHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bookHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (playerHighlightTimeoutRef.current) clearTimeout(playerHighlightTimeoutRef.current);
+      if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
+      if (bookHighlightTimeoutRef.current) clearTimeout(bookHighlightTimeoutRef.current);
+    };
+  }, []);
+
   // Navigate to player card from other tabs (e.g., from Log entry context menu)
   const handleNavigateToPlayer = useCallback((playerId: string) => {
+    // Clear any existing timeout
+    if (playerHighlightTimeoutRef.current) clearTimeout(playerHighlightTimeoutRef.current);
     // Switch to players tab
     setPageMode('players');
     // Set highlighted player ID
@@ -50,13 +71,15 @@ export function useViewNavigation({
       }
     }, 100);
     // Clear highlight after animation completes
-    setTimeout(() => {
+    playerHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedPlayerId(null);
     }, 2500);
   }, [setPageMode, setHighlightedPlayerId]);
 
   // Navigate to loot entry from player card (gear slot → loot entry)
   const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {
+    // Clear any existing timeout
+    if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the loot entry for this player and slot
     const entry = lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
     if (!entry) {
@@ -75,13 +98,35 @@ export function useViewNavigation({
       }
     }, 200); // Slightly longer delay to allow week switch
     // Clear highlight after animation completes
-    setTimeout(() => {
+    entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
     }, 2500);
   }, [lootLog, setPageMode, setHighlightedEntry]);
 
+  // Navigate to Books panel from player card context menu
+  const handleNavigateToBooksPanel = useCallback((playerId: string) => {
+    // Clear any existing timeout
+    if (bookHighlightTimeoutRef.current) clearTimeout(bookHighlightTimeoutRef.current);
+    // Switch to history (Log) tab
+    setPageMode('history');
+    // Set highlighted book player ID
+    setHighlightedBookPlayerId(playerId);
+    // Scroll to the row after short delay to allow tab change render
+    setTimeout(() => {
+      const element = document.getElementById(`book-row-${playerId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 200);
+    // Clear highlight after animation completes
+    bookHighlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedBookPlayerId(null);
+    }, 2500);
+  }, [setPageMode, setHighlightedBookPlayerId]);
+
   return {
     handleNavigateToPlayer,
     handleNavigateToLootEntry,
+    handleNavigateToBooksPanel,
   };
 }

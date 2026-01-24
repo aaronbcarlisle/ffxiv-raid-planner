@@ -47,6 +47,8 @@ interface DroppablePlayerCardProps {
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to Books panel and highlight this player's row */
+  onNavigateToBooksPanel?: (playerId: string) => void;
 }
 
 export function DroppablePlayerCard({

@@ -50,6 +50,7 @@ interface PlayerCardRendererProps {
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
   onNavigateToLootEntry: (playerId: string, slot: GearSlot) => void;
+  onNavigateToBooksPanel: (playerId: string) => void;
   onModalOpen: () => void;
   onModalClose: () => void;
   onEditPlayer: (playerId: string) => void;
@@ -88,6 +89,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   onPastePlayer,
   onCopyUrl,
   onNavigateToLootEntry,
+  onNavigateToBooksPanel,
   onModalOpen,
   onModalClose,
   onEditPlayer,
@@ -150,6 +152,10 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
     onNavigateToLootEntry(player.id, slot);
   }, [onNavigateToLootEntry, player.id]);
 
+  const handleNavigateToBooksPanel = useCallback(() => {
+    onNavigateToBooksPanel(player.id);
+  }, [onNavigateToBooksPanel, player.id]);
+
   const handleStartEdit = useCallback(() => {
     onEditPlayer(player.id);
   }, [onEditPlayer, player.id]);
@@ -206,6 +212,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         onCopyUrl={handleCopyUrl}
         slotsWithLootEntries={playerSlotsWithLootEntries}
         onNavigateToLootEntry={handleNavigateToLootEntry}
+        onNavigateToBooksPanel={handleNavigateToBooksPanel}
       />
     );
   }
@@ -263,6 +270,7 @@ export interface PlayerGridProps {
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
   onNavigateToLootEntry: (playerId: string, slot: GearSlot) => void;
+  onNavigateToBooksPanel: (playerId: string) => void;
   onModalOpen: () => void;
   onModalClose: () => void;
   onEditPlayer: (playerId: string) => void;
@@ -306,6 +314,7 @@ export function PlayerGrid({
   onPastePlayer,
   onCopyUrl,
   onNavigateToLootEntry,
+  onNavigateToBooksPanel,
   onModalOpen,
   onModalClose,
   onEditPlayer,
@@ -342,6 +351,7 @@ export function PlayerGrid({
     onPastePlayer,
     onCopyUrl,
     onNavigateToLootEntry,
+    onNavigateToBooksPanel,
     onModalOpen,
     onModalClose,
     onEditPlayer,
@@ -376,6 +386,7 @@ export function PlayerGrid({
     onPastePlayer,
     onCopyUrl,
     onNavigateToLootEntry,
+    onNavigateToBooksPanel,
     onModalOpen,
     onModalClose,
     onEditPlayer,
