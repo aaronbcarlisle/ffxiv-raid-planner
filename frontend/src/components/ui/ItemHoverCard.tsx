@@ -46,29 +46,9 @@ const STAT_ORDER = [
   'Piety',
 ];
 
-// Convert tier number to Roman numeral for display
-const toRoman = (num: number): string => {
-  const romanNumerals: [number, string][] = [
-    [12, 'XII'],
-    [11, 'XI'],
-    [10, 'X'],
-    [9, 'IX'],
-    [8, 'VIII'],
-    [7, 'VII'],
-    [6, 'VI'],
-    [5, 'V'],
-    [4, 'IV'],
-    [3, 'III'],
-    [2, 'II'],
-    [1, 'I'],
-  ];
-  for (const [value, numeral] of romanNumerals) {
-    if (num >= value) return numeral;
-  }
-  return String(num);
-};
-
 // Materia stat bonus by tier (secondary stats)
+// Current as of FFXIV 7.x - tier XII is highest available
+// Falls back to 0 for unknown tiers
 const MATERIA_STAT_VALUES: Record<number, number> = {
   12: 54,
   11: 36,

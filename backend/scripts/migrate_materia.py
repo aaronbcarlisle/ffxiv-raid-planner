@@ -229,7 +229,7 @@ async def migrate_player(session: AsyncSession, player: SnapshotPlayer) -> bool:
             slot_materia = await fetch_materia_for_xivgear(identifier)
         else:
             slot_materia = await fetch_materia_for_etro(identifier)
-    except Exception as e:
+    except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as e:
         logger.error(f"Failed to fetch materia for player {player.id}: {e}")
         return False
 
