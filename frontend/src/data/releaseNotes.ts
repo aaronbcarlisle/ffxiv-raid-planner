@@ -51,11 +51,13 @@ export const RELEASES: Release[] = [
         description: 'View materia melds directly in gear slot tooltips without visiting your BiS link',
         details:
           'Gear tooltips now show melded materia with stat values (e.g., "54 DET"). Hover over materia for full details including the materia name and exact stat bonus. Materia data is imported automatically when you import a BiS from XIVGear or Etro.',
+        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
       },
       {
         category: 'improvement',
         title: 'High-resolution materia icons',
         description: 'Materia icons now use higher resolution images for better clarity',
+        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
       },
     ],
   },
