@@ -255,12 +255,17 @@ async def fetch_materia_for_github(identifier: str) -> dict[str, list[dict]]:
     # Fetch from GitHub
     url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/{tier}.json"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(url, timeout=15.0)
         except (httpx.TimeoutException, httpx.RequestError) as e:
             logger.error(f"Failed to fetch GitHub preset: {e}")
             return {}
+
+    # Reject redirects to prevent SSRF
+    if 300 <= response.status_code < 400:
+        logger.warning(f"GitHub unexpected redirect: {url} (status {response.status_code})")
+        return {}
 
     if response.status_code != 200:
         logger.warning(f"GitHub preset not found: {url} (status {response.status_code})")
