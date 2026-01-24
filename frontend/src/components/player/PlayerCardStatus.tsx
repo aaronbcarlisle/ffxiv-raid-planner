@@ -23,6 +23,19 @@ function buildBiSUrl(bisLink: string): string {
         return `https://xivgear.app/?page=${parts.slice(0, 3).join('|')}`;
       }
     }
+    // Handle sl|uuid|setIndex format - include setIndex as URL parameter
+    // XIVGear supports ?page=sl|uuid&selectedIndex=N for set selection
+    if (bisLink.startsWith('sl|')) {
+      const parts = bisLink.split('|');
+      if (parts.length === 3) {
+        const uuid = parts[1];
+        const setIndex = parseInt(parts[2], 10);
+        if (!Number.isNaN(setIndex) && setIndex > 0) {
+          return `https://xivgear.app/?page=sl|${uuid}&selectedIndex=${setIndex}`;
+        }
+        return `https://xivgear.app/?page=sl|${uuid}`;
+      }
+    }
     return `https://xivgear.app/?page=${bisLink}`;
   }
   return `https://etro.gg/gearset/${bisLink}`;

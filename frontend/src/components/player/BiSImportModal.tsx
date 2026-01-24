@@ -84,9 +84,9 @@ const isPresetLink = (link: string): boolean =>
  * Parse a preset bisLink to extract matching info
  * Returns null if not a preset format
  * Format: bis|job|tier|index (index optional for backward compatibility)
- * or: sl|uuid
+ * or: sl|uuid|setIndex (setIndex optional, defaults to 0)
  */
-const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier?: string; index?: number; uuid?: string } | null => {
+const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier?: string; index?: number; uuid?: string; setIndex?: number } | null => {
   if (link.startsWith('bis|')) {
     const parts = link.split('|');
     if (parts.length >= 3) {
@@ -95,9 +95,12 @@ const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier
       return { type: 'bis', job: parts[1], tier: parts[2], index };
     }
   } else if (link.startsWith('sl|')) {
-    const uuid = link.slice(3);
+    const parts = link.split('|');
+    const uuid = parts[1];
     if (uuid) {
-      return { type: 'sl', uuid };
+      const rawSetIndex = parts.length >= 3 ? parseInt(parts[2], 10) : undefined;
+      const setIndex = rawSetIndex !== undefined && !Number.isNaN(rawSetIndex) ? rawSetIndex : undefined;
+      return { type: 'sl', uuid, setIndex };
     }
   }
   return null;
@@ -151,8 +154,16 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                   matchIndex = response.presets.findIndex(p => p.githubTier === parsed.tier);
                 }
               } else if (parsed.type === 'sl' && parsed.uuid) {
-                // Match by uuid
-                matchIndex = response.presets.findIndex(p => p.uuid === parsed.uuid);
+                // Match by uuid and setIndex
+                if (parsed.setIndex !== undefined) {
+                  // New format with setIndex - exact match
+                  matchIndex = response.presets.findIndex(
+                    p => p.uuid === parsed.uuid && (p.setIndex ?? 0) === parsed.setIndex
+                  );
+                } else {
+                  // Legacy format without setIndex - match first with same uuid
+                  matchIndex = response.presets.findIndex(p => p.uuid === parsed.uuid);
+                }
               }
 
               if (matchIndex !== -1) {
@@ -406,8 +417,9 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     if (presetIdx !== null) {
       const selectedPreset = presets[presetIdx];
       if (selectedPreset?.uuid) {
-        // Shortlink preset - store the XIVGear shortlink format
-        bisLink = `sl|${selectedPreset.uuid}`;
+        // Shortlink preset - store the XIVGear shortlink format with set index
+        const setIndex = selectedPreset.setIndex ?? 0;
+        bisLink = `sl|${selectedPreset.uuid}|${setIndex}`;
       } else if (selectedPreset?.githubTier !== undefined) {
         // GitHub preset - store the curated BiS path with tier file and index
         const index = selectedPreset.githubIndex ?? 0;
