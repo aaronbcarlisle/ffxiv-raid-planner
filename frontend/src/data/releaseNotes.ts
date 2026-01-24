@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.9.2';
+export const CURRENT_VERSION = '1.10.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,28 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.10.0',
+    date: '2026-01-24T17:00:00Z',
+    title: 'Materia in Gear Tooltips',
+    highlights: ['View materia melds in gear tooltips', 'No need to visit BiS links'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Materia display in gear tooltips',
+        description: 'View materia melds directly in gear slot tooltips without visiting your BiS link',
+        details:
+          'Gear tooltips now show melded materia with stat values (e.g., "54 DET"). Hover over materia for full details including the materia name and exact stat bonus. Materia data is imported automatically when you import a BiS from XIVGear or Etro.',
+        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
+      },
+      {
+        category: 'improvement',
+        title: 'High-resolution materia icons',
+        description: 'Materia icons now use higher resolution images for better clarity',
+        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
+      },
+    ],
+  },
   {
     version: '1.9.2',
     date: '2026-01-24T15:30:00Z',
