@@ -929,11 +929,13 @@ async def fetch_etro_bis(request: Request, uuid_or_url: str):
                 item_materia = etro_materia.get(item_id_str, {})
 
             if item_materia:
-                # Extract materia IDs from slot values (keys are "1", "2", etc.)
-                materia_ids = [
-                    mid for mid in item_materia.values()
-                    if mid and isinstance(mid, int) and mid > 0
-                ]
+                # Extract materia IDs using explicit slot ordering (Etro uses 1-indexed keys)
+                # Use range(1, 6) for consistent ordering instead of .values() which depends on insertion order
+                materia_ids: list[int] = []
+                for i in range(1, 6):
+                    mid = item_materia.get(str(i))
+                    if mid and isinstance(mid, int) and mid > 0:
+                        materia_ids.append(mid)
 
                 if materia_ids:
                     # Fetch materia details in parallel
