@@ -27,12 +27,15 @@ function buildBiSUrl(bisLink: string): string {
     // XIVGear supports ?page=sl|uuid&selectedIndex=N for set selection
     if (bisLink.startsWith('sl|')) {
       const parts = bisLink.split('|');
-      if (parts.length === 3) {
+      if (parts.length >= 2) {
         const uuid = parts[1];
-        const setIndex = parseInt(parts[2], 10);
-        // Always include selectedIndex if we have a valid number (including 0)
-        if (!Number.isNaN(setIndex)) {
-          return `https://xivgear.app/?page=sl|${uuid}&selectedIndex=${setIndex}`;
+        // If setIndex is present (3+ parts), use it
+        if (parts.length >= 3) {
+          const setIndex = parseInt(parts[2], 10);
+          // Always include selectedIndex if we have a valid number (including 0)
+          if (!Number.isNaN(setIndex)) {
+            return `https://xivgear.app/?page=sl|${uuid}&selectedIndex=${setIndex}`;
+          }
         }
         return `https://xivgear.app/?page=sl|${uuid}`;
       }
