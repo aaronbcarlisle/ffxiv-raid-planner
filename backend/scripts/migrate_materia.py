@@ -199,8 +199,8 @@ async def fetch_materia_for_etro(uuid: str) -> dict[str, list[dict]]:
             materia_key = f"{item_id}R"
 
         slot_materia_data = etro_materia.get(materia_key, {})
-        if not slot_materia_data:
-            # Try without suffix for non-ring slots
+        if not slot_materia_data and our_slot in ("ring1", "ring2"):
+            # Fallback: try without L/R suffix for rings (some Etro sets use unsuffixed keys)
             slot_materia_data = etro_materia.get(str(item_id), {})
 
         if not slot_materia_data:
