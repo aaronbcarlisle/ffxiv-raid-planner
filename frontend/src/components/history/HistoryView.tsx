@@ -20,8 +20,12 @@ interface HistoryViewProps {
   tierId: string;
   players: SnapshotPlayer[];
   floors: string[];
-  userRole: string;
+  userRole: 'owner' | 'lead' | 'member' | 'viewer';
   isAdmin?: boolean;
+  /** Current user ID for per-row edit permissions */
+  currentUserId?: string;
+  /** Highlighted book player ID (from navigation) */
+  highlightedBookPlayerId?: string | null;
   onNavigateToPlayer?: (playerId: string) => void;
   highlightedEntryId?: string | null;
   highlightedEntryType?: 'loot' | 'material' | null;
@@ -45,6 +49,8 @@ export function HistoryView({
   floors,
   userRole,
   isAdmin = false,
+  currentUserId,
+  highlightedBookPlayerId,
   onNavigateToPlayer,
   highlightedEntryId,
   highlightedEntryType,
@@ -250,6 +256,9 @@ export function HistoryView({
         floors={floors}
         currentWeek={selectedWeek}
         canEdit={canEdit}
+        currentUserId={currentUserId}
+        userRole={userRole}
+        highlightedBookPlayerId={highlightedBookPlayerId}
         onWeekChange={handleWeekChange}
         onNavigateToPlayer={onNavigateToPlayer}
         highlightedEntryId={highlightedEntryId}

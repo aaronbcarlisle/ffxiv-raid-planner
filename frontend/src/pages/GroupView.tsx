@@ -104,6 +104,8 @@ export function GroupView() {
     setHighlightedPlayerId,
     highlightedEntry,
     setHighlightedEntry,
+    highlightedBookPlayerId,
+    setHighlightedBookPlayerId,
   } = state;
 
   // Settings modal options (for opening to specific tab with highlight)
@@ -358,10 +360,11 @@ export function GroupView() {
   const { handleAddPlayer } = playerActions;
 
   // Use extracted navigation hook
-  const { handleNavigateToPlayer, handleNavigateToLootEntry } = useViewNavigation({
+  const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToBooksPanel } = useViewNavigation({
     setPageMode,
     setHighlightedPlayerId,
     setHighlightedEntry,
+    setHighlightedBookPlayerId,
     lootLog,
   });
 
@@ -761,6 +764,7 @@ export function GroupView() {
                   onPastePlayer={handlePastePlayer}
                   onCopyUrl={handleCopyUrl}
                   onNavigateToLootEntry={handleNavigateToLootEntry}
+                  onNavigateToBooksPanel={handleNavigateToBooksPanel}
                   onModalOpen={handlePlayerModalOpen}
                   onModalClose={handlePlayerModalClose}
                   onEditPlayer={setEditingPlayerId}
@@ -838,6 +842,8 @@ export function GroupView() {
               floors={tierInfo.floors}
               userRole={userRole || 'viewer'}
               isAdmin={isAdminAccess}
+              currentUserId={effectiveUserId}
+              highlightedBookPlayerId={highlightedBookPlayerId}
               onNavigateToPlayer={handleNavigateToPlayer}
               highlightedEntryId={highlightedEntry?.id}
               highlightedEntryType={highlightedEntry?.type}

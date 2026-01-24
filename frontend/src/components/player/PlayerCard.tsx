@@ -37,6 +37,7 @@ import {
   Link2Off,
   Link2,
   RefreshCw,
+  BookOpen,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
@@ -77,6 +78,8 @@ interface PlayerCardProps {
   slotsWithLootEntries?: Set<GearSlot>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to Books panel and highlight this player's row */
+  onNavigateToBooksPanel?: (playerId: string) => void;
 }
 
 export const PlayerCard = memo(function PlayerCard({
@@ -113,6 +116,7 @@ export const PlayerCard = memo(function PlayerCard({
   onCopyUrl,
   slotsWithLootEntries,
   onNavigateToLootEntry,
+  onNavigateToBooksPanel,
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -361,6 +365,12 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
+    // Edit Books - only visible to members on their own card
+    ...(userRole === 'member' && player.userId === currentUserId && onNavigateToBooksPanel ? [{
+      label: 'Edit Books',
+      icon: <BookOpen className="w-4 h-4" />,
+      onClick: () => onNavigateToBooksPanel(player.id),
+    }] : []),
     { separator: true },
     {
       label: 'Copy Player',
@@ -441,6 +451,8 @@ export const PlayerCard = memo(function PlayerCard({
   ], [
     player.bisLink,
     player.isSubstitute,
+    player.userId,
+    player.id,
     editPermission.allowed,
     editPermission.reason,
     rosterPermission.allowed,
@@ -462,6 +474,9 @@ export const PlayerCard = memo(function PlayerCard({
     isAdminAccess,
     onOwnerAssignPlayer,
     onAdminAssignPlayer,
+    userRole,
+    currentUserId,
+    onNavigateToBooksPanel,
   ]);
 
   // Prevent focus flash when Shift+Click starts
@@ -804,7 +819,7 @@ export const PlayerCard = memo(function PlayerCard({
           tierId={tierId}
           userRole={userRole}
           currentUserId={currentUserId}
-          isAdmin={isAdmin}
+          isAdmin={isAdminAccess}
           onJobChange={handleJobChange}
           onNameChange={handleNameChange}
           onPositionChange={handlePositionChange}
@@ -823,7 +838,7 @@ export const PlayerCard = memo(function PlayerCard({
             currentUserId={currentUserId}
             player={player}
             userRole={userRole}
-            isAdmin={isAdmin}
+            isAdmin={isAdminAccess}
           />
         </div>
       </div>

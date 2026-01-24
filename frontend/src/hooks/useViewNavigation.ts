@@ -19,6 +19,7 @@ interface UseViewNavigationParams {
   setPageMode: (mode: PageMode) => void;
   setHighlightedPlayerId: (id: string | null) => void;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
+  setHighlightedBookPlayerId: (id: string | null) => void;
   lootLog: LootLogEntry[];
 }
 
@@ -28,12 +29,16 @@ export interface UseViewNavigationReturn {
 
   /** Navigate to a loot entry from a player's gear slot */
   handleNavigateToLootEntry: (playerId: string, slot: string) => void;
+
+  /** Navigate to the Books panel and highlight the player's row */
+  handleNavigateToBooksPanel: (playerId: string) => void;
 }
 
 export function useViewNavigation({
   setPageMode,
   setHighlightedPlayerId,
   setHighlightedEntry,
+  setHighlightedBookPlayerId,
   lootLog,
 }: UseViewNavigationParams): UseViewNavigationReturn {
   // Navigate to player card from other tabs (e.g., from Log entry context menu)
@@ -80,8 +85,28 @@ export function useViewNavigation({
     }, 2500);
   }, [lootLog, setPageMode, setHighlightedEntry]);
 
+  // Navigate to Books panel from player card context menu
+  const handleNavigateToBooksPanel = useCallback((playerId: string) => {
+    // Switch to history (Log) tab
+    setPageMode('history');
+    // Set highlighted book player ID
+    setHighlightedBookPlayerId(playerId);
+    // Scroll to the row after short delay to allow tab change render
+    setTimeout(() => {
+      const element = document.getElementById(`book-row-${playerId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 200);
+    // Clear highlight after animation completes
+    setTimeout(() => {
+      setHighlightedBookPlayerId(null);
+    }, 2500);
+  }, [setPageMode, setHighlightedBookPlayerId]);
+
   return {
     handleNavigateToPlayer,
     handleNavigateToLootEntry,
+    handleNavigateToBooksPanel,
   };
 }
