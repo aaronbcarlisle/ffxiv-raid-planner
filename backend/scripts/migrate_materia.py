@@ -62,8 +62,7 @@ def parse_bis_link(bis_link: str) -> tuple[str, str] | None:
         Tuple of (source, identifier) where source is 'xivgear', 'etro', or 'curated'
         None if link format is not recognized
 
-    Note: Curated presets (bis|job|tier) don't have materia data - they use
-    static GitHub JSON which doesn't include user melds.
+    Note: Curated presets (bis|job|tier|index) DO have materia in the GitHub JSON.
     """
     if not bis_link:
         return None
@@ -76,20 +75,24 @@ def parse_bis_link(bis_link: str) -> tuple[str, str] | None:
         uuid = bis_link[3:]  # Remove "sl|" prefix
         return ("xivgear", uuid)
 
-    # bis|{job}|{tier}|{index} - Curated presets (no materia available)
+    # bis|{job}|{tier}|{index} - Curated presets from GitHub
     if bis_link.startswith("bis|"):
-        # Curated presets use static GitHub JSON without user materia melds
-        # Return "curated" so caller can skip gracefully
-        return ("curated", bis_link)
+        # Format: bis|{job}|{tier}|{index}
+        # Returns the full identifier for parsing later
+        return ("github", bis_link)
 
     # XIVGear URL patterns
     if "xivgear.app" in bis_link:
         try:
             identifier, path_type = extract_bis_path(bis_link)
             if path_type == "bis":
-                # Curated BiS URL (e.g., ?page=bis|drg|current) - no materia
-                return ("curated", identifier)
-            # Shortlink URL - has materia
+                # Curated BiS URL (e.g., ?page=bis|drg|current)
+                # identifier is like "drg/current", convert to bis|drg|current|0 format
+                parts = identifier.split("/")
+                if len(parts) == 2:
+                    return ("github", f"bis|{parts[0]}|{parts[1]}|0")
+                return None
+            # Shortlink URL
             return ("xivgear", identifier)
         except ValueError:
             return None
@@ -226,6 +229,100 @@ async def fetch_materia_for_etro(uuid: str) -> dict[str, list[dict]]:
     return slot_materia
 
 
+async def fetch_materia_for_github(identifier: str) -> dict[str, list[dict]]:
+    """
+    Fetch materia data from GitHub curated BiS presets.
+
+    Args:
+        identifier: Format "bis|{job}|{tier}|{index}"
+
+    Returns:
+        Dict mapping slot names to materia lists
+    """
+    # Parse identifier: bis|{job}|{tier}|{index}
+    parts = identifier.split("|")
+    if len(parts) < 4:
+        logger.warning(f"Invalid GitHub preset format: {identifier}")
+        return {}
+
+    job = parts[1].lower()
+    tier = parts[2].lower()
+    try:
+        set_index = int(parts[3])
+    except ValueError:
+        set_index = 0
+
+    # Fetch from GitHub
+    url = f"https://raw.githubusercontent.com/xiv-gear-planner/static-bis-sets/main/{job}/{tier}.json"
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, timeout=15.0)
+        except (httpx.TimeoutException, httpx.RequestError) as e:
+            logger.error(f"Failed to fetch GitHub preset: {e}")
+            return {}
+
+    if response.status_code != 200:
+        logger.warning(f"GitHub preset not found: {url} (status {response.status_code})")
+        return {}
+
+    try:
+        data = response.json()
+    except Exception:
+        logger.error(f"Invalid JSON from GitHub preset: {url}")
+        return {}
+
+    # Extract items from the set
+    items_data = {}
+    if "sets" in data and data["sets"]:
+        sets = data["sets"]
+        # Filter out separator entries
+        actual_sets = [s for s in sets if not s.get("isSeparator")]
+        if set_index < len(actual_sets):
+            items_data = actual_sets[set_index].get("items", {})
+        elif actual_sets:
+            items_data = actual_sets[0].get("items", {})
+    elif "items" in data:
+        items_data = data["items"]
+
+    if not items_data:
+        return {}
+
+    # Extract materia for each slot
+    slot_materia: dict[str, list[dict]] = {}
+
+    for xivgear_slot, our_slot in XIVGEAR_SLOT_MAP.items():
+        item_data = items_data.get(xivgear_slot)
+        if not item_data:
+            continue
+
+        raw_materia = item_data.get("materia", [])
+        if not raw_materia:
+            continue
+
+        # Extract IDs, filtering empty slots
+        materia_ids = [
+            m.get("id") if isinstance(m, dict) else m
+            for m in raw_materia
+        ]
+        materia_ids = [mid for mid in materia_ids if mid and mid > 0]
+
+        if materia_ids:
+            materia_results = await asyncio.gather(
+                *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                return_exceptions=True
+            )
+            materia_list = []
+            for result in materia_results:
+                if isinstance(result, MateriaSlot):
+                    materia_list.append(result.model_dump())
+
+            if materia_list:
+                slot_materia[our_slot] = materia_list
+
+    return slot_materia
+
+
 async def migrate_player(session: AsyncSession, player: SnapshotPlayer) -> bool:
     """
     Migrate a single player's gear to include materia.
@@ -243,16 +340,13 @@ async def migrate_player(session: AsyncSession, player: SnapshotPlayer) -> bool:
 
     source, identifier = parsed
 
-    # Curated presets don't have materia - they use static GitHub JSON
-    if source == "curated":
-        logger.info(f"Skipping curated preset for player {player.id} ({player.name}) - no materia available")
-        return False
-
     try:
         if source == "xivgear":
             slot_materia = await fetch_materia_for_xivgear(identifier)
         elif source == "etro":
             slot_materia = await fetch_materia_for_etro(identifier)
+        elif source == "github":
+            slot_materia = await fetch_materia_for_github(identifier)
         else:
             logger.warning(f"Unknown source '{source}' for player {player.id}")
             return False
