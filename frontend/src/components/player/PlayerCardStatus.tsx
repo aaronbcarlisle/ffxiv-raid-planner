@@ -30,7 +30,8 @@ function buildBiSUrl(bisLink: string): string {
       if (parts.length === 3) {
         const uuid = parts[1];
         const setIndex = parseInt(parts[2], 10);
-        if (!Number.isNaN(setIndex) && setIndex > 0) {
+        // Always include selectedIndex if we have a valid number (including 0)
+        if (!Number.isNaN(setIndex)) {
           return `https://xivgear.app/?page=sl|${uuid}&selectedIndex=${setIndex}`;
         }
         return `https://xivgear.app/?page=sl|${uuid}`;

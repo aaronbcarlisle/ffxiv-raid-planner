@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.10.0';
+export const CURRENT_VERSION = '1.10.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,22 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.10.1',
+    date: '2026-01-24T21:00:00Z',
+    title: 'Multi-Set BiS Link Fix',
+    highlights: ['BiS badge links to correct set', 'Fixed for DNC, WHM, BLM, PCT, SMN'],
+    items: [
+      {
+        category: 'fix',
+        title: 'BiS badge links to correct set for multi-set XIVGear presets',
+        description:
+          'Fixed an issue where the BiS badge would link to the wrong set when using XIVGear presets with multiple gear sets (e.g., DNC 7.4 Baseline vs 7.4 BiS)',
+        details:
+          'Jobs affected: DNC, WHM, BLM, PCT, SMN. When these jobs import BiS from presets with multiple sets, the system now correctly remembers which set was selected. Re-importing will use the same set, and the BiS badge will link directly to it.',
+      },
+    ],
+  },
   {
     version: '1.10.0',
     date: '2026-01-24T17:00:00Z',

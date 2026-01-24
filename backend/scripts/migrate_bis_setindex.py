@@ -46,6 +46,10 @@ logger = get_logger(__name__)
 
 # Rate limit delay between API calls (seconds)
 API_DELAY = 0.5
+# Shorter delay for Garland Tools calls within a single player's processing
+GARLAND_API_DELAY = 0.1
+# Minimum number of matching items required to confidently identify a set
+MIN_MATCH_CONFIDENCE = 3
 
 
 async def fetch_shortlink_data(uuid: str) -> dict | None:
@@ -58,6 +62,11 @@ async def fetch_shortlink_data(uuid: str) -> dict | None:
         except (httpx.TimeoutException, httpx.RequestError) as e:
             logger.error(f"Failed to fetch shortlink {uuid}: {e}")
             return None
+
+    # Reject redirects to prevent SSRF
+    if 300 <= response.status_code < 400:
+        logger.warning(f"Redirect response when fetching shortlink {uuid}: status {response.status_code}")
+        return None
 
     if response.status_code != 200:
         logger.warning(f"Shortlink not found: {uuid} (status {response.status_code})")
@@ -96,61 +105,22 @@ def get_sets_from_data(data: dict) -> list[tuple[int, str, dict]]:
     return sets
 
 
-def compare_gear_to_set(player_gear: list[dict], set_items: dict) -> tuple[int, int]:
-    """
-    Compare player's stored gear to a set's items.
-
-    Returns:
-        Tuple of (matches, total_compared)
-    """
-    matches = 0
-    total = 0
-
-    # Map our slot names to XIVGear slot names
-    slot_map_reverse = {v: k for k, v in XIVGEAR_SLOT_MAP.items()}
-
-    for gear_item in player_gear:
-        slot = gear_item.get("slot")
-        item_name = gear_item.get("itemName")
-
-        if not slot or not item_name:
-            continue
-
-        xiv_slot = slot_map_reverse.get(slot)
-        if not xiv_slot:
-            continue
-
-        set_item = set_items.get(xiv_slot, {})
-        if not set_item:
-            continue
-
-        total += 1
-
-        # We need to fetch the item name from Garland to compare
-        # For now, compare by item ID if we have it stored
-        # Since we don't store item IDs, we'll use a heuristic:
-        # If the set has an item in this slot, we'll need to look up its name
-        set_item_id = set_item.get("id")
-        if set_item_id:
-            # We'll mark this as needing comparison
-            # For the actual comparison, we'll fetch item names
-            pass
-
-    return matches, total
-
-
 async def fetch_item_name(item_id: int) -> str | None:
     """Fetch item name from Garland Tools."""
     url = f"https://www.garlandtools.org/db/doc/item/en/3/{item_id}.json"
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(url, timeout=10.0)
+            # Reject redirects to prevent SSRF
+            if 300 <= response.status_code < 400:
+                logger.warning(f"Redirect response when fetching item {item_id}")
+                return None
             if response.status_code == 200:
                 data = response.json()
                 return data.get("item", {}).get("name")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to fetch item name for {item_id}: {e}")
     return None
 
 
@@ -197,8 +167,9 @@ async def find_matching_set(player_gear: list[dict], sets: list[tuple[int, str, 
             if not set_item_id:
                 continue
 
-            # Fetch item name from Garland
+            # Fetch item name from Garland with rate limiting
             set_item_name = await fetch_item_name(set_item_id)
+            await asyncio.sleep(GARLAND_API_DELAY)
             if not set_item_name:
                 continue
 
@@ -214,8 +185,8 @@ async def find_matching_set(player_gear: list[dict], sets: list[tuple[int, str, 
             best_match_count = match_count
             best_match_index = set_index
 
-    # Only return if we have a confident match (at least 3 items match)
-    if best_match_count >= 3:
+    # Only return if we have a confident match
+    if best_match_count >= MIN_MATCH_CONFIDENCE:
         return best_match_index
 
     return None
