@@ -70,9 +70,13 @@ def parse_bis_link(bis_link: str) -> tuple[str, str] | None:
     bis_link = bis_link.strip()
 
     # Internal preset formats (stored by BiS import)
-    # sl|{uuid} - Shortlink presets
+    # sl|{uuid} or sl|{uuid}|{setIndex} - Shortlink presets
     if bis_link.startswith("sl|"):
-        uuid = bis_link[3:]  # Remove "sl|" prefix
+        parts = bis_link.split("|")
+        uuid = parts[1]
+        # Include setIndex in identifier if present (format: uuid|setIndex)
+        if len(parts) >= 3:
+            return ("xivgear", f"{uuid}|{parts[2]}")
         return ("xivgear", uuid)
 
     # bis|{job}|{tier}|{index} - Curated presets from GitHub
@@ -117,10 +121,25 @@ async def fetch_materia_for_xivgear(identifier: str) -> dict[str, list[dict]]:
     """
     Fetch materia data from XIVGear.
 
+    Args:
+        identifier: UUID or UUID|setIndex format
+
     Returns:
         Dict mapping slot names to materia lists
     """
-    data = await fetch_bis_from_shortlink(identifier)
+    # Parse identifier - may include setIndex (format: uuid|setIndex)
+    if "|" in identifier:
+        parts = identifier.split("|")
+        uuid = parts[0]
+        try:
+            set_index = int(parts[1])
+        except (ValueError, IndexError):
+            set_index = 0
+    else:
+        uuid = identifier
+        set_index = 0
+
+    data = await fetch_bis_from_shortlink(uuid)
 
     # Handle different data structures
     items_data = {}
@@ -128,7 +147,10 @@ async def fetch_materia_for_xivgear(identifier: str) -> dict[str, list[dict]]:
         sets = data["sets"]
         actual_sets = [s for s in sets if not s.get("isSeparator")]
         if actual_sets:
-            items_data = actual_sets[0].get("items", {})
+            # Use set_index to select the correct set
+            if set_index >= len(actual_sets):
+                set_index = 0  # Fall back to first set if index out of range
+            items_data = actual_sets[set_index].get("items", {})
     elif "items" in data:
         items_data = data["items"]
 
