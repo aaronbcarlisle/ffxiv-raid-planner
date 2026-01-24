@@ -1,6 +1,5 @@
 """Tests for BiS materia parsing functionality"""
 
-import pytest
 from app.routers.bis import parse_materia_name, MATERIA_STAT_MAP, build_icon_url_from_id
 
 

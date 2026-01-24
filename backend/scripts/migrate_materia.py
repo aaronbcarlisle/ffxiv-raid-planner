@@ -34,7 +34,7 @@ import httpx
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import async_session_maker, engine
+from app.database import async_session_maker
 from app.models.snapshot_player import SnapshotPlayer
 from app.routers.bis import (
     ETRO_SLOT_MAP,
@@ -59,18 +59,37 @@ def parse_bis_link(bis_link: str) -> tuple[str, str] | None:
     Parse a BiS link to determine source and identifier.
 
     Returns:
-        Tuple of (source, identifier) where source is 'xivgear' or 'etro'
+        Tuple of (source, identifier) where source is 'xivgear', 'etro', or 'curated'
         None if link format is not recognized
+
+    Note: Curated presets (bis|job|tier) don't have materia data - they use
+    static GitHub JSON which doesn't include user melds.
     """
     if not bis_link:
         return None
 
     bis_link = bis_link.strip()
 
-    # XIVGear patterns
+    # Internal preset formats (stored by BiS import)
+    # sl|{uuid} - Shortlink presets
+    if bis_link.startswith("sl|"):
+        uuid = bis_link[3:]  # Remove "sl|" prefix
+        return ("xivgear", uuid)
+
+    # bis|{job}|{tier}|{index} - Curated presets (no materia available)
+    if bis_link.startswith("bis|"):
+        # Curated presets use static GitHub JSON without user materia melds
+        # Return "curated" so caller can skip gracefully
+        return ("curated", bis_link)
+
+    # XIVGear URL patterns
     if "xivgear.app" in bis_link:
         try:
-            identifier, _ = extract_bis_path(bis_link)
+            identifier, path_type = extract_bis_path(bis_link)
+            if path_type == "bis":
+                # Curated BiS URL (e.g., ?page=bis|drg|current) - no materia
+                return ("curated", identifier)
+            # Shortlink URL - has materia
             return ("xivgear", identifier)
         except ValueError:
             return None
@@ -83,7 +102,7 @@ def parse_bis_link(bis_link: str) -> tuple[str, str] | None:
         except ValueError:
             return None
 
-    # Try as raw UUID (assume XIVGear)
+    # Try as raw UUID (assume XIVGear shortlink)
     uuid_pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     if re.match(uuid_pattern, bis_link, re.IGNORECASE):
         return ("xivgear", bis_link)
@@ -224,11 +243,19 @@ async def migrate_player(session: AsyncSession, player: SnapshotPlayer) -> bool:
 
     source, identifier = parsed
 
+    # Curated presets don't have materia - they use static GitHub JSON
+    if source == "curated":
+        logger.info(f"Skipping curated preset for player {player.id} ({player.name}) - no materia available")
+        return False
+
     try:
         if source == "xivgear":
             slot_materia = await fetch_materia_for_xivgear(identifier)
-        else:
+        elif source == "etro":
             slot_materia = await fetch_materia_for_etro(identifier)
+        else:
+            logger.warning(f"Unknown source '{source}' for player {player.id}")
+            return False
     except (httpx.HTTPError, httpx.TimeoutException, ValueError, KeyError) as e:
         logger.error(f"Failed to fetch materia for player {player.id}: {e}")
         return False
