@@ -68,8 +68,8 @@ function FloorFilterBar({
     : [1, 2, 3, 4];
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-text-muted min-w-[2.5rem]">{label}</span>
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline">{label}</span>
       {floorNumbers.map((floor) => {
         const isSelected = selectedFloor === floor;
         const floorColors = floor !== 'all' ? FLOOR_COLORS[floor] : null;
@@ -84,7 +84,7 @@ function FloorFilterBar({
             aria-label={floor === 'all' ? 'Show all floors' : `Filter by Floor ${floor}`}
             aria-pressed={isSelected}
             className={`
-              px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
+              flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isSelected
                 ? floor === 'all'
                   ? 'bg-accent text-accent-contrast border-accent'
