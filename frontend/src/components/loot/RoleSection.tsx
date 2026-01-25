@@ -96,7 +96,7 @@ export function RoleSection({
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
         className={`
-          w-full flex items-center justify-between px-3 py-2
+          w-full flex items-center justify-between px-3 py-2 min-h-[44px] sm:min-h-0
           ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'}
           border ${role.bgColor}/10 ${role.borderColor}/30
           transition-all hover:opacity-90

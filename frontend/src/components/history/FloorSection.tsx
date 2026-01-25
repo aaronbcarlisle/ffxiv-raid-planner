@@ -85,7 +85,7 @@ export function FloorSection({
       <button
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
-        className={`w-full flex items-center justify-between px-3 py-2 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} border ${colors.bg} ${colors.border} transition-all hover:opacity-90`}
+        className={`w-full flex items-center justify-between px-3 py-2 min-h-[44px] sm:min-h-0 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} border ${colors.bg} ${colors.border} transition-all hover:opacity-90`}
       >
         <div className="flex items-center gap-2">
           {/* Chevron indicator */}
