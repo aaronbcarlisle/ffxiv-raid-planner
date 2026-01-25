@@ -45,9 +45,9 @@ export function LootLogFilters({
   onOpenMaterialModal,
 }: LootLogFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border-default pb-3">
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Layout Mode Toggle */}
+    <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-border-default pb-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
+        {/* Layout Mode Toggle - compact on mobile */}
         <div className="flex bg-surface-base rounded-lg p-0.5">
           <Tooltip
             content={
@@ -63,7 +63,7 @@ export function LootLogFilters({
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('grid')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
                 layoutMode === 'grid'
                   ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
@@ -77,7 +77,7 @@ export function LootLogFilters({
                   d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
                 />
               </svg>
-              Grid
+              <span className="hidden sm:inline">Grid</span>
             </button>
           </Tooltip>
           <Tooltip
@@ -94,7 +94,7 @@ export function LootLogFilters({
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('split')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
                 layoutMode === 'split'
                   ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
@@ -108,7 +108,7 @@ export function LootLogFilters({
                   d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"
                 />
               </svg>
-              List
+              <span className="hidden sm:inline">List</span>
             </button>
           </Tooltip>
         </div>
@@ -128,7 +128,7 @@ export function LootLogFilters({
                 <DropdownTrigger asChild>
                   {/* design-system-ignore: Reset trigger button requires specific danger styling */}
                   <button
-                    className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
+                    className="px-2 sm:px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
                                         hover:bg-status-error/20 hover:border-status-error/60 active:bg-status-error/30 transition-colors flex items-center gap-1.5"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +139,7 @@ export function LootLogFilters({
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                       />
                     </svg>
-                    Reset
+                    <span className="hidden sm:inline">Reset</span>
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>

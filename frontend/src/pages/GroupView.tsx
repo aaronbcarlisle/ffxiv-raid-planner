@@ -522,12 +522,12 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, [setPlayerModalCount]);
 
-  // DnD hook
+  // DnD hook - disabled on mobile (touch DnD is awkward)
   const dnd = useDragAndDrop({
     players: sortedPlayers,
     groupView,
     canEdit,
-    disabled: isAnyModalOpen || !rosterPermission.allowed,
+    disabled: isAnyModalOpen || !rosterPermission.allowed || isSmallScreen,
     onReorder: playerActions.handleReorder,
   });
 

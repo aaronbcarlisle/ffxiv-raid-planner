@@ -101,6 +101,15 @@ function FloorFilterBar({
   );
 }
 
+// Abbreviated labels for mobile
+const ROLE_LABELS_SHORT: Record<string, string> = {
+  tank: 'Tank',
+  healer: 'Heal',
+  melee: 'Melee',
+  ranged: 'Phys',
+  caster: 'Magic',
+};
+
 function RoleFilterBar({
   roleFilters = ROLE_FILTERS,
   visibleRoles,
@@ -109,8 +118,8 @@ function RoleFilterBar({
   label = 'Show:',
 }: Omit<RoleFilterProps, 'type'>) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-text-muted min-w-[2.5rem]">{label}</span>
+    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-none">
+      <span className="text-xs text-text-muted flex-shrink-0">{label}</span>
       {roleFilters.map((role) => {
         // Skip roles that should be hidden (e.g., no jobs in that role)
         if (hiddenRoles?.has(role.id)) return null;
@@ -123,14 +132,15 @@ function RoleFilterBar({
             onClick={() => onRoleToggle(role.id)}
             aria-pressed={isVisible}
             className={`
-              px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
+              px-2 sm:px-3 py-1 sm:py-1.5 min-h-[36px] sm:min-h-0 rounded text-xs font-bold transition-colors border flex-shrink-0
               ${isVisible
                 ? `${role.bgColor} ${role.textColor} ${role.borderColor}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }
             `}
           >
-            {role.label}
+            <span className="sm:hidden">{ROLE_LABELS_SHORT[role.id] || role.label}</span>
+            <span className="hidden sm:inline">{role.label}</span>
           </button>
         );
       })}
