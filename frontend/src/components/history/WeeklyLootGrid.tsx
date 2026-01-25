@@ -9,7 +9,7 @@
  * - Grid-based item layout
  */
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
@@ -133,6 +133,15 @@ export function WeeklyLootGrid({
         longPressTimerRef.current = null;
       }
     }
+  }, []);
+
+  // Cleanup long-press timer on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
   }, []);
 
   // Get context menu items for an entry

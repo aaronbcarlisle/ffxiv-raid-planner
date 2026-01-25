@@ -600,3 +600,10 @@ dialog input[type="radio"] {
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
 }
+
+/* Respect reduced motion preference for animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up {
+    animation: none;
+  }
+}

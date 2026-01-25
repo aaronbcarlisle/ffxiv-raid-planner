@@ -115,7 +115,7 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
             {formatDate(entry.createdAt)}
           </div>
         </div>
-        <div className="flex items-center gap-1 ml-4">
+        <div className="flex items-center gap-2 sm:gap-1 ml-4">
           <Tooltip content="Copy link to this entry">
             <IconButton
               icon={<Link2 className="w-4 h-4" />}
@@ -225,7 +225,7 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
             {formatDate(entry.createdAt)}
           </div>
         </div>
-        <div className="flex items-center gap-1 ml-4">
+        <div className="flex items-center gap-2 sm:gap-1 ml-4">
           <Tooltip content="Copy link to this entry">
             <IconButton
               icon={<Link2 className="w-4 h-4" />}
