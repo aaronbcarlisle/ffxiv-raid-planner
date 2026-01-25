@@ -23,7 +23,6 @@ export function SortModeSelector({ sortPreset, onPresetChange }: SortModeSelecto
           value={sortPreset}
           onChange={(value) => onPresetChange(value as SortPreset)}
           options={options}
-          className="w-full"
         />
       </div>
     </Tooltip>

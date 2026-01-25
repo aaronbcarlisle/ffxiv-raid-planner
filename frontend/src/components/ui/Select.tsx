@@ -107,7 +107,7 @@ export function Select({
       <SelectPrimitive.Trigger
         id={id}
         className={`
-          inline-flex items-center justify-between
+          inline-flex items-center justify-between w-full
           min-h-[44px] sm:min-h-0
           bg-surface-elevated border border-border-default rounded-lg
           pl-4 pr-3 py-2

@@ -342,15 +342,16 @@ export function Dashboard() {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Sort mode dropdown */}
           {groups.length > 0 && (
-            <Select
-              value={sortMode}
-              onChange={(val) => setSortMode(val as DashboardSort)}
-              options={Object.entries(SORT_LABELS).map(([value, label]) => ({
-                value,
-                label,
-              }))}
-              className="w-36"
-            />
+            <div className="w-36">
+              <Select
+                value={sortMode}
+                onChange={(val) => setSortMode(val as DashboardSort)}
+                options={Object.entries(SORT_LABELS).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </div>
           )}
           {/* View mode toggle - hidden on mobile */}
           {groups.length > 0 && (
