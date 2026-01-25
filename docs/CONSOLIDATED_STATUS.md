@@ -1,23 +1,22 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 19, 2026
+**Last Updated:** January 25, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.9.0
+### Current Version: v1.9.1
 
 **Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Weapon Priority Tie Styling** | ✅ Complete | Connector line style with collapsible sections |
-| **Score Breakdown Tooltips** | ✅ Complete | Hover to see priority calculation breakdown |
-| **Gear Slot Icons** | ✅ Complete | Icons in Gear Priority and Who Needs It panels |
-| **Tooltip Audit** | ✅ Complete | Comprehensive tooltip improvements across UI |
-| **Week Management** | ✅ Complete | Start next week, revert week, improved selectors |
+| **Mobile UX Optimization** | 🔨 ~80% | PR #60 - First pass complete; polish and refinements remaining |
+| **Materia in Gear Tooltips** | ✅ Complete | PR #58 - L-003 resolved |
+| **Multi-Set XIVGear Support** | ✅ Complete | PR #59 - Store setIndex in shortlink bisLinks |
+| **Member Permissions Fix** | ✅ Complete | PR #57 - Edit Books feature added |
 
 ### 🔨 Next Up: Session 4 (Optional)
 
@@ -59,6 +58,29 @@
 ---
 
 ## Version History
+
+### v1.9.1 - Mobile UX & Materia Tooltips (January 25, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Mobile UX Optimization** | 🔨 ~80% | PR #60 - First pass complete |
+| **Materia Display** | ✅ Complete | PR #58 - Materia shown in gear tooltips |
+| **XIVGear Multi-Set** | ✅ Complete | PR #59 - Store setIndex for multi-set sheets |
+| **Member Permissions** | ✅ Complete | PR #57 - Edit Books feature |
+
+**Mobile UX Features (First Pass):**
+- `useDevice` hook for device capability detection
+- `MobileBottomNav` component for thumb-friendly navigation
+- Touch-safe tooltips (disabled on touch devices)
+- Responsive layouts across all major views
+- PWA manifest for "Add to Home Screen"
+- Safe-area padding for notched devices
+
+**Mobile Remaining (~20%):**
+- Additional polish and edge case handling
+- UX refinements on specific views
+
+---
 
 ### v1.9.0 - BiS Source Improvements & User Docs Restructure (January 20, 2026)
 
