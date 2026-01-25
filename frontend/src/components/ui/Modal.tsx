@@ -177,7 +177,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
 
         {/* Footer - sticky with extra bottom padding for sheet variant to clear home indicator */}
         {footer && (
-          <div className={`border-t border-border-default p-4 flex-shrink-0 ${isSheet ? 'pb-8 pb-safe' : ''}`}>
+          <div
+            className="border-t border-border-default p-4 flex-shrink-0"
+            style={isSheet ? { paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+          >
             {footer}
           </div>
         )}
