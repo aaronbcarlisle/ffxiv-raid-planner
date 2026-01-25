@@ -881,7 +881,7 @@ export function SectionedLogView({
       >
         {/* Loot Log - Main Area */}
         <div className="min-w-0 overflow-hidden flex flex-col self-start"
-          style={{ gap: layoutMode === 'split' ? '0' : '1rem' }}
+          style={{ gap: '0' }}
         >
           {/* Shared LootCountBar - above both Grid and List views */}
           <div className="flex-shrink-0">
@@ -916,7 +916,7 @@ export function SectionedLogView({
 
           {/* List Layout */}
           {layoutMode === 'split' && (
-            <section className="bg-surface-card border border-border-default rounded-lg flex flex-col mt-4 max-h-[calc(100vh-20rem)]">
+            <section className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100vh-20rem)]">
               <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border-default">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <h3 className="font-display text-base sm:text-lg text-text-primary">Loot Log</h3>
