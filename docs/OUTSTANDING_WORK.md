@@ -162,11 +162,6 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - Link characters to FFLogs profiles
 - Import fight data
 
-### Phase 10: Discord Bot
-- Notifications for loot drops
-- Commands for priority lookup
-- Integration with static group channels
-
 ### Phase 9: Mobile Optimization (~80% Complete)
 - **Status:** First pass completed in PR #60
 - **Implemented:** useDevice hook, MobileBottomNav, touch-safe tooltips, responsive layouts, PWA manifest
@@ -176,6 +171,11 @@ All lint errors resolved; only warnings remain. These don't affect functionality
   - Modal/sheet keyboard handling on mobile
   - Touch gesture refinements (swipe to dismiss, pull-to-refresh candidates)
   - Testing on physical devices (currently emulator-tested only)
+
+### Phase 10: Discord Bot
+- Notifications for loot drops
+- Commands for priority lookup
+- Integration with static group channels
 
 ### Alt Job Tracking (Deferred)
 - Track multiple jobs per player
