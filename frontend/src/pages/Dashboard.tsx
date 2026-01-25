@@ -334,13 +334,13 @@ export function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-display text-accent">My Statics</h1>
           <p className="text-text-muted mt-1">Manage your raid groups</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Sort mode dropdown - hidden on mobile */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Sort mode dropdown */}
           {groups.length > 0 && (
             <Select
               value={sortMode}
@@ -349,7 +349,7 @@ export function Dashboard() {
                 value,
                 label,
               }))}
-              className="hidden sm:block w-36"
+              className="w-36"
             />
           )}
           {/* View mode toggle - hidden on mobile */}
