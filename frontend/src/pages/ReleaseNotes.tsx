@@ -246,7 +246,7 @@ function VersionNav({
   };
 
   return (
-    <nav className="sticky top-16 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
+    <nav className="sticky top-0 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         <div
           className={`

@@ -10,6 +10,7 @@ import { MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
 import { Tooltip } from '../primitives/Tooltip';
+import { LongPressTooltip } from '../primitives/LongPressTooltip';
 import { IconButton } from '../primitives/IconButton';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
@@ -300,7 +301,7 @@ export function PlayerCardHeader({
           />
           {/* Average iLv with slot breakdown tooltip */}
           {averageILv > 0 && (
-            <Tooltip
+            <LongPressTooltip
               delayDuration={200}
               content={
                 <div className="min-w-[140px]">
@@ -330,7 +331,7 @@ export function PlayerCardHeader({
               <div className="text-sm text-text-muted cursor-help">
                 i{averageILv}
               </div>
-            </Tooltip>
+            </LongPressTooltip>
           )}
         </div>
         {onMenuClick && (

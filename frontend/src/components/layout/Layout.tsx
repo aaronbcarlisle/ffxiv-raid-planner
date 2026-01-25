@@ -35,12 +35,12 @@ export function Layout() {
   });
 
   return (
-    <div className="min-h-screen h-full flex flex-col bg-surface-base">
+    <div className="min-h-screen h-screen flex flex-col bg-surface-base overflow-hidden">
       <Header />
       <ViewAsBanner />
       <ReleaseBanner />
-      {/* Content container - pages control their own max-width and padding */}
-      <main className="w-full py-3 flex-1 min-h-0 flex flex-col">
+      {/* Content container - scrollable area below sticky header */}
+      <main className="w-full py-3 flex-1 min-h-0 flex flex-col overflow-y-auto">
         <Outlet />
       </main>
 

@@ -3,9 +3,8 @@
  *
  * Floating layout toggle (Grid/List) for mobile.
  * Positioned at bottom left, opposite to the Log Loot/Material FABs.
+ * Uses same icons as the Roster tab's compact/expanded toggle.
  */
-
-import { LayoutGrid, List } from 'lucide-react';
 
 interface LogLayoutToggleProps {
   layoutMode: 'grid' | 'split';
@@ -29,7 +28,13 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
         aria-label="Grid view"
         aria-pressed={layoutMode === 'grid'}
       >
-        <LayoutGrid className="w-5 h-5" />
+        {/* Grid icon - 4 squares */}
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+          <rect x="1" y="1" width="6" height="6" rx="1" />
+          <rect x="9" y="1" width="6" height="6" rx="1" />
+          <rect x="1" y="9" width="6" height="6" rx="1" />
+          <rect x="9" y="9" width="6" height="6" rx="1" />
+        </svg>
       </button>
       <button
         onClick={() => onLayoutChange('split')}
@@ -41,7 +46,12 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
         aria-label="List view"
         aria-pressed={layoutMode === 'split'}
       >
-        <List className="w-5 h-5" />
+        {/* List icon - horizontal bars */}
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+          <rect x="1" y="1" width="14" height="4" rx="1" />
+          <rect x="1" y="7" width="14" height="4" rx="1" />
+          <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
+        </svg>
       </button>
     </div>
   );

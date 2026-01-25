@@ -25,4 +25,5 @@ export {
   createColoredTriggerClasses,
 } from './popoverSelectHelpers';
 export { Tooltip, TooltipProvider } from './Tooltip';
+export { LongPressTooltip } from './LongPressTooltip';
 export { VisuallyHidden } from './VisuallyHidden';

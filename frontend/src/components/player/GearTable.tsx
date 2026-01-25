@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
-import { Tooltip, TooltipProvider } from '../primitives';
+import { Tooltip, TooltipProvider, LongPressTooltip } from '../primitives';
 import { BiSSourceSelector, WeaponBiSSelector } from './BiSSourceSelector';
 import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPlayer } from '../../types';
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_FULL_NAMES } from '../../types';
@@ -113,11 +113,12 @@ function SlotIcon({
     />
   );
 
-  // Wrap with Tooltip if we have item data and hover is enabled
+  // Wrap with LongPressTooltip if we have item data and hover is enabled
+  // LongPressTooltip shows on hover (desktop) or long press (mobile)
   if (showHover && hasItemData) {
     return (
       <>
-        <Tooltip
+        <LongPressTooltip
           delayDuration={200}
           content={
             hasLootEntry ? (
@@ -159,7 +160,7 @@ function SlotIcon({
           >
             {iconElement}
           </div>
-        </Tooltip>
+        </LongPressTooltip>
         {contextMenu && (
           <ContextMenu
             x={contextMenu.x}

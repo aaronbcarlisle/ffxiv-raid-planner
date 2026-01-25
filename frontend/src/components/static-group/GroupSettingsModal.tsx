@@ -5,7 +5,7 @@
  * Also allows leads/owners to customize loot priority order.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -24,7 +24,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Settings, ListOrdered, Users, Mail, Trash2 } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Trash2, GripVertical } from 'lucide-react';
+import { useSwipe } from '../../hooks/useSwipe';
 import { Modal, Checkbox, Label, Input, ErrorBox } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -61,20 +62,29 @@ function SortableRoleItem({ role, index }: { role: string; index: number }) {
     transition,
   };
 
+  // Stop touch events from propagating to parent swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-4 py-3 bg-surface-elevated border border-border-default rounded-lg cursor-grab active:cursor-grabbing ${
-        isDragging ? 'opacity-50 shadow-lg' : ''
+      className={`flex items-center gap-3 px-4 py-3 bg-surface-elevated border border-border-default rounded-lg select-none touch-none ${
+        isDragging ? 'opacity-50 shadow-lg z-50' : ''
       }`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       {...attributes}
       {...listeners}
     >
-      <span className="text-text-muted">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
+      <span className="text-text-muted cursor-grab active:cursor-grabbing">
+        <GripVertical className="w-5 h-5" />
       </span>
       <span className="text-text-secondary font-medium w-6">{index + 1}.</span>
       <span className="text-text-primary">{ROLE_DISPLAY_NAMES[role] || role}</span>
@@ -118,13 +128,37 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const priorityChanged = JSON.stringify(lootPriority) !== JSON.stringify(originalPriority);
   const hasChanges = name !== group.name || isPublic !== group.isPublic || priorityChanged;
 
-  // DnD sensors for priority reordering
+  // DnD sensors for priority reordering - with activation constraint for better touch handling
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Tab order for swipe navigation
+  const tabOrder: SettingsTab[] = ['general', 'priority', 'members', 'invitations'];
+
+  // Navigate to next/previous tab
+  const navigateTab = useCallback((direction: 'next' | 'prev') => {
+    const currentIndex = tabOrder.indexOf(activeTab);
+    if (direction === 'next' && currentIndex < tabOrder.length - 1) {
+      setActiveTab(tabOrder[currentIndex + 1]);
+    } else if (direction === 'prev' && currentIndex > 0) {
+      setActiveTab(tabOrder[currentIndex - 1]);
+    }
+  }, [activeTab]);
+
+  // Swipe handlers for tab navigation
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => navigateTab('next'),
+    onSwipeRight: () => navigateTab('prev'),
+    minSwipeDistance: 50,
+  });
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -259,8 +293,8 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
           </button>
         </div>
 
-        {/* Content */}
-        <div className="py-4 overflow-y-auto flex-1">
+        {/* Content - swipeable on mobile */}
+        <div className="py-4 overflow-y-auto flex-1" {...swipeHandlers}>
           {error && <ErrorBox message={error} size="sm" className="mb-4" />}
 
           {activeTab === 'general' && !showDeleteConfirm && (

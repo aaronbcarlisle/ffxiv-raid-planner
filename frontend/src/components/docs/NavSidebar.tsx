@@ -132,7 +132,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
       {/* design-system-ignore: FAB-style mobile toggle uses specialized styling */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-20 left-4 z-40 w-12 h-12 bg-accent rounded-full shadow-lg flex items-center justify-center text-accent-contrast hover:bg-accent-bright transition-colors"
+        className="lg:hidden fixed bottom-4 left-4 z-40 w-12 h-12 bg-accent rounded-full shadow-lg flex items-center justify-center text-accent-contrast hover:bg-accent-bright transition-colors"
         aria-label="Open navigation"
       >
         <Menu className="w-5 h-5" />
@@ -173,7 +173,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
 
       {/* Desktop sticky sidebar */}
       <nav
-        className="sticky top-16 w-56 shrink-0 hidden lg:block self-start h-fit z-30"
+        className="sticky top-0 w-56 shrink-0 hidden lg:block self-start h-fit z-30"
         aria-label="Documentation sections"
       >
         <div className="relative bg-surface-card border border-border-subtle rounded-lg">
