@@ -105,16 +105,19 @@ export function QuickLogMaterialModal({
       setSelectedWeek(String(maxWeek));
       setUpdateGear(true);
 
-      // Compute initial slot selection based on suggested player and material
+      // Use player from allPlayers for consistency with eligibleOptions memo
+      const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+
+      // Compute initial slot selection based on player and material
       if (material === 'universal_tomestone') {
         setSelectedSlot(null);
         setAugmentTomeWeapon(false);
       } else if (material === 'solvent') {
-        const slots = getEligibleSlotsForAugmentation(suggestedPlayer, material);
+        const slots = getEligibleSlotsForAugmentation(player, material);
         if (slots.length > 0) {
           setSelectedSlot(slots[0]);
           setAugmentTomeWeapon(false);
-        } else if (needsTomeWeaponAugmentation(suggestedPlayer)) {
+        } else if (needsTomeWeaponAugmentation(player)) {
           setSelectedSlot(null);
           setAugmentTomeWeapon(true);
         } else {
@@ -123,12 +126,12 @@ export function QuickLogMaterialModal({
         }
       } else {
         // Twine/Glaze
-        const slots = getEligibleSlotsForAugmentation(suggestedPlayer, material);
+        const slots = getEligibleSlotsForAugmentation(player, material);
         setSelectedSlot(slots.length > 0 ? slots[0] : null);
         setAugmentTomeWeapon(false);
       }
     }
-  }, [isOpen, suggestedPlayer, maxWeek, material]);
+  }, [isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
 
   // Auto-select first eligible slot or tome weapon option when eligibility changes
   useEffect(() => {
