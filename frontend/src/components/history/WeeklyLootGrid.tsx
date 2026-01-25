@@ -94,6 +94,7 @@ export function WeeklyLootGrid({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const isMountedRef = useRef(true);
+  const longPressTriggeredRef = useRef(false); // Track if long-press fired to suppress subsequent click
 
   const handleTouchStart = useCallback((
     e: React.TouchEvent,
@@ -102,9 +103,11 @@ export function WeeklyLootGrid({
   ) => {
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    longPressTriggeredRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       // Only trigger if component is still mounted
       if (isMountedRef.current) {
+        longPressTriggeredRef.current = true; // Mark that long-press fired
         setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
       }
       longPressTimerRef.current = null;
@@ -455,6 +458,11 @@ export function WeeklyLootGrid({
                         }
                       }}
                       onClick={(e) => {
+                        // Suppress click if this was a long-press that opened context menu
+                        if (longPressTriggeredRef.current) {
+                          longPressTriggeredRef.current = false;
+                          return;
+                        }
                         // Shift+Click copies entry URL
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
                           e.preventDefault();
@@ -565,6 +573,11 @@ export function WeeklyLootGrid({
                         }
                       }}
                       onClick={(e) => {
+                        // Suppress click if this was a long-press that opened context menu
+                        if (longPressTriggeredRef.current) {
+                          longPressTriggeredRef.current = false;
+                          return;
+                        }
                         // Shift+Click copies entry URL
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {
                           e.preventDefault();
