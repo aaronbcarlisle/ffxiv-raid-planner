@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 20, 2026
-**Current Version:** v1.9.0
+**Last Updated:** January 25, 2026
+**Current Version:** v1.9.1
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -11,30 +11,12 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
-- PR #48 merged: UI Consistency Sprint (v1.8.2)
-- PR #49 merged: Discord release-only embeds and dominant category colors (v1.8.3)
-- PR #50 merged: Simplified version detection, full ISO timestamps, historical release script (v1.8.4)
-- PR #51 merged: BiS source selector improvements (base_tome colors, tooltips disabled, bug fixes)
-- PR #52 merged: BiS source change confirmation dialogs (v1.9.0)
+- PR #57 merged: Member permissions fix + Edit Books feature
+- PR #58 merged: Materia display in gear tooltips (L-003 complete)
+- PR #59 merged: Store setIndex in shortlink bisLinks for multi-set XIVGear sheets
+- PR #60 merged: Mobile UX Optimization (Phase 10 complete)
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
-
-### Recent Work: User Documentation Restructure (Phases 1-6)
-
-**User Documentation Restructure** - Phases 1-6 complete:
-- Unified Quick Start Guide created (654 lines) - replaces three-page getting started flow
-- How-To Guides restructured (969 lines) - task-oriented instead of reference dump
-- Understanding Priority page simplified (798 lines) - progressive disclosure approach
-- FAQ page created (490 lines) - consolidated Q&A from scattered sources
-- Docs landing page simplified (231 lines) - clear visual hierarchy
-- Old documentation pages deprecated with redirects in place
-
-**BiS Source Miscategorization Detection** - Implemented with bifurcated approach:
-- Core BiS source selector redesigned (2x2 grid, base_tome support, target-style circles)
-- Separate `BiSSourceFixBanner.tsx` component added for detecting miscategorized gear
-- Detection uses item name prefix matching for augmented tome gear
-- Banner shows contextual messages for base_tome and crafted miscategorization cases
-- Implementation complete in v1.9.0 (PR #52 merged)
 
 ---
 
@@ -45,10 +27,11 @@
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 0 | 0 |
 | **Medium (P2)** | 0 | 0 |
-| **Low (P3)** | 9 | 20.5 |
+| **Low (P3)** | 7 | 12.5 |
 | **Tech Debt - Lint (P3)** | 2 | 6 |
-| **Future (Phase 7+)** | 5 | TBD |
-| **Total** | 16 | ~26.5 hrs |
+| **In Progress (Phase 9)** | 1 | ~2 |
+| **Future (Phase 7+)** | 4 | TBD |
+| **Total** | 14 | ~20.5 hrs |
 
 ---
 
@@ -90,19 +73,16 @@
   - Verify tables, badges, tooltips match design system
 - **Effort:** 4 hours
 
-### L-003: Materia in Gear Tooltip
-- **File:** GearTable, BiS import
-- **Issue:** Materia not shown in gear tooltip
-- **Blocker:** Requires backend changes and cache regeneration
-- **Effort:** 4 hours (deferred)
+### ~~L-003: Materia in Gear Tooltip~~ ✅ DONE
+- **Status:** Completed in PR #58
+- **Implementation:** Materia now displayed in ItemHoverCard tooltips when BiS data includes materia info
 
 ### L-004: Documentation Tasks
 - **Missing Content:**
-  1. API Cookbook Page - Create `/docs/api/cookbook` with Python/curl examples
-  2. Visual Documentation - Add image/GIF placeholders for user flows
-  3. Reorder Documentation Index - Getting Started first
-  4. User Menu Documentation Sub-menu
-- **Effort:** 3 hours
+  1. Visual Documentation - Add screenshots/GIFs to user docs
+  2. User Menu Documentation Sub-menu
+- **Note:** API Cookbook already exists at `/docs/api/cookbook`. Docs index already restructured.
+- **Effort:** 2 hours
 
 ### L-005: No Database Migration Testing
 - **File:** `backend/alembic/versions/*.py`
@@ -140,26 +120,21 @@
 
 ## Technical Debt - Lint Issues (P3)
 
-**Last Audited:** January 20, 2026
-**Current Warning Count:** 138 (15 react-hooks + 123 design-system)
+**Last Audited:** January 25, 2026
+**Current Warning Count:** 148 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
 
-### TD-001: React Hooks Dependency Warnings (15 warnings)
+### TD-001: React Hooks Dependency Warnings
 - **Rule:** `react-hooks/exhaustive-deps`
 - **Files Affected:**
-  - `components/layout/Header.tsx` - dispatchHeaderEvent needs useCallback
-  - `components/player/AssignUserModal.tsx` - missing ROLE_GROUP_CONFIG
-  - `components/player/PlayerGrid.tsx` - unnecessary toast dependency (2 instances)
-  - `components/weapon-priority/WeaponPriorityEditor.tsx` - handleAddMultipleJobs needs useCallback
-  - `hooks/useLootActions.ts` - players logical expression (2 instances)
-  - `hooks/useModal.ts` - unused eslint-disable + missing deps (4 instances)
   - `pages/AuthCallback.tsx` - missing savedOAuthState
-- **Fix:** Wrap functions in useCallback, add missing deps, remove unused eslint-disable
+  - Various other files
+- **Fix:** Wrap functions in useCallback, add missing deps
 - **Effort:** 2 hours
 
-### TD-002: Design System Raw Element Warnings (123 warnings)
+### TD-002: Design System Raw Element Warnings
 - **Rule:** `design-system/no-raw-button`
 - **Files Affected:** AdminDashboard.tsx, GroupView.tsx, ApiCookbook.tsx, docs pages, etc.
 - **Note:** Many are in documentation pages where design system components aren't strictly required
@@ -187,27 +162,20 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - Link characters to FFLogs profiles
 - Import fight data
 
-### Phase 9: Discord Bot
+### Phase 10: Discord Bot
 - Notifications for loot drops
 - Commands for priority lookup
 - Integration with static group channels
 
-### Phase 10: Mobile Optimization
-- Responsive layouts for phone/tablet screens
-- Touch-friendly interactions (larger tap targets, swipe gestures)
-- Mobile-specific navigation patterns
-- PWA support for home screen installation
+### Phase 9: Mobile Optimization (~80% Complete)
+- **Status:** First pass completed in PR #60
+- **Implemented:** useDevice hook, MobileBottomNav, touch-safe tooltips, responsive layouts, PWA manifest
+- **Remaining:** Additional polish, edge case handling, UX refinements on specific views
 
 ### Alt Job Tracking (Deferred)
 - Track multiple jobs per player
 - Separate BiS configurations per job
 - Alt priority calculations
-
-### Loot System Redesign (Deferred)
-- Customizable priority settings per group
-- Unified week overview UI
-- Enhanced summary tab
-- Full 6-phase plan exists but deferred to after stabilization
 
 ---
 
