@@ -23,7 +23,7 @@ import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
-import { AlertTriangle, Copy, Check, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -726,17 +726,6 @@ export function GroupView() {
                   )}
                   <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
                 </div>
-
-                {/* Mobile controls button - opens sheet */}
-                {/* design-system-ignore: Mobile controls button with specific styling */}
-                <button
-                  onClick={() => setShowControlsSheet(true)}
-                  className="sm:hidden flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary transition-colors"
-                  aria-label="View controls"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span className="text-sm">Controls</span>
-                </button>
               </>
             )}
           </div>
@@ -996,15 +985,20 @@ export function GroupView() {
 
       {/* Keyboard Shortcuts Help is now rendered in Layout.tsx for global access */}
 
-      {/* Mobile Controls Sheet */}
+      {/* Mobile Controls Sheet - tab-aware */}
       <Modal
         isOpen={showControlsSheet}
         onClose={() => setShowControlsSheet(false)}
-        title="Roster Controls"
+        title={
+          pageMode === 'players' ? 'Roster Controls' :
+          pageMode === 'loot' ? 'Loot Controls' :
+          pageMode === 'history' ? 'Log Controls' :
+          'Controls'
+        }
         variant="sheet"
       >
         <div className="space-y-4">
-          {/* Tier Selector (mobile only - hidden in header) */}
+          {/* Tier Selector - shown for all tabs */}
           {tiers.length > 0 && (
             <div>
               <div className="text-sm text-text-muted mb-2">Raid Tier</div>
@@ -1019,61 +1013,122 @@ export function GroupView() {
             </div>
           )}
 
-          {/* Sort */}
-          <div>
-            <div className="text-sm text-text-muted mb-2">Sort By</div>
-            <SortModeSelector
-              sortPreset={sortPreset}
-              onPresetChange={(preset) => {
-                setSortPresetWithTier(preset);
-              }}
-            />
-          </div>
+          {/* Roster Tab Controls */}
+          {pageMode === 'players' && (
+            <>
+              {/* Sort */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Sort By</div>
+                <SortModeSelector
+                  sortPreset={sortPreset}
+                  onPresetChange={(preset) => {
+                    setSortPresetWithTier(preset);
+                  }}
+                />
+              </div>
 
-          {/* Group View */}
-          <div>
-            <div className="text-sm text-text-muted mb-2">Group View</div>
-            <GroupViewToggle
-              enabled={groupView}
-              onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
-              disabled={!hasPositionData}
-            />
-          </div>
+              {/* Group View */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Group View</div>
+                <GroupViewToggle
+                  enabled={groupView}
+                  onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                  disabled={!hasPositionData}
+                />
+              </div>
 
-          {/* Subs Toggle */}
-          {hasSubstitutes && (
-            <div>
-              <div className="text-sm text-text-muted mb-2">Substitutes</div>
-              {/* design-system-ignore: Toggle button requires specific toggle styling */}
-              <button
-                onClick={() => {
-                  setSubsView(!subsView);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                  subsView
-                    ? 'bg-accent/20 text-accent border-accent/50'
-                    : 'bg-surface-raised border-border-default text-text-secondary'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                <span>{subsView ? 'Show Subs Separately' : 'Show Subs with Roster'}</span>
-              </button>
-            </div>
+              {/* Subs Toggle */}
+              {hasSubstitutes && (
+                <div>
+                  <div className="text-sm text-text-muted mb-2">Substitutes</div>
+                  {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                  <button
+                    onClick={() => {
+                      setSubsView(!subsView);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                      subsView
+                        ? 'bg-accent/20 text-accent border-accent/50'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>{subsView ? 'Show Subs Separately' : 'Show Subs with Roster'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* View Mode */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">View Mode</div>
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
+            </>
           )}
 
-          {/* View Mode */}
-          <div>
-            <div className="text-sm text-text-muted mb-2">View Mode</div>
-            <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-          </div>
+          {/* Loot Tab Controls */}
+          {pageMode === 'loot' && (
+            <>
+              {/* Sub-tab selector */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">View</div>
+                <div className="flex flex-col gap-2">
+                  {/* design-system-ignore: Sub-tab toggle buttons with specific styling */}
+                  <button
+                    onClick={() => {
+                      setLootSubTab('matrix');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'matrix'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Who Needs It
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLootSubTab('gear');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'gear'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Gear Priority
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLootSubTab('weapon');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'weapon'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Weapon Priority
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 
       {/* Mobile bottom navigation */}
       {currentTier && (
-        <MobileBottomNav activeTab={pageMode} onTabChange={setPageMode} />
+        <MobileBottomNav
+          activeTab={pageMode}
+          onTabChange={setPageMode}
+          onControlsClick={() => setShowControlsSheet(true)}
+        />
       )}
     </div>
   );

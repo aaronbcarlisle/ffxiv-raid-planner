@@ -465,12 +465,17 @@ export function LootPriorityPanel({
     <div className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100dvh-14rem)]">
       {/* Header with sub-tabs - stays visible */}
       <div className="flex items-center justify-between p-4 pb-0 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h3 className="font-display text-lg text-accent">
-            Loot Priority
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Mobile: show current tab name, Desktop: show "Loot Priority" */}
+          <h3 className="font-display text-base sm:text-lg text-accent">
+            <span className="sm:hidden">
+              {activeSubTab === 'matrix' ? 'Who Needs It' :
+               activeSubTab === 'gear' ? 'Gear Priority' : 'Weapon Priority'}
+            </span>
+            <span className="hidden sm:inline">Loot Priority</span>
           </h3>
-          {/* Sub-tab navigation */}
-          <div className="flex bg-surface-base rounded-lg p-1">
+          {/* Sub-tab navigation - hidden on mobile, use Controls sheet instead */}
+          <div className="hidden sm:flex bg-surface-base rounded-lg p-1">
             <Tooltip
               content={
                 <div>
