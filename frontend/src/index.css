@@ -160,7 +160,8 @@ html {
   color: var(--color-text-primary);
   scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
   scrollbar-width: thin;
-  /* Note: No overflow set here - let default behavior work to preserve sticky positioning */
+  /* Prevent horizontal overscroll without breaking sticky positioning */
+  overscroll-behavior-x: none;
 }
 
 /* Scrollbar-gutter disabled - was causing layout issues on some devices */
