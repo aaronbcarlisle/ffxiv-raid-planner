@@ -120,8 +120,8 @@ export function WhoNeedsItMatrix({
 
   return (
     <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-      {/* Floor Filter Tabs */}
-      <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+      {/* Floor Filter Tabs - sticky on mobile */}
+      <div className="sticky top-0 z-10 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="floor"
           floors={floors}

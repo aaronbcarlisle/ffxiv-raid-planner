@@ -15,6 +15,7 @@ import { getRoleColor } from '../../gamedata';
 import { FilterBar } from './FilterBar';
 import { RoleSection } from './RoleSection';
 import { Tooltip } from '../primitives/Tooltip';
+import { useDevice } from '../../hooks/useDevice';
 
 // Roll result for a player
 interface RollResult {
@@ -794,6 +795,8 @@ export function WeaponPriorityList({
   showLogButtons = false,
   onLogClick,
 }: WeaponPriorityListProps) {
+  const { isSmallScreen } = useDevice();
+
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -966,8 +969,8 @@ export function WeaponPriorityList({
 
   return (
     <div className="space-y-4">
-      {/* Section filter toggles - role-colored, matching Gear Priority header style */}
-      <div className="-mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated/50">
+      {/* Section filter toggles - role-colored, sticky on mobile */}
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="role"
           visibleRoles={visibleSections}
@@ -984,8 +987,36 @@ export function WeaponPriorityList({
         </div>
       )}
 
-      {/* Role sections - collapsible */}
-      {ROLE_SECTIONS.map(section => {
+      {/* Mobile: Flat grid without collapsible sections */}
+      {isSmallScreen && (
+        <div className="grid grid-cols-1 gap-3">
+          {ROLE_SECTIONS.map(section => {
+            const sectionJobs = jobsBySection.get(section.id) || [];
+            if (sectionJobs.length === 0) return null;
+            if (!visibleSections.has(section.id)) return null;
+
+            return sectionJobs.map(job => {
+              const priority = getWeaponPriorityForJob(players, job, settings);
+              const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+              const jobName = jobInfo?.name || job;
+
+              return (
+                <WeaponPriorityCard
+                  key={job}
+                  job={job}
+                  jobName={jobName}
+                  priority={priority}
+                  showLogButtons={showLogButtons}
+                  onLogClick={onLogClick}
+                />
+              );
+            });
+          })}
+        </div>
+      )}
+
+      {/* Desktop: Role sections - collapsible */}
+      {!isSmallScreen && ROLE_SECTIONS.map(section => {
         const sectionJobs = jobsBySection.get(section.id) || [];
         if (sectionJobs.length === 0) return null;
         if (!visibleSections.has(section.id)) return null;

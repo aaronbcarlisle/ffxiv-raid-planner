@@ -559,9 +559,9 @@ export function LootPriorityPanel({
         {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
         <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-          {/* Floor selector for Gear Priority - uses FilterBar for consistency */}
+          {/* Floor selector for Gear Priority - sticky on mobile */}
           {onFloorChange && (
-            <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+            <div className="sticky top-0 z-10 p-3 border-b border-border-default bg-surface-elevated">
               <FilterBar
                 type="floor"
                 floors={floors}
