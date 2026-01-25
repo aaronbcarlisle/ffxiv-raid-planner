@@ -40,7 +40,8 @@ export function Layout() {
       <ViewAsBanner />
       <ReleaseBanner />
       {/* Content container - scrollable area below sticky header */}
-      <main className="w-full py-3 flex-1 min-h-0 flex flex-col overflow-y-auto">
+      {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears */}
+      <main className="w-full py-3 flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <Outlet />
       </main>
 

@@ -274,7 +274,7 @@ export function WeeklyLootGrid({
     return (
       <div className="group flex items-center gap-1">
         <div
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all whitespace-nowrap"
           style={{
             color: roleColor,
             backgroundColor: `${roleColor}15`,
@@ -378,13 +378,22 @@ export function WeeklyLootGrid({
     },
   ];
 
+  // Stop touch events from propagating to parent swipe handlers (e.g., tab navigation)
+  const handleGridTouchStart = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleGridTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+  }, []);
+
   return (
     <div className="space-y-4 w-full">
-      {/* Main Grid - scrollable on mobile */}
-      <div className="bg-surface-card rounded-lg border border-border-default overflow-x-auto w-full">
+      {/* Main Grid */}
+      <div className="bg-surface-card rounded-lg border border-border-default w-full">
         {floorConfigs.map((floor, floorIdx) => (
           <div key={floor.number}>
-            {/* Floor Header */}
+            {/* Floor Header - stays fixed, doesn't scroll */}
             <div
               className="flex items-center px-4 py-2.5"
               style={{
@@ -404,15 +413,19 @@ export function WeeklyLootGrid({
               </div>
             </div>
 
-            {/* Loot Row */}
-            <div className="flex border-b border-border-subtle">
-              {/* Label */}
-              <div className="w-16 shrink-0 px-3 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base">
+            {/* Loot Row - horizontally scrollable, stops swipe propagation */}
+            <div
+              className="flex border-b border-border-subtle overflow-x-auto"
+              onTouchStart={handleGridTouchStart}
+              onTouchEnd={handleGridTouchEnd}
+            >
+              {/* Label - sticky on left */}
+              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sticky left-0 z-10">
                 Loot
               </div>
 
-              {/* Item columns */}
-              <div className="flex-1 flex flex-wrap">
+              {/* Item columns - single row, scrolls horizontally */}
+              <div className="flex flex-nowrap">
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
@@ -425,7 +438,7 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[100px] px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
@@ -534,7 +547,7 @@ export function WeeklyLootGrid({
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[100px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {
