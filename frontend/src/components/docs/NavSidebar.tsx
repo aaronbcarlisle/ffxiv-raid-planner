@@ -150,8 +150,10 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
       {/* Mobile slide-out panel */}
       <div
         className={`lg:hidden fixed top-0 left-0 bottom-0 w-72 z-50 bg-surface-base transform transition-transform duration-200 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          mobileOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
         }`}
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen ? '' : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <span className="font-semibold text-accent">Navigation</span>

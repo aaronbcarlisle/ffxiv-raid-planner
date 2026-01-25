@@ -42,9 +42,9 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
     return aIdx - bIdx;
   });
 
-  // Calculate average for color coding
-  const total = Array.from(countsByPlayer.values()).reduce((a, b) => a + b, 0);
-  const average = mainRosterPlayers.length > 0 ? total / mainRosterPlayers.length : 0;
+  // Calculate average for color coding (only count main roster players' drops)
+  const mainRosterTotal = mainRosterPlayers.reduce((sum, p) => sum + (countsByPlayer.get(p.id) || 0), 0);
+  const average = mainRosterPlayers.length > 0 ? mainRosterTotal / mainRosterPlayers.length : 0;
 
   if (mainRosterPlayers.length === 0) {
     return null;

@@ -326,7 +326,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                             <span
                               className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                              style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                              style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                             >
                               {tieEntry.score}
                             </span>
@@ -391,7 +391,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}
                     </span>
@@ -564,7 +564,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                                 <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                                   <span
                                     className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                                    style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                                    style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                                   >
                                     {tieEntry.score}
                                   </span>
@@ -631,7 +631,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                     <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                       <span
                         className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                        style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                       >
                         {entry.score}
                       </span>
@@ -756,7 +756,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}
                     </span>

@@ -119,6 +119,15 @@ export function WeeklyLootGrid({
     touchStartPosRef.current = null;
   }, []);
 
+  // Handle touchcancel (e.g., system alerts, browser gestures) same as touchend
+  const handleTouchCancel = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  }, []);
+
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     // Cancel long-press if user moves finger more than 10px
     if (touchStartPosRef.current && longPressTimerRef.current) {
@@ -277,8 +286,8 @@ export function WeeklyLootGrid({
           className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all whitespace-nowrap"
           style={{
             color: roleColor,
-            backgroundColor: `${roleColor}15`,
-            border: `1px solid ${roleColor}30`,
+            backgroundColor: `color-mix(in srgb, ${roleColor} 15%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${roleColor} 30%, transparent)`,
           }}
         >
           {player && <JobIcon job={player.job} size="xs" />}
@@ -480,6 +489,7 @@ export function WeeklyLootGrid({
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
                       onTouchStart={lootEntry ? (e) => handleTouchStart(e, lootEntry, 'loot') : undefined}
                       onTouchEnd={lootEntry ? handleTouchEnd : undefined}
+                      onTouchCancel={lootEntry ? handleTouchCancel : undefined}
                       onTouchMove={lootEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
@@ -589,6 +599,7 @@ export function WeeklyLootGrid({
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
                       onTouchStart={matEntry ? (e) => handleTouchStart(e, matEntry, 'material') : undefined}
                       onTouchEnd={matEntry ? handleTouchEnd : undefined}
+                      onTouchCancel={matEntry ? handleTouchCancel : undefined}
                       onTouchMove={matEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}

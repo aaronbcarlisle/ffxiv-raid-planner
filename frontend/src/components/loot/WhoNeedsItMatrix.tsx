@@ -94,9 +94,9 @@ export function WhoNeedsItMatrix({
         ...FLOOR_LOOT_TABLES[4].gearDrops,
       ];
     } else {
-      slots = FLOOR_LOOT_TABLES[selectedFloor].gearDrops;
+      slots = [...FLOOR_LOOT_TABLES[selectedFloor].gearDrops];
     }
-    // Sort by the defined gear slot order
+    // Sort by the defined gear slot order (already a copy, safe to sort in place)
     return slots.sort((a, b) => GEAR_SLOT_ORDER.indexOf(a) - GEAR_SLOT_ORDER.indexOf(b));
   }, [selectedFloor]);
 

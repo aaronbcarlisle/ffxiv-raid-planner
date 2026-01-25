@@ -172,7 +172,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
         </div>
 
         {/* Content - scrollable, with overscroll-contain to prevent bounce effect */}
-        <div className="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1">{children}</div>
+        {/* For sheet modals without footer, add bottom padding for iOS safe area */}
+        <div className={`p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 ${isSheet && !footer ? 'pb-safe' : ''}`}>{children}</div>
 
         {/* Footer - sticky with extra bottom padding for sheet variant */}
         {footer && (

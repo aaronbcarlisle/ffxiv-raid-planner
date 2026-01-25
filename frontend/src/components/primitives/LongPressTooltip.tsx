@@ -5,7 +5,7 @@
  * On mobile: Shows tooltip content on long press gesture, positioned near touch point
  */
 
-import { useState, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { useDevice } from '../../hooks/useDevice';
 
@@ -40,6 +40,7 @@ export function LongPressTooltip({
   const [showMobileTooltip, setShowMobileTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number; showAbove: boolean } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,13 @@ export function LongPressTooltip({
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+  }, []);
+
+  const clearAutoHideTimer = useCallback(() => {
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
     }
   }, []);
 
@@ -77,10 +85,11 @@ export function LongPressTooltip({
       });
       setShowMobileTooltip(true);
 
-      // Auto-hide after 3 seconds
-      setTimeout(() => setShowMobileTooltip(false), 3000);
+      // Auto-hide after 3 seconds (tracked for cleanup)
+      clearAutoHideTimer();
+      autoHideTimerRef.current = setTimeout(() => setShowMobileTooltip(false), 3000);
     }, longPressDuration);
-  }, [longPressDuration]);
+  }, [longPressDuration, clearAutoHideTimer]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     clearTimer();
@@ -111,6 +120,14 @@ export function LongPressTooltip({
     e.preventDefault();
     e.stopPropagation();
   }, []);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimer();
+      clearAutoHideTimer();
+    };
+  }, [clearTimer, clearAutoHideTimer]);
 
   // Disabled - just render children
   if (disabled) {

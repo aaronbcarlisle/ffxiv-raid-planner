@@ -25,7 +25,7 @@ export function useDevice(): DeviceCapabilities {
       return { isSmallScreen: false, isTouch: false, canHover: true, prefersReducedMotion: false };
     }
     return {
-      isSmallScreen: window.matchMedia('(max-width: 640px)').matches,
+      isSmallScreen: window.matchMedia('(max-width: 639px)').matches,
       isTouch: window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0,
       canHover: window.matchMedia('(hover: hover) and (pointer: fine)').matches,
       prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -35,7 +35,7 @@ export function useDevice(): DeviceCapabilities {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const smallScreenQuery = window.matchMedia('(max-width: 640px)');
+    const smallScreenQuery = window.matchMedia('(max-width: 639px)');
     const touchQuery = window.matchMedia('(pointer: coarse)');
     const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

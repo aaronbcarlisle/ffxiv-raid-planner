@@ -302,7 +302,7 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       >
         <div className="space-y-4">
           {/* Progress indicator - sticky at top with pseudo-element extending up to cover padding gap */}
-          <div className="sticky top-0 z-10 pt-2 pb-3 mb-2 border-b border-border-default bg-[#0e0e14] before:absolute before:-top-8 before:left-0 before:right-0 before:h-8 before:bg-[#0e0e14]">
+          <div className="sticky top-0 z-10 pt-2 pb-3 mb-2 border-b border-border-default bg-surface-card before:absolute before:-top-8 before:left-0 before:right-0 before:h-8 before:bg-surface-card">
             <WizardProgress currentStep={state.step} />
           </div>
 
