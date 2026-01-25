@@ -39,7 +39,8 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default pb-safe
+                 before:content-[''] before:absolute before:left-0 before:right-0 before:top-full before:h-20 before:bg-surface-card"
       aria-label="Main navigation"
     >
       <div className="flex items-center h-14">
