@@ -175,9 +175,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
         {/* For sheet modals without footer, add bottom padding for iOS safe area */}
         <div className={`p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1 ${isSheet && !footer ? 'pb-safe' : ''}`}>{children}</div>
 
-        {/* Footer - sticky with extra bottom padding for sheet variant */}
+        {/* Footer - sticky with extra bottom padding for sheet variant to clear home indicator */}
         {footer && (
-          <div className={`border-t border-border-default p-4 flex-shrink-0 ${isSheet ? 'pb-6' : ''}`}>
+          <div className={`border-t border-border-default p-4 flex-shrink-0 ${isSheet ? 'pb-8 pb-safe' : ''}`}>
             {footer}
           </div>
         )}
