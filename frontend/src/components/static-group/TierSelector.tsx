@@ -6,6 +6,7 @@
  * with older tiers in a "Previous Tiers" submenu.
  */
 
+import { useState } from 'react';
 import { History } from 'lucide-react';
 import { getTierById, RAID_TIERS } from '../../gamedata';
 import type { TierSnapshot } from '../../types';
@@ -32,6 +33,7 @@ export function TierSelector({
   currentTierId,
   onTierChange,
 }: TierSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
   // Get current tier info (currently selected in the UI)
   const selectedTier = tiers.find((t) => t.tierId === currentTierId);
   const selectedTierInfo = selectedTier ? getTierById(selectedTier.tierId) : null;
@@ -90,8 +92,9 @@ export function TierSelector({
   }
 
   return (
-    <Dropdown>
+    <Dropdown open={isOpen} onOpenChange={setIsOpen}>
       <Tooltip
+        disabled={isOpen}
         content={
           <div>
             <div className="flex items-center gap-2 font-medium">

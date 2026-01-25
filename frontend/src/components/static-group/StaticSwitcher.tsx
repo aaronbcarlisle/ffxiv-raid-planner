@@ -92,6 +92,7 @@ export function StaticSwitcher({
   return (
     <Dropdown open={isOpen} onOpenChange={setIsOpen}>
       <Tooltip
+        disabled={isOpen}
         content={
           <div>
             <div className="flex items-center gap-2 font-medium">
