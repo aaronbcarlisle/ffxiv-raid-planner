@@ -1258,7 +1258,7 @@ export function SectionedLogView({
       >
         {/* Loot Log Panel */}
         {mobilePanel === 'loot' && (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 w-full">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 w-full pt-1">
             {/* Shared LootCountBar - above both Grid and List views */}
             <LootCountBar
               players={players}
