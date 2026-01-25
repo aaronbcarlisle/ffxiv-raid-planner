@@ -295,7 +295,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           </span>
                           {tieEntry.isMainJob && (
                             <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                              Main
+                              <span className="hidden sm:inline">Main</span>
+                              <span className="sm:hidden">M</span>
                             </span>
                           )}
                           {playerRoll !== null && (
@@ -368,7 +369,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   </span>
                   {entry.isMainJob && (
                     <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                      Main
+                      <span className="hidden sm:inline">Main</span>
+                      <span className="sm:hidden">M</span>
                     </span>
                   )}
                 </div>
@@ -710,7 +712,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   </span>
                   {entry.isMainJob && (
                     <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                      Main
+                      <span className="hidden sm:inline">Main</span>
+                      <span className="sm:hidden">M</span>
                     </span>
                   )}
                   {playerRoll !== null && (

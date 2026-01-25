@@ -838,9 +838,9 @@ export function SectionedLogView({
           {/* List Layout */}
           {layoutMode === 'split' && (
             <section className="bg-surface-card border border-border-default rounded-lg">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-display text-lg text-text-primary">Loot Log</h3>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border-default">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <h3 className="font-display text-base sm:text-lg text-text-primary">Loot Log</h3>
                   {/* View mode toggle */}
                   <div className="flex bg-surface-base rounded-lg p-0.5">
                     <Tooltip
@@ -892,8 +892,8 @@ export function SectionedLogView({
                   </div>
                 </div>
                 {/* Floor filter - hidden in Timeline mode but still rendered to prevent layout shift */}
-                <div className={`flex items-center gap-2 ${lootViewMode !== 'byFloor' ? 'invisible' : ''}`}>
-                  <span className="text-xs text-text-muted mr-1">Floor:</span>
+                <div className={`flex items-center gap-1.5 sm:gap-2 ${lootViewMode !== 'byFloor' ? 'invisible' : ''}`}>
+                  <span className="text-xs text-text-muted">Floor:</span>
                   {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
                     const isSelected = visibleFloors.has(floor);
                     const floorColors = FLOOR_COLORS[floor];
@@ -904,7 +904,7 @@ export function SectionedLogView({
                         aria-label={`Filter by Floor ${floor}`}
                         aria-pressed={isSelected}
                         className={`
-                          px-3 py-1.5 rounded text-xs font-bold transition-colors border
+                          px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs font-bold transition-colors border
                           ${isSelected
                             ? `${floorColors.bg} ${floorColors.text} ${floorColors.border}`
                             : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
