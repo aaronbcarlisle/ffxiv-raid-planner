@@ -432,7 +432,7 @@ export function WeeklyLootGrid({
               onTouchEnd={handleGridTouchEnd}
             >
               {/* Label - sticky on left for mobile scroll */}
-              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sm:sticky-none sticky left-0 z-10">
+              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sm:static sticky left-0 z-10">
                 Loot
               </div>
 

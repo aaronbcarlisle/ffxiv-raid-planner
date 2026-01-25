@@ -35,7 +35,7 @@ export function Layout() {
   });
 
   return (
-    <div className="min-h-screen h-screen flex flex-col bg-surface-base overflow-hidden">
+    <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
       <Header />
       <ViewAsBanner />
       <ReleaseBanner />

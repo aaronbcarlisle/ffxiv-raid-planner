@@ -328,9 +328,9 @@ export function Header() {
                 </div>
               )}
 
-              {/* Share code - shown for non-managers, hidden on mobile */}
+              {/* Share code - shown for non-managers */}
               {!canManageInvitations && (
-                <div className="hidden sm:block">
+                <div>
                 <Tooltip
                   content={
                     <div className="flex items-start gap-2 max-w-xs">
