@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.10.2';
+export const CURRENT_VERSION = '1.11.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,54 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.11.0',
+    date: '2026-01-25T18:30:00Z',
+    title: 'Group Settings & Material Logging',
+    highlights: ['Hide setup banners option', 'Auto-augment gear when logging materials'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Hide setup banners in group settings',
+        description: 'New toggles to hide "Unclaimed" and "No BiS configured" banners on player cards',
+        details:
+          'Group settings now include two new toggles: "Hide Unclaimed Banners" suppresses the ownership prompts on unclaimed player cards, and "Hide BiS Banners" suppresses the BiS import prompts. Useful for statics that prefer a cleaner card appearance.',
+        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+      },
+      {
+        category: 'feature',
+        title: 'Auto-augment gear when logging materials',
+        description: 'Material logging modals now offer to automatically mark gear as augmented',
+        details:
+          'When logging twine, glaze, solvent, or universal tomestone, a checkbox lets you simultaneously mark the corresponding gear slot as augmented. The system tracks which slot was augmented for each material entry, enabling precise undo on deletion.',
+        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+      },
+      {
+        category: 'feature',
+        title: 'Alt+Click navigation to material entries',
+        description: 'Alt+Click on tome gear slots to jump to the corresponding material entry',
+        details:
+          'Alt+Click on any tome gear slot icon navigates to the Log tab and highlights the material entry that augmented that slot. Also available via context menu "Jump to Material Entry".',
+        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+      },
+      {
+        category: 'fix',
+        title: 'Universal Tomestone priority calculation',
+        description: 'Fixed priority showing for players who already have the tome weapon',
+        details:
+          'Universal Tomestone priority now correctly shows for players pursuing the tome weapon who don\'t have it yet, rather than incorrectly showing for players who already have it.',
+        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+      },
+      {
+        category: 'fix',
+        title: 'BiS import index for multi-set XIVGear sheets',
+        description: 'Fixed preset selection importing wrong set when XIVGear sheet has separators',
+        details:
+          'BiS import now uses original XIVGear array indices instead of filtered indices, fixing an issue where presets with separators (like DNC, WHM, BLM, PCT, SMN) would import the wrong gear set.',
+        commits: [{ hash: '34e081c', message: 'fix: correct BiS preset index mismatch for multi-set XIVGear sheets' }],
+      },
+    ],
+  },
   {
     version: '1.10.2',
     date: '2026-01-25T04:00:00Z',

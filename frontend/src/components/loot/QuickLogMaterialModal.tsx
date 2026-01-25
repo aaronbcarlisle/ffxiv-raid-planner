@@ -360,7 +360,7 @@ export function QuickLogMaterialModal({
                   ? '+ Mark tome weapon as obtained'
                   : augmentTomeWeapon
                     ? '+ Mark tome weapon as augmented'
-                    : `+ Mark ${GEAR_SLOT_NAMES[selectedSlot as GearSlot]} as augmented`
+                    : `+ Mark ${selectedSlot ? GEAR_SLOT_NAMES[selectedSlot as GearSlot] : 'slot'} as augmented`
                 }
               </li>
             )}

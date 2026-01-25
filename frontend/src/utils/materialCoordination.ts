@@ -307,30 +307,54 @@ export async function deleteMaterialAndRevertGear(
       }
     } else if (entry.materialType === 'solvent') {
       // Solvent: revert tome weapon OR weapon gear slot augmentation
-      // Try tome weapon first if it's augmented
-      if (isTomeWeaponAugmented(player)) {
+      // Use entry.slotAugmented if available for precise reversion
+      if (entry.slotAugmented === 'tome_weapon') {
+        // Entry explicitly recorded tome weapon augmentation
+        if (isTomeWeaponAugmented(player)) {
+          await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
+            tomeWeapon: {
+              ...player.tomeWeapon,
+              isAugmented: false,
+            },
+          });
+        }
+      } else if (entry.slotAugmented) {
+        // Entry explicitly recorded a gear slot augmentation
+        const updatedGear = player.gear.map((g) =>
+          g.slot === entry.slotAugmented ? { ...g, isAugmented: false } : g
+        );
         await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
-          tomeWeapon: {
-            ...player.tomeWeapon,
-            isAugmented: false,
-          },
+          gear: updatedGear,
         });
       } else {
-        // Fall back to weapon gear slot
-        const slotToRevert = options.slotToRevert ?? getAugmentedSlotsForMaterial(player, 'solvent')[0];
-        if (slotToRevert) {
-          const updatedGear = player.gear.map((g) =>
-            g.slot === slotToRevert ? { ...g, isAugmented: false } : g
-          );
+        // Legacy entry without slotAugmented - fall back to heuristics
+        // Try tome weapon first if it's augmented
+        if (isTomeWeaponAugmented(player)) {
           await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
-            gear: updatedGear,
+            tomeWeapon: {
+              ...player.tomeWeapon,
+              isAugmented: false,
+            },
           });
+        } else {
+          // Fall back to weapon gear slot
+          const slotToRevert = options.slotToRevert ?? getAugmentedSlotsForMaterial(player, 'solvent')[0];
+          if (slotToRevert) {
+            const updatedGear = player.gear.map((g) =>
+              g.slot === slotToRevert ? { ...g, isAugmented: false } : g
+            );
+            await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
+              gear: updatedGear,
+            });
+          }
         }
       }
     } else {
       // Twine/Glaze: revert gear slot augmentation
-      let slotToRevert = options.slotToRevert;
+      // Use entry.slotAugmented if available for precise reversion
+      let slotToRevert: string | undefined = entry.slotAugmented ?? options.slotToRevert;
       if (!slotToRevert) {
+        // Legacy entry without slotAugmented - fall back to heuristics
         const augmentedSlots = getAugmentedSlotsForMaterial(player, entry.materialType);
         slotToRevert = augmentedSlots[0]; // Pick first if multiple
       }

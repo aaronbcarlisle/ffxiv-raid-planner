@@ -16,6 +16,7 @@ import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
 import { parseFloorName, FLOOR_LOOT_TABLES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 import {
   getEligibleSlotsForAugmentation,
@@ -252,6 +253,7 @@ export function LogMaterialModal({
               augmentTomeWeapon,
             }
           );
+          toast.success('Material entry logged');
         } else {
           // Call onSubmit without gear update
           await onSubmit({

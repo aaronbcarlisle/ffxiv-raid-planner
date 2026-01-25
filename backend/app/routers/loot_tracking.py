@@ -1226,7 +1226,9 @@ async def update_material_log_entry(
         entry.material_type = data.material_type.value
     if data.recipient_player_id is not None:
         entry.recipient_player_id = data.recipient_player_id
-    if data.slot_augmented is not None:
+    # Only update slot_augmented when a non-null string is provided to avoid
+    # unintentionally clearing existing tracking information.
+    if isinstance(data.slot_augmented, str):
         entry.slot_augmented = data.slot_augmented
     if data.notes is not None:
         entry.notes = data.notes
