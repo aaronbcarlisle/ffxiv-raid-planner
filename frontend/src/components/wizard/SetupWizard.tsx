@@ -345,8 +345,8 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
             />
           )}
 
-          {/* Bottom spacer for breathing room before footer */}
-          <div className="h-8" />
+          {/* Bottom spacer for breathing room before footer - mobile only */}
+          <div className="h-8 sm:h-0" />
         </div>
       </Modal>
 
