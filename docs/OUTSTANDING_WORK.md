@@ -14,7 +14,7 @@
 - PR #57 merged: Member permissions fix + Edit Books feature
 - PR #58 merged: Materia display in gear tooltips (L-003 complete)
 - PR #59 merged: Store setIndex in shortlink bisLinks for multi-set XIVGear sheets
-- PR #60 merged: Mobile UX Optimization (Phase 10 complete)
+- PR #60 merged: Mobile UX Optimization (Phase 9 first pass ~80%)
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
 
@@ -27,11 +27,11 @@
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 0 | 0 |
 | **Medium (P2)** | 0 | 0 |
-| **Low (P3)** | 7 | 12.5 |
+| **Low (P3)** | 8 | 17.5 |
 | **Tech Debt - Lint (P3)** | 2 | 6 |
 | **In Progress (Phase 9)** | 1 | ~2 |
 | **Future (Phase 7+)** | 4 | TBD |
-| **Total** | 14 | ~20.5 hrs |
+| **Total** | 15 | ~25.5 hrs |
 
 ---
 
@@ -170,7 +170,12 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 ### Phase 9: Mobile Optimization (~80% Complete)
 - **Status:** First pass completed in PR #60
 - **Implemented:** useDevice hook, MobileBottomNav, touch-safe tooltips, responsive layouts, PWA manifest
-- **Remaining:** Additional polish, edge case handling, UX refinements on specific views
+- **Remaining (~20%):**
+  - WeeklyLootGrid horizontal scroll behavior on narrow screens
+  - Context menu positioning edge cases near screen edges
+  - Modal/sheet keyboard handling on mobile
+  - Touch gesture refinements (swipe to dismiss, pull-to-refresh candidates)
+  - Testing on physical devices (currently emulator-tested only)
 
 ### Alt Job Tracking (Deferred)
 - Track multiple jobs per player
