@@ -170,11 +170,14 @@ export function getPriorityForUpgradeMaterial(
 ): PriorityEntry[] {
   const applicableSlots = UPGRADE_MATERIAL_SLOTS[material];
 
-  // Count how many of this material each player has already received
+  // Count how many of this material each player has received WITHOUT a recorded slot.
+  // Entries WITH slotAugmented have already been applied to gear (slot.isAugmented=true),
+  // so they shouldn't be counted against remaining unaugmented slots.
+  // Only count entries WITHOUT slotAugmented (legacy entries before auto-augment feature).
   const receivedCounts = new Map<string, number>();
   if (materialLog) {
     for (const entry of materialLog) {
-      if (entry.materialType === material) {
+      if (entry.materialType === material && !entry.slotAugmented) {
         receivedCounts.set(
           entry.recipientPlayerId,
           (receivedCounts.get(entry.recipientPlayerId) || 0) + 1
