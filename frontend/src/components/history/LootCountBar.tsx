@@ -62,7 +62,7 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
 
   return (
     <div
-      className="bg-surface-card border border-border-default rounded-lg p-3 mb-4 overflow-x-auto"
+      className="bg-surface-card border border-border-default rounded-lg p-3 mb-2 overflow-x-auto"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
