@@ -246,10 +246,10 @@ export function Header() {
   }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
-    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default overflow-x-hidden">
+      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left side: Logo + Group context */}
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           {/* Logo */}
           <Tooltip
             content={

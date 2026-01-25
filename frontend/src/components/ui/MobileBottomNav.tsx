@@ -40,7 +40,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
   return (
     <nav
         className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', width: '100%', maxWidth: '100vw' }}
         aria-label="Main navigation"
       >
         {/* Background extension to cover dynamic viewport changes on mobile */}

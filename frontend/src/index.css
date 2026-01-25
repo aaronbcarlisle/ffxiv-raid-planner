@@ -218,7 +218,8 @@ body[data-scroll-locked],
 body[data-scroll-locked="1"],
 body[data-scroll-locked][style] {
   position: static !important;
-  overflow: visible !important;
+  overflow-x: hidden !important; /* Always prevent horizontal scroll */
+  overflow-y: visible !important;
   margin-right: 0 !important;
   pointer-events: auto !important;
 }
