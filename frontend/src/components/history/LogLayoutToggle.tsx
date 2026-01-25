@@ -16,7 +16,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[4.5rem] left-3 flex flex-row gap-1 z-30 md:hidden bg-surface-elevated rounded-full ring-2 ring-accent/50 shadow-[0_0_20px_rgba(20,184,166,0.3)] p-1">
+    <div className="fixed bottom-20 left-4 flex flex-row gap-1 z-30 md:hidden bg-surface-elevated rounded-full shadow-xl shadow-black/50 ring-1 ring-white/10 p-1">
       {/* design-system-ignore: Toggle buttons in compact FAB group require specific styling */}
       <button
         onClick={() => onLayoutChange('grid')}

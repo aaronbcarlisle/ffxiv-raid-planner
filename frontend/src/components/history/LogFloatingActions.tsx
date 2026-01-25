@@ -18,11 +18,11 @@ export function LogFloatingActions({ onLogLoot, onLogMaterial, visible }: LogFlo
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[4.5rem] right-3 flex flex-row gap-2 z-30 md:hidden">
+    <div className="fixed bottom-20 right-4 flex flex-row gap-2 z-30 md:hidden">
       {/* design-system-ignore: FAB requires specific circular styling not available in IconButton */}
       <button
         onClick={onLogMaterial}
-        className="w-12 h-12 rounded-full bg-accent ring-2 ring-accent/50 shadow-[0_0_20px_rgba(20,184,166,0.4)] flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
+        className="w-12 h-12 rounded-full bg-accent shadow-xl shadow-black/50 ring-1 ring-white/10 flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
         aria-label="Log Material"
       >
         <Gem className="w-5 h-5" />
@@ -30,7 +30,7 @@ export function LogFloatingActions({ onLogLoot, onLogMaterial, visible }: LogFlo
       {/* design-system-ignore: FAB requires specific circular styling not available in IconButton */}
       <button
         onClick={onLogLoot}
-        className="w-12 h-12 rounded-full bg-accent ring-2 ring-accent/50 shadow-[0_0_20px_rgba(20,184,166,0.4)] flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
+        className="w-12 h-12 rounded-full bg-accent shadow-xl shadow-black/50 ring-1 ring-white/10 flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
         aria-label="Log Loot"
       >
         <Package className="w-5 h-5" />
