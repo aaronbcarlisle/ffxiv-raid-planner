@@ -61,7 +61,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
 
   return (
     <nav
-        className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default touch-manipulation"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
         aria-label="Main navigation"
         {...swipeHandlers}

@@ -60,6 +60,10 @@ export function useLongPress({
 
     timerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
+      // Haptic feedback for long press (if supported)
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
       onLongPress();
     }, duration);
   }, [onLongPress, duration]);

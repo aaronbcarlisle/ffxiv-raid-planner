@@ -642,8 +642,16 @@ export function GroupView() {
   // On mobile: also prevent for Loot tab
   const preventPageScroll = pageMode === 'history' || (isSmallScreen && pageMode === 'loot');
 
+  // Build container classes (extracted for readability)
+  const containerClasses = [
+    'max-w-[160rem] mx-auto px-4 w-full',
+    isSmallScreen && 'has-bottom-nav',
+    preventPageScroll && 'prevent-page-scroll flex-1 min-h-0 flex flex-col overflow-hidden',
+    preventPageScroll && isSmallScreen && 'h-[calc(100dvh-var(--layout-chrome))] overscroll-contain pb-4',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className={`max-w-[160rem] mx-auto px-4 w-full ${isSmallScreen ? 'has-bottom-nav' : ''} ${preventPageScroll ? 'prevent-page-scroll flex-1 min-h-0 flex flex-col overflow-hidden' : ''} ${preventPageScroll && isSmallScreen ? 'h-[calc(100dvh-var(--layout-chrome))] overscroll-contain pb-4' : ''}`}>
+    <div className={containerClasses}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">

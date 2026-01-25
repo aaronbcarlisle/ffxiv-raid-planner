@@ -91,6 +91,8 @@ export function WeeklyLootGrid({
   }, []);
 
   // Long-press support for touch devices
+  // Note: Uses inline implementation instead of useLongPress hook because handlers need
+  // entry-specific context (entry, type) passed at call-time, which the generic hook doesn't support.
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const isMountedRef = useRef(true);
