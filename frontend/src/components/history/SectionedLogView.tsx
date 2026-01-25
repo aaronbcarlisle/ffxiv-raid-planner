@@ -1408,7 +1408,7 @@ export function SectionedLogView({
 
         {/* Books Panel */}
         {mobilePanel === 'books' && (
-          <section className="flex-1 min-h-0 flex flex-col bg-surface-card border border-border-default rounded-lg overflow-hidden">
+          <section className="flex-1 min-h-0 flex flex-col bg-surface-card border border-border-default rounded-lg overflow-hidden mt-1">
             <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border-default">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm text-text-primary">Books</h3>
