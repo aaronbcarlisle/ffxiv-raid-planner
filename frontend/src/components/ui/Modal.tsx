@@ -142,7 +142,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
   // Variant-specific classes
   const isSheet = effectiveVariant === 'sheet';
   const containerClasses = isSheet
-    ? 'fixed inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl animate-slide-up'
+    ? 'fixed left-0 right-0 bottom-0 max-h-[85dvh] rounded-t-xl animate-slide-up'
     : `relative max-h-[90vh] rounded-lg ${sizeClass}`;
 
   // Use portal to render at document body level, preventing inherited styles (opacity, transforms)

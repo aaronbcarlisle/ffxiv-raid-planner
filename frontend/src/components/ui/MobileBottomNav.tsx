@@ -43,13 +43,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
         aria-label="Main navigation"
       >
-        {/* Background extension to cover dynamic viewport changes on mobile */}
-        <div
-          className="absolute inset-x-0 top-0 bg-surface-card"
-          style={{ height: 'calc(100% + 50px)' }}
-          aria-hidden="true"
-        />
-        <div className="relative flex items-center h-14">
+        <div className="flex items-center h-14">
         {/* Controls button - left side */}
         {onControlsClick && (
           /* design-system-ignore: Bottom nav button requires specific styling */
