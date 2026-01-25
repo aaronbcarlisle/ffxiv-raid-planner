@@ -376,7 +376,7 @@ export function LogMaterialModal({
         {/* Player select */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <Label htmlFor="recipient" className="mb-0">Recipient</Label>
+            <Label htmlFor="recipient" className="mb-0 hidden sm:block">Recipient</Label>
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={includeSubs}

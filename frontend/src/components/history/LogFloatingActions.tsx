@@ -18,7 +18,7 @@ export function LogFloatingActions({ onLogLoot, onLogMaterial, visible }: LogFlo
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 flex flex-row gap-2 z-30 md:hidden">
+    <div className="fixed bottom-[4.5rem] right-4 flex flex-row gap-2 z-30 md:hidden backdrop-blur-md bg-black/40 rounded-full p-1.5">
       {/* design-system-ignore: FAB requires specific circular styling not available in IconButton */}
       <button
         onClick={onLogMaterial}
