@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.10.1';
+export const CURRENT_VERSION = '1.10.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,27 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.10.2',
+    date: '2026-01-25T04:00:00Z',
+    title: 'Mobile UX Polish',
+    highlights: ['Improved mobile layouts', 'Better touch targets'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Mobile layout improvements',
+        description: 'Better scroll containment, filter alignment, and touch-friendly buttons across Log and Loot tabs',
+        details:
+          'Log tab now has proper scroll containment with the week selector spanning full width. Loot tab filter bars are aligned consistently between Gear Priority and Weapon Priority tabs. Loot log entries now use icon buttons for Copy URL, Edit, and Delete actions.',
+        commits: [{ hash: '5bcb066', message: 'fix: mobile UX polish - scroll containment, filter alignment, icon buttons' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Dashboard side padding',
+        description: 'Increased side padding on the dashboard for better breathing room on all screen sizes',
+      },
+    ],
+  },
   {
     version: '1.10.1',
     date: '2026-01-24T21:00:00Z',
