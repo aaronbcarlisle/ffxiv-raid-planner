@@ -161,17 +161,17 @@ html {
   scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
   scrollbar-width: thin;
   overflow-x: hidden !important; /* Prevent horizontal scrolling */
-  overflow-y: scroll; /* Allow vertical scroll */
+  overflow-y: auto; /* Auto vertical scroll */
   width: 100%;
   max-width: 100%;
 }
 
-/* Only use scrollbar-gutter on desktop where scrollbars take up space */
-@media (min-width: 640px) {
+/* Scrollbar-gutter disabled - was causing layout issues on some devices */
+/* @media (min-width: 640px) {
   html {
-    scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
+    scrollbar-gutter: stable;
   }
-}
+} */
 
 /* Webkit (Chrome, Safari) scrollbar styling */
 ::-webkit-scrollbar {
