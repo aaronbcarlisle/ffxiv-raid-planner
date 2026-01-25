@@ -245,8 +245,8 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
       size="lg"
     >
       <div className="flex flex-col h-full">
-        {/* Tabs - scrollable on mobile */}
-        <div className="flex border-b border-border-default -mx-6 px-6 overflow-x-auto">
+        {/* Tabs - scrollable on mobile, no scrollbar on desktop */}
+        <div className="flex border-b border-border-default -mx-6 px-6 overflow-x-auto sm:overflow-x-visible scrollbar-none">
           <button
             onClick={() => setActiveTab('general')}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
