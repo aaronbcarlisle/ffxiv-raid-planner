@@ -85,7 +85,7 @@ export function TierSelector({
       <DropdownTrigger>
         {/* design-system-ignore: Dropdown trigger requires native button with Select-like styling */}
         <button
-          className="inline-flex items-center justify-between gap-2 px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm hover:border-border-subtle focus:outline-none transition-colors"
+          className="inline-flex items-center justify-between gap-2 px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm hover:border-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base transition-colors"
         >
           <span className="text-text-primary">
             {selectedTierInfo?.name || currentTierId || 'Select Tier'}
