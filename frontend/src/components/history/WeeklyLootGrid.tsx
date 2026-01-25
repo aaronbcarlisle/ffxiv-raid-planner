@@ -422,19 +422,19 @@ export function WeeklyLootGrid({
               </div>
             </div>
 
-            {/* Loot Row - horizontally scrollable, stops swipe propagation */}
+            {/* Loot Row - horizontally scrollable on mobile, wrapping grid on desktop */}
             <div
-              className="flex border-b border-border-subtle overflow-x-auto"
+              className="flex border-b border-border-subtle sm:overflow-visible overflow-x-auto"
               onTouchStart={handleGridTouchStart}
               onTouchEnd={handleGridTouchEnd}
             >
-              {/* Label - sticky on left */}
-              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sticky left-0 z-10">
+              {/* Label - sticky on left for mobile scroll */}
+              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sm:sticky-none sticky left-0 z-10">
                 Loot
               </div>
 
-              {/* Item columns - single row, scrolls horizontally */}
-              <div className="flex flex-nowrap">
+              {/* Item columns - flex-nowrap for mobile horizontal scroll, flex-wrap for desktop grid */}
+              <div className="flex flex-nowrap sm:flex-wrap flex-1">
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
@@ -447,7 +447,7 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[100px] px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[100px] sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
@@ -557,7 +557,7 @@ export function WeeklyLootGrid({
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[100px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[100px] sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {
