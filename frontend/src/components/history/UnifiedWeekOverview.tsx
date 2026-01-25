@@ -522,6 +522,8 @@ export function UnifiedWeekOverview({
           players={players}
           floors={floors}
           currentWeek={currentWeek}
+          groupId={groupId}
+          tierId={tierId}
         />
       )}
 
