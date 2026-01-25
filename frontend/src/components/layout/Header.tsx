@@ -388,8 +388,9 @@ export function Header() {
               </div>
 
               {/* Settings popover (only for editors) */}
+              {/* Negative margins on mobile balance visual spacing with StaticSwitcher dropdown */}
               {canEdit && settingsActions.length > 0 && (
-                <div className="ml-4 -mr-2 sm:ml-0 sm:mr-0">
+                <div className="-ml-2 -mr-2 sm:ml-0 sm:mr-0">
                   <SettingsPopover actions={settingsActions} />
                 </div>
               )}

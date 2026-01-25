@@ -51,6 +51,7 @@ interface SortableItemProps {
   showInsertBefore: boolean;
   showInsertAfter: boolean;
   showSwap: boolean;
+  isSmallScreen: boolean;
   onRemove: () => void;
   onToggleReceived: () => void;
   onMoveUp: () => void;
@@ -155,12 +156,12 @@ function SortableGridItem({
   showInsertBefore,
   showInsertAfter,
   showSwap,
+  isSmallScreen,
   onRemove,
   onToggleReceived,
   onMoveUp,
   onMoveDown,
 }: SortableItemProps) {
-  const { isSmallScreen } = useDevice();
   const {
     attributes,
     listeners,
@@ -240,6 +241,8 @@ export function WeaponPriorityGrid({
   onMainJobMoveAttempt,
   onAddJobsClick,
 }: WeaponPriorityGridProps) {
+  // Lift useDevice to parent level to avoid calling per row
+  const { isSmallScreen } = useDevice();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropMode, setDropMode] = useState<DropMode>(null);
@@ -486,6 +489,7 @@ export function WeaponPriorityGrid({
                       showInsertBefore={isOver && dropMode === 'insert-before'}
                       showInsertAfter={isOver && dropMode === 'insert-after'}
                       showSwap={isOver && dropMode === 'swap'}
+                      isSmallScreen={isSmallScreen}
                       onRemove={() => handleRemove(actualIndex)}
                       onToggleReceived={() => handleToggleReceived(actualIndex)}
                       onMoveUp={() => handleMoveUp(actualIndex)}
