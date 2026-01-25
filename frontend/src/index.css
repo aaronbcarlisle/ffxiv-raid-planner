@@ -160,10 +160,7 @@ html {
   color: var(--color-text-primary);
   scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
   scrollbar-width: thin;
-  overflow-x: hidden !important; /* Prevent horizontal scrolling */
-  overflow-y: auto; /* Auto vertical scroll */
-  width: 100%;
-  max-width: 100%;
+  /* Note: No overflow set here - let default behavior work to preserve sticky positioning */
 }
 
 /* Scrollbar-gutter disabled - was causing layout issues on some devices */
@@ -196,14 +193,12 @@ body {
   margin: 0 !important;
   padding: 0 !important;
   min-height: 100dvh;
-  /* Prevent Radix scroll-lock from causing layout shift */
-  overflow-x: hidden !important; /* Prevent horizontal scroll */
-  overflow-y: visible !important;
   width: 100% !important;
   max-width: 100% !important;
   position: static !important; /* Prevent Radix from setting position: fixed which breaks sticky nav */
   /* Reset any transform that might be applied */
   transform: none !important;
+  /* Note: No overflow set here - let default behavior work to preserve sticky positioning */
 }
 
 /* Prevent Radix focus guards from affecting layout */
@@ -226,8 +221,7 @@ body[data-scroll-locked],
 body[data-scroll-locked="1"],
 body[data-scroll-locked][style] {
   position: static !important;
-  overflow-x: hidden !important; /* Always prevent horizontal scroll */
-  overflow-y: visible !important;
+  overflow: visible !important; /* Prevent Radix from setting overflow that breaks sticky */
   margin-right: 0 !important;
   pointer-events: auto !important;
 }
