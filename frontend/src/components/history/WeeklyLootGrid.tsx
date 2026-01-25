@@ -112,7 +112,7 @@ export function WeeklyLootGrid({
         longPressTriggeredRef.current = true; // Mark that long-press fired
         setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
       }
-      longPressTimerRef.current = null;
+      // Note: Don't clear longPressTimerRef here - cleanup happens in handleTouchEnd/handleTouchCancel/useEffect
     }, LONG_PRESS_DURATION);
   }, []);
 
