@@ -744,6 +744,7 @@ async def get_bis_presets(request: Request, job: str, category: Optional[str] = 
         # GitHub presets are assumed to be savage (current tier)
         if category and category != "savage":
             continue
+        # Use original array index (i) since fetch_xivgear_bis now uses original indices
         presets.append(BiSPreset(name=name, index=i, category="savage"))
 
     if not presets:
@@ -794,15 +795,24 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
     if "sets" in data and data["sets"]:
         # Multiple sets available - use set_index to select which one
         sets = data["sets"]
-        # Filter out separator entries for index calculation
-        actual_sets = [(i, s) for i, s in enumerate(sets) if not s.get("isSeparator")]
 
-        if set_index >= len(actual_sets):
-            set_index = 0  # Fall back to first set if index out of range
+        # set_index is the ORIGINAL array index (from githubIndex in local presets)
+        # We need to handle two cases:
+        # 1. Original index mode: set_index points directly to a set in the original array
+        # 2. If that's a separator or out of range, fall back to first non-separator
 
-        # Find the actual index in the original array
-        if actual_sets:
-            _, selected_set = actual_sets[set_index]
+        selected_set = None
+        if set_index < len(sets) and not sets[set_index].get("isSeparator"):
+            # Direct access by original index
+            selected_set = sets[set_index]
+        else:
+            # Fallback: find first non-separator set
+            for s in sets:
+                if not s.get("isSeparator"):
+                    selected_set = s
+                    break
+
+        if selected_set:
             items_data = selected_set.get("items", {})
             if selected_set.get("name"):
                 set_name = selected_set["name"]

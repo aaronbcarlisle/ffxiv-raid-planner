@@ -277,8 +277,9 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
           data = await fetchBiSFromXIVGear(bisUrl, selectedPreset.githubIndex ?? 0);
         } else {
           // Fallback for presets without githubTier (legacy)
+          // Use selectedPreset.index (original XIVGear position) not presetIdx (dropdown position)
           const bisUrl = `bis|${player.job.toLowerCase()}|current`;
-          data = await fetchBiSFromXIVGear(bisUrl, presetIdx);
+          data = await fetchBiSFromXIVGear(bisUrl, selectedPreset.index);
         }
       } else {
         // Detect source and call appropriate API
@@ -426,7 +427,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         bisLink = `bis|${player.job.toLowerCase()}|${selectedPreset.githubTier}|${index}`;
       } else {
         // Fallback for presets without githubTier (legacy)
-        bisLink = `bis|${player.job.toLowerCase()}|current|0`;
+        // Use selectedPreset.index (original XIVGear position) not presetIdx (dropdown position)
+        bisLink = `bis|${player.job.toLowerCase()}|current|${selectedPreset.index}`;
       }
     } else {
       bisLink = inputValue.trim();

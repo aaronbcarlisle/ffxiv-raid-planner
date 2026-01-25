@@ -14,13 +14,17 @@ import type { MemberRole } from '../../utils/permissions';
 function buildBiSUrl(bisLink: string): string {
   if (bisLink.startsWith('http')) return bisLink;
   if (bisLink.includes('|')) {
-    // Handle bis|job|tier|index format - strip the index for XIVGear URL
-    // XIVGear expects ?page=bis|job|tier, not ?page=bis|job|tier|index
+    // Handle bis|job|tier|index format - include selectedIndex for direct set selection
+    // XIVGear expects ?page=bis|job|tier&selectedIndex=N
     if (bisLink.startsWith('bis|')) {
       const parts = bisLink.split('|');
       if (parts.length === 4) {
-        // Strip the index (4th part)
-        return `https://xivgear.app/?page=${parts.slice(0, 3).join('|')}`;
+        const setIndex = parseInt(parts[3], 10);
+        const basePath = parts.slice(0, 3).join('|');
+        if (!Number.isNaN(setIndex)) {
+          return `https://xivgear.app/?page=${basePath}&selectedIndex=${setIndex}`;
+        }
+        return `https://xivgear.app/?page=${basePath}`;
       }
     }
     // Handle sl|uuid|setIndex format - include setIndex as URL parameter
