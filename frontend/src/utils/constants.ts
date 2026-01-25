@@ -34,6 +34,8 @@ export const DEFAULT_SETTINGS: StaticSettings = {
   timezone: 'UTC',
   autoSync: false,
   syncFrequency: 'weekly',
+  hideSetupBanners: false,
+  hideBisBanners: false,
 };
 
 // Sort presets for player ordering

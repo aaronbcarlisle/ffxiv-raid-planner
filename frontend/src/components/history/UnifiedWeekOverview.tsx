@@ -17,6 +17,7 @@ import { PlayerLedgerModal } from './PlayerLedgerModal';
 import { Tooltip } from '../primitives/Tooltip';
 import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear, deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -241,7 +242,6 @@ export function UnifiedWeekOverview({
     markFloorCleared,
     adjustBookBalance,
     createMaterialEntry,
-    deleteMaterialEntry,
     updateLootEntry,
   } = useLootTrackingStore();
 
@@ -354,14 +354,21 @@ export function UnifiedWeekOverview({
 
   // Handle delete material
   const handleDeleteMaterial = useCallback(async (entryId: number) => {
+    const entry = materialLog.find(e => e.id === entryId);
+    if (!entry) {
+      toast.error('Material entry not found');
+      return;
+    }
     try {
-      await deleteMaterialEntry(groupId, tierId, entryId);
+      await deleteMaterialAndRevertGear(groupId, tierId, entryId, entry, {
+        revertGear: true,
+      });
       await fetchMaterialLog(groupId, tierId, currentWeek);
       toast.success('Deleted material entry');
     } catch {
       toast.error('Failed to delete material entry');
     }
-  }, [groupId, tierId, currentWeek, deleteMaterialEntry, fetchMaterialLog]);
+  }, [groupId, tierId, currentWeek, materialLog, fetchMaterialLog]);
 
   // Handle mark floor cleared
   const handleMarkFloorCleared = useCallback(async (request: Parameters<typeof markFloorCleared>[2]) => {

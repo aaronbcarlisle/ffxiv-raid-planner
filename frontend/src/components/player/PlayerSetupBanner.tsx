@@ -13,7 +13,7 @@ import { Button, Tooltip } from '../primitives';
 import { Link2, UserCheck, FileDown } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
-import { getBannerState } from './playerSetupBannerUtils';
+import { getBannerState, type BannerOptions } from './playerSetupBannerUtils';
 
 export interface PlayerSetupBannerProps {
   player: SnapshotPlayer;
@@ -23,6 +23,10 @@ export interface PlayerSetupBannerProps {
   isAdminAccess: boolean;
   /** User ID being impersonated in View As mode */
   viewAsUserId?: string | null;
+  /** Hide "Unclaimed" banners (group setting) */
+  hideSetupBanners?: boolean;
+  /** Hide "No BiS configured" banners (group setting) */
+  hideBisBanners?: boolean;
   onClaimPlayer?: () => void;
   onOpenAssignModal?: () => void;
   /** Quick assign the viewAsUserId to this player (used in View As mode) */
@@ -37,12 +41,15 @@ export const PlayerSetupBanner = memo(function PlayerSetupBanner({
   userHasClaimedPlayer,
   isAdminAccess,
   viewAsUserId,
+  hideSetupBanners,
+  hideBisBanners,
   onClaimPlayer,
   onOpenAssignModal,
   onAssignViewAsUser,
   onOpenBiSImport,
 }: PlayerSetupBannerProps) {
-  const bannerState = getBannerState(player, currentUserId, userRole, userHasClaimedPlayer);
+  const bannerOptions: BannerOptions = { hideSetupBanners, hideBisBanners };
+  const bannerState = getBannerState(player, currentUserId, userRole, userHasClaimedPlayer, bannerOptions);
 
   if (bannerState === 'hidden') return null;
 

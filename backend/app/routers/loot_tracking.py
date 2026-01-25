@@ -1064,6 +1064,7 @@ async def get_material_log(
             material_type=entry.material_type,
             recipient_player_id=entry.recipient_player_id,
             recipient_player_name=entry.recipient_player.name,
+            slot_augmented=entry.slot_augmented,
             notes=entry.notes,
             created_at=entry.created_at,
             created_by_user_id=entry.created_by_user_id,
@@ -1114,6 +1115,7 @@ async def create_material_log_entry(
         floor=data.floor,
         material_type=data.material_type.value,  # Use .value to get lowercase string
         recipient_player_id=data.recipient_player_id,
+        slot_augmented=data.slot_augmented,
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
@@ -1133,6 +1135,7 @@ async def create_material_log_entry(
         material_type=entry.material_type,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        slot_augmented=entry.slot_augmented,
         notes=entry.notes,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,
@@ -1223,6 +1226,8 @@ async def update_material_log_entry(
         entry.material_type = data.material_type.value
     if data.recipient_player_id is not None:
         entry.recipient_player_id = data.recipient_player_id
+    if data.slot_augmented is not None:
+        entry.slot_augmented = data.slot_augmented
     if data.notes is not None:
         entry.notes = data.notes
 
@@ -1237,6 +1242,7 @@ async def update_material_log_entry(
         material_type=entry.material_type,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        slot_augmented=entry.slot_augmented,
         notes=entry.notes,
         created_at=entry.created_at,
         created_by_user_id=entry.created_by_user_id,

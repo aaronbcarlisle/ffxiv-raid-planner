@@ -56,6 +56,10 @@ interface PlayerCardProps {
   isAdmin?: boolean;
   isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
   viewAsUserId?: string; // User ID being impersonated in View As mode
+  /** Hide "Unclaimed" banners (group setting) */
+  hideSetupBanners?: boolean;
+  /** Hide "No BiS configured" banners (group setting) */
+  hideBisBanners?: boolean;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -76,8 +80,12 @@ interface PlayerCardProps {
   onCopyUrl?: () => void;
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
   slotsWithLootEntries?: Set<GearSlot>;
+  /** Slots that have material entries (for "Go to Material Entry" feature) */
+  slotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to material entry for a slot */
+  onNavigateToMaterialEntry?: (slot: string) => void;
   /** Navigate to Books panel and highlight this player's row */
   onNavigateToBooksPanel?: (playerId: string) => void;
 }
@@ -96,6 +104,8 @@ export const PlayerCard = memo(function PlayerCard({
   isAdmin,
   isAdminAccess,
   viewAsUserId,
+  hideSetupBanners,
+  hideBisBanners,
   groupId,
   tierId,
   isHighlighted,
@@ -115,7 +125,9 @@ export const PlayerCard = memo(function PlayerCard({
   onModalClose,
   onCopyUrl,
   slotsWithLootEntries,
+  slotsWithMaterialEntries,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
   onNavigateToBooksPanel,
 }: PlayerCardProps) {
   const isExpanded = viewMode === 'expanded';
@@ -856,6 +868,8 @@ export const PlayerCard = memo(function PlayerCard({
         userHasClaimedPlayer={userHasClaimedPlayer ?? false}
         isAdminAccess={!!viewAsUserId}
         viewAsUserId={viewAsUserId}
+        hideSetupBanners={hideSetupBanners}
+        hideBisBanners={hideBisBanners}
         onClaimPlayer={onClaimPlayer}
         onOpenAssignModal={() => {
           if (isAdminAccess) {
@@ -897,7 +911,9 @@ export const PlayerCard = memo(function PlayerCard({
         onGearChange={handleGearChange}
         onTomeWeaponChange={handleTomeWeaponChange}
         slotsWithLootEntries={slotsWithLootEntries}
+        slotsWithMaterialEntries={slotsWithMaterialEntries}
         onNavigateToLootEntry={onNavigateToLootEntry}
+        onNavigateToMaterialEntry={onNavigateToMaterialEntry}
       />
 
       {/* Expanded mode: spacer after gear (fills remaining space, footer hidden) */}

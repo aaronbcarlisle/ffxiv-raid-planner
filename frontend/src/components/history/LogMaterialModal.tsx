@@ -10,12 +10,19 @@ import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
-import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate, GearSlot } from '../../types';
+import { GEAR_SLOT_NAMES } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { parseFloorName, FLOOR_LOOT_TABLES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
+import {
+  getEligibleSlotsForAugmentation,
+  needsTomeWeaponItem,
+  needsTomeWeaponAugmentation,
+  logMaterialAndUpdateGear,
+} from '../../utils/materialCoordination';
 
 interface LogMaterialModalProps {
   isOpen: boolean;
@@ -37,6 +44,9 @@ interface LogMaterialModalProps {
   presetFloor?: string;
   /** If provided, modal operates in edit mode */
   editEntry?: MaterialLogEntry;
+  /** Required for augmentation coordination in add mode */
+  groupId?: string;
+  tierId?: string;
 }
 
 /**
@@ -63,6 +73,8 @@ export function LogMaterialModal({
   suggestedMaterial,
   presetFloor,
   editEntry,
+  groupId,
+  tierId,
 }: LogMaterialModalProps) {
   const isEditMode = !!editEntry;
   // Determine initial floor: use preset if valid, otherwise find first floor with materials
@@ -93,6 +105,63 @@ export function LogMaterialModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
+  // Augmentation state (add mode only)
+  const [updateGear, setUpdateGear] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(null);
+  const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(false);
+
+  // Compute eligible options for gear update based on selected player and material (add mode only)
+  const eligibleOptions = useMemo(() => {
+    if (isEditMode) return { slots: [] as GearSlot[], canMarkTomeWeaponHave: false, canAugmentTomeWeapon: false };
+    const player = players.find((p) => p.id === selectedPlayer);
+    if (!player) return { slots: [] as GearSlot[], canMarkTomeWeaponHave: false, canAugmentTomeWeapon: false };
+
+    if (selectedMaterial === 'universal_tomestone') {
+      // Universal tomestone grants the base tome weapon
+      return {
+        slots: [] as GearSlot[],
+        canMarkTomeWeaponHave: needsTomeWeaponItem(player),
+        canAugmentTomeWeapon: false,
+      };
+    }
+
+    if (selectedMaterial === 'solvent') {
+      // Solvent can augment tome weapon OR weapon gear slot
+      const slots = getEligibleSlotsForAugmentation(player, selectedMaterial);
+      return {
+        slots,
+        canMarkTomeWeaponHave: false,
+        canAugmentTomeWeapon: needsTomeWeaponAugmentation(player),
+      };
+    }
+
+    // Twine/Glaze: only gear slots
+    return {
+      slots: getEligibleSlotsForAugmentation(player, selectedMaterial),
+      canMarkTomeWeaponHave: false,
+      canAugmentTomeWeapon: false,
+    };
+  }, [isEditMode, selectedPlayer, selectedMaterial, players]);
+
+  // Determine if there are any eligible options
+  const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
+    eligibleOptions.canAugmentTomeWeapon ||
+    eligibleOptions.slots.length > 0;
+
+  // Auto-select first eligible slot or tome weapon option when eligibility changes
+  useEffect(() => {
+    if (eligibleOptions.slots.length > 0) {
+      setSelectedSlot(eligibleOptions.slots[0]);
+      setAugmentTomeWeapon(false);
+    } else if (eligibleOptions.canAugmentTomeWeapon) {
+      // For solvent with only tome weapon option
+      setSelectedSlot(null);
+      setAugmentTomeWeapon(true);
+    } else {
+      setSelectedSlot(null);
+      setAugmentTomeWeapon(false);
+    }
+  }, [eligibleOptions]);
 
   // Reset state when modal opens with new preset values or edit entry
   useEffect(() => {
@@ -126,6 +195,9 @@ export function LogMaterialModal({
         setNotes('');
         setShowAllRecipients(false);
         setIncludeSubs(false);
+        setUpdateGear(true);
+        setSelectedSlot(null);
+        setAugmentTomeWeapon(false);
       }
     }
   }, [isOpen, editEntry, presetFloor, suggestedMaterial, suggestedPlayer, currentWeek, floors, players]);
@@ -150,7 +222,7 @@ export function LogMaterialModal({
     setIsSubmitting(true);
     try {
       if (isEditMode && onUpdate) {
-        // Edit mode: call onUpdate with changes
+        // Edit mode: call onUpdate with changes (no augmentation option in edit mode)
         await onUpdate({
           weekNumber,
           floor: selectedFloor,
@@ -159,14 +231,37 @@ export function LogMaterialModal({
           notes: notes.trim() || undefined,
         });
       } else {
-        // Add mode: call onSubmit with full data
-        await onSubmit({
-          weekNumber,
-          floor: selectedFloor,
-          materialType: selectedMaterial,
-          recipientPlayerId: selectedPlayer,
-          notes: notes.trim() || undefined,
-        });
+        // Add mode: use coordination function if augmentation is requested
+        const shouldUpdateGear = updateGear && hasEligibleOptions && groupId && tierId;
+
+        if (shouldUpdateGear) {
+          // Use coordination function to log material and update gear
+          await logMaterialAndUpdateGear(
+            groupId,
+            tierId,
+            {
+              weekNumber,
+              floor: selectedFloor,
+              materialType: selectedMaterial,
+              recipientPlayerId: selectedPlayer,
+              notes: notes.trim() || undefined,
+            },
+            {
+              updateGear: true,
+              slotToAugment: selectedSlot ? selectedSlot : undefined,
+              augmentTomeWeapon,
+            }
+          );
+        } else {
+          // Call onSubmit without gear update
+          await onSubmit({
+            weekNumber,
+            floor: selectedFloor,
+            materialType: selectedMaterial,
+            recipientPlayerId: selectedPlayer,
+            notes: notes.trim() || undefined,
+          });
+        }
       }
       onClose();
     } catch {
@@ -404,6 +499,92 @@ export function LogMaterialModal({
             </div>
           )}
         </div>
+
+        {/* Gear update option (add mode only) */}
+        {!isEditMode && hasEligibleOptions && groupId && tierId && (
+          <div className="space-y-2">
+            {/* Universal Tomestone: mark tome weapon as have */}
+            {selectedMaterial === 'universal_tomestone' && eligibleOptions.canMarkTomeWeaponHave && (
+              <Checkbox
+                checked={updateGear}
+                onChange={setUpdateGear}
+                label="Also mark tome weapon as obtained"
+              />
+            )}
+
+            {/* Solvent: choose between tome weapon or gear slot */}
+            {selectedMaterial === 'solvent' && (eligibleOptions.canAugmentTomeWeapon || eligibleOptions.slots.length > 0) && (
+              <>
+                <Checkbox
+                  checked={updateGear}
+                  onChange={setUpdateGear}
+                  label="Also mark gear as augmented"
+                />
+                {updateGear && (eligibleOptions.canAugmentTomeWeapon && eligibleOptions.slots.length > 0) && (
+                  <div>
+                    <Select
+                      value={augmentTomeWeapon ? 'tome_weapon' : (selectedSlot || '')}
+                      onChange={(val) => {
+                        if (val === 'tome_weapon') {
+                          setAugmentTomeWeapon(true);
+                          setSelectedSlot(null);
+                        } else {
+                          setAugmentTomeWeapon(false);
+                          setSelectedSlot(val as GearSlot);
+                        }
+                      }}
+                      options={[
+                        { value: 'tome_weapon', label: 'Tome Weapon' },
+                        ...eligibleOptions.slots.map((slot) => ({
+                          value: slot,
+                          label: GEAR_SLOT_NAMES[slot],
+                        })),
+                      ]}
+                    />
+                  </div>
+                )}
+                {updateGear && eligibleOptions.canAugmentTomeWeapon && eligibleOptions.slots.length === 0 && (
+                  <div className="text-sm text-text-muted ml-6">Tome Weapon</div>
+                )}
+                {updateGear && !eligibleOptions.canAugmentTomeWeapon && eligibleOptions.slots.length > 0 && (
+                  <div>
+                    <Select
+                      value={selectedSlot || ''}
+                      onChange={(val) => setSelectedSlot(val as GearSlot)}
+                      options={eligibleOptions.slots.map((slot) => ({
+                        value: slot,
+                        label: GEAR_SLOT_NAMES[slot],
+                      }))}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Twine/Glaze: gear slot dropdown */}
+            {selectedMaterial !== 'universal_tomestone' && selectedMaterial !== 'solvent' && eligibleOptions.slots.length > 0 && (
+              <>
+                <Checkbox
+                  checked={updateGear}
+                  onChange={setUpdateGear}
+                  label="Also mark gear as augmented"
+                />
+                {updateGear && (
+                  <div>
+                    <Select
+                      value={selectedSlot || ''}
+                      onChange={(val) => setSelectedSlot(val as GearSlot)}
+                      options={eligibleOptions.slots.map((slot) => ({
+                        value: slot,
+                        label: GEAR_SLOT_NAMES[slot],
+                      }))}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Notes */}
         <div>

@@ -25,6 +25,9 @@ class MaterialLogEntry(Base):
         nullable=False
     )
     recipient_player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False, index=True)
+    # Which slot was augmented (null for universal_tomestone which marks tome weapon as "have")
+    # Values: "weapon", "head", "body", "hands", "legs", "feet", "earring", "necklace", "bracelet", "ring1", "ring2", "tome_weapon"
+    slot_augmented: Mapped[str | None] = mapped_column(String(20), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)  # ISO timestamp
     created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)

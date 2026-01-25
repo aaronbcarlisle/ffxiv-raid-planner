@@ -27,6 +27,10 @@ interface DroppablePlayerCardProps {
   isAdmin?: boolean;
   isAdminAccess?: boolean;
   viewAsUserId?: string;
+  /** Hide "Unclaimed" banners (group setting) */
+  hideSetupBanners?: boolean;
+  /** Hide "No BiS configured" banners (group setting) */
+  hideBisBanners?: boolean;
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
@@ -45,8 +49,12 @@ interface DroppablePlayerCardProps {
   onCopyUrl?: () => void;
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
   slotsWithLootEntries?: Set<GearSlot>;
+  /** Slots that have material entries (for "Go to Material Entry" feature) */
+  slotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to material entry for a slot */
+  onNavigateToMaterialEntry?: (slot: string) => void;
   /** Navigate to Books panel and highlight this player's row */
   onNavigateToBooksPanel?: (playerId: string) => void;
 }
