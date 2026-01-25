@@ -249,8 +249,8 @@ export function Header() {
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-3 sm:gap-4">
         {/* Left side: Logo + Group context */}
-        {/* For non-managers on mobile, flex-1 allows static selector to fill available space */}
-        <div className={`flex items-center gap-2 sm:gap-4 min-w-0 ${!canManageInvitations && isGroupRoute && currentGroup ? 'flex-1 sm:flex-initial' : ''}`}>
+        {/* On mobile, flex-1 allows static selector to fill available space (Invite/Share buttons hidden on mobile) */}
+        <div className={`flex items-center gap-2 sm:gap-4 min-w-0 ${isGroupRoute && currentGroup ? 'flex-1 sm:flex-initial' : ''}`}>
           {/* Logo */}
           <Tooltip
             content={
@@ -290,7 +290,7 @@ export function Header() {
                 onFetchGroups={fetchGroups}
                 isMember={isMember}
                 userRole={userRole ?? undefined}
-                fullWidthMobile={!canManageInvitations}
+                fullWidthMobile
               />
 
               {/* Invite Members button (for owners/leads) - hidden on mobile */}
@@ -389,7 +389,7 @@ export function Header() {
 
               {/* Settings popover (only for editors) */}
               {canEdit && settingsActions.length > 0 && (
-                <div className="ml-1 sm:ml-0">
+                <div className="ml-4 -mr-2 sm:ml-0 sm:mr-0">
                   <SettingsPopover actions={settingsActions} />
                 </div>
               )}

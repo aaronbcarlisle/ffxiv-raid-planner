@@ -38,14 +38,16 @@ export function Tooltip({
 }: TooltipProps) {
   const { canHover } = useDevice();
 
-  // Disable tooltips on touch devices where hover isn't available
-  if (!canHover || disabled) {
+  // On touch devices where hover isn't available, just render children
+  if (!canHover) {
     return <>{children}</>;
   }
 
+  // When disabled, still render the same structure to avoid unmounting children,
+  // but use open={false} to prevent the tooltip from showing
   return (
     <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={skipDelayDuration}>
-      <TooltipPrimitive.Root>
+      <TooltipPrimitive.Root open={disabled ? false : undefined}>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content

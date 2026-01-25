@@ -72,6 +72,8 @@ export interface SelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Callback when the dropdown opens or closes */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function Select({
@@ -82,8 +84,14 @@ export function Select({
   placeholder = 'Select...',
   disabled,
   className = '',
+  onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
 
   // Prevent Radix scroll-lock from breaking sticky nav
   usePreventScrollLock(open);
@@ -102,7 +110,7 @@ export function Select({
       value={value}
       onValueChange={onChange}
       disabled={disabled}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
     >
       <SelectPrimitive.Trigger
         id={id}
@@ -112,7 +120,7 @@ export function Select({
           bg-surface-elevated border border-border-default rounded-lg
           pl-4 pr-3 py-2
           text-sm
-          focus-visible:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          focus:outline-none
           disabled:opacity-50 disabled:cursor-not-allowed
           hover:border-border-subtle
           transition-colors
