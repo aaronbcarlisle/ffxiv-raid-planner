@@ -6,7 +6,7 @@
  * Prevents context menu from showing during long press.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 interface UseLongPressOptions {
   /** Callback when long press is detected */
@@ -21,6 +21,7 @@ interface LongPressHandlers {
   onTouchStart: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
   onTouchMove: (e: React.TouchEvent) => void;
+  onTouchCancel: (e: React.TouchEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
@@ -32,6 +33,7 @@ export function useLongPress({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPressRef = useRef(false);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false); // Track if touch moved beyond threshold
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -40,6 +42,13 @@ export function useLongPress({
     }
   }, []);
 
+  // Cleanup timer on unmount to prevent stray callbacks
+  useEffect(() => {
+    return () => {
+      clearTimer();
+    };
+  }, [clearTimer]);
+
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     // Store initial touch position for movement detection
     touchStartPosRef.current = {
@@ -47,6 +56,7 @@ export function useLongPress({
       y: e.touches[0].clientY,
     };
     isLongPressRef.current = false;
+    movedRef.current = false;
 
     timerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
@@ -65,11 +75,23 @@ export function useLongPress({
       return;
     }
 
+    // Don't trigger onClick if the touch moved beyond threshold (user was scrolling)
+    if (movedRef.current) {
+      return;
+    }
+
     // Otherwise, it's a regular tap - call onClick if provided
     if (onClick) {
       onClick();
     }
   }, [clearTimer, onClick]);
+
+  const onTouchCancel = useCallback(() => {
+    clearTimer();
+    isLongPressRef.current = false;
+    movedRef.current = false;
+    touchStartPosRef.current = null;
+  }, [clearTimer]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     // Cancel long press if user moves finger too much
@@ -80,6 +102,7 @@ export function useLongPress({
 
       if (deltaX > moveThreshold || deltaY > moveThreshold) {
         clearTimer();
+        movedRef.current = true; // Mark as moved to prevent onClick
       }
     }
   }, [clearTimer]);
@@ -96,6 +119,7 @@ export function useLongPress({
     onTouchStart,
     onTouchEnd,
     onTouchMove,
+    onTouchCancel,
     onContextMenu,
   };
 }

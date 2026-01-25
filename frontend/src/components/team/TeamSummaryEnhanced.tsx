@@ -147,7 +147,7 @@ export function TeamSummaryEnhanced({
     } catch { /* ignore */ }
     // Check screen size synchronously for default
     if (typeof window !== 'undefined') {
-      return !window.matchMedia('(max-width: 640px)').matches;
+      return !window.matchMedia('(max-width: 639px)').matches;
     }
     return true; // Default to expanded on server
   });
