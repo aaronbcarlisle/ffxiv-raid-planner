@@ -837,7 +837,7 @@ export function SectionedLogView({
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header Controls */}
-      <div className="flex-shrink-0 pb-2 md:pb-4">
+      <div className="flex-shrink-0 pb-2">
         <LootLogFilters
           layoutMode={layoutMode}
           onLayoutModeChange={handleLayoutModeChange}
