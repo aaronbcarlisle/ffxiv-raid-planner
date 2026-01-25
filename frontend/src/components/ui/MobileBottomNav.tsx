@@ -39,11 +39,17 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default pb-safe
-                 before:content-[''] before:absolute before:left-0 before:right-0 before:top-full before:h-20 before:bg-surface-card"
-      aria-label="Main navigation"
-    >
-      <div className="flex items-center h-14">
+        className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+        aria-label="Main navigation"
+      >
+        {/* Background extension to cover dynamic viewport changes on mobile */}
+        <div
+          className="absolute inset-x-0 top-0 bg-surface-card"
+          style={{ height: 'calc(100% + 50px)' }}
+          aria-hidden="true"
+        />
+        <div className="relative flex items-center h-14">
         {/* Controls button - left side */}
         {onControlsClick && (
           /* design-system-ignore: Bottom nav button requires specific styling */
@@ -85,7 +91,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
             </button>
           ))}
         </div>
-      </div>
-    </nav>
+        </div>
+      </nav>
   );
 }
