@@ -205,7 +205,7 @@ export function WhoNeedsItMatrix({
                               ${showLogButtons ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
                             `}
                             style={{
-                              backgroundColor: `${roleColor}30`,
+                              backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`,
                               border: `2px solid ${roleColor}`,
                             }}
                           >
@@ -287,7 +287,7 @@ export function WhoNeedsItMatrix({
                         disabled={!showLogButtons}
                         className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
                         style={{
-                          backgroundColor: `${roleColor}20`,
+                          backgroundColor: `color-mix(in srgb, ${roleColor} 20%, transparent)`,
                           color: roleColor,
                         }}
                       >

@@ -34,7 +34,7 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
 
   return (
     <label
-      className={`flex items-center gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+      className={`group flex items-center gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
       onClick={handleClick}
     >
       {/* Hidden native checkbox for form compatibility */}
@@ -59,9 +59,10 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
         className={`
           relative flex items-center justify-center
           min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+          rounded
           ${disabled
             ? 'cursor-not-allowed'
-            : 'cursor-pointer focus:outline-none'
+            : 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30'
           }
         `}
       >
@@ -87,10 +88,6 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
             />
           )}
         </div>
-        {/* Focus ring around visual checkbox */}
-        {!disabled && (
-          <div className="absolute inset-0 sm:inset-auto sm:w-4 sm:h-4 rounded focus-visible:ring-2 focus-visible:ring-accent/30 pointer-events-none" />
-        )}
       </div>
       {(label || description) && (
         <div className="flex flex-col">

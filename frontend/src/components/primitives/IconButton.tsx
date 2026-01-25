@@ -32,7 +32,7 @@ const variantStyles: Record<IconButtonVariant, string> = {
 const sizeStyles: Record<IconButtonSize, string> = {
   sm: 'h-7 w-7 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-sm',
   md: 'h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base',
-  lg: 'h-10 w-10 sm:h-11 sm:w-11 text-lg',
+  lg: 'h-10 w-10 sm:h-11 sm:w-11 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-lg',
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
