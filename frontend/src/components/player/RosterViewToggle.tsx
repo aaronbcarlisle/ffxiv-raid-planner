@@ -18,7 +18,7 @@ export function RosterViewToggle({ viewMode, onViewModeChange, visible }: Roster
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 flex flex-row gap-1 z-30 md:hidden bg-surface-elevated border border-border-default rounded-full shadow-lg p-1">
+    <div className="fixed bottom-20 left-4 flex flex-row gap-1 z-30 md:hidden bg-surface-elevated border border-border-default rounded-full shadow-xl shadow-black/50 ring-1 ring-white/10 p-1">
       {/* design-system-ignore: Toggle buttons in compact FAB group require specific styling */}
       <button
         onClick={() => onViewModeChange('compact')}

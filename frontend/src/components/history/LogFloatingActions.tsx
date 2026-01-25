@@ -22,7 +22,7 @@ export function LogFloatingActions({ onLogLoot, onLogMaterial, visible }: LogFlo
       {/* design-system-ignore: FAB requires specific circular styling not available in IconButton */}
       <button
         onClick={onLogMaterial}
-        className="w-12 h-12 rounded-full bg-accent shadow-lg flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
+        className="w-12 h-12 rounded-full bg-accent shadow-xl shadow-black/50 ring-1 ring-white/10 flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
         aria-label="Log Material"
       >
         <Gem className="w-5 h-5" />
@@ -30,7 +30,7 @@ export function LogFloatingActions({ onLogLoot, onLogMaterial, visible }: LogFlo
       {/* design-system-ignore: FAB requires specific circular styling not available in IconButton */}
       <button
         onClick={onLogLoot}
-        className="w-12 h-12 rounded-full bg-accent shadow-lg flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
+        className="w-12 h-12 rounded-full bg-accent shadow-xl shadow-black/50 ring-1 ring-white/10 flex items-center justify-center text-accent-contrast active:scale-95 transition-transform"
         aria-label="Log Loot"
       >
         <Package className="w-5 h-5" />
