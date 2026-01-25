@@ -138,9 +138,14 @@
 
   /* ================================
      SPACING & SIZING
-     Custom breakpoints
+     Layout dimensions & breakpoints
      ================================ */
   --breakpoint-3xl: 1400px;
+
+  /* Layout dimensions - used for viewport height calculations */
+  --header-height: 56px;        /* Main header bar */
+  --bottom-nav-height: 56px;    /* Mobile bottom navigation */
+  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */
 
   /* Animation durations */
   --duration-fast: 150ms;

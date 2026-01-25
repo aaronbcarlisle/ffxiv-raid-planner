@@ -40,7 +40,11 @@ export function Layout() {
       <ViewAsBanner />
       <ReleaseBanner />
       {/* Content container - scrollable area below sticky header */}
-      {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears */}
+      {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
+          Applied here on <main> (not globally on <html>) because:
+          1. Only the main content area scrolls (header is fixed, page uses overflow-hidden)
+          2. Global application caused layout issues on some mobile devices (see index.css)
+          3. Scoping to the scroll container is more predictable across browsers */}
       <main className="w-full pt-1 pb-3 md:py-3 flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <Outlet />
       </main>
