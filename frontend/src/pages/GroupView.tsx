@@ -25,7 +25,7 @@ import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinn
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check, SlidersHorizontal } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
-import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
+import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
@@ -1004,6 +1004,21 @@ export function GroupView() {
         variant="sheet"
       >
         <div className="space-y-4">
+          {/* Tier Selector (mobile only - hidden in header) */}
+          {tiers.length > 0 && (
+            <div>
+              <div className="text-sm text-text-muted mb-2">Raid Tier</div>
+              <TierSelector
+                tiers={tiers}
+                currentTierId={currentTier?.tierId}
+                onTierChange={(tierId) => {
+                  handleTierChange(tierId);
+                  setShowControlsSheet(false);
+                }}
+              />
+            </div>
+          )}
+
           {/* Sort */}
           <div>
             <div className="text-sm text-text-muted mb-2">Sort By</div>

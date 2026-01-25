@@ -374,12 +374,14 @@ export function Header() {
           {/* Group controls (only on group pages) */}
           {isGroupRoute && currentGroup && tiers.length > 0 && (
             <>
-              {/* Tier selector */}
-              <TierSelector
-                tiers={tiers}
-                currentTierId={currentTier?.tierId}
-                onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-              />
+              {/* Tier selector - hidden on mobile, shown in Controls sheet instead */}
+              <div className="hidden sm:block">
+                <TierSelector
+                  tiers={tiers}
+                  currentTierId={currentTier?.tierId}
+                  onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+                />
+              </div>
 
               {/* Settings popover (only for editors) */}
               {canEdit && settingsActions.length > 0 && (
