@@ -294,7 +294,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
         </div>
 
         {/* Content - swipeable on mobile */}
-        <div className="py-4 overflow-y-auto flex-1" {...swipeHandlers}>
+        <div className="pt-4 overflow-y-auto flex-1" {...swipeHandlers}>
           {error && <ErrorBox message={error} size="sm" className="mb-4" />}
 
           {activeTab === 'general' && !showDeleteConfirm && (
