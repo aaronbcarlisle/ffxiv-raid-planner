@@ -112,7 +112,7 @@ export function StaticSwitcher({
           <DropdownTrigger>
             {/* Radix DropdownMenu requires native button as trigger */}
             <button // design-system-ignore
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle ${fullWidthMobile ? 'w-full sm:w-auto' : ''}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${fullWidthMobile ? 'w-full sm:w-auto' : ''}`}
             >
               <span className={`font-display text-base sm:text-lg text-accent truncate ${fullWidthMobile ? 'flex-1 text-left sm:flex-initial sm:max-w-[200px]' : 'max-w-[140px] sm:max-w-[200px]'}`}>
                 {currentGroup.name}
