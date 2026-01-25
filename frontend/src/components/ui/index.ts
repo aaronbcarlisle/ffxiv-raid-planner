@@ -7,6 +7,7 @@ export { ItemHoverCard } from './ItemHoverCard';
 export { JobIcon } from './JobIcon';
 export { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 export { Label, type LabelProps } from './Label';
+export { MobileBottomNav } from './MobileBottomNav';
 export { Modal } from './Modal';
 export { ConfirmModal } from './ConfirmModal';
 export { ErrorMessage, InlineError, ErrorBox, type ErrorMessageProps, type ErrorBoxProps } from './ErrorMessage';

@@ -279,8 +279,8 @@ export function Header() {
           {/* Group context (only on group pages) */}
           {isGroupRoute && currentGroup && (
             <>
-              {/* Divider */}
-              <span className="text-border-default">/</span>
+              {/* Divider - hidden on mobile */}
+              <span className="text-border-default hidden sm:inline">/</span>
 
               {/* Static Switcher */}
               <StaticSwitcher
@@ -291,40 +291,45 @@ export function Header() {
                 userRole={userRole ?? undefined}
               />
 
-              {/* Invite Members button (for owners/leads) or Share code (for others) */}
-              {canManageInvitations ? (
-                <Tooltip
-                  content={
-                    <div className="flex items-start gap-2 max-w-xs">
-                      <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-medium">Invite Members</div>
-                        <div className="text-text-secondary text-xs mt-0.5">
-                          {activeInvitation
-                            ? 'Click to copy invitation link'
-                            : 'Click to create an invitation link'}
+              {/* Invite Members button (for owners/leads) - hidden on mobile */}
+              {canManageInvitations && (
+                <div className="hidden sm:block">
+                  <Tooltip
+                    content={
+                      <div className="flex items-start gap-2 max-w-xs">
+                        <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Invite Members</div>
+                          <div className="text-text-secondary text-xs mt-0.5">
+                            {activeInvitation
+                              ? 'Click to copy invitation link'
+                              : 'Click to create an invitation link'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  }
-                >
-                  <button
-                    onClick={handleInviteMembers}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
+                    }
                   >
-                    {inviteCopied ? (
-                      <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <UserPlus className="w-4 h-4 text-accent" />
-                    )}
-                    <span className="text-sm font-medium text-accent">
-                      {inviteCopied ? 'Copied!' : 'Invite'}
-                    </span>
-                  </button>
-                </Tooltip>
-              ) : (
+                    <button
+                      onClick={handleInviteMembers}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
+                    >
+                      {inviteCopied ? (
+                        <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <UserPlus className="w-4 h-4 text-accent" />
+                      )}
+                      <span className="text-sm font-medium text-accent">
+                        {inviteCopied ? 'Copied!' : 'Invite'}
+                      </span>
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
+
+              {/* Share code - shown for non-managers, compact on mobile */}
+              {!canManageInvitations && (
                 <Tooltip
                   content={
                     <div className="flex items-start gap-2 max-w-xs">
@@ -342,7 +347,7 @@ export function Header() {
                     onClick={(e) => handleCopyCode(e)}
                     className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
                   >
-                    <span className="font-mono text-sm text-text-secondary">{currentGroup.shareCode}</span>
+                    <span className="font-mono text-xs sm:text-sm text-text-secondary">{currentGroup.shareCode}</span>
                     {copied ? (
                       <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -365,7 +370,7 @@ export function Header() {
         )}
 
         {/* Right side: Tier + Settings + Auth */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Group controls (only on group pages) */}
           {isGroupRoute && currentGroup && tiers.length > 0 && (
             <>

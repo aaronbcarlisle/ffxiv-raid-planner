@@ -64,7 +64,7 @@ export function StaticSwitcher({
           </div>
         }
       >
-        <span className="font-display text-lg text-text-primary px-2 cursor-help">
+        <span className="font-display text-base sm:text-lg text-text-primary px-2 cursor-help max-w-[120px] sm:max-w-[200px] truncate inline-block">
           {currentGroup.name}
         </span>
       </Tooltip>
@@ -96,7 +96,7 @@ export function StaticSwitcher({
             <button // design-system-ignore
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
             >
-              <span className="font-display text-lg text-accent max-w-[200px] truncate">
+              <span className="font-display text-base sm:text-lg text-accent max-w-[100px] sm:max-w-[200px] truncate">
                 {currentGroup.name}
               </span>
               {userRole && (

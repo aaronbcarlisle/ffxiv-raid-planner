@@ -9,7 +9,7 @@
  * - Grid-based item layout
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
@@ -18,6 +18,9 @@ import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
+
+/** Long-press duration in ms for touch devices to trigger context menu */
+const LONG_PRESS_DURATION = 500;
 
 /**
  * Material colors using CSS custom properties for design system compliance
@@ -91,6 +94,45 @@ export function WeeklyLootGrid({
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Long-press support for touch devices
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((
+    e: React.TouchEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    longPressTimerRef.current = setTimeout(() => {
+      // Trigger context menu at touch position
+      setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
+      longPressTimerRef.current = null;
+    }, LONG_PRESS_DURATION);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Cancel long-press if user moves finger more than 10px
+    if (touchStartPosRef.current && longPressTimerRef.current) {
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
   }, []);
 
   // Get context menu items for an entry
@@ -359,36 +401,38 @@ export function WeeklyLootGrid({
 
   return (
     <div className="space-y-4">
-      {/* Loot Count Summary Bar */}
-      <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-clip">
-        {mainRosterPlayers.map(player => {
-          const count = playerLootCounts[player.id] || 0;
-          const style = getLootCountStyle(count);
-          const roleColor = getRoleColor(getValidRole(player.role));
+      {/* Loot Count Summary Bar - scrollable on mobile */}
+      <div className="p-3 bg-surface-card rounded-lg border border-border-default overflow-x-auto">
+        <div className="flex gap-2 min-w-max sm:min-w-0">
+          {mainRosterPlayers.map(player => {
+            const count = playerLootCounts[player.id] || 0;
+            const style = getLootCountStyle(count);
+            const roleColor = getRoleColor(getValidRole(player.role));
 
-          return (
-            <div
-              key={player.id}
-              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
-            >
+            return (
               <div
-                className="text-[10px] font-semibold mb-0.5"
-                style={{ color: roleColor }}
+                key={player.id}
+                className="flex-1 min-w-[60px] sm:min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
               >
-                {player.position || player.role.substring(0, 2).toUpperCase()}
+                <div
+                  className="text-[10px] font-semibold mb-0.5"
+                  style={{ color: roleColor }}
+                >
+                  {player.position || player.role.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="text-[10px] text-text-muted truncate">{player.name}</div>
+                <div className="text-xl font-bold" style={{ color: style.color }}>
+                  {count}
+                </div>
+                <div className="text-[9px] text-text-muted uppercase">drops</div>
               </div>
-              <div className="text-[10px] text-text-muted truncate">{player.name}</div>
-              <div className="text-xl font-bold" style={{ color: style.color }}>
-                {count}
-              </div>
-              <div className="text-[9px] text-text-muted uppercase">drops</div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden">
+      {/* Main Grid - scrollable on mobile */}
+      <div className="bg-surface-card rounded-lg border border-border-default overflow-x-auto">
         {floorConfigs.map((floor, floorIdx) => (
           <div key={floor.number}>
             {/* Floor Header */}
@@ -472,6 +516,9 @@ export function WeeklyLootGrid({
                         }
                       } : undefined}
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
+                      onTouchStart={lootEntry ? (e) => handleTouchStart(e, lootEntry, 'loot') : undefined}
+                      onTouchEnd={lootEntry ? handleTouchEnd : undefined}
+                      onTouchMove={lootEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
                     >
@@ -578,6 +625,9 @@ export function WeeklyLootGrid({
                         }
                       } : undefined}
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
+                      onTouchStart={matEntry ? (e) => handleTouchStart(e, matEntry, 'material') : undefined}
+                      onTouchEnd={matEntry ? handleTouchEnd : undefined}
+                      onTouchMove={matEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
                     >

@@ -332,15 +332,15 @@ export function Dashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-display text-accent">My Statics</h1>
           <p className="text-text-muted mt-1">Manage your raid groups</p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Sort mode dropdown */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Sort mode dropdown - hidden on mobile */}
           {groups.length > 0 && (
             <Select
               value={sortMode}
@@ -349,12 +349,12 @@ export function Dashboard() {
                 value,
                 label,
               }))}
-              className="w-36"
+              className="hidden sm:block w-36"
             />
           )}
-          {/* View mode toggle */}
+          {/* View mode toggle - hidden on mobile */}
           {groups.length > 0 && (
-            <div className="flex bg-surface-raised rounded-lg border border-border-default">
+            <div className="hidden sm:flex bg-surface-raised rounded-lg border border-border-default">
               <Tooltip content="Display statics as cards">
                 <IconButton
                   icon={<LayoutGrid className="w-4 h-4" />}
@@ -485,7 +485,7 @@ export function Dashboard() {
               className="block bg-surface-card rounded-lg border border-border-default p-4 hover:border-accent/50 transition-colors group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
-                <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors">
+                <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate mr-2">
                   {group.name}
                 </h3>
                 {group.source === 'linked' ? (

@@ -287,7 +287,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
               key={job.abbreviation}
               type="button"
               onClick={() => handleJobClick(job.abbreviation)}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-2.5 sm:p-1.5 rounded-lg transition-all ${
                 selectedJob === job.abbreviation
                   ? 'ring-2'
                   : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
@@ -314,7 +314,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
               <button
                 type="button"
                 onClick={() => setShowFullPicker(!showFullPicker)}
-                className={`p-1.5 rounded-lg transition-all ${
+                className={`p-2.5 sm:p-1.5 rounded-lg transition-all ${
                   showSelected
                     ? 'ring-2'
                     : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
@@ -353,7 +353,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                   value={jobSearch}
                   onChange={(e) => setJobSearch(e.target.value)}
                   placeholder="Search jobs..."
-                  className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
+                  className="w-full bg-surface-base border border-border-default rounded px-3 py-2.5 sm:py-1.5 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
                   onKeyDown={handleSearchKeyDown}
                 />
               </div>
@@ -379,7 +379,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                         type="button"
                         data-index={idx}
                         onClick={() => handleJobClick(j.abbreviation)}
-                        className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
+                        className={`w-full px-3 py-3 sm:py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                           selectedJob === j.abbreviation ? 'bg-accent/10' : ''
                         }`}
                         style={isHighlighted ? {
@@ -429,7 +429,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                                 type="button"
                                 data-index={globalIndex}
                                 onClick={() => handleJobClick(j.abbreviation)}
-                                className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
+                                className={`w-full px-3 py-3 sm:py-2 flex items-center gap-3 hover:bg-surface-interactive text-left ${
                                   selectedJob === j.abbreviation ? 'bg-accent/10' : ''
                                 }`}
                                 style={isHighlighted ? {
@@ -465,7 +465,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
                   value={jobSearch}
                   onChange={(e) => setJobSearch(e.target.value)}
                   placeholder="Search jobs..."
-                  className="w-full bg-surface-base border border-border-default rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
+                  className="w-full bg-surface-base border border-border-default rounded px-3 py-2.5 sm:py-1.5 text-base sm:text-sm text-text-primary placeholder:text-text-muted focus-visible:border-accent focus:outline-none"
                   onKeyDown={handleSearchKeyDown}
                 />
               </div>

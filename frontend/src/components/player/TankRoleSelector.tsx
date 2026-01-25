@@ -98,7 +98,7 @@ export function TankRoleSelector({
           <PopoverTrigger asChild>
             {/* design-system-ignore: Badge-style button with specific toggle styling */}
             <button
-              className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${baseClasses} ${hoverClasses} ${
+              className={`px-2 py-1 sm:px-1.5 sm:py-0.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors ${baseClasses} ${hoverClasses} ${
                 !editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={!editPermission.allowed}
@@ -119,7 +119,7 @@ export function TankRoleSelector({
                 key={role}
                 onClick={() => handleSelect(role)}
                 className={`
-                  px-3 py-1.5 rounded text-xs font-bold transition-colors
+                  px-4 py-2 sm:px-3 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors
                   ${isSelected
                     ? 'bg-role-tank text-surface-base'
                     : 'bg-role-tank/20 text-role-tank hover:bg-role-tank/30'
@@ -136,7 +136,7 @@ export function TankRoleSelector({
         {tankRole && (
           <button
             onClick={() => handleSelect(undefined)}
-            className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
+            className="w-full mt-2 px-2 py-2 sm:py-1 min-h-[44px] sm:min-h-0 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Clear
           </button>

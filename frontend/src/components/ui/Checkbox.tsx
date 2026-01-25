@@ -1,17 +1,20 @@
 import { Check } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface CheckboxProps {
   id?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label?: string;
+  label?: ReactNode;
   /** Helper text shown below the label */
   description?: string;
   disabled?: boolean;
   className?: string;
+  /** Accessible label for screen readers (use when label is visual-only or hidden) */
+  'aria-label'?: string;
 }
 
-export function Checkbox({ id, checked, onChange, label, description, disabled, className = '' }: CheckboxProps) {
+export function Checkbox({ id, checked, onChange, label, description, disabled, className = '', 'aria-label': ariaLabel }: CheckboxProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent native checkbox behavior
     e.stopPropagation();
@@ -31,7 +34,7 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
 
   return (
     <label
-      className={`flex items-center gap-2 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+      className={`flex items-center gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
       onClick={handleClick}
     >
       {/* Hidden native checkbox for form compatibility */}
@@ -45,31 +48,48 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
         aria-hidden="true"
         tabIndex={-1}
       />
-      {/* Custom checkbox visual */}
+      {/* Custom checkbox visual - touch-friendly wrapper on mobile */}
       <div
         role="checkbox"
         aria-checked={checked}
         aria-disabled={disabled}
+        aria-label={ariaLabel}
         tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
         className={`
-          w-4 h-4 rounded flex items-center justify-center
-          border transition-colors
-          ${checked
-            ? 'bg-accent border-accent'
-            : 'bg-surface-elevated border-border-default'
-          }
+          relative flex items-center justify-center
+          min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
           ${disabled
             ? 'cursor-not-allowed'
-            : 'cursor-pointer hover:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-0'
+            : 'cursor-pointer focus:outline-none'
           }
         `}
       >
-        {checked && (
-          <Check
-            className="w-3 h-3 text-accent-contrast"
-            strokeWidth={3}
-          />
+        {/* Visual checkbox - 16x16px */}
+        <div
+          className={`
+            w-4 h-4 rounded flex items-center justify-center
+            border transition-colors
+            ${checked
+              ? 'bg-accent border-accent'
+              : 'bg-surface-elevated border-border-default'
+            }
+            ${disabled
+              ? ''
+              : 'group-hover:border-accent/50'
+            }
+          `}
+        >
+          {checked && (
+            <Check
+              className="w-3 h-3 text-accent-contrast"
+              strokeWidth={3}
+            />
+          )}
+        </div>
+        {/* Focus ring around visual checkbox */}
+        {!disabled && (
+          <div className="absolute inset-0 sm:inset-auto sm:w-4 sm:h-4 rounded focus-visible:ring-2 focus-visible:ring-accent/30 pointer-events-none" />
         )}
       </div>
       {(label || description) && (

@@ -79,7 +79,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
         />
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100dvh-8rem)] overflow-y-auto scrollbar-thin"
         >
           {groups.map((group, groupIndex) => {
             const isCollapsed = collapsedGroups.has(group.label);

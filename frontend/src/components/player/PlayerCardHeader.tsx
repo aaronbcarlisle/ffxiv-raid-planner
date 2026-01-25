@@ -10,6 +10,7 @@ import { MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
 import { Tooltip } from '../primitives/Tooltip';
+import { IconButton } from '../primitives/IconButton';
 import { JobPicker } from './JobPicker';
 import { PositionSelector } from './PositionSelector';
 import { TankRoleSelector } from './TankRoleSelector';
@@ -350,13 +351,14 @@ export function PlayerCardHeader({
               </div>
             }
           >
-            <button
-              onClick={onMenuClick}
-              className="p-1 rounded hover:bg-surface-interactive opacity-60 hover:opacity-100 transition-opacity"
+            <IconButton
               aria-label="Player options menu"
-            >
-              <MoreVertical className="w-5 h-5 text-text-secondary" />
-            </button>
+              icon={<MoreVertical className="w-5 h-5" />}
+              variant="ghost"
+              size="sm"
+              onClick={onMenuClick}
+              className="opacity-60 hover:opacity-100"
+            />
           </Tooltip>
         )}
       </div>

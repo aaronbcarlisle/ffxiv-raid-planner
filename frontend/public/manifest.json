@@ -1,0 +1,22 @@
+{
+  "name": "FFXIV Raid Planner",
+  "short_name": "Raid Planner",
+  "description": "Track gear progress, manage loot distribution, and coordinate your FFXIV static.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050508",
+  "theme_color": "#14b8a6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "type": "image/x-icon",
+      "sizes": "48x48"
+    }
+  ]
+}

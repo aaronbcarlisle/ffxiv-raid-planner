@@ -112,7 +112,7 @@ export function WeekSelector({
   const canRevertWeek = onRevertWeek && calculatedCurrentWeek > 1;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
         <Tooltip

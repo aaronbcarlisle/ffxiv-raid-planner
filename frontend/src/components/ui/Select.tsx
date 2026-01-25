@@ -108,7 +108,7 @@ export function Select({
         id={id}
         className={`
           inline-flex items-center justify-between
-          w-full
+          w-full min-h-[44px] sm:min-h-0
           bg-surface-elevated border border-border-default rounded-lg
           pl-4 pr-3 py-2
           text-sm
@@ -147,6 +147,8 @@ export function Select({
         position="popper"
         sideOffset={4}
         align="start"
+        collisionPadding={16}
+        avoidCollisions
       >
         <SelectPrimitive.Viewport className="p-1">
           {validOptions.map((option) => (
@@ -171,7 +173,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         ref={ref}
         className="
           relative flex items-center
-          px-8 py-2 rounded
+          px-8 py-2 min-h-[44px] sm:min-h-0 rounded
           text-sm text-text-primary
           cursor-pointer
           select-none

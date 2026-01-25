@@ -131,8 +131,8 @@ export function WhoNeedsItMatrix({
         />
       </div>
 
-      {/* Matrix Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop: Matrix Table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-elevated/30">
@@ -238,6 +238,68 @@ export function WhoNeedsItMatrix({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: Card view */}
+      <div className="md:hidden divide-y divide-border-default">
+        {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
+          <div key={slot} className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <img
+                  src={GEAR_SLOT_ICONS[slot as GearSlot]}
+                  alt=""
+                  className="w-4 h-4 brightness-[3.0]"
+                />
+                <span className="font-medium text-text-primary">{displayName}</span>
+              </div>
+              {isFree ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
+                  FREE
+                </span>
+              ) : (
+                <span className={`text-xs ${
+                  count > 4 ? 'text-status-error' : count > 2 ? 'text-status-warning' : 'text-text-muted'
+                }`}>
+                  {count}/8 need
+                </span>
+              )}
+            </div>
+            {!isFree && (
+              <div className="flex flex-wrap gap-1.5">
+                {sortedPlayers
+                  .filter(p => playersWhoNeed.has(p.id))
+                  .map(player => {
+                    const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                    return (
+                      <button
+                        key={player.id}
+                        onClick={() => {
+                          if (showLogButtons && onLogClick) {
+                            const actualSlot = slot === 'ring1'
+                              ? getNeededRingSlot(player)
+                              : slot as GearSlot;
+                            const floorNum = getFloorForSlot(actualSlot);
+                            const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
+                            onLogClick(actualSlot, player, floorName);
+                          }
+                        }}
+                        disabled={!showLogButtons}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
+                        style={{
+                          backgroundColor: `${roleColor}20`,
+                          color: roleColor,
+                        }}
+                      >
+                        <JobIcon job={player.job} size="xs" />
+                        <span>{player.name.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Legend */}

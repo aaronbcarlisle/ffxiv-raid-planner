@@ -28,10 +28,11 @@ const variantStyles: Record<IconButtonVariant, string> = {
     'bg-transparent text-text-secondary hover:bg-status-error/20 hover:text-status-error active:bg-status-error/30',
 };
 
+// Touch-friendly sizes: minimum 44px on mobile for accessibility
 const sizeStyles: Record<IconButtonSize, string> = {
-  sm: 'h-7 w-7 text-sm',
-  md: 'h-8 w-8 text-base',
-  lg: 'h-10 w-10 text-lg',
+  sm: 'h-7 w-7 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-sm',
+  md: 'h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base',
+  lg: 'h-10 w-10 sm:h-11 sm:w-11 text-lg',
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(

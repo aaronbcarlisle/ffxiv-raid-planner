@@ -21,8 +21,9 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal } from '../components/ui';
-import { AlertTriangle, Copy, Check } from 'lucide-react';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { useDevice } from '../hooks/useDevice';
+import { AlertTriangle, Copy, Check, SlidersHorizontal } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -108,10 +109,14 @@ export function GroupView() {
     setHighlightedBookPlayerId,
   } = state;
 
+  // Device capabilities for responsive behavior
+  const { isSmallScreen } = useDevice();
+
   // Settings modal options (for opening to specific tab with highlight)
   const [settingsModalTab, setSettingsModalTab] = useState<'general' | 'priority' | 'members' | 'invitations'>('general');
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
+  const [showControlsSheet, setShowControlsSheet] = useState(false);
 
   // Handle viewAs URL parameter
   useEffect(() => {
@@ -632,7 +637,7 @@ export function GroupView() {
   }
 
   return (
-    <div className="max-w-[160rem] mx-auto">
+    <div className={`max-w-[160rem] mx-auto px-4 ${isSmallScreen ? 'has-bottom-nav' : ''}`}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -664,58 +669,75 @@ export function GroupView() {
         <>
           {/* Toolbar: Tabs + Context Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-            <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+            {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
+            <div className="hidden sm:block">
+              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+            </div>
             {/* Roster tab controls - only render when on players tab */}
             {pageMode === 'players' && (
-              <div className="flex items-center gap-3">
-                <SortModeSelector
-                  sortPreset={sortPreset}
-                  onPresetChange={setSortPresetWithTier}
-                />
-                <GroupViewToggle
-                  enabled={groupView}
-                  onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
-                  disabled={!hasPositionData}
-                />
-                {hasSubstitutes && (
-                  <Tooltip
-                    content={
-                      <div className="flex items-start gap-2">
-                        <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
-                        <div>
-                          <div className="flex items-center gap-2 font-medium">
-                            {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
-                            <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
-                          </div>
-                          <div className="text-text-secondary text-xs mt-0.5">
-                            {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+              <>
+                {/* Desktop controls - hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-3">
+                  <SortModeSelector
+                    sortPreset={sortPreset}
+                    onPresetChange={setSortPresetWithTier}
+                  />
+                  <GroupViewToggle
+                    enabled={groupView}
+                    onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                    disabled={!hasPositionData}
+                  />
+                  {hasSubstitutes && (
+                    <Tooltip
+                      content={
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                          </svg>
+                          <div>
+                            <div className="flex items-center gap-2 font-medium">
+                              {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
+                              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
+                            </div>
+                            <div className="text-text-secondary text-xs mt-0.5">
+                              {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    }
-                  >
-                    {/* design-system-ignore: Toggle button requires specific toggle styling */}
-                    <button
-                      onClick={() => setSubsView(!subsView)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                        subsView
-                          ? 'bg-accent/20 text-accent border-accent/50'
-                          : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
-                      }`}
-                      aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
-                      aria-pressed={subsView}
+                      }
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                      </svg>
-                      <span>Subs</span>
-                    </button>
-                  </Tooltip>
-                )}
-                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-              </div>
+                      {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                      <button
+                        onClick={() => setSubsView(!subsView)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+                          subsView
+                            ? 'bg-accent/20 text-accent border-accent/50'
+                            : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                        }`}
+                        aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                        aria-pressed={subsView}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        <span>Subs</span>
+                      </button>
+                    </Tooltip>
+                  )}
+                  <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                </div>
+
+                {/* Mobile controls button - opens sheet */}
+                {/* design-system-ignore: Mobile controls button with specific styling */}
+                <button
+                  onClick={() => setShowControlsSheet(true)}
+                  className="sm:hidden flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary transition-colors"
+                  aria-label="View controls"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="text-sm">Controls</span>
+                </button>
+              </>
             )}
           </div>
 
@@ -973,6 +995,71 @@ export function GroupView() {
       </Modal>
 
       {/* Keyboard Shortcuts Help is now rendered in Layout.tsx for global access */}
+
+      {/* Mobile Controls Sheet */}
+      <Modal
+        isOpen={showControlsSheet}
+        onClose={() => setShowControlsSheet(false)}
+        title="Roster Controls"
+        variant="sheet"
+      >
+        <div className="space-y-4">
+          {/* Sort */}
+          <div>
+            <div className="text-sm text-text-muted mb-2">Sort By</div>
+            <SortModeSelector
+              sortPreset={sortPreset}
+              onPresetChange={(preset) => {
+                setSortPresetWithTier(preset);
+              }}
+            />
+          </div>
+
+          {/* Group View */}
+          <div>
+            <div className="text-sm text-text-muted mb-2">Group View</div>
+            <GroupViewToggle
+              enabled={groupView}
+              onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+              disabled={!hasPositionData}
+            />
+          </div>
+
+          {/* Subs Toggle */}
+          {hasSubstitutes && (
+            <div>
+              <div className="text-sm text-text-muted mb-2">Substitutes</div>
+              {/* design-system-ignore: Toggle button requires specific toggle styling */}
+              <button
+                onClick={() => {
+                  setSubsView(!subsView);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                  subsView
+                    ? 'bg-accent/20 text-accent border-accent/50'
+                    : 'bg-surface-raised border-border-default text-text-secondary'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span>{subsView ? 'Show Subs Separately' : 'Show Subs with Roster'}</span>
+              </button>
+            </div>
+          )}
+
+          {/* View Mode */}
+          <div>
+            <div className="text-sm text-text-muted mb-2">View Mode</div>
+            <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Mobile bottom navigation */}
+      {currentTier && (
+        <MobileBottomNav activeTab={pageMode} onTabChange={setPageMode} />
+      )}
     </div>
   );
 }

@@ -69,7 +69,7 @@ export function RosterSetupStep({ players, onPlayersChange, onAllSlotsFilled }: 
       {/* Roster grid - 2 columns on desktop, 1 on mobile */}
       {/* Scrollable container with max height to keep nav visible */}
       {/* Padding prevents ring highlights from being clipped by overflow */}
-      <div className="space-y-4 max-h-[calc(100vh-22rem)] overflow-y-auto px-1 py-1 -mx-1 -my-1">
+      <div className="space-y-4 max-h-[calc(100dvh-22rem)] overflow-y-auto px-1 py-1 -mx-1 -my-1">
         {playerPairs.map((pair, pairIndex) => {
           const [player1, player2] = pair;
           const index1 = pairIndex * 2;

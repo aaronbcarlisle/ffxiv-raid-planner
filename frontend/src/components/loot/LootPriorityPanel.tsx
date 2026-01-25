@@ -117,20 +117,24 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
 
   return (
     <div
-      className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
+      className={`flex items-center justify-between px-2 py-1 rounded text-sm group min-w-0 ${
         isFirst ? 'bg-accent/20' : ''
       }`}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+      {/* Left side - player info with truncation */}
+      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+        <span className={`flex-shrink-0 ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {index + 1}.
         </span>
-        <JobIcon job={entry.player.job} size="xs" />
-        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+        <span className="flex-shrink-0">
+          <JobIcon job={entry.player.job} size="xs" />
+        </span>
+        <span className={`truncate ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {entry.player.name}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      {/* Right side - score (never shrinks) */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         {/* Log button - shows on hover for any entry */}
         {showLogButton && onLogClick && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -564,8 +568,8 @@ export function LootPriorityPanel({
           )}
           {/* Content area with padding */}
           <div className="p-4">
-            {/* Gear drops grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Gear drops grid - responsive: 1 col mobile, 2 cols sm, 4 cols lg */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {itemPriorities.map(({ slot, label, entries }) => {
                 // Use ring1 icon for consolidated "ring" slot
                 const iconSlot = slot === 'ring' ? 'ring1' : slot;
@@ -598,7 +602,7 @@ export function LootPriorityPanel({
             {materialPriorities.length > 0 && (
               <div className="border-t border-border-default pt-4 mt-4">
                 <h4 className="text-text-secondary text-sm mb-3">Upgrade Materials</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {materialPriorities.map(({ material, label, entries }) => (
                     <div
                       key={material}

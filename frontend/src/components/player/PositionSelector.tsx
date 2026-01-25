@@ -147,7 +147,7 @@ export function PositionSelector({
           <PopoverTrigger asChild>
             {/* design-system-ignore: Badge-style button with specific toggle styling */}
             <button
-              className={`px-1.5 py-0.5 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
+              className={`px-2 py-1 sm:px-1.5 sm:py-0.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors ${getBaseClasses(position)} ${
                 editPermission.allowed ? getHoverClasses(position) : ''
               } ${!editPermission.allowed ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={!editPermission.allowed}
@@ -171,7 +171,7 @@ export function PositionSelector({
                 key={pos}
                 onClick={() => handleSelect(pos)}
                 className={`
-                  px-2 py-1.5 rounded text-xs font-bold transition-colors
+                  px-3 py-2 sm:px-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors
                   ${getPositionBgClasses(pos, isSelected, isSuggested)}
                 `}
               >
@@ -193,7 +193,7 @@ export function PositionSelector({
         {position && (
           <button
             onClick={() => handleSelect(undefined)}
-            className="w-full mt-2 px-2 py-1 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
+            className="w-full mt-2 px-2 py-2 sm:py-1 min-h-[44px] sm:min-h-0 rounded text-xs text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors"
           >
             Clear
           </button>

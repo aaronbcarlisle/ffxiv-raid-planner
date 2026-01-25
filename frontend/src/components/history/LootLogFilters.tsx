@@ -45,8 +45,8 @@ export function LootLogFilters({
   onOpenMaterialModal,
 }: LootLogFiltersProps) {
   return (
-    <div className="flex items-center justify-between border-b border-border-default pb-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-border-default pb-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Layout Mode Toggle */}
         <div className="flex bg-surface-base rounded-lg p-0.5">
           <Tooltip
@@ -219,7 +219,8 @@ export function LootLogFilters({
             }
           >
             <Button size="sm" onClick={onOpenLootModal}>
-              + Log Loot
+              <span className="hidden sm:inline">+ Log Loot</span>
+              <span className="sm:hidden flex items-center gap-1"><Package className="w-4 h-4" /> Loot</span>
             </Button>
           </Tooltip>
           <Tooltip
@@ -236,7 +237,8 @@ export function LootLogFilters({
             }
           >
             <Button size="sm" onClick={onOpenMaterialModal}>
-              + Log Material
+              <span className="hidden sm:inline">+ Log Material</span>
+              <span className="sm:hidden flex items-center gap-1"><Gem className="w-4 h-4" /> Mat</span>
             </Button>
           </Tooltip>
         </div>

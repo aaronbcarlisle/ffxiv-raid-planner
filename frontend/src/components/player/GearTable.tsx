@@ -241,7 +241,7 @@ function WeaponSlotRow({
     <>
       {/* Main weapon row */}
       <tr className="border-t border-border-default/50">
-        <td className="py-1 text-text-secondary">
+        <td className="py-2 sm:py-1 text-text-secondary">
           <div className="flex items-center gap-3">
             <SlotIcon
               slot="weapon"
@@ -255,7 +255,7 @@ function WeaponSlotRow({
           </div>
         </td>
         {/* CurrentSource column hidden for now */}
-        <td className="py-1 hidden text-center">
+        <td className="py-2 sm:py-1 hidden text-center">
           {status.currentSource && status.currentSource !== 'unknown' ? (
             <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
               {GEAR_SOURCE_NAMES[status.currentSource]}
@@ -264,7 +264,7 @@ function WeaponSlotRow({
             <span className="text-xs text-text-muted">—</span>
           )}
         </td>
-        <td className="py-1 text-center">
+        <td className="py-2 sm:py-1 text-center">
           <WeaponBiSSelector
             tomeWeapon={tomeWeapon}
             onTomeWeaponChange={onTomeWeaponChange}
@@ -272,7 +272,7 @@ function WeaponSlotRow({
             disabledReason={disabledTooltip}
           />
         </td>
-        <td className="py-1">
+        <td className="py-2 sm:py-1">
           <div className="flex justify-center">
             <GearStatusCircle
               state={toGearState(status.hasItem, status.isAugmented)}
@@ -421,7 +421,7 @@ export function GearTable({
 
   if (compact) {
     return (
-      <div className="grid grid-cols-11 gap-1 text-xs">
+      <div className="grid grid-cols-11 gap-1.5 sm:gap-1 text-xs">
         {GEAR_SLOTS.map((slot) => {
           const status = getSlotStatus(slot);
           // Slot is complete if: has item AND (raid/base_tome/crafted OR (tome AND (augmented OR aug not required)))
@@ -470,7 +470,7 @@ export function GearTable({
           return (
             <Tooltip key={slot} content={`${itemInfo}: ${sourceInfo}${stateInfo}`}>
               <div
-                className={`w-6 h-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
+                className={`w-7 h-7 sm:w-6 sm:h-6 rounded flex items-center justify-center cursor-pointer transition-colors ${
                   !status.bisSource
                     ? 'bg-surface-interactive opacity-50'
                     : isComplete
@@ -538,7 +538,7 @@ export function GearTable({
 
             return (
               <tr key={slot} className="border-t border-border-default/50">
-                <td className="py-1 text-text-secondary">
+                <td className="py-2 sm:py-1 text-text-secondary">
                   <div className="flex items-center gap-3">
                     <SlotIcon
                       slot={slot}
@@ -552,7 +552,7 @@ export function GearTable({
                   </div>
                 </td>
                 {/* CurrentSource column hidden for now */}
-                <td className="py-1 hidden text-center">
+                <td className="py-2 sm:py-1 hidden text-center">
                   {status.currentSource && status.currentSource !== 'unknown' ? (
                     <span className={`text-xs ${GEAR_SOURCE_COLORS[status.currentSource]}`}>
                       {GEAR_SOURCE_NAMES[status.currentSource]}
@@ -561,7 +561,7 @@ export function GearTable({
                     <span className="text-xs text-text-muted">—</span>
                   )}
                 </td>
-                <td className="py-1 text-center">
+                <td className="py-2 sm:py-1 text-center">
                   {(() => {
                     const correctSource = getCorrectBisSource(status);
                     return (
@@ -598,7 +598,7 @@ export function GearTable({
                     );
                   })()}
                 </td>
-                <td className="py-1">
+                <td className="py-2 sm:py-1">
                   <div className="flex justify-center">
                     <GearStatusCircle
                       state={toGearState(status.hasItem, status.isAugmented)}

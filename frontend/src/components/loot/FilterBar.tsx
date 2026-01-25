@@ -84,7 +84,7 @@ function FloorFilterBar({
             aria-label={floor === 'all' ? 'Show all floors' : `Filter by Floor ${floor}`}
             aria-pressed={isSelected}
             className={`
-              px-3 py-1.5 rounded text-xs font-bold transition-colors border
+              px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isSelected
                 ? floor === 'all'
                   ? 'bg-accent text-accent-contrast border-accent'
@@ -123,7 +123,7 @@ function RoleFilterBar({
             onClick={() => onRoleToggle(role.id)}
             aria-pressed={isVisible}
             className={`
-              px-3 py-1.5 rounded text-xs font-bold transition-colors border
+              px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isVisible
                 ? `${role.bgColor} ${role.textColor} ${role.borderColor}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
