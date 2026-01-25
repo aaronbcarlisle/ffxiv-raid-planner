@@ -243,7 +243,7 @@ body[data-scroll-locked][style] {
   min-height: 100dvh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden; /* Prevent horizontal overflow */
+  /* Note: overflow-x: hidden removed - breaks sticky positioning */
 }
 
 /* ================================

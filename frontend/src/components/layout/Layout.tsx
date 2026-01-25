@@ -35,12 +35,12 @@ export function Layout() {
   });
 
   return (
-    <div className="min-h-screen bg-surface-base overflow-x-hidden">
+    <div className="min-h-screen bg-surface-base">
       <Header />
       <ViewAsBanner />
       <ReleaseBanner />
       {/* Content container - pages control their own max-width and padding */}
-      <main className="w-full py-3 overflow-x-hidden">
+      <main className="w-full py-3">
         <Outlet />
       </main>
 

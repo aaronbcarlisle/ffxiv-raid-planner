@@ -246,7 +246,7 @@ export function Header() {
   }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
-    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default overflow-x-hidden">
+    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
@@ -328,8 +328,9 @@ export function Header() {
                 </div>
               )}
 
-              {/* Share code - shown for non-managers, compact on mobile */}
+              {/* Share code - shown for non-managers, hidden on mobile */}
               {!canManageInvitations && (
+                <div className="hidden sm:block">
                 <Tooltip
                   content={
                     <div className="flex items-start gap-2 max-w-xs">
@@ -359,6 +360,7 @@ export function Header() {
                     )}
                   </button>
                 </Tooltip>
+                </div>
               )}
             </>
           )}
