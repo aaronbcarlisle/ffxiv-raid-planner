@@ -461,7 +461,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                           <span className="text-xs text-text-muted font-medium">
-                            Tied ({block.entries.length})
+                            <span className="sm:hidden">T({block.entries.length})</span>
+                            <span className="hidden sm:inline">Tied ({block.entries.length})</span>
                           </span>
                           {/* Winner info shown in header after roll */}
                           {hasRolled && winnerEntry && (
@@ -968,9 +969,9 @@ export function WeaponPriorityList({
   const anyVisible = visibleSections.size > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Section filter toggles - role-colored, sticky on mobile */}
-      <div className="sticky top-0 z-10 -mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated">
+    <div className="flex flex-col h-full sm:block sm:h-auto sm:space-y-4">
+      {/* Section filter toggles - fixed on mobile, simple on desktop */}
+      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated sm:p-0 sm:border-0 sm:bg-transparent sm:mb-4">
         <FilterBar
           type="role"
           visibleRoles={visibleSections}
@@ -981,15 +982,16 @@ export function WeaponPriorityList({
 
       {/* Empty state when no sections visible */}
       {!anyVisible && (
-        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
+        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base m-4 sm:m-0">
           <p>No role sections selected.</p>
           <p className="text-sm mt-1">Click a role button above to show weapons.</p>
         </div>
       )}
 
-      {/* Mobile: Flat grid without collapsible sections */}
+      {/* Mobile: Flat grid - scrollable */}
       {isSmallScreen && (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+          <div className="grid grid-cols-1 gap-3">
           {ROLE_SECTIONS.map(section => {
             const sectionJobs = jobsBySection.get(section.id) || [];
             if (sectionJobs.length === 0) return null;
@@ -1012,6 +1014,7 @@ export function WeaponPriorityList({
               );
             });
           })}
+          </div>
         </div>
       )}
 

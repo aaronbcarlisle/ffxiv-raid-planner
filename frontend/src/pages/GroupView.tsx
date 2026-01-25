@@ -636,8 +636,11 @@ export function GroupView() {
     );
   }
 
+  // On mobile, prevent page scroll for History/Log and Loot tabs (they have internal scroll)
+  const preventPageScroll = isSmallScreen && (pageMode === 'history' || pageMode === 'loot');
+
   return (
-    <div className={`max-w-[160rem] mx-auto px-4 ${isSmallScreen ? 'has-bottom-nav' : ''}`}>
+    <div className={`max-w-[160rem] mx-auto px-4 ${isSmallScreen ? 'has-bottom-nav' : ''} ${preventPageScroll ? 'h-[calc(100dvh-112px)] overflow-hidden' : ''}`}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">

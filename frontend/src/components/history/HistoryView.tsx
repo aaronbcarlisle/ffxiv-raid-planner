@@ -231,25 +231,28 @@ export function HistoryView({
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
   return (
-    <div className="space-y-4">
-      {/* Week selector */}
-      <div className="flex justify-center">
-        <WeekSelector
-          currentWeek={selectedWeek}
-          maxWeek={maxWeek}
-          calculatedCurrentWeek={currentWeek}
-          onWeekChange={handleWeekChange}
-          weeksWithEntries={weeksWithEntries}
-          weekDataTypes={weekDataTypes}
-          onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
-          isStartingNextWeek={isStartingNextWeek}
-          onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
-          isRevertingWeek={isRevertingWeek}
-        />
+    <div className="md:space-y-4 flex flex-col md:block h-full md:h-auto -mx-4 md:mx-0">
+      {/* Week selector - full width on mobile */}
+      <div className="flex-shrink-0 py-2 mb-1 md:py-0 md:mb-0">
+        <div className="flex justify-center px-2 md:px-0">
+          <WeekSelector
+            currentWeek={selectedWeek}
+            maxWeek={maxWeek}
+            calculatedCurrentWeek={currentWeek}
+            onWeekChange={handleWeekChange}
+            weeksWithEntries={weeksWithEntries}
+            weekDataTypes={weekDataTypes}
+            onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
+            isStartingNextWeek={isStartingNextWeek}
+            onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
+            isRevertingWeek={isRevertingWeek}
+          />
+        </div>
       </div>
 
-      {/* Sectioned log view */}
-      <SectionedLogView
+      {/* Sectioned log view - fills remaining space on mobile */}
+      <div className="flex-1 min-h-0 md:flex-none px-4 md:px-0">
+        <SectionedLogView
         groupId={groupId}
         tierId={tierId}
         players={players}
@@ -269,7 +272,8 @@ export function HistoryView({
         onLogMaterialModalClose={onLogMaterialModalClose}
         openMarkFloorClearedModal={openMarkFloorClearedModal}
         onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
-      />
+        />
+      </div>
 
       {/* Revert week confirmation modal */}
       <RevertWeekConfirmModal

@@ -796,41 +796,43 @@ export function SectionedLogView({
   const [mobilePanel, setMobilePanel] = useState<'loot' | 'books'>('loot');
 
   return (
-    <div className="space-y-4">
+    <div className="md:space-y-4 flex flex-col md:block h-full md:h-auto">
       {/* Header Controls */}
-      <LootLogFilters
-        layoutMode={layoutMode}
-        onLayoutModeChange={handleLayoutModeChange}
-        canEdit={canEdit}
-        onResetLoot={() => setResetModalType('loot')}
-        onResetBooks={() => setResetModalType('books')}
-        onResetAll={() => setResetModalType('all')}
-        onOpenLootModal={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
-        onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
-      />
+      <div className="flex-shrink-0 pb-2 md:pb-0">
+        <LootLogFilters
+          layoutMode={layoutMode}
+          onLayoutModeChange={handleLayoutModeChange}
+          canEdit={canEdit}
+          onResetLoot={() => setResetModalType('loot')}
+          onResetBooks={() => setResetModalType('books')}
+          onResetAll={() => setResetModalType('all')}
+          onOpenLootModal={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
+          onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
+        />
 
-      {/* Mobile Panel Tabs */}
-      <div className="md:hidden flex bg-surface-card border border-border-default rounded-lg p-1">
-        <button
-          onClick={() => setMobilePanel('loot')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            mobilePanel === 'loot'
-              ? 'bg-accent text-accent-contrast'
-              : 'text-text-secondary hover:text-text-primary'
-          }`}
-        >
-          Loot Log
-        </button>
-        <button
-          onClick={() => setMobilePanel('books')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            mobilePanel === 'books'
-              ? 'bg-accent text-accent-contrast'
-              : 'text-text-secondary hover:text-text-primary'
-          }`}
-        >
-          Books
-        </button>
+        {/* Mobile Panel Tabs */}
+        <div className="md:hidden flex bg-surface-card border border-border-default rounded-lg p-1 mt-3">
+          <button
+            onClick={() => setMobilePanel('loot')}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              mobilePanel === 'loot'
+                ? 'bg-accent text-accent-contrast'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Loot Log
+          </button>
+          <button
+            onClick={() => setMobilePanel('books')}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              mobilePanel === 'books'
+                ? 'bg-accent text-accent-contrast'
+                : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Books
+          </button>
+        </div>
       </div>
 
       {/* Main Content - Side by Side Layout (Desktop) */}
@@ -1205,11 +1207,11 @@ export function SectionedLogView({
         </div>
       </div>
 
-      {/* Mobile Swipeable Panels */}
-      <div className="md:hidden">
+      {/* Mobile Swipeable Panels - fills remaining space */}
+      <div className="md:hidden flex-1 min-h-0 overflow-hidden">
         {/* Loot Log Panel */}
         {mobilePanel === 'loot' && (
-          <>
+          <div className="h-full overflow-y-auto">
             {layoutMode === 'grid' && (
               <WeeklyLootGrid
                 players={players}
@@ -1351,7 +1353,7 @@ export function SectionedLogView({
                 </div>
               </section>
             )}
-          </>
+          </div>
         )}
 
         {/* Books Panel */}

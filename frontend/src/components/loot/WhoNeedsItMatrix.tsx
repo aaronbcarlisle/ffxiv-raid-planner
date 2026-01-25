@@ -119,9 +119,9 @@ export function WhoNeedsItMatrix({
   }, [visibleSlots, sortedPlayers]);
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-      {/* Floor Filter Tabs - sticky on mobile */}
-      <div className="sticky top-0 z-10 p-3 border-b border-border-default bg-surface-elevated">
+    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden flex flex-col h-full sm:block sm:h-auto">
+      {/* Floor Filter Tabs - fixed on mobile */}
+      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="floor"
           floors={floors}
@@ -240,8 +240,8 @@ export function WhoNeedsItMatrix({
         </table>
       </div>
 
-      {/* Mobile: Card view */}
-      <div className="md:hidden divide-y divide-border-default">
+      {/* Mobile: Card view - scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto md:hidden divide-y divide-border-default">
         {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
           <div key={slot} className="p-3">
             <div className="flex items-center justify-between mb-2">

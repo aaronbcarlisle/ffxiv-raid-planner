@@ -462,9 +462,9 @@ export function LootPriorityPanel({
   };
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100dvh-14rem)]">
+    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col h-full sm:max-h-[calc(100dvh-14rem)] sm:h-auto">
       {/* Header with sub-tabs - stays visible */}
-      <div className="flex items-center justify-between p-4 pb-0 flex-shrink-0">
+      <div className="flex items-center justify-between p-4 pb-3 flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Mobile: show current tab name, Desktop: show "Loot Priority" */}
           <h3 className="font-display text-base sm:text-lg text-accent">
@@ -554,14 +554,14 @@ export function LootPriorityPanel({
         )}
       </div>
 
-      {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto p-4 pt-4">
+      {/* Content area - filter bars fixed, content scrolls */}
+      <div className="flex-1 min-h-0 flex flex-col sm:p-4 sm:pt-0 sm:overflow-y-auto">
         {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
-        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-          {/* Floor selector for Gear Priority - sticky on mobile */}
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none sm:p-4">
+          {/* Floor selector - fixed on mobile, simple on desktop */}
           {onFloorChange && (
-            <div className="sticky top-0 z-10 p-3 border-b border-border-default bg-surface-elevated">
+            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated sm:p-0 sm:border-0 sm:bg-transparent sm:mb-4">
               <FilterBar
                 type="floor"
                 floors={floors}
@@ -571,8 +571,8 @@ export function LootPriorityPanel({
               />
             </div>
           )}
-          {/* Content area with padding */}
-          <div className="p-4">
+          {/* Content area - scrolls on mobile */}
+          <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4 sm:p-0">
             {/* Gear drops grid - responsive: 1 col mobile, 2 cols sm, 4 cols lg */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {itemPriorities.map(({ slot, label, entries }) => {
@@ -634,7 +634,7 @@ export function LootPriorityPanel({
 
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
-        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden p-4">
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none sm:p-4">
           <WeaponPriorityList
             players={players}
             settings={settings}
@@ -646,14 +646,16 @@ export function LootPriorityPanel({
 
       {/* Who Needs It Matrix Tab Content */}
       {activeSubTab === 'matrix' && (
-        <WhoNeedsItMatrix
-          players={players}
-          floors={floors}
-          showLogButtons={!!canShowLogButtons}
-          onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
-          selectedFloor={matrixFloor}
-          onFloorChange={handleMatrixFloorChange}
-        />
+        <div className="flex flex-col flex-1 min-h-0 sm:block sm:flex-none">
+          <WhoNeedsItMatrix
+            players={players}
+            floors={floors}
+            showLogButtons={!!canShowLogButtons}
+            onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+            selectedFloor={matrixFloor}
+            onFloorChange={handleMatrixFloorChange}
+          />
+        </div>
       )}
       </div>
 

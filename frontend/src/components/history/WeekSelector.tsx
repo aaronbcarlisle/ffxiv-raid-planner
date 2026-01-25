@@ -112,7 +112,7 @@ export function WeekSelector({
   const canRevertWeek = onRevertWeek && calculatedCurrentWeek > 1;
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap justify-center">
+    <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap justify-between sm:justify-center w-full sm:w-auto">
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
         <Tooltip
@@ -160,7 +160,7 @@ export function WeekSelector({
         </Button>
       </Tooltip>
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none">
         <Tooltip
           content={
             <div>
@@ -175,15 +175,17 @@ export function WeekSelector({
         >
           <span className="hidden sm:inline text-sm text-text-muted cursor-help">Week</span>
         </Tooltip>
-        <Select
-          value={String(currentWeek)}
-          onChange={(value) => onWeekChange(Number(value))}
-          disabled={disabled}
-          options={displayedWeeks.map((week) => ({
-            value: String(week),
-            label: getWeekLabel(week),
-          }))}
-        />
+        <div className="flex-1 sm:flex-none">
+          <Select
+            value={String(currentWeek)}
+            onChange={(value) => onWeekChange(Number(value))}
+            disabled={disabled}
+            options={displayedWeeks.map((week) => ({
+              value: String(week),
+              label: getWeekLabel(week),
+            }))}
+          />
+        </div>
       </div>
 
       <Tooltip

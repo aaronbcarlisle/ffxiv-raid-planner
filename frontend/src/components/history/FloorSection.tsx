@@ -105,10 +105,10 @@ export function FloorSection({
           {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
         </span>
       </button>
-      {/* Content - collapsible, horizontally scrollable on mobile */}
+      {/* Content - collapsible, vertical stack */}
       {isExpanded && (
-        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2 overflow-x-auto md:overflow-x-visible`}>
-          <div className="flex md:flex-col gap-2 min-w-max md:min-w-0">
+        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2`}>
+          <div className="flex flex-col gap-2">
             {children}
           </div>
         </div>
