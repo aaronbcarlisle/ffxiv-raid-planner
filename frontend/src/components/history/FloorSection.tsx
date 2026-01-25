@@ -105,10 +105,12 @@ export function FloorSection({
           {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
         </span>
       </button>
-      {/* Content - collapsible */}
+      {/* Content - collapsible, horizontally scrollable on mobile */}
       {isExpanded && (
-        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2 space-y-2`}>
-          {children}
+        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2 overflow-x-auto md:overflow-x-visible`}>
+          <div className="flex md:flex-col gap-2 min-w-max md:min-w-0">
+            {children}
+          </div>
         </div>
       )}
       {/* Context Menu */}
