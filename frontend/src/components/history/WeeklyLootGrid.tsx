@@ -99,6 +99,7 @@ export function WeeklyLootGrid({
   // Long-press support for touch devices
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isMountedRef = useRef(true);
 
   const handleTouchStart = useCallback((
     e: React.TouchEvent,
@@ -108,8 +109,10 @@ export function WeeklyLootGrid({
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
     longPressTimerRef.current = setTimeout(() => {
-      // Trigger context menu at touch position
-      setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
+      // Only trigger if component is still mounted
+      if (isMountedRef.current) {
+        setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
+      }
       longPressTimerRef.current = null;
     }, LONG_PRESS_DURATION);
   }, []);
@@ -135,9 +138,10 @@ export function WeeklyLootGrid({
     }
   }, []);
 
-  // Cleanup long-press timer on unmount to prevent memory leaks
+  // Cleanup long-press timer and track mount state
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
       }

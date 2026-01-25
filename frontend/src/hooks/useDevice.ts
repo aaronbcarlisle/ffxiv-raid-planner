@@ -19,12 +19,18 @@ interface DeviceCapabilities {
 }
 
 export function useDevice(): DeviceCapabilities {
-  const [capabilities, setCapabilities] = useState<DeviceCapabilities>(() => ({
-    isSmallScreen: false,
-    isTouch: false,
-    canHover: true,
-    prefersReducedMotion: false,
-  }));
+  // Initialize with synchronous check to prevent flash of incorrect UI on mobile
+  const [capabilities, setCapabilities] = useState<DeviceCapabilities>(() => {
+    if (typeof window === 'undefined') {
+      return { isSmallScreen: false, isTouch: false, canHover: true, prefersReducedMotion: false };
+    }
+    return {
+      isSmallScreen: window.matchMedia('(max-width: 640px)').matches,
+      isTouch: window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0,
+      canHover: window.matchMedia('(hover: hover) and (pointer: fine)').matches,
+      prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    };
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
