@@ -153,7 +153,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
           mobileOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
         }`}
         aria-hidden={!mobileOpen}
-        inert={!mobileOpen ? '' : undefined}
+        inert={!mobileOpen ? true : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-border-default">
           <span className="font-semibold text-accent">Navigation</span>
