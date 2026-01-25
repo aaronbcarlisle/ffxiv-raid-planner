@@ -174,8 +174,10 @@ export function PlayerCardHeader({
 
   const handleNameKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.stopPropagation(); // Prevent triggering drag listeners
       handleNameSave();
     } else if (e.key === 'Escape') {
+      e.stopPropagation(); // Prevent triggering drag listeners
       handleNameCancel();
     }
   };
