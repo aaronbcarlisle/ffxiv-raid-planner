@@ -17,6 +17,7 @@ import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { PlayerGrid } from '../components/player/PlayerGrid';
+import { RosterViewToggle } from '../components/player/RosterViewToggle';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
@@ -117,6 +118,7 @@ export function GroupView() {
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
+
 
   // Handle viewAs URL parameter
   useEffect(() => {
@@ -636,11 +638,12 @@ export function GroupView() {
     );
   }
 
-  // On mobile, prevent page scroll for History/Log and Loot tabs (they have internal scroll)
-  const preventPageScroll = isSmallScreen && (pageMode === 'history' || pageMode === 'loot');
+  // Prevent page scroll for History/Log tab (internal scroll only)
+  // On mobile: also prevent for Loot tab
+  const preventPageScroll = pageMode === 'history' || (isSmallScreen && pageMode === 'loot');
 
   return (
-    <div className={`max-w-[160rem] mx-auto px-4 ${isSmallScreen ? 'has-bottom-nav' : ''} ${preventPageScroll ? 'h-[calc(100dvh-112px)] overflow-hidden' : ''}`}>
+    <div className={`max-w-[160rem] mx-auto px-4 w-full ${isSmallScreen ? 'has-bottom-nav' : ''} ${preventPageScroll ? 'prevent-page-scroll flex-1 min-h-0 flex flex-col overflow-hidden' : ''} ${preventPageScroll && isSmallScreen ? 'h-[calc(100dvh-112px)] overscroll-contain pb-4' : ''}`}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -671,7 +674,7 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* Toolbar: Tabs + Context Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
             {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
             <div className="hidden sm:block">
               <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
@@ -847,28 +850,30 @@ export function GroupView() {
             />
           )}
 
-          {/* History Tab */}
+          {/* History Tab - wrapped in flex-1 container for proper scroll containment */}
           {pageMode === 'history' && currentTier?.players && tierInfo && (
-            <HistoryView
-              groupId={currentGroup!.id}
-              tierId={currentTier.tierId}
-              players={currentTier.players}
-              floors={tierInfo.floors}
-              userRole={userRole || 'viewer'}
-              isAdmin={isAdminAccess}
-              currentUserId={effectiveUserId}
-              highlightedBookPlayerId={highlightedBookPlayerId}
-              onNavigateToPlayer={handleNavigateToPlayer}
-              highlightedEntryId={highlightedEntry?.id}
-              highlightedEntryType={highlightedEntry?.type}
-              targetWeek={highlightedEntry?.week}
-              openLogLootModal={showLogLootModal}
-              onLogLootModalClose={() => setShowLogLootModal(false)}
-              openLogMaterialModal={showLogMaterialModal}
-              onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
-              openMarkFloorClearedModal={showMarkFloorClearedModal}
-              onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
-            />
+            <div className={preventPageScroll ? 'flex-1 min-h-0 flex flex-col w-full' : ''}>
+              <HistoryView
+                groupId={currentGroup!.id}
+                tierId={currentTier.tierId}
+                players={currentTier.players}
+                floors={tierInfo.floors}
+                userRole={userRole || 'viewer'}
+                isAdmin={isAdminAccess}
+                currentUserId={effectiveUserId}
+                highlightedBookPlayerId={highlightedBookPlayerId}
+                onNavigateToPlayer={handleNavigateToPlayer}
+                highlightedEntryId={highlightedEntry?.id}
+                highlightedEntryType={highlightedEntry?.type}
+                targetWeek={highlightedEntry?.week}
+                openLogLootModal={showLogLootModal}
+                onLogLootModalClose={() => setShowLogLootModal(false)}
+                openLogMaterialModal={showLogMaterialModal}
+                onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
+                openMarkFloorClearedModal={showMarkFloorClearedModal}
+                onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
+              />
+            </div>
           )}
         </>
       )}
@@ -1063,8 +1068,8 @@ export function GroupView() {
                 </div>
               )}
 
-              {/* View Mode */}
-              <div>
+              {/* View Mode - hidden on mobile (floating toggle used instead) */}
+              <div className="hidden md:block">
                 <div className="text-sm text-text-muted mb-2">View Mode</div>
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
               </div>
@@ -1122,8 +1127,64 @@ export function GroupView() {
               </div>
             </>
           )}
+
+          {/* Log Tab Controls */}
+          {pageMode === 'history' && canManageRoster(userRole) && (
+            <>
+              {/* Reset Data Actions */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Reset Data</div>
+                <div className="flex flex-col gap-2">
+                  {/* design-system-ignore: Danger action buttons require specific styling */}
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-loot'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border bg-surface-raised border-border-default text-text-secondary hover:border-status-error/50 hover:text-status-error"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset Loot Log
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-books'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border bg-surface-raised border-border-default text-text-secondary hover:border-status-error/50 hover:text-status-error"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Reset Book Balances
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-all'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors border bg-status-error/10 border-status-error/40 text-status-error hover:bg-status-error/20 hover:border-status-error/60"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset All Data
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
+
+      {/* Mobile Floating View Toggle (Roster tab) */}
+      <RosterViewToggle
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        visible={isSmallScreen && pageMode === 'players' && !!currentTier}
+      />
 
       {/* Mobile bottom navigation */}
       {currentTier && (

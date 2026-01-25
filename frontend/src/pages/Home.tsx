@@ -102,7 +102,7 @@ export function Home() {
   };
 
   return (
-    <div className="text-center py-16">
+    <div className="text-center py-16 px-4 sm:px-6">
       {/* Hero Logo */}
       <div className="mb-6">
         <img

@@ -249,10 +249,9 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
                 <IconButton
                   icon={<Trash2 className="w-4 h-4" />}
                   onClick={() => onDelete(entry.id)}
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
                   aria-label="Delete entry"
-                  className="text-status-error hover:text-status-error hover:bg-status-error/10"
                 />
               </Tooltip>
             </>

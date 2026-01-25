@@ -7,13 +7,17 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSwipe } from '../../hooks/useSwipe';
 import { useSearchParams } from 'react-router-dom';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useDevice } from '../../hooks/useDevice';
 import { JobIcon } from '../ui/JobIcon';
 import { LootLogFilters } from './LootLogFilters';
 import { LootLogModals } from './LootLogModals';
 import { LootCountBar } from './LootCountBar';
 import { FloorSection } from './FloorSection';
+import { LogFloatingActions } from './LogFloatingActions';
+import { LogLayoutToggle } from './LogLayoutToggle';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
 import { LootLogEntryItem, MaterialLogEntryItem } from './LogEntryItems';
 import { type ResetType } from '../ui/ResetConfirmModal';
@@ -564,10 +568,13 @@ export function SectionedLogView({
   // Counter to force fresh modal mount when opening from grid
   const [lootModalKey, setLootModalKey] = useState(0);
 
-  // Keyboard shortcut event listeners
+  // Keyboard shortcut and controls sheet event listeners
   useEffect(() => {
     const handleSetView = (e: CustomEvent<'byFloor' | 'chronological'>) => {
       setLootViewMode(e.detail);
+    };
+    const handleSetLayout = (e: CustomEvent<'grid' | 'split'>) => {
+      handleLayoutModeChange(e.detail);
     };
     const handleToggleExpandAll = () => {
       // If all are expanded, collapse all; otherwise expand all
@@ -590,21 +597,33 @@ export function SectionedLogView({
         onWeekChange?.(currentWeek + 1);
       }
     };
+    // Reset event handlers (from mobile controls panel)
+    const handleResetLoot = () => setResetModalType('loot');
+    const handleResetBooks = () => setResetModalType('books');
+    const handleResetAll = () => setResetModalType('all');
 
     window.addEventListener('log:set-view', handleSetView as EventListener);
+    window.addEventListener('log:set-layout', handleSetLayout as EventListener);
     window.addEventListener('log:toggle-expand-all', handleToggleExpandAll);
     window.addEventListener('log:toggle-layout', handleToggleLayout);
     window.addEventListener('log:prev-week', handlePrevWeek);
     window.addEventListener('log:next-week', handleNextWeek);
+    window.addEventListener('log:reset-loot', handleResetLoot);
+    window.addEventListener('log:reset-books', handleResetBooks);
+    window.addEventListener('log:reset-all', handleResetAll);
 
     return () => {
       window.removeEventListener('log:set-view', handleSetView as EventListener);
+      window.removeEventListener('log:set-layout', handleSetLayout as EventListener);
       window.removeEventListener('log:toggle-expand-all', handleToggleExpandAll);
       window.removeEventListener('log:toggle-layout', handleToggleLayout);
       window.removeEventListener('log:prev-week', handlePrevWeek);
       window.removeEventListener('log:next-week', handleNextWeek);
+      window.removeEventListener('log:reset-loot', handleResetLoot);
+      window.removeEventListener('log:reset-books', handleResetBooks);
+      window.removeEventListener('log:reset-all', handleResetAll);
     };
-  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange]);
+  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange, setResetModalType]);
 
   // Context menu state for list view entries
   const [listContextMenu, setListContextMenu] = useState<{
@@ -795,10 +814,30 @@ export function SectionedLogView({
   // Mobile panel state for swipeable view
   const [mobilePanel, setMobilePanel] = useState<'loot' | 'books'>('loot');
 
+  // Swipe gesture handling for mobile panel switching
+  const mobilePanelSwipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      // Swipe left = go to books
+      if (mobilePanel === 'loot') {
+        setMobilePanel('books');
+      }
+    },
+    onSwipeRight: () => {
+      // Swipe right = go to loot
+      if (mobilePanel === 'books') {
+        setMobilePanel('loot');
+      }
+    },
+    minSwipeDistance: 50,
+  });
+
+  // Device detection for mobile-specific features
+  const { isSmallScreen } = useDevice();
+
   return (
-    <div className="md:space-y-4 flex flex-col md:block h-full md:h-auto">
+    <div className="flex flex-col h-full w-full">
       {/* Header Controls */}
-      <div className="flex-shrink-0 pb-2 md:pb-0">
+      <div className="flex-shrink-0 pb-2 md:pb-4">
         <LootLogFilters
           layoutMode={layoutMode}
           onLayoutModeChange={handleLayoutModeChange}
@@ -837,11 +876,22 @@ export function SectionedLogView({
 
       {/* Main Content - Side by Side Layout (Desktop) */}
       <div
-        className="hidden md:grid gap-4 items-stretch transition-[grid-template-columns] duration-200"
+        className="hidden md:grid gap-4 flex-1 min-h-0 transition-[grid-template-columns] duration-200"
         style={{ gridTemplateColumns: booksSidebarCollapsed ? '1fr 2.5rem' : '1fr 20rem' }}
       >
         {/* Loot Log - Main Area */}
-        <div className="min-w-0 overflow-hidden">
+        <div className="min-w-0 overflow-hidden flex flex-col self-start"
+          style={{ gap: layoutMode === 'split' ? '0' : '1rem' }}
+        >
+          {/* Shared LootCountBar - above both Grid and List views */}
+          <div className="flex-shrink-0">
+            <LootCountBar
+              players={players}
+              lootLog={lootLog}
+              currentWeek={currentWeek}
+            />
+          </div>
+
           {/* Grid Layout */}
           {layoutMode === 'grid' && (
             <WeeklyLootGrid
@@ -866,8 +916,8 @@ export function SectionedLogView({
 
           {/* List Layout */}
           {layoutMode === 'split' && (
-            <section className="bg-surface-card border border-border-default rounded-lg">
-              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border-default">
+            <section className="bg-surface-card border border-border-default rounded-lg flex flex-col mt-4 max-h-[calc(100vh-20rem)]">
+              <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border-default">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <h3 className="font-display text-base sm:text-lg text-text-primary">Loot Log</h3>
                   {/* View mode toggle */}
@@ -946,13 +996,7 @@ export function SectionedLogView({
                   })}
                 </div>
               </div>
-              <div className="p-4 space-y-3 max-h-[700px] overflow-y-auto">
-                {/* Loot Count Summary Bar */}
-                <LootCountBar
-                  players={players}
-                  lootLog={lootLog}
-                  currentWeek={currentWeek}
-                />
+              <div className="relative p-4 space-y-3 overflow-y-auto flex-1 min-h-0">
                 {combinedEntries.length === 0 ? (
                   <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
                 ) : lootViewMode === 'byFloor' ? (
@@ -1045,10 +1089,10 @@ export function SectionedLogView({
         </div>
 
         {/* Book Balances - Sidebar */}
-        <div className="overflow-hidden">
-          <section className="bg-surface-card border border-border-default rounded-lg h-full w-80">
+        <div className="overflow-hidden self-start">
+          <section className="bg-surface-card border border-border-default rounded-lg h-full w-80 flex flex-col">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+            <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border-default">
               {!booksSidebarCollapsed && (
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium text-sm text-text-primary">Books</h3>
@@ -1089,9 +1133,9 @@ export function SectionedLogView({
               </Tooltip>
             </div>
 
-            {/* Sidebar Content */}
+            {/* Sidebar Content - scrollable */}
             {!booksSidebarCollapsed && (
-              <div className="p-2 max-h-[600px] overflow-y-auto">
+              <div className="flex-1 min-h-0 p-2 overflow-y-auto">
                 {pageBalances.length === 0 ? (
                   <p className="text-text-muted text-sm p-2">No book data.</p>
                 ) : (
@@ -1176,42 +1220,52 @@ export function SectionedLogView({
                     </tbody>
                   </table>
                 )}
+              </div>
+            )}
 
-                {/* Mark Floor Cleared - at bottom of Books section, hidden from members.
-                    Note: We check both canEdit AND userRole !== 'member' because:
-                    - canEdit is false for members (they can't edit all rows)
-                    - But we also want to hide this from members who have per-row edit access
-                    - This button awards books to ALL players, so it's a lead/owner action */}
-                {canEdit && userRole !== 'member' && (
-                  <div className="p-2 border-t border-border-subtle">
-                    <Tooltip
-                      content={
-                        <span className="flex items-center gap-2">
-                          Award books to party
-                          <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+B</kbd>
-                        </span>
-                      }
-                    >
-                      <button
-                        onClick={() => setShowFloorClearedModal(true)}
-                        className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
-                      >
-                        Mark Floor Cleared
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
+            {/* Mark Floor Cleared - sticky footer, hidden from members.
+                Note: We check both canEdit AND userRole !== 'member' because:
+                - canEdit is false for members (they can't edit all rows)
+                - But we also want to hide this from members who have per-row edit access
+                - This button awards books to ALL players, so it's a lead/owner action */}
+            {!booksSidebarCollapsed && canEdit && userRole !== 'member' && (
+              <div className="flex-shrink-0 p-2 border-t border-border-subtle">
+                <Tooltip
+                  content={
+                    <span className="flex items-center gap-2">
+                      Award books to party
+                      <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+B</kbd>
+                    </span>
+                  }
+                >
+                  <button
+                    onClick={() => setShowFloorClearedModal(true)}
+                    className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                  >
+                    Mark Floor Cleared
+                  </button>
+                </Tooltip>
               </div>
             )}
           </section>
         </div>
       </div>
 
-      {/* Mobile Swipeable Panels - fills remaining space */}
-      <div className="md:hidden flex-1 min-h-0 overflow-hidden">
+      {/* Mobile Swipeable Panels - fills remaining space, swipe left/right to switch */}
+      <div
+        className="md:hidden flex-1 min-h-0 flex flex-col overflow-hidden w-full"
+        {...mobilePanelSwipeHandlers}
+      >
         {/* Loot Log Panel */}
         {mobilePanel === 'loot' && (
-          <div className="h-full overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 w-full">
+            {/* Shared LootCountBar - above both Grid and List views */}
+            <LootCountBar
+              players={players}
+              lootLog={lootLog}
+              currentWeek={currentWeek}
+            />
+
             {layoutMode === 'grid' && (
               <WeeklyLootGrid
                 players={players}
@@ -1261,12 +1315,8 @@ export function SectionedLogView({
                     </div>
                   </div>
                 </div>
-                <div className="p-3 space-y-3 max-h-[500px] overflow-y-auto">
-                  <LootCountBar
-                    players={players}
-                    lootLog={lootLog}
-                    currentWeek={currentWeek}
-                  />
+                {/* Mobile: no max-h constraint - parent handles scrolling */}
+                <div className="p-3 space-y-3">
                   {combinedEntries.length === 0 ? (
                     <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
                   ) : lootViewMode === 'byFloor' ? (
@@ -1358,8 +1408,8 @@ export function SectionedLogView({
 
         {/* Books Panel */}
         {mobilePanel === 'books' && (
-          <section className="bg-surface-card border border-border-default rounded-lg">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+          <section className="flex-1 min-h-0 flex flex-col bg-surface-card border border-border-default rounded-lg overflow-hidden">
+            <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border-default">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm text-text-primary">Books</h3>
                 <div className="flex bg-surface-base rounded p-0.5">
@@ -1386,7 +1436,7 @@ export function SectionedLogView({
                 </div>
               </div>
             </div>
-            <div className="p-2 max-h-[500px] overflow-y-auto">
+            <div className="flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain">
               {pageBalances.length === 0 ? (
                 <p className="text-text-muted text-sm p-2">No book data.</p>
               ) : (
@@ -1438,23 +1488,42 @@ export function SectionedLogView({
                   </tbody>
                 </table>
               )}
-              {canEdit && userRole !== 'member' && (
-                <div className="p-2 border-t border-border-subtle mt-2">
-                  <button
-                    onClick={() => setShowFloorClearedModal(true)}
-                    className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
-                  >
-                    Mark Floor Cleared
-                  </button>
-                </div>
-              )}
             </div>
+            {/* Mark Floor Cleared - sticky footer */}
+            {canEdit && userRole !== 'member' && (
+              <div className="flex-shrink-0 p-2 border-t border-border-subtle">
+                <button
+                  onClick={() => setShowFloorClearedModal(true)}
+                  className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                >
+                  Mark Floor Cleared
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>
 
-      {/* Loot Fairness Legend - rendered outside flex container so sidebar aligns with grid */}
-      {layoutMode === 'grid' && <LootFairnessLegend />}
+      {/* Loot Fairness Legend - desktop only, rendered outside flex container so sidebar aligns with grid */}
+      {layoutMode === 'grid' && (
+        <div className="hidden md:block">
+          <LootFairnessLegend />
+        </div>
+      )}
+
+      {/* Mobile Floating Layout Toggle (bottom left) */}
+      <LogLayoutToggle
+        layoutMode={layoutMode}
+        onLayoutChange={handleLayoutModeChange}
+        visible={isSmallScreen && mobilePanel === 'loot'}
+      />
+
+      {/* Mobile Floating Action Buttons (bottom right) */}
+      <LogFloatingActions
+        onLogLoot={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
+        onLogMaterial={() => { setGridModalState(null); setShowMaterialModal(true); }}
+        visible={isSmallScreen && canEdit && mobilePanel === 'loot'}
+      />
 
       {/* Modals */}
       <LootLogModals

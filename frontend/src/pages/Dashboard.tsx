@@ -50,6 +50,14 @@ const ROLE_LABELS: Record<MemberRole, string> = {
   viewer: 'Viewer',
 };
 
+// Abbreviated role labels for mobile
+const ROLE_LABELS_SHORT: Record<MemberRole, string> = {
+  owner: 'O',
+  lead: 'L',
+  member: 'M',
+  viewer: 'V',
+};
+
 // Linked badge (for groups where user is linked to a player but not a member)
 const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked border-membership-linked/30';
 
@@ -332,9 +340,9 @@ export function Dashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-5 sm:px-6">
+    <div className="max-w-7xl mx-auto px-4 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 w-full">
         <div>
           <h1 className="text-3xl font-display text-accent">My Statics</h1>
           <p className="text-text-muted mt-1">Manage your raid groups</p>
@@ -415,7 +423,7 @@ export function Dashboard() {
         )
       ) : groups.length === 0 ? (
         /* Empty state with onboarding guidance */
-        <div className="bg-surface-card rounded-lg border border-border-default p-8">
+        <div className="bg-surface-card rounded-lg border border-border-default p-8 w-full">
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto mb-4 bg-accent/10 rounded-full flex items-center justify-center">
               <svg
@@ -477,7 +485,7 @@ export function Dashboard() {
         </div>
       ) : viewMode === 'grid' ? (
         /* Groups grid */
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full">
           {sortedGroups.map((group) => (
             <div
               key={group.id}
@@ -491,13 +499,15 @@ export function Dashboard() {
                 </h3>
                 {group.source === 'linked' ? (
                   <span className={`text-xs px-2 py-0.5 rounded border ${LINKED_BADGE_COLOR}`}>
-                    Linked
+                    <span className="sm:hidden">L</span>
+                    <span className="hidden sm:inline">Linked</span>
                   </span>
                 ) : group.userRole ? (
                   <span
                     className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}
                   >
-                    {ROLE_LABELS[group.userRole]}
+                    <span className="sm:hidden">{ROLE_LABELS_SHORT[group.userRole]}</span>
+                    <span className="hidden sm:inline">{ROLE_LABELS[group.userRole]}</span>
                   </span>
                 ) : null}
               </div>
@@ -512,7 +522,7 @@ export function Dashboard() {
                       d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                     />
                   </svg>
-                  {group.memberCount} {group.memberCount === 1 ? 'member' : 'members'}
+                  {group.memberCount} <span className="hidden sm:inline">{group.memberCount === 1 ? 'member' : 'members'}</span>
                 </span>
 
                 {group.isPublic ? (
@@ -525,7 +535,7 @@ export function Dashboard() {
                         d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    Public
+                    <span className="hidden sm:inline">Public</span>
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
@@ -537,12 +547,23 @@ export function Dashboard() {
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                       />
                     </svg>
-                    Private
+                    <span className="hidden sm:inline">Private</span>
                   </span>
                 )}
+
+                {/* Date - simplified on mobile */}
+                <span className="text-xs">
+                  <span className="sm:hidden">
+                    {new Date(group.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {new Date(group.createdAt).toLocaleDateString()}
+                  </span>
+                </span>
               </div>
 
-              <div className="mt-3 pt-3 border-t border-border-subtle text-xs text-text-muted flex items-center justify-between">
+              {/* Share code section - hidden on mobile */}
+              <div className="hidden sm:flex mt-3 pt-3 border-t border-border-subtle text-xs text-text-muted items-center justify-between">
                 <span>
                   Code: <span className="font-mono text-accent">{group.shareCode}</span>
                 </span>
@@ -579,33 +600,35 @@ export function Dashboard() {
         </div>
       ) : (
         /* Groups list */
-        <div className="bg-surface-card rounded-lg border border-border-default divide-y divide-border-subtle">
+        <div className="bg-surface-card rounded-lg border border-border-default divide-y divide-border-subtle w-full">
           {sortedGroups.map((group) => (
             <div
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="flex items-center justify-between p-4 hover:bg-surface-interactive transition-colors cursor-pointer group"
+              className="flex items-center justify-between p-3 sm:p-4 hover:bg-surface-interactive transition-colors cursor-pointer group"
             >
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                <h3 className="font-display text-base sm:text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
                   {group.name}
                 </h3>
                 {group.source === 'linked' ? (
                   <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${LINKED_BADGE_COLOR}`}>
-                    Linked
+                    <span className="sm:hidden">L</span>
+                    <span className="hidden sm:inline">Linked</span>
                   </span>
                 ) : group.userRole ? (
                   <span
                     className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ROLE_COLORS[group.userRole]}`}
                   >
-                    {ROLE_LABELS[group.userRole]}
+                    <span className="sm:hidden">{ROLE_LABELS_SHORT[group.userRole]}</span>
+                    <span className="hidden sm:inline">{ROLE_LABELS[group.userRole]}</span>
                   </span>
                 ) : null}
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-text-muted flex-shrink-0">
-                <span className="flex items-center gap-1">
+              <div className="flex items-center gap-2 sm:gap-6 text-sm text-text-muted flex-shrink-0">
+                <span className="hidden sm:flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -627,7 +650,7 @@ export function Dashboard() {
                         d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
-                    Public
+                    <span className="hidden sm:inline">Public</span>
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
@@ -639,12 +662,12 @@ export function Dashboard() {
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                       />
                     </svg>
-                    Private
+                    <span className="hidden sm:inline">Private</span>
                   </span>
                 )}
 
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-accent">{group.shareCode}</span>
+                  <span className="hidden sm:inline font-mono text-accent">{group.shareCode}</span>
                   <Tooltip
                     content={
                       <div>
@@ -674,8 +697,14 @@ export function Dashboard() {
                   </Tooltip>
                 </div>
 
+                {/* Date - simplified on mobile */}
                 <span className="text-text-muted text-xs">
-                  {new Date(group.createdAt).toLocaleDateString()}
+                  <span className="sm:hidden">
+                    {new Date(group.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {new Date(group.createdAt).toLocaleDateString()}
+                  </span>
                 </span>
               </div>
             </div>

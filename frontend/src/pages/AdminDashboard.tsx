@@ -378,9 +378,9 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4">
+    <div className="max-w-7xl mx-auto px-4 w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 w-full">
         <div>
           <h1 className="text-3xl font-display text-status-warning">Admin Dashboard</h1>
           <p className="text-text-muted mt-1">
@@ -398,7 +398,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Search */}
-      <div className="mb-6">
+      <div className="mb-6 w-full">
         <div className="relative max-w-md">
           <Input
             value={search}
@@ -427,7 +427,7 @@ export function AdminDashboard() {
           <Spinner size="lg" label="Loading groups" />
         </div>
       ) : groups.length === 0 ? (
-        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
+        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default w-full">
           <p className="text-text-muted">
             {debouncedSearch ? 'No groups match your search' : 'No static groups found'}
           </p>
@@ -435,7 +435,7 @@ export function AdminDashboard() {
       ) : (
         <>
           {/* Groups table */}
-          <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden">
+          <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden w-full">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">

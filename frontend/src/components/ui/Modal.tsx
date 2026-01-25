@@ -171,12 +171,12 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
           />
         </div>
 
-        {/* Content - scrollable */}
-        <div className="p-6 overflow-y-auto overflow-x-hidden flex-1">{children}</div>
+        {/* Content - scrollable, with overscroll-contain to prevent bounce effect */}
+        <div className="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1">{children}</div>
 
-        {/* Footer - sticky with safe area padding for sheet variant */}
+        {/* Footer - sticky with extra bottom padding for sheet variant */}
         {footer && (
-          <div className={`border-t border-border-default p-4 flex-shrink-0 ${isSheet ? 'pb-safe' : ''}`}>
+          <div className={`border-t border-border-default p-4 flex-shrink-0 ${isSheet ? 'pb-6' : ''}`}>
             {footer}
           </div>
         )}

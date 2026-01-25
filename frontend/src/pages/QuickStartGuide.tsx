@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Rocket } from 'lucide-react';
 import { LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items
@@ -255,14 +254,9 @@ export default function QuickStartGuide() {
             <span>/</span>
             <span className="text-text-secondary">Quick Start</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Rocket className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Get Started with XIV Raid Planner</h1>
-              <p className="text-text-secondary mt-1">Set up your static in under 5 minutes</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Get Started with XIV Raid Planner</h1>
+            <p className="text-text-secondary mt-1">Set up your static in under 5 minutes</p>
           </div>
         </div>
       </header>

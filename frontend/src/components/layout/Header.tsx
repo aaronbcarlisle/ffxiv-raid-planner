@@ -247,7 +247,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-3 sm:gap-4">
         {/* Left side: Logo + Group context */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           {/* Logo */}
@@ -387,7 +387,7 @@ export function Header() {
 
               {/* Settings popover (only for editors) */}
               {canEdit && settingsActions.length > 0 && (
-                <div className="ml-3">
+                <div className="ml-1 sm:ml-3">
                   <SettingsPopover actions={settingsActions} />
                 </div>
               )}

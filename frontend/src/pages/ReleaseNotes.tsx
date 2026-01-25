@@ -761,14 +761,9 @@ export default function ReleaseNotes() {
             <span>/</span>
             <span className="text-text-secondary">Release Notes</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Release Notes</h1>
-              <p className="text-text-secondary mt-1">What's new in FFXIV Raid Planner</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Release Notes</h1>
+            <p className="text-text-secondary mt-1">What's new in FFXIV Raid Planner</p>
           </div>
         </div>
       </header>

@@ -50,8 +50,22 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
     return null;
   }
 
+  // Stop touch events from propagating to parent swipe handlers
+  // This allows horizontal scrolling without triggering panel switches
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg p-3 mb-4 overflow-x-auto">
+    <div
+      className="bg-surface-card border border-border-default rounded-lg p-3 mb-4 overflow-x-auto"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="flex gap-2 min-w-max sm:min-w-0">
         {sortedPlayers.map(player => {
           const count = countsByPlayer.get(player.id) || 0;

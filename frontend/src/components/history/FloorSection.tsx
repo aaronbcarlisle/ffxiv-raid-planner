@@ -28,6 +28,8 @@ interface FloorSectionProps {
   onExpandAll?: () => void;
   /** Callback to collapse all sections */
   onCollapseAll?: () => void;
+  /** Inline mode - render as flat label without collapsible header (for mobile) */
+  inline?: boolean;
 }
 
 export function FloorSection({
@@ -40,6 +42,7 @@ export function FloorSection({
   onExpandChange,
   onExpandAll,
   onCollapseAll,
+  inline = false,
 }: FloorSectionProps) {
   // Support both controlled and uncontrolled modes
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
@@ -78,6 +81,33 @@ export function FloorSection({
       onClick: onCollapseAll,
     }] : []),
   ];
+
+  // Inline mode - flat label without collapsible header (for mobile)
+  if (inline) {
+    return (
+      <div className="mb-2">
+        {/* Inline Floor Label */}
+        <div
+          className={`flex items-center gap-2 px-2 py-1 rounded ${colors.bg}`}
+        >
+          <div
+            className="w-1 h-4 rounded"
+            style={{ backgroundColor: colors.hex }}
+          />
+          <span className={`text-xs font-bold ${colors.text}`}>
+            {floorName}
+          </span>
+          <span className={`text-xs ${colors.text} opacity-70`}>
+            ({entryCount})
+          </span>
+        </div>
+        {/* Content - always visible in inline mode */}
+        <div className="flex flex-col gap-2 mt-1">
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4">

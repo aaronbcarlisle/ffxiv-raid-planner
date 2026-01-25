@@ -211,51 +211,51 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
       size="lg"
     >
       <div className="flex flex-col h-full">
-        {/* Tabs */}
-        <div className="flex border-b border-border-default -mx-6 px-6">
+        {/* Tabs - scrollable on mobile */}
+        <div className="flex border-b border-border-default -mx-6 px-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'general'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Settings className="w-4 h-4" />
-            General
+            <span className="hidden sm:inline">General</span>
           </button>
           <button
             onClick={() => setActiveTab('priority')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'priority'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <ListOrdered className="w-4 h-4" />
-            Priority
+            <span className="hidden sm:inline">Priority</span>
           </button>
           <button
             onClick={() => setActiveTab('members')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'members'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Users className="w-4 h-4" />
-            Members
+            <span className="hidden sm:inline">Members</span>
           </button>
           <button
             onClick={() => setActiveTab('invitations')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'invitations'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Mail className="w-4 h-4" />
-            Invitations
+            <span className="hidden sm:inline">Invitations</span>
           </button>
         </div>
 

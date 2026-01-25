@@ -79,12 +79,6 @@ export function WeeklyLootGrid({
     type: 'loot' | 'material';
   } | null>(null);
 
-  // Filter out substitute players from display
-  const mainRosterPlayers = useMemo(() =>
-    players.filter(p => !p.isSubstitute),
-    [players]
-  );
-
   // Handle context menu for entries
   const handleContextMenu = useCallback((
     e: React.MouseEvent,
@@ -239,34 +233,6 @@ export function WeeklyLootGrid({
     [materialLog, currentWeek]
   );
 
-  // Calculate loot counts per player (main roster only)
-  const playerLootCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    mainRosterPlayers.forEach(p => { counts[p.id] = 0; });
-    weekLootEntries.forEach(e => {
-      if (counts[e.recipientPlayerId] !== undefined) {
-        counts[e.recipientPlayerId]++;
-      }
-    });
-    return counts;
-  }, [mainRosterPlayers, weekLootEntries]);
-
-  // Calculate average for fairness coloring
-  const avgLoot = useMemo(() => {
-    const values = Object.values(playerLootCounts);
-    return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-  }, [playerLootCounts]);
-
-  /**
-   * Get loot style based on count vs average
-   * Uses CSS custom properties for design system compliance
-   */
-  const getLootCountStyle = (count: number) => {
-    if (count > avgLoot + 1) return { color: 'var(--color-status-info)', label: 'Most' };
-    if (count < avgLoot - 1) return { color: 'var(--color-status-warning)', label: 'Least' };
-    return { color: 'var(--color-text-secondary)', label: 'Average' };
-  };
-
   // Get player by ID
   const getPlayerById = (playerId: string): SnapshotPlayer | undefined => {
     return players.find(p => p.id === playerId);
@@ -413,39 +379,9 @@ export function WeeklyLootGrid({
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Loot Count Summary Bar - scrollable on mobile */}
-      <div className="p-3 bg-surface-card rounded-lg border border-border-default overflow-x-auto">
-        <div className="flex gap-2 min-w-max sm:min-w-0">
-          {mainRosterPlayers.map(player => {
-            const count = playerLootCounts[player.id] || 0;
-            const style = getLootCountStyle(count);
-            const roleColor = getRoleColor(getValidRole(player.role));
-
-            return (
-              <div
-                key={player.id}
-                className="flex-1 min-w-[60px] sm:min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
-              >
-                <div
-                  className="text-[10px] font-semibold mb-0.5"
-                  style={{ color: roleColor }}
-                >
-                  {player.position || player.role.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="text-[10px] text-text-muted truncate">{player.name}</div>
-                <div className="text-xl font-bold" style={{ color: style.color }}>
-                  {count}
-                </div>
-                <div className="text-[9px] text-text-muted uppercase">drops</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Main Grid - scrollable on mobile */}
-      <div className="bg-surface-card rounded-lg border border-border-default overflow-x-auto">
+      <div className="bg-surface-card rounded-lg border border-border-default overflow-x-auto w-full">
         {floorConfigs.map((floor, floorIdx) => (
           <div key={floor.number}>
             {/* Floor Header */}

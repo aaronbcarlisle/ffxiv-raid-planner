@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useSwipe } from '../../hooks/useSwipe';
 import { Tooltip } from '../primitives/Tooltip';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -281,6 +282,26 @@ export function LootPriorityPanel({
     }
   }, [onSubTabChange]);
 
+  // Swipe gesture handling for mobile tab switching
+  const subTabs: LootSubTabType[] = ['matrix', 'gear', 'weapon'];
+  const currentTabIndex = subTabs.indexOf(activeSubTab);
+
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      // Swipe left = go to next tab
+      if (currentTabIndex < subTabs.length - 1) {
+        setActiveSubTab(subTabs[currentTabIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      // Swipe right = go to previous tab
+      if (currentTabIndex > 0) {
+        setActiveSubTab(subTabs[currentTabIndex - 1]);
+      }
+    },
+    minSwipeDistance: 50,
+  });
+
   // Matrix floor filter state (supports 'all' option)
   // Syncs with parent's selectedFloor when a specific floor is selected
   const [matrixFloor, setMatrixFloor] = useState<MatrixFloorFilter>('all');
@@ -462,7 +483,7 @@ export function LootPriorityPanel({
   };
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col h-full sm:max-h-[calc(100dvh-14rem)] sm:h-auto">
+    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col h-[calc(100%-1rem)] sm:max-h-[calc(100dvh-14rem)] sm:h-auto">
       {/* Header with sub-tabs - stays visible */}
       <div className="flex items-center justify-between p-4 pb-3 flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-4">
@@ -554,14 +575,17 @@ export function LootPriorityPanel({
         )}
       </div>
 
-      {/* Content area - filter bars fixed, content scrolls */}
-      <div className="flex-1 min-h-0 flex flex-col sm:p-4 sm:pt-0 sm:overflow-y-auto">
+      {/* Content area - filter bars fixed, content scrolls, swipe to change tabs on mobile */}
+      <div
+        className="flex-1 min-h-0 flex flex-col sm:p-4 sm:pt-0 sm:overflow-y-auto"
+        {...swipeHandlers}
+      >
         {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
-        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none sm:p-4">
-          {/* Floor selector - fixed on mobile, simple on desktop */}
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
+          {/* Floor selector - matches Who Needs It layout */}
           {onFloorChange && (
-            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated sm:p-0 sm:border-0 sm:bg-transparent sm:mb-4">
+            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
               <FilterBar
                 type="floor"
                 floors={floors}
@@ -572,7 +596,7 @@ export function LootPriorityPanel({
             </div>
           )}
           {/* Content area - scrolls on mobile */}
-          <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4 sm:p-0">
+          <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4">
             {/* Gear drops grid - responsive: 1 col mobile, 2 cols sm, 4 cols lg */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {itemPriorities.map(({ slot, label, entries }) => {
@@ -634,7 +658,7 @@ export function LootPriorityPanel({
 
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
-        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none sm:p-4">
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
           <WeaponPriorityList
             players={players}
             settings={settings}

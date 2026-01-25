@@ -3,12 +3,14 @@
  *
  * Provides thumb-friendly navigation for the main GroupView tabs.
  * Only renders on small screens (< 640px).
+ * Supports swipe left/right to change tabs.
  */
 
 import { SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
+import { useSwipe } from '../../hooks/useSwipe';
 
 interface MobileBottomNavProps {
   activeTab: PageMode;
@@ -34,6 +36,26 @@ const TABS: { id: PageMode; label: string }[] = [
 export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: MobileBottomNavProps) {
   const { isSmallScreen } = useDevice();
 
+  // Swipe handlers for tab navigation
+  const tabIds = TABS.map(t => t.id);
+  const currentTabIndex = tabIds.indexOf(activeTab);
+
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      // Swipe left = go to next tab
+      if (currentTabIndex < tabIds.length - 1) {
+        onTabChange(tabIds[currentTabIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      // Swipe right = go to previous tab
+      if (currentTabIndex > 0) {
+        onTabChange(tabIds[currentTabIndex - 1]);
+      }
+    },
+    minSwipeDistance: 50,
+  });
+
   // Only render on small screens
   if (!isSmallScreen) return null;
 
@@ -42,6 +64,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
         className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
         aria-label="Main navigation"
+        {...swipeHandlers}
       >
         <div className="flex items-center h-14">
         {/* Controls button - left side */}

@@ -231,9 +231,9 @@ export function HistoryView({
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
   return (
-    <div className="md:space-y-4 flex flex-col md:block h-full md:h-auto -mx-4 md:mx-0">
+    <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 md:w-full md:mx-0">
       {/* Week selector - full width on mobile */}
-      <div className="flex-shrink-0 py-2 mb-1 md:py-0 md:mb-0">
+      <div className="flex-shrink-0 py-1 md:py-0 md:mb-4">
         <div className="flex justify-center px-2 md:px-0">
           <WeekSelector
             currentWeek={selectedWeek}
@@ -250,8 +250,8 @@ export function HistoryView({
         </div>
       </div>
 
-      {/* Sectioned log view - fills remaining space on mobile */}
-      <div className="flex-1 min-h-0 md:flex-none px-4 md:px-0">
+      {/* Sectioned log view - fills remaining space */}
+      <div className="flex-1 min-h-0 px-4 md:px-0 flex flex-col">
         <SectionedLogView
         groupId={groupId}
         tierId={tierId}

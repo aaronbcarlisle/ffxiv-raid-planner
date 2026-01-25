@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Terminal, FileText } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 import { CodeBlock, TripleCodeBlock, NavSidebar } from '../components/docs';
 
 // Language icons (from CodeBlock.tsx)
@@ -281,16 +281,11 @@ export default function ApiCookbook() {
             <span>/</span>
             <span className="text-text-secondary">Cookbook</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <FileText className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
-              <p className="text-text-secondary mt-1">
-                Practical examples for common API workflows with Python, curl, and C#
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">API Cookbook</h1>
+            <p className="text-text-secondary mt-1">
+              Practical examples for common API workflows with Python, curl, and C#
+            </p>
           </div>
         </div>
       </header>

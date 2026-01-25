@@ -85,7 +85,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
     };
 
     return (
-      <div className="flex items-center justify-between pt-6 border-t border-border-default">
+      <div className="flex items-center justify-between">
         {/* Back button - disabled on first step or after creation */}
         <Button
           variant="secondary"

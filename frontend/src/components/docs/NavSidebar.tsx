@@ -128,11 +128,11 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
 
   return (
     <>
-      {/* Mobile toggle button - fixed position */}
+      {/* Mobile toggle button - fixed position bottom left */}
       {/* design-system-ignore: FAB-style mobile toggle uses specialized styling */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-20 left-4 z-40 w-12 h-12 bg-accent text-white rounded-full shadow-lg flex items-center justify-center hover:bg-accent-bright transition-colors"
+        className="lg:hidden fixed bottom-20 left-4 z-40 w-12 h-12 bg-accent rounded-full shadow-lg flex items-center justify-center text-accent-contrast hover:bg-accent-bright transition-colors"
         aria-label="Open navigation"
       >
         <Menu className="w-5 h-5" />

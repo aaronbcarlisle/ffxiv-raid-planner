@@ -5,11 +5,11 @@
  * comprehensive per-player summary view with aggregate stats and visual indicators.
  */
 
-import { useEffect, useMemo, memo } from 'react';
+import { useEffect, useMemo, memo, useState, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { JobIcon } from '../ui/JobIcon';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
-import { Users, Target, Wrench, BookOpen } from 'lucide-react';
+import { Users, Target, Wrench, BookOpen, ChevronDown } from 'lucide-react';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
 
@@ -138,6 +138,30 @@ export function TeamSummaryEnhanced({
     fetchPageBalances,
     fetchMaterialBalances,
   } = useLootTrackingStore();
+
+  // Collapse state - defaults to collapsed on mobile, expanded on desktop
+  const [statsExpanded, setStatsExpanded] = useState(() => {
+    try {
+      const saved = localStorage.getItem('summary-stats-expanded');
+      if (saved !== null) return saved === 'true';
+    } catch { /* ignore */ }
+    // Check screen size synchronously for default
+    if (typeof window !== 'undefined') {
+      return !window.matchMedia('(max-width: 640px)').matches;
+    }
+    return true; // Default to expanded on server
+  });
+
+  // Persist preference
+  const toggleStatsExpanded = useCallback(() => {
+    setStatsExpanded(prev => {
+      const newValue = !prev;
+      try {
+        localStorage.setItem('summary-stats-expanded', String(newValue));
+      } catch { /* ignore */ }
+      return newValue;
+    });
+  }, []);
 
   // Fetch balances on mount
   useEffect(() => {
@@ -268,17 +292,56 @@ export function TeamSummaryEnhanced({
 
   return (
     <div className="bg-surface-card rounded-lg border border-border-default">
-      {/* Header */}
+      {/* Header with collapsible toggle */}
       <div className="p-4 border-b border-border-default">
-        <h3 className="text-lg font-medium text-text-primary">Team Summary</h3>
-        <p className="text-sm text-text-muted mt-1">
-          Book and material progress for all players. Values show current balance vs. needed.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-text-primary">Team Summary</h3>
+            <p className="text-sm text-text-muted mt-1">
+              Book and material progress for all players. Values show current balance vs. needed.
+            </p>
+          </div>
+          {/* Collapse toggle - mobile only */}
+          {/* design-system-ignore: Custom toggle button for collapsible section */}
+          <button
+            onClick={toggleStatsExpanded}
+            className="sm:hidden flex items-center gap-1 px-2 py-1 text-xs text-text-secondary hover:text-text-primary transition-colors rounded hover:bg-surface-hover"
+            aria-expanded={statsExpanded}
+            aria-controls="summary-stats"
+          >
+            <span>{statsExpanded ? 'Collapse' : 'Expand'}</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${statsExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* Collapsed summary - show key stats inline when collapsed on mobile only */}
+        {!statsExpanded && (
+          <div className="sm:hidden flex items-center gap-4 mt-2 text-sm">
+            <span className="text-text-secondary">
+              <span className="text-accent font-medium">{aggregateStats.gearPercent}%</span> BiS
+            </span>
+            <span className="text-text-secondary">
+              <span className="text-text-primary font-medium">{aggregateStats.booksProgress.have}/{aggregateStats.booksProgress.need}</span> Books
+            </span>
+            <span className="text-text-secondary">
+              <span className="text-text-primary font-medium">{aggregateStats.matsProgress.have}/{aggregateStats.matsProgress.need}</span> Mats
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Aggregate Stats Cards */}
-      <div className="p-4 border-b border-border-default">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Aggregate Stats Cards - Collapsible on mobile, always expanded on desktop */}
+      <div
+        id="summary-stats"
+        className={`grid transition-[grid-template-rows] duration-300 ease-out sm:!grid-rows-[1fr] ${
+          statsExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className={`overflow-hidden sm:border-b sm:border-border-default ${statsExpanded ? 'border-b border-border-default' : ''}`}>
+          <div className="p-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Players */}
           <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
             <div className="flex items-center gap-3 mb-2">
@@ -363,6 +426,8 @@ export function TeamSummaryEnhanced({
               <span className="text-text-muted text-lg">/{aggregateStats.matsProgress.need}</span>
             </div>
           </div>
+        </div>
+        </div>
         </div>
       </div>
 

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Check, Users } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items
@@ -213,16 +213,11 @@ export default function MembersGuideDocs() {
             <span>/</span>
             <span className="text-text-secondary">For Members</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Users className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Guide for Static Members</h1>
-              <p className="text-text-secondary mt-1">
-                Join your static, claim your card, and track your gear progress
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Guide for Static Members</h1>
+            <p className="text-text-secondary mt-1">
+              Join your static, claim your card, and track your gear progress
+            </p>
           </div>
         </div>
       </header>

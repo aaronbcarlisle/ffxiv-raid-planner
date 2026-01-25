@@ -969,9 +969,9 @@ export function WeaponPriorityList({
   const anyVisible = visibleSections.size > 0;
 
   return (
-    <div className="flex flex-col h-full sm:block sm:h-auto sm:space-y-4">
-      {/* Section filter toggles - fixed on mobile, simple on desktop */}
-      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated sm:p-0 sm:border-0 sm:bg-transparent sm:mb-4">
+    <div className="flex flex-col h-full sm:block sm:h-auto">
+      {/* Section filter toggles - matches Who Needs It and Gear Priority layout */}
+      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="role"
           visibleRoles={visibleSections}
@@ -980,46 +980,46 @@ export function WeaponPriorityList({
         />
       </div>
 
-      {/* Empty state when no sections visible */}
-      {!anyVisible && (
-        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base m-4 sm:m-0">
-          <p>No role sections selected.</p>
-          <p className="text-sm mt-1">Click a role button above to show weapons.</p>
-        </div>
-      )}
-
-      {/* Mobile: Flat grid - scrollable */}
-      {isSmallScreen && (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          <div className="grid grid-cols-1 gap-3">
-          {ROLE_SECTIONS.map(section => {
-            const sectionJobs = jobsBySection.get(section.id) || [];
-            if (sectionJobs.length === 0) return null;
-            if (!visibleSections.has(section.id)) return null;
-
-            return sectionJobs.map(job => {
-              const priority = getWeaponPriorityForJob(players, job, settings);
-              const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
-              const jobName = jobInfo?.name || job;
-
-              return (
-                <WeaponPriorityCard
-                  key={job}
-                  job={job}
-                  jobName={jobName}
-                  priority={priority}
-                  showLogButtons={showLogButtons}
-                  onLogClick={onLogClick}
-                />
-              );
-            });
-          })}
+      {/* Content area with consistent padding */}
+      <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4 space-y-4">
+        {/* Empty state when no sections visible */}
+        {!anyVisible && (
+          <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
+            <p>No role sections selected.</p>
+            <p className="text-sm mt-1">Click a role button above to show weapons.</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Desktop: Role sections - collapsible */}
-      {!isSmallScreen && ROLE_SECTIONS.map(section => {
+        {/* Mobile: Flat grid */}
+        {isSmallScreen && anyVisible && (
+          <div className="grid grid-cols-1 gap-3">
+            {ROLE_SECTIONS.map(section => {
+              const sectionJobs = jobsBySection.get(section.id) || [];
+              if (sectionJobs.length === 0) return null;
+              if (!visibleSections.has(section.id)) return null;
+
+              return sectionJobs.map(job => {
+                const priority = getWeaponPriorityForJob(players, job, settings);
+                const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+                const jobName = jobInfo?.name || job;
+
+                return (
+                  <WeaponPriorityCard
+                    key={job}
+                    job={job}
+                    jobName={jobName}
+                    priority={priority}
+                    showLogButtons={showLogButtons}
+                    onLogClick={onLogClick}
+                  />
+                );
+              });
+            })}
+          </div>
+        )}
+
+        {/* Desktop: Role sections - collapsible */}
+        {!isSmallScreen && ROLE_SECTIONS.map(section => {
         const sectionJobs = jobsBySection.get(section.id) || [];
         if (sectionJobs.length === 0) return null;
         if (!visibleSections.has(section.id)) return null;
@@ -1057,6 +1057,7 @@ export function WeaponPriorityList({
           </RoleSection>
         );
       })}
+      </div>
     </div>
   );
 }

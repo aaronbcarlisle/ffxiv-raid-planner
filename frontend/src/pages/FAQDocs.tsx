@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { HelpCircle } from 'lucide-react';
 import { NavSidebar } from '../components/docs';
 
 // Navigation items
@@ -180,14 +179,9 @@ export default function FAQDocs() {
             <span>/</span>
             <span className="text-text-secondary">FAQ</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <HelpCircle className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Frequently Asked Questions</h1>
-              <p className="text-text-secondary mt-1">Quick answers to common questions</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Frequently Asked Questions</h1>
+            <p className="text-text-secondary mt-1">Quick answers to common questions</p>
           </div>
         </div>
       </header>

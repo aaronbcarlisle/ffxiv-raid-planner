@@ -23,7 +23,6 @@ import {
   Bot,
   Smartphone,
   Target,
-  Wrench,
   ChevronDown,
 } from 'lucide-react';
 import { NavSidebar } from '../components/docs';
@@ -443,14 +442,9 @@ export default function RoadmapDocs() {
             <span>/</span>
             <span className="text-text-secondary">Roadmap</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Wrench className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Roadmap & Status</h1>
-              <p className="text-text-secondary mt-1">Development plan and current state</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Roadmap & Status</h1>
+            <p className="text-text-secondary mt-1">Development plan and current state</p>
           </div>
         </div>
       </header>

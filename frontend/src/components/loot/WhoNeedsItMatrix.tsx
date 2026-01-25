@@ -35,6 +35,9 @@ interface WhoNeedsItMatrixProps {
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
+// Gear slot display order: Weapon first, then left side (head to feet), then accessories
+const GEAR_SLOT_ORDER: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1'];
+
 // Helper to determine which ring slot a player actually needs
 // Returns ring1 if they need ring1, ring2 if they only need ring2, or ring1 if both
 // Note: This is only called when a player IS shown in the "Ring" row (i.e., they need at least one ring).
@@ -79,18 +82,22 @@ export function WhoNeedsItMatrix({
     });
   }, [players]);
 
-  // Get slots for selected floor
+  // Get slots for selected floor, sorted by GEAR_SLOT_ORDER
   const visibleSlots = useMemo(() => {
+    let slots: GearSlot[];
     if (selectedFloor === 'all') {
       // Combine all floors, using ring1 as "Ring" (consolidated)
-      return [
+      slots = [
         ...FLOOR_LOOT_TABLES[1].gearDrops,
         ...FLOOR_LOOT_TABLES[2].gearDrops,
         ...FLOOR_LOOT_TABLES[3].gearDrops,
         ...FLOOR_LOOT_TABLES[4].gearDrops,
       ];
+    } else {
+      slots = FLOOR_LOOT_TABLES[selectedFloor].gearDrops;
     }
-    return FLOOR_LOOT_TABLES[selectedFloor].gearDrops;
+    // Sort by the defined gear slot order
+    return slots.sort((a, b) => GEAR_SLOT_ORDER.indexOf(a) - GEAR_SLOT_ORDER.indexOf(b));
   }, [selectedFloor]);
 
   // Calculate needs matrix

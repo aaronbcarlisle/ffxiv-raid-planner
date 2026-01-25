@@ -47,8 +47,8 @@ export function LootLogFilters({
   return (
     <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-border-default pb-3">
       <div className="flex items-center gap-1.5 sm:gap-3">
-        {/* Layout Mode Toggle - compact on mobile */}
-        <div className="flex bg-surface-base rounded-lg p-0.5">
+        {/* Layout Mode Toggle - hidden on mobile (floating toggle used instead) */}
+        <div className="hidden sm:flex bg-surface-base rounded-lg p-0.5">
           <Tooltip
             content={
               <div>
@@ -113,7 +113,8 @@ export function LootLogFilters({
           </Tooltip>
         </div>
 
-        {/* Reset dropdown */}
+        {/* Reset dropdown - hidden on mobile (in controls panel instead) */}
+        <div className="hidden sm:block">
         {canEdit && (
           <Dropdown>
             <Tooltip
@@ -200,11 +201,12 @@ export function LootLogFilters({
             </DropdownContent>
           </Dropdown>
         )}
+        </div>
       </div>
 
-      {/* Action buttons */}
+      {/* Action buttons - hidden on mobile (FAB used instead) */}
       {canEdit && (
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <Tooltip
             content={
               <div className="flex items-start gap-2">
@@ -219,8 +221,7 @@ export function LootLogFilters({
             }
           >
             <Button size="sm" onClick={onOpenLootModal}>
-              <span className="hidden sm:inline">+ Log Loot</span>
-              <span className="sm:hidden flex items-center gap-1"><Package className="w-4 h-4" /> Loot</span>
+              + Log Loot
             </Button>
           </Tooltip>
           <Tooltip
@@ -237,8 +238,7 @@ export function LootLogFilters({
             }
           >
             <Button size="sm" onClick={onOpenMaterialModal}>
-              <span className="hidden sm:inline">+ Log Material</span>
-              <span className="sm:hidden flex items-center gap-1"><Gem className="w-4 h-4" /> Mat</span>
+              + Log Material
             </Button>
           </Tooltip>
         </div>

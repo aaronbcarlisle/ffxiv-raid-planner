@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Check, ExternalLink, ListChecks } from 'lucide-react';
+import { Check, ExternalLink } from 'lucide-react';
 import { LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items
@@ -247,14 +247,9 @@ export default function HowToDocs() {
             <span>/</span>
             <span className="text-text-secondary">How-To Guides</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <ListChecks className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">How-To Guides</h1>
-              <p className="text-text-secondary mt-1">Step-by-step guides for common tasks</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">How-To Guides</h1>
+            <p className="text-text-secondary mt-1">Step-by-step guides for common tasks</p>
           </div>
         </div>
       </header>

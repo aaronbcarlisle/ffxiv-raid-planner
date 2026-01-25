@@ -241,6 +241,12 @@ body[data-scroll-locked][style] {
   /* Note: overflow-x: hidden removed - breaks sticky positioning */
 }
 
+/* When prevent-page-scroll class is applied, constrain to viewport height */
+#root:has(.prevent-page-scroll) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 /* ================================
    FOCUS MANAGEMENT
    Only show focus rings for keyboard navigation

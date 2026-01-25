@@ -25,6 +25,21 @@ const ROLE_COLORS: Record<MemberRole, string> = {
   viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
+// Full and abbreviated role labels
+const ROLE_LABELS: Record<MemberRole, string> = {
+  owner: 'Owner',
+  lead: 'Lead',
+  member: 'Member',
+  viewer: 'Viewer',
+};
+
+const ROLE_LABELS_SHORT: Record<MemberRole, string> = {
+  owner: 'O',
+  lead: 'L',
+  member: 'M',
+  viewer: 'V',
+};
+
 interface StaticSwitcherProps {
   currentGroup: StaticGroup;
   groups: StaticGroupListItem[];
@@ -101,7 +116,8 @@ export function StaticSwitcher({
               </span>
               {userRole && (
                 <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[userRole]}`}>
-                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                  <span className="sm:hidden">{ROLE_LABELS_SHORT[userRole]}</span>
+                  <span className="hidden sm:inline">{ROLE_LABELS[userRole]}</span>
                 </span>
               )}
               <svg
@@ -140,7 +156,7 @@ export function StaticSwitcher({
                     </Tooltip>
                     {group.userRole ? (
                       <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}>
-                        {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                        {ROLE_LABELS[group.userRole]}
                       </span>
                     ) : group.source === 'linked' ? (
                       <span className="text-xs px-1.5 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">

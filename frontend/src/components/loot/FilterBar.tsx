@@ -87,7 +87,7 @@ function FloorFilterBar({
               flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isSelected
                 ? floor === 'all'
-                  ? 'bg-accent text-accent-contrast border-accent'
+                  ? 'bg-accent/10 text-accent border-accent/30'
                   : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }
