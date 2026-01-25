@@ -140,10 +140,9 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
                 <IconButton
                   icon={<Trash2 className="w-4 h-4" />}
                   onClick={() => onDelete(entry)}
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
                   aria-label="Delete entry"
-                  className="text-status-error hover:text-status-error hover:bg-status-error/10"
                 />
               </Tooltip>
             </>
