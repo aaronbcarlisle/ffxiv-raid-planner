@@ -45,10 +45,10 @@ export function LootLogFilters({
   onOpenMaterialModal,
 }: LootLogFiltersProps) {
   return (
-    <div className="flex items-center justify-between border-b border-border-default pb-3">
-      <div className="flex items-center gap-3">
-        {/* Layout Mode Toggle */}
-        <div className="flex bg-surface-base rounded-lg p-0.5">
+    <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-border-default pb-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
+        {/* Layout Mode Toggle - hidden on mobile (floating toggle used instead) */}
+        <div className="hidden sm:flex bg-surface-base rounded-lg p-0.5">
           <Tooltip
             content={
               <div>
@@ -63,21 +63,20 @@ export function LootLogFilters({
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('grid')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
                 layoutMode === 'grid'
                   ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                />
+              {/* Grid icon - 4 squares (matches Roster tab compact icon) */}
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                <rect x="1" y="1" width="6" height="6" rx="1" />
+                <rect x="9" y="1" width="6" height="6" rx="1" />
+                <rect x="1" y="9" width="6" height="6" rx="1" />
+                <rect x="9" y="9" width="6" height="6" rx="1" />
               </svg>
-              Grid
+              <span className="hidden sm:inline">Grid</span>
             </button>
           </Tooltip>
           <Tooltip
@@ -94,26 +93,25 @@ export function LootLogFilters({
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('split')}
-              className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
                 layoutMode === 'split'
                   ? 'bg-accent text-accent-contrast'
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"
-                />
+              {/* List icon - horizontal bars (matches Roster tab expanded icon) */}
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                <rect x="1" y="1" width="14" height="4" rx="1" />
+                <rect x="1" y="7" width="14" height="4" rx="1" />
+                <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
               </svg>
-              List
+              <span className="hidden sm:inline">List</span>
             </button>
           </Tooltip>
         </div>
 
-        {/* Reset dropdown */}
+        {/* Reset dropdown - hidden on mobile (in controls panel instead) */}
+        <div className="hidden sm:block">
         {canEdit && (
           <Dropdown>
             <Tooltip
@@ -128,7 +126,7 @@ export function LootLogFilters({
                 <DropdownTrigger asChild>
                   {/* design-system-ignore: Reset trigger button requires specific danger styling */}
                   <button
-                    className="px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
+                    className="px-2 sm:px-3 py-1.5 text-sm font-semibold text-status-error bg-status-error/10 border border-status-error/40 rounded-lg cursor-pointer
                                         hover:bg-status-error/20 hover:border-status-error/60 active:bg-status-error/30 transition-colors flex items-center gap-1.5"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +137,7 @@ export function LootLogFilters({
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                       />
                     </svg>
-                    Reset
+                    <span className="hidden sm:inline">Reset</span>
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -200,11 +198,12 @@ export function LootLogFilters({
             </DropdownContent>
           </Dropdown>
         )}
+        </div>
       </div>
 
-      {/* Action buttons */}
+      {/* Action buttons - hidden on mobile (FAB used instead) */}
       {canEdit && (
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <Tooltip
             content={
               <div className="flex items-start gap-2">

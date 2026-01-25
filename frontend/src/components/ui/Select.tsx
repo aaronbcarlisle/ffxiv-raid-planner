@@ -72,6 +72,8 @@ export interface SelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Callback when the dropdown opens or closes */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function Select({
@@ -82,8 +84,14 @@ export function Select({
   placeholder = 'Select...',
   disabled,
   className = '',
+  onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
 
   // Prevent Radix scroll-lock from breaking sticky nav
   usePreventScrollLock(open);
@@ -102,17 +110,17 @@ export function Select({
       value={value}
       onValueChange={onChange}
       disabled={disabled}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
     >
       <SelectPrimitive.Trigger
         id={id}
         className={`
-          inline-flex items-center justify-between
-          w-full
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
           bg-surface-elevated border border-border-default rounded-lg
           pl-4 pr-3 py-2
           text-sm
-          focus-visible:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base
           disabled:opacity-50 disabled:cursor-not-allowed
           hover:border-border-subtle
           transition-colors
@@ -147,6 +155,8 @@ export function Select({
         position="popper"
         sideOffset={4}
         align="start"
+        collisionPadding={16}
+        avoidCollisions
       >
         <SelectPrimitive.Viewport className="p-1">
           {validOptions.map((option) => (
@@ -171,7 +181,7 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         ref={ref}
         className="
           relative flex items-center
-          px-8 py-2 rounded
+          px-8 py-2 min-h-[44px] sm:min-h-0 rounded
           text-sm text-text-primary
           cursor-pointer
           select-none

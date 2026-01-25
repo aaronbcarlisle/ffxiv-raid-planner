@@ -36,15 +36,16 @@ interface SortableHeaderProps {
   currentDirection: SortDirection;
   onSort: (field: SortField) => void;
   align?: 'left' | 'center';
+  className?: string;
 }
 
-function SortableHeader({ field, label, currentField, currentDirection, onSort, align = 'left' }: SortableHeaderProps) {
+function SortableHeader({ field, label, currentField, currentDirection, onSort, align = 'left', className = '' }: SortableHeaderProps) {
   const isActive = currentField === field;
   const justifyClass = align === 'center' ? 'justify-center' : '';
 
   return (
     <th
-      className="group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none"
+      className={`group text-left px-4 py-3 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-primary select-none ${className}`}
       onClick={() => onSort(field)}
       aria-sort={isActive ? (currentDirection === 'asc' ? 'ascending' : 'descending') : undefined}
     >
@@ -377,9 +378,9 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 w-full">
         <div>
           <h1 className="text-3xl font-display text-status-warning">Admin Dashboard</h1>
           <p className="text-text-muted mt-1">
@@ -397,7 +398,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Search */}
-      <div className="mb-6">
+      <div className="mb-6 w-full">
         <div className="relative max-w-md">
           <Input
             value={search}
@@ -426,7 +427,7 @@ export function AdminDashboard() {
           <Spinner size="lg" label="Loading groups" />
         </div>
       ) : groups.length === 0 ? (
-        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
+        <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default w-full">
           <p className="text-text-muted">
             {debouncedSearch ? 'No groups match your search' : 'No static groups found'}
           </p>
@@ -434,17 +435,17 @@ export function AdminDashboard() {
       ) : (
         <>
           {/* Groups table */}
-          <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden">
+          <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden w-full">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
                   <SortableHeader field="name" label="Name" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader field="owner" label="Owner" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader field="memberCount" label="Members" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
-                  <SortableHeader field="tierCount" label="Tiers" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
-                  <SortableHeader field="isPublic" label="Visibility" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" />
+                  <SortableHeader field="owner" label="Owner" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} className="hidden sm:table-cell" />
+                  <SortableHeader field="memberCount" label="Members" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" className="hidden md:table-cell" />
+                  <SortableHeader field="tierCount" label="Tiers" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" className="hidden lg:table-cell" />
+                  <SortableHeader field="isPublic" label="Visibility" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} align="center" className="hidden lg:table-cell" />
                   <th className="text-left px-4 py-3 text-sm font-medium text-text-secondary">Code</th>
-                  <SortableHeader field="createdAt" label="Created" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} />
+                  <SortableHeader field="createdAt" label="Created" currentField={sortField} currentDirection={sortDirection} onSort={handleSort} className="hidden md:table-cell" />
                   <th className="text-center px-4 py-3 text-sm font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>
@@ -460,7 +461,7 @@ export function AdminDashboard() {
                         {group.name}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden sm:table-cell px-4 py-3">
                       <div className="flex items-center gap-2">
                         {group.owner?.avatarUrl ? (
                           <img
@@ -478,13 +479,13 @@ export function AdminDashboard() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-text-secondary">
+                    <td className="hidden md:table-cell px-4 py-3 text-center text-text-secondary">
                       {group.memberCount}
                     </td>
-                    <td className="px-4 py-3 text-center text-text-secondary">
+                    <td className="hidden lg:table-cell px-4 py-3 text-center text-text-secondary">
                       {group.tierCount}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="hidden lg:table-cell px-4 py-3 text-center">
                       {group.isPublic ? (
                         <span className="text-teal-400 text-sm">Public</span>
                       ) : (
@@ -523,7 +524,7 @@ export function AdminDashboard() {
                         </Tooltip>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-text-muted text-sm">
+                    <td className="hidden md:table-cell px-4 py-3 text-text-muted text-sm">
                       {new Date(group.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-center">

@@ -25,7 +25,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
       >
         <button
           onClick={() => onViewModeChange('compact')}
-          className={`px-3 py-2 rounded-l-lg text-sm font-medium transition-colors ${
+          className={`flex-1 px-4 py-2 rounded-l-lg text-sm font-medium transition-colors ${
             viewMode === 'compact'
               ? 'bg-accent/20 text-accent'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
@@ -55,7 +55,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
       >
         <button
           onClick={() => onViewModeChange('expanded')}
-          className={`px-3 py-2 rounded-r-lg text-sm font-medium transition-colors border-l border-border-default ${
+          className={`flex-1 px-4 py-2 rounded-r-lg text-sm font-medium transition-colors border-l border-border-default ${
             viewMode === 'expanded'
               ? 'bg-accent/20 text-accent'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'

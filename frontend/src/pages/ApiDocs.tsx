@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Code } from 'lucide-react';
 import { CodeBlock, LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items grouped by category
@@ -307,16 +306,11 @@ export default function ApiDocs() {
             <span>/</span>
             <span className="text-text-secondary">API Reference</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Code className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">API Reference</h1>
-              <p className="text-text-secondary mt-1">
-                REST API documentation for developers integrating with FFXIV Raid Planner
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">API Reference</h1>
+            <p className="text-text-secondary mt-1">
+              REST API documentation for developers integrating with FFXIV Raid Planner
+            </p>
           </div>
         </div>
       </header>

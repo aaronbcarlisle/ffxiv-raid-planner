@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, memo } from 'react';
+import { useSwipe } from '../../hooks/useSwipe';
 import { Tooltip } from '../primitives/Tooltip';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -117,20 +118,24 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
 
   return (
     <div
-      className={`flex items-center justify-between px-2 py-1 rounded text-sm group ${
+      className={`flex items-center justify-between px-2 py-1 rounded text-sm group min-w-0 ${
         isFirst ? 'bg-accent/20' : ''
       }`}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+      {/* Left side - player info with truncation */}
+      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+        <span className={`flex-shrink-0 ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {index + 1}.
         </span>
-        <JobIcon job={entry.player.job} size="xs" />
-        <span className={isFirst ? 'text-accent font-medium' : 'text-text-secondary'}>
+        <span className="flex-shrink-0">
+          <JobIcon job={entry.player.job} size="xs" />
+        </span>
+        <span className={`truncate ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {entry.player.name}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      {/* Right side - score (never shrinks) */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         {/* Log button - shows on hover for any entry */}
         {showLogButton && onLogClick && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -147,7 +152,7 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
         <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
           <span
             className="text-xs px-1.5 py-0.5 rounded cursor-help"
-            style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+            style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
           >
             {displayScore}
           </span>
@@ -276,6 +281,26 @@ export function LootPriorityPanel({
       }
     }
   }, [onSubTabChange]);
+
+  // Swipe gesture handling for mobile tab switching
+  const subTabs: LootSubTabType[] = ['matrix', 'gear', 'weapon'];
+  const currentTabIndex = subTabs.indexOf(activeSubTab);
+
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      // Swipe left = go to next tab
+      if (currentTabIndex < subTabs.length - 1) {
+        setActiveSubTab(subTabs[currentTabIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      // Swipe right = go to previous tab
+      if (currentTabIndex > 0) {
+        setActiveSubTab(subTabs[currentTabIndex - 1]);
+      }
+    },
+    minSwipeDistance: 50,
+  });
 
   // Matrix floor filter state (supports 'all' option)
   // Syncs with parent's selectedFloor when a specific floor is selected
@@ -458,15 +483,20 @@ export function LootPriorityPanel({
   };
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100dvh-14rem)]">
+    <div className="bg-surface-card border border-border-default rounded-lg flex flex-col h-[calc(100%-1rem)] sm:max-h-[calc(100dvh-14rem)] sm:h-auto">
       {/* Header with sub-tabs - stays visible */}
-      <div className="flex items-center justify-between p-4 pb-0 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h3 className="font-display text-lg text-accent">
-            Loot Priority
+      <div className="flex items-center justify-between p-4 pb-3 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Mobile: show current tab name, Desktop: show "Loot Priority" */}
+          <h3 className="font-display text-base sm:text-lg text-accent">
+            <span className="sm:hidden">
+              {activeSubTab === 'matrix' ? 'Who Needs It' :
+               activeSubTab === 'gear' ? 'Gear Priority' : 'Weapon Priority'}
+            </span>
+            <span className="hidden sm:inline">Loot Priority</span>
           </h3>
-          {/* Sub-tab navigation */}
-          <div className="flex bg-surface-base rounded-lg p-1">
+          {/* Sub-tab navigation - hidden on mobile, use Controls sheet instead */}
+          <div className="hidden sm:flex bg-surface-base rounded-lg p-1">
             <Tooltip
               content={
                 <div>
@@ -545,14 +575,17 @@ export function LootPriorityPanel({
         )}
       </div>
 
-      {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto p-4 pt-4">
+      {/* Content area - filter bars fixed, content scrolls, swipe to change tabs on mobile */}
+      <div
+        className="flex-1 min-h-0 flex flex-col sm:p-4 sm:pt-0 sm:overflow-y-auto"
+        {...swipeHandlers}
+      >
         {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
-        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-          {/* Floor selector for Gear Priority - uses FilterBar for consistency */}
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
+          {/* Floor selector - matches Who Needs It layout */}
           {onFloorChange && (
-            <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
               <FilterBar
                 type="floor"
                 floors={floors}
@@ -562,10 +595,10 @@ export function LootPriorityPanel({
               />
             </div>
           )}
-          {/* Content area with padding */}
-          <div className="p-4">
-            {/* Gear drops grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Content area - scrolls on mobile */}
+          <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4">
+            {/* Gear drops grid - responsive: 1 col mobile, 2 cols sm, 4 cols lg */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {itemPriorities.map(({ slot, label, entries }) => {
                 // Use ring1 icon for consolidated "ring" slot
                 const iconSlot = slot === 'ring' ? 'ring1' : slot;
@@ -598,7 +631,7 @@ export function LootPriorityPanel({
             {materialPriorities.length > 0 && (
               <div className="border-t border-border-default pt-4 mt-4">
                 <h4 className="text-text-secondary text-sm mb-3">Upgrade Materials</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {materialPriorities.map(({ material, label, entries }) => (
                     <div
                       key={material}
@@ -625,7 +658,7 @@ export function LootPriorityPanel({
 
       {/* Weapon Priority Tab Content */}
       {activeSubTab === 'weapon' && (
-        <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden p-4">
+        <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
           <WeaponPriorityList
             players={players}
             settings={settings}
@@ -637,14 +670,16 @@ export function LootPriorityPanel({
 
       {/* Who Needs It Matrix Tab Content */}
       {activeSubTab === 'matrix' && (
-        <WhoNeedsItMatrix
-          players={players}
-          floors={floors}
-          showLogButtons={!!canShowLogButtons}
-          onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
-          selectedFloor={matrixFloor}
-          onFloorChange={handleMatrixFloorChange}
-        />
+        <div className="flex flex-col flex-1 min-h-0 sm:block sm:flex-none">
+          <WhoNeedsItMatrix
+            players={players}
+            floors={floors}
+            showLogButtons={!!canShowLogButtons}
+            onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+            selectedFloor={matrixFloor}
+            onFloorChange={handleMatrixFloorChange}
+          />
+        </div>
       )}
       </div>
 

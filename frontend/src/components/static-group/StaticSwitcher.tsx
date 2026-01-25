@@ -25,6 +25,21 @@ const ROLE_COLORS: Record<MemberRole, string> = {
   viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
 };
 
+// Full and abbreviated role labels
+const ROLE_LABELS: Record<MemberRole, string> = {
+  owner: 'Owner',
+  lead: 'Lead',
+  member: 'Member',
+  viewer: 'Viewer',
+};
+
+const ROLE_LABELS_SHORT: Record<MemberRole, string> = {
+  owner: 'O',
+  lead: 'L',
+  member: 'M',
+  viewer: 'V',
+};
+
 interface StaticSwitcherProps {
   currentGroup: StaticGroup;
   groups: StaticGroupListItem[];
@@ -32,6 +47,8 @@ interface StaticSwitcherProps {
   isMember: boolean;
   /** Current user's role in this static */
   userRole?: MemberRole;
+  /** Whether to expand to fill available width on mobile */
+  fullWidthMobile?: boolean;
 }
 
 export function StaticSwitcher({
@@ -40,6 +57,7 @@ export function StaticSwitcher({
   onFetchGroups,
   isMember,
   userRole,
+  fullWidthMobile,
 }: StaticSwitcherProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -64,7 +82,7 @@ export function StaticSwitcher({
           </div>
         }
       >
-        <span className="font-display text-lg text-text-primary px-2 cursor-help">
+        <span className={`font-display text-base sm:text-lg text-text-primary px-2 cursor-help truncate inline-block ${fullWidthMobile ? 'flex-1 max-w-none sm:max-w-[200px] sm:flex-initial' : 'max-w-[120px] sm:max-w-[200px]'}`}>
           {currentGroup.name}
         </span>
       </Tooltip>
@@ -73,49 +91,32 @@ export function StaticSwitcher({
 
   return (
     <Dropdown open={isOpen} onOpenChange={setIsOpen}>
-      <Tooltip
-        content={
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              Switch Static
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">⌘/Ctrl</kbd>
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">[</kbd>
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">]</kbd>
+      <span className={fullWidthMobile ? 'flex-1 sm:flex-initial sm:inline-flex' : 'inline-flex'}>
+        <DropdownTrigger>
+          {/* Radix DropdownMenu requires native button as trigger */}
+          <button // design-system-ignore
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base ${fullWidthMobile ? 'w-full sm:w-auto' : ''}`}
+          >
+            <span className={`font-display text-base sm:text-lg text-accent truncate ${fullWidthMobile ? 'flex-1 text-left sm:flex-initial sm:max-w-[200px]' : 'max-w-[140px] sm:max-w-[200px]'}`}>
+              {currentGroup.name}
+            </span>
+            {userRole && (
+              <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[userRole]}`}>
+                <span className="sm:hidden">{ROLE_LABELS_SHORT[userRole]}</span>
+                <span className="hidden sm:inline">{ROLE_LABELS[userRole]}</span>
               </span>
-            </div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              Click to switch or use shortcuts to cycle
-            </div>
-          </div>
-        }
-      >
-        <span className="inline-flex">
-          <DropdownTrigger>
-            {/* Radix DropdownMenu requires native button as trigger */}
-            <button // design-system-ignore
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
+            )}
+            <svg
+              className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <span className="font-display text-lg text-accent max-w-[200px] truncate">
-                {currentGroup.name}
-              </span>
-              {userRole && (
-                <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[userRole]}`}>
-                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                </span>
-              )}
-              <svg
-                className={`w-4 h-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </DropdownTrigger>
-        </span>
-      </Tooltip>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </DropdownTrigger>
+      </span>
 
       <DropdownContent align="start" className="w-72 overflow-hidden">
         {/* Static list */}
@@ -140,7 +141,7 @@ export function StaticSwitcher({
                     </Tooltip>
                     {group.userRole ? (
                       <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}>
-                        {group.userRole.charAt(0).toUpperCase() + group.userRole.slice(1)}
+                        {ROLE_LABELS[group.userRole]}
                       </span>
                     ) : group.source === 'linked' ? (
                       <span className="text-xs px-1.5 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">

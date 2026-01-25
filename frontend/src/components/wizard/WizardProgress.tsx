@@ -14,19 +14,19 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
   const steps: WizardStep[] = [1, 2, 3, 4];
 
   return (
-    <div className="flex items-center justify-center gap-8 mb-8">
+    <div className="flex items-center justify-center gap-2 sm:gap-8 mb-4 sm:mb-8">
       {steps.map((step, index) => {
         const isActive = step === currentStep;
         const isCompleted = step < currentStep;
         const isLast = index === steps.length - 1;
 
         return (
-          <div key={step} className="flex items-center gap-2">
-            <div className="flex flex-col items-center gap-2">
+          <div key={step} className="flex items-center gap-1 sm:gap-2">
+            <div className="flex flex-col items-center gap-1 sm:gap-2">
               {/* Step circle */}
               <div
                 className={`
-                  w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm
+                  w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-semibold text-xs sm:text-sm
                   transition-all duration-300
                   ${
                     isCompleted
@@ -39,7 +39,7 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
               >
                 {isCompleted ? (
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -56,10 +56,11 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
                 )}
               </div>
 
-              {/* Step label */}
+              {/* Step label - hidden on mobile, only show for active step */}
               <span
                 className={`
-                  text-xs font-medium whitespace-nowrap
+                  text-[10px] sm:text-xs font-medium whitespace-nowrap
+                  ${isActive ? 'block' : 'hidden sm:block'}
                   ${
                     isActive
                       ? 'text-accent'
@@ -77,7 +78,7 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
             {!isLast && (
               <div
                 className={`
-                  w-16 h-0.5 transition-all duration-300 -mb-6
+                  w-4 sm:w-16 h-0.5 transition-all duration-300 -mb-4 sm:-mb-6
                   ${isCompleted ? 'bg-accent' : 'bg-border-default'}
                 `}
               />

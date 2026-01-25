@@ -42,77 +42,83 @@ export function LootCountBar({ players, lootLog, currentWeek }: LootCountBarProp
     return aIdx - bIdx;
   });
 
-  // Calculate average for color coding
-  const counts = sortedPlayers.map(p => countsByPlayer.get(p.id) || 0);
-  const total = counts.reduce((a, b) => a + b, 0);
-  const average = mainRosterPlayers.length > 0 ? total / mainRosterPlayers.length : 0;
-
-  const getCountStyle = (count: number): string => {
-    if (count > average + 1) {
-      // Above average - info (received more loot)
-      return 'bg-status-info/20 text-status-info border-status-info/40';
-    } else if (count < average - 1) {
-      // Below average - warning (received less loot)
-      return 'bg-status-warning/20 text-status-warning border-status-warning/40';
-    }
-    // Average - neutral
-    return 'bg-surface-interactive text-text-secondary border-border-default';
-  };
+  // Calculate average for color coding (only count main roster players' drops)
+  const mainRosterTotal = mainRosterPlayers.reduce((sum, p) => sum + (countsByPlayer.get(p.id) || 0), 0);
+  const average = mainRosterPlayers.length > 0 ? mainRosterTotal / mainRosterPlayers.length : 0;
 
   if (mainRosterPlayers.length === 0) {
     return null;
   }
 
+  // Stop touch events from propagating to parent swipe handlers
+  // This allows horizontal scrolling without triggering panel switches
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg p-3 mb-4">
-      <div className="flex items-center gap-4">
-        <span className="text-xs text-text-muted whitespace-nowrap">Week {currentWeek} Drops:</span>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {sortedPlayers.map(player => {
-            const count = countsByPlayer.get(player.id) || 0;
-            // Fallback to text-secondary if role is not set
-            const roleColor = player.role
-              ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-              : 'var(--color-text-secondary)';
+    <div
+      className="bg-surface-card border border-border-default rounded-lg p-3 mb-2 overflow-x-auto"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="flex gap-2 min-w-max sm:min-w-0">
+        {sortedPlayers.map(player => {
+          const count = countsByPlayer.get(player.id) || 0;
+          // Fallback to text-secondary if role is not set
+          const roleColor = player.role
+            ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
+            : 'var(--color-text-secondary)';
 
-            const diffFromAvg = count - average;
-            const diffText = diffFromAvg > 0 ? `+${diffFromAvg.toFixed(1)}` : diffFromAvg.toFixed(1);
+          const diffFromAvg = count - average;
+          const diffText = diffFromAvg > 0 ? `+${diffFromAvg.toFixed(1)}` : diffFromAvg.toFixed(1);
 
-            return (
-              <Tooltip
-                key={player.id}
-                content={
-                  <div>
-                    <div className="font-medium">{player.name}</div>
-                    <div className="text-text-secondary text-xs mt-0.5">
-                      {count} drop{count !== 1 ? 's' : ''} this week
-                    </div>
-                    <div className="text-text-muted text-[10px] mt-1">
-                      {diffFromAvg === 0 ? 'At average' : `${diffText} from avg`}
-                    </div>
+          return (
+            <Tooltip
+              key={player.id}
+              content={
+                <div>
+                  <div className="font-medium">{player.name}</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    {count} drop{count !== 1 ? 's' : ''} this week
                   </div>
-                }
-              >
-                <div className="flex flex-col items-center cursor-help">
-                  <div
-                    className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold border ${getCountStyle(count)}`}
-                  >
-                    {count}
+                  <div className="text-text-muted text-[10px] mt-1">
+                    {diffFromAvg === 0 ? 'At average' : `${diffText} from avg`}
                   </div>
-                  <span
-                    className="text-[10px] font-medium mt-0.5"
-                    style={{ color: roleColor }}
-                  >
-                    {player.position || '?'}
-                  </span>
                 </div>
-              </Tooltip>
-            );
-          })}
-        </div>
-        <span className="text-xs text-text-muted whitespace-nowrap">
-          Total: {total} | Avg: {average.toFixed(1)}
-        </span>
+              }
+            >
+              <div
+                className="flex-1 min-w-[60px] sm:min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle cursor-help"
+              >
+                <div
+                  className="text-[10px] font-semibold mb-0.5"
+                  style={{ color: roleColor }}
+                >
+                  {player.position || player.role?.substring(0, 2).toUpperCase() || '?'}
+                </div>
+                <div className="text-[10px] text-text-muted truncate">{player.name}</div>
+                <div
+                  className="text-xl font-bold"
+                  style={{
+                    color: count > average + 1
+                      ? 'var(--color-status-info)'
+                      : count < average - 1
+                        ? 'var(--color-status-warning)'
+                        : 'var(--color-text-secondary)'
+                  }}
+                >
+                  {count}
+                </div>
+                <div className="text-[9px] text-text-muted uppercase">drops</div>
+              </div>
+            </Tooltip>
+          );
+        })}
       </div>
     </div>
   );

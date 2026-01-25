@@ -28,6 +28,8 @@ interface FloorSectionProps {
   onExpandAll?: () => void;
   /** Callback to collapse all sections */
   onCollapseAll?: () => void;
+  /** Inline mode - render as flat label without collapsible header (for mobile) */
+  inline?: boolean;
 }
 
 export function FloorSection({
@@ -40,6 +42,7 @@ export function FloorSection({
   onExpandChange,
   onExpandAll,
   onCollapseAll,
+  inline = false,
 }: FloorSectionProps) {
   // Support both controlled and uncontrolled modes
   const [localExpanded, setLocalExpanded] = useState(defaultExpanded);
@@ -79,13 +82,40 @@ export function FloorSection({
     }] : []),
   ];
 
+  // Inline mode - flat label without collapsible header (for mobile)
+  if (inline) {
+    return (
+      <div className="mb-2">
+        {/* Inline Floor Label */}
+        <div
+          className={`flex items-center gap-2 px-2 py-1 rounded ${colors.bg}`}
+        >
+          <div
+            className="w-1 h-4 rounded"
+            style={{ backgroundColor: colors.hex }}
+          />
+          <span className={`text-xs font-bold ${colors.text}`}>
+            {floorName}
+          </span>
+          <span className={`text-xs ${colors.text} opacity-70`}>
+            ({entryCount})
+          </span>
+        </div>
+        {/* Content - always visible in inline mode */}
+        <div className="flex flex-col gap-2 mt-1">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-4">
       {/* Floor Header - clickable to toggle, right-click for context menu */}
       <button
         onClick={handleToggle}
         onContextMenu={handleContextMenu}
-        className={`w-full flex items-center justify-between px-3 py-2 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} border ${colors.bg} ${colors.border} transition-all hover:opacity-90`}
+        className={`w-full flex items-center justify-between px-3 py-2 min-h-[44px] sm:min-h-0 ${isExpanded ? 'rounded-t-lg' : 'rounded-lg'} border ${colors.bg} ${colors.border} transition-all hover:opacity-90`}
       >
         <div className="flex items-center gap-2">
           {/* Chevron indicator */}
@@ -105,10 +135,12 @@ export function FloorSection({
           {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
         </span>
       </button>
-      {/* Content - collapsible */}
+      {/* Content - collapsible, vertical stack */}
       {isExpanded && (
-        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2 space-y-2`}>
-          {children}
+        <div className={`bg-surface-elevated/30 border border-t-0 ${colors.border} rounded-b-lg p-2`}>
+          <div className="flex flex-col gap-2">
+            {children}
+          </div>
         </div>
       )}
       {/* Context Menu */}

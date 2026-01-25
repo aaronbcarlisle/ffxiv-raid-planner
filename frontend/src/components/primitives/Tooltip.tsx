@@ -1,9 +1,13 @@
 /**
  * Tooltip - Radix-based tooltip with consistent styling
+ *
+ * Automatically disabled on touch devices where hover interactions
+ * are not available. Use the `disabled` prop to manually disable.
  */
 
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { type ReactNode } from 'react';
+import { useDevice } from '../../hooks/useDevice';
 
 interface TooltipProps {
   children: ReactNode;
@@ -18,6 +22,8 @@ interface TooltipProps {
   delayDuration?: number;
   /** Skip delay when moving between tooltips */
   skipDelayDuration?: number;
+  /** Explicitly disable the tooltip */
+  disabled?: boolean;
 }
 
 export function Tooltip({
@@ -28,10 +34,20 @@ export function Tooltip({
   sideOffset = 4,
   delayDuration = 500,
   skipDelayDuration = 100,
+  disabled,
 }: TooltipProps) {
+  const { canHover } = useDevice();
+
+  // On touch devices where hover isn't available, just render children
+  if (!canHover) {
+    return <>{children}</>;
+  }
+
+  // When disabled, still render the same structure to avoid unmounting children,
+  // but use open={false} to prevent the tooltip from showing
   return (
     <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={skipDelayDuration}>
-      <TooltipPrimitive.Root>
+      <TooltipPrimitive.Root open={disabled ? false : undefined}>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content

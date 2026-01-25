@@ -17,14 +17,16 @@ import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { PlayerGrid } from '../components/player/PlayerGrid';
+import { RosterViewToggle } from '../components/player/RosterViewToggle';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
-import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal } from '../components/static-group';
+import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
@@ -108,10 +110,15 @@ export function GroupView() {
     setHighlightedBookPlayerId,
   } = state;
 
+  // Device capabilities for responsive behavior
+  const { isSmallScreen } = useDevice();
+
   // Settings modal options (for opening to specific tab with highlight)
   const [settingsModalTab, setSettingsModalTab] = useState<'general' | 'priority' | 'members' | 'invitations'>('general');
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
+  const [showControlsSheet, setShowControlsSheet] = useState(false);
+
 
   // Handle viewAs URL parameter
   useEffect(() => {
@@ -517,12 +524,12 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, [setPlayerModalCount]);
 
-  // DnD hook
+  // DnD hook - disabled on mobile (touch DnD is awkward)
   const dnd = useDragAndDrop({
     players: sortedPlayers,
     groupView,
     canEdit,
-    disabled: isAnyModalOpen || !rosterPermission.allowed,
+    disabled: isAnyModalOpen || !rosterPermission.allowed || isSmallScreen,
     onReorder: playerActions.handleReorder,
   });
 
@@ -631,8 +638,20 @@ export function GroupView() {
     );
   }
 
+  // Prevent page scroll for History/Log tab (internal scroll only)
+  // On mobile: also prevent for Loot tab
+  const preventPageScroll = pageMode === 'history' || (isSmallScreen && pageMode === 'loot');
+
+  // Build container classes (extracted for readability)
+  const containerClasses = [
+    'max-w-[160rem] mx-auto px-4 w-full',
+    isSmallScreen && 'has-bottom-nav',
+    preventPageScroll && 'prevent-page-scroll flex-1 min-h-0 flex flex-col overflow-hidden',
+    preventPageScroll && isSmallScreen && 'h-[calc(100dvh-var(--layout-chrome))] overscroll-contain pb-4',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div className="max-w-[160rem] mx-auto">
+    <div className={containerClasses}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
@@ -663,59 +682,65 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* Toolbar: Tabs + Context Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-            <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
+            {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
+            <div className="hidden sm:block">
+              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+            </div>
             {/* Roster tab controls - only render when on players tab */}
             {pageMode === 'players' && (
-              <div className="flex items-center gap-3">
-                <SortModeSelector
-                  sortPreset={sortPreset}
-                  onPresetChange={setSortPresetWithTier}
-                />
-                <GroupViewToggle
-                  enabled={groupView}
-                  onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
-                  disabled={!hasPositionData}
-                />
-                {hasSubstitutes && (
-                  <Tooltip
-                    content={
-                      <div className="flex items-start gap-2">
-                        <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
-                        <div>
-                          <div className="flex items-center gap-2 font-medium">
-                            {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
-                            <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
-                          </div>
-                          <div className="text-text-secondary text-xs mt-0.5">
-                            {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+              <>
+                {/* Desktop controls - hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-3">
+                  <SortModeSelector
+                    sortPreset={sortPreset}
+                    onPresetChange={setSortPresetWithTier}
+                  />
+                  <GroupViewToggle
+                    enabled={groupView}
+                    onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                    disabled={!hasPositionData}
+                  />
+                  {hasSubstitutes && (
+                    <Tooltip
+                      content={
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                          </svg>
+                          <div>
+                            <div className="flex items-center gap-2 font-medium">
+                              {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
+                              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
+                            </div>
+                            <div className="text-text-secondary text-xs mt-0.5">
+                              {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    }
-                  >
-                    {/* design-system-ignore: Toggle button requires specific toggle styling */}
-                    <button
-                      onClick={() => setSubsView(!subsView)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                        subsView
-                          ? 'bg-accent/20 text-accent border-accent/50'
-                          : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
-                      }`}
-                      aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
-                      aria-pressed={subsView}
+                      }
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                      </svg>
-                      <span>Subs</span>
-                    </button>
-                  </Tooltip>
-                )}
-                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-              </div>
+                      {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                      <button
+                        onClick={() => setSubsView(!subsView)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+                          subsView
+                            ? 'bg-accent/20 text-accent border-accent/50'
+                            : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                        }`}
+                        aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                        aria-pressed={subsView}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        <span>Subs</span>
+                      </button>
+                    </Tooltip>
+                  )}
+                  <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                </div>
+              </>
             )}
           </div>
 
@@ -833,28 +858,30 @@ export function GroupView() {
             />
           )}
 
-          {/* History Tab */}
+          {/* History Tab - wrapped in flex-1 container for proper scroll containment */}
           {pageMode === 'history' && currentTier?.players && tierInfo && (
-            <HistoryView
-              groupId={currentGroup!.id}
-              tierId={currentTier.tierId}
-              players={currentTier.players}
-              floors={tierInfo.floors}
-              userRole={userRole || 'viewer'}
-              isAdmin={isAdminAccess}
-              currentUserId={effectiveUserId}
-              highlightedBookPlayerId={highlightedBookPlayerId}
-              onNavigateToPlayer={handleNavigateToPlayer}
-              highlightedEntryId={highlightedEntry?.id}
-              highlightedEntryType={highlightedEntry?.type}
-              targetWeek={highlightedEntry?.week}
-              openLogLootModal={showLogLootModal}
-              onLogLootModalClose={() => setShowLogLootModal(false)}
-              openLogMaterialModal={showLogMaterialModal}
-              onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
-              openMarkFloorClearedModal={showMarkFloorClearedModal}
-              onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
-            />
+            <div className={preventPageScroll ? 'flex-1 min-h-0 flex flex-col w-full' : ''}>
+              <HistoryView
+                groupId={currentGroup!.id}
+                tierId={currentTier.tierId}
+                players={currentTier.players}
+                floors={tierInfo.floors}
+                userRole={userRole || 'viewer'}
+                isAdmin={isAdminAccess}
+                currentUserId={effectiveUserId}
+                highlightedBookPlayerId={highlightedBookPlayerId}
+                onNavigateToPlayer={handleNavigateToPlayer}
+                highlightedEntryId={highlightedEntry?.id}
+                highlightedEntryType={highlightedEntry?.type}
+                targetWeek={highlightedEntry?.week}
+                openLogLootModal={showLogLootModal}
+                onLogLootModalClose={() => setShowLogLootModal(false)}
+                openLogMaterialModal={showLogMaterialModal}
+                onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
+                openMarkFloorClearedModal={showMarkFloorClearedModal}
+                onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
+              />
+            </div>
           )}
         </>
       )}
@@ -973,6 +1000,208 @@ export function GroupView() {
       </Modal>
 
       {/* Keyboard Shortcuts Help is now rendered in Layout.tsx for global access */}
+
+      {/* Mobile Controls Sheet - tab-aware */}
+      <Modal
+        isOpen={showControlsSheet}
+        onClose={() => setShowControlsSheet(false)}
+        title={
+          pageMode === 'players' ? 'Roster Controls' :
+          pageMode === 'loot' ? 'Loot Controls' :
+          pageMode === 'history' ? 'Log Controls' :
+          'Controls'
+        }
+        variant="sheet"
+      >
+        <div className="space-y-4">
+          {/* Tier Selector - shown for all tabs */}
+          {tiers.length > 0 && (
+            <div>
+              <div className="text-sm text-text-muted mb-2">Raid Tier</div>
+              <TierSelector
+                tiers={tiers}
+                currentTierId={currentTier?.tierId}
+                onTierChange={(tierId) => {
+                  handleTierChange(tierId);
+                  setShowControlsSheet(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Roster Tab Controls */}
+          {pageMode === 'players' && (
+            <>
+              {/* Sort */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Sort By</div>
+                <SortModeSelector
+                  sortPreset={sortPreset}
+                  onPresetChange={(preset) => {
+                    setSortPresetWithTier(preset);
+                  }}
+                />
+              </div>
+
+              {/* Group View */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Group View</div>
+                <GroupViewToggle
+                  enabled={groupView}
+                  onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                  disabled={!hasPositionData}
+                />
+              </div>
+
+              {/* Subs Toggle */}
+              {hasSubstitutes && (
+                <div>
+                  <div className="text-sm text-text-muted mb-2">Substitutes</div>
+                  {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                  <button
+                    onClick={() => {
+                      setSubsView(!subsView);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                      subsView
+                        ? 'bg-accent/20 text-accent border-accent/50'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    <span>{subsView ? 'Show Subs Separately' : 'Show Subs with Roster'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* View Mode - hidden on mobile (floating toggle used instead) */}
+              <div className="hidden md:block">
+                <div className="text-sm text-text-muted mb-2">View Mode</div>
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
+            </>
+          )}
+
+          {/* Loot Tab Controls */}
+          {pageMode === 'loot' && (
+            <>
+              {/* Sub-tab selector */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">View</div>
+                <div className="flex flex-col gap-2">
+                  {/* design-system-ignore: Sub-tab toggle buttons with specific styling */}
+                  <button
+                    onClick={() => {
+                      setLootSubTab('matrix');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'matrix'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Who Needs It
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLootSubTab('gear');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'gear'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Gear Priority
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLootSubTab('weapon');
+                      setShowControlsSheet(false);
+                    }}
+                    className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                      lootSubTab === 'weapon'
+                        ? 'bg-accent text-accent-contrast border-accent'
+                        : 'bg-surface-raised border-border-default text-text-secondary'
+                    }`}
+                  >
+                    Weapon Priority
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Log Tab Controls */}
+          {pageMode === 'history' && canManageRoster(userRole) && (
+            <>
+              {/* Reset Data Actions */}
+              <div>
+                <div className="text-sm text-text-muted mb-2">Reset Data</div>
+                <div className="flex flex-col gap-2">
+                  {/* design-system-ignore: Danger action buttons require specific styling */}
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-loot'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border bg-surface-raised border-border-default text-text-secondary hover:border-status-error/50 hover:text-status-error"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset Loot Log
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-books'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border bg-surface-raised border-border-default text-text-secondary hover:border-status-error/50 hover:text-status-error"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Reset Book Balances
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('log:reset-all'));
+                      setShowControlsSheet(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors border bg-status-error/10 border-status-error/40 text-status-error hover:bg-status-error/20 hover:border-status-error/60"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset All Data
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Mobile Floating View Toggle (Roster tab) */}
+      <RosterViewToggle
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        visible={isSmallScreen && pageMode === 'players' && !!currentTier}
+      />
+
+      {/* Mobile bottom navigation */}
+      {currentTier && (
+        <MobileBottomNav
+          activeTab={pageMode}
+          onTabChange={setPageMode}
+          onControlsClick={() => setShowControlsSheet(true)}
+        />
+      )}
     </div>
   );
 }

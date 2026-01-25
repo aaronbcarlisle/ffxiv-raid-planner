@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
+import { useDevice } from '../../hooks/useDevice';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,6 +10,10 @@ interface ModalProps {
   title: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl'; // sm=24rem, md=28rem (default), lg=32rem, xl=36rem, 2xl=42rem, 3xl=48rem, 4xl=56rem, 5xl=64rem
+  /** Display variant - 'dialog' (centered) or 'sheet' (slides up from bottom). Auto-selects based on screen size if not specified. */
+  variant?: 'dialog' | 'sheet';
+  /** Optional sticky footer content */
+  footer?: React.ReactNode;
 }
 
 // Get all focusable elements within a container
@@ -35,9 +40,13 @@ const SIZE_CLASSES = {
   '5xl': 'max-w-5xl',
 };
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const { isSmallScreen } = useDevice();
+
+  // Auto-select variant based on screen size if not specified
+  const effectiveVariant = variant ?? (isSmallScreen ? 'sheet' : 'dialog');
 
   // Handle keyboard events - escape to close, tab for focus trap
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -130,10 +139,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   const sizeClass = SIZE_CLASSES[size];
 
+  // Variant-specific classes
+  const isSheet = effectiveVariant === 'sheet';
+  const containerClasses = isSheet
+    ? 'fixed left-0 right-0 bottom-0 max-h-[85dvh] rounded-t-xl animate-slide-up'
+    : `relative max-h-[90vh] rounded-lg ${sizeClass}`;
+
   // Use portal to render at document body level, preventing inherited styles (opacity, transforms)
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className={`fixed inset-0 z-50 flex ${isSheet ? 'items-end' : 'items-center'} justify-center bg-black/80 ${isSheet ? '' : 'p-4'}`}
       onClick={handleBackdropEvent}
       onContextMenu={handleBackdropEvent}
     >
@@ -143,8 +158,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className={`bg-surface-card border border-border-default rounded-lg w-full ${sizeClass} max-h-[90vh] flex flex-col focus:outline-none`}
+        className={`bg-surface-card border border-border-default w-full flex flex-col focus:outline-none ${containerClasses}`}
       >
+        {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
           <IconButton
@@ -154,7 +170,25 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             aria-label="Close modal"
           />
         </div>
-        <div className="p-6 overflow-y-auto overflow-x-hidden flex-1">{children}</div>
+
+        {/* Content - scrollable, with overscroll-contain to prevent bounce effect */}
+        {/* For sheet modals without footer, add bottom safe-area padding to clear home indicator */}
+        <div
+          className="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+          style={isSheet && !footer ? { paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+        >
+          {children}
+        </div>
+
+        {/* Footer - sticky with extra bottom padding for sheet variant to clear home indicator */}
+        {footer && (
+          <div
+            className="border-t border-border-default p-4 flex-shrink-0"
+            style={isSheet ? { paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body

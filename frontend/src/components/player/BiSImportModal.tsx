@@ -474,8 +474,37 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
 
   const selectedPreset = selectedPresetIndex !== '' ? presets[parseInt(selectedPresetIndex, 10)] : null;
 
+  // Footer buttons based on current state
+  const footer = state === 'loading' ? undefined : (
+    <div className="flex gap-3">
+      <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
+        Cancel
+      </Button>
+      {state === 'input' && (
+        <Button
+          type="button"
+          onClick={handlePreview}
+          disabled={selectedPresetIndex === '' && !inputValue.trim()}
+          className="flex-1"
+        >
+          Preview
+        </Button>
+      )}
+      {state === 'error' && (
+        <Button type="button" onClick={() => setState('input')} className="flex-1">
+          Try Again
+        </Button>
+      )}
+      {state === 'preview' && (
+        <Button type="button" onClick={handleImport} className="flex-1">
+          Import
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} footer={footer}>
       {state === 'input' && (
         <div className="space-y-4">
           {/* Preset dropdown */}
@@ -568,20 +597,6 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               </p>
             )}
           </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handlePreview}
-              disabled={selectedPresetIndex === '' && !inputValue.trim()}
-              className="flex-1"
-            >
-              Preview
-            </Button>
-          </div>
         </div>
       )}
 
@@ -595,14 +610,6 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       {state === 'error' && (
         <div className="space-y-4">
           <ErrorBox message={error || 'An error occurred'} />
-          <div className="flex gap-3">
-            <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button type="button" onClick={() => setState('input')} className="flex-1">
-              Try Again
-            </Button>
-          </div>
         </div>
       )}
 
@@ -705,16 +712,6 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                 label='Reset "Have" status for changed slots'
               />
             )}
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <Button type="button" variant="secondary" onClick={handleClose} className="flex-1">
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleImport} className="flex-1">
-                Import
-              </Button>
-            </div>
           </div>
         </TooltipProvider>
       )}

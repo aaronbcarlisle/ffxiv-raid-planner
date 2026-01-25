@@ -7,7 +7,7 @@
 
 import { GearTable } from './GearTable';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
-import { Tooltip, TooltipProvider } from '../primitives';
+import { LongPressTooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer, GearSlot } from '../../types';
 import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, BIS_SOURCE_NAMES } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
@@ -70,8 +70,8 @@ export function PlayerCardGear({
   // Compact mode - gear icons row
   return (
     <TooltipProvider>
-      <div className="px-3 py-2 border-t border-border-default">
-        <div className="flex items-center justify-between gap-1">
+      <div className="px-3 py-2 sm:py-2 border-t border-border-default">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-1">
           {SLOT_ORDER.map((slotKey) => {
             const slotData = gear.find((g) => g.slot === slotKey);
             if (!slotData) return null;
@@ -105,6 +105,7 @@ export function PlayerCardGear({
                 bisSource={slotData.bisSource}
                 hasItem={slotData.hasItem}
                 isAugmented={slotData.isAugmented}
+                materia={slotData.materia}
               />
             ) : (
               // Fallback for items without metadata
@@ -123,7 +124,7 @@ export function PlayerCardGear({
             );
 
             return (
-              <Tooltip
+              <LongPressTooltip
                 key={slotKey}
                 content={tooltipContent}
                 side="top"
@@ -133,7 +134,7 @@ export function PlayerCardGear({
                   <img
                     src={iconUrl}
                     alt={slotData.slot}
-                    className={`w-5 h-5 transition-all ${
+                    className={`w-6 h-6 sm:w-5 sm:h-5 transition-all ${
                       slotData.itemIcon
                         ? // Actual item icon styling
                           isComplete
@@ -157,7 +158,7 @@ export function PlayerCardGear({
                     <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-status-warning" />
                   )}
                 </div>
-              </Tooltip>
+              </LongPressTooltip>
             );
           })}
         </div>

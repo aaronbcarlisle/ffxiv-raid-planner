@@ -281,10 +281,30 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} title={modalTitle} size="4xl">
-        <div className="space-y-6">
-          {/* Progress indicator */}
-          <WizardProgress currentStep={state.step} />
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={modalTitle}
+        size="4xl"
+        footer={state.step !== 4 ? (
+          <WizardNavigation
+            ref={nextButtonRef}
+            currentStep={state.step}
+            canProceed={canProceedFromStep(state.step)}
+            isSubmitting={isSubmitting}
+            isCreated={isCreated}
+            onBack={handleBack}
+            onNext={handleNext}
+            onSubmit={handleSubmit}
+            onFinish={handleFinish}
+          />
+        ) : undefined}
+      >
+        <div className="space-y-4">
+          {/* Progress indicator - sticky at top with pseudo-element extending up to cover padding gap */}
+          <div className="sticky top-0 z-10 pt-2 pb-3 mb-2 border-b border-border-default bg-surface-card relative before:content-[''] before:absolute before:-top-8 before:left-0 before:right-0 before:h-8 before:bg-surface-card">
+            <WizardProgress currentStep={state.step} />
+          </div>
 
           {/* Step content */}
           {state.step === 1 && (
@@ -325,20 +345,8 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
             />
           )}
 
-          {/* Navigation - hidden on share step (step 4) */}
-          {state.step !== 4 && (
-            <WizardNavigation
-              ref={nextButtonRef}
-              currentStep={state.step}
-              canProceed={canProceedFromStep(state.step)}
-              isSubmitting={isSubmitting}
-              isCreated={isCreated}
-              onBack={handleBack}
-              onNext={handleNext}
-              onSubmit={handleSubmit}
-              onFinish={handleFinish}
-            />
-          )}
+          {/* Bottom spacer for breathing room before footer - mobile only */}
+          <div className="h-8 sm:h-0" />
         </div>
       </Modal>
 

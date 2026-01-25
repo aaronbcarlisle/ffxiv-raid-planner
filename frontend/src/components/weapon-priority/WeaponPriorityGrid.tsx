@@ -29,6 +29,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import type { WeaponPriority } from '../../types';
 import { JobIcon, Checkbox } from '../ui';
 import { RAID_JOBS } from '../../gamedata/jobs';
+import { useDevice } from '../../hooks/useDevice';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface WeaponPriorityGridProps {
   weaponPriorities: WeaponPriority[];
@@ -43,13 +45,17 @@ interface SortableItemProps {
   id: string;
   priority: WeaponPriority;
   index: number;
+  totalItems: number;
   isMainJob: boolean;
   disabled: boolean;
   showInsertBefore: boolean;
   showInsertAfter: boolean;
   showSwap: boolean;
+  isSmallScreen: boolean;
   onRemove: () => void;
   onToggleReceived: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }
 
 interface ItemContentProps {
@@ -112,13 +118,14 @@ function ItemContent({
         )}
       </div>
 
-      {/* Received checkbox with label */}
+      {/* Received checkbox with label - label hidden on mobile */}
       <Checkbox
         checked={priority.received}
         onChange={() => onToggleReceived?.()}
         disabled={disabled || isDragOverlay}
-        label="Received"
+        label={<span className="hidden sm:inline">Received</span>}
         className="gap-1.5"
+        aria-label="Received"
       />
 
       {/* Remove button - always visible */}
@@ -143,13 +150,17 @@ function SortableGridItem({
   id,
   priority,
   index,
+  totalItems,
   isMainJob,
   disabled,
   showInsertBefore,
   showInsertAfter,
   showSwap,
+  isSmallScreen,
   onRemove,
   onToggleReceived,
+  onMoveUp,
+  onMoveDown,
 }: SortableItemProps) {
   const {
     attributes,
@@ -165,25 +176,49 @@ function SortableGridItem({
         <div className="absolute -top-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
 
-      <div
-        ref={setNodeRef}
-        data-droppable-id={id}
-        {...attributes}
-        {...listeners}
-        className={`flex items-center gap-2 px-3 py-2.5 bg-surface-elevated border rounded overflow-hidden transition-all duration-150 ${
-          isDragging ? 'opacity-30' : ''
-        } ${disabled ? 'cursor-not-allowed' : ''} ${
-          showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'
-        }`}
-      >
-        <ItemContent
-          priority={priority}
-          index={index}
-          isMainJob={isMainJob}
-          disabled={disabled}
-          onRemove={onRemove}
-          onToggleReceived={onToggleReceived}
-        />
+      <div className="flex items-center gap-1">
+        {/* Mobile move buttons - shown on touch devices */}
+        {isSmallScreen && !disabled && (
+          <div className="flex flex-col gap-0.5 flex-shrink-0">
+            <button
+              onClick={onMoveUp}
+              disabled={index === 0}
+              className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Move up"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={index === totalItems - 1}
+              className="p-1 rounded hover:bg-surface-hover text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Move down"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        <div
+          ref={setNodeRef}
+          data-droppable-id={id}
+          {...attributes}
+          {...listeners}
+          className={`flex-1 flex items-center gap-2 px-3 py-2.5 bg-surface-elevated border rounded overflow-hidden transition-all duration-150 ${
+            isDragging ? 'opacity-30' : ''
+          } ${disabled ? 'cursor-not-allowed' : ''} ${
+            showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'
+          }`}
+        >
+          <ItemContent
+            priority={priority}
+            index={index}
+            isMainJob={isMainJob}
+            disabled={disabled}
+            onRemove={onRemove}
+            onToggleReceived={onToggleReceived}
+          />
+        </div>
       </div>
 
       {/* Insert indicator - horizontal line below */}
@@ -206,6 +241,8 @@ export function WeaponPriorityGrid({
   onMainJobMoveAttempt,
   onAddJobsClick,
 }: WeaponPriorityGridProps) {
+  // Lift useDevice to parent level to avoid calling per row
+  const { isSmallScreen } = useDevice();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dropMode, setDropMode] = useState<DropMode>(null);
@@ -355,6 +392,44 @@ export function WeaponPriorityGrid({
     onChange(updated);
   };
 
+  // Mobile move handlers
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+
+    // Check if moving main job out of position 0
+    if (mainJob && index === 1 && weaponPriorities[0].job === mainJob) {
+      // Moving item at index 1 up would push main job down
+      if (onMainJobMoveAttempt) {
+        onMainJobMoveAttempt(() => {
+          const reordered = arrayMove(weaponPriorities, index, index - 1);
+          onChange(reordered);
+        });
+        return;
+      }
+    }
+
+    const reordered = arrayMove(weaponPriorities, index, index - 1);
+    onChange(reordered);
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= weaponPriorities.length - 1) return;
+
+    // Check if moving main job out of position 0
+    if (mainJob && index === 0 && weaponPriorities[0].job === mainJob) {
+      if (onMainJobMoveAttempt) {
+        onMainJobMoveAttempt(() => {
+          const reordered = arrayMove(weaponPriorities, index, index + 1);
+          onChange(reordered);
+        });
+        return;
+      }
+    }
+
+    const reordered = arrayMove(weaponPriorities, index, index + 1);
+    onChange(reordered);
+  };
+
   // Split items into columns (max 8 per column) for top-down ordering
   const ITEMS_PER_COLUMN = 8;
   const columns: WeaponPriority[][] = [];
@@ -369,12 +444,12 @@ export function WeaponPriorityGrid({
   const activeItem = activeId ? weaponPriorities.find((wp) => wp.job === activeId) : null;
   const activeIndex = activeId ? weaponPriorities.findIndex((wp) => wp.job === activeId) : -1;
 
-  // Dynamic grid class based on actual number of columns (not viewport-based)
+  // Responsive grid class - single column on mobile, dynamic on larger screens
   const gridColsClass = columns.length <= 1
     ? 'grid-cols-1'
     : columns.length === 2
-    ? 'grid-cols-2'
-    : 'grid-cols-3';
+    ? 'grid-cols-1 sm:grid-cols-2'
+    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
 
   return (
     <DndContext
@@ -408,13 +483,17 @@ export function WeaponPriorityGrid({
                       id={priority.job}
                       priority={priority}
                       index={actualIndex}
+                      totalItems={weaponPriorities.length}
                       isMainJob={priority.job === mainJob}
                       disabled={disabled}
                       showInsertBefore={isOver && dropMode === 'insert-before'}
                       showInsertAfter={isOver && dropMode === 'insert-after'}
                       showSwap={isOver && dropMode === 'swap'}
+                      isSmallScreen={isSmallScreen}
                       onRemove={() => handleRemove(actualIndex)}
                       onToggleReceived={() => handleToggleReceived(actualIndex)}
+                      onMoveUp={() => handleMoveUp(actualIndex)}
+                      onMoveDown={() => handleMoveDown(actualIndex)}
                     />
                   );
                 })}

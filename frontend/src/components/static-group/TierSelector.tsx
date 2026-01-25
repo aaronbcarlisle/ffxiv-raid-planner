@@ -6,6 +6,7 @@
  * with older tiers in a "Previous Tiers" submenu.
  */
 
+import { useState } from 'react';
 import { History } from 'lucide-react';
 import { getTierById, RAID_TIERS } from '../../gamedata';
 import type { TierSnapshot } from '../../types';
@@ -18,7 +19,6 @@ import {
   DropdownSubContent,
   DropdownSubTrigger,
   DropdownTrigger,
-  Tooltip,
 } from '../primitives';
 
 interface TierSelectorProps {
@@ -32,6 +32,8 @@ export function TierSelector({
   currentTierId,
   onTierChange,
 }: TierSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   // Get current tier info (currently selected in the UI)
   const selectedTier = tiers.find((t) => t.tierId === currentTierId);
   const selectedTierInfo = selectedTier ? getTierById(selectedTier.tierId) : null;
@@ -67,73 +69,42 @@ export function TierSelector({
   // If only one tier exists, just show the current tier name without dropdown
   if (tiers.length === 1) {
     return (
-      <Tooltip
-        content={
-          <div>
-            <div className="font-medium">Current Raid Tier</div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              {selectedTierInfo?.name || currentTierId || 'No tier selected'}
-            </div>
-          </div>
-        }
-      >
-        <div className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded cursor-help">
-          <span className="text-text-primary text-sm">
-            {selectedTierInfo?.name || currentTierId || 'Select Tier'}
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
-            Current
-          </span>
-        </div>
-      </Tooltip>
+      <div className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded">
+        <span className="text-text-primary text-sm">
+          {selectedTierInfo?.name || currentTierId || 'Select Tier'}
+        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+          Current
+        </span>
+      </div>
     );
   }
 
   return (
-    <Dropdown>
-      <Tooltip
-        content={
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              Switch Raid Tier
-              <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt</kbd>
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">[</kbd>
-                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">]</kbd>
-              </span>
-            </div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              Click to switch or use shortcuts to cycle
-            </div>
-          </div>
-        }
-      >
-        <span className="inline-flex">
-          <DropdownTrigger>
-            {/* design-system-ignore: Dropdown trigger requires native button with Select-like styling */}
-            <button
-              className="inline-flex items-center justify-between gap-2 px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm hover:border-border-subtle focus-visible:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base transition-colors"
-            >
-              <span className="text-text-primary">
-                {selectedTierInfo?.name || currentTierId || 'Select Tier'}
-              </span>
-              {selectedTier?.tierId === mostRecentTier?.tierId && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
-                  Current
-                </span>
-              )}
-              <svg
-                className="w-4 h-4 text-text-muted flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </DropdownTrigger>
-        </span>
-      </Tooltip>
+    <Dropdown open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownTrigger>
+        {/* design-system-ignore: Dropdown trigger requires native button with Select-like styling */}
+        <button
+          className="inline-flex items-center justify-between gap-2 px-4 py-2 bg-surface-elevated border border-border-default rounded-lg text-sm hover:border-border-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base transition-colors"
+        >
+          <span className="text-text-primary">
+            {selectedTierInfo?.name || currentTierId || 'Select Tier'}
+          </span>
+          {selectedTier?.tierId === mostRecentTier?.tierId && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+              Current
+            </span>
+          )}
+          <svg
+            className="w-4 h-4 text-text-muted flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </DropdownTrigger>
 
       <DropdownContent align="start" className="min-w-[220px]">
         {/* Most recent tier - always shown at top */}

@@ -247,10 +247,17 @@ export function AddLootEntryModal({
   }, [itemSlot, editEntry]);
 
   // When filter checkboxes change, ensure selected player is still visible
-  // If not visible, keep selection (they can still submit) but show warning state
+  // Also auto-select first visible if no player is currently selected
   useEffect(() => {
     if (editEntry) return;
-    if (!recipientPlayerId) return;
+
+    if (!recipientPlayerId) {
+      // No player selected - auto-select first visible
+      if (visibleRecipients.length > 0) {
+        setRecipientPlayerId(visibleRecipients[0].player.id);
+      }
+      return;
+    }
 
     // Check if current selection is in visible list
     const isVisible = visibleRecipients.some(r => r.player.id === recipientPlayerId);
@@ -407,7 +414,7 @@ export function AddLootEntryModal({
         {/* Recipient - sorted by priority */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <Label htmlFor="recipient" className="mb-0">Recipient</Label>
+            <Label htmlFor="recipient" className="mb-0 hidden sm:block">Recipient</Label>
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={includeSubs}

@@ -259,14 +259,14 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
           <Label size="sm" className="mb-0">
             Select Job for: <span className={`text-role-${player.role} font-medium`}>{roleDisplayName}</span>
           </Label>
-          <div ref={jobButtonsRef} className="flex flex-wrap gap-2">
+          <div ref={jobButtonsRef} className="flex flex-wrap gap-2 sm:gap-2">
             {roleJobs.map((jobInfo, idx) => (
               <button
                 key={jobInfo.abbreviation}
                 type="button"
                 onClick={() => handleJobSelect(jobInfo.abbreviation, true)}
                 onKeyDown={(e) => handleJobButtonKeyDown(e, jobInfo.abbreviation)}
-                className={`p-1.5 rounded-lg transition-all ${
+                className={`p-2.5 sm:p-1.5 rounded-lg transition-all ${
                   player.job === jobInfo.abbreviation
                     ? `${bgColor} ring-2 ${ringColor}`
                     : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
@@ -281,7 +281,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
             <button
               type="button"
               onClick={handleOpenJobPicker}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-2.5 sm:p-1.5 rounded-lg transition-all ${
                 showJobPicker
                   ? `ring-2 ${ringColor}`
                   : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'

@@ -68,8 +68,8 @@ function FloorFilterBar({
     : [1, 2, 3, 4];
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-text-muted min-w-[2.5rem]">{label}</span>
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline">{label}</span>
       {floorNumbers.map((floor) => {
         const isSelected = selectedFloor === floor;
         const floorColors = floor !== 'all' ? FLOOR_COLORS[floor] : null;
@@ -84,10 +84,10 @@ function FloorFilterBar({
             aria-label={floor === 'all' ? 'Show all floors' : `Filter by Floor ${floor}`}
             aria-pressed={isSelected}
             className={`
-              px-3 py-1.5 rounded text-xs font-bold transition-colors border
+              flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isSelected
                 ? floor === 'all'
-                  ? 'bg-accent text-accent-contrast border-accent'
+                  ? 'bg-accent/10 text-accent border-accent/30'
                   : `${floorColors?.bg} ${floorColors?.text} ${floorColors?.border}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }
@@ -101,6 +101,15 @@ function FloorFilterBar({
   );
 }
 
+// Single-letter labels for mobile
+const ROLE_LABELS_SINGLE: Record<string, string> = {
+  tank: 'T',
+  healer: 'H',
+  melee: 'M',
+  ranged: 'R',
+  caster: 'C',
+};
+
 function RoleFilterBar({
   roleFilters = ROLE_FILTERS,
   visibleRoles,
@@ -109,8 +118,8 @@ function RoleFilterBar({
   label = 'Show:',
 }: Omit<RoleFilterProps, 'type'>) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-text-muted min-w-[2.5rem]">{label}</span>
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline">{label}</span>
       {roleFilters.map((role) => {
         // Skip roles that should be hidden (e.g., no jobs in that role)
         if (hiddenRoles?.has(role.id)) return null;
@@ -123,14 +132,15 @@ function RoleFilterBar({
             onClick={() => onRoleToggle(role.id)}
             aria-pressed={isVisible}
             className={`
-              px-3 py-1.5 rounded text-xs font-bold transition-colors border
+              flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 min-h-[44px] sm:min-h-0 rounded text-xs font-bold transition-colors border
               ${isVisible
                 ? `${role.bgColor} ${role.textColor} ${role.borderColor}`
                 : 'border-transparent bg-surface-interactive text-text-secondary hover:text-text-primary'
               }
             `}
           >
-            {role.label}
+            <span className="sm:hidden">{ROLE_LABELS_SINGLE[role.id] || role.label[0]}</span>
+            <span className="hidden sm:inline">{role.label}</span>
           </button>
         );
       })}

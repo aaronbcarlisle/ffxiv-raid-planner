@@ -75,7 +75,6 @@ import {
   Swords, Sword, ShieldHalf, Wand, Wand2, Book, BookOpen, BookMarked, Scroll, Gem, Coins, Package, Gift, Box, Layers,
   // Misc UI
   LogIn, LogOut, Home, Circle, Square, Triangle, Hash, AtSign, Percent, BarChart, BarChart2, PieChart, TrendingUp, TrendingDown,
-  Palette,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -2026,16 +2025,11 @@ export function DesignSystem() {
             <span>/</span>
             <span className="text-text-secondary">Design System</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Palette className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Design System</h1>
-              <p className="text-text-secondary mt-1">
-                FFXIV Raid Planner visual reference guide - v2.7.0
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Design System</h1>
+            <p className="text-text-secondary mt-1">
+              FFXIV Raid Planner visual reference guide - v2.7.0
+            </p>
           </div>
         </div>
       </header>

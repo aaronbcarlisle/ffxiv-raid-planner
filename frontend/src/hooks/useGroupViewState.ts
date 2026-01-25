@@ -176,6 +176,14 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Wrapper to persist pageMode and update URL
   const setPageMode = useCallback((mode: PageMode) => {
     setPageModeState(mode);
+    // Reset scroll position when switching tabs (prevents scroll bleed between tabs)
+    // Use main element (which has overflow-y-auto) if it exists, fallback to window
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo(0, 0);
+    } else {
+      window.scrollTo(0, 0);
+    }
     try {
       localStorage.setItem('group-view-tab', mode);
     } catch {

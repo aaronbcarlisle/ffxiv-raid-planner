@@ -6,7 +6,9 @@
  */
 
 import { memo } from 'react';
+import { Link2, Pencil, Trash2 } from 'lucide-react';
 import { Tooltip } from '../primitives/Tooltip';
+import { IconButton } from '../primitives/IconButton';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { JobIcon } from '../ui/JobIcon';
@@ -113,32 +115,35 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
             {formatDate(entry.createdAt)}
           </div>
         </div>
-        <div className="flex items-center gap-3 ml-4">
+        <div className="flex items-center gap-1 sm:gap-2 ml-4">
           <Tooltip content="Copy link to this entry">
-            <button
+            <IconButton
+              icon={<Link2 className="w-4 h-4" />}
               onClick={() => onCopyUrl(String(entry.id))}
-              className="text-text-muted hover:text-accent text-sm"
-            >
-              Copy URL
-            </button>
+              variant="ghost"
+              size="sm"
+              aria-label="Copy link to this entry"
+            />
           </Tooltip>
           {canEdit && (
             <>
               <Tooltip content="Edit entry">
-                <button
+                <IconButton
+                  icon={<Pencil className="w-4 h-4" />}
                   onClick={() => onEdit(entry)}
-                  className="text-text-muted hover:text-accent text-sm"
-                >
-                  Edit
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Edit entry"
+                />
               </Tooltip>
               <Tooltip content="Delete entry">
-                <button
+                <IconButton
+                  icon={<Trash2 className="w-4 h-4" />}
                   onClick={() => onDelete(entry)}
-                  className="text-status-error hover:text-status-error/80 text-sm"
-                >
-                  Delete
-                </button>
+                  variant="danger"
+                  size="sm"
+                  aria-label="Delete entry"
+                />
               </Tooltip>
             </>
           )}
@@ -219,32 +224,35 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
             {formatDate(entry.createdAt)}
           </div>
         </div>
-        <div className="flex items-center gap-3 ml-4">
+        <div className="flex items-center gap-1 sm:gap-2 ml-4">
           <Tooltip content="Copy link to this entry">
-            <button
+            <IconButton
+              icon={<Link2 className="w-4 h-4" />}
               onClick={() => onCopyUrl(String(entry.id), 'material')}
-              className="text-text-muted hover:text-accent text-sm"
-            >
-              Copy URL
-            </button>
+              variant="ghost"
+              size="sm"
+              aria-label="Copy link to this entry"
+            />
           </Tooltip>
           {canEdit && (
             <>
               <Tooltip content="Edit entry">
-                <button
+                <IconButton
+                  icon={<Pencil className="w-4 h-4" />}
                   onClick={() => onEdit(entry)}
-                  className="text-text-muted hover:text-accent text-sm"
-                >
-                  Edit
-                </button>
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Edit entry"
+                />
               </Tooltip>
               <Tooltip content="Delete entry">
-                <button
+                <IconButton
+                  icon={<Trash2 className="w-4 h-4" />}
                   onClick={() => onDelete(entry.id)}
-                  className="text-status-error hover:text-status-error/80 text-sm"
-                >
-                  Delete
-                </button>
+                  variant="danger"
+                  size="sm"
+                  aria-label="Delete entry"
+                />
               </Tooltip>
             </>
           )}

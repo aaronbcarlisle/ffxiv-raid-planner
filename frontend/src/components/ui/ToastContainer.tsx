@@ -1,7 +1,9 @@
 /**
  * Toast Container - Fixed position container for toast notifications
  *
- * Displays toasts in bottom-right corner with auto-dismiss.
+ * Mobile: Displays toasts at top (below sticky header) to avoid bottom nav/FABs.
+ * Desktop: Displays toasts in bottom-right corner.
+ * Auto-dismiss after duration.
  */
 
 import { useEffect, useCallback } from 'react';
@@ -66,7 +68,8 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     <div
       className={`
         flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg
-        animate-in slide-in-from-right-full fade-in-0 duration-200
+        backdrop-blur-md sm:backdrop-blur-none
+        animate-in slide-in-from-top-full sm:slide-in-from-right-full fade-in-0 duration-200
         ${TOAST_COLORS[toast.type]}
       `}
       role="alert"
@@ -107,7 +110,7 @@ export function ToastContainer() {
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-md w-full pointer-events-none"
+      className="fixed top-16 sm:top-auto sm:bottom-4 right-4 left-4 sm:left-auto z-[100] flex flex-col gap-2 max-w-md w-auto sm:w-full pointer-events-none"
       aria-live="polite"
       aria-atomic="false"
     >

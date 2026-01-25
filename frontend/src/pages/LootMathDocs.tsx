@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Target } from 'lucide-react';
 import { NavSidebar } from '../components/docs';
 
 // Navigation items grouped by category
@@ -273,16 +272,11 @@ export default function LootMathDocs() {
             <span>/</span>
             <span className="text-text-secondary">Loot & Priority Math</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Target className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Loot & Priority Math</h1>
-              <p className="text-text-secondary mt-1">
-                Understanding how loot priority calculations ensure fair distribution across your static
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Loot & Priority Math</h1>
+            <p className="text-text-secondary mt-1">
+              Understanding how loot priority calculations ensure fair distribution across your static
+            </p>
           </div>
         </div>
       </header>

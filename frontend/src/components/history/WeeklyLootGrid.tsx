@@ -9,7 +9,7 @@
  * - Grid-based item layout
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
@@ -18,6 +18,9 @@ import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
+
+/** Long-press duration in ms for touch devices to trigger context menu */
+const LONG_PRESS_DURATION = 500;
 
 /**
  * Material colors using CSS custom properties for design system compliance
@@ -76,12 +79,6 @@ export function WeeklyLootGrid({
     type: 'loot' | 'material';
   } | null>(null);
 
-  // Filter out substitute players from display
-  const mainRosterPlayers = useMemo(() =>
-    players.filter(p => !p.isSubstitute),
-    [players]
-  );
-
   // Handle context menu for entries
   const handleContextMenu = useCallback((
     e: React.MouseEvent,
@@ -91,6 +88,72 @@ export function WeeklyLootGrid({
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, entry, type });
+  }, []);
+
+  // Long-press support for touch devices
+  // Note: Uses inline implementation instead of useLongPress hook because handlers need
+  // entry-specific context (entry, type) passed at call-time, which the generic hook doesn't support.
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isMountedRef = useRef(true);
+  const longPressTriggeredRef = useRef(false); // Track if long-press fired to suppress subsequent click
+
+  const handleTouchStart = useCallback((
+    e: React.TouchEvent,
+    entry: LootLogEntry | MaterialLogEntry,
+    type: 'loot' | 'material'
+  ) => {
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      // Only trigger if component is still mounted
+      if (isMountedRef.current) {
+        longPressTriggeredRef.current = true; // Mark that long-press fired
+        setContextMenu({ x: touch.clientX, y: touch.clientY, entry, type });
+      }
+      // Note: Don't clear longPressTimerRef here - cleanup happens in handleTouchEnd/handleTouchCancel/useEffect
+    }, LONG_PRESS_DURATION);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  }, []);
+
+  // Handle touchcancel (e.g., system alerts, browser gestures) same as touchend
+  const handleTouchCancel = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Cancel long-press if user moves finger more than 10px
+    if (touchStartPosRef.current && longPressTimerRef.current) {
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  }, []);
+
+  // Cleanup long-press timer and track mount state
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
   }, []);
 
   // Get context menu items for an entry
@@ -184,34 +247,6 @@ export function WeeklyLootGrid({
     [materialLog, currentWeek]
   );
 
-  // Calculate loot counts per player (main roster only)
-  const playerLootCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    mainRosterPlayers.forEach(p => { counts[p.id] = 0; });
-    weekLootEntries.forEach(e => {
-      if (counts[e.recipientPlayerId] !== undefined) {
-        counts[e.recipientPlayerId]++;
-      }
-    });
-    return counts;
-  }, [mainRosterPlayers, weekLootEntries]);
-
-  // Calculate average for fairness coloring
-  const avgLoot = useMemo(() => {
-    const values = Object.values(playerLootCounts);
-    return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-  }, [playerLootCounts]);
-
-  /**
-   * Get loot style based on count vs average
-   * Uses CSS custom properties for design system compliance
-   */
-  const getLootCountStyle = (count: number) => {
-    if (count > avgLoot + 1) return { color: 'var(--color-status-info)', label: 'Most' };
-    if (count < avgLoot - 1) return { color: 'var(--color-status-warning)', label: 'Least' };
-    return { color: 'var(--color-text-secondary)', label: 'Average' };
-  };
-
   // Get player by ID
   const getPlayerById = (playerId: string): SnapshotPlayer | undefined => {
     return players.find(p => p.id === playerId);
@@ -253,11 +288,11 @@ export function WeeklyLootGrid({
     return (
       <div className="group flex items-center gap-1">
         <div
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all whitespace-nowrap"
           style={{
             color: roleColor,
-            backgroundColor: `${roleColor}15`,
-            border: `1px solid ${roleColor}30`,
+            backgroundColor: `color-mix(in srgb, ${roleColor} 15%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${roleColor} 30%, transparent)`,
           }}
         >
           {player && <JobIcon job={player.job} size="xs" />}
@@ -357,41 +392,22 @@ export function WeeklyLootGrid({
     },
   ];
 
+  // Stop touch events from propagating to parent swipe handlers (e.g., tab navigation)
+  const handleGridTouchStart = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleGridTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+  }, []);
+
   return (
-    <div className="space-y-4">
-      {/* Loot Count Summary Bar */}
-      <div className="flex gap-2 p-3 bg-surface-card rounded-lg border border-border-default overflow-x-clip">
-        {mainRosterPlayers.map(player => {
-          const count = playerLootCounts[player.id] || 0;
-          const style = getLootCountStyle(count);
-          const roleColor = getRoleColor(getValidRole(player.role));
-
-          return (
-            <div
-              key={player.id}
-              className="flex-1 min-w-[80px] text-center p-2 bg-surface-elevated rounded-lg border border-border-subtle"
-            >
-              <div
-                className="text-[10px] font-semibold mb-0.5"
-                style={{ color: roleColor }}
-              >
-                {player.position || player.role.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="text-[10px] text-text-muted truncate">{player.name}</div>
-              <div className="text-xl font-bold" style={{ color: style.color }}>
-                {count}
-              </div>
-              <div className="text-[9px] text-text-muted uppercase">drops</div>
-            </div>
-          );
-        })}
-      </div>
-
+    <div className="space-y-4 w-full">
       {/* Main Grid */}
-      <div className="bg-surface-card rounded-lg border border-border-default overflow-hidden">
+      <div className="bg-surface-card rounded-lg border border-border-default w-full">
         {floorConfigs.map((floor, floorIdx) => (
           <div key={floor.number}>
-            {/* Floor Header */}
+            {/* Floor Header - stays fixed, doesn't scroll */}
             <div
               className="flex items-center px-4 py-2.5"
               style={{
@@ -411,15 +427,19 @@ export function WeeklyLootGrid({
               </div>
             </div>
 
-            {/* Loot Row */}
-            <div className="flex border-b border-border-subtle">
-              {/* Label */}
-              <div className="w-16 shrink-0 px-3 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base">
+            {/* Loot Row - horizontally scrollable on mobile, wrapping grid on desktop */}
+            <div
+              className="flex border-b border-border-subtle sm:overflow-visible overflow-x-auto"
+              onTouchStart={handleGridTouchStart}
+              onTouchEnd={handleGridTouchEnd}
+            >
+              {/* Label - sticky on left for mobile scroll */}
+              <div className="w-14 shrink-0 px-2 py-2 text-[10px] font-semibold text-text-muted uppercase bg-surface-base sm:static sticky left-0 z-10">
                 Loot
               </div>
 
-              {/* Item columns */}
-              <div className="flex-1 flex flex-wrap">
+              {/* Item columns - flex-nowrap for mobile horizontal scroll, flex-wrap for desktop grid */}
+              <div className="flex flex-nowrap sm:flex-wrap flex-1">
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
@@ -432,7 +452,7 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[100px] flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[120px] shrink-0 sm:shrink sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
@@ -440,6 +460,11 @@ export function WeeklyLootGrid({
                         }
                       }}
                       onClick={(e) => {
+                        // Suppress click if this was a long-press that opened context menu
+                        if (longPressTriggeredRef.current) {
+                          longPressTriggeredRef.current = false;
+                          return;
+                        }
                         // Shift+Click copies entry URL
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
                           e.preventDefault();
@@ -472,6 +497,10 @@ export function WeeklyLootGrid({
                         }
                       } : undefined}
                       onContextMenu={lootEntry ? (e) => handleContextMenu(e, lootEntry, 'loot') : undefined}
+                      onTouchStart={lootEntry ? (e) => handleTouchStart(e, lootEntry, 'loot') : undefined}
+                      onTouchEnd={lootEntry ? handleTouchEnd : undefined}
+                      onTouchCancel={lootEntry ? handleTouchCancel : undefined}
+                      onTouchMove={lootEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
                     >
@@ -538,7 +567,7 @@ export function WeeklyLootGrid({
                     <div
                       key={mat.type}
                       id={matEntry ? `material-entry-${matEntry.id}` : undefined}
-                      className={`min-w-[90px] px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`min-w-[120px] shrink-0 sm:shrink sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-default bg-surface-base hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isMatHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {
@@ -546,6 +575,11 @@ export function WeeklyLootGrid({
                         }
                       }}
                       onClick={(e) => {
+                        // Suppress click if this was a long-press that opened context menu
+                        if (longPressTriggeredRef.current) {
+                          longPressTriggeredRef.current = false;
+                          return;
+                        }
                         // Shift+Click copies entry URL
                         if (e.shiftKey && matEntry && onCopyEntryUrl) {
                           e.preventDefault();
@@ -578,6 +612,10 @@ export function WeeklyLootGrid({
                         }
                       } : undefined}
                       onContextMenu={matEntry ? (e) => handleContextMenu(e, matEntry, 'material') : undefined}
+                      onTouchStart={matEntry ? (e) => handleTouchStart(e, matEntry, 'material') : undefined}
+                      onTouchEnd={matEntry ? handleTouchEnd : undefined}
+                      onTouchCancel={matEntry ? handleTouchCancel : undefined}
+                      onTouchMove={matEntry ? handleTouchMove : undefined}
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
                     >

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Target, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { LinkCard, NavSidebar } from '../components/docs';
 
 // Navigation items
@@ -214,14 +214,9 @@ export default function UnderstandingPriority() {
             <span>/</span>
             <span className="text-text-secondary">Understanding Priority</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Target className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Understanding Priority</h1>
-              <p className="text-text-secondary mt-1">How loot distribution works</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Understanding Priority</h1>
+            <p className="text-text-secondary mt-1">How loot distribution works</p>
           </div>
         </div>
       </header>

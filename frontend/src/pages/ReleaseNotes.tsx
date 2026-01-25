@@ -246,7 +246,7 @@ function VersionNav({
   };
 
   return (
-    <nav className="sticky top-16 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
+    <nav className="sticky top-0 w-48 shrink-0 hidden lg:block self-start h-fit z-30">
       <div className="relative bg-surface-card border border-border-subtle rounded-lg">
         <div
           className={`
@@ -259,7 +259,7 @@ function VersionNav({
 
         <div
           ref={scrollContainerRef}
-          className="p-3 max-h-[calc(100vh-8rem)] overflow-y-auto scrollbar-thin"
+          className="p-3 max-h-[calc(100dvh-8rem)] overflow-y-auto scrollbar-thin"
         >
           {/* Recent Versions */}
           <div className="text-[9px] font-semibold text-text-muted/70 uppercase tracking-[0.1em] mb-2 px-1">
@@ -761,14 +761,9 @@ export default function ReleaseNotes() {
             <span>/</span>
             <span className="text-text-secondary">Release Notes</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Release Notes</h1>
-              <p className="text-text-secondary mt-1">What's new in FFXIV Raid Planner</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Release Notes</h1>
+            <p className="text-text-secondary mt-1">What's new in FFXIV Raid Planner</p>
           </div>
         </div>
       </header>

@@ -112,55 +112,59 @@ export function WeekSelector({
   const canRevertWeek = onRevertWeek && calculatedCurrentWeek > 1;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5 sm:gap-3 justify-between sm:justify-center w-full sm:w-auto">
       {/* Revert Week button - shown to the left when week has been advanced */}
       {canRevertWeek && (
-        <Tooltip
-          content={
-            <div className="flex items-start gap-2 max-w-xs">
-              <RotateCcw className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="font-medium">Revert Week</div>
-                <div className="text-text-secondary text-xs mt-0.5">
-                  Moves the week calculation back by one week. Use this to undo an accidental "Start Next Week". Your logged data stays intact.
+        <span className="flex-shrink-0">
+          <Tooltip
+            content={
+              <div className="flex items-start gap-2 max-w-xs">
+                <RotateCcw className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Revert Week</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Moves the week calculation back by one week. Use this to undo an accidental "Start Next Week". Your logged data stays intact.
+                  </div>
                 </div>
               </div>
+            }
+          >
+            <IconButton
+              aria-label="Revert to previous week"
+              icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin text-status-warning" /> : <RotateCcw className="w-4 h-4 text-status-warning" />}
+              size="sm"
+              onClick={onRevertWeek}
+              disabled={disabled || isRevertingWeek}
+              className="bg-status-warning/20 border-status-warning/30 text-status-warning hover:bg-status-warning/30"
+            />
+          </Tooltip>
+        </span>
+      )}
+
+      <span className="flex-shrink-0">
+        <Tooltip
+          content={
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                Previous Week
+                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">←</kbd>
+              </div>
+              <div className="text-text-secondary text-xs mt-0.5">Navigate to the previous week</div>
             </div>
           }
         >
-          <IconButton
-            aria-label="Revert to previous week"
-            icon={isRevertingWeek ? <Loader2 className="w-4 h-4 animate-spin text-status-warning" /> : <RotateCcw className="w-4 h-4 text-status-warning" />}
+          <Button
+            variant="secondary"
             size="sm"
-            onClick={onRevertWeek}
-            disabled={disabled || isRevertingWeek}
-            className="bg-status-warning/20 border-status-warning/30 text-status-warning hover:bg-status-warning/30"
-          />
+            onClick={handlePrevWeek}
+            disabled={disabled || prevWeek === null}
+          >
+            ←
+          </Button>
         </Tooltip>
-      )}
+      </span>
 
-      <Tooltip
-        content={
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              Previous Week
-              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">←</kbd>
-            </div>
-            <div className="text-text-secondary text-xs mt-0.5">Navigate to the previous week</div>
-          </div>
-        }
-      >
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handlePrevWeek}
-          disabled={disabled || prevWeek === null}
-        >
-          ←
-        </Button>
-      </Tooltip>
-
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none min-w-0">
         <Tooltip
           content={
             <div>
@@ -173,78 +177,86 @@ export function WeekSelector({
             </div>
           }
         >
-          <span className="text-sm text-text-muted cursor-help">Week</span>
+          <span className="hidden sm:inline text-sm text-text-muted cursor-help flex-shrink-0">Week</span>
         </Tooltip>
-        <Select
-          value={String(currentWeek)}
-          onChange={(value) => onWeekChange(Number(value))}
-          disabled={disabled}
-          options={displayedWeeks.map((week) => ({
-            value: String(week),
-            label: getWeekLabel(week),
-          }))}
-        />
+        <div className="flex-1 sm:flex-none min-w-0">
+          <Select
+            value={String(currentWeek)}
+            onChange={(value) => onWeekChange(Number(value))}
+            disabled={disabled}
+            options={displayedWeeks.map((week) => ({
+              value: String(week),
+              label: getWeekLabel(week),
+            }))}
+          />
+        </div>
       </div>
 
-      <Tooltip
-        content={
-          <div>
-            <div className="flex items-center gap-2 font-medium">
-              Next Week
-              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">→</kbd>
+      <span className="flex-shrink-0">
+        <Tooltip
+          content={
+            <div>
+              <div className="flex items-center gap-2 font-medium">
+                Next Week
+                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">→</kbd>
+              </div>
+              <div className="text-text-secondary text-xs mt-0.5">Navigate to the next week</div>
             </div>
-            <div className="text-text-secondary text-xs mt-0.5">Navigate to the next week</div>
-          </div>
-        }
-      >
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleNextWeek}
-          disabled={disabled || nextWeek === null}
+          }
         >
-          →
-        </Button>
-      </Tooltip>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleNextWeek}
+            disabled={disabled || nextWeek === null}
+          >
+            →
+          </Button>
+        </Tooltip>
+      </span>
 
       {/* Go to Current Week button - shown when viewing a past/future week */}
       {showGoToCurrentWeek && (
-        <Tooltip content={`Go to current week (Week ${calculatedCurrentWeek})`}>
-          <IconButton
-            aria-label={`Go to current week (Week ${calculatedCurrentWeek})`}
-            icon={<Target className="w-4 h-4" />}
-            variant="primary"
-            size="sm"
-            onClick={handleGoToCurrentWeek}
-            disabled={disabled}
-          />
-        </Tooltip>
+        <span className="flex-shrink-0">
+          <Tooltip content={`Go to current week (Week ${calculatedCurrentWeek})`}>
+            <IconButton
+              aria-label={`Go to current week (Week ${calculatedCurrentWeek})`}
+              icon={<Target className="w-4 h-4" />}
+              variant="primary"
+              size="sm"
+              onClick={handleGoToCurrentWeek}
+              disabled={disabled}
+            />
+          </Tooltip>
+        </span>
       )}
 
       {/* Start Next Week button - for manually advancing when auto-calculation is behind */}
       {onStartNextWeek && (
-        <Tooltip
-          content={
-            <div className="flex items-start gap-2 max-w-xs">
-              <Plus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="font-medium">Start Next Week</div>
-                <div className="text-text-secondary text-xs mt-0.5">
-                  Manually advances the week calculation by one week. Use when your raid schedule is ahead of the automatic calculation.
+        <span className="flex-shrink-0">
+          <Tooltip
+            content={
+              <div className="flex items-start gap-2 max-w-xs">
+                <Plus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium">Start Next Week</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Manually advances the week calculation by one week. Use when your raid schedule is ahead of the automatic calculation.
+                  </div>
                 </div>
               </div>
-            </div>
-          }
-        >
-          <IconButton
-            aria-label="Start next week"
-            icon={isStartingNextWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            variant="default"
-            size="sm"
-            onClick={onStartNextWeek}
-            disabled={disabled || isStartingNextWeek}
-          />
-        </Tooltip>
+            }
+          >
+            <IconButton
+              aria-label="Start next week"
+              icon={isStartingNextWeek ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              variant="default"
+              size="sm"
+              onClick={onStartNextWeek}
+              disabled={disabled || isStartingNextWeek}
+            />
+          </Tooltip>
+        </span>
       )}
     </div>
   );

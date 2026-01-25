@@ -7,7 +7,7 @@
  * - Progress (26%+): accent teal
  */
 
-import { Tooltip } from '../primitives/Tooltip';
+import { LongPressTooltip } from '../primitives/LongPressTooltip';
 
 interface ProgressRingProps {
   /** Current value (e.g., 5) */
@@ -65,7 +65,7 @@ export function ProgressRing({
   const colors = getProgressColor(percentage);
 
   return (
-    <Tooltip
+    <LongPressTooltip
       content={
         <span>
           <span className="font-medium">{value}/{max}</span>
@@ -113,7 +113,7 @@ export function ProgressRing({
           </span>
         )}
       </div>
-    </Tooltip>
+    </LongPressTooltip>
   );
 }
 

@@ -138,9 +138,14 @@
 
   /* ================================
      SPACING & SIZING
-     Custom breakpoints
+     Layout dimensions & breakpoints
      ================================ */
   --breakpoint-3xl: 1400px;
+
+  /* Layout dimensions - used for viewport height calculations */
+  --header-height: 56px;        /* Main header bar */
+  --bottom-nav-height: 56px;    /* Mobile bottom navigation */
+  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */
 
   /* Animation durations */
   --duration-fast: 150ms;
@@ -148,16 +153,28 @@
   --duration-slow: 300ms;
 }
 
+/* Ensure border-box sizing globally */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 /* Base styles */
 html {
   font-family: var(--font-sans);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent layout shift */
   scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
   scrollbar-width: thin;
-  overflow-y: scroll !important; /* Always show scrollbar - !important prevents Radix scroll-lock from hiding it */
+  /* Prevent horizontal overscroll without breaking sticky positioning */
+  overscroll-behavior-x: none;
 }
+
+/* Scrollbar-gutter disabled - was causing layout issues on some devices */
+/* @media (min-width: 640px) {
+  html {
+    scrollbar-gutter: stable;
+  }
+} */
 
 /* Webkit (Chrome, Safari) scrollbar styling */
 ::-webkit-scrollbar {
@@ -180,13 +197,14 @@ html {
 
 body {
   margin: 0 !important;
-  min-height: 100vh;
-  /* Prevent Radix scroll-lock from causing layout shift */
-  overflow: visible !important;
-  padding-right: 0 !important;
-  margin-right: 0 !important;
+  padding: 0 !important;
+  min-height: 100dvh;
   width: 100% !important;
+  max-width: 100% !important;
   position: static !important; /* Prevent Radix from setting position: fixed which breaks sticky nav */
+  /* Reset any transform that might be applied */
+  transform: none !important;
+  /* Note: No overflow set here - let default behavior work to preserve sticky positioning */
 }
 
 /* Prevent Radix focus guards from affecting layout */
@@ -209,7 +227,7 @@ body[data-scroll-locked],
 body[data-scroll-locked="1"],
 body[data-scroll-locked][style] {
   position: static !important;
-  overflow: visible !important;
+  overflow: visible !important; /* Prevent Radix from setting overflow that breaks sticky */
   margin-right: 0 !important;
   pointer-events: auto !important;
 }
@@ -222,7 +240,16 @@ body[data-scroll-locked][style] {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  /* Note: overflow-x: hidden removed - breaks sticky positioning */
+}
+
+/* When prevent-page-scroll class is applied, constrain to viewport height */
+#root:has(.prevent-page-scroll) {
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* ================================
@@ -244,9 +271,10 @@ a:focus:not(:focus-visible),
    Consistent layering hierarchy
    ================================ */
 /*
+ * z-[100]: Mobile tooltip overlays (LongPressTooltip) - must appear above everything
  * z-50: Modals, overlays, dropdowns, toasts
- * z-40: Sticky header (stays above content)
- * z-30: Sticky sidebars (below header)
+ * z-40: Sticky header, bottom nav (stays above content)
+ * z-30: Floating action buttons, sticky sidebars (below header)
  * z-20: Fixed UI elements
  * z-10: Elevated content
  */
@@ -540,4 +568,54 @@ dialog input[type="radio"] {
 
 .highlight-pulse {
   animation: highlight-pulse 2s ease-out;
+}
+
+/* ================================
+   MOBILE SAFE AREA UTILITIES
+   For devices with notches, home bars, etc.
+   ================================ */
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Bottom nav content offset - adds padding so content isn't hidden behind fixed bottom nav */
+.has-bottom-nav {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+}
+
+/* ================================
+   MOBILE ANIMATIONS
+   ================================ */
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+/* Respect reduced motion preference for animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up {
+    animation: none;
+  }
 }

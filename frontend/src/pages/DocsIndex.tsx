@@ -8,7 +8,6 @@
 
 import { Link } from 'react-router-dom';
 import {
-  BookOpen,
   Rocket,
   HelpCircle,
   ListChecks,
@@ -170,16 +169,11 @@ export function DocsIndex() {
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
         <div className="max-w-[80rem] mx-auto px-6 lg:px-8 py-10">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-accent">Documentation</h1>
-              <p className="text-text-secondary mt-1">
-                Everything you need to use XIV Raid Planner
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-accent">Documentation</h1>
+            <p className="text-text-secondary mt-1">
+              Everything you need to use XIV Raid Planner
+            </p>
           </div>
         </div>
       </header>

@@ -85,7 +85,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
     };
 
     return (
-      <div className="flex items-center justify-between pt-6 border-t border-border-default">
+      <div className="flex items-center justify-between">
         {/* Back button - disabled on first step or after creation */}
         <Button
           variant="secondary"
@@ -96,9 +96,9 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
           Back
         </Button>
 
-        {/* Keyboard shortcut hint - hide on share step */}
+        {/* Keyboard shortcut hint - hidden on mobile and share step */}
         {!isShareStep && (
-          <span className="text-xs text-text-muted">
+          <span className="hidden sm:inline text-xs text-text-muted">
             <kbd className="px-1.5 py-0.5 bg-surface-elevated rounded text-[10px] font-mono">Alt</kbd>
             {' + '}
             <kbd className="px-1.5 py-0.5 bg-surface-elevated rounded text-[10px] font-mono">←</kbd>

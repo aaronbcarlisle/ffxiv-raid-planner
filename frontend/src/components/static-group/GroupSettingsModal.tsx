@@ -5,7 +5,7 @@
  * Also allows leads/owners to customize loot priority order.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -24,7 +24,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Settings, ListOrdered, Users, Mail, Trash2 } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Trash2, GripVertical } from 'lucide-react';
+import { useSwipe } from '../../hooks/useSwipe';
 import { Modal, Checkbox, Label, Input, ErrorBox } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -61,20 +62,29 @@ function SortableRoleItem({ role, index }: { role: string; index: number }) {
     transition,
   };
 
+  // Stop touch events from propagating to parent swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-4 py-3 bg-surface-elevated border border-border-default rounded-lg cursor-grab active:cursor-grabbing ${
-        isDragging ? 'opacity-50 shadow-lg' : ''
+      className={`flex items-center gap-3 px-4 py-3 bg-surface-elevated border border-border-default rounded-lg select-none touch-none ${
+        isDragging ? 'opacity-50 shadow-lg z-50' : ''
       }`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       {...attributes}
       {...listeners}
     >
-      <span className="text-text-muted">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
+      <span className="text-text-muted cursor-grab active:cursor-grabbing">
+        <GripVertical className="w-5 h-5" />
       </span>
       <span className="text-text-secondary font-medium w-6">{index + 1}.</span>
       <span className="text-text-primary">{ROLE_DISPLAY_NAMES[role] || role}</span>
@@ -118,13 +128,37 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const priorityChanged = JSON.stringify(lootPriority) !== JSON.stringify(originalPriority);
   const hasChanges = name !== group.name || isPublic !== group.isPublic || priorityChanged;
 
-  // DnD sensors for priority reordering
+  // DnD sensors for priority reordering - with activation constraint for better touch handling
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Tab order for swipe navigation
+  const tabOrder: SettingsTab[] = ['general', 'priority', 'members', 'invitations'];
+
+  // Navigate to next/previous tab
+  const navigateTab = useCallback((direction: 'next' | 'prev') => {
+    const currentIndex = tabOrder.indexOf(activeTab);
+    if (direction === 'next' && currentIndex < tabOrder.length - 1) {
+      setActiveTab(tabOrder[currentIndex + 1]);
+    } else if (direction === 'prev' && currentIndex > 0) {
+      setActiveTab(tabOrder[currentIndex - 1]);
+    }
+  }, [activeTab]);
+
+  // Swipe handlers for tab navigation
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => navigateTab('next'),
+    onSwipeRight: () => navigateTab('prev'),
+    minSwipeDistance: 50,
+  });
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -211,56 +245,56 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
       size="lg"
     >
       <div className="flex flex-col h-full">
-        {/* Tabs */}
-        <div className="flex border-b border-border-default -mx-6 px-6">
+        {/* Tabs - scrollable on mobile, no scrollbar on desktop */}
+        <div className="flex border-b border-border-default -mx-6 px-6 overflow-x-auto overflow-y-hidden sm:overflow-x-visible scrollbar-none">
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'general'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Settings className="w-4 h-4" />
-            General
+            <span className="hidden sm:inline">General</span>
           </button>
           <button
             onClick={() => setActiveTab('priority')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'priority'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <ListOrdered className="w-4 h-4" />
-            Priority
+            <span className="hidden sm:inline">Priority</span>
           </button>
           <button
             onClick={() => setActiveTab('members')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'members'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Users className="w-4 h-4" />
-            Members
+            <span className="hidden sm:inline">Members</span>
           </button>
           <button
             onClick={() => setActiveTab('invitations')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === 'invitations'
                 ? 'text-accent border-b-2 border-accent -mb-[1px]'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Mail className="w-4 h-4" />
-            Invitations
+            <span className="hidden sm:inline">Invitations</span>
           </button>
         </div>
 
-        {/* Content */}
-        <div className="py-4 overflow-y-auto flex-1">
+        {/* Content - swipeable on mobile */}
+        <div className="pt-4 overflow-y-auto flex-1" {...swipeHandlers}>
           {error && <ErrorBox message={error} size="sm" className="mb-4" />}
 
           {activeTab === 'general' && !showDeleteConfirm && (

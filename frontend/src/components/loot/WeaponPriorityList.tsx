@@ -15,6 +15,7 @@ import { getRoleColor } from '../../gamedata';
 import { FilterBar } from './FilterBar';
 import { RoleSection } from './RoleSection';
 import { Tooltip } from '../primitives/Tooltip';
+import { useDevice } from '../../hooks/useDevice';
 
 // Roll result for a player
 interface RollResult {
@@ -295,7 +296,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           </span>
                           {tieEntry.isMainJob && (
                             <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                              Main
+                              <span className="hidden sm:inline">Main</span>
+                              <span className="sm:hidden">M</span>
                             </span>
                           )}
                           {playerRoll !== null && (
@@ -324,7 +326,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                             <span
                               className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                              style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                              style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                             >
                               {tieEntry.score}
                             </span>
@@ -368,7 +370,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   </span>
                   {entry.isMainJob && (
                     <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                      Main
+                      <span className="hidden sm:inline">Main</span>
+                      <span className="sm:hidden">M</span>
                     </span>
                   )}
                 </div>
@@ -388,7 +391,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}
                     </span>
@@ -458,7 +461,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                           <span className="text-xs text-text-muted font-medium">
-                            Tied ({block.entries.length})
+                            <span className="sm:hidden">T({block.entries.length})</span>
+                            <span className="hidden sm:inline">Tied ({block.entries.length})</span>
                           </span>
                           {/* Winner info shown in header after roll */}
                           {hasRolled && winnerEntry && (
@@ -560,7 +564,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                                 <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                                   <span
                                     className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                                    style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                                    style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                                   >
                                     {tieEntry.score}
                                   </span>
@@ -627,7 +631,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                     <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                       <span
                         className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                        style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                        style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                       >
                         {entry.score}
                       </span>
@@ -710,7 +714,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   </span>
                   {entry.isMainJob && (
                     <span className="flex-shrink-0 text-xs px-1 py-0.5 rounded bg-accent/20 text-accent">
-                      Main
+                      <span className="hidden sm:inline">Main</span>
+                      <span className="sm:hidden">M</span>
                     </span>
                   )}
                   {playerRoll !== null && (
@@ -751,7 +756,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
                       className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
-                      style={{ backgroundColor: `${roleColor}30`, color: roleColor }}
+                      style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}
                     </span>
@@ -791,6 +796,8 @@ export function WeaponPriorityList({
   showLogButtons = false,
   onLogClick,
 }: WeaponPriorityListProps) {
+  const { isSmallScreen } = useDevice();
+
   // URL params for deep linking
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -962,9 +969,9 @@ export function WeaponPriorityList({
   const anyVisible = visibleSections.size > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Section filter toggles - role-colored, matching Gear Priority header style */}
-      <div className="-mx-4 -mt-4 p-3 border-b border-border-default bg-surface-elevated/50">
+    <div className="flex flex-col h-full sm:block sm:h-auto">
+      {/* Section filter toggles - matches Who Needs It and Gear Priority layout */}
+      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="role"
           visibleRoles={visibleSections}
@@ -973,16 +980,46 @@ export function WeaponPriorityList({
         />
       </div>
 
-      {/* Empty state when no sections visible */}
-      {!anyVisible && (
-        <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
-          <p>No role sections selected.</p>
-          <p className="text-sm mt-1">Click a role button above to show weapons.</p>
-        </div>
-      )}
+      {/* Content area with consistent padding */}
+      <div className="flex-1 min-h-0 overflow-y-auto sm:overflow-visible p-4 space-y-4">
+        {/* Empty state when no sections visible */}
+        {!anyVisible && (
+          <div className="text-center py-8 text-text-muted border border-border-subtle rounded-lg bg-surface-base">
+            <p>No role sections selected.</p>
+            <p className="text-sm mt-1">Click a role button above to show weapons.</p>
+          </div>
+        )}
 
-      {/* Role sections - collapsible */}
-      {ROLE_SECTIONS.map(section => {
+        {/* Mobile: Flat grid */}
+        {isSmallScreen && anyVisible && (
+          <div className="grid grid-cols-1 gap-3">
+            {ROLE_SECTIONS.map(section => {
+              const sectionJobs = jobsBySection.get(section.id) || [];
+              if (sectionJobs.length === 0) return null;
+              if (!visibleSections.has(section.id)) return null;
+
+              return sectionJobs.map(job => {
+                const priority = getWeaponPriorityForJob(players, job, settings);
+                const jobInfo = RAID_JOBS.find(j => j.abbreviation === job);
+                const jobName = jobInfo?.name || job;
+
+                return (
+                  <WeaponPriorityCard
+                    key={job}
+                    job={job}
+                    jobName={jobName}
+                    priority={priority}
+                    showLogButtons={showLogButtons}
+                    onLogClick={onLogClick}
+                  />
+                );
+              });
+            })}
+          </div>
+        )}
+
+        {/* Desktop: Role sections - collapsible */}
+        {!isSmallScreen && ROLE_SECTIONS.map(section => {
         const sectionJobs = jobsBySection.get(section.id) || [];
         if (sectionJobs.length === 0) return null;
         if (!visibleSections.has(section.id)) return null;
@@ -1020,6 +1057,7 @@ export function WeaponPriorityList({
           </RoleSection>
         );
       })}
+      </div>
     </div>
   );
 }

@@ -35,6 +35,9 @@ interface WhoNeedsItMatrixProps {
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
+// Gear slot display order: Weapon first, then left side (head to feet), then accessories
+const GEAR_SLOT_ORDER: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1'];
+
 // Helper to determine which ring slot a player actually needs
 // Returns ring1 if they need ring1, ring2 if they only need ring2, or ring1 if both
 // Note: This is only called when a player IS shown in the "Ring" row (i.e., they need at least one ring).
@@ -79,18 +82,22 @@ export function WhoNeedsItMatrix({
     });
   }, [players]);
 
-  // Get slots for selected floor
+  // Get slots for selected floor, sorted by GEAR_SLOT_ORDER
   const visibleSlots = useMemo(() => {
+    let slots: GearSlot[];
     if (selectedFloor === 'all') {
       // Combine all floors, using ring1 as "Ring" (consolidated)
-      return [
+      slots = [
         ...FLOOR_LOOT_TABLES[1].gearDrops,
         ...FLOOR_LOOT_TABLES[2].gearDrops,
         ...FLOOR_LOOT_TABLES[3].gearDrops,
         ...FLOOR_LOOT_TABLES[4].gearDrops,
       ];
+    } else {
+      slots = [...FLOOR_LOOT_TABLES[selectedFloor].gearDrops];
     }
-    return FLOOR_LOOT_TABLES[selectedFloor].gearDrops;
+    // Sort by the defined gear slot order (already a copy, safe to sort in place)
+    return slots.sort((a, b) => GEAR_SLOT_ORDER.indexOf(a) - GEAR_SLOT_ORDER.indexOf(b));
   }, [selectedFloor]);
 
   // Calculate needs matrix
@@ -119,9 +126,9 @@ export function WhoNeedsItMatrix({
   }, [visibleSlots, sortedPlayers]);
 
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-      {/* Floor Filter Tabs */}
-      <div className="p-3 border-b border-border-default bg-surface-elevated/50">
+    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden flex flex-col h-full sm:block sm:h-auto">
+      {/* Floor Filter Tabs - fixed on mobile */}
+      <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
         <FilterBar
           type="floor"
           floors={floors}
@@ -131,8 +138,8 @@ export function WhoNeedsItMatrix({
         />
       </div>
 
-      {/* Matrix Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop: Matrix Table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-elevated/30">
@@ -205,7 +212,7 @@ export function WhoNeedsItMatrix({
                               ${showLogButtons ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
                             `}
                             style={{
-                              backgroundColor: `${roleColor}30`,
+                              backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`,
                               border: `2px solid ${roleColor}`,
                             }}
                           >
@@ -238,6 +245,68 @@ export function WhoNeedsItMatrix({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: Card view - scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto md:hidden divide-y divide-border-default">
+        {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
+          <div key={slot} className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <img
+                  src={GEAR_SLOT_ICONS[slot as GearSlot]}
+                  alt=""
+                  className="w-4 h-4 brightness-[3.0]"
+                />
+                <span className="font-medium text-text-primary">{displayName}</span>
+              </div>
+              {isFree ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
+                  FREE
+                </span>
+              ) : (
+                <span className={`text-xs ${
+                  count > 4 ? 'text-status-error' : count > 2 ? 'text-status-warning' : 'text-text-muted'
+                }`}>
+                  {count}/8 need
+                </span>
+              )}
+            </div>
+            {!isFree && (
+              <div className="flex flex-wrap gap-1.5">
+                {sortedPlayers
+                  .filter(p => playersWhoNeed.has(p.id))
+                  .map(player => {
+                    const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                    return (
+                      <button
+                        key={player.id}
+                        onClick={() => {
+                          if (showLogButtons && onLogClick) {
+                            const actualSlot = slot === 'ring1'
+                              ? getNeededRingSlot(player)
+                              : slot as GearSlot;
+                            const floorNum = getFloorForSlot(actualSlot);
+                            const floorName = floors[floorNum - 1] || `Floor ${floorNum}`;
+                            onLogClick(actualSlot, player, floorName);
+                          }
+                        }}
+                        disabled={!showLogButtons}
+                        className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
+                        style={{
+                          backgroundColor: `color-mix(in srgb, ${roleColor} 20%, transparent)`,
+                          color: roleColor,
+                        }}
+                      >
+                        <JobIcon job={player.job} size="xs" />
+                        <span>{player.name.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Legend */}
