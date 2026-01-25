@@ -792,6 +792,9 @@ export function SectionedLogView({
     return items;
   }, [listContextMenu, canEdit, handleCopyEntryUrl, handleDeleteLoot, handleDeleteMaterial, onNavigateToPlayer]);
 
+  // Mobile panel state for swipeable view
+  const [mobilePanel, setMobilePanel] = useState<'loot' | 'books'>('loot');
+
   return (
     <div className="space-y-4">
       {/* Header Controls */}
@@ -806,9 +809,33 @@ export function SectionedLogView({
         onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
       />
 
-      {/* Main Content - Side by Side Layout */}
+      {/* Mobile Panel Tabs */}
+      <div className="md:hidden flex bg-surface-card border border-border-default rounded-lg p-1">
+        <button
+          onClick={() => setMobilePanel('loot')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            mobilePanel === 'loot'
+              ? 'bg-accent text-accent-contrast'
+              : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Loot Log
+        </button>
+        <button
+          onClick={() => setMobilePanel('books')}
+          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            mobilePanel === 'books'
+              ? 'bg-accent text-accent-contrast'
+              : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Books
+        </button>
+      </div>
+
+      {/* Main Content - Side by Side Layout (Desktop) */}
       <div
-        className="grid gap-4 items-stretch transition-[grid-template-columns] duration-200"
+        className="hidden md:grid gap-4 items-stretch transition-[grid-template-columns] duration-200"
         style={{ gridTemplateColumns: booksSidebarCollapsed ? '1fr 2.5rem' : '1fr 20rem' }}
       >
         {/* Loot Log - Main Area */}
@@ -1176,6 +1203,252 @@ export function SectionedLogView({
             )}
           </section>
         </div>
+      </div>
+
+      {/* Mobile Swipeable Panels */}
+      <div className="md:hidden">
+        {/* Loot Log Panel */}
+        {mobilePanel === 'loot' && (
+          <>
+            {layoutMode === 'grid' && (
+              <WeeklyLootGrid
+                players={players}
+                lootLog={lootLog}
+                materialLog={materialLog}
+                floors={floors}
+                currentWeek={currentWeek}
+                canEdit={canEdit}
+                highlightedEntryId={highlightedEntryId}
+                highlightedEntryType={highlightedEntryType}
+                onLogLoot={handleGridLogLoot}
+                onLogMaterial={handleGridLogMaterial}
+                onDeleteLoot={handleGridDeleteLoot}
+                onDeleteMaterial={handleDeleteMaterial}
+                onEditLoot={handleGridEditLoot}
+                onEditMaterial={handleGridEditMaterial}
+                onCopyEntryUrl={handleCopyEntryUrlById}
+                onNavigateToPlayer={onNavigateToPlayer}
+              />
+            )}
+            {layoutMode === 'split' && (
+              <section className="bg-surface-card border border-border-default rounded-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-border-default">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-base text-text-primary">Loot Log</h3>
+                    <div className="flex bg-surface-base rounded-lg p-0.5">
+                      <button
+                        onClick={() => setLootViewMode('byFloor')}
+                        className={`px-2 py-1 text-xs rounded transition-colors font-bold ${
+                          lootViewMode === 'byFloor'
+                            ? 'bg-accent text-accent-contrast'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        Floor
+                      </button>
+                      <button
+                        onClick={() => setLootViewMode('chronological')}
+                        className={`px-2 py-1 text-xs rounded transition-colors font-bold ${
+                          lootViewMode === 'chronological'
+                            ? 'bg-accent text-accent-contrast'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        Time
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3 space-y-3 max-h-[500px] overflow-y-auto">
+                  <LootCountBar
+                    players={players}
+                    lootLog={lootLog}
+                    currentWeek={currentWeek}
+                  />
+                  {combinedEntries.length === 0 ? (
+                    <p className="text-text-muted text-sm">No loot or materials logged this week.</p>
+                  ) : lootViewMode === 'byFloor' ? (
+                    ([4, 3, 2, 1] as FloorNumber[]).filter(f => visibleFloors.has(f)).map(floorNum => {
+                      const floorEntries = entriesByFloor.get(floorNum) || [];
+                      if (floorEntries.length === 0) return null;
+                      const floorName = floorEntries[0]?.floor || floors[floorNum - 1] || `Floor ${floorNum}`;
+                      return (
+                        <FloorSection
+                          key={floorNum}
+                          floor={floorNum}
+                          floorName={floorName}
+                          entryCount={floorEntries.length}
+                          expanded={expandedFloors.has(floorNum)}
+                          onExpandChange={(expanded) => handleFloorExpandChange(floorNum, expanded)}
+                          onExpandAll={handleExpandAllFloors}
+                          onCollapseAll={handleCollapseAllFloors}
+                        >
+                          {floorEntries.map(entry =>
+                            entry.entryType === 'loot' ? (
+                              <LootLogEntryItem
+                                key={`loot-${entry.id}`}
+                                entry={entry}
+                                highlightedEntryId={highlightedEntryId}
+                                canEdit={canEdit}
+                                getPlayerName={getPlayerName}
+                                onCopyUrl={handleCopyEntryUrl}
+                                onEdit={handleEditLootEntry}
+                                onDelete={handleDeleteLoot}
+                                onContextMenu={handleLootContextMenu}
+                                onNavigateToPlayer={onNavigateToPlayer}
+                              />
+                            ) : (
+                              <MaterialLogEntryItem
+                                key={`mat-${entry.id}`}
+                                entry={entry}
+                                highlightedEntryId={highlightedEntryId}
+                                highlightedEntryType={highlightedEntryType}
+                                canEdit={canEdit}
+                                getPlayerName={getPlayerName}
+                                onCopyUrl={handleCopyEntryUrl}
+                                onEdit={handleEditMaterialEntry}
+                                onDelete={handleDeleteMaterial}
+                                onContextMenu={handleMaterialContextMenu}
+                                onNavigateToPlayer={onNavigateToPlayer}
+                              />
+                            )
+                          )}
+                        </FloorSection>
+                      );
+                    })
+                  ) : (
+                    combinedEntries.map(entry =>
+                      entry.entryType === 'loot' ? (
+                        <LootLogEntryItem
+                          key={`loot-${entry.id}`}
+                          entry={entry}
+                          highlightedEntryId={highlightedEntryId}
+                          canEdit={canEdit}
+                          getPlayerName={getPlayerName}
+                          onCopyUrl={handleCopyEntryUrl}
+                          onEdit={handleEditLootEntry}
+                          onDelete={handleDeleteLoot}
+                          onContextMenu={handleLootContextMenu}
+                          onNavigateToPlayer={onNavigateToPlayer}
+                        />
+                      ) : (
+                        <MaterialLogEntryItem
+                          key={`mat-${entry.id}`}
+                          entry={entry}
+                          highlightedEntryId={highlightedEntryId}
+                          highlightedEntryType={highlightedEntryType}
+                          canEdit={canEdit}
+                          getPlayerName={getPlayerName}
+                          onCopyUrl={handleCopyEntryUrl}
+                          onEdit={handleEditMaterialEntry}
+                          onDelete={handleDeleteMaterial}
+                          onContextMenu={handleMaterialContextMenu}
+                          onNavigateToPlayer={onNavigateToPlayer}
+                        />
+                      )
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+
+        {/* Books Panel */}
+        {mobilePanel === 'books' && (
+          <section className="bg-surface-card border border-border-default rounded-lg">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-sm text-text-primary">Books</h3>
+                <div className="flex bg-surface-base rounded p-0.5">
+                  <button
+                    onClick={() => setBookViewMode('week')}
+                    className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                      bookViewMode === 'week'
+                        ? 'bg-accent text-accent-contrast'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    W{currentWeek}
+                  </button>
+                  <button
+                    onClick={() => setBookViewMode('allTime')}
+                    className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                      bookViewMode === 'allTime'
+                        ? 'bg-accent text-accent-contrast'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-2 max-h-[500px] overflow-y-auto">
+              {pageBalances.length === 0 ? (
+                <p className="text-text-muted text-sm p-2">No book data.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-muted">
+                      <th className="text-left py-1.5 px-1">Player</th>
+                      {(['I', 'II', 'III', 'IV'] as const).map((book) => (
+                        <th key={book} className="text-center py-1.5 px-1 w-9">{book}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageBalances.map((balance) => {
+                      const player = players.find(p => p.id === balance.playerId);
+                      if (!player || player.isSubstitute) return null;
+                      const isOwnRow = player.userId === currentUserId;
+                      const canEditThisRow = canEdit || (userRole === 'member' && isOwnRow);
+                      return (
+                        <tr key={balance.playerId} className="border-t border-border-subtle">
+                          <td className="py-2 px-1">
+                            <div className="flex items-center gap-1.5">
+                              <JobIcon job={player.job} size="sm" />
+                              <span className="text-text-primary truncate max-w-[80px]">{player.name}</span>
+                            </div>
+                          </td>
+                          {(['I', 'II', 'III', 'IV'] as const).map((book) => {
+                            const value = balance[`book${book}` as keyof typeof balance] as number;
+                            return (
+                              <td
+                                key={book}
+                                className={`text-center py-2 px-1 ${canEditThisRow ? 'cursor-pointer active:bg-accent/20' : ''}`}
+                                onClick={() => canEditThisRow && setEditBookState({
+                                  playerId: balance.playerId,
+                                  playerName: player.name,
+                                  bookType: book,
+                                  currentValue: value,
+                                })}
+                              >
+                                <span className={`font-medium ${value > 0 ? 'text-text-primary' : 'text-text-muted'}`}>
+                                  {value}
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {canEdit && userRole !== 'member' && (
+                <div className="p-2 border-t border-border-subtle mt-2">
+                  <button
+                    onClick={() => setShowFloorClearedModal(true)}
+                    className="w-full px-3 py-2 text-sm font-medium rounded-lg border border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent transition-colors"
+                  >
+                    Mark Floor Cleared
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Loot Fairness Legend - rendered outside flex container so sidebar aligns with grid */}
