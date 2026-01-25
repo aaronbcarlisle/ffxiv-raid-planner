@@ -5,6 +5,7 @@
  * - 180x180 for apple-touch-icon
  * - 192x192 for PWA manifest
  * - 512x512 for PWA manifest (splash screens)
+ * - 512x512 maskable for Android adaptive icons (with 10% safe zone padding)
  */
 
 import sharp from 'sharp';
@@ -46,6 +47,31 @@ async function generateIcons() {
 
     console.log(`  Created ${name} (${size}x${size})`);
   }
+
+  // Generate maskable icon with 10% safe zone padding for Android adaptive icons
+  // The logo is scaled to 80% and centered on a background
+  const maskableSize = 512;
+  const logoSize = Math.round(maskableSize * 0.8); // 80% of total size
+  const padding = Math.round((maskableSize - logoSize) / 2);
+
+  const logoBuffer = await sharp(Buffer.from(svgWithBackground))
+    .resize(logoSize, logoSize)
+    .png()
+    .toBuffer();
+
+  await sharp({
+    create: {
+      width: maskableSize,
+      height: maskableSize,
+      channels: 4,
+      background: { r: 5, g: 5, b: 8, alpha: 1 }, // #050508
+    },
+  })
+    .composite([{ input: logoBuffer, left: padding, top: padding }])
+    .png()
+    .toFile(join(publicDir, 'icon-512x512-maskable.png'));
+
+  console.log(`  Created icon-512x512-maskable.png (${maskableSize}x${maskableSize} with safe zone)`);
 
   console.log('\nDone! Icons generated in public/');
 }

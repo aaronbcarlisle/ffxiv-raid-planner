@@ -169,6 +169,7 @@ export function LongPressTooltip({
       >
         {children}
       </div>
+      {/* Mobile tooltip overlay - z-[100] required to appear above context menus (z-50) */}
       {showMobileTooltip && tooltipPosition && (
         <div
           className="fixed inset-0 z-[100]"

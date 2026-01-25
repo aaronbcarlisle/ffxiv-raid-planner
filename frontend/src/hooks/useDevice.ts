@@ -33,6 +33,9 @@ let capabilities: DeviceCapabilities = {
 const listeners: Set<() => void> = new Set();
 let initialized = false;
 
+// Singleton pattern - listeners persist for app lifetime.
+// This is intentional: we register listeners once globally and never remove them
+// to avoid re-registering on every component mount/unmount cycle.
 function initializeStore() {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
