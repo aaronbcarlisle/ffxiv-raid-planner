@@ -77,7 +77,7 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
             }
             ${disabled
               ? ''
-              : 'group-hover:border-accent/50'
+              : 'hover:border-accent/50'
             }
           `}
         >

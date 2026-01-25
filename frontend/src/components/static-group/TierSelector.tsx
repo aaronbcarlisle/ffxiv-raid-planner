@@ -20,7 +20,6 @@ import {
   DropdownSubTrigger,
   DropdownTrigger,
 } from '../primitives';
-import { Tooltip } from '../primitives';
 
 interface TierSelectorProps {
   tiers: TierSnapshot[];
@@ -70,25 +69,14 @@ export function TierSelector({
   // If only one tier exists, just show the current tier name without dropdown
   if (tiers.length === 1) {
     return (
-      <Tooltip
-        content={
-          <div>
-            <div className="font-medium">Current Raid Tier</div>
-            <div className="text-text-secondary text-xs mt-0.5">
-              {selectedTierInfo?.name || currentTierId || 'No tier selected'}
-            </div>
-          </div>
-        }
-      >
-        <div className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded cursor-help">
-          <span className="text-text-primary text-sm">
-            {selectedTierInfo?.name || currentTierId || 'Select Tier'}
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
-            Current
-          </span>
-        </div>
-      </Tooltip>
+      <div className="flex items-center gap-2 px-3 py-2 bg-surface-card border border-border-default rounded">
+        <span className="text-text-primary text-sm">
+          {selectedTierInfo?.name || currentTierId || 'Select Tier'}
+        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+          Current
+        </span>
+      </div>
     );
   }
 
