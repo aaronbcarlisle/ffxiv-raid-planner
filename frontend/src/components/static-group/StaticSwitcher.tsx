@@ -47,6 +47,8 @@ interface StaticSwitcherProps {
   isMember: boolean;
   /** Current user's role in this static */
   userRole?: MemberRole;
+  /** Whether to expand to fill available width on mobile */
+  fullWidthMobile?: boolean;
 }
 
 export function StaticSwitcher({
@@ -55,6 +57,7 @@ export function StaticSwitcher({
   onFetchGroups,
   isMember,
   userRole,
+  fullWidthMobile,
 }: StaticSwitcherProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -79,7 +82,7 @@ export function StaticSwitcher({
           </div>
         }
       >
-        <span className="font-display text-base sm:text-lg text-text-primary px-2 cursor-help max-w-[120px] sm:max-w-[200px] truncate inline-block">
+        <span className={`font-display text-base sm:text-lg text-text-primary px-2 cursor-help truncate inline-block ${fullWidthMobile ? 'flex-1 max-w-none sm:max-w-[200px] sm:flex-initial' : 'max-w-[120px] sm:max-w-[200px]'}`}>
           {currentGroup.name}
         </span>
       </Tooltip>
@@ -105,13 +108,13 @@ export function StaticSwitcher({
           </div>
         }
       >
-        <span className="inline-flex">
+        <span className={fullWidthMobile ? 'flex-1 sm:flex-initial sm:inline-flex' : 'inline-flex'}>
           <DropdownTrigger>
             {/* Radix DropdownMenu requires native button as trigger */}
             <button // design-system-ignore
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-interactive transition-colors border border-border-subtle ${fullWidthMobile ? 'w-full sm:w-auto' : ''}`}
             >
-              <span className="font-display text-base sm:text-lg text-accent max-w-[140px] sm:max-w-[200px] truncate">
+              <span className={`font-display text-base sm:text-lg text-accent truncate ${fullWidthMobile ? 'flex-1 text-left sm:flex-initial sm:max-w-[200px]' : 'max-w-[140px] sm:max-w-[200px]'}`}>
                 {currentGroup.name}
               </span>
               {userRole && (
