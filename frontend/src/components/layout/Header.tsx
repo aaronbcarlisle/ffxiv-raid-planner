@@ -389,7 +389,7 @@ export function Header() {
 
               {/* Settings popover (only for editors) */}
               {canEdit && settingsActions.length > 0 && (
-                <div className="ml-1 sm:ml-3">
+                <div className="ml-1 sm:ml-0">
                   <SettingsPopover actions={settingsActions} />
                 </div>
               )}
