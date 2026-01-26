@@ -1238,9 +1238,12 @@ async def update_material_log_entry(
         entry.material_type = data.material_type.value
     if data.recipient_player_id is not None:
         entry.recipient_player_id = data.recipient_player_id
-    # Only update slot_augmented when a valid slot string is provided
-    if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
-        entry.slot_augmented = data.slot_augmented
+    # Update slot_augmented: valid slots are set, empty string clears to None
+    if isinstance(data.slot_augmented, str):
+        if data.slot_augmented in VALID_AUGMENT_SLOTS:
+            entry.slot_augmented = data.slot_augmented
+        elif data.slot_augmented == "":
+            entry.slot_augmented = None
     if data.notes is not None:
         entry.notes = data.notes
 

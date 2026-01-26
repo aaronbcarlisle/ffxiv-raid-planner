@@ -58,7 +58,7 @@ export const RELEASES: Release[] = [
         title: 'Auto-augment gear when logging materials',
         description: 'Material logging modals now offer to automatically mark gear as augmented',
         details:
-          'When logging twine, glaze, solvent, or universal tomestone, a checkbox lets you simultaneously mark the corresponding gear slot as augmented. The system tracks which slot was augmented for each material entry, enabling precise undo on deletion.',
+          'When logging twine, glaze, solvent, or universal tomestone, a checkbox lets you simultaneously mark the corresponding gear slot as augmented. The system tracks which slot was augmented for each material entry, enabling precise undo on deletion. Note: A one-time data migration will sync existing material entries with gear status using heuristics for entries logged before this feature.',
         commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
       },
       {

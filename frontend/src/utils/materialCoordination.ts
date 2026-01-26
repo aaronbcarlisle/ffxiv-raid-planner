@@ -175,6 +175,11 @@ export function getAugmentedSlotsForMaterial(
  *    - universal_tomestone: marks tome weapon as "have" (hasItem = true)
  *    - solvent: marks tome weapon OR weapon gear slot as augmented
  *    - twine/glaze: marks specified gear slot as augmented
+ *
+ * Note: If step 1 succeeds but step 2 fails, the material entry will exist
+ * without the corresponding gear update. In this rare case, users can manually
+ * update their gear status. We prioritize data integrity (entry exists) over
+ * rollback complexity.
  */
 export async function logMaterialAndUpdateGear(
   groupId: string,
