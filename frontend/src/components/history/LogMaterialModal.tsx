@@ -246,6 +246,9 @@ export function LogMaterialModal({
     if (!selectedPlayer || !selectedMaterial) return;
 
     setIsSubmitting(true);
+    // Determine coordination path before try block so we know how to handle errors
+    const shouldUpdateGear = !isEditMode && updateGear && hasEligibleOptions && groupId && tierId;
+
     try {
       if (isEditMode && onUpdate) {
         // Edit mode: call onUpdate with changes (no augmentation option in edit mode)
@@ -256,43 +259,43 @@ export function LogMaterialModal({
           recipientPlayerId: selectedPlayer,
           notes: notes.trim() || undefined,
         });
-      } else {
-        // Add mode: use coordination function if augmentation is requested
-        const shouldUpdateGear = updateGear && hasEligibleOptions && groupId && tierId;
-
-        if (shouldUpdateGear) {
-          // Use coordination function to log material and update gear
-          await logMaterialAndUpdateGear(
-            groupId,
-            tierId,
-            {
-              weekNumber,
-              floor: selectedFloor,
-              materialType: selectedMaterial,
-              recipientPlayerId: selectedPlayer,
-              notes: notes.trim() || undefined,
-            },
-            {
-              updateGear: true,
-              slotToAugment: selectedSlot ? selectedSlot : undefined,
-              augmentTomeWeapon,
-            }
-          );
-          toast.success('Material entry logged');
-        } else {
-          // Call onSubmit without gear update
-          await onSubmit({
+      } else if (shouldUpdateGear) {
+        // Add mode with gear update: use coordination function
+        await logMaterialAndUpdateGear(
+          groupId!,
+          tierId!,
+          {
             weekNumber,
             floor: selectedFloor,
             materialType: selectedMaterial,
             recipientPlayerId: selectedPlayer,
             notes: notes.trim() || undefined,
-          });
-        }
+          },
+          {
+            updateGear: true,
+            slotToAugment: selectedSlot ? selectedSlot : undefined,
+            augmentTomeWeapon,
+          }
+        );
+        toast.success('Material entry logged');
+      } else {
+        // Add mode without gear update: call onSubmit
+        await onSubmit({
+          weekNumber,
+          floor: selectedFloor,
+          materialType: selectedMaterial,
+          recipientPlayerId: selectedPlayer,
+          notes: notes.trim() || undefined,
+        });
       }
       onClose();
-    } catch {
-      // Error handled by caller
+    } catch (error) {
+      // Show error toast for coordination path failures
+      // (onSubmit/onUpdate errors are handled by caller via their own error handling)
+      if (shouldUpdateGear) {
+        console.error('Material log error:', error);
+        toast.error('Failed to log material');
+      }
     } finally {
       setIsSubmitting(false);
     }

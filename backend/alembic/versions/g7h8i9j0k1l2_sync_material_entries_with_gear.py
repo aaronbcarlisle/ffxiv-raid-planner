@@ -197,4 +197,3 @@ def downgrade() -> None:
     If needed, restore from backup.
     """
     print("Downgrade is a no-op - gear augmentation state cannot be reliably reversed")
-    pass

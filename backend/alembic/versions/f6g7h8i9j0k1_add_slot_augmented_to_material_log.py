@@ -38,4 +38,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove slot_augmented column from material_log_entries table."""
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    # Check if column exists before attempting to drop (idempotent)
+    columns = [c["name"] for c in inspector.get_columns("material_log_entries")]
+    if "slot_augmented" not in columns:
+        return
+
     op.drop_column("material_log_entries", "slot_augmented")
