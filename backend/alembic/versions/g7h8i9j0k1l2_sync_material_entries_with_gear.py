@@ -89,8 +89,20 @@ def upgrade() -> None:
 
                 gear_json, tome_weapon_json = player_row
                 try:
-                    gear = json.loads(gear_json) if gear_json else []
-                    tome_weapon = json.loads(tome_weapon_json) if tome_weapon_json else {}
+                    # Handle both JSON strings and native Python objects (JSONB returns native)
+                    if isinstance(gear_json, list):
+                        gear = gear_json
+                    elif gear_json:
+                        gear = json.loads(gear_json)
+                    else:
+                        gear = []
+
+                    if isinstance(tome_weapon_json, dict):
+                        tome_weapon = tome_weapon_json
+                    elif tome_weapon_json:
+                        tome_weapon = json.loads(tome_weapon_json)
+                    else:
+                        tome_weapon = {}
                 except json.JSONDecodeError as e:
                     print(f"  Warning: Invalid JSON for player {player_id}, skipping: {e}")
                     continue
