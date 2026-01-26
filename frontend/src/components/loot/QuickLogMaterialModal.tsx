@@ -55,7 +55,26 @@ export function QuickLogMaterialModal({
   const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
   const [isSaving, setIsSaving] = useState(false);
   const [updateGear, setUpdateGear] = useState(true);
-  const [selectedSlot, setSelectedSlot] = useState<GearSlot | 'tome_weapon' | null>(null);
+  // Compute initial slot selection BEFORE first render using lazy initializer
+  const [selectedSlot, setSelectedSlot] = useState<GearSlot | 'tome_weapon' | null>(() => {
+    const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+    if (material === 'universal_tomestone') return null;
+    if (material === 'solvent') {
+      const slots = getEligibleSlotsForAugmentation(player, material);
+      return slots.length > 0 ? slots[0] : null;
+    }
+    // Twine/Glaze
+    const slots = getEligibleSlotsForAugmentation(player, material);
+    return slots.length > 0 ? slots[0] : null;
+  });
+  // Compute initial augmentTomeWeapon BEFORE first render
+  const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(() => {
+    if (material !== 'solvent') return false;
+    const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+    const slots = getEligibleSlotsForAugmentation(player, material);
+    // Only default to tome weapon if no gear slots available
+    return slots.length === 0 && needsTomeWeaponAugmentation(player);
+  });
   const { materialLog } = useLootTrackingStore();
 
   // Compute eligible options for gear update based on selected player and material
@@ -89,9 +108,6 @@ export function QuickLogMaterialModal({
       canAugmentTomeWeapon: false,
     };
   }, [recipientPlayerId, material, allPlayers]);
-
-  // For solvent, track whether user wants to augment tome weapon or gear slot
-  const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(false);
 
   // Determine if there are any eligible options
   const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
@@ -133,20 +149,39 @@ export function QuickLogMaterialModal({
     }
   }, [isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
 
-  // Auto-select first eligible slot or tome weapon option when eligibility changes
-  useEffect(() => {
-    if (eligibleOptions.slots.length > 0) {
-      setSelectedSlot(eligibleOptions.slots[0]);
+  // Handle recipient change - update slot selection when user changes recipient
+  const handleRecipientChange = (newPlayerId: string) => {
+    setRecipientPlayerId(newPlayerId);
+
+    // Compute and set slot for new recipient
+    const player = allPlayers.find((p) => p.id === newPlayerId);
+    if (!player) {
+      setSelectedSlot(null);
       setAugmentTomeWeapon(false);
-    } else if (eligibleOptions.canAugmentTomeWeapon) {
-      // For solvent with only tome weapon option
+      return;
+    }
+
+    if (material === 'universal_tomestone') {
       setSelectedSlot(null);
-      setAugmentTomeWeapon(true);
+      setAugmentTomeWeapon(false);
+    } else if (material === 'solvent') {
+      const slots = getEligibleSlotsForAugmentation(player, material);
+      if (slots.length > 0) {
+        setSelectedSlot(slots[0]);
+        setAugmentTomeWeapon(false);
+      } else if (needsTomeWeaponAugmentation(player)) {
+        setSelectedSlot(null);
+        setAugmentTomeWeapon(true);
+      } else {
+        setSelectedSlot(null);
+        setAugmentTomeWeapon(false);
+      }
     } else {
-      setSelectedSlot(null);
+      const slots = getEligibleSlotsForAugmentation(player, material);
+      setSelectedSlot(slots.length > 0 ? slots[0] : null);
       setAugmentTomeWeapon(false);
     }
-  }, [eligibleOptions]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,7 +317,7 @@ export function QuickLogMaterialModal({
           <Select
             id="recipient"
             value={recipientPlayerId}
-            onChange={setRecipientPlayerId}
+            onChange={handleRecipientChange}
             options={recipientOptions}
           />
         </div>
