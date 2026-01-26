@@ -695,6 +695,9 @@ export function LootPriorityPanel({
           maxWeek={effectiveMaxWeek}
           suggestedPlayer={modalState.player}
           allPlayers={players}
+          settings={settings}
+          lootLog={lootLog}
+          currentWeek={currentWeek}
           onSuccess={handleLogSuccess}
         />
       )}

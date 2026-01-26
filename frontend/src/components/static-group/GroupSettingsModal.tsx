@@ -109,6 +109,8 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [name, setName] = useState(group.name);
   const [isPublic, setIsPublic] = useState(group.isPublic);
+  const [hideSetupBanners, setHideSetupBanners] = useState(group.settings?.hideSetupBanners ?? false);
+  const [hideBisBanners, setHideBisBanners] = useState(group.settings?.hideBisBanners ?? false);
   const [lootPriority, setLootPriority] = useState<string[]>(
     group.settings?.lootPriority || DEFAULT_LOOT_PRIORITY
   );
@@ -120,13 +122,20 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const [copied, setCopied] = useState(false);
 
   const isOwner = group.userRole === 'owner';
-  const canEditPriority = group.userRole === 'owner' || group.userRole === 'lead';
-  const canManageInvitations = group.userRole === 'owner' || group.userRole === 'lead';
+  const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
+  const canEditPriority = canEdit;
+  const canManageInvitations = canEdit;
 
-  // Check if priority has changed
+  // Check if settings have changed
   const originalPriority = group.settings?.lootPriority || DEFAULT_LOOT_PRIORITY;
   const priorityChanged = JSON.stringify(lootPriority) !== JSON.stringify(originalPriority);
-  const hasChanges = name !== group.name || isPublic !== group.isPublic || priorityChanged;
+  const hideSetupBannersChanged = hideSetupBanners !== (group.settings?.hideSetupBanners ?? false);
+  const hideBisBannersChanged = hideBisBanners !== (group.settings?.hideBisBanners ?? false);
+  const ownerFieldsChanged = name !== group.name || isPublic !== group.isPublic;
+  const leadFieldsChanged = priorityChanged || hideSetupBannersChanged || hideBisBannersChanged;
+  const hasChanges = ownerFieldsChanged || leadFieldsChanged;
+  // Can save if: has changes AND all changed fields are editable by user
+  const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
 
   // DnD sensors for priority reordering - with activation constraint for better touch handling
   const sensors = useSensors(
@@ -183,7 +192,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
     setError(null);
 
     try {
-      const updateData: { name?: string; isPublic?: boolean; settings?: { lootPriority: string[] } } = {};
+      const updateData: { name?: string; isPublic?: boolean; settings?: { lootPriority: string[]; hideSetupBanners: boolean; hideBisBanners: boolean } } = {};
 
       if (name !== group.name) {
         updateData.name = name;
@@ -191,8 +200,15 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
       if (isPublic !== group.isPublic) {
         updateData.isPublic = isPublic;
       }
-      if (priorityChanged) {
-        updateData.settings = { lootPriority };
+      // Send complete settings object when any setting changes
+      // This prevents the backend from losing existing values
+      const settingsChanged = priorityChanged || hideSetupBannersChanged || hideBisBannersChanged;
+      if (settingsChanged) {
+        updateData.settings = {
+          lootPriority,
+          hideSetupBanners,
+          hideBisBanners,
+        };
       }
 
       await updateGroup(group.id, updateData);
@@ -323,6 +339,32 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                 </p>
               </div>
 
+              {/* Hide Setup Banners */}
+              <div className="mb-4">
+                <Checkbox
+                  checked={hideSetupBanners}
+                  onChange={setHideSetupBanners}
+                  disabled={!canEdit}
+                  label="Hide unclaimed banners"
+                />
+                <p className="text-xs text-text-muted ml-6 mt-1">
+                  Hide "Unclaimed" prompts on player cards
+                </p>
+              </div>
+
+              {/* Hide BiS Banners */}
+              <div className="mb-4">
+                <Checkbox
+                  checked={hideBisBanners}
+                  onChange={setHideBisBanners}
+                  disabled={!canEdit}
+                  label="Hide BiS banners"
+                />
+                <p className="text-xs text-text-muted ml-6 mt-1">
+                  Hide "No BiS configured" prompts on player cards
+                </p>
+              </div>
+
               {/* Share Code */}
               <div className="mb-6">
                 <Label>Share Link</Label>
@@ -367,7 +409,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={!hasChanges || !isOwner}
+                    disabled={!canSave}
                     loading={isSaving}
                   >
                     Save

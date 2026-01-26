@@ -29,6 +29,7 @@ import type {
   MaterialLogEntry,
   MaterialLogEntryUpdate,
   MaterialType,
+  StaticSettings,
 } from '../../types';
 
 export interface LootLogModalsProps {
@@ -48,6 +49,10 @@ export interface LootLogModalsProps {
     slot?: string;
     materialType?: string;
   } | null;
+  /** Group settings for priority calculation (optional) */
+  settings?: StaticSettings;
+  /** Loot log for enhanced priority calculation (optional) */
+  lootLog?: LootLogEntry[];
 
   // Material Modal
   showMaterialModal: boolean;
@@ -124,6 +129,8 @@ export function LootLogModals({
   floors,
   currentWeek,
   gridModalState,
+  settings,
+  lootLog,
 
   // Material Modal
   showMaterialModal,
@@ -180,6 +187,8 @@ export function LootLogModals({
           editEntry={entryToEdit}
           presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
           presetSlot={gridModalState?.slot}
+          settings={settings}
+          lootLog={lootLog}
         />
       )}
 
@@ -196,6 +205,8 @@ export function LootLogModals({
           presetFloor={gridModalState?.floor ? floors[gridModalState.floor - 1] : undefined}
           suggestedMaterial={gridModalState?.materialType as 'twine' | 'glaze' | 'solvent' | undefined}
           editEntry={materialEntryToEdit}
+          groupId={groupId}
+          tierId={tierId}
         />
       )}
 

@@ -7,7 +7,7 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import { toast } from '../stores/toastStore';
-import type { PageMode, LootLogEntry } from '../types';
+import type { PageMode, LootLogEntry, MaterialLogEntry } from '../types';
 
 interface HighlightedEntry {
   id: string;
@@ -21,6 +21,7 @@ interface UseViewNavigationParams {
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
   setHighlightedBookPlayerId: (id: string | null) => void;
   lootLog: LootLogEntry[];
+  materialLog: MaterialLogEntry[];
 }
 
 export interface UseViewNavigationReturn {
@@ -29,6 +30,9 @@ export interface UseViewNavigationReturn {
 
   /** Navigate to a loot entry from a player's gear slot */
   handleNavigateToLootEntry: (playerId: string, slot: string) => void;
+
+  /** Navigate to a material entry from a player's gear slot */
+  handleNavigateToMaterialEntry: (playerId: string, slot: string) => void;
 
   /** Navigate to the Books panel and highlight the player's row */
   handleNavigateToBooksPanel: (playerId: string) => void;
@@ -40,6 +44,7 @@ export function useViewNavigation({
   setHighlightedEntry,
   setHighlightedBookPlayerId,
   lootLog,
+  materialLog,
 }: UseViewNavigationParams): UseViewNavigationReturn {
   // Track timeout IDs for cleanup to prevent stale state updates
   const playerHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +108,33 @@ export function useViewNavigation({
     }, 2500);
   }, [lootLog, setPageMode, setHighlightedEntry]);
 
+  // Navigate to material entry from player card (gear slot → material entry)
+  const handleNavigateToMaterialEntry = useCallback((playerId: string, slot: string) => {
+    // Clear any existing timeout
+    if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
+    // Find the material entry for this player and slot
+    const entry = materialLog.find(e => e.recipientPlayerId === playerId && e.slotAugmented === slot);
+    if (!entry) {
+      toast.info('No material entry found for this slot');
+      return;
+    }
+    // Switch to history (Log) tab
+    setPageMode('history');
+    // Set highlighted entry with week for cross-week navigation
+    setHighlightedEntry({ id: String(entry.id), type: 'material', week: entry.weekNumber });
+    // Scroll to entry after short delay to allow tab change and week switch
+    setTimeout(() => {
+      const element = document.getElementById(`material-entry-${entry.id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 200); // Slightly longer delay to allow week switch
+    // Clear highlight after animation completes
+    entryHighlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedEntry(null);
+    }, 2500);
+  }, [materialLog, setPageMode, setHighlightedEntry]);
+
   // Navigate to Books panel from player card context menu
   const handleNavigateToBooksPanel = useCallback((playerId: string) => {
     // Clear any existing timeout
@@ -127,6 +159,7 @@ export function useViewNavigation({
   return {
     handleNavigateToPlayer,
     handleNavigateToLootEntry,
+    handleNavigateToMaterialEntry,
     handleNavigateToBooksPanel,
   };
 }

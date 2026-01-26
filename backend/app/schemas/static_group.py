@@ -52,6 +52,14 @@ class StaticSettingsSchema(CamelModel):
         default=["melee", "ranged", "caster", "tank", "healer"],
         description="Role priority order for loot distribution",
     )
+    hide_setup_banners: bool = Field(
+        default=False,
+        description="Hide 'Unclaimed' banners on player cards",
+    )
+    hide_bis_banners: bool = Field(
+        default=False,
+        description="Hide 'No BiS configured' banners on player cards",
+    )
 
 
 # --- Membership Schemas ---

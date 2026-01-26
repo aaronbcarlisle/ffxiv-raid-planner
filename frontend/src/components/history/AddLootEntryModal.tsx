@@ -17,8 +17,9 @@ import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
+import { calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import type { LootLogEntry, LootLogEntryCreate, LootLogEntryUpdate, LootMethod, SnapshotPlayer, GearSlot } from '../../types';
+import type { LootLogEntry, LootLogEntryCreate, LootLogEntryUpdate, LootMethod, SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface AddLootEntryModalProps {
@@ -35,6 +36,10 @@ interface AddLootEntryModalProps {
   presetFloor?: string;
   /** Pre-select slot when opening from grid view (add mode only) */
   presetSlot?: string;
+  /** Group settings for priority calculation (optional, defaults to DEFAULT_SETTINGS) */
+  settings?: StaticSettings;
+  /** Loot log for enhanced priority calculation (optional) */
+  lootLog?: LootLogEntry[];
 }
 
 // Map floor name to floor number (1-4)
@@ -67,6 +72,8 @@ export function AddLootEntryModal({
   editEntry,
   presetFloor,
   presetSlot,
+  settings = DEFAULT_SETTINGS,
+  lootLog = [],
 }: AddLootEntryModalProps) {
   const isEditMode = !!editEntry;
 
@@ -141,20 +148,43 @@ export function AddLootEntryModal({
     }
   }, [availableSlots, itemSlot]);
 
+  // Calculate average drops for enhanced scoring (matches Gear Priority panel)
+  const averageDrops = useMemo(() => {
+    if (lootLog.length === 0) return 0;
+    const playerIds = players.filter(p => p.configured && !p.isSubstitute).map((p) => p.id);
+    return calculateAverageDrops(playerIds, lootLog);
+  }, [lootLog, players]);
+
   // Get priority-sorted recipients for selected slot
+  // Uses enhanced scoring (with loot history) to match Gear Priority panel
   const sortedRecipients = useMemo(() => {
     // Filter to configured players, excluding subs unless includeSubs is checked
     const eligiblePlayers = players.filter((p) => p.configured && (includeSubs || !p.isSubstitute));
 
     if (!itemSlot) return eligiblePlayers.map(p => ({ player: p, priority: 0, score: 0, needsItem: false }));
 
-    // Get priority entries for this slot
+    // Get priority entries for this slot using group settings
     const priorityEntries = itemSlot === 'ring1' || itemSlot === 'ring2'
-      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
-      : getPriorityForItem(eligiblePlayers, itemSlot as GearSlot, DEFAULT_SETTINGS);
+      ? getPriorityForRing(eligiblePlayers, settings)
+      : getPriorityForItem(eligiblePlayers, itemSlot as GearSlot, settings);
 
-    // Create a map of player ID to priority rank
-    const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
+    // Apply enhanced scoring based on loot history (same as Gear Priority panel)
+    const enhancedEntries = priorityEntries.map((entry) => {
+      if (lootLog.length === 0) {
+        return { ...entry, enhancedScore: entry.score };
+      }
+      const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
+      const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
+      const excessDrops = stats.totalDrops - averageDrops;
+      const balancePenalty = excessDrops > 0 ? Math.min(excessDrops * 15, 45) : 0;
+      return {
+        ...entry,
+        enhancedScore: entry.score + droughtBonus - balancePenalty,
+      };
+    }).sort((a, b) => b.enhancedScore - a.enhancedScore);
+
+    // Create a map of player ID to priority rank (based on enhanced score order)
+    const priorityMap = new Map(enhancedEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.enhancedScore }]));
 
     // Sort all players: those with priority first (by rank), then others alphabetically
     return eligiblePlayers
@@ -173,7 +203,7 @@ export function AddLootEntryModal({
         if (a.needsItem && b.needsItem) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [players, itemSlot, includeSubs]);
+  }, [players, itemSlot, includeSubs, settings, lootLog, currentWeek, averageDrops]);
 
   // Filter recipients based on checkbox states
   // Logic:
@@ -295,11 +325,19 @@ export function AddLootEntryModal({
         if (method !== editEntry.method) updates.method = method;
         if (notes !== (editEntry.notes || '')) updates.notes = notes || undefined;
 
+        // For weapon entries, ensure weaponJob is set (backfill for entries created without it)
+        if (itemSlot === 'weapon' && !editEntry.weaponJob && selectedPlayer?.job) {
+          updates.weaponJob = selectedPlayer.job;
+        }
+
         // Only submit if something changed
         if (Object.keys(updates).length > 0) {
           await onUpdate(updates);
         }
       } else {
+        // For weapon entries, include the recipient's job as weaponJob
+        const weaponJob = itemSlot === 'weapon' ? selectedPlayer?.job : undefined;
+
         await onSubmit(
           {
             weekNumber,
@@ -307,6 +345,7 @@ export function AddLootEntryModal({
             itemSlot,
             recipientPlayerId,
             method,
+            weaponJob,
             notes: notes || undefined,
           },
           { updateGear: (method === 'drop' || method === 'book') && updateGear }

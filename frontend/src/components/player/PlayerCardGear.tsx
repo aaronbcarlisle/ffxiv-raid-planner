@@ -31,8 +31,12 @@ interface PlayerCardGearProps {
   onTomeWeaponChange: (updates: Partial<TomeWeaponStatus>) => void;
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
   slotsWithLootEntries?: Set<GearSlot>;
+  /** Slots that have material entries (for "Go to Material Entry" feature) */
+  slotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to material entry for a slot */
+  onNavigateToMaterialEntry?: (slot: string) => void;
 }
 
 export function PlayerCardGear({
@@ -46,7 +50,9 @@ export function PlayerCardGear({
   onGearChange,
   onTomeWeaponChange,
   slotsWithLootEntries,
+  slotsWithMaterialEntries,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
 }: PlayerCardGearProps) {
   if (isExpanded) {
     return (
@@ -61,7 +67,9 @@ export function PlayerCardGear({
           currentUserId={currentUserId}
           isAdminAccess={isAdminAccess}
           slotsWithLootEntries={slotsWithLootEntries}
+          slotsWithMaterialEntries={slotsWithMaterialEntries}
           onNavigateToLootEntry={onNavigateToLootEntry}
+          onNavigateToMaterialEntry={onNavigateToMaterialEntry}
         />
       </div>
     );

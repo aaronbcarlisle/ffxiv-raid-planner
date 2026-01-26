@@ -196,6 +196,8 @@ export interface StaticSettings {
   timezone: string;
   autoSync: boolean;
   syncFrequency: 'daily' | 'weekly';
+  hideSetupBanners?: boolean; // Hide "Unclaimed" banners on player cards
+  hideBisBanners?: boolean; // Hide "No BiS configured" banners on player cards
 }
 
 // Team summary calculations
@@ -386,8 +388,11 @@ export interface OwnerInfo {
 }
 
 // Static group settings (loot priority, etc.)
+// All fields optional to support partial updates
 export interface StaticGroupSettings {
-  lootPriority: string[];
+  lootPriority?: string[];
+  hideSetupBanners?: boolean;
+  hideBisBanners?: boolean;
 }
 
 // Static group (persistent team identity)
@@ -724,6 +729,8 @@ export interface MaterialLogEntry {
   materialType: MaterialType;
   recipientPlayerId: string;
   recipientPlayerName: string;
+  /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
+  slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
   createdAt: string;
   createdByUserId: string;
@@ -746,6 +753,8 @@ export interface MaterialLogEntryCreate {
   floor: string;
   materialType: MaterialType;
   recipientPlayerId: string;
+  /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
+  slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
 }
 
@@ -755,6 +764,7 @@ export interface MaterialLogEntryUpdate {
   floor?: string;
   materialType?: MaterialType;
   recipientPlayerId?: string;
+  slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
 }
 

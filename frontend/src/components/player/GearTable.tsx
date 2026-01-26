@@ -29,20 +29,27 @@ function SlotIcon({
   size = 24,
   showHover = false,
   hasLootEntry = false,
+  hasMaterialEntry = false,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
 }: {
   slot: GearSlot;
   status: GearSlotStatus;
   size?: number;
   showHover?: boolean;
   hasLootEntry?: boolean;
+  hasMaterialEntry?: boolean;
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  onNavigateToMaterialEntry?: (slot: string) => void;
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
+  // Determine which navigation is available
+  const canNavigate = (hasLootEntry && onNavigateToLootEntry) || (hasMaterialEntry && onNavigateToMaterialEntry);
+
   const handleContextMenu = (e: React.MouseEvent) => {
-    // Only show context menu if there's a loot entry to navigate to
-    if (hasLootEntry && onNavigateToLootEntry) {
+    // Only show context menu if there's an entry to navigate to
+    if (canNavigate) {
       e.preventDefault();
       e.stopPropagation();
       setContextMenu({ x: e.clientX, y: e.clientY });
@@ -50,21 +57,33 @@ function SlotIcon({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Alt+Click navigates to loot entry
-    if (e.altKey && hasLootEntry && onNavigateToLootEntry) {
+    // Alt+Click navigates to loot entry (for raid gear) or material entry (for tome gear)
+    if (e.altKey && canNavigate) {
       e.preventDefault();
       e.stopPropagation();
-      onNavigateToLootEntry(slot);
+      if (hasLootEntry && onNavigateToLootEntry) {
+        onNavigateToLootEntry(slot);
+      } else if (hasMaterialEntry && onNavigateToMaterialEntry) {
+        onNavigateToMaterialEntry(slot);
+      }
     }
   };
 
-  const contextMenuItems: ContextMenuItem[] = hasLootEntry && onNavigateToLootEntry
-    ? [{
-        label: 'Jump to Loot Entry',
-        icon: <FileSearch className="w-4 h-4" />,
-        onClick: () => onNavigateToLootEntry(slot),
-      }]
-    : [];
+  const contextMenuItems: ContextMenuItem[] = [];
+  if (hasLootEntry && onNavigateToLootEntry) {
+    contextMenuItems.push({
+      label: 'Jump to Loot Entry',
+      icon: <FileSearch className="w-4 h-4" />,
+      onClick: () => onNavigateToLootEntry(slot),
+    });
+  }
+  if (hasMaterialEntry && onNavigateToMaterialEntry) {
+    contextMenuItems.push({
+      label: 'Jump to Material Entry',
+      icon: <FileSearch className="w-4 h-4" />,
+      onClick: () => onNavigateToMaterialEntry(slot),
+    });
+  }
   const hasItem = status.hasItem;
   const bisSource = status.bisSource;
   const isAugmented = status.isAugmented;
@@ -113,6 +132,13 @@ function SlotIcon({
     />
   );
 
+  // Build the navigation hint based on what type of entry exists
+  const navigationHint = hasLootEntry
+    ? 'loot entry'
+    : hasMaterialEntry
+      ? 'material entry'
+      : null;
+
   // Wrap with LongPressTooltip if we have item data and hover is enabled
   // LongPressTooltip shows on hover (desktop) or long press (mobile)
   if (showHover && hasItemData) {
@@ -121,7 +147,7 @@ function SlotIcon({
         <LongPressTooltip
           delayDuration={200}
           content={
-            hasLootEntry ? (
+            canNavigate && navigationHint ? (
               <div>
                 <ItemHoverCard
                   itemName={status.itemName!}
@@ -134,7 +160,7 @@ function SlotIcon({
                   materia={status.materia}
                 />
                 <div className="mt-2 pt-2 border-t border-border-subtle text-xs text-text-muted">
-                  <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to loot entry
+                  <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to {navigationHint}
                 </div>
               </div>
             ) : (
@@ -154,7 +180,7 @@ function SlotIcon({
           sideOffset={8}
         >
           <div
-            className={`cursor-pointer ${hasLootEntry && onNavigateToLootEntry ? 'hover:ring-1 hover:ring-accent/50 rounded' : ''}`}
+            className={`cursor-pointer ${canNavigate ? 'hover:ring-1 hover:ring-accent/50 rounded' : ''}`}
             onClick={handleClick}
             onContextMenu={handleContextMenu}
           >
@@ -177,7 +203,7 @@ function SlotIcon({
     <div
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      className={hasLootEntry && onNavigateToLootEntry ? 'cursor-pointer hover:ring-1 hover:ring-accent/50 rounded' : ''}
+      className={canNavigate ? 'cursor-pointer hover:ring-1 hover:ring-accent/50 rounded' : ''}
     >
       {iconElement}
     </div>
@@ -185,11 +211,11 @@ function SlotIcon({
 
   return (
     <>
-      {hasLootEntry ? (
+      {canNavigate && navigationHint ? (
         <Tooltip
           content={
             <span className="text-xs">
-              <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to loot entry
+              <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to {navigationHint}
             </span>
           }
         >
@@ -219,7 +245,9 @@ interface WeaponSlotRowProps {
   disabled?: boolean;
   disabledTooltip?: string;
   hasLootEntry?: boolean;
+  hasTomeWeaponMaterialEntry?: boolean;
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  onNavigateToMaterialEntry?: (slot: string) => void;
 }
 
 function WeaponSlotRow({
@@ -230,7 +258,9 @@ function WeaponSlotRow({
   disabled = false,
   disabledTooltip,
   hasLootEntry = false,
+  hasTomeWeaponMaterialEntry = false,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
 }: WeaponSlotRowProps) {
   // Handle tome weapon state change (3-state cycle: missing → have → augmented)
   const handleTomeWeaponStateChange = (newState: GearState) => {
@@ -298,7 +328,30 @@ function WeaponSlotRow({
                 : 'text-text-muted'
             }`}
           >
-            └ Tome Weapon
+            {hasTomeWeaponMaterialEntry && onNavigateToMaterialEntry ? (
+              <Tooltip
+                content={
+                  <span className="text-xs">
+                    <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to material entry
+                  </span>
+                }
+              >
+                <span
+                  className="cursor-pointer hover:text-accent transition-colors"
+                  onClick={(e) => {
+                    if (e.altKey) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigateToMaterialEntry('tome_weapon');
+                    }
+                  }}
+                >
+                  └ Tome Weapon
+                </span>
+              </Tooltip>
+            ) : (
+              '└ Tome Weapon'
+            )}
           </td>
           {/* CurrentSource column hidden for now */}
           <td className="py-1 hidden">
@@ -337,8 +390,12 @@ interface GearTableProps {
   isAdminAccess?: boolean; // Admin mode active (from Admin Dashboard)
   /** Slots that have loot entries (for "Go to Loot Entry" feature) */
   slotsWithLootEntries?: Set<GearSlot>;
+  /** Slots that have material entries (for "Go to Material Entry" feature) */
+  slotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   /** Navigate to loot entry for a slot */
   onNavigateToLootEntry?: (slot: GearSlot) => void;
+  /** Navigate to material entry for a slot */
+  onNavigateToMaterialEntry?: (slot: string) => void;
 }
 
 export function GearTable({
@@ -352,7 +409,9 @@ export function GearTable({
   currentUserId,
   isAdminAccess,
   slotsWithLootEntries,
+  slotsWithMaterialEntries,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
 }: GearTableProps) {
   // Check gear edit permission - use isAdminAccess to respect View As context
   const gearPermission = canEditGear(userRole, player, currentUserId, isAdminAccess);
@@ -529,7 +588,9 @@ export function GearTable({
                   disabled={!gearPermission.allowed}
                   disabledTooltip={gearPermission.reason}
                   hasLootEntry={slotsWithLootEntries?.has('weapon')}
+                  hasTomeWeaponMaterialEntry={slotsWithMaterialEntries?.has('tome_weapon')}
                   onNavigateToLootEntry={onNavigateToLootEntry}
+                  onNavigateToMaterialEntry={onNavigateToMaterialEntry}
                 />
               );
             }
@@ -547,7 +608,9 @@ export function GearTable({
                       size={24}
                       showHover
                       hasLootEntry={slotsWithLootEntries?.has(slot) && status.bisSource === 'raid'}
+                      hasMaterialEntry={slotsWithMaterialEntries?.has(slot) && status.bisSource === 'tome'}
                       onNavigateToLootEntry={onNavigateToLootEntry}
+                      onNavigateToMaterialEntry={onNavigateToMaterialEntry}
                     />
                     <span className="font-medium">{GEAR_SLOT_NAMES[slot]}</span>
                   </div>

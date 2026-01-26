@@ -33,10 +33,15 @@ interface PlayerCardRendererProps {
   isAdminAccess: boolean;
   isAdmin: boolean;
   viewAsUserId?: string;
+  /** Hide "Unclaimed" banners (group setting) */
+  hideSetupBanners?: boolean;
+  /** Hide "No BiS configured" banners (group setting) */
+  hideBisBanners?: boolean;
   groupId: string;
   tierId: string;
   highlightedPlayerId: string | null;
   playerSlotsWithLootEntries: Set<GearSlot> | undefined;
+  playerSlotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   onUpdatePlayer: (playerId: string, updates: Partial<SnapshotPlayer>) => Promise<void>;
   onRemovePlayer: (playerId: string) => Promise<void>;
   onConfigurePlayer: (playerId: string, name: string, job: string, role: string) => Promise<void>;
@@ -50,6 +55,7 @@ interface PlayerCardRendererProps {
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
   onNavigateToLootEntry: (playerId: string, slot: GearSlot) => void;
+  onNavigateToMaterialEntry?: (playerId: string, slot: string) => void;
   onNavigateToBooksPanel: (playerId: string) => void;
   onModalOpen: () => void;
   onModalClose: () => void;
@@ -72,10 +78,13 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   isAdminAccess,
   isAdmin,
   viewAsUserId,
+  hideSetupBanners,
+  hideBisBanners,
   groupId,
   tierId,
   highlightedPlayerId,
   playerSlotsWithLootEntries,
+  playerSlotsWithMaterialEntries,
   onUpdatePlayer,
   onRemovePlayer,
   onConfigurePlayer,
@@ -89,6 +98,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   onPastePlayer,
   onCopyUrl,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
   onNavigateToBooksPanel,
   onModalOpen,
   onModalClose,
@@ -152,6 +162,10 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
     onNavigateToLootEntry(player.id, slot);
   }, [onNavigateToLootEntry, player.id]);
 
+  const handleNavigateToMaterialEntry = useCallback((slot: string) => {
+    onNavigateToMaterialEntry?.(player.id, slot);
+  }, [onNavigateToMaterialEntry, player.id]);
+
   const handleNavigateToBooksPanel = useCallback(() => {
     onNavigateToBooksPanel(player.id);
   }, [onNavigateToBooksPanel, player.id]);
@@ -194,6 +208,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         isAdmin={isAdmin}
         isAdminAccess={isAdminAccess}
         viewAsUserId={viewAsUserId}
+        hideSetupBanners={hideSetupBanners}
+        hideBisBanners={hideBisBanners}
         groupId={groupId}
         tierId={tierId}
         isHighlighted={highlightedPlayerId === player.id}
@@ -211,7 +227,9 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         onModalClose={onModalClose}
         onCopyUrl={handleCopyUrl}
         slotsWithLootEntries={playerSlotsWithLootEntries}
+        slotsWithMaterialEntries={playerSlotsWithMaterialEntries}
         onNavigateToLootEntry={handleNavigateToLootEntry}
+        onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
         onNavigateToBooksPanel={handleNavigateToBooksPanel}
       />
     );
@@ -253,9 +271,14 @@ export interface PlayerGridProps {
   isAdminAccess: boolean;
   isAdmin: boolean;
   viewAsUserId?: string;
+  /** Hide "Unclaimed" banners (group setting) */
+  hideSetupBanners?: boolean;
+  /** Hide "No BiS configured" banners (group setting) */
+  hideBisBanners?: boolean;
   groupId: string;
   tierId: string;
   playerSlotsWithLootEntries: Map<string, Set<GearSlot>>;
+  playerSlotsWithMaterialEntries?: Map<string, Set<GearSlot | 'tome_weapon'>>;
   // Callbacks
   onUpdatePlayer: (playerId: string, updates: Partial<SnapshotPlayer>) => Promise<void>;
   onRemovePlayer: (playerId: string) => Promise<void>;
@@ -270,6 +293,7 @@ export interface PlayerGridProps {
   onPastePlayer: (playerId: string, clipboardPlayer: SnapshotPlayer) => void;
   onCopyUrl: (playerId: string) => void;
   onNavigateToLootEntry: (playerId: string, slot: GearSlot) => void;
+  onNavigateToMaterialEntry?: (playerId: string, slot: string) => void;
   onNavigateToBooksPanel: (playerId: string) => void;
   onModalOpen: () => void;
   onModalClose: () => void;
@@ -298,9 +322,12 @@ export function PlayerGrid({
   isAdminAccess,
   isAdmin,
   viewAsUserId,
+  hideSetupBanners,
+  hideBisBanners,
   groupId,
   tierId,
   playerSlotsWithLootEntries,
+  playerSlotsWithMaterialEntries,
   onUpdatePlayer,
   onRemovePlayer,
   onConfigurePlayer,
@@ -314,6 +341,7 @@ export function PlayerGrid({
   onPastePlayer,
   onCopyUrl,
   onNavigateToLootEntry,
+  onNavigateToMaterialEntry,
   onNavigateToBooksPanel,
   onModalOpen,
   onModalClose,
@@ -335,6 +363,8 @@ export function PlayerGrid({
     isAdminAccess,
     isAdmin,
     viewAsUserId,
+    hideSetupBanners,
+    hideBisBanners,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -351,6 +381,7 @@ export function PlayerGrid({
     onPastePlayer,
     onCopyUrl,
     onNavigateToLootEntry,
+    onNavigateToMaterialEntry,
     onNavigateToBooksPanel,
     onModalOpen,
     onModalClose,
@@ -370,6 +401,8 @@ export function PlayerGrid({
     isAdminAccess,
     isAdmin,
     viewAsUserId,
+    hideSetupBanners,
+    hideBisBanners,
     groupId,
     tierId,
     highlightedPlayerId,
@@ -386,6 +419,7 @@ export function PlayerGrid({
     onPastePlayer,
     onCopyUrl,
     onNavigateToLootEntry,
+    onNavigateToMaterialEntry,
     onNavigateToBooksPanel,
     onModalOpen,
     onModalClose,
@@ -407,6 +441,7 @@ export function PlayerGrid({
                   key={player.id}
                   player={player}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                   {...renderCardProps}
                 />
               ))}
@@ -424,6 +459,7 @@ export function PlayerGrid({
                   key={player.id}
                   player={player}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                   {...renderCardProps}
                 />
               ))}
@@ -443,6 +479,7 @@ export function PlayerGrid({
                   key={player.id}
                   player={player}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                   {...renderCardProps}
                 />
               ))}
@@ -472,6 +509,7 @@ export function PlayerGrid({
                   key={player.id}
                   player={player}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                   {...renderCardProps}
                 />
               ))}
@@ -492,6 +530,7 @@ export function PlayerGrid({
                 key={player.id}
                 player={player}
                 playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                 {...renderCardProps}
               />
             ))
@@ -500,6 +539,7 @@ export function PlayerGrid({
                 key={player.id}
                 player={player}
                 playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                 {...renderCardProps}
               />
             ))
@@ -527,6 +567,7 @@ export function PlayerGrid({
                 key={player.id}
                 player={player}
                 playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
                 {...renderCardProps}
               />
             ))}

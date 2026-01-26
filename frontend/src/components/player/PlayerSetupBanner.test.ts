@@ -206,3 +206,116 @@ describe('PlayerSetupBanner - state transitions', () => {
     expect(getBannerState(assignedPlayer, 'owner-1', 'owner', false)).toBe('hidden');
   });
 });
+
+describe('PlayerSetupBanner - banner hiding options', () => {
+  describe('hideSetupBanners option', () => {
+    it('shows needs-bis for owner on unclaimed card without BiS when hideSetupBanners is enabled', () => {
+      // When hiding setup banners, owner should still see BiS status for unclaimed cards
+      const player = createPlayer({ userId: undefined, bisLink: undefined });
+      const result = getBannerState(player, 'user-1', 'owner', false, { hideSetupBanners: true });
+      expect(result).toBe('needs-bis');
+    });
+
+    it('shows needs-bis for lead on unclaimed card without BiS when hideSetupBanners is enabled', () => {
+      const player = createPlayer({ userId: undefined, bisLink: undefined });
+      const result = getBannerState(player, 'user-1', 'lead', false, { hideSetupBanners: true });
+      expect(result).toBe('needs-bis');
+    });
+
+    it('hides banner for owner on unclaimed card WITH BiS when hideSetupBanners is enabled', () => {
+      // Card has BiS, no banner needed
+      const player = createPlayer({ userId: undefined, bisLink: 'etro-uuid-123' });
+      const result = getBannerState(player, 'user-1', 'owner', false, { hideSetupBanners: true });
+      expect(result).toBe('hidden');
+    });
+
+    it('hides unclaimed-member banner when enabled (member cant see BiS status of others)', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'member', false, { hideSetupBanners: true });
+      expect(result).toBe('hidden');
+    });
+
+    it('still shows needs-bis banner for claimed cards when hideSetupBanners is enabled', () => {
+      const player = createPlayer({
+        userId: 'user-1',
+        bisLink: undefined,
+      });
+      const result = getBannerState(player, 'user-1', 'member', true, { hideSetupBanners: true });
+      expect(result).toBe('needs-bis');
+    });
+
+    it('shows unclaimed-owner banner when hideSetupBanners is false', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'owner', false, { hideSetupBanners: false });
+      expect(result).toBe('unclaimed-owner');
+    });
+  });
+
+  describe('hideBisBanners option', () => {
+    it('hides needs-bis banner when enabled', () => {
+      const player = createPlayer({
+        userId: 'user-1',
+        bisLink: undefined,
+      });
+      const result = getBannerState(player, 'user-1', 'member', true, { hideBisBanners: true });
+      expect(result).toBe('hidden');
+    });
+
+    it('still shows unclaimed-owner banner when hideBisBanners is enabled', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'owner', false, { hideBisBanners: true });
+      expect(result).toBe('unclaimed-owner');
+    });
+
+    it('still shows unclaimed-member banner when hideBisBanners is enabled', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'member', false, { hideBisBanners: true });
+      expect(result).toBe('unclaimed-member');
+    });
+
+    it('shows needs-bis banner when hideBisBanners is false', () => {
+      const player = createPlayer({
+        userId: 'user-1',
+        bisLink: undefined,
+      });
+      const result = getBannerState(player, 'user-1', 'member', true, { hideBisBanners: false });
+      expect(result).toBe('needs-bis');
+    });
+  });
+
+  describe('combined options', () => {
+    it('hides all banners when both options are enabled', () => {
+      const unclaimedPlayer = createPlayer({ userId: undefined, bisLink: undefined });
+      const noBisPlayer = createPlayer({ userId: 'user-1', bisLink: undefined });
+      const options = { hideSetupBanners: true, hideBisBanners: true };
+
+      // Unclaimed cards for owner/lead - both setup AND bis banners hidden
+      expect(getBannerState(unclaimedPlayer, 'user-1', 'owner', false, options)).toBe('hidden');
+      expect(getBannerState(unclaimedPlayer, 'user-1', 'lead', false, options)).toBe('hidden');
+
+      // Unclaimed for member - hidden (member cant see BiS of others anyway)
+      expect(getBannerState(unclaimedPlayer, 'user-1', 'member', false, options)).toBe('hidden');
+
+      // Claimed card without BiS - hidden
+      expect(getBannerState(noBisPlayer, 'user-1', 'member', true, options)).toBe('hidden');
+    });
+
+    it('owner sees needs-bis for unclaimed cards when only hideSetupBanners is enabled', () => {
+      const player = createPlayer({ userId: undefined, bisLink: undefined });
+      const options = { hideSetupBanners: true, hideBisBanners: false };
+      expect(getBannerState(player, 'user-1', 'owner', false, options)).toBe('needs-bis');
+    });
+
+    it('works with empty options object (backwards compatible)', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'owner', false, {});
+      expect(result).toBe('unclaimed-owner');
+    });
+
+    it('works without options parameter (backwards compatible)', () => {
+      const player = createPlayer({ userId: undefined });
+      const result = getBannerState(player, 'user-1', 'owner', false);
+      expect(result).toBe('unclaimed-owner');
+    });
+  });
+});

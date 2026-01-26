@@ -23,6 +23,7 @@ import { LootLogEntryItem, MaterialLogEntryItem } from './LogEntryItems';
 import { type ResetType } from '../ui/ResetConfirmModal';
 import { type ContextMenuItem } from '../ui/ContextMenu';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
+import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -94,7 +95,6 @@ export function SectionedLogView({
     fetchMaterialLog,
     fetchPageBalances,
     fetchWeekDataTypes,
-    deleteMaterialEntry,
   } = useLootTrackingStore();
 
   // URL params for deep linking
@@ -234,20 +234,30 @@ export function SectionedLogView({
     });
   }, [groupId, tierId, fetchLootLog, fetchWeekDataTypes]);
 
-  const handleDeleteMaterial = useCallback((entryId: number) => {
+  const handleDeleteMaterial = useCallback((entryOrId: MaterialLogEntry | number) => {
+    // Support both entry object (from context menu) and ID (from delete button)
+    const entry = typeof entryOrId === 'number'
+      ? materialLog.find(e => e.id === entryOrId)
+      : entryOrId;
+
+    if (!entry) {
+      toast.error('Material entry not found');
+      return;
+    }
+
     setConfirmState({
       type: 'deleteMaterial',
       title: 'Delete Material Entry',
       message: 'Delete this material entry?',
       onConfirm: async () => {
-        await deleteMaterialEntry(groupId, tierId, entryId);
+        await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         await fetchMaterialLog(groupId, tierId);
         await fetchWeekDataTypes(groupId, tierId);
         toast.success('Material entry deleted');
         setConfirmState(null);
       },
     });
-  }, [groupId, tierId, deleteMaterialEntry, fetchMaterialLog, fetchWeekDataTypes]);
+  }, [groupId, tierId, materialLog, fetchMaterialLog, fetchWeekDataTypes]);
 
   const handleMaterialSubmit = useCallback(async (data: {
     weekNumber: number;
@@ -316,7 +326,7 @@ export function SectionedLogView({
   const handleResetConfirm = useCallback(async () => {
     if (!resetModalType) return;
 
-    const { deleteMaterialEntry, clearAllPageLedger } = useLootTrackingStore.getState();
+    const { clearAllPageLedger } = useLootTrackingStore.getState();
 
     try {
       // Reset loot log (all entries for this tier)
@@ -327,10 +337,10 @@ export function SectionedLogView({
           // Use deleteLootAndRevertGear to sync gear state (uncheck items)
           await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
-        // Also delete all material entries
+        // Also delete all material entries with gear reversion
         const allMaterialLog = useLootTrackingStore.getState().materialLog;
         for (const entry of allMaterialLog) {
-          await deleteMaterialEntry(groupId, tierId, entry.id);
+          await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
       }
 
@@ -802,7 +812,7 @@ export function SectionedLogView({
         items.push({
           label: 'Delete',
           icon: <Trash2 className="w-4 h-4" />,
-          onClick: () => handleDeleteMaterial(entry.id),
+          onClick: () => handleDeleteMaterial(entry as MaterialLogEntry),
           danger: true,
         });
       }
@@ -1538,6 +1548,7 @@ export function SectionedLogView({
         floors={floors}
         currentWeek={currentWeek}
         gridModalState={gridModalState}
+        lootLog={lootLog}
         // Material Modal
         showMaterialModal={showMaterialModal}
         onCloseMaterialModal={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}

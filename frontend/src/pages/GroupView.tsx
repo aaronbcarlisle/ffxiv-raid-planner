@@ -367,12 +367,13 @@ export function GroupView() {
   const { handleAddPlayer } = playerActions;
 
   // Use extracted navigation hook
-  const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToBooksPanel } = useViewNavigation({
+  const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToMaterialEntry, handleNavigateToBooksPanel } = useViewNavigation({
     setPageMode,
     setHighlightedPlayerId,
     setHighlightedEntry,
     setHighlightedBookPlayerId,
     lootLog,
+    materialLog,
   });
 
   // Listen for header events
@@ -478,6 +479,19 @@ export function GroupView() {
     }
     return map;
   }, [lootLog]);
+
+  // Compute which slots have material entries for each player (for tome slot navigation)
+  const playerSlotsWithMaterialEntries = useMemo(() => {
+    const map = new Map<string, Set<GearSlot | 'tome_weapon'>>();
+    for (const entry of materialLog) {
+      if (entry.slotAugmented) {
+        const existing = map.get(entry.recipientPlayerId) ?? new Set<GearSlot | 'tome_weapon'>();
+        existing.add(entry.slotAugmented);
+        map.set(entry.recipientPlayerId, existing);
+      }
+    }
+    return map;
+  }, [materialLog]);
 
   // Check if any modal is open (including error modal)
   const isErrorModalOpen = !!error && !!currentGroup;
@@ -773,9 +787,12 @@ export function GroupView() {
                   isAdminAccess={isAdminAccess}
                   isAdmin={isAdmin}
                   viewAsUserId={viewAsUser?.userId}
+                  hideSetupBanners={currentGroup?.settings?.hideSetupBanners}
+                  hideBisBanners={currentGroup?.settings?.hideBisBanners}
                   groupId={currentGroup!.id}
                   tierId={currentTier!.tierId}
                   playerSlotsWithLootEntries={playerSlotsWithLootEntries}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries}
                   onUpdatePlayer={playerActions.handleUpdatePlayer}
                   onRemovePlayer={playerActions.handleRemovePlayer}
                   onConfigurePlayer={playerActions.handleConfigurePlayer}
@@ -789,6 +806,7 @@ export function GroupView() {
                   onPastePlayer={handlePastePlayer}
                   onCopyUrl={handleCopyUrl}
                   onNavigateToLootEntry={handleNavigateToLootEntry}
+                  onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
                   onNavigateToBooksPanel={handleNavigateToBooksPanel}
                   onModalOpen={handlePlayerModalOpen}
                   onModalClose={handlePlayerModalClose}
