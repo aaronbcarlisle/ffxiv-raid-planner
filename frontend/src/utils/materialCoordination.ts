@@ -209,7 +209,9 @@ export async function logMaterialAndUpdateGear(
       await tierStore.fetchTier(groupId, tierId);
     }
 
-    const player = useTierStore.getState().currentTier?.players?.find(
+    // Re-get fresh state after potential fetch to avoid stale data
+    const freshTierStore = useTierStore.getState();
+    const player = freshTierStore.currentTier?.players?.find(
       (p) => p.id === data.recipientPlayerId
     );
 
@@ -288,7 +290,9 @@ export async function deleteMaterialAndRevertGear(
       await tierStore.fetchTier(groupId, tierId);
     }
 
-    const player = useTierStore.getState().currentTier?.players?.find(
+    // Re-get fresh state after potential fetch to avoid stale data
+    const freshTierStore = useTierStore.getState();
+    const player = freshTierStore.currentTier?.players?.find(
       (p) => p.id === entry.recipientPlayerId
     );
 

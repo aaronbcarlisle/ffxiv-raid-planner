@@ -290,12 +290,10 @@ export function LogMaterialModal({
       }
       onClose();
     } catch (error) {
-      // Show error toast for coordination path failures
-      // (onSubmit/onUpdate errors are handled by caller via their own error handling)
-      if (shouldUpdateGear) {
-        console.error('Material log error:', error);
-        toast.error('Failed to log material');
-      }
+      // Always log and show error - coordination path and onSubmit/onUpdate errors
+      // should both provide user feedback
+      console.error('Material log error:', error);
+      toast.error('Failed to log material');
     } finally {
       setIsSubmitting(false);
     }

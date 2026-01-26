@@ -88,8 +88,12 @@ def upgrade() -> None:
                     continue
 
                 gear_json, tome_weapon_json = player_row
-                gear = json.loads(gear_json) if gear_json else []
-                tome_weapon = json.loads(tome_weapon_json) if tome_weapon_json else {}
+                try:
+                    gear = json.loads(gear_json) if gear_json else []
+                    tome_weapon = json.loads(tome_weapon_json) if tome_weapon_json else {}
+                except json.JSONDecodeError as e:
+                    print(f"  Warning: Invalid JSON for player {player_id}, skipping: {e}")
+                    continue
                 player_updates[player_id] = (gear, tome_weapon)
 
             gear, tome_weapon = player_updates[player_id]
