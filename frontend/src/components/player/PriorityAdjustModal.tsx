@@ -1,0 +1,122 @@
+/**
+ * Priority Adjust Modal
+ *
+ * Allows users to adjust a player's priority modifier.
+ * The modifier is added to the player's calculated priority score.
+ * Positive values increase priority, negative values decrease it.
+ */
+
+import { useState } from 'react';
+import { Gauge } from 'lucide-react';
+import { Modal, NumberInput, Label } from '../ui';
+import { Button } from '../primitives';
+import { JobIcon } from '../ui/JobIcon';
+import type { SnapshotPlayer } from '../../types';
+
+interface PriorityAdjustModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  player: SnapshotPlayer;
+  onSave: (playerId: string, modifier: number) => Promise<void>;
+}
+
+export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: PriorityAdjustModalProps) {
+  const [modifier, setModifier] = useState<number>(player.priorityModifier ?? 0);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(player.id, modifier);
+      onClose();
+    } catch {
+      // Error handling is done by the parent
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setModifier(0);
+  };
+
+  const hasChanged = modifier !== (player.priorityModifier ?? 0);
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Gauge className="w-5 h-5" />
+          Adjust Priority
+        </span>
+      }
+      size="sm"
+    >
+      <div className="space-y-4">
+        {/* Player info */}
+        <div className="flex items-center gap-3 p-3 bg-surface-base rounded-lg">
+          <JobIcon job={player.job} size="md" />
+          <div>
+            <div className="font-medium text-text-primary">{player.name}</div>
+            <div className="text-sm text-text-muted">{player.job}</div>
+          </div>
+        </div>
+
+        {/* Modifier input */}
+        <div>
+          <Label htmlFor="priorityModifier">Priority Modifier</Label>
+          <NumberInput
+            id="priorityModifier"
+            value={modifier}
+            onChange={(value) => setModifier(value ?? 0)}
+            min={-100}
+            max={100}
+            step={5}
+            className="mt-1"
+          />
+          <p className="text-xs text-text-muted mt-2">
+            Positive values increase priority, negative values decrease it.
+            Range: -100 to +100.
+          </p>
+        </div>
+
+        {/* Explanation */}
+        <div className="p-3 bg-surface-elevated border border-border-default rounded-lg text-sm text-text-secondary">
+          <div className="font-medium text-text-primary mb-1">How it works:</div>
+          <ul className="list-disc list-inside space-y-1 text-xs">
+            <li>The modifier is added directly to the priority score</li>
+            <li>Use +20 to +50 to give a player higher priority</li>
+            <li>Use -20 to -50 to give a player lower priority</li>
+            <li>Useful for catch-up or balancing new members</li>
+          </ul>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-between pt-4 border-t border-border-default">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleReset}
+            disabled={modifier === 0}
+          >
+            Reset to 0
+          </Button>
+          <div className="flex gap-3">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanged}
+              loading={isSaving}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}

@@ -24,16 +24,17 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Settings, ListOrdered, Users, Mail, Trash2, GripVertical } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Trash2, GripVertical, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { useSwipe } from '../../hooks/useSwipe';
-import { Modal, Checkbox, Label, Input, ErrorBox } from '../ui';
+import { Modal, Checkbox, Label, Input, ErrorBox, NumberInput, Select } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
 import { MembersPanel } from './MembersPanel';
 import { DEFAULT_LOOT_PRIORITY } from '../../utils/constants';
-import type { StaticGroup } from '../../types';
+import { RAID_JOBS } from '../../gamedata';
+import type { StaticGroup, PriorityMode } from '../../types';
 
 type SettingsTab = 'general' | 'priority' | 'members' | 'invitations';
 
@@ -114,6 +115,22 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const [lootPriority, setLootPriority] = useState<string[]>(
     group.settings?.lootPriority || DEFAULT_LOOT_PRIORITY
   );
+  // New priority settings
+  const [priorityMode, setPriorityMode] = useState<PriorityMode>(
+    group.settings?.priorityMode ?? 'automatic'
+  );
+  const [jobPriorityModifiers, setJobPriorityModifiers] = useState<Record<string, number>>(
+    group.settings?.jobPriorityModifiers ?? {}
+  );
+  const [showPriorityScores, setShowPriorityScores] = useState(
+    group.settings?.showPriorityScores ?? true
+  );
+  const [enableEnhancedScoring, setEnableEnhancedScoring] = useState(
+    group.settings?.enableEnhancedScoring ?? false
+  );
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [newJobModifier, setNewJobModifier] = useState<string>('');
+
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -131,8 +148,13 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
   const priorityChanged = JSON.stringify(lootPriority) !== JSON.stringify(originalPriority);
   const hideSetupBannersChanged = hideSetupBanners !== (group.settings?.hideSetupBanners ?? false);
   const hideBisBannersChanged = hideBisBanners !== (group.settings?.hideBisBanners ?? false);
+  const priorityModeChanged = priorityMode !== (group.settings?.priorityMode ?? 'automatic');
+  const jobModifiersChanged = JSON.stringify(jobPriorityModifiers) !== JSON.stringify(group.settings?.jobPriorityModifiers ?? {});
+  const showPriorityScoresChanged = showPriorityScores !== (group.settings?.showPriorityScores ?? true);
+  const enableEnhancedScoringChanged = enableEnhancedScoring !== (group.settings?.enableEnhancedScoring ?? false);
   const ownerFieldsChanged = name !== group.name || isPublic !== group.isPublic;
-  const leadFieldsChanged = priorityChanged || hideSetupBannersChanged || hideBisBannersChanged;
+  const leadFieldsChanged = priorityChanged || hideSetupBannersChanged || hideBisBannersChanged ||
+    priorityModeChanged || jobModifiersChanged || showPriorityScoresChanged || enableEnhancedScoringChanged;
   const hasChanges = ownerFieldsChanged || leadFieldsChanged;
   // Can save if: has changes AND all changed fields are editable by user
   const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
@@ -192,7 +214,19 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
     setError(null);
 
     try {
-      const updateData: { name?: string; isPublic?: boolean; settings?: { lootPriority: string[]; hideSetupBanners: boolean; hideBisBanners: boolean } } = {};
+      const updateData: {
+        name?: string;
+        isPublic?: boolean;
+        settings?: {
+          lootPriority: string[];
+          hideSetupBanners: boolean;
+          hideBisBanners: boolean;
+          priorityMode: PriorityMode;
+          jobPriorityModifiers?: Record<string, number>;
+          showPriorityScores: boolean;
+          enableEnhancedScoring: boolean;
+        };
+      } = {};
 
       if (name !== group.name) {
         updateData.name = name;
@@ -202,12 +236,19 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
       }
       // Send complete settings object when any setting changes
       // This prevents the backend from losing existing values
-      const settingsChanged = priorityChanged || hideSetupBannersChanged || hideBisBannersChanged;
-      if (settingsChanged) {
+      if (leadFieldsChanged) {
+        // Clean up empty jobPriorityModifiers object
+        const cleanedModifiers = Object.keys(jobPriorityModifiers).length > 0
+          ? jobPriorityModifiers
+          : undefined;
         updateData.settings = {
           lootPriority,
           hideSetupBanners,
           hideBisBanners,
+          priorityMode,
+          jobPriorityModifiers: cleanedModifiers,
+          showPriorityScores,
+          enableEnhancedScoring,
         };
       }
 
@@ -469,51 +510,199 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
 
           {activeTab === 'priority' && (
             <div>
-              <p className="text-text-secondary text-sm mb-4">
-                Drag to reorder role priority for loot distribution. Higher priority roles appear first in priority lists.
-              </p>
-
               {!canEditPriority && (
                 <div className="mb-4 p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm">
                   Only owners and leads can modify priority settings.
                 </div>
               )}
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext items={lootPriority} strategy={verticalListSortingStrategy}>
-                  <div className={`space-y-2 mb-6 ${!canEditPriority ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {lootPriority.map((role, index) => (
-                      <SortableRoleItem key={role} role={role} index={index} />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-
-              <div className="flex justify-between pt-4 border-t border-border-default">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleResetPriority}
+              {/* Priority Mode Selection */}
+              <div className="mb-6">
+                <Label htmlFor="priorityMode">Priority Mode</Label>
+                <Select
+                  id="priorityMode"
+                  value={priorityMode}
+                  onChange={(value) => setPriorityMode(value as PriorityMode)}
                   disabled={!canEditPriority}
-                >
-                  Reset to Default
-                </Button>
-                <div className="flex gap-3">
-                  <Button type="button" variant="secondary" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={!priorityChanged || !canEditPriority}
-                    loading={isSaving}
+                  options={[
+                    { value: 'automatic', label: 'Automatic (recommended)' },
+                    { value: 'manual', label: 'Manual (show priority, I decide)' },
+                    { value: 'disabled', label: 'Disabled (equal distribution)' },
+                  ]}
+                />
+                <p className="text-xs text-text-muted mt-1">
+                  {priorityMode === 'automatic' && 'System calculates and suggests top priority player for each drop.'}
+                  {priorityMode === 'manual' && 'Priority scores shown but no automatic suggestions.'}
+                  {priorityMode === 'disabled' && 'All players show equal priority (score: 0). Use for equal distribution groups.'}
+                </p>
+              </div>
+
+              {/* Role Priority Order - only show if not disabled */}
+              {priorityMode !== 'disabled' && (
+                <div className="mb-6">
+                  <Label>Role Priority Order</Label>
+                  <p className="text-text-secondary text-sm mb-3">
+                    Drag to reorder role priority for loot distribution. Higher priority roles appear first in priority lists.
+                  </p>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
                   >
-                    Save
+                    <SortableContext items={lootPriority} strategy={verticalListSortingStrategy}>
+                      <div className={`space-y-2 ${!canEditPriority ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {lootPriority.map((role, index) => (
+                          <SortableRoleItem key={role} role={role} index={index} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetPriority}
+                    disabled={!canEditPriority}
+                    className="mt-2"
+                  >
+                    Reset to Default
                   </Button>
                 </div>
+              )}
+
+              {/* Advanced Options - Collapsible */}
+              <div className="border-t border-border-default pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                  className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors w-full text-left"
+                  disabled={!canEditPriority}
+                >
+                  {showAdvancedOptions ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                  <span className="text-sm font-medium">Advanced Options</span>
+                </button>
+
+                {showAdvancedOptions && (
+                  <div className={`mt-4 space-y-4 ${!canEditPriority ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {/* Show Priority Scores */}
+                    <Checkbox
+                      checked={showPriorityScores}
+                      onChange={setShowPriorityScores}
+                      disabled={!canEditPriority}
+                      label="Show priority scores"
+                      description="Display numeric priority scores in the loot panel"
+                    />
+
+                    {/* Enable Enhanced Scoring */}
+                    <Checkbox
+                      checked={enableEnhancedScoring}
+                      onChange={setEnableEnhancedScoring}
+                      disabled={!canEditPriority}
+                      label="Enable enhanced fairness scoring"
+                      description="Adds drought bonus (no drops in X weeks) and balance penalty (received more than average)"
+                    />
+
+                    {/* Job Priority Modifiers */}
+                    <div>
+                      <Label>Job Priority Adjustments</Label>
+                      <p className="text-text-muted text-xs mb-2">
+                        Fine-tune priority for specific jobs. Positive values increase priority, negative decrease.
+                      </p>
+
+                      {/* Existing modifiers */}
+                      {Object.entries(jobPriorityModifiers).length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {Object.entries(jobPriorityModifiers).map(([job, modifier]) => (
+                            <div key={job} className="flex items-center gap-2">
+                              <span className="text-sm text-text-secondary w-16">{job}</span>
+                              <NumberInput
+                                value={modifier}
+                                onChange={(value) => {
+                                  const newModifiers = { ...jobPriorityModifiers };
+                                  if (value === null || value === 0) {
+                                    delete newModifiers[job];
+                                  } else {
+                                    newModifiers[job] = value;
+                                  }
+                                  setJobPriorityModifiers(newModifiers);
+                                }}
+                                min={-100}
+                                max={100}
+                                step={5}
+                                size="sm"
+                                disabled={!canEditPriority}
+                                className="w-28"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newModifiers = { ...jobPriorityModifiers };
+                                  delete newModifiers[job];
+                                  setJobPriorityModifiers(newModifiers);
+                                }}
+                                className="p-1 text-text-muted hover:text-status-error transition-colors"
+                                disabled={!canEditPriority}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add new modifier */}
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={newJobModifier}
+                          onChange={setNewJobModifier}
+                          disabled={!canEditPriority}
+                          placeholder="Select job..."
+                          options={RAID_JOBS
+                            .filter((job) => !jobPriorityModifiers[job.abbreviation])
+                            .map((job) => ({
+                              value: job.abbreviation,
+                              label: `${job.abbreviation} - ${job.name}`,
+                            }))}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            if (newJobModifier) {
+                              setJobPriorityModifiers({
+                                ...jobPriorityModifiers,
+                                [newJobModifier]: 0,
+                              });
+                              setNewJobModifier('');
+                            }
+                          }}
+                          disabled={!canEditPriority || !newJobModifier}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-border-default">
+                <Button type="button" variant="secondary" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={!leadFieldsChanged || !canEditPriority}
+                  loading={isSaving}
+                >
+                  Save
+                </Button>
               </div>
             </div>
           )}

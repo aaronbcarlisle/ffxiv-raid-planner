@@ -46,6 +46,10 @@ interface LootPriorityEntryProps {
   onLogClick?: (player: SnapshotPlayer) => void;
   /** Label for the slot/item being logged (e.g., "Head", "Glaze") */
   itemLabel?: string;
+  /** Whether to show priority scores (false hides the score badge) */
+  showScores?: boolean;
+  /** Whether to highlight the first entry (false for disabled mode) */
+  highlightFirst?: boolean;
 }
 
 // Tooltip content for gear priority score breakdown
@@ -69,6 +73,20 @@ function GearScoreTooltip({ entry, showEnhanced }: { entry: EnhancedPriorityEntr
             <div className="text-text-secondary">
               Gear Needed: <span className="text-accent">+{breakdown.weightedNeedBonus}</span>
               <span className="text-text-muted ml-1">({breakdown.weightedNeed.toFixed(1)} weighted)</span>
+            </div>
+          )}
+          {breakdown.jobModifier !== 0 && (
+            <div className="text-text-secondary">
+              Job Modifier: <span className={breakdown.jobModifier > 0 ? 'text-status-success' : 'text-status-warning'}>
+                {breakdown.jobModifier > 0 ? '+' : ''}{breakdown.jobModifier}
+              </span>
+            </div>
+          )}
+          {breakdown.playerModifier !== 0 && (
+            <div className="text-text-secondary">
+              Player Modifier: <span className={breakdown.playerModifier > 0 ? 'text-status-success' : 'text-status-warning'}>
+                {breakdown.playerModifier > 0 ? '+' : ''}{breakdown.playerModifier}
+              </span>
             </div>
           )}
           {breakdown.lootAdjustmentPenalty !== 0 && (
@@ -110,27 +128,32 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
   showLogButton,
   onLogClick,
   itemLabel,
+  showScores = true,
+  highlightFirst = true,
 }: LootPriorityEntryProps) {
   const roleColor = getRoleColor(entry.player.role as Role);
   const displayScore = showEnhanced && entry.enhancedScore !== undefined
     ? entry.enhancedScore
     : entry.score;
 
+  // Only highlight if it's the first entry AND highlighting is enabled
+  const shouldHighlight = isFirst && highlightFirst;
+
   return (
     <div
       className={`flex items-center justify-between px-2 py-1 rounded text-sm group min-w-0 ${
-        isFirst ? 'bg-accent/20' : ''
+        shouldHighlight ? 'bg-accent/20' : ''
       }`}
     >
       {/* Left side - player info with truncation */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
-        <span className={`flex-shrink-0 ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+        <span className={`flex-shrink-0 ${shouldHighlight ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {index + 1}.
         </span>
         <span className="flex-shrink-0">
           <JobIcon job={entry.player.job} size="xs" />
         </span>
-        <span className={`truncate ${isFirst ? 'text-accent font-medium' : 'text-text-secondary'}`}>
+        <span className={`truncate ${shouldHighlight ? 'text-accent font-medium' : 'text-text-secondary'}`}>
           {entry.player.name}
         </span>
       </div>
@@ -149,14 +172,16 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
             </Tooltip>
           </div>
         )}
-        <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
-          <span
-            className="text-xs px-1.5 py-0.5 rounded cursor-help"
-            style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
-          >
-            {displayScore}
-          </span>
-        </Tooltip>
+        {showScores && (
+          <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded cursor-help"
+              style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
+            >
+              {displayScore}
+            </span>
+          </Tooltip>
+        )}
       </div>
     </div>
   );
@@ -197,6 +222,10 @@ interface PriorityListProps {
   showEnhanced?: boolean;
   /** Label for the item type (e.g., "Head", "Glaze") for tooltip */
   itemLabel?: string;
+  /** Whether to show priority scores (false hides the score badge) */
+  showScores?: boolean;
+  /** Whether to highlight the first entry (false for disabled mode) */
+  highlightFirst?: boolean;
 }
 
 function PriorityList({
@@ -205,6 +234,8 @@ function PriorityList({
   onLogClick,
   showEnhanced = false,
   itemLabel,
+  showScores = true,
+  highlightFirst = true,
 }: PriorityListProps) {
   if (entries.length === 0) {
     return (
@@ -224,6 +255,8 @@ function PriorityList({
           showLogButton={showLogButton}
           onLogClick={onLogClick}
           itemLabel={itemLabel}
+          showScores={showScores}
+          highlightFirst={highlightFirst}
         />
       ))}
     </div>
@@ -362,12 +395,16 @@ export function LootPriorityPanel({
     player: null,
   });
 
+  // Determine if enhanced scoring should be active
+  // Requires: prop enabled, setting enabled, and loot history exists
+  const isEnhancedScoringActive = showEnhancedScores && settings.enableEnhancedScoring !== false && lootLog.length > 0;
+
   // Calculate average drops for balance penalty
   const averageDrops = useMemo(() => {
-    if (!showEnhancedScores || lootLog.length === 0) return 0;
+    if (!isEnhancedScoringActive) return 0;
     const playerIds = players.map((p) => p.id);
     return calculateAverageDrops(playerIds, lootLog);
-  }, [showEnhancedScores, lootLog, players]);
+  }, [isEnhancedScoringActive, lootLog, players]);
 
   // Helper to enhance priority entries with loot history and breakdown
   const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] => {
@@ -380,8 +417,8 @@ export function LootPriorityPanel({
       };
     });
 
-    // If not showing enhanced scores or no loot history, return with just breakdown
-    if (!showEnhancedScores || lootLog.length === 0) {
+    // If not showing enhanced scores, return with just breakdown
+    if (!isEnhancedScoringActive) {
       return entriesWithBreakdown;
     }
 
@@ -568,7 +605,7 @@ export function LootPriorityPanel({
             </Tooltip>
           </div>
         </div>
-        {showEnhancedScores && lootLog.length > 0 && (
+        {isEnhancedScoringActive && (
           <span className="text-xs text-text-muted" title="Priority scores adjusted based on loot history: players who haven't received drops get a bonus, players who've received more than average get a small penalty">
             Loot history adjustments active
           </span>
@@ -619,8 +656,10 @@ export function LootPriorityPanel({
                       entries={entries}
                       showLogButton={!!canShowLogButtons}
                       onLogClick={(player) => handleLogClick(slot, player)}
-                      showEnhanced={showEnhancedScores && lootLog.length > 0}
+                      showEnhanced={isEnhancedScoringActive}
                       itemLabel={label}
+                      showScores={settings.showPriorityScores !== false}
+                      highlightFirst={settings.priorityMode !== 'disabled' && settings.priorityMode !== 'manual'}
                     />
                   </div>
                 );
@@ -644,8 +683,10 @@ export function LootPriorityPanel({
                         entries={entries}
                         showLogButton={!!canShowLogButtons}
                         onLogClick={(player) => handleMaterialLogClick(material, player)}
-                        showEnhanced={showEnhancedScores && lootLog.length > 0}
+                        showEnhanced={isEnhancedScoringActive}
                         itemLabel={label}
+                        showScores={settings.showPriorityScores !== false}
+                        highlightFirst={settings.priorityMode !== 'disabled' && settings.priorityMode !== 'manual'}
                       />
                     </div>
                   ))}

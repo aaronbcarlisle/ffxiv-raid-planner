@@ -41,6 +41,9 @@ class GroupSourceEnum(str, Enum):
 # Role type for loot priority
 RoleType = Literal["tank", "healer", "melee", "ranged", "caster"]
 
+# Priority mode for loot distribution
+PriorityMode = Literal["automatic", "manual", "disabled"]
+
 
 # --- Static Settings Schema ---
 
@@ -59,6 +62,23 @@ class StaticSettingsSchema(CamelModel):
     hide_bis_banners: bool = Field(
         default=False,
         description="Hide 'No BiS configured' banners on player cards",
+    )
+    # Priority settings (Phase 1 enhancement)
+    priority_mode: PriorityMode = Field(
+        default="automatic",
+        description="Priority calculation mode: automatic (system calculates), manual (show but don't suggest), disabled (equal priority)",
+    )
+    job_priority_modifiers: dict[str, int] | None = Field(
+        default=None,
+        description="Per-job priority adjustments, e.g., {'PCT': 20, 'WAR': -10}",
+    )
+    show_priority_scores: bool = Field(
+        default=True,
+        description="Whether to show priority scores in the UI",
+    )
+    enable_enhanced_scoring: bool = Field(
+        default=False,
+        description="Enable drought bonus and balance penalty in priority calculation",
     )
 
 

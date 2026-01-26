@@ -15,6 +15,7 @@ import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { AssignUserModal } from './AssignUserModal';
+import { PriorityAdjustModal } from './PriorityAdjustModal';
 import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
 import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
@@ -38,6 +39,7 @@ import {
   Link2,
   RefreshCw,
   BookOpen,
+  Gauge,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
@@ -142,6 +144,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
   const [showAdminAssignModal, setShowAdminAssignModal] = useState(false);
   const [showOwnerAssignModal, setShowOwnerAssignModal] = useState(false);
+  const [showPriorityAdjustModal, setShowPriorityAdjustModal] = useState(false);
   const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -160,7 +163,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -169,7 +172,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -374,6 +377,13 @@ export const PlayerCard = memo(function PlayerCard({
       label: 'Weapon Priorities',
       icon: <Swords className="w-4 h-4" />,
       onClick: () => setShowWeaponPriorityModal(true),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
+    },
+    {
+      label: 'Adjust Priority',
+      icon: <Gauge className="w-4 h-4" />,
+      onClick: () => setShowPriorityAdjustModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     },
@@ -734,6 +744,16 @@ export const PlayerCard = memo(function PlayerCard({
         userRole={userRole || 'viewer'}
         isOpen={showWeaponPriorityModal}
         onClose={() => setShowWeaponPriorityModal(false)}
+      />
+
+      {/* Priority Adjust Modal */}
+      <PriorityAdjustModal
+        isOpen={showPriorityAdjustModal}
+        onClose={() => setShowPriorityAdjustModal(false)}
+        player={player}
+        onSave={async (_playerId, modifier) => {
+          onUpdate({ priorityModifier: modifier });
+        }}
       />
 
       {/* Job Change Confirmation Modal */}
