@@ -48,6 +48,13 @@ router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 # Maximum weeks allowed per tier (~5 months of raiding)
 MAX_WEEKS = 20
 
+# Valid gear slots for slot_augmented field
+VALID_AUGMENT_SLOTS = {
+    "weapon", "head", "body", "hands", "legs", "feet",
+    "earring", "necklace", "bracelet", "ring1", "ring2",
+    "tome_weapon",  # Special case for tome weapon augmentation
+}
+
 
 # Helper functions
 
@@ -1108,6 +1115,11 @@ async def create_material_log_entry(
     if not recipient_player:
         raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
 
+    # Validate slot_augmented if provided
+    validated_slot = None
+    if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
+        validated_slot = data.slot_augmented
+
     # Create entry
     entry = MaterialLogEntry(
         tier_snapshot_id=tier.id,
@@ -1115,7 +1127,7 @@ async def create_material_log_entry(
         floor=data.floor,
         material_type=data.material_type.value,  # Use .value to get lowercase string
         recipient_player_id=data.recipient_player_id,
-        slot_augmented=data.slot_augmented,
+        slot_augmented=validated_slot,
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
@@ -1226,9 +1238,8 @@ async def update_material_log_entry(
         entry.material_type = data.material_type.value
     if data.recipient_player_id is not None:
         entry.recipient_player_id = data.recipient_player_id
-    # Only update slot_augmented when a non-null string is provided to avoid
-    # unintentionally clearing existing tracking information.
-    if isinstance(data.slot_augmented, str):
+    # Only update slot_augmented when a valid slot string is provided
+    if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
         entry.slot_augmented = data.slot_augmented
     if data.notes is not None:
         entry.notes = data.notes
