@@ -13,8 +13,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
-import { DEFAULT_SETTINGS } from '../../utils/constants';
-import type { SnapshotPlayer, GearSlot } from '../../types';
+import type { SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { RAID_JOBS } from '../../gamedata/jobs';
 
@@ -28,6 +27,7 @@ interface QuickLogDropModalProps {
   maxWeek: number; // Max week available for selection (defaults week selector to this)
   suggestedPlayer: SnapshotPlayer;
   allPlayers: SnapshotPlayer[];
+  settings: StaticSettings;
   onSuccess?: () => void;
 }
 
@@ -41,6 +41,7 @@ export function QuickLogDropModal({
   maxWeek,
   suggestedPlayer,
   allPlayers,
+  settings,
   onSuccess,
 }: QuickLogDropModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
@@ -117,10 +118,10 @@ export function QuickLogDropModal({
   const sortedRecipients = useMemo(() => {
     if (!slot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
 
-    // Get priority entries for this slot
+    // Get priority entries for this slot using the group's settings
     const priorityEntries = slot === 'ring1' || slot === 'ring2'
-      ? getPriorityForRing(eligiblePlayers, DEFAULT_SETTINGS)
-      : getPriorityForItem(eligiblePlayers, slot as GearSlot, DEFAULT_SETTINGS);
+      ? getPriorityForRing(eligiblePlayers, settings)
+      : getPriorityForItem(eligiblePlayers, slot as GearSlot, settings);
 
     // Create a map of player ID to priority rank
     const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
@@ -141,7 +142,7 @@ export function QuickLogDropModal({
         if (a.needsItem && b.needsItem) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [eligiblePlayers, slot]);
+  }, [eligiblePlayers, slot, settings]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
