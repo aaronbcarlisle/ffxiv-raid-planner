@@ -10,10 +10,10 @@ import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
-import { logLootAndUpdateGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
-import type { SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
+import type { SnapshotPlayer, GearSlot, StaticSettings, LootLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { RAID_JOBS } from '../../gamedata/jobs';
 
@@ -28,6 +28,8 @@ interface QuickLogDropModalProps {
   suggestedPlayer: SnapshotPlayer;
   allPlayers: SnapshotPlayer[];
   settings: StaticSettings;
+  lootLog?: LootLogEntry[]; // For enhanced priority calculation matching Gear Priority panel
+  currentWeek?: number; // Current week for drought bonus calculation
   onSuccess?: () => void;
 }
 
@@ -42,6 +44,8 @@ export function QuickLogDropModal({
   suggestedPlayer,
   allPlayers,
   settings,
+  lootLog = [],
+  currentWeek = 1,
   onSuccess,
 }: QuickLogDropModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
@@ -114,7 +118,15 @@ export function QuickLogDropModal({
   const slotName = GEAR_SLOT_NAMES[slot as keyof typeof GEAR_SLOT_NAMES] || slot;
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
+  // Calculate average drops for enhanced scoring (matches Gear Priority panel)
+  const averageDrops = useMemo(() => {
+    if (lootLog.length === 0) return 0;
+    const playerIds = eligiblePlayers.map((p) => p.id);
+    return calculateAverageDrops(playerIds, lootLog);
+  }, [lootLog, eligiblePlayers]);
+
   // Sort players by priority and add labels
+  // Uses enhanced scoring (with loot history) to match Gear Priority panel
   const sortedRecipients = useMemo(() => {
     if (!slot) return eligiblePlayers.map(p => ({ player: p, priority: 0, needsItem: false }));
 
@@ -123,8 +135,23 @@ export function QuickLogDropModal({
       ? getPriorityForRing(eligiblePlayers, settings)
       : getPriorityForItem(eligiblePlayers, slot as GearSlot, settings);
 
-    // Create a map of player ID to priority rank
-    const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
+    // Apply enhanced scoring based on loot history (same as Gear Priority panel)
+    const enhancedEntries = priorityEntries.map((entry) => {
+      if (lootLog.length === 0) {
+        return { ...entry, enhancedScore: entry.score };
+      }
+      const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
+      const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
+      const excessDrops = stats.totalDrops - averageDrops;
+      const balancePenalty = excessDrops > 0 ? Math.min(excessDrops * 15, 45) : 0;
+      return {
+        ...entry,
+        enhancedScore: entry.score + droughtBonus - balancePenalty,
+      };
+    }).sort((a, b) => b.enhancedScore - a.enhancedScore);
+
+    // Create a map of player ID to priority rank (based on enhanced score order)
+    const priorityMap = new Map(enhancedEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.enhancedScore }]));
 
     // Sort all players: those with priority first (by rank), then others alphabetically
     return eligiblePlayers
@@ -142,7 +169,7 @@ export function QuickLogDropModal({
         if (a.needsItem && b.needsItem) return a.priority - b.priority;
         return a.player.name.localeCompare(b.player.name);
       });
-  }, [eligiblePlayers, slot, settings]);
+  }, [eligiblePlayers, slot, settings, lootLog, currentWeek, averageDrops]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {

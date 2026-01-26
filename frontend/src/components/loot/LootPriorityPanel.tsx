@@ -696,6 +696,8 @@ export function LootPriorityPanel({
           suggestedPlayer={modalState.player}
           allPlayers={players}
           settings={settings}
+          lootLog={lootLog}
+          currentWeek={currentWeek}
           onSuccess={handleLogSuccess}
         />
       )}
