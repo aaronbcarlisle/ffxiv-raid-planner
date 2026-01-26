@@ -1548,6 +1548,7 @@ export function SectionedLogView({
         floors={floors}
         currentWeek={currentWeek}
         gridModalState={gridModalState}
+        lootLog={lootLog}
         // Material Modal
         showMaterialModal={showMaterialModal}
         onCloseMaterialModal={() => { setShowMaterialModal(false); setGridModalState(null); setMaterialEntryToEdit(undefined); onLogMaterialModalClose?.(); }}
