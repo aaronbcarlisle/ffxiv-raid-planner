@@ -295,11 +295,19 @@ export function AddLootEntryModal({
         if (method !== editEntry.method) updates.method = method;
         if (notes !== (editEntry.notes || '')) updates.notes = notes || undefined;
 
+        // For weapon entries, ensure weaponJob is set (backfill for entries created without it)
+        if (itemSlot === 'weapon' && !editEntry.weaponJob && selectedPlayer?.job) {
+          updates.weaponJob = selectedPlayer.job;
+        }
+
         // Only submit if something changed
         if (Object.keys(updates).length > 0) {
           await onUpdate(updates);
         }
       } else {
+        // For weapon entries, include the recipient's job as weaponJob
+        const weaponJob = itemSlot === 'weapon' ? selectedPlayer?.job : undefined;
+
         await onSubmit(
           {
             weekNumber,
@@ -307,6 +315,7 @@ export function AddLootEntryModal({
             itemSlot,
             recipientPlayerId,
             method,
+            weaponJob,
             notes: notes || undefined,
           },
           { updateGear: (method === 'drop' || method === 'book') && updateGear }
