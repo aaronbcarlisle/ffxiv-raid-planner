@@ -56,7 +56,8 @@ export function QuickLogMaterialModal({
   const [isSaving, setIsSaving] = useState(false);
   const [updateGear, setUpdateGear] = useState(true);
   // Compute initial slot selection BEFORE first render using lazy initializer
-  const [selectedSlot, setSelectedSlot] = useState<GearSlot | 'tome_weapon' | null>(() => {
+  // Note: 'tome_weapon' selection is tracked via augmentTomeWeapon state, not selectedSlot
+  const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(() => {
     const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
     if (material === 'universal_tomestone') return null;
     if (material === 'solvent') {
