@@ -36,6 +36,11 @@ export const DEFAULT_SETTINGS: StaticSettings = {
   syncFrequency: 'weekly',
   hideSetupBanners: false,
   hideBisBanners: false,
+  // Priority settings defaults
+  priorityMode: 'automatic',
+  jobPriorityModifiers: undefined,
+  showPriorityScores: true,
+  enableEnhancedScoring: false,
 };
 
 // Sort presets for player ordering

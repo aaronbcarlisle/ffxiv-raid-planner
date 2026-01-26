@@ -65,6 +65,8 @@ class SnapshotPlayer(Base):
     page_adjustments: Mapped[dict] = mapped_column(
         JSON, nullable=False, default=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
     )
+    # Per-player priority modifier (-100 to +100)
+    priority_modifier: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Weapon priority tracking
     weapon_priorities: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

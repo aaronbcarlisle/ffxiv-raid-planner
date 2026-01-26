@@ -187,6 +187,9 @@ export interface GearSlotStatus {
   materia?: MateriaSlot[];  // Melded materia from BiS import
 }
 
+// Priority calculation mode
+export type PriorityMode = 'automatic' | 'manual' | 'disabled';
+
 // Static (raid group) settings
 export interface StaticSettings {
   displayOrder: string[]; // Role order for display (used by non-custom presets)
@@ -198,6 +201,11 @@ export interface StaticSettings {
   syncFrequency: 'daily' | 'weekly';
   hideSetupBanners?: boolean; // Hide "Unclaimed" banners on player cards
   hideBisBanners?: boolean; // Hide "No BiS configured" banners on player cards
+  // Priority settings (Phase 1 enhancement)
+  priorityMode?: PriorityMode; // Default: 'automatic'
+  jobPriorityModifiers?: Record<string, number>; // e.g., { "PCT": +20, "WAR": -10 }
+  showPriorityScores?: boolean; // Default: true
+  enableEnhancedScoring?: boolean; // Default: false (opt-in for drought/balance adjustments)
 }
 
 // Team summary calculations
@@ -393,6 +401,11 @@ export interface StaticGroupSettings {
   lootPriority?: string[];
   hideSetupBanners?: boolean;
   hideBisBanners?: boolean;
+  // Priority settings (Phase 1 enhancement)
+  priorityMode?: PriorityMode;
+  jobPriorityModifiers?: Record<string, number>;
+  showPriorityScores?: boolean;
+  enableEnhancedScoring?: boolean;
 }
 
 // Static group (persistent team identity)
@@ -526,6 +539,8 @@ export interface SnapshotPlayer {
   // Adjustment fields for mid-tier roster changes
   lootAdjustment?: number;
   pageAdjustments?: { I: number; II: number; III: number; IV: number };
+  // Priority modifier for per-player adjustment (-100 to +100)
+  priorityModifier?: number;
   createdAt: string;
   updatedAt: string;
 }

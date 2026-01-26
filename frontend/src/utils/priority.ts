@@ -5,6 +5,8 @@
  * - Role priority (melee > ranged > caster > tank > healer by default)
  * - Slot value weight (weapon > body/legs > head/hands/feet > accessories)
  * - Items needed (more items needed = higher priority)
+ * - Job modifiers (per-job adjustments from settings)
+ * - Player modifiers (per-player adjustments)
  */
 
 import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry } from '../types';
@@ -26,6 +28,8 @@ export interface PriorityScoreBreakdown {
   weightedNeed: number;
   weightedNeedBonus: number; // weightedNeed * 10
   lootAdjustmentPenalty: number; // lootAdjustment * 15 (positive = penalty applied)
+  jobModifier: number; // Job-level adjustment from settings
+  playerModifier: number; // Player-level adjustment from player.priorityModifier
 }
 
 /**
@@ -43,13 +47,22 @@ export interface PriorityScoreOptions {
  * Formula:
  * - Role priority: (5 - roleIndex) * 25 (melee=125, ranged=100, caster=75, tank=50, healer=25)
  * - Weighted need: sum of slot weights for incomplete slots * 10
+ * - Job modifier: per-job adjustment from settings.jobPriorityModifiers
+ * - Player modifier: per-player adjustment from player.priorityModifier
  * - Loot adjustment: -15 per adjustment point (positive adjustment = lower priority)
+ *
+ * If priorityMode is 'disabled', returns 0 for all players (equal priority).
  */
 export function calculatePriorityScore(
   player: SnapshotPlayer,
   settings: StaticSettings,
   options?: PriorityScoreOptions
 ): number {
+  // Disabled mode: all players have equal priority (0)
+  if (settings.priorityMode === 'disabled') {
+    return 0;
+  }
+
   const roleIndex = settings.lootPriority.indexOf(player.role);
   const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
 
@@ -57,7 +70,13 @@ export function calculatePriorityScore(
     .filter((g) => !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
-  let score = Math.round(rolePriority + weightedNeed * 10);
+  // Job modifier from settings
+  const jobModifier = settings.jobPriorityModifiers?.[player.job] || 0;
+
+  // Player-level modifier
+  const playerModifier = player.priorityModifier || 0;
+
+  let score = Math.round(rolePriority + weightedNeed * 10 + jobModifier + playerModifier);
 
   // Apply loot adjustment for mid-tier roster changes
   // Positive adjustment = player has received extra loot, lower their priority
@@ -77,6 +96,19 @@ export function calculatePriorityScoreWithBreakdown(
   settings: StaticSettings,
   options?: PriorityScoreOptions
 ): PriorityScoreBreakdown {
+  // Disabled mode: all components are 0
+  if (settings.priorityMode === 'disabled') {
+    return {
+      score: 0,
+      rolePriority: 0,
+      weightedNeed: 0,
+      weightedNeedBonus: 0,
+      lootAdjustmentPenalty: 0,
+      jobModifier: 0,
+      playerModifier: 0,
+    };
+  }
+
   const roleIndex = settings.lootPriority.indexOf(player.role);
   const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
 
@@ -86,12 +118,18 @@ export function calculatePriorityScoreWithBreakdown(
 
   const weightedNeedBonus = Math.round(weightedNeed * 10);
 
+  // Job modifier from settings
+  const jobModifier = settings.jobPriorityModifiers?.[player.job] || 0;
+
+  // Player-level modifier
+  const playerModifier = player.priorityModifier || 0;
+
   let lootAdjustmentPenalty = 0;
   if (options?.includeLootAdjustment && player.lootAdjustment) {
     lootAdjustmentPenalty = player.lootAdjustment * 15;
   }
 
-  const score = Math.round(rolePriority + weightedNeedBonus - lootAdjustmentPenalty);
+  const score = Math.round(rolePriority + weightedNeedBonus + jobModifier + playerModifier - lootAdjustmentPenalty);
 
   return {
     score,
@@ -99,6 +137,8 @@ export function calculatePriorityScoreWithBreakdown(
     weightedNeed,
     weightedNeedBonus,
     lootAdjustmentPenalty,
+    jobModifier,
+    playerModifier,
   };
 }
 
