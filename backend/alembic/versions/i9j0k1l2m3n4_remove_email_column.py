@@ -9,6 +9,7 @@ Discord OAuth but never used by any feature. This migration purges existing
 email data and drops the column for data minimization/privacy compliance.
 """
 
+from datetime import datetime, timezone
 from typing import Sequence, Union
 
 from alembic import op
@@ -22,6 +23,11 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _timestamp() -> str:
+    """Return ISO timestamp for audit logging."""
+    return datetime.now(timezone.utc).isoformat()
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -33,13 +39,13 @@ def upgrade() -> None:
             sa.text("SELECT COUNT(*) FROM users WHERE email IS NOT NULL")
         )
         email_count = result.scalar()
-        print(f"AUDIT: Purging {email_count} email addresses from users table")
+        print(f"[{_timestamp()}] AUDIT: Purging {email_count} email addresses from users table")
 
         # Drop the email column (implicitly removes all data)
         op.drop_column("users", "email")
-        print("SUCCESS: email column removed from users table")
+        print(f"[{_timestamp()}] SUCCESS: email column removed from users table")
     else:
-        print("SKIP: email column does not exist (already removed)")
+        print(f"[{_timestamp()}] SKIP: email column does not exist (already removed)")
 
 
 def downgrade() -> None:
@@ -54,4 +60,4 @@ def downgrade() -> None:
             "users",
             sa.Column("email", sa.String(255), nullable=True),
         )
-        print("RESTORED: email column added back to users table (data was lost)")
+        print(f"[{_timestamp()}] RESTORED: email column added back to users table (data was lost)")
