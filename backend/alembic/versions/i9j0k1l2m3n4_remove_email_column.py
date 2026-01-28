@@ -41,8 +41,10 @@ def upgrade() -> None:
         email_count = result.scalar()
         print(f"[{_timestamp()}] AUDIT: Purging {email_count} email addresses from users table")
 
-        # Drop the email column (implicitly removes all data)
-        op.drop_column("users", "email")
+        # Drop the email column using batch_alter_table for SQLite compatibility
+        # (SQLite doesn't natively support ALTER TABLE DROP COLUMN)
+        with op.batch_alter_table("users", schema=None) as batch_op:
+            batch_op.drop_column("email")
         print(f"[{_timestamp()}] SUCCESS: email column removed from users table")
     else:
         print(f"[{_timestamp()}] SKIP: email column does not exist (already removed)")
@@ -56,8 +58,7 @@ def downgrade() -> None:
     existing_columns = [col["name"] for col in inspector.get_columns("users")]
 
     if "email" not in existing_columns:
-        op.add_column(
-            "users",
-            sa.Column("email", sa.String(255), nullable=True),
-        )
+        # Use batch_alter_table for SQLite compatibility
+        with op.batch_alter_table("users", schema=None) as batch_op:
+            batch_op.add_column(sa.Column("email", sa.String(255), nullable=True))
         print(f"[{_timestamp()}] RESTORED: email column added back to users table (data was lost)")
