@@ -14,7 +14,6 @@ import {
   Lock,
   Eye,
   Trash2,
-  ExternalLink,
   CheckCircle2,
   XCircle,
   Clock,
@@ -367,15 +366,6 @@ export function PrivacyDocs() {
                   </ol>
                 </div>
 
-                <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-text-primary mb-3 flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5 text-accent" />
-                    Export Your Data
-                  </h3>
-                  <p className="text-text-secondary">
-                    Your BiS data can be exported via XIVGear or Etro links stored in your player profiles.
-                  </p>
-                </div>
               </div>
             </section>
 
@@ -435,17 +425,9 @@ export function PrivacyDocs() {
 
                 <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
                   <h3 className="font-semibold text-text-primary mb-2">Check API Response</h3>
-                  <p className="text-text-secondary text-sm mb-3">
+                  <p className="text-text-secondary text-sm">
                     Open browser DevTools → Network tab. Find the <code className="bg-surface-sunken px-1.5 py-0.5 rounded">/api/auth/me</code> request.
                     The response should NOT contain an "email" field.
-                  </p>
-                </div>
-
-                <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
-                  <h3 className="font-semibold text-text-primary mb-2">Check the Source Code</h3>
-                  <p className="text-text-secondary text-sm">
-                    Our codebase is open source. Check{' '}
-                    <code className="bg-surface-sunken px-1.5 py-0.5 rounded">backend/app/routers/auth.py</code> for OAuth config.
                   </p>
                 </div>
               </div>

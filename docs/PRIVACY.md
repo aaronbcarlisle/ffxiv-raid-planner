@@ -202,11 +202,6 @@ To delete your data:
 2. Delete static groups you own
 3. Contact us to delete your account entirely
 
-### Data Portability
-Your BiS data can be exported via:
-- XIVGear links (stored in your player profile)
-- Etro links (stored in your player profile)
-
 ---
 
 ## Contact
@@ -233,9 +228,3 @@ Want to verify our claims? Here's how:
 # Find the /api/auth/me request
 # Response should NOT contain an "email" field
 ```
-
-### Check the Code
-Our codebase is open source. Key files:
-- OAuth config: `backend/app/routers/auth.py`
-- User model: `backend/app/models/user.py`
-- User schema: `backend/app/schemas/user.py`
