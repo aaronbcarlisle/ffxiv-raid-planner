@@ -29,7 +29,6 @@ class UserResponse(CamelModel):
     discord_avatar: str | None = None
     avatar_url: str | None = None
     display_name: str | None = None
-    email: str | None = None
     is_admin: bool = False
     created_at: str
     updated_at: str

@@ -89,7 +89,7 @@ async def get_discord_auth_url(request: Request) -> DiscordAuthUrl:
         "client_id": settings.discord_client_id,
         "redirect_uri": settings.discord_redirect_uri,
         "response_type": "code",
-        "scope": "identify email",
+        "scope": "identify",
         "state": state,
     }
 
@@ -222,7 +222,6 @@ async def discord_callback(
             discord_username=discord_user.get("username", ""),
             discord_discriminator=discord_user.get("discriminator"),
             discord_avatar=discord_user.get("avatar"),
-            email=discord_user.get("email"),
             display_name=discord_user.get("global_name"),
             is_admin=should_be_admin,
             created_at=now,
@@ -237,7 +236,6 @@ async def discord_callback(
         user.discord_username = discord_user.get("username", user.discord_username)
         user.discord_discriminator = discord_user.get("discriminator")
         user.discord_avatar = discord_user.get("avatar")
-        user.email = discord_user.get("email") or user.email
         user.display_name = discord_user.get("global_name") or user.display_name
         user.updated_at = now
         user.last_login_at = now
@@ -403,7 +401,6 @@ async def get_current_user_info(
         discord_avatar=user.discord_avatar,
         avatar_url=user.avatar_url,
         display_name=user.display_name,
-        email=user.email,
         is_admin=user.is_admin,
         created_at=user.created_at,
         updated_at=user.updated_at,

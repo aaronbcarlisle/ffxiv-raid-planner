@@ -23,7 +23,6 @@ class User(Base):
     discord_username: Mapped[str] = mapped_column(String(100), nullable=False)
     discord_discriminator: Mapped[str | None] = mapped_column(String(10), nullable=True)
     discord_avatar: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Admin flag - grants super-user access to all statics
     # Can only be set via direct DB access or ADMIN_DISCORD_IDS env var
