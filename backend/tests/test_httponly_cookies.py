@@ -23,12 +23,12 @@ class TestLoginSetsCookies:
     @pytest.fixture
     def mock_discord_oauth(self, mocker):
         """Set up mocks for Discord OAuth flow."""
+        # Note: email field omitted - we no longer request email scope from Discord
         mock_discord_response = {
             "id": "123456789012345678",
             "username": "testuser",
             "discriminator": "0",
             "avatar": "abc123",
-            "email": "test@example.com",
             "global_name": "Test User",
         }
 
@@ -128,12 +128,12 @@ class TestCookieAttributes:
     @pytest.fixture
     def mock_discord_oauth(self, mocker):
         """Set up mocks for Discord OAuth flow."""
+        # Note: email field omitted - we no longer request email scope from Discord
         mock_discord_response = {
             "id": "123456789012345680",
             "username": "testuser3",
             "discriminator": "0",
             "avatar": None,
-            "email": None,
             "global_name": None,
         }
 
@@ -267,6 +267,23 @@ class TestApiCallsWithCookies:
         assert data["id"] == test_user.id
         # API uses camelCase: discordUsername
         assert data["discordUsername"] == test_user.discord_username
+
+    @pytest.mark.asyncio
+    async def test_get_me_does_not_include_email(self, client, test_user: User):
+        """GET /api/auth/me should NOT include email field (privacy compliance).
+
+        Email was removed from the API response as part of data minimization.
+        This test ensures the email field is not accidentally re-added.
+        """
+        access_token = create_access_token(test_user.id)
+        client.cookies.set("access_token", access_token)
+
+        response = await client.get("/api/auth/me")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Email field should not be present in response
+        assert "email" not in data, "API response should not include email field"
 
     @pytest.mark.asyncio
     async def test_list_groups_with_cookie_auth(self, client, test_user: User):

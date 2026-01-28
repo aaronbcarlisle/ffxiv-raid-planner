@@ -315,7 +315,6 @@ export interface User {
   discordAvatar?: string;
   avatarUrl?: string;
   displayName?: string;
-  email?: string;
   /**
    * Super-user flag granting owner-level access to ALL static groups.
    * Set via ADMIN_DISCORD_IDS env var on backend.

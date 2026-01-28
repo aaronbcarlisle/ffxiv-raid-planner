@@ -13,11 +13,11 @@ import {
   ListChecks,
   Target,
   Code,
-  Palette,
   FileText,
   Map,
   ChevronRight,
   Calculator,
+  Shield,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -97,10 +97,10 @@ const PROJECT_CARDS: DocCard[] = [
     icon: Map,
   },
   {
-    title: 'Design System',
-    description: 'Colors, components, patterns',
-    href: '/docs/design-system',
-    icon: Palette,
+    title: 'Privacy & Security',
+    description: 'How we handle your data',
+    href: '/docs/privacy',
+    icon: Shield,
   },
 ];
 
