@@ -23,12 +23,12 @@ class TestLoginSetsCookies:
     @pytest.fixture
     def mock_discord_oauth(self, mocker):
         """Set up mocks for Discord OAuth flow."""
+        # Note: email field omitted - we no longer request email scope from Discord
         mock_discord_response = {
             "id": "123456789012345678",
             "username": "testuser",
             "discriminator": "0",
             "avatar": "abc123",
-            "email": "test@example.com",
             "global_name": "Test User",
         }
 
@@ -128,12 +128,12 @@ class TestCookieAttributes:
     @pytest.fixture
     def mock_discord_oauth(self, mocker):
         """Set up mocks for Discord OAuth flow."""
+        # Note: email field omitted - we no longer request email scope from Discord
         mock_discord_response = {
             "id": "123456789012345680",
             "username": "testuser3",
             "discriminator": "0",
             "avatar": None,
-            "email": None,
             "global_name": None,
         }
 

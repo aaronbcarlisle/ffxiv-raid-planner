@@ -101,6 +101,9 @@ def verify_email_removal() -> bool:
 
 if __name__ == "__main__":
     success = verify_email_removal()
-    # Always exit 0 so it doesn't block server startup
-    # The verification is informational, not a gate
+    # Always exit 0 so verification doesn't block server startup.
+    # Rationale: This script is meant for audit logging, not deployment gating.
+    # The migration itself handles the actual column removal - this script just
+    # confirms it happened and produces a log entry for compliance documentation.
+    # If you need deployment gating, run this in CI before deploying instead.
     sys.exit(0)
