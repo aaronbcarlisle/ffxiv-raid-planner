@@ -409,10 +409,7 @@ export function PrivacyDocs() {
 
             {/* Verification */}
             <section className="mb-12">
-              <h2 className="text-2xl font-bold text-text-primary mb-4">Verify Our Claims</h2>
-              <p className="text-text-secondary mb-6">
-                Don't just take our word for it - here's how you can verify:
-              </p>
+              <h2 className="text-2xl font-bold text-text-primary mb-6">Verify Scope</h2>
 
               <div className="space-y-4">
                 <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
