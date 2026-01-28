@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.11.0';
+export const CURRENT_VERSION = '1.11.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.11.1',
+    date: '2026-01-28T12:00:00Z',
+    title: 'Privacy Enhancement',
+    highlights: ['Removed email collection from Discord login'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Removed email collection from Discord OAuth',
+        description: 'Discord login no longer requests or stores your email address',
+        details:
+          'We reviewed our data practices and found that email addresses were being collected during Discord login but never used by any feature. This update removes email from the OAuth scope entirely - Discord will no longer ask for email permission when you log in. Any previously stored email data has been purged from our database. This change improves privacy with no impact on functionality.',
+      },
+    ],
+  },
   {
     version: '1.11.0',
     date: '2026-01-25T18:30:00Z',
