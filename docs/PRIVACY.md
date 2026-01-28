@@ -1,6 +1,6 @@
 # Privacy & Security
 
-This document provides transparency about how FFXIV Raid Planner handles your data, including what we collect, how we store it, and the security measures in place.
+This document provides transparency about how FFXIV Raid Planner handles your data, including what is collected, how it's stored, and the security measures in place.
 
 **Last Updated:** January 2026 (v1.11.1)
 
@@ -23,18 +23,18 @@ This document provides transparency about how FFXIV Raid Planner handles your da
 
 ### How Discord OAuth Works
 
-We use Discord as an identity provider - similar to "Login with Google" on other sites. Here's what happens when you log in:
+I use Discord as an identity provider - similar to "Login with Google" on other sites. Here's what happens when you log in:
 
-1. **You click "Login with Discord"** - We redirect you to Discord's authorization page
-2. **Discord asks for permission** - You see exactly what we're requesting (username and avatar only)
-3. **You approve** - Discord sends us a one-time code
-4. **We exchange the code** - We get a temporary token to fetch your basic profile
+1. **You click "Login with Discord"** - You're redirected to Discord's authorization page
+2. **Discord asks for permission** - You see exactly what's being requested (username and avatar only)
+3. **You approve** - Discord sends back a one-time code
+4. **Code is exchanged** - A temporary token is retrieved to fetch your basic profile
 5. **Token is discarded** - The Discord token is used once, then thrown away
-6. **You're logged in** - We create our own session tokens stored in secure cookies
+6. **You're logged in** - The app creates session tokens stored in secure cookies
 
 ### OAuth Scope
 
-We request the **minimum required scope** from Discord:
+I request the **minimum required scope** from Discord:
 
 ```
 scope=identify
@@ -67,12 +67,12 @@ params = {
 
 ### Revoking Access
 
-You can revoke our access anytime:
+You can revoke access anytime:
 1. Go to Discord Settings → Authorized Apps
 2. Find "FFXIV Raid Planner"
 3. Click "Deauthorize"
 
-This immediately revokes our ability to access your Discord profile. Your data in the app remains until you delete your account.
+This immediately revokes the app's ability to access your Discord profile. Your data in the app remains until you delete your account.
 
 ---
 
@@ -112,7 +112,7 @@ When your access token expires, the refresh token automatically gets a new one. 
 
 ## Data Storage
 
-### What We Store
+### What's Stored
 
 **User Table:**
 ```sql
@@ -132,7 +132,7 @@ users (
 **What's NOT stored:**
 - Email addresses (removed in v1.11.1)
 - Discord access tokens (used once, then discarded)
-- Passwords (we don't have any - Discord handles auth)
+- Passwords (there are none - Discord handles auth)
 - Payment information (the app is free)
 
 ### Game Data
@@ -155,7 +155,7 @@ Your FFXIV-related data (BiS sets, gear progress, static groups) is stored to pr
 - API no longer returns email in any response
 
 **Why:**
-We reviewed our data practices and found that email addresses were being collected but never used. Following the principle of data minimization, we removed this unnecessary collection entirely.
+I reviewed my data practices and found that email addresses were being collected but never used. Following the principle of data minimization, I removed this unnecessary collection entirely.
 
 **Verification:**
 - Discord login no longer shows "access to your email address"
@@ -200,7 +200,7 @@ You can see all your data by:
 To delete your data:
 1. Leave all static groups you're a member of
 2. Delete static groups you own
-3. Contact us to delete your account entirely
+3. Contact me to delete your account entirely
 
 ---
 
@@ -208,13 +208,13 @@ To delete your data:
 
 For privacy concerns or data deletion requests:
 - Open an issue on [GitHub](https://github.com/aaronbcarlisle/ffxiv-raid-planner)
-- Contact the maintainer via Discord
+- Contact me via Discord
 
 ---
 
 ## Verification Evidence
 
-There's no way to cryptographically prove data deletion (no web app really can). But here's what we can show: the migration code, the deployment logs, and the database schema. More importantly, the OAuth scope change is something you can verify yourself without trusting us at all.
+There's no way to cryptographically prove data deletion (no web app really can). But here's what I can show: the migration code, the deployment logs, and the database schema. More importantly, the OAuth scope change is something you can verify yourself without trusting me at all.
 
 ### Verify It Yourself (No Trust Required)
 

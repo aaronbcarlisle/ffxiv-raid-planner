@@ -186,7 +186,7 @@ export function PrivacyDocs() {
             <h1 className="text-3xl font-bold text-accent">Privacy & Security</h1>
           </div>
           <p className="text-text-secondary">
-            Transparency about how we handle your data
+            Transparency about how I handle your data
           </p>
         </div>
       </header>
@@ -206,7 +206,7 @@ export function PrivacyDocs() {
                 Data Collection
               </h2>
               <p className="text-text-secondary mb-6">
-                Here's exactly what data we collect and why:
+                Here's exactly what data is collected and why:
               </p>
               <div className="bg-surface-card border border-border-subtle rounded-xl overflow-hidden">
                 <DataTable />
@@ -224,7 +224,7 @@ export function PrivacyDocs() {
                   {[
                     'Email addresses (removed in v1.11.1)',
                     'Discord access tokens (used once, then discarded)',
-                    'Passwords (we don\'t have any - Discord handles auth)',
+                    'Passwords (there are none - Discord handles auth)',
                     'Payment information (the app is free)',
                     'Your Discord servers or friends list',
                     'Ability to send messages on your behalf',
@@ -245,19 +245,19 @@ export function PrivacyDocs() {
                 Discord OAuth
               </h2>
               <p className="text-text-secondary mb-6">
-                We use Discord as an identity provider - similar to "Login with Google" on other sites.
+                I use Discord as an identity provider - similar to "Login with Google" on other sites.
               </p>
 
               <h3 className="text-lg font-semibold text-text-primary mb-3">How it works</h3>
               <div className="bg-surface-card border border-border-subtle rounded-xl p-6 mb-6">
                 <ol className="space-y-4">
                   {[
-                    { step: 'You click "Login with Discord"', detail: 'We redirect you to Discord\'s authorization page' },
-                    { step: 'Discord asks for permission', detail: 'You see exactly what we\'re requesting (username and avatar only)' },
-                    { step: 'You approve', detail: 'Discord sends us a one-time code' },
-                    { step: 'We exchange the code', detail: 'We get a temporary token to fetch your basic profile' },
+                    { step: 'You click "Login with Discord"', detail: 'You\'re redirected to Discord\'s authorization page' },
+                    { step: 'Discord asks for permission', detail: 'You see exactly what\'s being requested (username and avatar only)' },
+                    { step: 'You approve', detail: 'Discord sends back a one-time code' },
+                    { step: 'Code is exchanged', detail: 'A temporary token is retrieved to fetch your basic profile' },
                     { step: 'Token is discarded', detail: 'The Discord token is used once, then thrown away' },
-                    { step: 'You\'re logged in', detail: 'We create our own session tokens stored in secure cookies' },
+                    { step: 'You\'re logged in', detail: 'The app creates session tokens stored in secure cookies' },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-4">
                       <span className="w-7 h-7 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm font-semibold shrink-0">
@@ -274,7 +274,7 @@ export function PrivacyDocs() {
 
               <h3 className="text-lg font-semibold text-text-primary mb-3">OAuth Scope</h3>
               <p className="text-text-secondary mb-4">
-                We request the <strong>minimum required scope</strong> from Discord:
+                I request the <strong>minimum required scope</strong> from Discord:
               </p>
               <CodeBlock code="scope=identify" language="bash" title="OAuth scope" />
               <p className="text-text-secondary mt-4">
@@ -283,7 +283,7 @@ export function PrivacyDocs() {
 
               <h3 className="text-lg font-semibold text-text-primary mt-6 mb-3">Revoking Access</h3>
               <div className="bg-surface-card border border-border-subtle rounded-xl p-6">
-                <p className="text-text-secondary mb-4">You can revoke our access anytime:</p>
+                <p className="text-text-secondary mb-4">You can revoke access anytime:</p>
                 <ol className="list-decimal list-inside space-y-2 text-text-secondary">
                   <li>Go to Discord Settings → Authorized Apps</li>
                   <li>Find "FFXIV Raid Planner"</li>
@@ -427,7 +427,7 @@ export function PrivacyDocs() {
                   <ol className="list-decimal list-inside space-y-2 text-text-secondary">
                     <li>Leave all static groups you're a member of</li>
                     <li>Delete static groups you own</li>
-                    <li>Contact us to delete your account entirely</li>
+                    <li>Contact me to delete your account entirely</li>
                   </ol>
                 </div>
 
@@ -480,8 +480,8 @@ export function PrivacyDocs() {
               </h2>
               <p className="text-text-secondary mb-6">
                 There's no way to cryptographically prove data deletion (no web app really can). But here's
-                what we can show: the migration code, the deployment logs, and the database schema.
-                More importantly, the OAuth scope change is something you can verify yourself without trusting us at all.
+                what I can show: the migration code, the deployment logs, and the database schema.
+                More importantly, the OAuth scope change is something you can verify yourself without trusting me at all.
               </p>
 
               {/* User-Verifiable Checks */}
