@@ -141,6 +141,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">
               Roadmap
             </DropdownItem>
+            <DropdownItem icon={<Shield className="w-4 h-4" />} href="/docs/privacy">
+              Privacy & Security
+            </DropdownItem>
           </DropdownSubContent>
         </DropdownSub>
 

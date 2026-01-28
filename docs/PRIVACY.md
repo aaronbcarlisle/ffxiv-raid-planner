@@ -11,11 +11,16 @@ This document provides transparency about how FFXIV Raid Planner handles your da
 | Data | Collected | Purpose |
 |------|-----------|---------|
 | Discord ID | Yes | Unique identifier for your account |
-| Discord Username | Yes | Display name in the app |
+| Discord Username | Yes | Your @username |
+| Discord Display Name | Yes | Display name shown in the app |
 | Discord Avatar | Yes | Profile picture |
+| Discord Discriminator | Yes | Legacy field (deprecated by Discord, stores "0" for new users) |
+| Last Login | Yes | Timestamp of your most recent login |
 | Email Address | **No** | Not collected (removed in v1.11.1) |
 | Game Data (BiS, gear) | Yes | Core app functionality |
 | Static Group Data | Yes | Core app functionality |
+
+*Internal system fields (id, created_at, updated_at, is_admin) are also stored for app functionality.*
 
 ---
 
@@ -262,11 +267,10 @@ def upgrade() -> None:
 Output from the production deployment showing the migration ran successfully:
 
 ```bash
-# Railway deployment logs (January 2026)
-# Deployment logs will be added here after production deployment
-# Expected output:
-# [2026-01-XX] AUDIT: Purging X email addresses from users table
-# [2026-01-XX] SUCCESS: email column removed from users table
+# Railway deployment logs (January 28, 2026)
+INFO [alembic.runtime.migration] Running upgrade g7h8i9j0k1l2 -> i9j0k1l2m3n4, remove_email_column
+[2026-01-28T12:34:13.891745+00:00] AUDIT: Purging 577 email addresses from users table
+[2026-01-28T12:34:13.900072+00:00] SUCCESS: email column removed from users table
 ```
 
 ### Schema Verification
@@ -284,11 +288,12 @@ WHERE table_name = 'users' ORDER BY ordinal_position;
 | id |
 | discord_id |
 | discord_username |
+| discord_discriminator |
 | discord_avatar |
 | display_name |
-| is_admin |
 | created_at |
 | updated_at |
 | last_login_at |
+| is_admin |
 
 Note: No `email` column present.

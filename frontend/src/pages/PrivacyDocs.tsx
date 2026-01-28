@@ -73,8 +73,11 @@ const NAV_GROUPS = [
 function DataTable() {
   const data = [
     { field: 'Discord ID', collected: true, purpose: 'Unique identifier for your account' },
-    { field: 'Discord Username', collected: true, purpose: 'Display name in the app' },
+    { field: 'Discord Username', collected: true, purpose: 'Your @username' },
+    { field: 'Discord Display Name', collected: true, purpose: 'Display name shown in the app' },
     { field: 'Discord Avatar', collected: true, purpose: 'Profile picture' },
+    { field: 'Discord Discriminator', collected: true, purpose: 'Legacy field (deprecated by Discord, stores "0" for new users)' },
+    { field: 'Last Login', collected: true, purpose: 'Timestamp of your most recent login' },
     { field: 'Email Address', collected: false, purpose: 'Not collected (removed in v1.11.1)' },
     { field: 'Game Data (BiS, gear)', collected: true, purpose: 'Core app functionality' },
     { field: 'Static Group Data', collected: true, purpose: 'Core app functionality' },
@@ -112,6 +115,9 @@ function DataTable() {
           ))}
         </tbody>
       </table>
+      <p className="text-xs text-text-muted mt-3 italic">
+        Internal system fields (id, created_at, updated_at, is_admin) are also stored for app functionality.
+      </p>
     </div>
   );
 }
@@ -560,11 +566,10 @@ export function PrivacyDocs() {
               <div className="mb-8">
                 <CodeBlock
                   language="bash"
-                  title="Railway deployment logs (January 2026)"
-                  code={`# Deployment logs will be added here after production deployment
-# Expected output:
-# [2026-01-XX] AUDIT: Purging X email addresses from users table
-# [2026-01-XX] SUCCESS: email column removed from users table`}
+                  title="Railway deployment logs (January 28, 2026)"
+                  code={`INFO [alembic.runtime.migration] Running upgrade g7h8i9j0k1l2 -> i9j0k1l2m3n4, remove_email_column
+[2026-01-28T12:34:13.891745+00:00] AUDIT: Purging 577 email addresses from users table
+[2026-01-28T12:34:13.900072+00:00] SUCCESS: email column removed from users table`}
                 />
               </div>
 
@@ -595,7 +600,7 @@ WHERE table_name = 'users' ORDER BY ordinal_position;`}
                       </tr>
                     </thead>
                     <tbody>
-                      {['id', 'discord_id', 'discord_username', 'discord_avatar', 'display_name', 'is_admin', 'created_at', 'updated_at', 'last_login_at'].map((col) => (
+                      {['id', 'discord_id', 'discord_username', 'discord_discriminator', 'discord_avatar', 'display_name', 'created_at', 'updated_at', 'last_login_at', 'is_admin'].map((col) => (
                         <tr key={col}>
                           <td className="pr-8 py-0.5">{col}</td>
                         </tr>
