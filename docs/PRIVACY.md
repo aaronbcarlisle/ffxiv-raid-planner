@@ -200,7 +200,7 @@ You can see all your data by:
 To delete your data:
 1. Leave all static groups you're a member of
 2. Delete static groups you own
-3. Contact me to delete your account entirely
+3. Contact me to delete your account entirely via the [Discord helpdesk](https://discord.com/channels/1461997093399957527/1462005841212215549)
 
 ---
 
@@ -208,7 +208,7 @@ To delete your data:
 
 For privacy concerns or data deletion requests:
 - Open an issue on [GitHub](https://github.com/aaronbcarlisle/ffxiv-raid-planner)
-- Contact me via Discord
+- Message in the [Discord helpdesk](https://discord.com/channels/1461997093399957527/1462005841212215549)
 
 ---
 

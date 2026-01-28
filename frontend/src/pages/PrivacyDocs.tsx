@@ -427,7 +427,16 @@ export function PrivacyDocs() {
                   <ol className="list-decimal list-inside space-y-2 text-text-secondary">
                     <li>Leave all static groups you're a member of</li>
                     <li>Delete static groups you own</li>
-                    <li>Contact me to delete your account entirely</li>
+                    <li>Contact me to delete your account entirely via the{' '}
+                      <a
+                        href="https://discord.com/channels/1461997093399957527/1462005841212215549"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:underline"
+                      >
+                        Discord helpdesk
+                      </a>
+                    </li>
                   </ol>
                 </div>
 
