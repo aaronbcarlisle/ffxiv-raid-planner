@@ -21,6 +21,7 @@ const ApiDocs = lazy(() => import('./pages/ApiDocs'));
 const ApiCookbook = lazy(() => import('./pages/ApiCookbook'));
 const ReleaseNotes = lazy(() => import('./pages/ReleaseNotes'));
 const RoadmapDocs = lazy(() => import('./pages/RoadmapDocs'));
+const PrivacyDocs = lazy(() => import('./pages/PrivacyDocs'));
 const QuickStartGuide = lazy(() => import('./pages/QuickStartGuide'));
 const HowToDocs = lazy(() => import('./pages/HowToDocs'));
 const UnderstandingPriority = lazy(() => import('./pages/UnderstandingPriority'));
@@ -86,6 +87,7 @@ function App() {
             <Route path="docs/guides/common-tasks" element={<Navigate to="/docs/how-to" replace />} />
             <Route path="docs/loot-math" element={<Navigate to="/docs/understanding-priority" replace />} />
             <Route path="docs/roadmap" element={<RoadmapDocs />} />
+            <Route path="docs/privacy" element={<PrivacyDocs />} />
             {/* Legacy redirect for old /design-system URL */}
             <Route path="design-system" element={<DesignSystemPage />} />
           </Route>
