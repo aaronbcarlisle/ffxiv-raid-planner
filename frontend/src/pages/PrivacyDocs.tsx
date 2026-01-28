@@ -7,6 +7,8 @@
  * Accessible at: /docs/privacy
  */
 
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Shield,
   Key,
@@ -18,7 +20,18 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react';
-import { NavSidebar } from '../components/docs';
+import { NavSidebar, CodeBlock } from '../components/docs';
+
+// Flat list of all section IDs for scroll tracking
+const NAV_SECTIONS = [
+  'data-collection',
+  'whats-not-collected',
+  'discord-oauth',
+  'session-security',
+  'security-measures',
+  'your-rights',
+  'privacy-changes',
+];
 
 // Navigation items
 const NAV_GROUPS = [
@@ -95,22 +108,66 @@ function DataTable() {
   );
 }
 
-function CodeBlock({ children, title }: { children: string; title?: string }) {
-  return (
-    <div className="rounded-lg overflow-hidden border border-border-subtle">
-      {title && (
-        <div className="bg-surface-elevated px-4 py-2 border-b border-border-subtle">
-          <span className="text-xs font-mono text-text-muted">{title}</span>
-        </div>
-      )}
-      <pre className="bg-surface-sunken p-4 overflow-x-auto">
-        <code className="text-sm font-mono text-text-primary">{children}</code>
-      </pre>
-    </div>
-  );
-}
-
 export function PrivacyDocs() {
+  const location = useLocation();
+  const [activeSection, setActiveSection] = useState(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      if (NAV_SECTIONS.includes(id)) return id;
+    }
+    return 'data-collection';
+  });
+  const isScrollingRef = useRef(false);
+
+  const handleNavClick = useCallback((sectionId: string) => {
+    setActiveSection(sectionId);
+    isScrollingRef.current = true;
+    window.history.replaceState(null, '', `#${sectionId}`);
+  }, []);
+
+  useEffect(() => {
+    if (location.hash) {
+      const sectionId = location.hash.slice(1);
+      if (NAV_SECTIONS.includes(sectionId)) {
+        setTimeout(() => {
+          document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.hash]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isScrollingRef.current) {
+        isScrollingRef.current = false;
+        return;
+      }
+
+      const threshold = 150;
+      const sections = NAV_SECTIONS.map((id) => ({
+        id,
+        element: document.getElementById(id),
+      })).filter((s) => s.element);
+
+      for (const section of sections) {
+        const rect = section.element!.getBoundingClientRect();
+        if (rect.top <= threshold && rect.bottom > threshold) {
+          if (activeSection !== section.id) {
+            setActiveSection(section.id);
+            window.history.replaceState(null, '', `#${section.id}`);
+          }
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeSection]);
+
   return (
     <div className="bg-surface-base min-h-screen">
       {/* Header */}
@@ -130,7 +187,7 @@ export function PrivacyDocs() {
       <div className="max-w-[90rem] mx-auto px-6 lg:px-8 py-10">
         <div className="flex gap-10">
           {/* Sidebar */}
-          <NavSidebar groups={NAV_GROUPS} />
+          <NavSidebar groups={NAV_GROUPS} activeSection={activeSection} onSectionClick={handleNavClick} />
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 max-w-4xl">
@@ -211,7 +268,7 @@ export function PrivacyDocs() {
               <p className="text-text-secondary mb-4">
                 We request the <strong>minimum required scope</strong> from Discord:
               </p>
-              <CodeBlock title="OAuth scope">scope=identify</CodeBlock>
+              <CodeBlock code="scope=identify" language="bash" title="OAuth scope" />
               <p className="text-text-secondary mt-4">
                 This grants access to your Discord user ID, username, and avatar. Nothing else.
               </p>
