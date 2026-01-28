@@ -51,6 +51,7 @@ export const RELEASES: Release[] = [
         description: 'Discord login no longer requests or stores your email address',
         details:
           'We reviewed our data practices and found that email addresses were being collected during Discord login but never used by any feature. This update removes email from the OAuth scope entirely - Discord will no longer ask for email permission when you log in. Any previously stored email data has been purged from our database. This change improves privacy with no impact on functionality.',
+        commits: [{ hash: '428c7a3', message: 'fix: remove email collection from Discord OAuth' }],
       },
     ],
   },

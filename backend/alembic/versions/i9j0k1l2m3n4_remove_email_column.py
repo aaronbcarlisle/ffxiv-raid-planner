@@ -1,7 +1,7 @@
 """remove_email_column
 
 Revision ID: i9j0k1l2m3n4
-Revises: h8i9j0k1l2m3
+Revises: g7h8i9j0k1l2
 Create Date: 2026-01-28 12:00:00.000000
 
 Removes the email column from the users table. Email was collected during
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "i9j0k1l2m3n4"
-down_revision: Union[str, None] = "h8i9j0k1l2m3"
+down_revision: Union[str, None] = "g7h8i9j0k1l2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
