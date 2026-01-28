@@ -269,6 +269,23 @@ class TestApiCallsWithCookies:
         assert data["discordUsername"] == test_user.discord_username
 
     @pytest.mark.asyncio
+    async def test_get_me_does_not_include_email(self, client, test_user: User):
+        """GET /api/auth/me should NOT include email field (privacy compliance).
+
+        Email was removed from the API response as part of data minimization.
+        This test ensures the email field is not accidentally re-added.
+        """
+        access_token = create_access_token(test_user.id)
+        client.cookies.set("access_token", access_token)
+
+        response = await client.get("/api/auth/me")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Email field should not be present in response
+        assert "email" not in data, "API response should not include email field"
+
+    @pytest.mark.asyncio
     async def test_list_groups_with_cookie_auth(self, client, test_user: User):
         """GET /api/static-groups should work with cookie authentication."""
         access_token = create_access_token(test_user.id)
