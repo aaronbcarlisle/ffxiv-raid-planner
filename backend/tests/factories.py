@@ -14,7 +14,6 @@ async def create_user(
     discord_id: str | None = None,
     discord_username: str = "testuser",
     discord_avatar: str | None = None,
-    email: str | None = None,
 ) -> User:
     """Create a test user."""
     user = User(
@@ -23,7 +22,6 @@ async def create_user(
         discord_username=discord_username,
         discord_discriminator=None,
         discord_avatar=discord_avatar,
-        email=email,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
