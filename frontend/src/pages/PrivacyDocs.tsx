@@ -573,6 +573,41 @@ export function PrivacyDocs() {
                 />
               </div>
 
+              {/* Post-Deployment Verification */}
+              <h3 className="text-lg font-semibold text-text-primary mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-status-success" />
+                Post-Deployment Verification
+              </h3>
+              <p className="text-text-secondary mb-4">
+                This verification runs automatically on every deployment to confirm compliance:
+              </p>
+              <div className="mb-8">
+                <CodeBlock
+                  language="bash"
+                  title="Verification output (January 28, 2026)"
+                  code={`======================================================================
+EMAIL REMOVAL VERIFICATION REPORT
+Timestamp: 2026-01-28T12:52:58.206377+00:00
+======================================================================
+STATUS: PASSED
+
+VERIFICATION RESULTS:
+  - Email column exists: NO (removed)
+  - Total users in database: 578
+  - User columns: created_at, discord_avatar, discord_discriminator, discord_id,
+    discord_username, display_name, id, is_admin, last_login_at, updated_at
+
+COMPLIANCE CONFIRMATION:
+  - Discord OAuth scope: 'identify' only (no email)
+  - Email data collection: DISABLED
+  - Existing email data: PURGED (column dropped)
+  - API email exposure: REMOVED from UserResponse
+
+This deployment does not collect, store, or expose user emails.
+======================================================================`}
+                />
+              </div>
+
               {/* Schema Verification */}
               <h3 className="text-lg font-semibold text-text-primary mb-3 flex items-center gap-2">
                 <Table className="w-5 h-5 text-accent" />

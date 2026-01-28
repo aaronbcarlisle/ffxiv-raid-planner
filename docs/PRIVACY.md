@@ -273,6 +273,33 @@ INFO [alembic.runtime.migration] Running upgrade g7h8i9j0k1l2 -> i9j0k1l2m3n4, r
 [2026-01-28T12:34:13.900072+00:00] SUCCESS: email column removed from users table
 ```
 
+### Post-Deployment Verification
+
+This verification runs automatically on every deployment to confirm compliance:
+
+```
+======================================================================
+EMAIL REMOVAL VERIFICATION REPORT
+Timestamp: 2026-01-28T12:52:58.206377+00:00
+======================================================================
+STATUS: PASSED
+
+VERIFICATION RESULTS:
+  - Email column exists: NO (removed)
+  - Total users in database: 578
+  - User columns: created_at, discord_avatar, discord_discriminator, discord_id,
+    discord_username, display_name, id, is_admin, last_login_at, updated_at
+
+COMPLIANCE CONFIRMATION:
+  - Discord OAuth scope: 'identify' only (no email)
+  - Email data collection: DISABLED
+  - Existing email data: PURGED (column dropped)
+  - API email exposure: REMOVED from UserResponse
+
+This deployment does not collect, store, or expose user emails.
+======================================================================
+```
+
 ### Schema Verification
 
 Query result showing the `users` table no longer has an email column:
