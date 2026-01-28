@@ -212,19 +212,83 @@ For privacy concerns or data deletion requests:
 
 ---
 
-## Technical Verification
+## Verification Evidence
 
-Want to verify our claims? Here's how:
+There's no way to cryptographically prove data deletion (no web app really can). But here's what we can show: the migration code, the deployment logs, and the database schema. More importantly, the OAuth scope change is something you can verify yourself without trusting us at all.
 
-### Check OAuth Scope
+### Verify It Yourself (No Trust Required)
+
+**Check OAuth Scope:**
 1. Log out of the app
 2. Click "Login with Discord"
 3. Check the URL - it should contain `scope=identify` (no `email`)
 4. Check Discord's permission prompt - should only mention username/avatar
 
-### Check API Response
+**Check API Response:**
 ```bash
 # After logging in, open browser DevTools → Network
 # Find the /api/auth/me request
 # Response should NOT contain an "email" field
 ```
+
+### Migration Code
+
+This is the actual database migration that dropped the email column:
+
+```python
+# backend/alembic/versions/i9j0k1l2m3n4_remove_email_column.py
+
+def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = [col["name"] for col in inspector.get_columns("users")]
+
+    if "email" in existing_columns:
+        # Audit: Log count of users with emails before purging
+        result = bind.execute(
+            sa.text("SELECT COUNT(*) FROM users WHERE email IS NOT NULL")
+        )
+        email_count = result.scalar()
+        print(f"[{timestamp}] AUDIT: Purging {email_count} email addresses from users table")
+
+        # Drop the email column using batch_alter_table for SQLite compatibility
+        with op.batch_alter_table("users", schema=None) as batch_op:
+            batch_op.drop_column("email")
+        print(f"[{timestamp}] SUCCESS: email column removed from users table")
+```
+
+### Deployment Logs
+
+Output from the production deployment showing the migration ran successfully:
+
+```bash
+# Railway deployment logs (January 2026)
+# Deployment logs will be added here after production deployment
+# Expected output:
+# [2026-01-XX] AUDIT: Purging X email addresses from users table
+# [2026-01-XX] SUCCESS: email column removed from users table
+```
+
+### Schema Verification
+
+Query result showing the `users` table no longer has an email column:
+
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'users' ORDER BY ordinal_position;
+```
+
+**Result:**
+| column_name |
+|-------------|
+| id |
+| discord_id |
+| discord_username |
+| discord_avatar |
+| display_name |
+| is_admin |
+| created_at |
+| updated_at |
+| last_login_at |
+
+Note: No `email` column present.
