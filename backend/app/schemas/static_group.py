@@ -70,7 +70,10 @@ class StaticSettingsSchema(CamelModel):
     )
     job_priority_modifiers: dict[str, int] | None = Field(
         default=None,
-        description="Per-job priority adjustments, e.g., {'PCT': 20, 'WAR': -10}",
+        description="Per-job priority adjustments, e.g., {'PCT': 20, 'WAR': -10}. Values must be between -100 and 100.",
+        json_schema_extra={
+            "additionalProperties": {"type": "integer", "minimum": -100, "maximum": 100}
+        },
     )
     show_priority_scores: bool = Field(
         default=True,

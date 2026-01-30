@@ -752,7 +752,7 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowPriorityAdjustModal(false)}
         player={player}
         onSave={async (_playerId, modifier) => {
-          onUpdate({ priorityModifier: modifier });
+          await onUpdate({ priorityModifier: modifier });
         }}
       />
 

@@ -6,12 +6,17 @@
  * Positive values increase priority, negative values decrease it.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Gauge } from 'lucide-react';
 import { Modal, NumberInput, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import type { SnapshotPlayer } from '../../types';
+
+// Priority modifier range constants
+const PRIORITY_MODIFIER_MIN = -100;
+const PRIORITY_MODIFIER_MAX = 100;
+const PRIORITY_MODIFIER_STEP = 5;
 
 interface PriorityAdjustModalProps {
   isOpen: boolean;
@@ -24,7 +29,19 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
   const [modifier, setModifier] = useState<number>(player.priorityModifier ?? 0);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Reset modifier state when player changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setModifier(player.priorityModifier ?? 0);
+    }
+  }, [isOpen, player.id, player.priorityModifier]);
+
   const handleSave = async () => {
+    // Validate range before saving
+    if (modifier < PRIORITY_MODIFIER_MIN || modifier > PRIORITY_MODIFIER_MAX) {
+      return;
+    }
+
     setIsSaving(true);
     try {
       await onSave(player.id, modifier);
@@ -71,9 +88,9 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
             id="priorityModifier"
             value={modifier}
             onChange={(value) => setModifier(value ?? 0)}
-            min={-100}
-            max={100}
-            step={5}
+            min={PRIORITY_MODIFIER_MIN}
+            max={PRIORITY_MODIFIER_MAX}
+            step={PRIORITY_MODIFIER_STEP}
             className="mt-1"
           />
           <p className="text-xs text-text-muted mt-2">

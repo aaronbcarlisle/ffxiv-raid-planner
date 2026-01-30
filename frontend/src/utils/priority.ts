@@ -70,11 +70,11 @@ export function calculatePriorityScore(
     .filter((g) => !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
-  // Job modifier from settings
-  const jobModifier = settings.jobPriorityModifiers?.[player.job] || 0;
+  // Job modifier from settings (use nullish coalescing to handle explicit 0 values)
+  const jobModifier = settings.jobPriorityModifiers?.[player.job] ?? 0;
 
-  // Player-level modifier
-  const playerModifier = player.priorityModifier || 0;
+  // Player-level modifier (use nullish coalescing to handle explicit 0 values)
+  const playerModifier = player.priorityModifier ?? 0;
 
   let score = Math.round(rolePriority + weightedNeed * 10 + jobModifier + playerModifier);
 
@@ -118,11 +118,11 @@ export function calculatePriorityScoreWithBreakdown(
 
   const weightedNeedBonus = Math.round(weightedNeed * 10);
 
-  // Job modifier from settings
-  const jobModifier = settings.jobPriorityModifiers?.[player.job] || 0;
+  // Job modifier from settings (use nullish coalescing to handle explicit 0 values)
+  const jobModifier = settings.jobPriorityModifiers?.[player.job] ?? 0;
 
-  // Player-level modifier
-  const playerModifier = player.priorityModifier || 0;
+  // Player-level modifier (use nullish coalescing to handle explicit 0 values)
+  const playerModifier = player.priorityModifier ?? 0;
 
   let lootAdjustmentPenalty = 0;
   if (options?.includeLootAdjustment && player.lootAdjustment) {
