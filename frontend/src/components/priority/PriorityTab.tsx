@@ -167,12 +167,16 @@ export function PriorityTab({ group, players }: PriorityTabProps) {
     try {
       // Merge with existing settings to preserve non-priority fields
       const existingSettings = group.settings || {};
+      // Map new mode to legacy priorityMode for backward compatibility
+      const legacyPriorityMode = settings.mode === 'disabled' ? 'disabled' : 'automatic';
+
       await updateGroup(group.id, {
         settings: {
           ...existingSettings,
           prioritySettings: settings,
           // Also update legacy fields for backward compatibility
           lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          priorityMode: legacyPriorityMode,
           showPriorityScores: settings.advancedOptions.showPriorityScores,
           enableEnhancedScoring: settings.advancedOptions.enableEnhancedFairness,
         },

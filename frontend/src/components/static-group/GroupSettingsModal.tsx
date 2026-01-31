@@ -520,6 +520,12 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
 
           {activeTab === 'priority' && (
             <div>
+              {/* Note about new Priority tab */}
+              <div className="mb-6 p-3 bg-status-info/10 border border-status-info/30 rounded text-status-info text-sm">
+                For advanced priority modes (job-based, player-based, manual planning), use the{' '}
+                <span className="font-medium">Priority tab</span> in the main view.
+              </div>
+
               {!canEditPriority && (
                 <div className="mb-4 p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm">
                   Only owners and leads can modify priority settings.
