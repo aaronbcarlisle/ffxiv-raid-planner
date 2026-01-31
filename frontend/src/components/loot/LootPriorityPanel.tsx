@@ -711,12 +711,21 @@ export function LootPriorityPanel({
               <div className="border-t border-border-default pt-4 mt-4">
                 <h4 className="text-text-secondary text-sm mb-3">Upgrade Materials</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {materialPriorities.map(({ material, label, entries }) => (
+                  {materialPriorities.map(({ material, label, entries }) => {
+                    // Material color classes from design system
+                    const materialColorClass = {
+                      twine: 'text-material-twine',
+                      glaze: 'text-material-glaze',
+                      solvent: 'text-material-solvent',
+                      universal_tomestone: 'text-material-tomestone',
+                    }[material] || 'text-text-primary';
+
+                    return (
                     <div
                       key={material}
                       className="bg-surface-base rounded-lg p-3"
                     >
-                      <div className="text-text-primary font-medium text-sm mb-2 border-b border-border-default pb-2">
+                      <div className={`${materialColorClass} font-medium text-sm mb-2 border-b border-border-default pb-2`}>
                         {label}
                       </div>
                       <PriorityList
@@ -729,7 +738,7 @@ export function LootPriorityPanel({
                         highlightFirst={!priorityIsDisabled}
                       />
                     </div>
-                  ))}
+                  );})}
                 </div>
               </div>
             )}

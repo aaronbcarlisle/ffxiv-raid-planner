@@ -433,15 +433,18 @@ export function WeeklyLootGrid({
               {/* Log Floor button */}
               {canEdit && onLogFloor && (
                 <Tooltip content={`Log all drops for ${floor.id} using wizard`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto"
+                  <button
+                    className="ml-auto px-2.5 py-1 text-xs font-bold rounded border transition-colors flex items-center gap-1.5 hover:brightness-110"
+                    style={{
+                      backgroundColor: `${FLOOR_COLORS[floor.number].hex}15`,
+                      borderColor: `${FLOOR_COLORS[floor.number].hex}40`,
+                      color: FLOOR_COLORS[floor.number].hex,
+                    }}
                     onClick={() => onLogFloor(floor.number)}
                   >
-                    <ClipboardList className="w-3.5 h-3.5 mr-1" />
+                    <ClipboardList className="w-3 h-3" />
                     Log Floor
-                  </Button>
+                  </button>
                 </Tooltip>
               )}
             </div>
