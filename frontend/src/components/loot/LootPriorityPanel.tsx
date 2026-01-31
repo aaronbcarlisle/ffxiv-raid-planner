@@ -396,8 +396,12 @@ export function LootPriorityPanel({
   });
 
   // Determine if enhanced scoring should be active
-  // Requires: prop enabled, setting explicitly enabled (default is false/opt-in), and loot history exists
-  const isEnhancedScoringActive = showEnhancedScores && settings.enableEnhancedScoring === true && lootLog.length > 0;
+  // Requires: prop enabled, setting explicitly enabled (default is false/opt-in), priority mode not disabled, and loot history exists
+  const isEnhancedScoringActive =
+    showEnhancedScores &&
+    settings.enableEnhancedScoring === true &&
+    settings.priorityMode !== 'disabled' &&
+    lootLog.length > 0;
 
   // Calculate average drops for balance penalty
   const averageDrops = useMemo(() => {

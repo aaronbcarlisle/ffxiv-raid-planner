@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def to_camel(string: str) -> str:
@@ -83,6 +83,18 @@ class StaticSettingsSchema(CamelModel):
         default=False,
         description="Enable drought bonus and balance penalty in priority calculation",
     )
+
+    @field_validator("job_priority_modifiers")
+    @classmethod
+    def validate_job_priority_modifiers(cls, v: dict[str, int] | None) -> dict[str, int] | None:
+        """Validate that all job modifier values are within -100 to +100 range"""
+        if v is not None:
+            for job, modifier in v.items():
+                if not -100 <= modifier <= 100:
+                    raise ValueError(
+                        f"Job modifier for {job} must be between -100 and 100, got {modifier}"
+                    )
+        return v
 
 
 # --- Membership Schemas ---
