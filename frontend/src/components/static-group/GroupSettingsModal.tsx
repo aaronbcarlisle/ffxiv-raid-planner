@@ -591,6 +591,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                   onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
                   className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors w-full text-left"
                   disabled={!canEditPriority}
+                  aria-expanded={showAdvancedOptions}
                 >
                   {showAdvancedOptions ? (
                     <ChevronDown className="w-4 h-4" />
@@ -660,6 +661,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                                 }}
                                 className="p-1 text-text-muted hover:text-status-error transition-colors"
                                 disabled={!canEditPriority}
+                                aria-label={`Remove ${job} modifier`}
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -697,6 +699,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                             }
                           }}
                           disabled={!canEditPriority || !newJobModifier}
+                          aria-label="Add job modifier"
                         >
                           <Plus className="w-4 h-4" />
                         </Button>
