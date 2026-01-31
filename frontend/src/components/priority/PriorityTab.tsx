@@ -11,6 +11,8 @@ import { Button } from '../primitives';
 import { Label, ErrorBox } from '../ui';
 import { ModeSelector } from './ModeSelector';
 import { RoleBasedEditor } from './RoleBasedEditor';
+import { JobBasedEditor } from './JobBasedEditor';
+import { PlayerBasedEditor } from './PlayerBasedEditor';
 import { AdvancedOptions } from './AdvancedOptions';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -21,15 +23,18 @@ import type {
   RoleType,
   AdvancedPriorityOptions,
   SnapshotPlayer,
+  JobBasedConfig,
+  PlayerBasedConfig,
 } from '../../types';
 import { DEFAULT_PRIORITY_SETTINGS, DEFAULT_ADVANCED_OPTIONS } from '../../types';
+import { getJobsByRole } from '../../gamedata';
 
 interface PriorityTabProps {
   group: StaticGroup;
-  players: SnapshotPlayer[];  // Will be used for job-based and player-based modes
+  players: SnapshotPlayer[];
 }
 
-export function PriorityTab({ group, players: _players }: PriorityTabProps) {
+export function PriorityTab({ group, players }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
   // Initialize state from group settings or defaults
@@ -78,11 +83,29 @@ export function PriorityTab({ group, players: _players }: PriorityTabProps) {
           roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'],
         };
       } else if (mode === 'job-based' && !newSettings.jobBasedConfig) {
+        // Create default groups by role
+        const defaultGroups = [
+          { id: 'melee', name: 'Melee DPS', sortOrder: 0, basePriority: 125 },
+          { id: 'ranged', name: 'Physical Ranged', sortOrder: 1, basePriority: 100 },
+          { id: 'caster', name: 'Magical Ranged', sortOrder: 2, basePriority: 75 },
+          { id: 'tank', name: 'Tank', sortOrder: 3, basePriority: 50 },
+          { id: 'healer', name: 'Healer', sortOrder: 4, basePriority: 25 },
+        ];
+
+        // Create job configs for all jobs grouped by role
+        const roles: RoleType[] = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+        const jobs = roles.flatMap((role) =>
+          getJobsByRole(role).map((job, index) => ({
+            job: job.abbreviation,
+            groupId: role,
+            sortOrder: index,
+            priorityOffset: 0,
+          }))
+        );
+
         newSettings.jobBasedConfig = {
-          groups: [
-            { id: 'default', name: 'All Jobs', sortOrder: 0, basePriority: 0 },
-          ],
-          jobs: [],
+          groups: defaultGroups,
+          jobs,
           showAdvancedControls: false,
         };
       } else if (mode === 'player-based' && !newSettings.playerBasedConfig) {
@@ -107,6 +130,22 @@ export function PriorityTab({ group, players: _players }: PriorityTabProps) {
         ...prev.roleBasedConfig,
         roleOrder,
       },
+    }));
+  }, []);
+
+  // Job-based config change handler
+  const handleJobBasedConfigChange = useCallback((jobBasedConfig: JobBasedConfig) => {
+    setSettings((prev) => ({
+      ...prev,
+      jobBasedConfig,
+    }));
+  }, []);
+
+  // Player-based config change handler
+  const handlePlayerBasedConfigChange = useCallback((playerBasedConfig: PlayerBasedConfig) => {
+    setSettings((prev) => ({
+      ...prev,
+      playerBasedConfig,
     }));
   }, []);
 
@@ -191,19 +230,27 @@ export function PriorityTab({ group, players: _players }: PriorityTabProps) {
           </div>
         )}
 
-        {settings.mode === 'job-based' && (
-          <div className="mb-6 p-4 bg-surface-elevated rounded-lg border border-border-default">
-            <p className="text-text-muted text-sm">
-              Job-based priority editor coming soon. For now, use Role Based mode.
-            </p>
+        {settings.mode === 'job-based' && settings.jobBasedConfig && (
+          <div className="mb-6">
+            <Label>Job Priority</Label>
+            <JobBasedEditor
+              config={settings.jobBasedConfig}
+              onChange={handleJobBasedConfigChange}
+              players={players}
+              disabled={!canEdit}
+            />
           </div>
         )}
 
-        {settings.mode === 'player-based' && (
-          <div className="mb-6 p-4 bg-surface-elevated rounded-lg border border-border-default">
-            <p className="text-text-muted text-sm">
-              Player-based priority editor coming soon. For now, use Role Based mode.
-            </p>
+        {settings.mode === 'player-based' && settings.playerBasedConfig && (
+          <div className="mb-6">
+            <Label>Player Priority</Label>
+            <PlayerBasedEditor
+              config={settings.playerBasedConfig}
+              onChange={handlePlayerBasedConfigChange}
+              players={players}
+              disabled={!canEdit}
+            />
           </div>
         )}
 

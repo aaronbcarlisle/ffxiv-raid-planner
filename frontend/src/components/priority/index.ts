@@ -7,6 +7,8 @@
 export { PriorityTab } from './PriorityTab';
 export { ModeSelector } from './ModeSelector';
 export { RoleBasedEditor } from './RoleBasedEditor';
+export { JobBasedEditor } from './JobBasedEditor';
+export { PlayerBasedEditor } from './PlayerBasedEditor';
 export { AdvancedOptions } from './AdvancedOptions';
 export { PresetSelector } from './PresetSelector';
 export { PRESET_CONFIGS } from './presetConfigs';
