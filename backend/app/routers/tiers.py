@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
-from ..models import MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from ..models import MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, WeeklyAssignment
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -40,6 +40,11 @@ from ..schemas import (
     TierSnapshotWithPlayers,
     WeaponPrioritiesUpdate,
     WeaponPrioritySettingsUpdate,
+    WeeklyAssignmentCreate,
+    WeeklyAssignmentResponse,
+    WeeklyAssignmentUpdate,
+    WeeklyAssignmentBulkCreate,
+    WeeklyAssignmentBulkDelete,
 )
 from ..constants import (
     OPTIMAL_PARTY_COMP,
@@ -1452,3 +1457,325 @@ async def update_weapon_priority_settings(
     tier = result.scalar_one()
 
     return snapshot_to_response(tier)
+
+
+# --- Weekly Assignment Endpoints (Manual Planning Mode) ---
+
+
+def assignment_to_response(
+    assignment: WeeklyAssignment, player: SnapshotPlayer | None = None
+) -> WeeklyAssignmentResponse:
+    """Convert WeeklyAssignment model to response schema"""
+    return WeeklyAssignmentResponse(
+        id=assignment.id,
+        static_group_id=assignment.static_group_id,
+        tier_id=assignment.tier_id,
+        week=assignment.week,
+        floor=assignment.floor,
+        slot=assignment.slot,
+        player_id=assignment.player_id,
+        player_name=player.name if player else None,
+        player_job=player.job if player else None,
+        sort_order=assignment.sort_order,
+        did_not_drop=assignment.did_not_drop,
+        created_at=assignment.created_at,
+        updated_at=assignment.updated_at,
+    )
+
+
+@router.get(
+    "/{group_id}/weekly-assignments",
+    response_model=list[WeeklyAssignmentResponse],
+)
+async def list_weekly_assignments(
+    group_id: str,
+    tier_id: str | None = None,
+    week: int | None = None,
+    floor: str | None = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> list[WeeklyAssignmentResponse]:
+    """List weekly assignments for a static group with optional filters"""
+    group = await get_static_group(session, group_id)
+    await check_view_permission(session, group, current_user)
+
+    # Build query with filters
+    query = select(WeeklyAssignment).where(
+        WeeklyAssignment.static_group_id == group_id
+    )
+
+    if tier_id:
+        query = query.where(WeeklyAssignment.tier_id == tier_id)
+    if week:
+        query = query.where(WeeklyAssignment.week == week)
+    if floor:
+        query = query.where(WeeklyAssignment.floor == floor)
+
+    query = query.order_by(
+        WeeklyAssignment.week,
+        WeeklyAssignment.floor,
+        WeeklyAssignment.slot,
+        WeeklyAssignment.sort_order,
+    )
+
+    result = await session.execute(query)
+    assignments = result.scalars().all()
+
+    # Get player info for all assignments
+    player_ids = [a.player_id for a in assignments if a.player_id]
+    players_map: dict[str, SnapshotPlayer] = {}
+
+    if player_ids:
+        players_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id.in_(player_ids))
+        )
+        players = players_result.scalars().all()
+        players_map = {p.id: p for p in players}
+
+    return [
+        assignment_to_response(a, players_map.get(a.player_id) if a.player_id else None)
+        for a in assignments
+    ]
+
+
+@router.post(
+    "/{group_id}/weekly-assignments",
+    response_model=WeeklyAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_weekly_assignment(
+    group_id: str,
+    data: WeeklyAssignmentCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyAssignmentResponse:
+    """Create a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Check for duplicate
+    existing = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == data.tier_id,
+            WeeklyAssignment.week == data.week,
+            WeeklyAssignment.floor == data.floor,
+            WeeklyAssignment.slot == data.slot,
+            WeeklyAssignment.player_id == data.player_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Assignment already exists for this player/slot/week combination",
+        )
+
+    assignment = WeeklyAssignment(
+        id=str(uuid.uuid4()),
+        static_group_id=group_id,
+        tier_id=data.tier_id,
+        week=data.week,
+        floor=data.floor,
+        slot=data.slot,
+        player_id=data.player_id,
+        sort_order=data.sort_order,
+        did_not_drop=data.did_not_drop,
+        created_at=now,
+        updated_at=now,
+    )
+
+    session.add(assignment)
+    await session.flush()
+    await session.commit()
+
+    # Get player info if assigned
+    player = None
+    if assignment.player_id:
+        player_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
+        )
+        player = player_result.scalar_one_or_none()
+
+    return assignment_to_response(assignment, player)
+
+
+@router.put(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    response_model=WeeklyAssignmentResponse,
+)
+async def update_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    data: WeeklyAssignmentUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyAssignmentResponse:
+    """Update a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    # Apply updates
+    if data.player_id is not None:
+        assignment.player_id = data.player_id if data.player_id else None
+    if data.sort_order is not None:
+        assignment.sort_order = data.sort_order
+    if data.did_not_drop is not None:
+        assignment.did_not_drop = data.did_not_drop
+
+    assignment.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Get player info if assigned
+    player = None
+    if assignment.player_id:
+        player_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
+        )
+        player = player_result.scalar_one_or_none()
+
+    return assignment_to_response(assignment, player)
+
+
+@router.delete(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    await session.delete(assignment)
+    await session.commit()
+
+
+@router.post(
+    "/{group_id}/weekly-assignments/bulk",
+    response_model=list[WeeklyAssignmentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_create_weekly_assignments(
+    group_id: str,
+    data: WeeklyAssignmentBulkCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[WeeklyAssignmentResponse]:
+    """Bulk create weekly assignments (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    now = datetime.now(timezone.utc).isoformat()
+    created_assignments: list[WeeklyAssignment] = []
+
+    for assignment_data in data.assignments:
+        # Skip duplicates silently in bulk mode
+        existing = await session.execute(
+            select(WeeklyAssignment).where(
+                WeeklyAssignment.static_group_id == group_id,
+                WeeklyAssignment.tier_id == data.tier_id,
+                WeeklyAssignment.week == data.week,
+                WeeklyAssignment.floor == assignment_data.floor,
+                WeeklyAssignment.slot == assignment_data.slot,
+                WeeklyAssignment.player_id == assignment_data.player_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            continue
+
+        assignment = WeeklyAssignment(
+            id=str(uuid.uuid4()),
+            static_group_id=group_id,
+            tier_id=data.tier_id,
+            week=data.week,
+            floor=assignment_data.floor,
+            slot=assignment_data.slot,
+            player_id=assignment_data.player_id,
+            sort_order=assignment_data.sort_order,
+            did_not_drop=assignment_data.did_not_drop,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(assignment)
+        created_assignments.append(assignment)
+
+    await session.flush()
+    await session.commit()
+
+    # Get player info for all assignments
+    player_ids = [a.player_id for a in created_assignments if a.player_id]
+    players_map: dict[str, SnapshotPlayer] = {}
+
+    if player_ids:
+        players_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id.in_(player_ids))
+        )
+        players = players_result.scalars().all()
+        players_map = {p.id: p for p in players}
+
+    return [
+        assignment_to_response(a, players_map.get(a.player_id) if a.player_id else None)
+        for a in created_assignments
+    ]
+
+
+@router.delete(
+    "/{group_id}/weekly-assignments/bulk",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def bulk_delete_weekly_assignments(
+    group_id: str,
+    data: WeeklyAssignmentBulkDelete,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Bulk delete weekly assignments (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Build delete query with filters
+    from sqlalchemy import delete
+
+    query = delete(WeeklyAssignment).where(
+        WeeklyAssignment.static_group_id == group_id,
+        WeeklyAssignment.tier_id == data.tier_id,
+        WeeklyAssignment.week == data.week,
+    )
+
+    if data.floor:
+        query = query.where(WeeklyAssignment.floor == data.floor)
+    if data.slot:
+        query = query.where(WeeklyAssignment.slot == data.slot)
+
+    await session.execute(query)
+    await session.commit()

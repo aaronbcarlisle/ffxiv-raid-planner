@@ -9,6 +9,7 @@ from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
 from .tier_snapshot import TierSnapshot
 from .user import User
+from .weekly_assignment import WeeklyAssignment
 
 __all__ = [
     "Invitation",
@@ -22,4 +23,5 @@ __all__ = [
     "StaticGroup",
     "TierSnapshot",
     "User",
+    "WeeklyAssignment",
 ]

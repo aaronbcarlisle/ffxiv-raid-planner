@@ -22,6 +22,7 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
+import { PriorityTab } from '../components/priority';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
@@ -699,7 +700,7 @@ export function GroupView() {
           <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
             {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
             <div className="hidden sm:block">
-              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
+              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} showPriorityTab={canEdit} />
             </div>
             {/* Roster tab controls - only render when on players tab */}
             {pageMode === 'players' && (
@@ -900,6 +901,14 @@ export function GroupView() {
                 onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
               />
             </div>
+          )}
+
+          {/* Priority Tab - only visible to leads/owners */}
+          {pageMode === 'priority' && canEdit && currentGroup && currentTier?.players && (
+            <PriorityTab
+              group={currentGroup}
+              players={mainRosterPlayers}
+            />
           )}
         </>
       )}
@@ -1218,6 +1227,7 @@ export function GroupView() {
           activeTab={pageMode}
           onTabChange={setPageMode}
           onControlsClick={() => setShowControlsSheet(true)}
+          showPriorityTab={canEdit}
         />
       )}
     </div>
