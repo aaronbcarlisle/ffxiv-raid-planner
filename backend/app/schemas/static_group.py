@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.constants import VALID_JOBS
+
 
 def to_camel(string: str) -> str:
     """Convert snake_case to camelCase"""
@@ -87,9 +89,16 @@ class StaticSettingsSchema(CamelModel):
     @field_validator("job_priority_modifiers")
     @classmethod
     def validate_job_priority_modifiers(cls, v: dict[str, int] | None) -> dict[str, int] | None:
-        """Validate that all job modifier values are within -100 to +100 range"""
+        """Validate job modifier keys are valid job abbreviations and values are within -100 to +100 range"""
         if v is not None:
             for job, modifier in v.items():
+                # Validate job abbreviation against whitelist
+                if job.lower() not in VALID_JOBS:
+                    valid_jobs_str = ", ".join(sorted(j.upper() for j in VALID_JOBS))
+                    raise ValueError(
+                        f"Invalid job abbreviation: {job}. Valid jobs: {valid_jobs_str}"
+                    )
+                # Validate modifier range
                 if not -100 <= modifier <= 100:
                     raise ValueError(
                         f"Job modifier for {job} must be between -100 and 100, got {modifier}"

@@ -8,25 +8,12 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from ..cache import xivapi_item_cache
+from ..constants import VALID_JOBS
 from ..logging_config import get_logger
 from ..rate_limit import RATE_LIMITS, limiter
 
 router = APIRouter(prefix="/api/bis", tags=["bis"])
 logger = get_logger(__name__)
-
-# Valid job abbreviations for BiS import (prevents path traversal)
-VALID_JOBS = frozenset({
-    # Tanks
-    "pld", "war", "drk", "gnb",
-    # Healers
-    "whm", "sch", "ast", "sge",
-    # Melee DPS
-    "mnk", "drg", "nin", "sam", "rpr", "vpr",
-    # Ranged Physical DPS
-    "brd", "mch", "dnc",
-    # Ranged Magical DPS
-    "blm", "smn", "rdm", "pct",
-})
 
 # Valid tier names for BiS import (prevents path traversal)
 VALID_TIERS = frozenset({

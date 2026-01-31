@@ -27,7 +27,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Settings, ListOrdered, Users, Mail, Trash2, GripVertical, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { useSwipe } from '../../hooks/useSwipe';
 import { Modal, Checkbox, Label, Input, ErrorBox, NumberInput, Select } from '../ui';
-import { Button } from '../primitives';
+import { Button, IconButton } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
@@ -586,6 +586,9 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
 
               {/* Advanced Options - Collapsible */}
               <div className="border-t border-border-default pt-4">
+                {/* Raw button intentional: disclosure toggle pattern requires full-width
+                    clickable area with custom layout (chevron + text), not suited for
+                    Button/IconButton which are designed for actions, not disclosures */}
                 <button
                   type="button"
                   onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
@@ -652,19 +655,18 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                                 disabled={!canEditPriority}
                                 className="w-28"
                               />
-                              <button
-                                type="button"
+                              <IconButton
+                                icon={<X className="w-4 h-4" />}
                                 onClick={() => {
                                   const newModifiers = { ...jobPriorityModifiers };
                                   delete newModifiers[job];
                                   setJobPriorityModifiers(newModifiers);
                                 }}
-                                className="p-1 text-text-muted hover:text-status-error transition-colors"
+                                variant="ghost"
+                                size="sm"
                                 disabled={!canEditPriority}
                                 aria-label={`Remove ${job} modifier`}
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                              />
                             </div>
                           ))}
                         </div>
