@@ -59,6 +59,8 @@ export function calculatePriorityScore(
   options?: PriorityScoreOptions
 ): number {
   // Disabled mode: all players have equal priority (0)
+  // Note: This returns early, so loot adjustments are not applied in disabled mode.
+  // This is intentional - disabled mode means true equal priority regardless of history.
   if (settings.priorityMode === 'disabled') {
     return 0;
   }

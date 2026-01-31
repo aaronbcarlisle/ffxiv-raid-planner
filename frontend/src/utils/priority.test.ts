@@ -168,4 +168,213 @@ describe('calculatePriorityScore', () => {
       expect(allIncompleteScore).toBeGreaterThan(someCompleteScore);
     });
   });
+
+  describe('priority modes', () => {
+    it('returns 0 for all players when priorityMode is disabled', () => {
+      const meleePlayer = createPlayer({ role: 'melee' });
+      const tankPlayer = createPlayer({ role: 'tank' });
+      const healerPlayer = createPlayer({ role: 'healer' });
+
+      const disabledSettings: StaticSettings = {
+        ...defaultSettings,
+        priorityMode: 'disabled',
+      };
+
+      expect(calculatePriorityScore(meleePlayer, disabledSettings)).toBe(0);
+      expect(calculatePriorityScore(tankPlayer, disabledSettings)).toBe(0);
+      expect(calculatePriorityScore(healerPlayer, disabledSettings)).toBe(0);
+    });
+
+    it('calculates normal priority in automatic mode', () => {
+      const player = createPlayer({ role: 'melee' });
+      const automaticSettings: StaticSettings = {
+        ...defaultSettings,
+        priorityMode: 'automatic',
+      };
+
+      const score = calculatePriorityScore(player, automaticSettings);
+      expect(score).toBeGreaterThan(0);
+    });
+
+    it('calculates normal priority in manual mode', () => {
+      const player = createPlayer({ role: 'melee' });
+      const manualSettings: StaticSettings = {
+        ...defaultSettings,
+        priorityMode: 'manual',
+      };
+
+      const score = calculatePriorityScore(player, manualSettings);
+      expect(score).toBeGreaterThan(0);
+    });
+
+    it('ignores loot adjustment in disabled mode', () => {
+      const player = createPlayer({ role: 'melee', lootAdjustment: 5 });
+      const disabledSettings: StaticSettings = {
+        ...defaultSettings,
+        priorityMode: 'disabled',
+      };
+
+      // Even with includeLootAdjustment, disabled mode returns 0
+      const score = calculatePriorityScore(player, disabledSettings, {
+        includeLootAdjustment: true,
+      });
+      expect(score).toBe(0);
+    });
+  });
+
+  describe('job modifiers', () => {
+    it('applies positive job modifier correctly', () => {
+      const player = createPlayer({ job: 'PCT', role: 'caster' });
+      const baseSettings = defaultSettings;
+      const modifiedSettings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { PCT: 20 },
+      };
+
+      const baseScore = calculatePriorityScore(player, baseSettings);
+      const modifiedScore = calculatePriorityScore(player, modifiedSettings);
+
+      expect(modifiedScore).toBe(baseScore + 20);
+    });
+
+    it('applies negative job modifier correctly', () => {
+      const player = createPlayer({ job: 'WAR', role: 'tank' });
+      const baseSettings = defaultSettings;
+      const modifiedSettings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { WAR: -15 },
+      };
+
+      const baseScore = calculatePriorityScore(player, baseSettings);
+      const modifiedScore = calculatePriorityScore(player, modifiedSettings);
+
+      expect(modifiedScore).toBe(baseScore - 15);
+    });
+
+    it('does not apply modifier to unrelated jobs', () => {
+      const drgPlayer = createPlayer({ job: 'DRG', role: 'melee' });
+      const modifiedSettings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { PCT: 20, WAR: -10 },
+      };
+
+      const baseScore = calculatePriorityScore(drgPlayer, defaultSettings);
+      const modifiedScore = calculatePriorityScore(drgPlayer, modifiedSettings);
+
+      expect(modifiedScore).toBe(baseScore);
+    });
+
+    it('handles undefined jobPriorityModifiers gracefully', () => {
+      const player = createPlayer({ job: 'DRG' });
+      const settingsWithoutModifiers: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: undefined,
+      };
+
+      // Should not throw and should return valid score
+      const score = calculatePriorityScore(player, settingsWithoutModifiers);
+      expect(typeof score).toBe('number');
+      expect(score).toBeGreaterThan(0);
+    });
+
+    it('handles explicit zero modifier correctly', () => {
+      const player = createPlayer({ job: 'PCT', role: 'caster' });
+      const zeroModifierSettings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { PCT: 0 },
+      };
+
+      const baseScore = calculatePriorityScore(player, defaultSettings);
+      const zeroModifiedScore = calculatePriorityScore(player, zeroModifierSettings);
+
+      expect(zeroModifiedScore).toBe(baseScore);
+    });
+  });
+
+  describe('player modifiers', () => {
+    it('applies positive player modifier correctly', () => {
+      const basePlayer = createPlayer({ priorityModifier: 0 });
+      const modifiedPlayer = createPlayer({ priorityModifier: 30 });
+
+      const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
+      const modifiedScore = calculatePriorityScore(modifiedPlayer, defaultSettings);
+
+      expect(modifiedScore).toBe(baseScore + 30);
+    });
+
+    it('applies negative player modifier correctly', () => {
+      const basePlayer = createPlayer({ priorityModifier: 0 });
+      const modifiedPlayer = createPlayer({ priorityModifier: -25 });
+
+      const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
+      const modifiedScore = calculatePriorityScore(modifiedPlayer, defaultSettings);
+
+      expect(modifiedScore).toBe(baseScore - 25);
+    });
+
+    it('handles undefined priorityModifier gracefully', () => {
+      const player = createPlayer();
+      delete (player as Partial<SnapshotPlayer>).priorityModifier;
+
+      // Should not throw and should return valid score
+      const score = calculatePriorityScore(player, defaultSettings);
+      expect(typeof score).toBe('number');
+    });
+
+    it('handles explicit zero priorityModifier correctly', () => {
+      const zeroModifierPlayer = createPlayer({ priorityModifier: 0 });
+      const undefinedModifierPlayer = createPlayer();
+      delete (undefinedModifierPlayer as Partial<SnapshotPlayer>).priorityModifier;
+
+      const zeroScore = calculatePriorityScore(zeroModifierPlayer, defaultSettings);
+      const undefinedScore = calculatePriorityScore(undefinedModifierPlayer, defaultSettings);
+
+      // Both should produce same result
+      expect(zeroScore).toBe(undefinedScore);
+    });
+  });
+
+  describe('combined modifiers', () => {
+    it('combines job and player modifiers correctly', () => {
+      const player = createPlayer({
+        job: 'PCT',
+        role: 'caster',
+        priorityModifier: 15
+      });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { PCT: 20 },
+      };
+
+      const basePlayer = createPlayer({ job: 'PCT', role: 'caster', priorityModifier: 0 });
+      const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
+      const combinedScore = calculatePriorityScore(player, settings);
+
+      // Combined score should be base + job modifier + player modifier
+      expect(combinedScore).toBe(baseScore + 20 + 15);
+    });
+
+    it('combines all factors correctly', () => {
+      const player = createPlayer({
+        job: 'PCT',
+        role: 'caster',
+        priorityModifier: 10,
+        lootAdjustment: 2, // 2 drops = -30 penalty
+      });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { PCT: 15 },
+      };
+
+      // Calculate expected: role + gear need + job mod + player mod - loot adj
+      const basePlayer = createPlayer({ job: 'PCT', role: 'caster' });
+      const baseScoreWithoutModifiers = calculatePriorityScore(basePlayer, defaultSettings);
+
+      const scoreWithModifiers = calculatePriorityScore(player, settings, {
+        includeLootAdjustment: true,
+      });
+
+      expect(scoreWithModifiers).toBe(baseScoreWithoutModifiers + 15 + 10 - 30);
+    });
+  });
 });
