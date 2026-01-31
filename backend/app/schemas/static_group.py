@@ -89,9 +89,12 @@ class StaticSettingsSchema(CamelModel):
     @field_validator("job_priority_modifiers")
     @classmethod
     def validate_job_priority_modifiers(cls, v: dict[str, int] | None) -> dict[str, int] | None:
-        """Validate job modifier keys are valid job abbreviations and values are within -100 to +100 range"""
+        """Validate and normalize job modifier keys to uppercase"""
         if v is not None:
+            normalized = {}
             for job, modifier in v.items():
+                # Normalize to uppercase for consistent storage
+                job_upper = job.upper()
                 # Validate job abbreviation against whitelist
                 if job.lower() not in VALID_JOBS:
                     valid_jobs_str = ", ".join(sorted(j.upper() for j in VALID_JOBS))
@@ -103,6 +106,8 @@ class StaticSettingsSchema(CamelModel):
                     raise ValueError(
                         f"Job modifier for {job} must be between -100 and 100, got {modifier}"
                     )
+                normalized[job_upper] = modifier
+            return normalized
         return v
 
 

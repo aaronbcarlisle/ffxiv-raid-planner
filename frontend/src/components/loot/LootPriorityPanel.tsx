@@ -56,11 +56,21 @@ interface LootPriorityEntryProps {
 function GearScoreTooltip({ entry, showEnhanced }: { entry: EnhancedPriorityEntry; showEnhanced: boolean }) {
   const hasEnhanced = showEnhanced && entry.enhancedScore !== undefined;
   const breakdown = entry.breakdown;
+  const displayScore = hasEnhanced ? entry.enhancedScore : entry.score;
+
+  // In disabled mode, all scores are 0 - show a helpful message
+  if (displayScore === 0 && !breakdown) {
+    return (
+      <div className="text-xs text-text-secondary">
+        Priority calculation disabled — all players have equal priority
+      </div>
+    );
+  }
 
   return (
     <div className="text-xs space-y-0.5">
       <div className="font-medium text-text-primary mb-1">
-        Priority Score: {hasEnhanced ? entry.enhancedScore : entry.score}
+        Priority Score: {displayScore}
       </div>
       {breakdown ? (
         <>

@@ -606,6 +606,14 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
 
                 {showAdvancedOptions && (
                   <div className={`mt-4 space-y-4 ${!canEditPriority ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {/* Note when disabled mode is active */}
+                    {priorityMode === 'disabled' && (
+                      <div className="p-3 bg-surface-elevated border border-border-default rounded-lg text-sm text-text-muted">
+                        These settings are saved but won't affect priority when mode is "Disabled".
+                        Switch to Automatic or Manual mode to use these options.
+                      </div>
+                    )}
+
                     {/* Show Priority Scores */}
                     <Checkbox
                       checked={showPriorityScores}
