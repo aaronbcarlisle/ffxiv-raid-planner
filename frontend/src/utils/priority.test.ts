@@ -289,6 +289,25 @@ describe('calculatePriorityScore', () => {
 
       expect(zeroModifiedScore).toBe(baseScore);
     });
+
+    it('applies job modifier case-insensitively (lowercase player.job)', () => {
+      // Backend normalizes job modifiers to uppercase (e.g., "DRG")
+      // But player.job from database may be lowercase (e.g., "drg")
+      const player = createPlayer({ job: 'drg', role: 'melee' }); // lowercase
+      const modifiedSettings: StaticSettings = {
+        ...defaultSettings,
+        jobPriorityModifiers: { DRG: 25 }, // uppercase (as stored by backend)
+      };
+
+      const baseScore = calculatePriorityScore(
+        createPlayer({ job: 'drg', role: 'melee' }),
+        defaultSettings
+      );
+      const modifiedScore = calculatePriorityScore(player, modifiedSettings);
+
+      // Modifier should be applied despite case mismatch
+      expect(modifiedScore).toBe(baseScore + 25);
+    });
   });
 
   describe('player modifiers', () => {
