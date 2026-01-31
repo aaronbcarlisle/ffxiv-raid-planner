@@ -38,4 +38,9 @@ def downgrade() -> None:
     # WARNING: Downgrading will drop the priority_modifier column and
     # permanently delete all player priority modifier data. Only run
     # this if you are sure this data is no longer needed or has been backed up.
-    op.drop_column("snapshot_players", "priority_modifier")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = [col["name"] for col in inspector.get_columns("snapshot_players")]
+
+    if "priority_modifier" in existing_columns:
+        op.drop_column("snapshot_players", "priority_modifier")
