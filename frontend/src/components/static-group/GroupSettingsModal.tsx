@@ -32,7 +32,12 @@ import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
 import { InvitationsPanel } from './InvitationsPanel';
 import { MembersPanel } from './MembersPanel';
-import { DEFAULT_LOOT_PRIORITY } from '../../utils/constants';
+import {
+  DEFAULT_LOOT_PRIORITY,
+  PRIORITY_MODIFIER_MIN,
+  PRIORITY_MODIFIER_MAX,
+  PRIORITY_MODIFIER_STEP,
+} from '../../utils/constants';
 import { RAID_JOBS } from '../../gamedata';
 import type { StaticGroup, PriorityMode } from '../../types';
 
@@ -639,9 +644,9 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                                   }
                                   setJobPriorityModifiers(newModifiers);
                                 }}
-                                min={-100}
-                                max={100}
-                                step={5}
+                                min={PRIORITY_MODIFIER_MIN}
+                                max={PRIORITY_MODIFIER_MAX}
+                                step={PRIORITY_MODIFIER_STEP}
                                 size="sm"
                                 disabled={!canEditPriority}
                                 className="w-28"
@@ -686,7 +691,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                             if (newJobModifier) {
                               setJobPriorityModifiers({
                                 ...jobPriorityModifiers,
-                                [newJobModifier]: 0,
+                                [newJobModifier]: 10, // Non-zero default so it doesn't immediately disappear
                               });
                               setNewJobModifier('');
                             }

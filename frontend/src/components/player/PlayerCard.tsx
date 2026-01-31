@@ -384,8 +384,8 @@ export const PlayerCard = memo(function PlayerCard({
       label: 'Adjust Priority',
       icon: <Gauge className="w-4 h-4" />,
       onClick: () => setShowPriorityAdjustModal(true),
-      disabled: !editPermission.allowed,
-      tooltip: editPermission.allowed ? undefined : editPermission.reason,
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     // Edit Books - visible to owners/leads/admins on any card, members on their own card
     ...(onNavigateToBooksPanel && (

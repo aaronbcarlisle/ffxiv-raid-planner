@@ -35,4 +35,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # WARNING: Downgrading will drop the priority_modifier column and
+    # permanently delete all player priority modifier data. Only run
+    # this if you are sure this data is no longer needed or has been backed up.
     op.drop_column("snapshot_players", "priority_modifier")

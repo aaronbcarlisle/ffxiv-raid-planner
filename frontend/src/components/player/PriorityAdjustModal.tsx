@@ -12,11 +12,11 @@ import { Modal, NumberInput, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import type { SnapshotPlayer } from '../../types';
-
-// Priority modifier range constants
-const PRIORITY_MODIFIER_MIN = -100;
-const PRIORITY_MODIFIER_MAX = 100;
-const PRIORITY_MODIFIER_STEP = 5;
+import {
+  PRIORITY_MODIFIER_MIN,
+  PRIORITY_MODIFIER_MAX,
+  PRIORITY_MODIFIER_STEP,
+} from '../../utils/constants';
 
 interface PriorityAdjustModalProps {
   isOpen: boolean;
