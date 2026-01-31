@@ -36,6 +36,11 @@ import { DEFAULT_LOOT_PRIORITY } from '../../utils/constants';
 import { RAID_JOBS } from '../../gamedata';
 import type { StaticGroup, PriorityMode } from '../../types';
 
+// Type guard for PriorityMode validation
+const isPriorityMode = (value: string): value is PriorityMode => {
+  return value === 'automatic' || value === 'manual' || value === 'disabled';
+};
+
 type SettingsTab = 'general' | 'priority' | 'members' | 'invitations';
 
 // Role display names for the priority list
@@ -522,7 +527,11 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                 <Select
                   id="priorityMode"
                   value={priorityMode}
-                  onChange={(value) => setPriorityMode(value as PriorityMode)}
+                  onChange={(value) => {
+                    if (isPriorityMode(value)) {
+                      setPriorityMode(value);
+                    }
+                  }}
                   disabled={!canEditPriority}
                   options={[
                     { value: 'automatic', label: 'Automatic (recommended)' },

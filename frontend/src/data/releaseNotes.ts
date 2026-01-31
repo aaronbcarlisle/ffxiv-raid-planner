@@ -50,7 +50,7 @@ export const RELEASES: Release[] = [
         title: 'Priority mode selection',
         description: 'Choose how loot priority is calculated and displayed for your static',
         details:
-          'Three modes available: Automatic (system calculates and highlights top priority - default), Manual (show priority scores but no highlighting), and Disabled (equal priority for all players - great for groups that rotate loot equally).',
+          'Three modes available: Automatic (system calculates and highlights top priority - default), Manual (show priority scores but no highlighting), and Disabled (equal priority for all players - great for groups that rotate loot equally). All existing statics default to Automatic mode, so your current priority behavior is unchanged. To switch modes, go to Group Settings → Priority.',
         commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
       },
       {

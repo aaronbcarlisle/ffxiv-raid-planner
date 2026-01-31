@@ -28,11 +28,13 @@ interface PriorityAdjustModalProps {
 export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: PriorityAdjustModalProps) {
   const [modifier, setModifier] = useState<number>(player.priorityModifier ?? 0);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Reset modifier state when player changes or modal opens
   useEffect(() => {
     if (isOpen) {
       setModifier(player.priorityModifier ?? 0);
+      setError(null);
     }
   }, [isOpen, player.id, player.priorityModifier]);
 
@@ -43,11 +45,13 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
     }
 
     setIsSaving(true);
+    setError(null);
     try {
       await onSave(player.id, modifier);
       onClose();
     } catch {
-      // Error handling is done by the parent
+      // Show error state - parent will also show toast
+      setError('Failed to save priority adjustment. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -109,6 +113,13 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
             <li>Useful for catch-up or balancing new members</li>
           </ul>
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg text-sm text-status-error">
+            {error}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex justify-between pt-4 border-t border-border-default">
