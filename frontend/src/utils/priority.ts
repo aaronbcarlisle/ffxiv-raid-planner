@@ -307,7 +307,12 @@ export function getPriorityForItem(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      // Primary: sort by score (highest first)
+      if (b.score !== a.score) return b.score - a.score;
+      // Secondary: alphabetical by name (for disabled mode or ties)
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -330,7 +335,10 @@ export function getPriorityForRing(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -430,7 +438,10 @@ export function getPriorityForUpgradeMaterial(
         score: calculatePriorityScore(player, settings) + effectiveNeed * LOOT_ADJUSTMENT_MULTIPLIER,
       };
     })
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -477,7 +488,10 @@ export function getPriorityForUniversalTomestone(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**

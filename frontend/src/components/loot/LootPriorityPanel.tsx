@@ -11,6 +11,7 @@ import {
   getPriorityForUpgradeMaterial,
   getPriorityForUniversalTomestone,
   calculatePriorityScoreWithBreakdown,
+  isPriorityDisabled,
   type PriorityEntry,
   type PriorityScoreBreakdown,
 } from '../../utils/priority';
@@ -27,6 +28,9 @@ import { QuickLogDropModal } from './QuickLogDropModal';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
+import { LogWeekWizard } from './LogWeekWizard';
+import { Button } from '../primitives';
+import { ClipboardList } from 'lucide-react';
 
 interface EnhancedPriorityEntry extends PriorityEntry {
   enhancedScore?: number;
@@ -405,12 +409,18 @@ export function LootPriorityPanel({
     player: null,
   });
 
+  // Log Floor wizard state
+  const [logFloorWizardOpen, setLogFloorWizardOpen] = useState(false);
+
+  // Check if priority is disabled (either disabled mode or manual-planning)
+  const priorityIsDisabled = isPriorityDisabled(settings);
+
   // Determine if enhanced scoring should be active
   // Requires: prop enabled, setting explicitly enabled (default is false/opt-in), priority mode not disabled, and loot history exists
   const isEnhancedScoringActive =
     showEnhancedScores &&
     settings.enableEnhancedScoring === true &&
-    settings.priorityMode !== 'disabled' &&
+    !priorityIsDisabled &&
     lootLog.length > 0;
 
   // Calculate average drops for balance penalty
@@ -450,7 +460,12 @@ export function LootPriorityPanel({
         droughtBonus,
         balancePenalty,
       };
-    }).sort((a, b) => (b.enhancedScore ?? b.score) - (a.enhancedScore ?? a.score));
+    }).sort((a, b) => {
+      const scoreA = a.enhancedScore ?? a.score;
+      const scoreB = b.enhancedScore ?? b.score;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return a.player.name.localeCompare(b.player.name);
+    });
   };
 
   // Get gear drops for this floor, but handle ring specially
@@ -634,9 +649,9 @@ export function LootPriorityPanel({
         {/* Gear Priority Tab Content */}
       {activeSubTab === 'gear' && (
         <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
-          {/* Floor selector - matches Who Needs It layout */}
+          {/* Floor selector with Log Floor button */}
           {onFloorChange && (
-            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated">
+            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated flex items-start justify-between gap-3">
               <FilterBar
                 type="floor"
                 floors={floors}
@@ -644,6 +659,17 @@ export function LootPriorityPanel({
                 onFloorChange={handleGearFloorChange}
                 showAllOption={false}
               />
+              {showLogButtons && groupId && tierId && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setLogFloorWizardOpen(true)}
+                  leftIcon={<ClipboardList className="w-3 h-3" />}
+                  className="text-xs"
+                >
+                  Log Floor
+                </Button>
+              )}
             </div>
           )}
           {/* Content area - scrolls on mobile */}
@@ -672,8 +698,8 @@ export function LootPriorityPanel({
                       onLogClick={(player) => handleLogClick(slot, player)}
                       showEnhanced={isEnhancedScoringActive}
                       itemLabel={label}
-                      showScores={settings.showPriorityScores !== false}
-                      highlightFirst={settings.priorityMode !== 'disabled' && settings.priorityMode !== 'manual'}
+                      showScores={settings.showPriorityScores !== false && !priorityIsDisabled}
+                      highlightFirst={!priorityIsDisabled}
                     />
                   </div>
                 );
@@ -699,8 +725,8 @@ export function LootPriorityPanel({
                         onLogClick={(player) => handleMaterialLogClick(material, player)}
                         showEnhanced={isEnhancedScoringActive}
                         itemLabel={label}
-                        showScores={settings.showPriorityScores !== false}
-                        highlightFirst={settings.priorityMode !== 'disabled' && settings.priorityMode !== 'manual'}
+                        showScores={settings.showPriorityScores !== false && !priorityIsDisabled}
+                        highlightFirst={!priorityIsDisabled}
                       />
                     </div>
                   ))}
@@ -795,6 +821,27 @@ export function LootPriorityPanel({
           />
         );
       })()}
+
+      {/* Log Floor Wizard */}
+      {canShowLogButtons && groupId && tierId && (
+        <LogWeekWizard
+          isOpen={logFloorWizardOpen}
+          onClose={() => setLogFloorWizardOpen(false)}
+          groupId={groupId}
+          tierId={tierId}
+          players={players}
+          settings={settings}
+          floors={floors}
+          currentWeek={currentWeek}
+          lootLog={lootLog}
+          onSuccess={() => {
+            setLogFloorWizardOpen(false);
+            onLogSuccess?.();
+          }}
+          singleFloorMode={true}
+          initialFloor={selectedFloor}
+        />
+      )}
     </div>
   );
 }

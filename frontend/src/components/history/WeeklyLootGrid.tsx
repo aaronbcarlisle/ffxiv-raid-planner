@@ -13,11 +13,12 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
+import { Button } from '../primitives';
 import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound, ClipboardList } from 'lucide-react';
 
 /** Long-press duration in ms for touch devices to trigger context menu */
 const LONG_PRESS_DURATION = 500;
@@ -51,6 +52,8 @@ interface WeeklyLootGridProps {
   onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
   onNavigateToPlayer?: (playerId: string) => void;
+  /** Handler to open Log Floor wizard for a specific floor */
+  onLogFloor?: (floor: FloorNumber) => void;
 }
 
 export function WeeklyLootGrid({
@@ -70,6 +73,7 @@ export function WeeklyLootGrid({
   onEditMaterial,
   onCopyEntryUrl,
   onNavigateToPlayer,
+  onLogFloor,
 }: WeeklyLootGridProps) {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -425,6 +429,21 @@ export function WeeklyLootGrid({
               <div className="ml-3 text-xs text-text-muted">
                 Floor {floor.number} • Book {floor.book}
               </div>
+
+              {/* Log Floor button */}
+              {canEdit && onLogFloor && (
+                <Tooltip content={`Log all drops for ${floor.id} using wizard`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto"
+                    onClick={() => onLogFloor(floor.number)}
+                  >
+                    <ClipboardList className="w-3.5 h-3.5 mr-1" />
+                    Log Floor
+                  </Button>
+                </Tooltip>
+              )}
             </div>
 
             {/* Loot Row - horizontally scrollable on mobile, wrapping grid on desktop */}

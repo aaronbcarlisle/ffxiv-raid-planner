@@ -16,7 +16,7 @@ const MODE_OPTIONS: {
 }[] = [
   {
     value: 'role-based',
-    label: 'Role Based',
+    label: 'Role Based (Default)',
     description: 'Prioritize by role order (Tank > Healer > DPS, etc.)',
     icon: ListOrdered,
   },

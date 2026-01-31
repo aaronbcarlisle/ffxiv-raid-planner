@@ -1,4 +1,3 @@
-import { Settings2 } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
@@ -6,11 +5,11 @@ import { Tooltip } from '../primitives/Tooltip';
 interface TabNavigationProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
-  /** Show the Priority tab (for leads/owners only) */
+  /** @deprecated Priority tab is now a slide-out panel in Loot tab */
   showPriorityTab?: boolean;
 }
 
-// Map PageMode to TAB_ICONS keys (priority uses Lucide icon instead)
+// Map PageMode to TAB_ICONS keys
 const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS> = {
   players: 'party',
   loot: 'loot',
@@ -25,10 +24,9 @@ const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: str
   { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
 ];
 
-const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Priority', hotkey: '5', description: 'Configure loot priority settings' };
-
-export function TabNavigation({ activeTab, onTabChange, showPriorityTab }: TabNavigationProps) {
-  const TABS = showPriorityTab ? [...BASE_TABS, PRIORITY_TAB] : BASE_TABS;
+export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+  // Priority tab is now a slide-out panel in Loot tab, so we only show base tabs
+  const TABS = BASE_TABS;
   return (
     <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
       {TABS.map((tab) => (
@@ -58,17 +56,13 @@ export function TabNavigation({ activeTab, onTabChange, showPriorityTab }: TabNa
               }
             `}
           >
-            {tab.id === 'priority' ? (
-              <Settings2 className="w-5 h-5" />
-            ) : (
-              <img
-                src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
-                alt=""
-                width={20}
-                height={20}
-                className="rounded-sm"
-              />
-            )}
+            <img
+              src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
+              alt=""
+              width={20}
+              height={20}
+              className="rounded-sm"
+            />
             <span>{tab.label}</span>
           </button>
         </Tooltip>

@@ -66,6 +66,10 @@ export interface UseGroupViewStateReturn {
   setShowLogMaterialModal: (show: boolean) => void;
   showMarkFloorClearedModal: boolean;
   setShowMarkFloorClearedModal: (show: boolean) => void;
+  showLogWeekWizard: boolean;
+  setShowLogWeekWizard: (show: boolean) => void;
+  logWeekWizardFloor: FloorNumber | null;
+  setLogWeekWizardFloor: (floor: FloorNumber | null) => void;
   playerModalCount: number;
   setPlayerModalCount: React.Dispatch<React.SetStateAction<number>>;
 
@@ -90,6 +94,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const [showLogLootModal, setShowLogLootModal] = useState(false);
   const [showLogMaterialModal, setShowLogMaterialModal] = useState(false);
   const [showMarkFloorClearedModal, setShowMarkFloorClearedModal] = useState(false);
+  const [showLogWeekWizard, setShowLogWeekWizard] = useState(false);
+  const [logWeekWizardFloor, setLogWeekWizardFloor] = useState<FloorNumber | null>(null);
   const [playerModalCount, setPlayerModalCount] = useState(0);
 
   // ===== Tab state: URL param > localStorage > default =====
@@ -358,6 +364,10 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setShowLogMaterialModal,
     showMarkFloorClearedModal,
     setShowMarkFloorClearedModal,
+    showLogWeekWizard,
+    setShowLogWeekWizard,
+    logWeekWizardFloor,
+    setLogWeekWizardFloor,
     playerModalCount,
     setPlayerModalCount,
 

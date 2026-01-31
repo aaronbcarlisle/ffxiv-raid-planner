@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings2, Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle } from 'lucide-react';
 import { Button } from '../primitives';
 import { Label, ErrorBox } from '../ui';
 import { ModeSelector } from './ModeSelector';
@@ -193,113 +193,105 @@ export function PriorityTab({ group, players }: PriorityTabProps) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-surface-card rounded-lg border border-border-default p-6">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-6">
-          <Settings2 className="w-5 h-5 text-accent" />
-          <h2 className="text-lg font-display text-text-primary">Priority Settings</h2>
+    <div className="space-y-6">
+      {/* Permission warning */}
+      {!canEdit && (
+        <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Only owners and leads can modify priority settings.
         </div>
+      )}
 
-        {/* Permission warning */}
-        {!canEdit && (
-          <div className="mb-6 p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            Only owners and leads can modify priority settings.
-          </div>
-        )}
+      {/* Error display */}
+      {error && <ErrorBox message={error} size="sm" />}
 
-        {/* Error display */}
-        {error && <ErrorBox message={error} size="sm" className="mb-6" />}
-
-        {/* Mode selector */}
-        <div className="mb-6">
-          <Label>Priority Mode</Label>
-          <ModeSelector
-            value={settings.mode}
-            onChange={handleModeChange}
-            disabled={!canEdit}
-          />
-        </div>
-
-        {/* Mode-specific editor */}
-        {settings.mode === 'role-based' && settings.roleBasedConfig && (
-          <div className="mb-6">
-            <Label>Role Priority Order</Label>
-            <RoleBasedEditor
-              roleOrder={settings.roleBasedConfig.roleOrder}
-              onChange={handleRoleOrderChange}
-              disabled={!canEdit}
-            />
-          </div>
-        )}
-
-        {settings.mode === 'job-based' && settings.jobBasedConfig && (
-          <div className="mb-6">
-            <Label>Job Priority</Label>
-            <JobBasedEditor
-              config={settings.jobBasedConfig}
-              onChange={handleJobBasedConfigChange}
-              players={players}
-              disabled={!canEdit}
-            />
-          </div>
-        )}
-
-        {settings.mode === 'player-based' && settings.playerBasedConfig && (
-          <div className="mb-6">
-            <Label>Player Priority</Label>
-            <PlayerBasedEditor
-              config={settings.playerBasedConfig}
-              onChange={handlePlayerBasedConfigChange}
-              players={players}
-              disabled={!canEdit}
-            />
-          </div>
-        )}
-
-        {settings.mode === 'manual-planning' && (
-          <div className="mb-6 p-4 bg-surface-elevated rounded-lg border border-border-default">
-            <p className="text-text-muted text-sm">
-              Manual planning mode lets you pre-assign loot to players for each week.
-              Go to the Loot tab to create weekly assignments.
-            </p>
-          </div>
-        )}
-
-        {settings.mode === 'disabled' && (
-          <div className="mb-6 p-4 bg-surface-elevated rounded-lg border border-border-default">
-            <p className="text-text-muted text-sm">
-              Priority is disabled. All players will show equal priority in the Loot tab.
-              This is useful for groups that prefer equal distribution.
-            </p>
-          </div>
-        )}
-
-        {/* Advanced options - show for all modes except disabled */}
-        {settings.mode !== 'disabled' && (
-          <AdvancedOptions
-            options={settings.advancedOptions}
-            onChange={handleAdvancedOptionsChange}
-            disabled={!canEdit}
-            priorityDisabled={settings.mode === 'disabled'}
-          />
-        )}
-
-        {/* Save button */}
-        {canEdit && (
-          <div className="flex justify-end pt-6 mt-6 border-t border-border-default">
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges}
-              loading={isSaving}
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              Save Changes
-            </Button>
-          </div>
-        )}
+      {/* Mode selector */}
+      <div>
+        <Label>Priority Mode</Label>
+        <ModeSelector
+          value={settings.mode}
+          onChange={handleModeChange}
+          disabled={!canEdit}
+        />
       </div>
+
+      {/* Mode-specific editor */}
+      {settings.mode === 'role-based' && settings.roleBasedConfig && (
+        <div>
+          <Label>Role Priority Order</Label>
+          <RoleBasedEditor
+            roleOrder={settings.roleBasedConfig.roleOrder}
+            onChange={handleRoleOrderChange}
+            disabled={!canEdit}
+          />
+        </div>
+      )}
+
+      {settings.mode === 'job-based' && settings.jobBasedConfig && (
+        <div>
+          <Label>Job Priority</Label>
+          <JobBasedEditor
+            config={settings.jobBasedConfig}
+            onChange={handleJobBasedConfigChange}
+            players={players}
+            disabled={!canEdit}
+          />
+        </div>
+      )}
+
+      {settings.mode === 'player-based' && settings.playerBasedConfig && (
+        <div>
+          <Label>Player Priority</Label>
+          <PlayerBasedEditor
+            config={settings.playerBasedConfig}
+            onChange={handlePlayerBasedConfigChange}
+            players={players}
+            disabled={!canEdit}
+          />
+        </div>
+      )}
+
+      {settings.mode === 'manual-planning' && (
+        <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
+          <p className="text-text-muted text-sm">
+            Manual planning mode lets you pre-assign loot to players for each week.
+            Go to the Loot tab to create weekly assignments.
+          </p>
+        </div>
+      )}
+
+      {settings.mode === 'disabled' && (
+        <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
+          <p className="text-text-muted text-sm">
+            Priority is disabled. All players will show equal priority in the Loot tab.
+            This is useful for groups that prefer equal distribution.
+          </p>
+        </div>
+      )}
+
+      {/* Advanced options - show for all modes except disabled */}
+      {settings.mode !== 'disabled' && (
+        <AdvancedOptions
+          options={settings.advancedOptions}
+          onChange={handleAdvancedOptionsChange}
+          disabled={!canEdit}
+          priorityDisabled={settings.mode === 'disabled'}
+        />
+      )}
+
+      {/* Save button */}
+      {canEdit && (
+        <div className="flex justify-end pt-6 border-t border-border-default">
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges}
+            loading={isSaving}
+          >
+            <Save className="w-4 h-4 mr-1.5" />
+            Save Changes
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -44,7 +44,7 @@ export function AdvancedOptions({
         preset,
         showPriorityScores: options.showPriorityScores, // Preserve this setting
       });
-      setShowMultipliers(false);
+      // Keep multipliers visible if they were already shown
     }
   };
 
@@ -115,15 +115,32 @@ export function AdvancedOptions({
             description="Adds drought bonus and balance penalty based on loot history"
           />
 
-          {/* Custom multiplier controls */}
-          {showMultipliers && (
-            <div className="space-y-4 p-4 bg-surface-elevated rounded-lg border border-border-default">
-              <div className="flex items-center justify-between">
+          {/* Custom multiplier controls - always available as expandable */}
+          <div className="space-y-4 p-4 bg-surface-elevated rounded-lg border border-border-default">
+            <button
+              type="button"
+              onClick={() => setShowMultipliers(!showMultipliers)}
+              className="flex items-center justify-between w-full text-left"
+              disabled={disabled}
+            >
+              <div className="flex items-center gap-2">
+                {showMultipliers ? (
+                  <ChevronDown className="w-4 h-4 text-text-muted" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-text-muted" />
+                )}
                 <h4 className="text-sm font-medium text-text-primary">Custom Multipliers</h4>
-                <Tooltip content="These values control how priority scores are calculated. Higher multipliers mean that factor has more weight.">
-                  <Info className="w-4 h-4 text-text-muted" />
-                </Tooltip>
+                {options.preset === 'custom' && (
+                  <span className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">Active</span>
+                )}
               </div>
+              <Tooltip content="These values control how priority scores are calculated. Higher multipliers mean that factor has more weight.">
+                <Info className="w-4 h-4 text-text-muted" />
+              </Tooltip>
+            </button>
+
+            {showMultipliers && (
+              <div className="space-y-4 pt-2 border-t border-border-default">
 
               {/* Core multipliers */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -283,8 +300,9 @@ export function AdvancedOptions({
                   </div>
                 </>
               )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -7,13 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ClipboardList } from 'lucide-react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { logger } from '../../lib/logger';
+import { Button } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 import { WeekSelector } from './WeekSelector';
 import { SectionedLogView } from './SectionedLogView';
 import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
 import type { SnapshotPlayer } from '../../types';
+import type { FloorNumber } from '../../gamedata/loot-tables';
 
 interface HistoryViewProps {
   groupId: string;
@@ -40,6 +44,10 @@ interface HistoryViewProps {
   /** Open Mark Floor Cleared modal (from keyboard shortcut) */
   openMarkFloorClearedModal?: boolean;
   onMarkFloorClearedModalClose?: () => void;
+  /** Callback to open Log Week wizard */
+  onLogWeek?: () => void;
+  /** Callback to open Log Week wizard in single floor mode */
+  onLogFloor?: (floor: FloorNumber) => void;
 }
 
 export function HistoryView({
@@ -61,6 +69,8 @@ export function HistoryView({
   onLogMaterialModalClose,
   openMarkFloorClearedModal,
   onMarkFloorClearedModalClose,
+  onLogWeek,
+  onLogFloor,
 }: HistoryViewProps) {
   const {
     currentWeek,
@@ -232,9 +242,9 @@ export function HistoryView({
 
   return (
     <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 md:w-full md:mx-0">
-      {/* Week selector - full width on mobile */}
+      {/* Week selector with Log Week button - full width on mobile */}
       <div className="flex-shrink-0 py-1 md:py-0 md:mb-4">
-        <div className="flex justify-center px-2 md:px-0">
+        <div className="flex items-center justify-center gap-4 px-2 md:px-0">
           <WeekSelector
             currentWeek={selectedWeek}
             maxWeek={maxWeek}
@@ -247,6 +257,18 @@ export function HistoryView({
             onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
             isRevertingWeek={isRevertingWeek}
           />
+          {canEdit && onLogWeek && (
+            <Tooltip content="Log all drops for this week using a step-by-step wizard">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onLogWeek}
+              >
+                <ClipboardList className="w-4 h-4 mr-1.5" />
+                Log Week
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </div>
 
@@ -272,6 +294,7 @@ export function HistoryView({
         onLogMaterialModalClose={onLogMaterialModalClose}
         openMarkFloorClearedModal={openMarkFloorClearedModal}
         onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
+        onLogFloor={onLogFloor}
         />
       </div>
 

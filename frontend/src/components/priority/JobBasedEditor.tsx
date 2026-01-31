@@ -138,7 +138,7 @@ function SortableJobItem({
             step={5}
             size="sm"
             disabled={disabled}
-            className="w-16"
+            className="w-24"
           />
         </div>
       )}
@@ -270,7 +270,7 @@ function SortableGroupHeader({
                 step={25}
                 size="sm"
                 disabled={disabled}
-                className="w-16"
+                className="w-24"
               />
             </div>
           )}

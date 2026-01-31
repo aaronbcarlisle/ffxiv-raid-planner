@@ -63,6 +63,8 @@ interface SectionedLogViewProps {
   /** Open Mark Floor Cleared modal (from keyboard shortcut) */
   openMarkFloorClearedModal?: boolean;
   onMarkFloorClearedModalClose?: () => void;
+  /** Callback to open Log Week wizard in single floor mode */
+  onLogFloor?: (floor: FloorNumber) => void;
 }
 
 export function SectionedLogView({
@@ -85,6 +87,7 @@ export function SectionedLogView({
   onLogMaterialModalClose,
   openMarkFloorClearedModal,
   onMarkFloorClearedModalClose,
+  onLogFloor,
 }: SectionedLogViewProps) {
   const {
     lootLog,
@@ -921,6 +924,7 @@ export function SectionedLogView({
               onEditMaterial={handleGridEditMaterial}
               onCopyEntryUrl={handleCopyEntryUrlById}
               onNavigateToPlayer={onNavigateToPlayer}
+              onLogFloor={onLogFloor}
             />
           )}
 
@@ -1294,6 +1298,7 @@ export function SectionedLogView({
                 onEditMaterial={handleGridEditMaterial}
                 onCopyEntryUrl={handleCopyEntryUrlById}
                 onNavigateToPlayer={onNavigateToPlayer}
+                onLogFloor={onLogFloor}
               />
             )}
             {layoutMode === 'split' && (

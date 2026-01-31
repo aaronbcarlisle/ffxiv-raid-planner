@@ -613,9 +613,37 @@ dialog input[type="radio"] {
   animation: slide-up 0.2s ease-out;
 }
 
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
 /* Respect reduced motion preference for animations */
 @media (prefers-reduced-motion: reduce) {
-  .animate-slide-up {
+  .animate-slide-up,
+  .animate-slide-in-right,
+  .animate-fade-in {
     animation: none;
   }
 }

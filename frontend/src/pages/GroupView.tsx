@@ -19,13 +19,13 @@ import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { PlayerGrid } from '../components/player/PlayerGrid';
 import { RosterViewToggle } from '../components/player/RosterViewToggle';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
-import { LootPriorityPanel } from '../components/loot';
+import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { PriorityTab } from '../components/priority';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav, SlideOutPanel } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
-import { AlertTriangle, Copy, Check } from 'lucide-react';
+import { AlertTriangle, Copy, Check, Settings2 } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -101,6 +101,10 @@ export function GroupView() {
     setShowLogMaterialModal,
     showMarkFloorClearedModal,
     setShowMarkFloorClearedModal,
+    showLogWeekWizard,
+    setShowLogWeekWizard,
+    logWeekWizardFloor,
+    setLogWeekWizardFloor,
     playerModalCount,
     setPlayerModalCount,
     highlightedPlayerId,
@@ -119,6 +123,7 @@ export function GroupView() {
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
+  const [showPriorityPanel, setShowPriorityPanel] = useState(false);
 
 
   // Handle viewAs URL parameter
@@ -500,6 +505,7 @@ export function GroupView() {
                           showDeleteTierConfirm || showCreateTierModal ||
                           showKeyboardHelp || showLogLootModal ||
                           showLogMaterialModal || showMarkFloorClearedModal ||
+                          showLogWeekWizard ||
                           isErrorModalOpen ||
                           playerModalCount > 0;
 
@@ -838,33 +844,50 @@ export function GroupView() {
 
           {/* Loot Tab */}
           {pageMode === 'loot' && tierInfo && mainRosterPlayers.length > 0 && (
-            <LootPriorityPanel
-              players={mainRosterPlayers}
-              settings={{
-                ...DEFAULT_SETTINGS,
-                ...currentGroup?.settings,
-              }}
-              selectedFloor={selectedFloor}
-              floorName={tierInfo.floors[selectedFloor - 1]}
-              floors={tierInfo.floors}
-              dutyNames={tierInfo.dutyNames}
-              onFloorChange={setSelectedFloor}
-              showLogButtons={canEdit}
-              groupId={currentGroup?.id}
-              tierId={currentTier?.tierId}
-              currentWeek={storeCurrentWeek}
-              maxWeek={storeMaxWeek}
-              lootLog={lootLog}
-              materialLog={materialLog}
-              showEnhancedScores={true}
-              activeSubTab={lootSubTab}
-              onSubTabChange={setLootSubTab}
-              onLogSuccess={() => {
-                if (currentGroup?.id && currentTier?.tierId) {
-                  fetchTier(currentGroup.id, currentTier.tierId);
-                }
-              }}
-            />
+            <div className="flex flex-col h-full">
+              {/* Priority Settings button - only for leads/owners */}
+              {canEdit && (
+                <div className="flex justify-end mb-2">
+                  <Tooltip content="Configure priority settings">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowPriorityPanel(true)}
+                    >
+                      <Settings2 className="w-4 h-4 mr-1.5" />
+                      Priority Settings
+                    </Button>
+                  </Tooltip>
+                </div>
+              )}
+              <LootPriorityPanel
+                players={mainRosterPlayers}
+                settings={{
+                  ...DEFAULT_SETTINGS,
+                  ...currentGroup?.settings,
+                }}
+                selectedFloor={selectedFloor}
+                floorName={tierInfo.floors[selectedFloor - 1]}
+                floors={tierInfo.floors}
+                dutyNames={tierInfo.dutyNames}
+                onFloorChange={setSelectedFloor}
+                showLogButtons={canEdit}
+                groupId={currentGroup?.id}
+                tierId={currentTier?.tierId}
+                currentWeek={storeCurrentWeek}
+                maxWeek={storeMaxWeek}
+                lootLog={lootLog}
+                materialLog={materialLog}
+                showEnhancedScores={true}
+                activeSubTab={lootSubTab}
+                onSubTabChange={setLootSubTab}
+                onLogSuccess={() => {
+                  if (currentGroup?.id && currentTier?.tierId) {
+                    fetchTier(currentGroup.id, currentTier.tierId);
+                  }
+                }}
+              />
+            </div>
           )}
 
           {/* Summary Tab */}
@@ -899,17 +922,13 @@ export function GroupView() {
                 onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
                 openMarkFloorClearedModal={showMarkFloorClearedModal}
                 onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
+                onLogWeek={() => { setLogWeekWizardFloor(null); setShowLogWeekWizard(true); }}
+                onLogFloor={(floor) => { setLogWeekWizardFloor(floor); setShowLogWeekWizard(true); }}
               />
             </div>
           )}
 
-          {/* Priority Tab - only visible to leads/owners */}
-          {pageMode === 'priority' && canEdit && currentGroup && currentTier?.players && (
-            <PriorityTab
-              group={currentGroup}
-              players={mainRosterPlayers}
-            />
-          )}
+          {/* Priority Tab removed - now a slide-out panel accessible from Loot tab */}
         </>
       )}
 
@@ -1227,7 +1246,47 @@ export function GroupView() {
           activeTab={pageMode}
           onTabChange={setPageMode}
           onControlsClick={() => setShowControlsSheet(true)}
-          showPriorityTab={canEdit}
+          showPriorityTab={false}
+        />
+      )}
+
+      {/* Priority Settings Slide-Out Panel */}
+      {currentGroup && currentTier?.players && (
+        <SlideOutPanel
+          isOpen={showPriorityPanel}
+          onClose={() => setShowPriorityPanel(false)}
+          title="Priority Settings"
+          width="2xl"
+        >
+          <PriorityTab
+            group={currentGroup}
+            players={mainRosterPlayers}
+          />
+        </SlideOutPanel>
+      )}
+
+      {/* Log Week Wizard */}
+      {currentGroup && currentTier && tierInfo && (
+        <LogWeekWizard
+          isOpen={showLogWeekWizard}
+          onClose={() => { setShowLogWeekWizard(false); setLogWeekWizardFloor(null); }}
+          groupId={currentGroup.id}
+          tierId={currentTier.tierId}
+          players={mainRosterPlayers}
+          settings={{
+            ...DEFAULT_SETTINGS,
+            ...currentGroup.settings,
+          }}
+          floors={tierInfo.floors}
+          currentWeek={storeCurrentWeek}
+          lootLog={lootLog}
+          singleFloorMode={logWeekWizardFloor !== null}
+          initialFloor={logWeekWizardFloor ?? 1}
+          onSuccess={() => {
+            if (currentGroup?.id && currentTier?.tierId) {
+              fetchTier(currentGroup.id, currentTier.tierId);
+            }
+          }}
         />
       )}
     </div>
