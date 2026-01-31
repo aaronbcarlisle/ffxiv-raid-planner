@@ -117,7 +117,7 @@ export function Select({
         className={`
           inline-flex items-center justify-between w-full
           min-h-[44px] sm:min-h-0
-          bg-surface-elevated border border-border-default rounded-lg
+          bg-surface-overlay border border-border-default rounded-lg
           pl-4 pr-3 py-2
           text-sm
           focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base

@@ -12,9 +12,11 @@ interface CheckboxProps {
   className?: string;
   /** Accessible label for screen readers (use when label is visual-only or hidden) */
   'aria-label'?: string;
+  /** Optional custom color (hex) for checked state - overrides accent color */
+  color?: string;
 }
 
-export function Checkbox({ id, checked, onChange, label, description, disabled, className = '', 'aria-label': ariaLabel }: CheckboxProps) {
+export function Checkbox({ id, checked, onChange, label, description, disabled, className = '', 'aria-label': ariaLabel, color }: CheckboxProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent native checkbox behavior
     e.stopPropagation();
@@ -71,15 +73,18 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
           className={`
             w-4 h-4 rounded flex items-center justify-center
             border transition-colors
-            ${checked
+            ${checked && !color
               ? 'bg-accent border-accent'
-              : 'bg-surface-elevated border-border-default'
+              : !checked
+                ? 'bg-surface-elevated border-border-default'
+                : ''
             }
             ${disabled
               ? ''
               : 'hover:border-accent/50'
             }
           `}
+          style={checked && color ? { backgroundColor: color, borderColor: color } : undefined}
         >
           {checked && (
             <Check

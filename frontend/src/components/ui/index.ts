@@ -18,6 +18,7 @@ export { ResetConfirmModal } from './ResetConfirmModal';
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { SearchableSelect, type SearchableSelectProps, type GroupConfig } from './SearchableSelect';
 export { SettingsPopover } from './SettingsPopover';
+export { SlideOutPanel } from './SlideOutPanel';
 export {
   Skeleton,
   PlayerCardSkeleton,
@@ -41,4 +42,5 @@ export { ThreeStateCheckbox } from './ThreeStateCheckbox';
 export { TipsCarousel } from './TipsCarousel';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
+export { ToggleSwitch } from './ToggleSwitch';
 export { ViewModeToggle } from './ViewModeToggle';
