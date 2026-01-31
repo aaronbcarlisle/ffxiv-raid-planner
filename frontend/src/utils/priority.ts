@@ -14,6 +14,9 @@ import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../ga
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete, requiresAugmentation } from './calculations';
 
+// Multiplier for loot adjustment penalty in priority calculation
+const LOOT_ADJUSTMENT_MULTIPLIER = 15;
+
 export interface PriorityEntry {
   player: SnapshotPlayer;
   score: number;
@@ -84,7 +87,7 @@ export function calculatePriorityScore(
   // Positive adjustment = player has received extra loot, lower their priority
   // Negative adjustment = player missed loot, increase their priority
   if (options?.includeLootAdjustment && player.lootAdjustment) {
-    score -= player.lootAdjustment * 15;
+    score -= player.lootAdjustment * LOOT_ADJUSTMENT_MULTIPLIER;
   }
 
   return score;
@@ -128,7 +131,7 @@ export function calculatePriorityScoreWithBreakdown(
 
   let lootAdjustmentPenalty = 0;
   if (options?.includeLootAdjustment && player.lootAdjustment) {
-    lootAdjustmentPenalty = player.lootAdjustment * 15;
+    lootAdjustmentPenalty = player.lootAdjustment * LOOT_ADJUSTMENT_MULTIPLIER;
   }
 
   const score = Math.round(rolePriority + weightedNeedBonus + jobModifier + playerModifier - lootAdjustmentPenalty);
@@ -284,7 +287,7 @@ export function getPriorityForUpgradeMaterial(
 
       return {
         player,
-        score: calculatePriorityScore(player, settings) + effectiveNeed * 15,
+        score: calculatePriorityScore(player, settings) + effectiveNeed * LOOT_ADJUSTMENT_MULTIPLIER,
       };
     })
     .sort((a, b) => b.score - a.score);

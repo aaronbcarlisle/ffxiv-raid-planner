@@ -49,8 +49,9 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
     try {
       await onSave(player.id, modifier);
       onClose();
-    } catch {
-      // Show error state - parent will also show toast
+    } catch (err) {
+      // Log error for debugging, show user-friendly message
+      console.error('Failed to save priority adjustment:', err);
       setError('Failed to save priority adjustment. Please try again.');
     } finally {
       setIsSaving(false);
