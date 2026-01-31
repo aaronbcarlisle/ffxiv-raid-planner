@@ -14,6 +14,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  useDroppable,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
@@ -155,7 +156,6 @@ function SortableGroupHeader({
   jobCount,
   showAdvanced,
   disabled,
-  isCustomGroup,
   onBasePriorityChange,
 }: {
   group: PriorityGroupConfig;
@@ -166,7 +166,6 @@ function SortableGroupHeader({
   jobCount: number;
   showAdvanced: boolean;
   disabled?: boolean;
-  isCustomGroup: boolean;
   onBasePriorityChange: (priority: number) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -276,7 +275,7 @@ function SortableGroupHeader({
             </div>
           )}
 
-          {isCustomGroup && !disabled && (
+          {!disabled && (
             <>
               <IconButton
                 icon={<Pencil className="w-3.5 h-3.5" />}
@@ -297,6 +296,26 @@ function SortableGroupHeader({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Droppable zone for groups to accept job drops
+function DroppableGroupZone({ groupId, isEmpty }: { groupId: string; isEmpty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `dropzone-${groupId}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`ml-6 py-3 px-4 border-2 border-dashed rounded-lg text-sm text-center transition-colors ${
+        isOver
+          ? 'border-accent bg-accent/10 text-accent'
+          : 'border-border-default text-text-muted'
+      }`}
+    >
+      {isEmpty ? 'Drop jobs here' : 'Drop here to add to this group'}
     </div>
   );
 }
@@ -380,6 +399,40 @@ export function JobBasedEditor({
           (g, i) => ({ ...g, sortOrder: i })
         );
         onChange({ ...config, groups: newGroups });
+      }
+      return;
+    }
+
+    // Handle job dropped onto a dropzone (empty group area)
+    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('dropzone-')) {
+      const targetGroupId = overIdStr.replace('dropzone-', '');
+      const activeJob = config.jobs.find((j) => j.job === activeIdStr);
+
+      if (activeJob && activeJob.groupId !== targetGroupId) {
+        const newJobs = config.jobs.map((j) => {
+          if (j.job === activeIdStr) {
+            return { ...j, groupId: targetGroupId, sortOrder: 0 };
+          }
+          return j;
+        });
+        onChange({ ...config, jobs: newJobs });
+      }
+      return;
+    }
+
+    // Handle job dropped onto a group header
+    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('group-')) {
+      const targetGroupId = overIdStr.replace('group-', '');
+      const activeJob = config.jobs.find((j) => j.job === activeIdStr);
+
+      if (activeJob && activeJob.groupId !== targetGroupId) {
+        const newJobs = config.jobs.map((j) => {
+          if (j.job === activeIdStr) {
+            return { ...j, groupId: targetGroupId, sortOrder: 0 };
+          }
+          return j;
+        });
+        onChange({ ...config, jobs: newJobs });
       }
       return;
     }
@@ -572,7 +625,6 @@ export function JobBasedEditor({
             {config.groups.map((group) => {
               const groupJobs = jobsByGroup[group.id] || [];
               const isExpanded = expandedGroups.has(group.id);
-              const isCustomGroup = !DEFAULT_GROUPS.some((dg) => dg.id === group.id);
 
               return (
                 <div key={group.id} className="space-y-2">
@@ -585,7 +637,6 @@ export function JobBasedEditor({
                     jobCount={groupJobs.length}
                     showAdvanced={config.showAdvancedControls}
                     disabled={disabled}
-                    isCustomGroup={isCustomGroup}
                     onBasePriorityChange={(priority) =>
                       handleGroupBasePriorityChange(group.id, priority)
                     }
@@ -612,10 +663,8 @@ export function JobBasedEditor({
                     </SortableContext>
                   )}
 
-                  {isExpanded && groupJobs.length === 0 && (
-                    <div className="ml-6 text-text-muted text-sm italic py-2">
-                      No jobs in this group. Drag jobs here to add them.
-                    </div>
+                  {isExpanded && (
+                    <DroppableGroupZone groupId={group.id} isEmpty={groupJobs.length === 0} />
                   )}
                 </div>
               );

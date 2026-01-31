@@ -14,6 +14,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  useDroppable,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
@@ -275,6 +276,26 @@ function SortableGroupHeader({
   );
 }
 
+// Droppable zone for groups to accept player drops
+function DroppableGroupZone({ groupId, isEmpty }: { groupId: string; isEmpty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `dropzone-${groupId}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`ml-6 py-3 px-4 border-2 border-dashed rounded-lg text-sm text-center transition-colors ${
+        isOver
+          ? 'border-accent bg-accent/10 text-accent'
+          : 'border-border-default text-text-muted'
+      }`}
+    >
+      {isEmpty ? 'Drop players here' : 'Drop here to add to this group'}
+    </div>
+  );
+}
+
 interface PlayerBasedEditorProps {
   config: PlayerBasedConfig;
   onChange: (config: PlayerBasedConfig) => void;
@@ -382,6 +403,40 @@ export function PlayerBasedEditor({
           (g, i) => ({ ...g, sortOrder: i })
         );
         onChange({ ...ensuredConfig, groups: newGroups });
+      }
+      return;
+    }
+
+    // Handle player dropped onto a dropzone (empty group area)
+    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('dropzone-')) {
+      const targetGroupId = overIdStr.replace('dropzone-', '');
+      const activePlayer = ensuredConfig.players.find((p) => p.playerId === activeIdStr);
+
+      if (activePlayer && activePlayer.groupId !== targetGroupId) {
+        const newPlayers = ensuredConfig.players.map((p) => {
+          if (p.playerId === activeIdStr) {
+            return { ...p, groupId: targetGroupId, sortOrder: 0 };
+          }
+          return p;
+        });
+        onChange({ ...ensuredConfig, players: newPlayers });
+      }
+      return;
+    }
+
+    // Handle player dropped onto a group header
+    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('group-')) {
+      const targetGroupId = overIdStr.replace('group-', '');
+      const activePlayer = ensuredConfig.players.find((p) => p.playerId === activeIdStr);
+
+      if (activePlayer && activePlayer.groupId !== targetGroupId) {
+        const newPlayers = ensuredConfig.players.map((p) => {
+          if (p.playerId === activeIdStr) {
+            return { ...p, groupId: targetGroupId, sortOrder: 0 };
+          }
+          return p;
+        });
+        onChange({ ...ensuredConfig, players: newPlayers });
       }
       return;
     }
@@ -622,10 +677,8 @@ export function PlayerBasedEditor({
                       </SortableContext>
                     )}
 
-                    {isExpanded && groupPlayers.length === 0 && (
-                      <div className="ml-6 text-text-muted text-sm italic py-2">
-                        No players in this group. Drag players here to add them.
-                      </div>
+                    {isExpanded && (
+                      <DroppableGroupZone groupId={group.id} isEmpty={groupPlayers.length === 0} />
                     )}
                   </div>
                 );
