@@ -1,8 +1,8 @@
 """add_priority_modifier_column
 
 Revision ID: h8i9j0k1l2m3
-Revises: g7h8i9j0k1l2
-Create Date: 2026-01-25 20:00:00.000000
+Revises: i9j0k1l2m3n4
+Create Date: 2026-01-30 20:00:00.000000
 
 Adds priority_modifier column to snapshot_players table for per-player
 priority adjustments. Values range from -100 to +100, defaulting to 0.
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "h8i9j0k1l2m3"
-down_revision: Union[str, None] = "g7h8i9j0k1l2"
+down_revision: Union[str, None] = "i9j0k1l2m3n4"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
