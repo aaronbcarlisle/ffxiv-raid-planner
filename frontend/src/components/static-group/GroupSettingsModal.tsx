@@ -649,7 +649,7 @@ export function GroupSettingsModal({ group, onClose, isAdmin, initialTab = 'gene
                                 value={modifier}
                                 onChange={(value) => {
                                   const newModifiers = { ...jobPriorityModifiers };
-                                  if (value === null || value === 0) {
+                                  if (value === null) {
                                     delete newModifiers[job];
                                   } else {
                                     newModifiers[job] = value;

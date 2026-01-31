@@ -193,6 +193,7 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
         weapon_priorities_locked_at=player.weapon_priorities_locked_at,
         loot_adjustment=player.loot_adjustment,
         page_adjustments=player.page_adjustments,
+        priority_modifier=player.priority_modifier,
         created_at=player.created_at,
         updated_at=player.updated_at,
     )
@@ -832,6 +833,8 @@ async def update_snapshot_player(
         player.loot_adjustment = data.loot_adjustment
     if "page_adjustments" in sent_fields and data.page_adjustments is not None:
         player.page_adjustments = data.page_adjustments
+    if "priority_modifier" in sent_fields and data.priority_modifier is not None:
+        player.priority_modifier = data.priority_modifier
 
     player.updated_at = datetime.now(timezone.utc).isoformat()
 

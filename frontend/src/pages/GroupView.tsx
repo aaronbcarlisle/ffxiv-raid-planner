@@ -841,7 +841,7 @@ export function GroupView() {
               players={mainRosterPlayers}
               settings={{
                 ...DEFAULT_SETTINGS,
-                ...(currentGroup?.settings && { lootPriority: currentGroup.settings.lootPriority }),
+                ...currentGroup?.settings,
               }}
               selectedFloor={selectedFloor}
               floorName={tierInfo.floors[selectedFloor - 1]}
