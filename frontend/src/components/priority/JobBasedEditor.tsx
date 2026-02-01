@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { motion, LayoutGroup } from 'framer-motion';
 import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 import {
   DndContext,
@@ -817,17 +818,24 @@ export function JobBasedEditor({
           items={config.groups.map((g) => `group-${g.id}`)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-3">
-            {config.groups.map((group, groupIndex) => {
-              const groupJobs = jobsByGroup[group.id] || [];
-              const isExpanded = expandedGroups.has(group.id);
-              // Only show group indicators when dragging a group
-              const isDraggingGroup = activeId?.startsWith('group-');
-              const isOverGroup = overId === `group-${group.id}` && activeId !== `group-${group.id}`;
-              const showGroupIndicators = isDraggingGroup && isOverGroup;
+          <LayoutGroup>
+            <div className="space-y-3">
+              {config.groups.map((group, groupIndex) => {
+                const groupJobs = jobsByGroup[group.id] || [];
+                const isExpanded = expandedGroups.has(group.id);
+                // Only show group indicators when dragging a group
+                const isDraggingGroup = activeId?.startsWith('group-');
+                const isOverGroup = overId === `group-${group.id}` && activeId !== `group-${group.id}`;
+                const showGroupIndicators = isDraggingGroup && isOverGroup;
 
-              return (
-                <div key={group.id} className="space-y-2">
+                return (
+                  <motion.div
+                    key={group.id}
+                    layoutId={`group-container-${group.id}`}
+                    layout={!activeId}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    className="space-y-2"
+                  >
                   <SortableGroupHeader
                     group={group}
                     isExpanded={isExpanded}
@@ -879,10 +887,11 @@ export function JobBasedEditor({
                     </SortableContext>
                   )}
 
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+            </div>
+          </LayoutGroup>
         </SortableContext>
 
         <DragOverlay>
