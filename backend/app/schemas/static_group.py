@@ -122,6 +122,7 @@ class AdvancedPriorityOptions(CamelModel):
     balance_penalty_cap_drops: int = Field(default=3, description="Max excess drops to penalize")
 
     # Core multipliers
+    use_multipliers: bool = Field(default=True, description="Use custom multipliers vs defaults")
     role_priority_multiplier: int = Field(default=25, description="Points per role rank")
     gear_needed_multiplier: int = Field(default=10, description="Points per weighted gear need")
     loot_received_penalty: int = Field(default=15, description="Penalty per loot received")
