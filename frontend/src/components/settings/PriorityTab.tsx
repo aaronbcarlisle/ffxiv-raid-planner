@@ -239,9 +239,9 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
   const configuredPlayers = players.filter(p => p.configured);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto space-y-6 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Scrollable content - use scroll to prevent layout shift */}
+      <div className="flex-1 overflow-y-scroll space-y-6 min-h-0 -mr-4 pr-4">
         {/* Permission warning */}
         {!canEdit && (
         <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm flex items-center gap-2">
@@ -384,7 +384,7 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
 
       {/* Sticky Save button footer */}
       {canEdit && (
-        <div className="flex-shrink-0 flex justify-end py-4 border-t border-border-default bg-surface-card -mx-4 px-4">
+        <div className="flex-shrink-0 flex justify-end py-4 mt-4 border-t border-border-default">
           <Button
             onClick={handleSave}
             disabled={!hasChanges && !hasAdjustmentChanges}
