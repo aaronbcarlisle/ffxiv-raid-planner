@@ -207,9 +207,9 @@ export function WeekStepper({
           }`}
         >
           {isRevertingWeek ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           )}
         </button>
       </Tooltip>
@@ -311,7 +311,7 @@ export function WeekStepper({
       <div className="w-px h-4 bg-border-default" />
 
       {/* Week label - fixed width */}
-      <span className="font-mono text-xs font-semibold text-text-primary" style={{ width: '52px' }}>
+      <span className="font-mono text-sm font-semibold text-text-primary" style={{ width: '56px' }}>
         Week {currentWeek}
       </span>
 
@@ -336,7 +336,7 @@ export function WeekStepper({
               : 'text-text-disabled/30 cursor-not-allowed'
           }`}
         >
-          <Target className="w-3.5 h-3.5" />
+          <Target className="w-4 h-4" />
         </button>
       </Tooltip>
 
@@ -365,9 +365,9 @@ export function WeekStepper({
           }`}
         >
           {isStartingNextWeek ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
           )}
         </button>
       </Tooltip>

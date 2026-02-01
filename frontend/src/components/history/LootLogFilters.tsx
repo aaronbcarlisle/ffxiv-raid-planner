@@ -64,9 +64,9 @@ export function LootLogFilters({
   weekSelector,
 }: LootLogFiltersProps) {
   return (
-    <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-border-default pb-3">
+    <div className="flex items-center gap-2 sm:gap-3 border-b border-border-default pb-3">
       {/* Left group: Layout toggle + Reset */}
-      <div className="flex items-center gap-1.5 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-1">
         {/* Layout Mode Toggle - hidden on mobile (floating toggle used instead) */}
         <div className="hidden sm:flex bg-surface-raised rounded-lg border border-border-default">
           <Tooltip
@@ -256,8 +256,8 @@ export function LootLogFilters({
       )}
 
       {/* Right group: Action buttons - hidden on mobile (FAB used instead) */}
-      {canEdit && (
-        <div className="hidden sm:flex items-center gap-2">
+      {canEdit ? (
+        <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
           {onLogWeek && (
             <>
               <Tooltip content="Log all drops for this week using a step-by-step wizard">
@@ -308,6 +308,9 @@ export function LootLogFilters({
             </Button>
           </Tooltip>
         </div>
+      ) : (
+        /* Spacer to balance the layout when action buttons are hidden */
+        <div className="hidden sm:block flex-1" />
       )}
     </div>
   );

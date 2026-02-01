@@ -56,7 +56,7 @@ function ToggleSection({ label, hint, checked, onChange, disabled, children }: T
         />
       </div>
       {checked && (
-        <div className="ml-4 pl-4 border-l-2 border-border-default">
+        <div className="p-4 bg-surface-elevated border border-border-default rounded-lg">
           {children}
         </div>
       )}
@@ -130,6 +130,20 @@ export function AdvancedOptions({
           disabled={disabled}
           label="Show priority scores"
           hint="Display numeric priority scores in the loot panel"
+        />
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-border-subtle" />
+
+      {/* Use Weighted Need - Toggle */}
+      <div className="py-3">
+        <Toggle
+          checked={options.useWeightedNeed}
+          onChange={(checked) => handleOptionChange('useWeightedNeed', checked)}
+          disabled={disabled}
+          label="Use weighted need"
+          hint="Weight slots by value (weapon > body > accessories)"
         />
       </div>
 
@@ -254,20 +268,6 @@ export function AdvancedOptions({
           </div>
         </div>
       </ToggleSection>
-
-      {/* Divider */}
-      <div className="h-px bg-border-subtle" />
-
-      {/* Use Weighted Need - Toggle */}
-      <div className="py-3">
-        <Toggle
-          checked={options.useWeightedNeed}
-          onChange={(checked) => handleOptionChange('useWeightedNeed', checked)}
-          disabled={disabled}
-          label="Use weighted need"
-          hint="Weight slots by value (weapon > body > accessories)"
-        />
-      </div>
 
       {/* Divider */}
       <div className="h-px bg-border-subtle" />

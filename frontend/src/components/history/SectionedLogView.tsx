@@ -1108,7 +1108,7 @@ export function SectionedLogView({
                 <div className="flex items-center gap-2 sm:gap-3">
                   <h3 className="font-display text-base sm:text-lg text-text-primary">Loot Log</h3>
                   {/* View mode toggle */}
-                  <div className="flex bg-surface-base rounded-lg p-0.5">
+                  <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
                     <Tooltip
                       content={
                         <div>
@@ -1123,10 +1123,10 @@ export function SectionedLogView({
                       {/* design-system-ignore: View mode toggle button requires specific toggle styling */}
                       <button
                         onClick={() => setLootViewMode('byFloor')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                           lootViewMode === 'byFloor'
                             ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                         }`}
                       >
                         By Floor
@@ -1146,10 +1146,10 @@ export function SectionedLogView({
                       {/* design-system-ignore: View mode toggle button requires specific toggle styling */}
                       <button
                         onClick={() => setLootViewMode('chronological')}
-                        className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                           lootViewMode === 'chronological'
                             ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                         }`}
                       >
                         Timeline
@@ -1284,26 +1284,26 @@ export function SectionedLogView({
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium text-sm text-text-primary">Books</h3>
                   {/* Week / All Time toggle */}
-                  <div className="flex bg-surface-base rounded p-0.5">
+                  <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
                     <button
                       onClick={() => setBookViewMode('week')}
-                      className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                         bookViewMode === 'week'
                           ? 'bg-accent/20 text-accent'
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                       }`}
                     >
                       Week {currentWeek}
                     </button>
                     <button
                       onClick={() => setBookViewMode('allTime')}
-                      className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                         bookViewMode === 'allTime'
                           ? 'bg-accent/20 text-accent'
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                       }`}
                     >
-                      ALL
+                      All Time
                     </button>
                   </div>
                 </div>
@@ -1489,26 +1489,26 @@ export function SectionedLogView({
                   <div className="flex items-center gap-2">
                     <h3 className="font-display text-base text-text-primary">Loot Log</h3>
                     {/* design-system-ignore: View mode toggle requires specific styling */}
-                    <div className="flex bg-surface-base rounded-lg p-0.5">
+                    <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
                       <button
                         onClick={() => setLootViewMode('byFloor')}
-                        className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                           lootViewMode === 'byFloor'
                             ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                         }`}
                       >
-                        Floor
+                        By Floor
                       </button>
                       <button
                         onClick={() => setLootViewMode('chronological')}
-                        className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
+                        className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                           lootViewMode === 'chronological'
                             ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                         }`}
                       >
-                        Time
+                        Timeline
                       </button>
                     </div>
                   </div>
@@ -1611,26 +1611,26 @@ export function SectionedLogView({
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm text-text-primary">Books</h3>
                 {/* design-system-ignore: View mode toggle requires specific styling */}
-                <div className="flex bg-surface-base rounded p-0.5">
+                <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
                   <button
                     onClick={() => setBookViewMode('week')}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors font-medium ${
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                       bookViewMode === 'week'
                         ? 'bg-accent/20 text-accent'
-                        : 'text-text-secondary hover:text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                     }`}
                   >
                     Week {currentWeek}
                   </button>
                   <button
                     onClick={() => setBookViewMode('allTime')}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors font-medium ${
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                       bookViewMode === 'allTime'
                         ? 'bg-accent/20 text-accent'
-                        : 'text-text-secondary hover:text-text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                     }`}
                   >
-                    ALL
+                    All Time
                   </button>
                 </div>
               </div>

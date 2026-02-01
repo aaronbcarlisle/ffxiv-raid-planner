@@ -11,14 +11,14 @@ import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate, GearSlot } from '../../types';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
 import { toast } from '../../stores/toastStore';
-import { parseFloorName, FLOOR_LOOT_TABLES, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
+import { parseFloorName, FLOOR_LOOT_TABLES, FLOOR_COLORS, isSlotAugmentationMaterial, type FloorNumber } from '../../gamedata/loot-tables';
 import {
   getEligibleSlotsForAugmentation,
   needsTomeWeaponItem,
@@ -558,13 +558,18 @@ export function LogMaterialModal({
     return '';
   };
 
-  // Build floor options for Select - only include floors that have materials
+  // Build floor options for Select - only include floors that have materials, with floor colors
   const floorOptions = floors
     .filter((floor) => getMaterialsForFloor(floor).length > 0)
-    .map((floor) => ({
-      value: floor,
-      label: floor,
-    }));
+    .map((floor) => {
+      const floorNum = parseFloorName(floor);
+      const floorColor = FLOOR_COLORS[floorNum];
+      return {
+        value: floor,
+        label: floor,
+        textClassName: floorColor.text,
+      };
+    });
 
   // Build recipient options for Select
   const recipientOptions = [
@@ -622,16 +627,28 @@ export function LogMaterialModal({
             <div className="flex gap-2">
               {availableMaterials.map((material) => {
                 const info = MATERIAL_INFO[material];
+                const isSelected = selectedMaterial === material;
+                // Material color classes from design system
+                const materialColors: Record<MaterialType, { text: string; bg: string; border: string }> = {
+                  twine: { text: 'text-material-twine', bg: 'bg-material-twine/20', border: 'border-material-twine/50' },
+                  glaze: { text: 'text-material-glaze', bg: 'bg-material-glaze/20', border: 'border-material-glaze/50' },
+                  solvent: { text: 'text-material-solvent', bg: 'bg-material-solvent/20', border: 'border-material-solvent/50' },
+                  universal_tomestone: { text: 'text-material-tomestone', bg: 'bg-material-tomestone/20', border: 'border-material-tomestone/50' },
+                };
+                const colors = materialColors[material];
                 return (
-                  <Button
+                  <button
                     key={material}
                     type="button"
-                    variant={selectedMaterial === material ? 'primary' : 'secondary'}
                     onClick={() => setSelectedMaterial(material)}
-                    className="flex-1"
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                      isSelected
+                        ? `${colors.bg} ${colors.text} ${colors.border}`
+                        : 'bg-surface-interactive border-border-default text-text-secondary hover:text-text-primary hover:border-border-subtle'
+                    }`}
                   >
                     {info.label}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
@@ -704,10 +721,11 @@ export function LogMaterialModal({
                         }
                       }}
                       options={[
-                        { value: 'tome_weapon', label: 'Tome Weapon' },
+                        { value: 'tome_weapon', label: 'Tome Weapon', icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS.weapon} /> },
                         ...eligibleOptions.slots.map((slot) => ({
                           value: slot,
                           label: GEAR_SLOT_NAMES[slot],
+                          icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS[slot]} />,
                         })),
                       ]}
                     />
@@ -724,6 +742,7 @@ export function LogMaterialModal({
                       options={eligibleOptions.slots.map((slot) => ({
                         value: slot,
                         label: GEAR_SLOT_NAMES[slot],
+                        icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS[slot]} />,
                       }))}
                     />
                   </div>
@@ -747,6 +766,7 @@ export function LogMaterialModal({
                       options={eligibleOptions.slots.map((slot) => ({
                         value: slot,
                         label: GEAR_SLOT_NAMES[slot],
+                        icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS[slot]} />,
                       }))}
                     />
                   </div>

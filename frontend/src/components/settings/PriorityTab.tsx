@@ -215,15 +215,15 @@ export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProp
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Subtab navigation */}
-      <div className="flex-shrink-0 flex items-center gap-1 mb-4 bg-surface-base rounded-lg p-1 w-fit">
+      <div className="flex-shrink-0 flex items-center gap-1 mb-4 w-fit bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
         <Tooltip content="Configure priority mode and order">
           {/* design-system-ignore: Subtab button requires specific toggle styling */}
           <button
             onClick={() => setActiveSubTab('mode')}
-            className={`px-3 py-1.5 text-sm rounded transition-colors font-medium ${
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
               activeSubTab === 'mode'
                 ? 'bg-accent/20 text-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
             }`}
           >
             Mode
@@ -234,12 +234,12 @@ export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProp
           <button
             onClick={() => settings.mode !== 'disabled' && setActiveSubTab('advanced')}
             disabled={settings.mode === 'disabled'}
-            className={`px-3 py-1.5 text-sm rounded transition-colors font-medium ${
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
               settings.mode === 'disabled'
                 ? 'text-text-disabled cursor-not-allowed'
                 : activeSubTab === 'advanced'
                   ? 'bg-accent/20 text-accent'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
             }`}
           >
             Advanced
@@ -248,7 +248,7 @@ export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProp
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto space-y-6 min-h-0 pb-20" style={{ scrollbarGutter: 'stable' }}>
+      <div className="flex-1 overflow-y-auto space-y-6 min-h-0 pb-20 pr-1.5" style={{ scrollbarGutter: 'stable' }}>
         {/* Permission warning */}
         {!canEdit && (
           <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm flex items-center gap-2">

@@ -62,6 +62,8 @@ export interface SelectOption {
   icon?: ReactNode;
   /** Optional group for categorizing options in SearchableSelect */
   group?: string;
+  /** Optional CSS class for custom text styling (e.g., floor colors) */
+  textClassName?: string;
 }
 
 export interface SelectProps {
@@ -132,7 +134,7 @@ export function Select({
         {selectedOption ? (
           <span className="flex items-center gap-2 truncate">
             {selectedOption.icon && <span className="flex-shrink-0">{selectedOption.icon}</span>}
-            <span className="truncate">{selectedOption.label}</span>
+            <span className={`truncate ${selectedOption.textClassName || ''}`}>{selectedOption.label}</span>
           </span>
         ) : (
           <span className="text-text-muted">{effectivePlaceholder}</span>
@@ -160,7 +162,7 @@ export function Select({
       >
         <SelectPrimitive.Viewport className="p-1">
           {validOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value} icon={option.icon}>
+            <SelectItem key={option.value} value={option.value} icon={option.icon} textClassName={option.textClassName}>
               {option.label}
             </SelectItem>
           ))}
@@ -172,10 +174,11 @@ export function Select({
 
 interface SelectItemProps extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> {
   icon?: ReactNode;
+  textClassName?: string;
 }
 
 const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
-  ({ children, icon, ...props }, ref) => {
+  ({ children, icon, textClassName, ...props }, ref) => {
     return (
       <SelectPrimitive.Item
         ref={ref}
@@ -195,7 +198,9 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           <Check className="w-4 h-4" />
         </SelectPrimitive.ItemIndicator>
         {icon && <span className="mr-2 flex-shrink-0">{icon}</span>}
-        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+        <SelectPrimitive.ItemText>
+          <span className={textClassName}>{children}</span>
+        </SelectPrimitive.ItemText>
       </SelectPrimitive.Item>
     );
   }

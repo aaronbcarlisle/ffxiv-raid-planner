@@ -561,7 +561,7 @@ export function LootPriorityPanel({
             <span className="hidden sm:inline">Loot Priority</span>
           </h3>
           {/* Sub-tab navigation - hidden on mobile, use Controls sheet instead */}
-          <div className="hidden sm:flex bg-surface-base rounded-lg p-1">
+          <div className="hidden sm:flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
             <Tooltip
               content={
                 <div>
@@ -576,10 +576,10 @@ export function LootPriorityPanel({
               {/* design-system-ignore: Subtab button requires specific toggle styling */}
               <button
                 onClick={() => setActiveSubTab('matrix')}
-                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                   activeSubTab === 'matrix'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
                 Who Needs It
@@ -599,10 +599,10 @@ export function LootPriorityPanel({
               {/* design-system-ignore: Subtab button requires specific toggle styling */}
               <button
                 onClick={() => setActiveSubTab('gear')}
-                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                   activeSubTab === 'gear'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
                 Gear Priority
@@ -622,10 +622,10 @@ export function LootPriorityPanel({
               {/* design-system-ignore: Subtab button requires specific toggle styling */}
               <button
                 onClick={() => setActiveSubTab('weapon')}
-                className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
                   activeSubTab === 'weapon'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
                 Weapon Priority

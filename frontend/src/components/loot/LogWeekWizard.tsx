@@ -35,7 +35,7 @@ import { logLootAndUpdateGear } from '../../utils/lootCoordination';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { getPriorityForItem, getPriorityForRing, getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
 import { FLOOR_LOOT_TABLES, FLOOR_COLORS, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial, type FloorNumber, type UpgradeMaterialType } from '../../gamedata/loot-tables';
-import { GEAR_SLOT_NAMES, type GearSlot, type MaterialType } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, type GearSlot, type MaterialType } from '../../types';
 import {
   getEligibleSlotsForAugmentation,
   needsTomeWeaponAugmentation,
@@ -868,21 +868,28 @@ export function LogWeekWizard({
                         const entry = currentFloorData.gear[slot];
                         if (!entry) return null;
                         const slotName = GEAR_SLOT_NAMES[slot as GearSlot] || slot;
+                        // Map ring1/ring2 to "ring" for the icon path
+                        const iconSlot = slot === 'ring1' || slot === 'ring2' ? 'ring' : slot;
 
                         return (
                           <div
                             key={slot}
-                            className={`py-3 first:pt-0 last:pb-0 ${entry.didNotDrop ? 'opacity-40' : ''}`}
+                            className="py-3 first:pt-0 last:pb-0"
                           >
                             {/* Main row: Name + Dropdown + Toggle */}
                             <div className="flex items-center gap-3">
-                              {/* Name - fixed width for alignment */}
-                              <div className="w-20 flex-shrink-0">
+                              {/* Name with gear icon - fixed width for alignment */}
+                              <div className={`w-24 flex-shrink-0 flex items-center gap-2 ${entry.didNotDrop ? 'opacity-50' : ''}`}>
+                                <img
+                                  alt=""
+                                  className="w-4 h-4 brightness-[3.0]"
+                                  src={`/images/gear-slots/white/${iconSlot}.png`}
+                                />
                                 <span className="text-sm text-text-secondary">{slotName}</span>
                               </div>
 
                               {/* Dropdown - grows to fill space, disabled when toggled off */}
-                              <div className="flex-1 min-w-0">
+                              <div className={`flex-1 min-w-0 ${entry.didNotDrop ? 'opacity-60' : ''}`}>
                                 <Select
                                   value={entry.playerId || ''}
                                   onChange={(v) => handleSlotChange(selectedFloor, 'gear', slot, v || null)}
@@ -946,17 +953,17 @@ export function LogWeekWizard({
                           return (
                             <div
                               key={materialType}
-                              className={`py-3 first:pt-0 last:pb-0 ${entry.didNotDrop ? 'opacity-40' : ''}`}
+                              className="py-3 first:pt-0 last:pb-0"
                             >
                               {/* Main row */}
                               <div className="flex items-center gap-3">
                                 {/* Name with material-specific color */}
-                                <div className="w-20 flex-shrink-0">
+                                <div className={`w-20 flex-shrink-0 ${entry.didNotDrop ? 'opacity-50' : ''}`}>
                                   <span className={`text-sm font-medium ${materialColorClass}`}>{shortMaterialName}</span>
                                 </div>
 
                                 {/* Dropdown area - disabled when toggled off */}
-                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <div className={`flex-1 min-w-0 flex items-center gap-2 ${entry.didNotDrop ? 'opacity-60' : ''}`}>
                                   <div className="flex-1 min-w-0">
                                     <Select
                                       value={entry.playerId || ''}
@@ -972,10 +979,11 @@ export function LogWeekWizard({
                                         value={entry.augmentTomeWeapon ? 'tome_weapon' : (entry.selectedSlot || '')}
                                         onChange={(val) => handleMaterialSlotChange(selectedFloor, materialType, val)}
                                         options={[
-                                          ...(canAugmentTomeWeapon ? [{ value: 'tome_weapon', label: 'Tome Weapon' }] : []),
+                                          ...(canAugmentTomeWeapon ? [{ value: 'tome_weapon', label: 'Tome Weapon', icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS.weapon} /> }] : []),
                                           ...eligibleSlots.map((slot) => ({
                                             value: slot,
                                             label: GEAR_SLOT_NAMES[slot],
+                                            icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS[slot]} />,
                                           })),
                                         ]}
                                       />

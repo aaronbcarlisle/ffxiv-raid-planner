@@ -119,15 +119,15 @@ export function PageBalancesPanel({
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-medium text-text-primary">Book Balances</h3>
           {/* View mode toggle */}
-          {/* design-system-ignore: Segmented toggle requires specific toggle styling */}
-          <div className="flex rounded-lg overflow-hidden bg-surface-base border border-border-default">
+          {/* design-system-ignore: View mode toggle requires specific styling */}
+          <div className="flex gap-1">
             <Tooltip content={`Show books earned in Week ${currentWeek} only`}>
               <button
                 onClick={() => setViewMode('week')}
-                className={`px-3 py-1 text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   viewMode === 'week'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
                 Week {currentWeek}
@@ -136,10 +136,10 @@ export function PageBalancesPanel({
             <Tooltip content="Show cumulative books earned across all weeks">
               <button
                 onClick={() => setViewMode('allTime')}
-                className={`px-3 py-1 text-sm font-medium transition-colors border-l border-border-default ${
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   viewMode === 'allTime'
                     ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
                 All Time

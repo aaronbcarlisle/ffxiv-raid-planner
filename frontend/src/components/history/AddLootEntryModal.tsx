@@ -15,12 +15,12 @@ import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
-import { FLOOR_LOOT_TABLES } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { LootLogEntry, LootLogEntryCreate, LootLogEntryUpdate, LootMethod, SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
-import { GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 
 interface AddLootEntryModalProps {
   isOpen: boolean;
@@ -376,13 +376,18 @@ export function AddLootEntryModal({
     ? 'Ring'
     : GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
 
-  // Build floor options for Select
-  const floorOptions = floors.map(f => ({ value: f, label: f }));
+  // Build floor options for Select with floor colors
+  const floorOptions = floors.map((f, index) => {
+    const floorNum = parseFloorName(f);
+    const floorColor = FLOOR_COLORS[floorNum];
+    return { value: f, label: f, textClassName: floorColor.text };
+  });
 
-  // Build slot options for Select
+  // Build slot options for Select with gear icons
   const slotOptions = availableSlots.map(slot => ({
     value: slot,
     label: slot === 'ring1' && getFloorNumber(floor) === 1 ? 'Ring' : GEAR_SLOT_NAMES[slot],
+    icon: <img alt="" className="w-4 h-4 brightness-[3.0]" src={GEAR_SLOT_ICONS[slot]} />,
   }));
 
   // Build recipient options for Select
