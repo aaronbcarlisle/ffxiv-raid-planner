@@ -110,7 +110,7 @@ export function SettingsPanel({
         </div>
 
         {/* Content - swipeable on mobile */}
-        <div className="flex-1 min-h-0 p-4 flex flex-col" {...swipeHandlers}>
+        <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col" {...swipeHandlers}>
           {activeTab === 'general' && (
             <GeneralTab
               group={group}

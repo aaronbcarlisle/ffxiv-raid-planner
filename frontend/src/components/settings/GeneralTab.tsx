@@ -165,8 +165,8 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Scrollable content - use scroll to prevent layout shift */}
-      <div className="flex-1 overflow-y-scroll space-y-6 min-h-0 -mr-4 pr-4">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto space-y-6 min-h-0" style={{ scrollbarGutter: 'stable' }}>
         {error && <ErrorBox message={error} size="sm" />}
 
       {/* Static Name */}
@@ -245,7 +245,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
       </div>
 
       {/* Sticky Action Buttons footer */}
-      <div className="flex-shrink-0 flex justify-between py-4 mt-4 border-t border-border-default">
+      <div className="flex-shrink-0 flex justify-between pt-4 pb-4 border-t border-border-default">
         <div>
           {isOwner && (
             <Button
