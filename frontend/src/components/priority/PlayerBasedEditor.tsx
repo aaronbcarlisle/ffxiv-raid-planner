@@ -5,7 +5,7 @@
  * Players can be dragged between groups to change priority tiers.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 import {
   DndContext,
@@ -17,7 +17,7 @@ import {
   DragOverlay,
   useDroppable,
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
@@ -52,6 +52,23 @@ const DEFAULT_GROUPS: PriorityGroupConfig[] = [
   { id: 'all', name: 'All Players', sortOrder: 0, basePriority: 100 },
 ];
 
+// Drop mode for visual indicators
+type DropMode = 'insert-before' | 'insert-after' | 'swap' | null;
+
+// Edge threshold for insert mode (25% on each edge, middle 50% for swap)
+const EDGE_THRESHOLD = 0.25;
+
+// Calculate drop mode based on pointer position
+function calculateDropMode(element: Element, clientY: number): DropMode {
+  const rect = element.getBoundingClientRect();
+  const relativeY = clientY - rect.top;
+  const percentage = relativeY / rect.height;
+
+  if (percentage < EDGE_THRESHOLD) return 'insert-before';
+  if (percentage > 1 - EDGE_THRESHOLD) return 'insert-after';
+  return 'swap';
+}
+
 // Sortable player item
 function SortablePlayerItem({
   player,
@@ -59,12 +76,18 @@ function SortablePlayerItem({
   showAdvanced,
   disabled,
   onOffsetChange,
+  showInsertBefore,
+  showInsertAfter,
+  showSwap,
 }: {
   player: SnapshotPlayer;
   config: PlayerPriorityConfig;
   showAdvanced: boolean;
   disabled?: boolean;
   onOffsetChange: (playerId: string, offset: number) => void;
+  showInsertBefore?: boolean;
+  showInsertAfter?: boolean;
+  showSwap?: boolean;
 }) {
   const {
     attributes,
@@ -81,37 +104,52 @@ function SortablePlayerItem({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 px-3 py-2 bg-surface-base border border-border-default rounded-lg ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      } ${disabled ? 'pointer-events-none' : ''}`}
-      {...attributes}
-      {...listeners}
-    >
-      <span className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}>
-        <GripVertical className="w-4 h-4" />
-      </span>
-      {player.job && <JobIcon job={player.job} size="sm" />}
-      <span className="text-text-primary text-sm flex-1">
-        {player.name || 'Unnamed Player'}
-      </span>
-      <span className="text-xs text-text-muted">{player.job || '?'}</span>
-      {showAdvanced && (
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-text-muted">Offset:</span>
-          <NumberInput
-            value={config.priorityOffset}
-            onChange={(value) => onOffsetChange(player.id, value ?? 0)}
-            min={-100}
-            max={100}
-            step={5}
-            size="sm"
-            disabled={disabled}
-            className="w-24"
-          />
-        </div>
+    <div className="relative">
+      {/* Insert indicator - horizontal line above */}
+      {showInsertBefore && (
+        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
+      )}
+
+      <div
+        ref={setNodeRef}
+        data-droppable-id={player.id}
+        style={style}
+        className={`flex items-center gap-2 px-3 py-2 bg-surface-base border rounded-lg transition-all duration-150 ${
+          isDragging ? 'opacity-30' : ''
+        } ${disabled ? 'pointer-events-none' : ''} ${
+          showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'
+        }`}
+        {...attributes}
+        {...listeners}
+      >
+        <span className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}>
+          <GripVertical className="w-4 h-4" />
+        </span>
+        {player.job && <JobIcon job={player.job} size="sm" />}
+        <span className="text-text-primary text-sm flex-1">
+          {player.name || 'Unnamed Player'}
+        </span>
+        <span className="text-xs text-text-muted">{player.job || '?'}</span>
+        {showAdvanced && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-text-muted">Offset:</span>
+            <NumberInput
+              value={config.priorityOffset}
+              onChange={(value) => onOffsetChange(player.id, value ?? 0)}
+              min={-100}
+              max={100}
+              step={5}
+              size="sm"
+              disabled={disabled}
+              className="w-24"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Insert indicator - horizontal line below */}
+      {showInsertAfter && (
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
     </div>
   );
@@ -319,6 +357,9 @@ export function PlayerBasedEditor({
     new Set(config.groups.map((g) => g.id))
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dropMode, setDropMode] = useState<DropMode>(null);
+  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Only configured players
   const configuredPlayers = useMemo(() => {
@@ -383,13 +424,61 @@ export function PlayerBasedEditor({
     })
   );
 
+  // Track pointer position for calculating drop mode
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+
+      // Recalculate dropMode continuously while dragging over a player
+      if (activeId && overId && !overId.startsWith('group-') && !overId.startsWith('dropzone-')) {
+        const element = document.querySelector(`[data-droppable-id="${overId}"]`);
+        if (element) {
+          const newDropMode = calculateDropMode(element, e.clientY);
+          if (newDropMode !== dropMode) {
+            setDropMode(newDropMode);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('pointermove', handlePointerMove);
+    return () => document.removeEventListener('pointermove', handlePointerMove);
+  }, [activeId, overId, dropMode]);
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const newOverId = event.over?.id as string | null;
+
+    if (!newOverId || newOverId === activeId) {
+      setOverId(null);
+      setDropMode(null);
+      return;
+    }
+
+    setOverId(newOverId);
+
+    // Only calculate drop mode for player items (not groups or dropzones)
+    if (!newOverId.startsWith('group-') && !newOverId.startsWith('dropzone-')) {
+      const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
+      if (element) {
+        setDropMode(calculateDropMode(element, pointerRef.current.y));
+      }
+    } else {
+      setDropMode(null);
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const currentDropMode = dropMode;
+
+    // Clear state
     setActiveId(null);
+    setOverId(null);
+    setDropMode(null);
 
     if (!over || active.id === over.id) return;
 
@@ -454,13 +543,37 @@ export function PlayerBasedEditor({
 
       if (activePlayer && overPlayer) {
         if (activePlayer.groupId === overPlayer.groupId) {
-          // Same group - reorder
+          // Same group - reorder with precise positioning based on drop mode
           const groupPlayers = playersByGroup[activePlayer.groupId] || [];
           const oldIndex = groupPlayers.findIndex((p) => p.player.id === activeIdStr);
-          const newIndex = groupPlayers.findIndex((p) => p.player.id === overIdStr);
+          let targetIndex = groupPlayers.findIndex((p) => p.player.id === overIdStr);
 
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const reordered = arrayMove(groupPlayers, oldIndex, newIndex);
+          if (oldIndex !== -1 && targetIndex !== -1) {
+            // Handle swap mode - directly swap the two items
+            if (currentDropMode === 'swap') {
+              const swapped = [...groupPlayers];
+              [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
+              const newPlayers = ensuredConfig.players.map((p) => {
+                if (p.groupId === activePlayer.groupId) {
+                  const idx = swapped.findIndex((sp) => sp.player.id === p.playerId);
+                  return { ...p, sortOrder: idx >= 0 ? idx : p.sortOrder };
+                }
+                return p;
+              });
+              onChange({ ...ensuredConfig, players: newPlayers });
+              return;
+            }
+
+            // Handle insert mode
+            if (currentDropMode === 'insert-after') {
+              targetIndex = targetIndex + 1;
+            }
+            // Adjust if moving from before the target
+            if (oldIndex < targetIndex) {
+              targetIndex--;
+            }
+
+            const reordered = arrayMove(groupPlayers, oldIndex, targetIndex);
             const newPlayers = ensuredConfig.players.map((p) => {
               if (p.groupId === activePlayer.groupId) {
                 const idx = reordered.findIndex((rp) => rp.player.id === p.playerId);
@@ -663,7 +776,13 @@ export function PlayerBasedEditor({
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            setActiveId(null);
+            setOverId(null);
+            setDropMode(null);
+          }}
         >
           <SortableContext
             items={ensuredConfig.groups.map((g) => `group-${g.id}`)}
@@ -698,16 +817,22 @@ export function PlayerBasedEditor({
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="ml-6 space-y-1">
-                          {groupPlayers.map(({ player, config: playerConfig }) => (
-                            <SortablePlayerItem
-                              key={player.id}
-                              player={player}
-                              config={playerConfig}
-                              showAdvanced={ensuredConfig.showAdvancedControls}
-                              disabled={disabled}
-                              onOffsetChange={handlePlayerOffsetChange}
-                            />
-                          ))}
+                          {groupPlayers.map(({ player, config: playerConfig }) => {
+                            const isOverThisItem = overId === player.id && activeId !== player.id;
+                            return (
+                              <SortablePlayerItem
+                                key={player.id}
+                                player={player}
+                                config={playerConfig}
+                                showAdvanced={ensuredConfig.showAdvancedControls}
+                                disabled={disabled}
+                                onOffsetChange={handlePlayerOffsetChange}
+                                showInsertBefore={isOverThisItem && dropMode === 'insert-before'}
+                                showInsertAfter={isOverThisItem && dropMode === 'insert-after'}
+                                showSwap={isOverThisItem && dropMode === 'swap'}
+                              />
+                            );
+                          })}
                         </div>
                       </SortableContext>
                     )}

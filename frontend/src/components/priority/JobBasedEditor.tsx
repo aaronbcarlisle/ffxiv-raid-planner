@@ -5,7 +5,7 @@
  * Jobs can be dragged between groups to change priority tiers.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 import {
   DndContext,
@@ -17,7 +17,7 @@ import {
   DragOverlay,
   useDroppable,
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
@@ -78,6 +78,23 @@ function createDefaultJobConfig(): JobPriorityConfig[] {
   return jobs;
 }
 
+// Drop mode for visual indicators
+type DropMode = 'insert-before' | 'insert-after' | 'swap' | null;
+
+// Edge threshold for insert mode (25% on each edge, middle 50% for swap)
+const EDGE_THRESHOLD = 0.25;
+
+// Calculate drop mode based on pointer position
+function calculateDropMode(element: Element, clientY: number): DropMode {
+  const rect = element.getBoundingClientRect();
+  const relativeY = clientY - rect.top;
+  const percentage = relativeY / rect.height;
+
+  if (percentage < EDGE_THRESHOLD) return 'insert-before';
+  if (percentage > 1 - EDGE_THRESHOLD) return 'insert-after';
+  return 'swap';
+}
+
 // Sortable job item
 function SortableJobItem({
   job,
@@ -86,6 +103,9 @@ function SortableJobItem({
   showAdvanced,
   disabled,
   onOffsetChange,
+  showInsertBefore,
+  showInsertAfter,
+  showSwap,
 }: {
   job: string;
   config: JobPriorityConfig;
@@ -93,6 +113,9 @@ function SortableJobItem({
   showAdvanced: boolean;
   disabled?: boolean;
   onOffsetChange: (job: string, offset: number) => void;
+  showInsertBefore?: boolean;
+  showInsertAfter?: boolean;
+  showSwap?: boolean;
 }) {
   const {
     attributes,
@@ -109,39 +132,54 @@ function SortableJobItem({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 px-3 py-2 bg-surface-base border border-border-default rounded-lg ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      } ${!isInUse ? 'opacity-50' : ''} ${disabled ? 'pointer-events-none' : ''}`}
-      {...attributes}
-      {...listeners}
-    >
-      <span className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}>
-        <GripVertical className="w-4 h-4" />
-      </span>
-      <JobIcon job={job} size="sm" />
-      <span className="text-text-primary text-sm flex-1">{job}</span>
-      {isInUse && (
-        <span className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-          In Use
-        </span>
+    <div className="relative">
+      {/* Insert indicator - horizontal line above */}
+      {showInsertBefore && (
+        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
-      {showAdvanced && (
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-text-muted">Offset:</span>
-          <NumberInput
-            value={config.priorityOffset}
-            onChange={(value) => onOffsetChange(job, value ?? 0)}
-            min={-100}
-            max={100}
-            step={5}
-            size="sm"
-            disabled={disabled}
-            className="w-24"
-          />
-        </div>
+
+      <div
+        ref={setNodeRef}
+        data-droppable-id={job}
+        style={style}
+        className={`flex items-center gap-2 px-3 py-2 bg-surface-base border rounded-lg transition-all duration-150 ${
+          isDragging ? 'opacity-30' : ''
+        } ${!isInUse ? 'opacity-50' : ''} ${disabled ? 'pointer-events-none' : ''} ${
+          showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'
+        }`}
+        {...attributes}
+        {...listeners}
+      >
+        <span className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}>
+          <GripVertical className="w-4 h-4" />
+        </span>
+        <JobIcon job={job} size="sm" />
+        <span className="text-text-primary text-sm flex-1">{job}</span>
+        {isInUse && (
+          <span className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+            In Use
+          </span>
+        )}
+        {showAdvanced && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-text-muted">Offset:</span>
+            <NumberInput
+              value={config.priorityOffset}
+              onChange={(value) => onOffsetChange(job, value ?? 0)}
+              min={-100}
+              max={100}
+              step={5}
+              size="sm"
+              disabled={disabled}
+              className="w-24"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Insert indicator - horizontal line below */}
+      {showInsertAfter && (
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
     </div>
   );
@@ -343,6 +381,9 @@ export function JobBasedEditor({
     new Set(config.groups.map((g) => g.id))
   );
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [dropMode, setDropMode] = useState<DropMode>(null);
+  const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Jobs currently in use by players
   const jobsInUse = useMemo(() => {
@@ -379,13 +420,61 @@ export function JobBasedEditor({
     })
   );
 
+  // Track pointer position for calculating drop mode
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+
+      // Recalculate dropMode continuously while dragging over a job
+      if (activeId && overId && !overId.startsWith('group-') && !overId.startsWith('dropzone-')) {
+        const element = document.querySelector(`[data-droppable-id="${overId}"]`);
+        if (element) {
+          const newDropMode = calculateDropMode(element, e.clientY);
+          if (newDropMode !== dropMode) {
+            setDropMode(newDropMode);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('pointermove', handlePointerMove);
+    return () => document.removeEventListener('pointermove', handlePointerMove);
+  }, [activeId, overId, dropMode]);
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const newOverId = event.over?.id as string | null;
+
+    if (!newOverId || newOverId === activeId) {
+      setOverId(null);
+      setDropMode(null);
+      return;
+    }
+
+    setOverId(newOverId);
+
+    // Only calculate drop mode for job items (not groups or dropzones)
+    if (!newOverId.startsWith('group-') && !newOverId.startsWith('dropzone-')) {
+      const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
+      if (element) {
+        setDropMode(calculateDropMode(element, pointerRef.current.y));
+      }
+    } else {
+      setDropMode(null);
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const currentDropMode = dropMode;
+
+    // Clear state
     setActiveId(null);
+    setOverId(null);
+    setDropMode(null);
 
     if (!over || active.id === over.id) return;
 
@@ -450,13 +539,37 @@ export function JobBasedEditor({
 
       if (activeJob && overJob) {
         if (activeJob.groupId === overJob.groupId) {
-          // Same group - reorder
+          // Same group - reorder with precise positioning based on drop mode
           const groupJobs = jobsByGroup[activeJob.groupId] || [];
           const oldIndex = groupJobs.findIndex((j) => j.job === activeIdStr);
-          const newIndex = groupJobs.findIndex((j) => j.job === overIdStr);
+          let targetIndex = groupJobs.findIndex((j) => j.job === overIdStr);
 
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const reordered = arrayMove(groupJobs, oldIndex, newIndex);
+          if (oldIndex !== -1 && targetIndex !== -1) {
+            // Handle swap mode - directly swap the two items
+            if (currentDropMode === 'swap') {
+              const swapped = [...groupJobs];
+              [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
+              const newJobs = config.jobs.map((j) => {
+                if (j.groupId === activeJob.groupId) {
+                  const idx = swapped.findIndex((sj) => sj.job === j.job);
+                  return { ...j, sortOrder: idx };
+                }
+                return j;
+              });
+              onChange({ ...config, jobs: newJobs });
+              return;
+            }
+
+            // Handle insert mode
+            if (currentDropMode === 'insert-after') {
+              targetIndex = targetIndex + 1;
+            }
+            // Adjust if moving from before the target
+            if (oldIndex < targetIndex) {
+              targetIndex--;
+            }
+
+            const reordered = arrayMove(groupJobs, oldIndex, targetIndex);
             const newJobs = config.jobs.map((j) => {
               if (j.groupId === activeJob.groupId) {
                 const idx = reordered.findIndex((rj) => rj.job === j.job);
@@ -650,7 +763,13 @@ export function JobBasedEditor({
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActiveId(null);
+          setOverId(null);
+          setDropMode(null);
+        }}
       >
         <SortableContext
           items={config.groups.map((g) => `group-${g.id}`)}
@@ -683,17 +802,23 @@ export function JobBasedEditor({
                       strategy={verticalListSortingStrategy}
                     >
                       <div className="ml-6 space-y-1">
-                        {groupJobs.map((jobConfig) => (
-                          <SortableJobItem
-                            key={jobConfig.job}
-                            job={jobConfig.job}
-                            config={jobConfig}
-                            isInUse={jobsInUse.has(jobConfig.job)}
-                            showAdvanced={config.showAdvancedControls}
-                            disabled={disabled}
-                            onOffsetChange={handleJobOffsetChange}
-                          />
-                        ))}
+                        {groupJobs.map((jobConfig) => {
+                          const isOver = overId === jobConfig.job && activeId !== jobConfig.job;
+                          return (
+                            <SortableJobItem
+                              key={jobConfig.job}
+                              job={jobConfig.job}
+                              config={jobConfig}
+                              isInUse={jobsInUse.has(jobConfig.job)}
+                              showAdvanced={config.showAdvancedControls}
+                              disabled={disabled}
+                              onOffsetChange={handleJobOffsetChange}
+                              showInsertBefore={isOver && dropMode === 'insert-before'}
+                              showInsertAfter={isOver && dropMode === 'insert-after'}
+                              showSwap={isOver && dropMode === 'swap'}
+                            />
+                          );
+                        })}
                       </div>
                     </SortableContext>
                   )}
