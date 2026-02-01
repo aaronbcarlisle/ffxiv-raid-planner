@@ -167,7 +167,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
           </button>
         </div>
         <div className="p-4">
-          <div className="bg-surface-card border border-border-subtle rounded-lg p-3 max-h-[calc(100dvh-8rem)] overflow-y-auto scrollbar-thin">
+          <div className="bg-surface-raised border border-border-subtle rounded-lg p-3 max-h-[calc(100dvh-8rem)] overflow-y-auto scrollbar-thin">
             {renderGroups(`${baseId}-mobile`)}
           </div>
         </div>
@@ -178,9 +178,9 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
         className="sticky top-0 w-56 shrink-0 hidden lg:block self-start h-fit z-30"
         aria-label="Documentation sections"
       >
-        <div className="relative bg-surface-card border border-border-subtle rounded-lg">
+        <div className="relative bg-surface-raised border border-border-subtle rounded-lg">
           <div
-            className={`absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10 bg-gradient-to-b from-surface-card to-transparent transition-opacity duration-150 ${scrollState.top ? 'opacity-0' : 'opacity-100'}`}
+            className={`absolute top-0 left-0 right-0 h-6 rounded-t-lg pointer-events-none z-10 bg-gradient-to-b from-surface-raised to-transparent transition-opacity duration-150 ${scrollState.top ? 'opacity-0' : 'opacity-100'}`}
             aria-hidden="true"
           />
           <div
@@ -190,7 +190,7 @@ export function NavSidebar({ groups, activeSection, onSectionClick }: NavSidebar
             {renderGroups(baseId)}
           </div>
           <div
-            className={`absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10 bg-gradient-to-t from-surface-card to-transparent transition-opacity duration-150 ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}`}
+            className={`absolute bottom-0 left-0 right-0 h-6 rounded-b-lg pointer-events-none z-10 bg-gradient-to-t from-surface-raised to-transparent transition-opacity duration-150 ${scrollState.bottom ? 'opacity-0' : 'opacity-100'}`}
             aria-hidden="true"
           />
         </div>

@@ -23,7 +23,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary:
     'bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95',
   secondary:
-    'bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-overlay',
+    'bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive',
   'accent-subtle':
     'bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 hover:border-accent/50 active:bg-accent/30',
   ghost:

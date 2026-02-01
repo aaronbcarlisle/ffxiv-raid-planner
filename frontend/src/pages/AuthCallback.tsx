@@ -155,7 +155,7 @@ export function AuthCallback() {
   // Processing state
   if (status === 'processing') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-surface-elevated">
+      <div className="flex items-center justify-center min-h-screen bg-surface-base">
         <div className="text-center">
           <Spinner size="2xl" className="mx-auto mb-4" label="Signing in" />
           <h2 className="text-xl font-display text-accent mb-2">Signing you in...</h2>
@@ -168,7 +168,7 @@ export function AuthCallback() {
   // Success state (brief flash before redirect)
   if (status === 'success') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-surface-elevated">
+      <div className="flex items-center justify-center min-h-screen bg-surface-base">
         <div className="text-center">
           <div className="w-12 h-12 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@ export function AuthCallback() {
 
   // Error state
   return (
-    <div className="flex items-center justify-center min-h-screen bg-surface-elevated">
+    <div className="flex items-center justify-center min-h-screen bg-surface-base">
       <div className="text-center max-w-md mx-auto p-8 bg-surface-card rounded-lg border border-border-default">
         <div className="w-12 h-12 bg-status-error/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-6 h-6 text-status-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
