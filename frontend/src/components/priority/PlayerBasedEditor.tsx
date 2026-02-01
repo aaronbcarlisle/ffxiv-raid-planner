@@ -921,15 +921,16 @@ export function PlayerBasedEditor({
               const groupId = activeId.replace('group-', '');
               const group = ensuredConfig.groups.find((g) => g.id === groupId);
               const groupPlayers = playersByGroup[groupId] || [];
+              const isExpanded = expandedGroups.has(groupId);
               if (!group) return null;
               return (
                 <div className="bg-surface-elevated border border-accent rounded-lg shadow-xl overflow-hidden max-w-xs">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-surface-base border-b border-border-default">
+                  <div className={`flex items-center gap-2 px-3 py-2 bg-surface-base ${isExpanded && groupPlayers.length > 0 ? 'border-b border-border-default' : ''}`}>
                     <GripVertical className="w-5 h-5 text-text-muted" />
                     <span className="text-text-primary font-medium">{group.name}</span>
                     <span className="text-xs text-text-muted">({groupPlayers.length} players)</span>
                   </div>
-                  {groupPlayers.length > 0 && (
+                  {isExpanded && groupPlayers.length > 0 && (
                     <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
                       {groupPlayers.slice(0, 8).map(({ player }) => (
                         <div
