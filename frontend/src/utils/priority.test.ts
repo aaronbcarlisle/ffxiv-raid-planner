@@ -76,55 +76,68 @@ describe('calculatePriorityScore', () => {
   });
 
   describe('loot adjustment', () => {
-    it('does not apply adjustment when option is not set', () => {
+    it('does not apply adjustment when useLootAdjustments is disabled', () => {
+      const settingsWithDisabledAdjustments: StaticSettings = {
+        ...defaultSettings,
+        prioritySettings: {
+          mode: 'role-based',
+          roleBasedConfig: { roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'] },
+          advancedOptions: {
+            showPriorityScores: true,
+            preset: 'balanced',
+            enableEnhancedFairness: false,
+            droughtBonusMultiplier: 10,
+            droughtBonusCapWeeks: 5,
+            balancePenaltyMultiplier: 15,
+            balancePenaltyCapDrops: 3,
+            useMultipliers: true,
+            rolePriorityMultiplier: 25,
+            gearNeededMultiplier: 10,
+            lootReceivedPenalty: 15,
+            useWeightedNeed: true,
+            useLootAdjustments: false, // Disabled
+          },
+        },
+      };
+
       const player = createPlayer({ lootAdjustment: 5 });
-      const score = calculatePriorityScore(player, defaultSettings);
+      const score = calculatePriorityScore(player, settingsWithDisabledAdjustments);
       const scoreWithoutAdjustment = calculatePriorityScore(
         createPlayer({ lootAdjustment: 0 }),
-        defaultSettings
+        settingsWithDisabledAdjustments
       );
 
-      // Same gear and role, so scores should be equal when adjustment not applied
+      // Same gear and role, so scores should be equal when adjustment disabled
       expect(score).toBe(scoreWithoutAdjustment);
     });
 
-    it('reduces priority when includeLootAdjustment is true and lootAdjustment is positive', () => {
+    it('increases priority when lootAdjustment is positive (player needs to catch up)', () => {
       const player = createPlayer({ lootAdjustment: 3 });
       const basePlayer = createPlayer({ lootAdjustment: 0 });
 
-      const adjustedScore = calculatePriorityScore(player, defaultSettings, {
-        includeLootAdjustment: true,
-      });
-      const baseScore = calculatePriorityScore(basePlayer, defaultSettings, {
-        includeLootAdjustment: true,
-      });
+      const adjustedScore = calculatePriorityScore(player, defaultSettings);
+      const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
 
-      // Positive adjustment should reduce score by 15 * adjustment
-      expect(adjustedScore).toBe(baseScore - 45); // 3 * 15 = 45 reduction
+      // Positive adjustment should increase score by 15 * adjustment
+      expect(adjustedScore).toBe(baseScore + 45); // 3 * 15 = 45 boost
     });
 
-    it('increases priority when lootAdjustment is negative', () => {
+    it('decreases priority when lootAdjustment is negative (player received enough)', () => {
       const player = createPlayer({ lootAdjustment: -2 });
       const basePlayer = createPlayer({ lootAdjustment: 0 });
 
-      const adjustedScore = calculatePriorityScore(player, defaultSettings, {
-        includeLootAdjustment: true,
-      });
-      const baseScore = calculatePriorityScore(basePlayer, defaultSettings, {
-        includeLootAdjustment: true,
-      });
+      const adjustedScore = calculatePriorityScore(player, defaultSettings);
+      const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
 
-      // Negative adjustment should increase score
-      expect(adjustedScore).toBe(baseScore + 30); // -2 * -15 = 30 increase
+      // Negative adjustment should decrease score
+      expect(adjustedScore).toBe(baseScore - 30); // -2 * 15 = -30
     });
 
     it('handles zero lootAdjustment correctly', () => {
       const player = createPlayer({ lootAdjustment: 0 });
       const basePlayer = createPlayer();
 
-      const adjustedScore = calculatePriorityScore(player, defaultSettings, {
-        includeLootAdjustment: true,
-      });
+      const adjustedScore = calculatePriorityScore(player, defaultSettings);
       const baseScore = calculatePriorityScore(basePlayer, defaultSettings);
 
       // Zero adjustment should have no effect
@@ -136,9 +149,7 @@ describe('calculatePriorityScore', () => {
       delete (player as Partial<SnapshotPlayer>).lootAdjustment;
 
       // Should not throw
-      const score = calculatePriorityScore(player, defaultSettings, {
-        includeLootAdjustment: true,
-      });
+      const score = calculatePriorityScore(player, defaultSettings);
 
       expect(typeof score).toBe('number');
     });
@@ -214,10 +225,8 @@ describe('calculatePriorityScore', () => {
         priorityMode: 'disabled',
       };
 
-      // Even with includeLootAdjustment, disabled mode returns 0
-      const score = calculatePriorityScore(player, disabledSettings, {
-        includeLootAdjustment: true,
-      });
+      // In disabled mode, all players return 0 regardless of adjustments
+      const score = calculatePriorityScore(player, disabledSettings);
       expect(score).toBe(0);
     });
   });
@@ -378,22 +387,20 @@ describe('calculatePriorityScore', () => {
         job: 'PCT',
         role: 'caster',
         priorityModifier: 10,
-        lootAdjustment: 2, // 2 drops = -30 penalty
+        lootAdjustment: 2, // 2 * 15 = +30 boost (player needs to catch up)
       });
       const settings: StaticSettings = {
         ...defaultSettings,
         jobPriorityModifiers: { PCT: 15 },
       };
 
-      // Calculate expected: role + gear need + job mod + player mod - loot adj
+      // Calculate expected: role + gear need + job mod + player mod + loot adj boost
       const basePlayer = createPlayer({ job: 'PCT', role: 'caster' });
       const baseScoreWithoutModifiers = calculatePriorityScore(basePlayer, defaultSettings);
 
-      const scoreWithModifiers = calculatePriorityScore(player, settings, {
-        includeLootAdjustment: true,
-      });
+      const scoreWithModifiers = calculatePriorityScore(player, settings);
 
-      expect(scoreWithModifiers).toBe(baseScoreWithoutModifiers + 15 + 10 - 30);
+      expect(scoreWithModifiers).toBe(baseScoreWithoutModifiers + 15 + 10 + 30);
     });
   });
 });

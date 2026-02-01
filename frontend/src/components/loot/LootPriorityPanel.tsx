@@ -102,10 +102,10 @@ function GearScoreTooltip({ entry, showEnhanced }: { entry: EnhancedPriorityEntr
               </span>
             </div>
           )}
-          {breakdown.lootAdjustmentPenalty !== 0 && (
+          {breakdown.lootAdjustmentBonus !== 0 && (
             <div className="text-text-secondary">
-              Loot Adj: <span className={breakdown.lootAdjustmentPenalty > 0 ? 'text-status-warning' : 'text-status-success'}>
-                {breakdown.lootAdjustmentPenalty > 0 ? '-' : '+'}{Math.abs(breakdown.lootAdjustmentPenalty)}
+              Loot Adj: <span className={breakdown.lootAdjustmentBonus > 0 ? 'text-status-success' : 'text-status-warning'}>
+                {breakdown.lootAdjustmentBonus > 0 ? '+' : ''}{breakdown.lootAdjustmentBonus}
               </span>
             </div>
           )}

@@ -121,7 +121,7 @@ export interface PriorityScoreBreakdown {
   rolePriority: number;
   weightedNeed: number;
   weightedNeedBonus: number; // weightedNeed * 10
-  lootAdjustmentPenalty: number; // lootAdjustment * 15 (positive = penalty applied)
+  lootAdjustmentBonus: number; // lootAdjustment * multiplier (positive = priority boost)
   jobModifier: number; // Job-level adjustment from settings
   playerModifier: number; // Player-level adjustment from player.priorityModifier
 }
@@ -168,12 +168,12 @@ export function calculatePriorityScore(
     let score = calculateJobBasedPriority(player, settings);
     const advancedOptions = getAdvancedOptions(settings);
 
-    // Apply loot adjustments if enabled and toggle is on
-    if (options?.includeLootAdjustment && player.lootAdjustment && advancedOptions.useLootAdjustments) {
-      const lootPenalty = advancedOptions.useMultipliers
+    // Apply loot adjustments if toggle is on (positive = priority boost)
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
         ? advancedOptions.lootReceivedPenalty
         : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
-      score -= player.lootAdjustment * lootPenalty;
+      score += player.lootAdjustment * lootMultiplier;
     }
     return Math.round(score);
   }
@@ -183,12 +183,12 @@ export function calculatePriorityScore(
     let score = calculatePlayerBasedPriority(player, settings);
     const advancedOptions = getAdvancedOptions(settings);
 
-    // Apply loot adjustments if enabled and toggle is on
-    if (options?.includeLootAdjustment && player.lootAdjustment && advancedOptions.useLootAdjustments) {
-      const lootPenalty = advancedOptions.useMultipliers
+    // Apply loot adjustments if toggle is on (positive = priority boost)
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
         ? advancedOptions.lootReceivedPenalty
         : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
-      score -= player.lootAdjustment * lootPenalty;
+      score += player.lootAdjustment * lootMultiplier;
     }
     return Math.round(score);
   }
@@ -225,14 +225,13 @@ export function calculatePriorityScore(
   let score = Math.round(rolePriority + weightedNeed * gearMultiplier + jobModifier + playerModifier);
 
   // Apply loot adjustment for mid-tier roster changes
-  // Positive adjustment = player has received extra loot, lower their priority
-  // Negative adjustment = player missed loot, increase their priority
-  // Only apply if toggle is on
-  if (options?.includeLootAdjustment && player.lootAdjustment && advancedOptions.useLootAdjustments) {
-    const lootPenalty = advancedOptions.useMultipliers
+  // Positive adjustment = increase priority (player needs to catch up)
+  // Negative adjustment = decrease priority (player has received enough)
+  if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+    const lootMultiplier = advancedOptions.useMultipliers
       ? advancedOptions.lootReceivedPenalty
       : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
-    score -= player.lootAdjustment * lootPenalty;
+    score += player.lootAdjustment * lootMultiplier;
   }
 
   return score;
@@ -255,7 +254,7 @@ export function calculatePriorityScoreWithBreakdown(
       rolePriority: 0,
       weightedNeed: 0,
       weightedNeedBonus: 0,
-      lootAdjustmentPenalty: 0,
+      lootAdjustmentBonus: 0,
       jobModifier: 0,
       playerModifier: 0,
     };
@@ -269,20 +268,20 @@ export function calculatePriorityScoreWithBreakdown(
       ? calculateJobBasedPriority(player, settings)
       : calculatePlayerBasedPriority(player, settings);
 
-    let lootAdjustmentPenalty = 0;
-    if (options?.includeLootAdjustment && player.lootAdjustment && advancedOptions.useLootAdjustments) {
-      const lootPenalty = advancedOptions.useMultipliers
+    let lootAdjustmentBonus = 0;
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
         ? advancedOptions.lootReceivedPenalty
         : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
-      lootAdjustmentPenalty = player.lootAdjustment * lootPenalty;
+      lootAdjustmentBonus = player.lootAdjustment * lootMultiplier;
     }
 
     return {
-      score: Math.round(baseScore - lootAdjustmentPenalty),
+      score: Math.round(baseScore + lootAdjustmentBonus),
       rolePriority: baseScore, // Use this field to show the group-based priority
       weightedNeed: 0,
       weightedNeedBonus: 0,
-      lootAdjustmentPenalty,
+      lootAdjustmentBonus,
       jobModifier: 0,
       playerModifier: 0,
     };
@@ -318,22 +317,22 @@ export function calculatePriorityScoreWithBreakdown(
   // Player-level modifier (use nullish coalescing to handle explicit 0 values)
   const playerModifier = player.priorityModifier ?? 0;
 
-  let lootAdjustmentPenalty = 0;
-  if (options?.includeLootAdjustment && player.lootAdjustment && advancedOptions.useLootAdjustments) {
-    const lootPenalty = advancedOptions.useMultipliers
+  let lootAdjustmentBonus = 0;
+  if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+    const lootMultiplier = advancedOptions.useMultipliers
       ? advancedOptions.lootReceivedPenalty
       : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
-    lootAdjustmentPenalty = player.lootAdjustment * lootPenalty;
+    lootAdjustmentBonus = player.lootAdjustment * lootMultiplier;
   }
 
-  const score = Math.round(rolePriority + weightedNeedBonus + jobModifier + playerModifier - lootAdjustmentPenalty);
+  const score = Math.round(rolePriority + weightedNeedBonus + jobModifier + playerModifier + lootAdjustmentBonus);
 
   return {
     score,
     rolePriority,
     weightedNeed: advancedOptions.useWeightedNeed ? weightedNeedRaw : 0, // Show raw value or 0 based on toggle
     weightedNeedBonus,
-    lootAdjustmentPenalty,
+    lootAdjustmentBonus,
     jobModifier,
     playerModifier,
   };

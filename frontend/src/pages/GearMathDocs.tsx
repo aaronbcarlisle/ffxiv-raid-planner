@@ -480,7 +480,7 @@ export default function GearMathDocs() {
   rolePriority: number;       // (5 - roleIndex) * 25
   weightedNeed: number;       // Sum of slot weights for incomplete slots
   weightedNeedBonus: number;  // weightedNeed * 10
-  lootAdjustmentPenalty: number; // lootAdjustment * 15
+  lootAdjustmentBonus: number; // lootAdjustment * multiplier (positive = boost)
 }`}
             />
 
