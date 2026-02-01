@@ -299,10 +299,11 @@ export function WeaponPriorityModal({
             <div className="flex-shrink-0 flex justify-between gap-3 pt-4 border-t border-border-default mt-4">
               <Button
                 type="button"
-                variant="secondary"
+                variant="ghost"
                 onClick={handleResetClick}
                 disabled={!canEdit || weaponPriorities.length <= 1}
               >
+                <RotateCcw className="w-4 h-4 mr-1.5" />
                 Reset
               </Button>
               <div className="flex gap-3">

@@ -1,6 +1,10 @@
 /**
  * Static Settings Modal
  *
+ * @deprecated Use SettingsPanel slide-out for GroupView. This modal is kept for Dashboard.tsx
+ * which doesn't have access to tier players. Consider migrating Dashboard to use a simpler
+ * settings modal or refactoring in a future update.
+ *
  * Allows owners to rename, toggle public/private, manage invitations, and delete their static.
  * Also allows leads/owners to customize loot priority order.
  */

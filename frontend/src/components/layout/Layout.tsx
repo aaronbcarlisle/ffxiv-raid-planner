@@ -45,7 +45,7 @@ export function Layout() {
           1. Only the main content area scrolls (header is fixed, page uses overflow-hidden)
           2. Global application caused layout issues on some mobile devices (see index.css)
           3. Scoping to the scroll container is more predictable across browsers */}
-      <main className="w-full pt-1 pb-3 md:py-3 flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+      <main className="w-full pt-1 pb-3 md:py-2 flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <Outlet />
       </main>
 

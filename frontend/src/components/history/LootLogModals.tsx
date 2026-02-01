@@ -17,7 +17,7 @@ import { LogMaterialModal } from './LogMaterialModal';
 import { MarkFloorClearedModal } from './MarkFloorClearedModal';
 import { EditBookBalanceModal } from './EditBookBalanceModal';
 import { PlayerLedgerModal } from './PlayerLedgerModal';
-import { ResetConfirmModal, type ResetType } from '../ui/ResetConfirmModal';
+import { ResetConfirmModal, type ResetConfig } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -98,7 +98,7 @@ export interface LootLogModalsProps {
   onHistoryCleared: () => void;
 
   // Reset Confirmation Modal
-  resetModalType: ResetType | null;
+  resetConfig: ResetConfig | null;
   onResetConfirm: () => Promise<void>;
   onCancelReset: () => void;
 
@@ -158,7 +158,7 @@ export function LootLogModals({
   onHistoryCleared,
 
   // Reset Confirmation Modal
-  resetModalType,
+  resetConfig,
   onResetConfirm,
   onCancelReset,
 
@@ -249,10 +249,10 @@ export function LootLogModals({
       )}
 
       {/* Reset Confirmation Modal */}
-      {resetModalType && (
+      {resetConfig && (
         <ResetConfirmModal
-          isOpen={!!resetModalType}
-          resetType={resetModalType}
+          isOpen={!!resetConfig}
+          config={resetConfig}
           onConfirm={onResetConfirm}
           onCancel={onCancelReset}
         />

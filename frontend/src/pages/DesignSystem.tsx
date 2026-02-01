@@ -22,6 +22,9 @@ import { Label } from '../components/ui/Label';
 import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
+import { Toggle } from '../components/ui/Toggle';
+import { NumberInput } from '../components/ui/NumberInput';
+import { WeekStepper } from '../components/history/WeekStepper';
 import { Select } from '../components/ui/Select';
 import { SearchableSelect, type GroupConfig } from '../components/ui/SearchableSelect';
 import {
@@ -692,6 +695,10 @@ function FormsSection() {
   const [selectValue, setSelectValue] = useState('');
   const [searchableSelectValue, setSearchableSelectValue] = useState('');
   const [categorizedSelectValue, setCategorizedSelectValue] = useState('');
+  const [toggleValue, setToggleValue] = useState(false);
+  const [toggleWithLabelValue, setToggleWithLabelValue] = useState(true);
+  const [numberValue, setNumberValue] = useState<number | null>(5);
+  const [weekStepperWeek, setWeekStepperWeek] = useState(3);
 
   // Sample data for categorized dropdown demo
   const ROLE_GROUP_CONFIG: Record<string, GroupConfig> = {
@@ -1045,6 +1052,194 @@ const options = users.map(u => ({
               disabled
             />
             <span className="text-sm text-text-muted">Disabled</span>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* Toggle (Recessed Orb) */}
+      <Subsection title="Toggle (Recessed Orb Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Premium toggle switch with "Recessed Orb" design. Dark sphere inset into track,
+          teal track when on, dark track when off. Used for feature toggles and settings.
+        </p>
+        <div className="space-y-6">
+          {/* Basic toggles */}
+          <div className="flex flex-wrap gap-8 items-center">
+            <div className="flex flex-col items-center gap-2">
+              <Toggle
+                checked={toggleValue}
+                onChange={setToggleValue}
+              />
+              <span className="text-xs text-text-muted">Interactive</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={true} onChange={() => {}} />
+              <span className="text-xs text-text-muted">On</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={false} onChange={() => {}} />
+              <span className="text-xs text-text-muted">Off</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={true} onChange={() => {}} disabled />
+              <span className="text-xs text-text-muted">Disabled On</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={false} onChange={() => {}} disabled />
+              <span className="text-xs text-text-muted">Disabled Off</span>
+            </div>
+          </div>
+
+          {/* Toggle with label */}
+          <div className="space-y-3 max-w-md">
+            <Toggle
+              checked={toggleWithLabelValue}
+              onChange={setToggleWithLabelValue}
+              label="Enable notifications"
+              hint="Receive alerts when loot is logged"
+            />
+            <Toggle
+              checked={false}
+              onChange={() => {}}
+              label="Show priority scores"
+              hint="Display numeric scores in the loot panel"
+            />
+          </div>
+
+          {/* Sizes */}
+          <div className="flex flex-wrap gap-8 items-center">
+            <div className="flex items-center gap-3">
+              <Toggle checked={true} onChange={() => {}} size="sm" />
+              <span className="text-sm text-text-muted">Small</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Toggle checked={true} onChange={() => {}} size="md" />
+              <span className="text-sm text-text-muted">Medium (default)</span>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* NumberInput (Unified Capsule) */}
+      <Subsection title="Number Input (Unified Capsule Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Premium numeric input with teal +/- buttons on sides and recessed center value display.
+          Supports keyboard input, min/max bounds, and step increments.
+        </p>
+        <div className="space-y-6">
+          {/* Basic demos */}
+          <div className="flex flex-wrap gap-6 items-end">
+            <div>
+              <Label size="sm">Interactive</Label>
+              <NumberInput
+                value={numberValue}
+                onChange={setNumberValue}
+                min={0}
+                max={20}
+                step={1}
+              />
+            </div>
+            <div>
+              <Label size="sm">With Bounds (0-100)</Label>
+              <NumberInput
+                value={50}
+                onChange={() => {}}
+                min={0}
+                max={100}
+                step={5}
+              />
+            </div>
+            <div>
+              <Label size="sm">Disabled</Label>
+              <NumberInput
+                value={10}
+                onChange={() => {}}
+                disabled
+              />
+            </div>
+          </div>
+
+          {/* Sizes */}
+          <div className="flex flex-wrap gap-6 items-end">
+            <div>
+              <Label size="sm">Small</Label>
+              <NumberInput
+                value={5}
+                onChange={() => {}}
+                size="sm"
+              />
+            </div>
+            <div>
+              <Label size="sm">Medium (default)</Label>
+              <NumberInput
+                value={10}
+                onChange={() => {}}
+                size="md"
+              />
+            </div>
+          </div>
+
+          {/* Without buttons */}
+          <div className="max-w-[200px]">
+            <Label size="sm">Without Buttons</Label>
+            <NumberInput
+              value={25}
+              onChange={() => {}}
+              showButtons={false}
+            />
+          </div>
+        </div>
+      </Subsection>
+
+      {/* WeekStepper (Dot Stepper) */}
+      <Subsection title="Week Stepper (Dot Stepper Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Navigation component for selecting raid weeks. Features clickable dots for each week,
+          with the current week shown as an expanded pill. Includes status indicators for weeks with data.
+        </p>
+        <div className="space-y-6">
+          {/* Interactive demo */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">Interactive Demo</Label>
+            <WeekStepper
+              currentWeek={weekStepperWeek}
+              maxWeek={8}
+              calculatedCurrentWeek={5}
+              onWeekChange={setWeekStepperWeek}
+              weeksWithEntries={new Set([1, 2, 3, 5])}
+              weekDataTypes={new Map([
+                [1, ['loot', 'books']],
+                [2, ['loot', 'mats']],
+                [3, ['loot', 'books', 'mats']],
+                [5, ['loot']],
+              ])}
+            />
+          </div>
+
+          {/* With action buttons */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">With Start/Revert Actions</Label>
+            <WeekStepper
+              currentWeek={4}
+              maxWeek={8}
+              calculatedCurrentWeek={4}
+              onWeekChange={() => {}}
+              weeksWithEntries={new Set([1, 2, 3, 4])}
+              onStartNextWeek={async () => {}}
+              onRevertWeek={async () => {}}
+            />
+          </div>
+
+          {/* Disabled state */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">Disabled</Label>
+            <WeekStepper
+              currentWeek={2}
+              maxWeek={6}
+              calculatedCurrentWeek={2}
+              onWeekChange={() => {}}
+              disabled
+            />
           </div>
         </div>
       </Subsection>

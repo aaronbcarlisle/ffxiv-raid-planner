@@ -25,7 +25,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent text-accent-contrast'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="Grid view"
+        aria-label="Week view"
         aria-pressed={layoutMode === 'grid'}
       >
         {/* Grid icon - 4 squares */}
@@ -43,7 +43,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent text-accent-contrast'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="List view"
+        aria-label="History view"
         aria-pressed={layoutMode === 'split'}
       >
         {/* List icon - horizontal bars */}

@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Gauge } from 'lucide-react';
+import { Gauge, RotateCcw } from 'lucide-react';
 import { Modal, NumberInput, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -22,32 +22,32 @@ interface PriorityAdjustModalProps {
   isOpen: boolean;
   onClose: () => void;
   player: SnapshotPlayer;
-  onSave: (playerId: string, modifier: number) => Promise<void>;
+  onSave: (playerId: string, adjustment: number) => Promise<void>;
 }
 
 export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: PriorityAdjustModalProps) {
-  const [modifier, setModifier] = useState<number>(player.priorityModifier ?? 0);
+  const [adjustment, setAdjustment] = useState<number>(player.lootAdjustment ?? 0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset modifier state when player changes or modal opens
+  // Reset adjustment state when player changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setModifier(player.priorityModifier ?? 0);
+      setAdjustment(player.lootAdjustment ?? 0);
       setError(null);
     }
-  }, [isOpen, player.id, player.priorityModifier]);
+  }, [isOpen, player.id, player.lootAdjustment]);
 
   const handleSave = async () => {
     // Validate range before saving
-    if (modifier < PRIORITY_MODIFIER_MIN || modifier > PRIORITY_MODIFIER_MAX) {
+    if (adjustment < PRIORITY_MODIFIER_MIN || adjustment > PRIORITY_MODIFIER_MAX) {
       return;
     }
 
     setIsSaving(true);
     setError(null);
     try {
-      await onSave(player.id, modifier);
+      await onSave(player.id, adjustment);
       onClose();
     } catch (err) {
       // Log error for debugging, show user-friendly message
@@ -59,10 +59,10 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
   };
 
   const handleReset = () => {
-    setModifier(0);
+    setAdjustment(0);
   };
 
-  const hasChanged = modifier !== (player.priorityModifier ?? 0);
+  const hasChanged = adjustment !== (player.lootAdjustment ?? 0);
 
   return (
     <Modal
@@ -86,13 +86,13 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
           </div>
         </div>
 
-        {/* Modifier input */}
+        {/* Adjustment input */}
         <div>
-          <Label htmlFor="priorityModifier">Priority Modifier</Label>
+          <Label htmlFor="lootAdjustment">Loot Adjustment</Label>
           <NumberInput
-            id="priorityModifier"
-            value={modifier}
-            onChange={(value) => setModifier(value ?? 0)}
+            id="lootAdjustment"
+            value={adjustment}
+            onChange={(value) => setAdjustment(value ?? 0)}
             min={PRIORITY_MODIFIER_MIN}
             max={PRIORITY_MODIFIER_MAX}
             step={PRIORITY_MODIFIER_STEP}
@@ -128,9 +128,10 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
             type="button"
             variant="ghost"
             onClick={handleReset}
-            disabled={modifier === 0}
+            disabled={adjustment === 0}
           >
-            Reset to 0
+            <RotateCcw className="w-4 h-4 mr-1.5" />
+            Reset
           </Button>
           <div className="flex gap-3">
             <Button type="button" variant="secondary" onClick={onClose}>

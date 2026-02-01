@@ -35,10 +35,11 @@ type PrioritySubTab = 'mode' | 'advanced';
 interface PriorityTabProps {
   group: StaticGroup;
   players: SnapshotPlayer[];
+  tierId?: string;
   onClose?: () => void;
 }
 
-export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
+export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
   // Subtab state
@@ -65,19 +66,9 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
     };
   });
 
-  // Player loot adjustments state
-  const [lootAdjustments, setLootAdjustments] = useState<Record<string, number>>(() => {
-    const adjustments: Record<string, number> = {};
-    players.forEach(p => {
-      adjustments[p.id] = p.lootAdjustment ?? 0;
-    });
-    return adjustments;
-  });
-
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-  const [hasAdjustmentChanges, setHasAdjustmentChanges] = useState(false);
 
   // Track changes
   useEffect(() => {
@@ -86,21 +77,16 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
     setHasChanges(changed);
   }, [settings, group.settings?.prioritySettings]);
 
-  // Track adjustment changes
-  useEffect(() => {
-    const originalAdjustments: Record<string, number> = {};
-    players.forEach(p => {
-      originalAdjustments[p.id] = p.lootAdjustment ?? 0;
-    });
-    const changed = JSON.stringify(lootAdjustments) !== JSON.stringify(originalAdjustments);
-    setHasAdjustmentChanges(changed);
-  }, [lootAdjustments, players]);
-
   // Permission checks
   const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
 
   // Mode change handler
   const handleModeChange = useCallback((mode: PrioritySystemMode) => {
+    // If switching to disabled mode, switch to Mode tab
+    if (mode === 'disabled') {
+      setActiveSubTab('mode');
+    }
+
     setSettings((prev) => {
       const newSettings = { ...prev, mode };
 
@@ -184,17 +170,9 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
     }));
   }, []);
 
-  // Loot adjustment change handler
-  const handleAdjustmentChange = useCallback((playerId: string, value: number | null) => {
-    setLootAdjustments((prev) => ({
-      ...prev,
-      [playerId]: value ?? 0,
-    }));
-  }, []);
-
   // Save handler
   const handleSave = async () => {
-    if (!hasChanges && !hasAdjustmentChanges) return;
+    if (!hasChanges) return;
 
     setIsSaving(true);
     setError(null);
@@ -220,16 +198,8 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
         });
       }
 
-      // Save player loot adjustments if changed
-      // This would need a separate API call to update individual players
-      // For now, we'll rely on the existing player update mechanism
-
       toast.success('Priority settings saved!');
       setHasChanges(false);
-      setHasAdjustmentChanges(false);
-      if (onClose) {
-        onClose();
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save settings';
       setError(message);
@@ -259,14 +229,17 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
             Mode
           </button>
         </Tooltip>
-        <Tooltip content="Fine-tune priority calculations">
+        <Tooltip content={settings.mode === 'disabled' ? 'Advanced options are not available when priority is disabled' : 'Fine-tune priority calculations'}>
           {/* design-system-ignore: Subtab button requires specific toggle styling */}
           <button
-            onClick={() => setActiveSubTab('advanced')}
+            onClick={() => settings.mode !== 'disabled' && setActiveSubTab('advanced')}
+            disabled={settings.mode === 'disabled'}
             className={`px-3 py-1.5 text-sm rounded transition-colors font-medium ${
-              activeSubTab === 'advanced'
-                ? 'bg-accent text-accent-contrast'
-                : 'text-text-secondary hover:text-text-primary'
+              settings.mode === 'disabled'
+                ? 'text-text-disabled cursor-not-allowed'
+                : activeSubTab === 'advanced'
+                  ? 'bg-accent text-accent-contrast'
+                  : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             Advanced
@@ -364,8 +337,8 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
             disabled={!canEdit}
             priorityDisabled={settings.mode === 'disabled'}
             players={configuredPlayers}
-            lootAdjustments={lootAdjustments}
-            onAdjustmentChange={handleAdjustmentChange}
+            groupId={group.id}
+            tierId={tierId}
           />
         )}
       </div>
@@ -375,7 +348,7 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
         <div className="flex-shrink-0 flex justify-end pt-4 pb-4 pr-4 border-t border-border-default bg-surface-card">
           <Button
             onClick={handleSave}
-            disabled={!hasChanges && !hasAdjustmentChanges}
+            disabled={!hasChanges}
             loading={isSaving}
           >
             <Save className="w-4 h-4 mr-1.5" />

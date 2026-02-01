@@ -13,7 +13,7 @@ import { toast } from '../../stores/toastStore';
 import { logger } from '../../lib/logger';
 import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
-import { WeekSelector } from './WeekSelector';
+import { WeekStepper } from './WeekStepper';
 import { SectionedLogView } from './SectionedLogView';
 import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
 import type { SnapshotPlayer } from '../../types';
@@ -44,8 +44,8 @@ interface HistoryViewProps {
   /** Open Mark Floor Cleared modal (from keyboard shortcut) */
   openMarkFloorClearedModal?: boolean;
   onMarkFloorClearedModalClose?: () => void;
-  /** Callback to open Log Week wizard */
-  onLogWeek?: () => void;
+  /** Callback to open Log Week wizard for a specific week */
+  onLogWeek?: (week: number) => void;
   /** Callback to open Log Week wizard in single floor mode */
   onLogFloor?: (floor: FloorNumber) => void;
 }
@@ -240,29 +240,34 @@ export function HistoryView({
   // Determine if user can edit (Owner/Lead or Admin)
   const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
 
+  // Build week selector props for consolidated toolbar
+  const weekSelectorProps = {
+    currentWeek: selectedWeek,
+    maxWeek,
+    calculatedCurrentWeek: currentWeek,
+    weeksWithEntries,
+    weekDataTypes,
+    onStartNextWeek: canEdit ? handleStartNextWeek : undefined,
+    isStartingNextWeek,
+    onRevertWeek: canEdit ? handleRevertWeekClick : undefined,
+    isRevertingWeek,
+  };
+
   return (
     <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 md:w-full md:mx-0">
-      {/* Week selector with Log Week button - full width on mobile */}
-      <div className="flex-shrink-0 py-1 md:py-0 md:mb-4">
-        <div className="flex items-center justify-center gap-4 px-2 md:px-0">
-          <WeekSelector
-            currentWeek={selectedWeek}
-            maxWeek={maxWeek}
-            calculatedCurrentWeek={currentWeek}
+      {/* Mobile-only: Week selector row (desktop shows in consolidated toolbar) */}
+      <div className="flex-shrink-0 py-1 md:hidden">
+        <div className="flex items-center justify-center gap-4 px-2">
+          <WeekStepper
+            {...weekSelectorProps}
             onWeekChange={handleWeekChange}
-            weeksWithEntries={weeksWithEntries}
-            weekDataTypes={weekDataTypes}
-            onStartNextWeek={canEdit ? handleStartNextWeek : undefined}
-            isStartingNextWeek={isStartingNextWeek}
-            onRevertWeek={canEdit ? handleRevertWeekClick : undefined}
-            isRevertingWeek={isRevertingWeek}
           />
           {canEdit && onLogWeek && (
             <Tooltip content="Log all drops for this week using a step-by-step wizard">
               <Button
                 variant="primary"
                 size="sm"
-                onClick={onLogWeek}
+                onClick={() => onLogWeek(selectedWeek)}
               >
                 <ClipboardList className="w-4 h-4 mr-1.5" />
                 Log Week
@@ -275,26 +280,28 @@ export function HistoryView({
       {/* Sectioned log view - fills remaining space */}
       <div className="flex-1 min-h-0 px-4 md:px-0 flex flex-col">
         <SectionedLogView
-        groupId={groupId}
-        tierId={tierId}
-        players={players}
-        floors={floors}
-        currentWeek={selectedWeek}
-        canEdit={canEdit}
-        currentUserId={currentUserId}
-        userRole={userRole}
-        highlightedBookPlayerId={highlightedBookPlayerId}
-        onWeekChange={handleWeekChange}
-        onNavigateToPlayer={onNavigateToPlayer}
-        highlightedEntryId={highlightedEntryId}
-        highlightedEntryType={highlightedEntryType}
-        openLogLootModal={openLogLootModal}
-        onLogLootModalClose={onLogLootModalClose}
-        openLogMaterialModal={openLogMaterialModal}
-        onLogMaterialModalClose={onLogMaterialModalClose}
-        openMarkFloorClearedModal={openMarkFloorClearedModal}
-        onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
-        onLogFloor={onLogFloor}
+          groupId={groupId}
+          tierId={tierId}
+          players={players}
+          floors={floors}
+          currentWeek={selectedWeek}
+          canEdit={canEdit}
+          currentUserId={currentUserId}
+          userRole={userRole}
+          highlightedBookPlayerId={highlightedBookPlayerId}
+          onWeekChange={handleWeekChange}
+          onNavigateToPlayer={onNavigateToPlayer}
+          highlightedEntryId={highlightedEntryId}
+          highlightedEntryType={highlightedEntryType}
+          openLogLootModal={openLogLootModal}
+          onLogLootModalClose={onLogLootModalClose}
+          openLogMaterialModal={openLogMaterialModal}
+          onLogMaterialModalClose={onLogMaterialModalClose}
+          openMarkFloorClearedModal={openMarkFloorClearedModal}
+          onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
+          onLogFloor={onLogFloor}
+          weekSelectorProps={weekSelectorProps}
+          onLogWeek={onLogWeek}
         />
       </div>
 

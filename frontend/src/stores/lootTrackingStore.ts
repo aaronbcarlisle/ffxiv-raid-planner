@@ -525,47 +525,8 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   clearWeekPageLedger: async (groupId, tierId, week) => {
     set({ error: null });
     try {
-      // Get all ledger entries for this tier
-      const response = await api.get<PageLedgerEntry[]>(
-        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`
-      );
-
-      // Filter to entries for the specific week
-      const weekEntries = response.filter((entry) => entry.weekNumber === week);
-
-      // Delete each entry individually
-      // Note: This requires a delete endpoint for individual ledger entries
-      // For now, we'll use a workaround by creating adjustment entries to zero out the balances
-      // Group by player and book type to calculate reversals
-      const adjustments = new Map<string, Map<string, number>>();
-      for (const entry of weekEntries) {
-        const playerKey = entry.playerId;
-        const bookKey = entry.bookType;
-        if (!adjustments.has(playerKey)) {
-          adjustments.set(playerKey, new Map());
-        }
-        const playerAdj = adjustments.get(playerKey)!;
-        const currentAdj = playerAdj.get(bookKey) || 0;
-        // All ledger entries add their quantity to the balance, so to reset we subtract the sum
-        playerAdj.set(bookKey, currentAdj - entry.quantity);
-      }
-
-      // Apply reverse adjustments to zero out the week's entries
-      for (const [playerId, bookAdjs] of adjustments) {
-        for (const [bookType, adjustment] of bookAdjs) {
-          if (adjustment !== 0) {
-            await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
-              playerId,
-              weekNumber: week,
-              floor: 'adjustment',
-              bookType,
-              transactionType: 'adjustment',
-              quantity: adjustment,
-              notes: `Reset Week ${week} books`,
-            });
-          }
-        }
-      }
+      // Delete all ledger entries for this week
+      await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger/week/${week}`);
 
       // Refresh balances and ledger
       await Promise.all([

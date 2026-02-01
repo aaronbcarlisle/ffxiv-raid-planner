@@ -650,7 +650,7 @@ export function LootPriorityPanel({
         <div className="flex flex-col flex-1 min-h-0 bg-surface-card border border-border-default rounded-lg overflow-hidden sm:block sm:flex-none">
           {/* Floor selector with Log Floor button */}
           {onFloorChange && (
-            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated flex items-start justify-between gap-3">
+            <div className="flex-shrink-0 p-3 border-b border-border-default bg-surface-elevated flex items-center justify-between gap-3">
               <FilterBar
                 type="floor"
                 floors={floors}
@@ -661,6 +661,7 @@ export function LootPriorityPanel({
               {showLogButtons && groupId && tierId && (
                 <Button
                   size="sm"
+                  className="!py-1"
                   onClick={() => setLogFloorWizardOpen(true)}
                 >
                   + Log Floor

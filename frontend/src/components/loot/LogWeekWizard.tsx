@@ -5,9 +5,18 @@
  * Streamlines the process of recording gear drops, materials, and book clears.
  *
  * Design matches the SetupWizard for consistency.
+ *
+ * NOTE: Future enhancement consideration - "Edit Mode"
+ * Currently, if a user opens the wizard for a week that already has logged loot,
+ * it shows fresh priority suggestions rather than the existing logged entries.
+ * This can lead to duplicate entries if a user accidentally logs the same week twice.
+ * A future improvement could detect existing entries and switch to an "Edit Week Log"
+ * mode that shows already-logged recipients with the ability to swap them out.
+ * For now, users can manually edit/delete duplicate entries from the loot log,
+ * or use the Reset options to clear and re-log.
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Package,
   Book,
@@ -18,7 +27,7 @@ import {
   Loader2,
   Gem,
 } from 'lucide-react';
-import { Modal, Select, Checkbox, Label, ToggleSwitch } from '../ui';
+import { Modal, Select, Label, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { toast } from '../../stores/toastStore';
@@ -72,6 +81,7 @@ interface LogWeekWizardProps {
   floors: string[];
   currentWeek: number;
   lootLog?: LootLogEntry[];
+  materialLog?: import('../../types').MaterialLogEntry[];
   onSuccess?: () => void;
   /** Single floor mode - only log specified floor, skip floor tabs */
   singleFloorMode?: boolean;
@@ -89,6 +99,7 @@ export function LogWeekWizard({
   floors,
   currentWeek,
   lootLog: _lootLog = [],
+  materialLog = [],
   onSuccess,
   singleFloorMode = false,
   initialFloor = 1,
@@ -170,8 +181,8 @@ export function LogWeekWizard({
   const getSuggestedMaterialPlayer = useCallback(
     (material: UpgradeMaterialType): { playerId: string | null; selectedSlot: GearSlot | null; augmentTomeWeapon: boolean } => {
       const priorityEntries = isSlotAugmentationMaterial(material)
-        ? getPriorityForUpgradeMaterial(mainRosterPlayers, material, settings)
-        : getPriorityForUniversalTomestone(mainRosterPlayers, settings);
+        ? getPriorityForUpgradeMaterial(mainRosterPlayers, material, settings, materialLog)
+        : getPriorityForUniversalTomestone(mainRosterPlayers, settings, materialLog);
 
       if (priorityEntries.length === 0) {
         return { playerId: null, selectedSlot: null, augmentTomeWeapon: false };
@@ -196,7 +207,7 @@ export function LogWeekWizard({
 
       return { playerId: topPlayer.id, selectedSlot, augmentTomeWeapon };
     },
-    [mainRosterPlayers, settings]
+    [mainRosterPlayers, settings, materialLog]
   );
 
   // Initialize floor data with suggested players (including materials)
@@ -224,20 +235,11 @@ export function LogWeekWizard({
       // Initialize material slots with suggested player pre-selected
       lootTable.upgradeMaterials.forEach((material) => {
         const suggestion = getSuggestedMaterialPlayer(material);
-        const hasEligibleOptions = suggestion.selectedSlot !== null || suggestion.augmentTomeWeapon;
-
-        // For Universal Tomestone, check if suggested player needs tome weapon
-        const isUniversalTomestone = material === 'universal_tomestone';
-        const suggestedPlayer = suggestion.playerId
-          ? mainRosterPlayers.find((p) => p.id === suggestion.playerId)
-          : null;
-        const needsTomeWeapon = isUniversalTomestone && suggestedPlayer && !suggestedPlayer.tomeWeapon?.hasItem;
-
         materials[material] = {
           slot: material,
           playerId: suggestion.playerId,
           didNotDrop: false,
-          updateGear: hasEligibleOptions || needsTomeWeapon,
+          updateGear: true,
           selectedSlot: suggestion.selectedSlot,
           augmentTomeWeapon: suggestion.augmentTomeWeapon,
         };
@@ -253,15 +255,19 @@ export function LogWeekWizard({
     return data;
   }, [getSuggestedPlayer, getSuggestedMaterialPlayer, singleFloorMode, initialFloor, mainRosterPlayers]);
 
-  // Reset state when modal opens
+  // Reset state when modal opens (only on open transition, not while already open)
+  // Use ref to track previous state to avoid resetting while modal is open
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
+      // Modal is opening - reset state
       setStep('gear');
       setSelectedFloor(singleFloorMode ? initialFloor : 1);
       setFloorData(initFloorData());
       setClearedFloors(singleFloorMode ? new Set([initialFloor]) : new Set([1, 2, 3, 4]));
       setError(null);
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, initFloorData, singleFloorMode, initialFloor]);
 
   // Handle slot assignment change
@@ -311,19 +317,6 @@ export function LogWeekWizard({
       });
     },
     [getSuggestedPlayer, getSuggestedMaterialPlayer]
-  );
-
-  // Handle update gear toggle
-  const handleUpdateGear = useCallback(
-    (floorNum: FloorNumber, type: 'gear' | 'materials', slot: string, updateGear: boolean) => {
-      setFloorData((prev) => {
-        const floor = { ...prev[floorNum] };
-        const slots = { ...floor[type] };
-        slots[slot] = { ...slots[slot], updateGear };
-        return { ...prev, [floorNum]: { ...floor, [type]: slots } };
-      });
-    },
-    []
   );
 
   // Handle book clear toggle
@@ -434,8 +427,8 @@ export function LogWeekWizard({
   const getMaterialRecipientOptions = useCallback(
     (material: UpgradeMaterialType) => {
       const priorityEntries = isSlotAugmentationMaterial(material)
-        ? getPriorityForUpgradeMaterial(mainRosterPlayers, material, settings)
-        : getPriorityForUniversalTomestone(mainRosterPlayers, settings);
+        ? getPriorityForUpgradeMaterial(mainRosterPlayers, material, settings, materialLog)
+        : getPriorityForUniversalTomestone(mainRosterPlayers, settings, materialLog);
 
       const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, i + 1]));
       const anyoneNeedsMaterial = priorityEntries.length > 0;
@@ -467,7 +460,7 @@ export function LogWeekWizard({
         })),
       ];
     },
-    [mainRosterPlayers, settings]
+    [mainRosterPlayers, settings, materialLog]
   );
 
   // Handle material player change - also update eligible slots
@@ -499,13 +492,12 @@ export function LogWeekWizard({
               entry.selectedSlot = eligibleSlots.length > 0 ? eligibleSlots[0] : null;
               entry.augmentTomeWeapon = false;
             }
-            // Auto-enable update gear if there's an eligible slot or tome weapon
-            entry.updateGear = !!entry.selectedSlot || !!entry.augmentTomeWeapon;
+            entry.updateGear = true;
           }
         } else {
           entry.selectedSlot = null;
           entry.augmentTomeWeapon = false;
-          entry.updateGear = false;
+          entry.updateGear = true;
         }
 
         materials[materialType] = entry;
@@ -889,39 +881,25 @@ export function LogWeekWizard({
                                 <span className="text-sm text-text-secondary">{slotName}</span>
                               </div>
 
-                              {/* Dropdown - grows to fill space */}
+                              {/* Dropdown - grows to fill space, disabled when toggled off */}
                               <div className="flex-1 min-w-0">
-                                {!entry.didNotDrop ? (
-                                  <Select
-                                    value={entry.playerId || ''}
-                                    onChange={(v) => handleSlotChange(selectedFloor, 'gear', slot, v || null)}
-                                    options={getRecipientOptions(slot as GearSlot)}
-                                  />
-                                ) : (
-                                  <span className="text-sm text-text-muted italic">Skipped</span>
-                                )}
+                                <Select
+                                  value={entry.playerId || ''}
+                                  onChange={(v) => handleSlotChange(selectedFloor, 'gear', slot, v || null)}
+                                  options={getRecipientOptions(slot as GearSlot)}
+                                  disabled={entry.didNotDrop}
+                                />
                               </div>
 
                               {/* Floor-colored toggle */}
-                              <ToggleSwitch
+                              <Toggle
                                 checked={!entry.didNotDrop}
                                 onChange={(checked) => handleDidNotDrop(selectedFloor, 'gear', slot, !checked)}
                                 color={FLOOR_COLORS[selectedFloor].hex}
                                 aria-label={`Toggle ${slotName} drop`}
+                                size="sm"
                               />
                             </div>
-
-                            {/* Second row: Mark acquired checkbox */}
-                            {!entry.didNotDrop && entry.playerId && (
-                              <div className="mt-1.5 ml-[92px]">
-                                <Checkbox
-                                  checked={entry.updateGear}
-                                  onChange={(checked) => handleUpdateGear(selectedFloor, 'gear', slot, checked)}
-                                  label="Mark as acquired"
-                                  color={FLOOR_COLORS[selectedFloor].hex}
-                                />
-                              </div>
-                            )}
                           </div>
                         );
                       })}
@@ -958,15 +936,6 @@ export function LogWeekWizard({
                             : false;
                           const hasEligibleOptions = eligibleSlots.length > 0 || canAugmentTomeWeapon;
 
-                          // For universal tomestone, check if player needs tome weapon
-                          const needsTomeWeapon = selectedPlayer && isUniversalTomestone
-                            ? !selectedPlayer.tomeWeapon?.hasItem
-                            : false;
-
-                          // Should show checkbox?
-                          const showCheckbox = !entry.didNotDrop && entry.playerId && (hasEligibleOptions || (isUniversalTomestone && needsTomeWeapon));
-                          const checkboxLabel = isUniversalTomestone && needsTomeWeapon ? 'Mark as obtained' : 'Mark as augmented';
-
                           // Shorter display name and color for materials (using design system)
                           const shortMaterialName = isUniversalTomestone ? 'U. Tome' : materialName;
                           const materialColorClass = materialType === 'twine' ? 'text-material-twine'
@@ -986,63 +955,43 @@ export function LogWeekWizard({
                                   <span className={`text-sm font-medium ${materialColorClass}`}>{shortMaterialName}</span>
                                 </div>
 
-                                {/* Dropdown area */}
+                                {/* Dropdown area - disabled when toggled off */}
                                 <div className="flex-1 min-w-0 flex items-center gap-2">
-                                  {!entry.didNotDrop ? (
-                                    <>
-                                      <div className="flex-1 min-w-0">
-                                        <Select
-                                          value={entry.playerId || ''}
-                                          onChange={(v) => handleMaterialPlayerChange(selectedFloor, materialType, v || null)}
-                                          options={getMaterialRecipientOptions(materialType as UpgradeMaterialType)}
-                                        />
-                                      </div>
-                                      {/* Slot dropdown for materials with multiple options */}
-                                      {entry.playerId && hasEligibleOptions && (eligibleSlots.length > 1 || (eligibleSlots.length > 0 && canAugmentTomeWeapon)) && (
-                                        <div className="w-32 flex-shrink-0">
-                                          <Select
-                                            value={entry.augmentTomeWeapon ? 'tome_weapon' : (entry.selectedSlot || '')}
-                                            onChange={(val) => handleMaterialSlotChange(selectedFloor, materialType, val)}
-                                            options={[
-                                              ...(canAugmentTomeWeapon ? [{ value: 'tome_weapon', label: 'Tome Weapon' }] : []),
-                                              ...eligibleSlots.map((slot) => ({
-                                                value: slot,
-                                                label: GEAR_SLOT_NAMES[slot],
-                                              })),
-                                            ]}
-                                          />
-                                        </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <span className="text-sm text-text-muted italic">Skipped</span>
+                                  <div className="flex-1 min-w-0">
+                                    <Select
+                                      value={entry.playerId || ''}
+                                      onChange={(v) => handleMaterialPlayerChange(selectedFloor, materialType, v || null)}
+                                      options={getMaterialRecipientOptions(materialType as UpgradeMaterialType)}
+                                      disabled={entry.didNotDrop}
+                                    />
+                                  </div>
+                                  {/* Slot dropdown for materials with multiple options */}
+                                  {!entry.didNotDrop && entry.playerId && hasEligibleOptions && (eligibleSlots.length > 1 || (eligibleSlots.length > 0 && canAugmentTomeWeapon)) && (
+                                    <div className="w-32 flex-shrink-0">
+                                      <Select
+                                        value={entry.augmentTomeWeapon ? 'tome_weapon' : (entry.selectedSlot || '')}
+                                        onChange={(val) => handleMaterialSlotChange(selectedFloor, materialType, val)}
+                                        options={[
+                                          ...(canAugmentTomeWeapon ? [{ value: 'tome_weapon', label: 'Tome Weapon' }] : []),
+                                          ...eligibleSlots.map((slot) => ({
+                                            value: slot,
+                                            label: GEAR_SLOT_NAMES[slot],
+                                          })),
+                                        ]}
+                                      />
+                                    </div>
                                   )}
                                 </div>
 
                                 {/* Floor-colored toggle */}
-                                <ToggleSwitch
+                                <Toggle
                                   checked={!entry.didNotDrop}
                                   onChange={(checked) => handleDidNotDrop(selectedFloor, 'materials', materialType, !checked)}
                                   color={FLOOR_COLORS[selectedFloor].hex}
                                   aria-label={`Toggle ${materialName} drop`}
+                                  size="sm"
                                 />
                               </div>
-
-                              {/* Second row: Checkbox or no-eligible message */}
-                              {!entry.didNotDrop && entry.playerId && (
-                                <div className="mt-1.5 ml-[92px]">
-                                  {showCheckbox ? (
-                                    <Checkbox
-                                      checked={entry.updateGear}
-                                      onChange={(checked) => handleUpdateGear(selectedFloor, 'materials', materialType, checked)}
-                                      label={checkboxLabel}
-                                      color={FLOOR_COLORS[selectedFloor].hex}
-                                    />
-                                  ) : isSlotAugmentationMaterial(materialType as MaterialType) ? (
-                                    <span className="text-xs text-text-muted">No slots need augmentation</span>
-                                  ) : null}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
@@ -1162,7 +1111,7 @@ export function LogWeekWizard({
                             }`}
                             style={isSelected ? {
                               backgroundColor: `${floorColor.hex}20`,
-                              borderColor: floorColor.hex,
+                              borderColor: `${floorColor.hex}4D`,
                             } : undefined}
                           >
                             <input

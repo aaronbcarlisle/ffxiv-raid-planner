@@ -275,7 +275,7 @@ export function PriorityTab({ group, players }: PriorityTabProps) {
           options={settings.advancedOptions}
           onChange={handleAdvancedOptionsChange}
           disabled={!canEdit}
-          priorityDisabled={settings.mode === 'disabled'}
+          priorityDisabled={false}
         />
       )}
 

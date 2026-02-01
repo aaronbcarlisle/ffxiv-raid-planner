@@ -22,6 +22,7 @@ interface SettingsPanelProps {
   onClose: () => void;
   group: StaticGroup;
   players: SnapshotPlayer[];
+  tierId?: string;
   isAdmin?: boolean;
   /** Initial tab to show when panel opens */
   initialTab?: SettingsTab;
@@ -34,6 +35,7 @@ export function SettingsPanel({
   onClose,
   group,
   players,
+  tierId,
   isAdmin,
   initialTab = 'general',
   highlightCreateInvite = false,
@@ -85,9 +87,9 @@ export function SettingsPanel({
           Static Settings
         </span>
       }
-      width="xl"
+      width="3xl"
     >
-      <div className="flex flex-col h-full -m-4">
+      <div className="flex flex-col h-[calc(100%+2rem)] -m-4">
         {/* Tabs - scrollable on mobile */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
           {tabItems.map((tab) => {
@@ -110,7 +112,7 @@ export function SettingsPanel({
         </div>
 
         {/* Content - swipeable on mobile */}
-        <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col" {...swipeHandlers}>
+        <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col overflow-x-hidden" {...swipeHandlers}>
           {activeTab === 'general' && (
             <GeneralTab
               group={group}
@@ -122,6 +124,7 @@ export function SettingsPanel({
             <PriorityTab
               group={group}
               players={players}
+              tierId={tierId}
               onClose={onClose}
             />
           )}

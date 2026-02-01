@@ -125,8 +125,6 @@ export function MarkFloorClearedModal({
               value={weekNumber}
               onChange={(val) => setWeekNumber(val ?? 1)}
               min={1}
-              size="sm"
-              showButtons={false}
             />
           </div>
           <div>
@@ -166,7 +164,7 @@ export function MarkFloorClearedModal({
             </div>
           </div>
 
-          <div className="border border-border-default rounded-lg max-h-64 overflow-y-auto">
+          <div className="border border-border-default rounded-lg max-h-[400px] overflow-y-auto">
             {mainRosterPlayers.map((player) => (
               <div
                 key={player.id}

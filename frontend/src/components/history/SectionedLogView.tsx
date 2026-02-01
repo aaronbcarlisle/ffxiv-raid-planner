@@ -20,20 +20,34 @@ import { LogFloatingActions } from './LogFloatingActions';
 import { LogLayoutToggle } from './LogLayoutToggle';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
 import { LootLogEntryItem, MaterialLogEntryItem } from './LogEntryItems';
-import { type ResetType } from '../ui/ResetConfirmModal';
-import { type ContextMenuItem } from '../ui/ContextMenu';
+import { type ResetConfig } from '../ui/ResetConfirmModal';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { logLootAndUpdateGear, deleteLootAndRevertGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer, LootLogEntry, LootLogEntryUpdate, MaterialLogEntry, MaterialLogEntryUpdate, MaterialType } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { parseFloorName, FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
-import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
-import { Tooltip } from '../primitives';
+import { Pencil, Link, Trash2, UserRound, ClipboardList } from 'lucide-react';
+import { Tooltip, Button } from '../primitives';
 import { logger as baseLogger } from '../../lib/logger';
 import { useSyncExternalModal } from '../../hooks/useSyncExternalModal';
+import { WeekStepper } from './WeekStepper';
+import type { WeekEntryType } from '../../stores/lootTrackingStore';
 
 const logger = baseLogger.scope('sectioned-log');
+
+interface WeekStepperPassthroughProps {
+  currentWeek: number;
+  maxWeek: number;
+  calculatedCurrentWeek: number;
+  weeksWithEntries?: Set<number>;
+  weekDataTypes?: Map<number, WeekEntryType[]>;
+  onStartNextWeek?: () => Promise<void>;
+  isStartingNextWeek?: boolean;
+  onRevertWeek?: () => Promise<void>;
+  isRevertingWeek?: boolean;
+}
 
 interface SectionedLogViewProps {
   groupId: string;
@@ -65,6 +79,10 @@ interface SectionedLogViewProps {
   onMarkFloorClearedModalClose?: () => void;
   /** Callback to open Log Week wizard in single floor mode */
   onLogFloor?: (floor: FloorNumber) => void;
+  /** Week selector props for consolidated toolbar (desktop) */
+  weekSelectorProps?: WeekStepperPassthroughProps;
+  /** Callback to open Log Week wizard for a specific week (for toolbar) */
+  onLogWeek?: (week: number) => void;
 }
 
 export function SectionedLogView({
@@ -88,6 +106,8 @@ export function SectionedLogView({
   openMarkFloorClearedModal,
   onMarkFloorClearedModalClose,
   onLogFloor,
+  weekSelectorProps,
+  onLogWeek,
 }: SectionedLogViewProps) {
   const {
     lootLog,
@@ -164,7 +184,21 @@ export function SectionedLogView({
     playerId: string;
     playerName: string;
   } | null>(null);
-  const [resetModalType, setResetModalType] = useState<ResetType | null>(null);
+  const [resetConfig, setResetConfig] = useState<ResetConfig | null>(null);
+
+  // Books table context menu states
+  const [booksColumnContextMenu, setBooksColumnContextMenu] = useState<{
+    x: number;
+    y: number;
+    bookType: 'I' | 'II' | 'III' | 'IV';
+    floorNumber: number;
+  } | null>(null);
+  const [booksRowContextMenu, setBooksRowContextMenu] = useState<{
+    x: number;
+    y: number;
+    playerId: string;
+    playerName: string;
+  } | null>(null);
 
   // Confirmation modal state
   const [confirmState, setConfirmState] = useState<{
@@ -325,31 +359,147 @@ export function SectionedLogView({
     toast.success('Book balance updated');
   }, [groupId, tierId, currentWeek, editBookState, fetchPageBalances, getBalanceWeekParam, fetchWeekDataTypes]);
 
+  // Books column header context menu handler
+  const handleBooksColumnContextMenu = useCallback((
+    e: React.MouseEvent,
+    bookType: 'I' | 'II' | 'III' | 'IV'
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Map book type to floor number
+    const floorMap: Record<string, number> = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4 };
+    setBooksColumnContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      bookType,
+      floorNumber: floorMap[bookType],
+    });
+  }, []);
+
+  // Books row context menu handler
+  const handleBooksRowContextMenu = useCallback((
+    e: React.MouseEvent,
+    playerId: string,
+    playerName: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBooksRowContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      playerId,
+      playerName,
+    });
+  }, []);
+
+  // Get context menu items for books column header
+  const getBooksColumnContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!booksColumnContextMenu || !canEdit) return [];
+    const { floorNumber } = booksColumnContextMenu;
+
+    // When on "All" tab, reset all books for that floor (all weeks)
+    // When on week tab, reset just that week's books for that floor
+    if (bookViewMode === 'allTime') {
+      return [{
+        label: `Reset All Floor ${floorNumber} Books`,
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => setResetConfig({ scope: 'floor', target: 'books', floor: floorNumber }),
+        danger: true,
+      }];
+    }
+    return [{
+      label: `Reset Floor ${floorNumber} Books`,
+      icon: <Trash2 className="w-4 h-4" />,
+      onClick: () => setResetConfig({ scope: 'floor', target: 'books', week: currentWeek, floor: floorNumber }),
+      danger: true,
+    }];
+  }, [booksColumnContextMenu, canEdit, currentWeek, bookViewMode]);
+
+  // Get context menu items for books row
+  const getBooksRowContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!booksRowContextMenu || !canEdit) return [];
+    const { playerId, playerName } = booksRowContextMenu;
+
+    // When on "All" tab, reset all books for that player (all weeks)
+    // When on week tab, reset just that week's books for that player
+    if (bookViewMode === 'allTime') {
+      return [{
+        label: `Reset All ${playerName}'s Books`,
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => setResetConfig({ scope: 'all', target: 'books', playerId, playerName }),
+        danger: true,
+      }];
+    }
+    return [{
+      label: `Reset ${playerName}'s W${currentWeek} Books`,
+      icon: <Trash2 className="w-4 h-4" />,
+      onClick: () => setResetConfig({ scope: 'week', target: 'books', week: currentWeek, playerId, playerName }),
+      danger: true,
+    }];
+  }, [booksRowContextMenu, canEdit, currentWeek, bookViewMode]);
+
   // Handle reset confirmation (for the type-to-confirm modal)
   const handleResetConfirm = useCallback(async () => {
-    if (!resetModalType) return;
+    if (!resetConfig) return;
 
-    const { clearAllPageLedger } = useLootTrackingStore.getState();
+    const { clearAllPageLedger, clearWeekPageLedger, clearFloorPageLedger, clearPlayerWeekPageLedger } = useLootTrackingStore.getState();
+    const { scope, target, week, floor, playerId } = resetConfig;
 
     try {
-      // Reset loot log (all entries for this tier)
-      if (resetModalType === 'loot' || resetModalType === 'all') {
-        // Get all loot entries (not just current week)
+      // Determine if we should reset loot
+      const shouldResetLoot = target === 'loot' || target === 'data';
+      // Determine if we should reset books
+      const shouldResetBooks = target === 'books' || target === 'data';
+
+      if (shouldResetLoot) {
         const allLootLog = useLootTrackingStore.getState().lootLog;
-        for (const entry of allLootLog) {
-          // Use deleteLootAndRevertGear to sync gear state (uncheck items)
+        const allMaterialLog = useLootTrackingStore.getState().materialLog;
+
+        // Filter entries based on scope
+        let lootEntries = allLootLog;
+        let materialEntries = allMaterialLog;
+
+        if (scope === 'floor' && week && floor) {
+          // Floor-specific: filter by week AND floor name
+          const floorName = floors[floor - 1]; // Convert floor number to floor name (e.g., 1 -> "M9S")
+          lootEntries = allLootLog.filter(e => e.weekNumber === week && e.floor === floorName);
+          materialEntries = allMaterialLog.filter(e => e.weekNumber === week && e.floor === floorName);
+        } else if (scope === 'week' && week) {
+          lootEntries = allLootLog.filter(e => e.weekNumber === week);
+          materialEntries = allMaterialLog.filter(e => e.weekNumber === week);
+        }
+
+        // Delete loot entries with gear reversion
+        for (const entry of lootEntries) {
           await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
-        // Also delete all material entries with gear reversion
-        const allMaterialLog = useLootTrackingStore.getState().materialLog;
-        for (const entry of allMaterialLog) {
+        // Delete material entries with gear reversion
+        for (const entry of materialEntries) {
           await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
       }
 
-      // Reset book balances - actually delete ledger history (not just zero out with adjustments)
-      if (resetModalType === 'books' || resetModalType === 'all') {
-        await clearAllPageLedger(groupId, tierId);
+      if (shouldResetBooks) {
+        const { deletePlayerLedger, clearAllFloorPageLedger } = useLootTrackingStore.getState();
+        if (playerId && !week) {
+          // Player-specific ALL books reset (all weeks)
+          await deletePlayerLedger(groupId, tierId, playerId);
+        } else if (playerId && week) {
+          // Player-specific week book reset
+          await clearPlayerWeekPageLedger(groupId, tierId, playerId, week);
+        } else if (scope === 'floor' && floor && !week) {
+          // Floor-specific ALL weeks book reset
+          await clearAllFloorPageLedger(groupId, tierId, floor);
+        } else if (scope === 'floor' && week && floor) {
+          // Floor-specific single week book reset
+          await clearFloorPageLedger(groupId, tierId, week, floor);
+        } else if (scope === 'week' && week) {
+          // Week-specific book reset
+          await clearWeekPageLedger(groupId, tierId, week);
+        } else {
+          // All books reset
+          await clearAllPageLedger(groupId, tierId);
+        }
       }
 
       // Refresh all data
@@ -360,15 +510,24 @@ export function SectionedLogView({
         fetchWeekDataTypes(groupId, tierId),
       ]);
 
-      const resetLabel = resetModalType === 'loot' ? 'loot log' : resetModalType === 'books' ? 'book balances' : 'all data';
-      toast.success(`Reset ${resetLabel} complete`);
+      // Build success message
+      let scopeLabel: string;
+      if (scope === 'floor' && floor) {
+        scopeLabel = `${floors[floor - 1]} W${week}`;
+      } else if (scope === 'week') {
+        scopeLabel = `Week ${week}`;
+      } else {
+        scopeLabel = 'all';
+      }
+      const targetLabel = target === 'loot' ? 'loot' : target === 'books' ? 'books' : 'data';
+      toast.success(`Reset ${scopeLabel} ${targetLabel} complete`);
     } catch (error) {
       logger.error('Reset failed:', error);
       toast.error('Reset failed');
     } finally {
-      setResetModalType(null);
+      setResetConfig(null);
     }
-  }, [resetModalType, groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
+  }, [resetConfig, groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
   // Layout mode: 'grid' (weekly loot grid) or 'split' (traditional list view)
   // Priority: URL param > localStorage > default
@@ -611,9 +770,9 @@ export function SectionedLogView({
       }
     };
     // Reset event handlers (from mobile controls panel)
-    const handleResetLoot = () => setResetModalType('loot');
-    const handleResetBooks = () => setResetModalType('books');
-    const handleResetAll = () => setResetModalType('all');
+    const handleResetLoot = () => setResetConfig({ scope: 'week', target: 'loot', week: currentWeek });
+    const handleResetBooks = () => setResetConfig({ scope: 'week', target: 'books', week: currentWeek });
+    const handleResetAll = () => setResetConfig({ scope: 'week', target: 'data', week: currentWeek });
 
     window.addEventListener('log:set-view', handleSetView as EventListener);
     window.addEventListener('log:set-layout', handleSetLayout as EventListener);
@@ -636,7 +795,7 @@ export function SectionedLogView({
       window.removeEventListener('log:reset-books', handleResetBooks);
       window.removeEventListener('log:reset-all', handleResetAll);
     };
-  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange, setResetModalType]);
+  }, [expandedFloors.size, layoutMode, currentWeek, maxWeek, setLootViewMode, handleCollapseAllFloors, handleExpandAllFloors, handleLayoutModeChange, onWeekChange]);
 
   // Context menu state for list view entries
   const [listContextMenu, setListContextMenu] = useState<{
@@ -849,17 +1008,28 @@ export function SectionedLogView({
 
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Header Controls */}
+      {/* Consolidated Header Controls */}
       <div className="flex-shrink-0 pb-1 md:pb-2">
         <LootLogFilters
           layoutMode={layoutMode}
           onLayoutModeChange={handleLayoutModeChange}
+          currentWeek={currentWeek}
           canEdit={canEdit}
-          onResetLoot={() => setResetModalType('loot')}
-          onResetBooks={() => setResetModalType('books')}
-          onResetAll={() => setResetModalType('all')}
+          onResetWeekLoot={() => setResetConfig({ scope: 'week', target: 'loot', week: currentWeek })}
+          onResetWeekBooks={() => setResetConfig({ scope: 'week', target: 'books', week: currentWeek })}
+          onResetWeekData={() => setResetConfig({ scope: 'week', target: 'data', week: currentWeek })}
+          onResetAllLoot={() => setResetConfig({ scope: 'all', target: 'loot' })}
+          onResetAllBooks={() => setResetConfig({ scope: 'all', target: 'books' })}
+          onResetAllData={() => setResetConfig({ scope: 'all', target: 'data' })}
           onOpenLootModal={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
           onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
+          onLogWeek={canEdit && onLogWeek ? () => onLogWeek(currentWeek) : undefined}
+          weekSelector={weekSelectorProps && (
+            <WeekStepper
+              {...weekSelectorProps}
+              onWeekChange={onWeekChange || (() => {})}
+            />
+          )}
         />
 
         {/* Mobile Panel Tabs */}
@@ -925,6 +1095,8 @@ export function SectionedLogView({
               onCopyEntryUrl={handleCopyEntryUrlById}
               onNavigateToPlayer={onNavigateToPlayer}
               onLogFloor={onLogFloor}
+              onResetFloorLoot={(floor) => setResetConfig({ scope: 'floor', target: 'loot', week: currentWeek, floor })}
+              onResetFloorBooks={(floor) => setResetConfig({ scope: 'floor', target: 'books', week: currentWeek, floor })}
             />
           )}
 
@@ -1120,7 +1292,7 @@ export function SectionedLogView({
                           : 'text-text-secondary hover:text-text-primary'
                       }`}
                     >
-                      W{currentWeek}
+                      Week {currentWeek}
                     </button>
                     <button
                       onClick={() => setBookViewMode('allTime')}
@@ -1130,7 +1302,7 @@ export function SectionedLogView({
                           : 'text-text-secondary hover:text-text-primary'
                       }`}
                     >
-                      All
+                      ALL
                     </button>
                   </div>
                 </div>
@@ -1158,7 +1330,13 @@ export function SectionedLogView({
                       <tr className="text-text-muted">
                         <th className="text-left py-1.5 px-1">Player</th>
                         {(['I', 'II', 'III', 'IV'] as const).map((book) => (
-                          <th key={book} className="text-center py-1.5 px-1 w-9">{book}</th>
+                          <th
+                            key={book}
+                            className={`text-center py-1.5 px-1 w-9 ${canEdit ? 'cursor-context-menu' : ''}`}
+                            onContextMenu={canEdit ? (e) => handleBooksColumnContextMenu(e, book) : undefined}
+                          >
+                            {book}
+                          </th>
                         ))}
                         <th className="w-8"></th>
                       </tr>
@@ -1178,7 +1356,8 @@ export function SectionedLogView({
                           <tr
                             key={balance.playerId}
                             id={`book-row-${balance.playerId}`}
-                            className={`border-t border-border-subtle hover:bg-surface-elevated/50 ${isHighlightedRow ? 'highlight-pulse' : ''}`}
+                            className={`border-t border-border-subtle hover:bg-surface-elevated/50 ${isHighlightedRow ? 'highlight-pulse' : ''} ${canEdit ? 'cursor-context-menu' : ''}`}
+                            onContextMenu={canEdit ? (e) => handleBooksRowContextMenu(e, balance.playerId, player.name) : undefined}
                           >
                             <td className="py-2 px-1">
                               <div className="flex items-center gap-1.5">
@@ -1299,6 +1478,8 @@ export function SectionedLogView({
                 onCopyEntryUrl={handleCopyEntryUrlById}
                 onNavigateToPlayer={onNavigateToPlayer}
                 onLogFloor={onLogFloor}
+                onResetFloorLoot={(floor) => setResetConfig({ scope: 'floor', target: 'loot', week: currentWeek, floor })}
+                onResetFloorBooks={(floor) => setResetConfig({ scope: 'floor', target: 'books', week: currentWeek, floor })}
               />
             )}
             {layoutMode === 'split' && (
@@ -1436,7 +1617,7 @@ export function SectionedLogView({
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
-                    W{currentWeek}
+                    Week {currentWeek}
                   </button>
                   <button
                     onClick={() => setBookViewMode('allTime')}
@@ -1446,7 +1627,7 @@ export function SectionedLogView({
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
-                    All
+                    ALL
                   </button>
                 </div>
               </div>
@@ -1579,9 +1760,9 @@ export function SectionedLogView({
           fetchWeekDataTypes(groupId, tierId);
         }}
         // Reset Confirmation Modal
-        resetModalType={resetModalType}
+        resetConfig={resetConfig}
         onResetConfirm={handleResetConfirm}
-        onCancelReset={() => setResetModalType(null)}
+        onCancelReset={() => setResetConfig(null)}
         // Generic Confirmation Modal
         confirmState={confirmState}
         onCancelConfirm={() => setConfirmState(null)}
@@ -1590,6 +1771,26 @@ export function SectionedLogView({
         listContextMenuItems={getListContextMenuItems()}
         onCloseContextMenu={() => setListContextMenu(null)}
       />
+
+      {/* Books Column Context Menu */}
+      {booksColumnContextMenu && (
+        <ContextMenu
+          x={booksColumnContextMenu.x}
+          y={booksColumnContextMenu.y}
+          items={getBooksColumnContextMenuItems()}
+          onClose={() => setBooksColumnContextMenu(null)}
+        />
+      )}
+
+      {/* Books Row Context Menu */}
+      {booksRowContextMenu && (
+        <ContextMenu
+          x={booksRowContextMenu.x}
+          y={booksRowContextMenu.y}
+          items={getBooksRowContextMenuItems()}
+          onClose={() => setBooksRowContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

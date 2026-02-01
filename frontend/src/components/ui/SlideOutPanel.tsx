@@ -14,7 +14,7 @@
  * </SlideOutPanel>
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
@@ -25,7 +25,7 @@ interface SlideOutPanelProps {
   title: React.ReactNode;
   children: React.ReactNode;
   /** Width of the panel. Default is 'md' (28rem / 448px) */
-  width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 }
 
 // Get all focusable elements within a container
@@ -47,6 +47,7 @@ const WIDTH_CLASSES = {
   lg: 'max-w-lg',
   xl: 'max-w-xl',
   '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
 };
 
 export function SlideOutPanel({
@@ -61,6 +62,28 @@ export function SlideOutPanel({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   // Track if mousedown started on backdrop (for proper click detection)
   const mouseDownOnBackdropRef = useRef(false);
+
+  // Animation state - keeps component mounted during exit animation
+  const [shouldRender, setShouldRender] = useState(isOpen);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  // Handle open/close transitions
+  useEffect(() => {
+    if (isOpen) {
+      // Opening: render immediately
+      setShouldRender(true);
+      setIsAnimatingOut(false);
+    } else if (shouldRender) {
+      // Closing: start exit animation
+      setIsAnimatingOut(true);
+      // Wait for animation to complete before unmounting
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsAnimatingOut(false);
+      }, 200); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, shouldRender]);
 
   // Handle keyboard events - escape to close, tab for focus trap
   const handleKeyDown = useCallback(
@@ -131,14 +154,22 @@ export function SlideOutPanel({
   }, [isOpen]);
 
   // Restore focus when panel closes
+  // We blur immediately after to prevent tooltips from showing on the trigger element
   useEffect(() => {
     if (!isOpen && previousFocusRef.current) {
+      // Briefly focus then blur to maintain accessibility while preventing tooltip flash
       previousFocusRef.current.focus();
-      previousFocusRef.current = null;
+      // Blur after a microtask to prevent tooltip from activating on focus
+      requestAnimationFrame(() => {
+        if (previousFocusRef.current) {
+          previousFocusRef.current.blur();
+        }
+        previousFocusRef.current = null;
+      });
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   // Track mousedown on backdrop to prevent closing during text selection
   const handleBackdropMouseDown = (e: React.MouseEvent) => {
@@ -157,10 +188,14 @@ export function SlideOutPanel({
 
   const widthClass = WIDTH_CLASSES[width];
 
+  // Animation classes based on state
+  const backdropAnimation = isAnimatingOut ? 'animate-fade-out' : 'animate-fade-in';
+  const panelAnimation = isAnimatingOut ? 'animate-slide-out-right' : 'animate-slide-in-right';
+
   return createPortal(
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 animate-fade-in"
+      className={`fixed inset-0 z-50 flex justify-end bg-black/60 ${backdropAnimation}`}
       onMouseDown={handleBackdropMouseDown}
       onMouseUp={handleBackdropMouseUp}
     >
@@ -170,7 +205,7 @@ export function SlideOutPanel({
         aria-modal="true"
         aria-labelledby="panel-title"
         tabIndex={-1}
-        className={`bg-surface-card border-l border-border-default w-full ${widthClass} h-full flex flex-col focus:outline-none animate-slide-in-right`}
+        className={`bg-surface-card border-l border-border-default w-full ${widthClass} h-full flex flex-col focus:outline-none ${panelAnimation}`}
       >
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">

@@ -421,8 +421,6 @@ export function AddLootEntryModal({
               value={weekNumber}
               onChange={(val) => setWeekNumber(val ?? 1)}
               min={1}
-              size="sm"
-              showButtons={false}
             />
           </div>
           <div>

@@ -125,7 +125,7 @@ export function TierSelector({
         {/* Previous tiers submenu - only if there are previous tiers to show */}
         {previousTiers.length > 0 && (
           <DropdownSub>
-            <DropdownSubTrigger icon={<History className="w-4 h-4" />} chevronSide="left">
+            <DropdownSubTrigger icon={<History className="w-4 h-4" />}>
               Previous Tiers
             </DropdownSubTrigger>
             <DropdownSubContent>

@@ -120,7 +120,7 @@ export function Select({
           bg-surface-overlay border border-border-default rounded-lg
           pl-4 pr-3 py-2
           text-sm
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-surface-base
+          focus:outline-none
           disabled:opacity-50 disabled:cursor-not-allowed
           hover:border-border-subtle
           transition-colors

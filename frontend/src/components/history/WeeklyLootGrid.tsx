@@ -13,7 +13,6 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
-import { Button } from '../primitives';
 import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
@@ -54,6 +53,10 @@ interface WeeklyLootGridProps {
   onNavigateToPlayer?: (playerId: string) => void;
   /** Handler to open Log Floor wizard for a specific floor */
   onLogFloor?: (floor: FloorNumber) => void;
+  /** Handler to reset floor loot (opens confirmation modal) */
+  onResetFloorLoot?: (floor: FloorNumber) => void;
+  /** Handler to reset floor books (opens confirmation modal) */
+  onResetFloorBooks?: (floor: FloorNumber) => void;
 }
 
 export function WeeklyLootGrid({
@@ -74,14 +77,78 @@ export function WeeklyLootGrid({
   onCopyEntryUrl,
   onNavigateToPlayer,
   onLogFloor,
+  onResetFloorLoot,
+  onResetFloorBooks,
 }: WeeklyLootGridProps) {
-  // Context menu state
+  // Context menu state for loot/material entries
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     entry: LootLogEntry | MaterialLogEntry;
     type: 'loot' | 'material';
   } | null>(null);
+
+  // Context menu state for floor headers
+  const [floorContextMenu, setFloorContextMenu] = useState<{
+    x: number;
+    y: number;
+    floor: FloorNumber;
+    floorName: string;
+  } | null>(null);
+
+  // Handle context menu for floor headers
+  const handleFloorContextMenu = useCallback((
+    e: React.MouseEvent,
+    floor: FloorNumber,
+    floorName: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFloorContextMenu({ x: e.clientX, y: e.clientY, floor, floorName });
+  }, []);
+
+  // Get context menu items for floor header
+  const getFloorContextMenuItems = useCallback((): ContextMenuItem[] => {
+    if (!floorContextMenu) return [];
+    const { floor, floorName } = floorContextMenu;
+    const items: ContextMenuItem[] = [];
+
+    // Log Floor Loot - opens the wizard for this floor
+    if (canEdit && onLogFloor) {
+      items.push({
+        label: 'Log Floor Loot',
+        icon: <ClipboardList className="w-4 h-4" />,
+        onClick: () => onLogFloor(floor),
+      });
+    }
+
+    // Separator before reset options
+    if (canEdit && (onResetFloorLoot || onResetFloorBooks)) {
+      items.push({ separator: true });
+    }
+
+    // Reset Floor Loot
+    if (canEdit && onResetFloorLoot) {
+      items.push({
+        label: `Reset ${floorName} Loot`,
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => onResetFloorLoot(floor),
+        danger: true,
+      });
+    }
+
+    // Reset Floor Books
+    if (canEdit && onResetFloorBooks) {
+      items.push({
+        label: `Reset ${floorName} Books`,
+        icon: <Trash2 className="w-4 h-4" />,
+        onClick: () => onResetFloorBooks(floor),
+        danger: true,
+      });
+    }
+
+    return items;
+  }, [floorContextMenu, canEdit, onLogFloor, onResetFloorLoot, onResetFloorBooks]);
 
   // Handle context menu for entries
   const handleContextMenu = useCallback((
@@ -278,11 +345,17 @@ export function WeeklyLootGrid({
     return validRoles.includes(role as Role) ? role as Role : 'melee';
   };
 
-  // Render recipient badge
+  // Render recipient badge - fixed height container to prevent layout shift
   const renderRecipientBadge = (entry: LootLogEntry | MaterialLogEntry | undefined) => {
+    // Fixed height (28px) ensures cells don't shift when content changes
+    // Badge: 12px font + 8px padding + 2px border + icon = ~26-28px
+    const containerClass = "h-[28px] flex items-center";
+
     if (!entry) {
       return (
-        <span className="text-xs text-text-muted italic">—</span>
+        <div className={containerClass}>
+          <span className="text-xs text-text-muted italic">—</span>
+        </div>
       );
     }
 
@@ -290,7 +363,7 @@ export function WeeklyLootGrid({
     const roleColor = player ? getRoleColor(getValidRole(player.role)) : 'var(--color-text-secondary)';
 
     return (
-      <div className="group flex items-center gap-1">
+      <div className={`${containerClass} group gap-1`}>
         <div
           className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded transition-all whitespace-nowrap"
           style={{
@@ -418,6 +491,7 @@ export function WeeklyLootGrid({
                 backgroundColor: `${FLOOR_COLORS[floor.number].hex}10`,
                 borderTop: floorIdx > 0 ? '1px solid var(--border-default)' : 'none',
               }}
+              onContextMenu={(e) => handleFloorContextMenu(e, floor.number, floor.id)}
             >
               <div
                 className="w-1 h-5 rounded mr-3"
@@ -702,13 +776,23 @@ export function WeeklyLootGrid({
         ))}
       </div>
 
-      {/* Context Menu */}
+      {/* Entry Context Menu */}
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           items={getContextMenuItems()}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Floor Header Context Menu */}
+      {floorContextMenu && (
+        <ContextMenu
+          x={floorContextMenu.x}
+          y={floorContextMenu.y}
+          items={getFloorContextMenuItems()}
+          onClose={() => setFloorContextMenu(null)}
         />
       )}
     </div>

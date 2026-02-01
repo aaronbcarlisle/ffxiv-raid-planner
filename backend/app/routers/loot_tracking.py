@@ -668,28 +668,12 @@ async def get_current_week(
     tier = await get_tier_snapshot(db, group_id, tier_id)
     week_number = calculate_week_number(tier)
 
-    # Get max week from loot log entries
-    loot_max_result = await db.execute(
-        select(func.max(LootLogEntry.week_number)).where(
-            LootLogEntry.tier_snapshot_id == tier.id
-        )
-    )
-    loot_max_week = loot_max_result.scalar() or 0
-
-    # Get max week from page ledger entries
-    ledger_max_result = await db.execute(
-        select(func.max(PageLedgerEntry.week_number)).where(
-            PageLedgerEntry.tier_snapshot_id == tier.id
-        )
-    )
-    ledger_max_week = ledger_max_result.scalar() or 0
-
-    # Return current week and max logged week (for week selector range)
-    max_logged_week = max(loot_max_week, ledger_max_week)
+    # Return current week - maxWeek is based solely on the calculated week,
+    # not on logged data. This ensures reverting a week properly restricts navigation.
     return {
         "currentWeek": week_number,
-        "maxLoggedWeek": max_logged_week,
-        "maxWeek": max(week_number, max_logged_week),
+        "maxLoggedWeek": week_number,  # Kept for API compatibility
+        "maxWeek": week_number,
     }
 
 
@@ -793,6 +777,35 @@ async def clear_player_page_ledger(
         PageLedgerEntry.__table__.delete().where(
             PageLedgerEntry.tier_snapshot_id == tier.id,
             PageLedgerEntry.player_id == player_id,
+        )
+    )
+    await db.commit()
+
+
+@router.delete(
+    "/{group_id}/tiers/{tier_id}/page-ledger/week/{week}",
+    status_code=204,
+)
+async def clear_week_page_ledger(
+    group_id: str,
+    tier_id: str,
+    week: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Clear all page ledger entries for a specific week"""
+    # Check edit permissions (Owner/Lead only)
+    await get_static_group(db, group_id)
+    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Get tier
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Delete all ledger entries for this week
+    await db.execute(
+        PageLedgerEntry.__table__.delete().where(
+            PageLedgerEntry.tier_snapshot_id == tier.id,
+            PageLedgerEntry.week_number == week,
         )
     )
     await db.commit()

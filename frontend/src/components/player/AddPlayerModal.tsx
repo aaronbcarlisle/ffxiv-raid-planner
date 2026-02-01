@@ -1,116 +1,266 @@
-import { useState } from 'react';
+/**
+ * Add Player Modal
+ *
+ * Modal for adding a new player to the roster with name, job, and position.
+ */
+
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { UserPlus } from 'lucide-react';
-import { Modal, Checkbox, Label, Input } from '../ui';
-import { Button } from '../primitives';
+import { createPortal } from 'react-dom';
+import { Modal } from '../ui/Modal';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
+import { Select } from '../ui/Select';
+import { Button } from '../primitives/Button';
 import { JobPicker } from './JobPicker';
-import { getRoleForJob } from '../../gamedata';
-import type { SnapshotPlayer, GearSlotStatus } from '../../types';
-import { GEAR_SLOTS } from '../../types';
+import { JobIcon } from '../ui/JobIcon';
+import { getRoleForJob, getJobDisplayName, type Role } from '../../gamedata';
+import type { TankRole } from '../../types';
+
+// Position type for G1/G2 grouping
+type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
+
+export interface AddPlayerData {
+  name: string;
+  job: string;
+  role: Role;
+  position?: RaidPosition;
+  tankRole?: TankRole;
+}
 
 interface AddPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (player: Omit<SnapshotPlayer, 'id' | 'tierSnapshotId' | 'createdAt' | 'updatedAt'>) => void;
-  existingPlayerCount: number;
+  onAdd: (data: AddPlayerData) => Promise<void>;
+  isLoading?: boolean;
 }
 
-// Create default gear with all slots empty
-// Ring2 defaults to tome since you can't equip two identical raid rings
-function createDefaultGear(): GearSlotStatus[] {
-  return GEAR_SLOTS.map((slot) => ({
-    slot,
-    bisSource: slot === 'ring2' ? 'tome' as const : 'raid' as const,
-    hasItem: false,
-    isAugmented: false,
-  }));
-}
+// Position options by role
+const POSITION_OPTIONS: Record<Role, { value: RaidPosition; label: string }[]> = {
+  tank: [
+    { value: 'T1', label: 'T1 - Main Tank' },
+    { value: 'T2', label: 'T2 - Off Tank' },
+  ],
+  healer: [
+    { value: 'H1', label: 'H1 - Pure Healer' },
+    { value: 'H2', label: 'H2 - Barrier Healer' },
+  ],
+  melee: [
+    { value: 'M1', label: 'M1 - Melee DPS' },
+    { value: 'M2', label: 'M2 - Melee DPS' },
+  ],
+  ranged: [
+    { value: 'R1', label: 'R1 - Physical Ranged' },
+  ],
+  caster: [
+    { value: 'R2', label: 'R2 - Magical Ranged' },
+  ],
+};
 
-export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: AddPlayerModalProps) {
+export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerModalProps) {
   const [name, setName] = useState('');
-  const [job, setJob] = useState('');
-  const [notes, setNotes] = useState('');
-  const [isSubstitute, setIsSubstitute] = useState(false);
+  const [job, setJob] = useState<string>('');
+  const [position, setPosition] = useState<RaidPosition | ''>('');
+  const [tankRole, setTankRole] = useState<TankRole | ''>('');
+  const [showJobPicker, setShowJobPicker] = useState(false);
+  const jobButtonRef = useRef<HTMLButtonElement>(null);
+  const jobPickerRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Get role from selected job
+  const role = job ? getRoleForJob(job) : null;
+  const isTank = role === 'tank';
+  const positionOptions = role ? POSITION_OPTIONS[role] : [];
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setName('');
+      setJob('');
+      setPosition('');
+      setTankRole('');
+      setShowJobPicker(false);
+    }
+  }, [isOpen]);
+
+  // Close job picker on click outside
+  useEffect(() => {
+    if (!showJobPicker) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        jobPickerRef.current &&
+        !jobPickerRef.current.contains(e.target as Node) &&
+        jobButtonRef.current &&
+        !jobButtonRef.current.contains(e.target as Node)
+      ) {
+        setShowJobPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showJobPicker]);
+
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleJobSelect = useCallback((selectedJob: string) => {
+    setJob(selectedJob);
+    setShowJobPicker(false);
+    // Reset position when job changes (role might change)
+    setPosition('');
+    setTankRole('');
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !job) return;
+    if (!job || !role) return;
 
-    const role = getRoleForJob(job);
-    if (!role) return;
-
-    onAdd({
-      name: name.trim(),
+    await onAdd({
+      name: name.trim() || 'New Player',
       job,
       role,
-      configured: true,
-      sortOrder: existingPlayerCount,
-      isSubstitute,
-      notes: notes.trim() || undefined,
-      gear: createDefaultGear(),
-      tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
-      weaponPriorities: [],
-      weaponPrioritiesLocked: false,
+      position: position || undefined,
+      tankRole: isTank && tankRole ? tankRole : undefined,
     });
 
-    // Reset form
-    setName('');
-    setJob('');
-    setNotes('');
-    setIsSubstitute(false);
-    onClose();
+    handleClose();
+  }, [name, job, role, position, tankRole, isTank, onAdd, handleClose]);
+
+  const canSubmit = job !== '';
+
+  // Calculate job picker position
+  const getJobPickerPosition = () => {
+    if (!jobButtonRef.current) return { top: 0, left: 0 };
+    const rect = jobButtonRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: Math.max(rect.width, 320),
+    };
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <span className="flex items-center gap-2">
           <UserPlus className="w-5 h-5" />
           Add Player
         </span>
       }
+      size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Name */}
         <div>
-          <Label htmlFor="playerName">Player Name</Label>
+          <Label htmlFor="player-name">Player Name</Label>
           <Input
-            id="playerName"
+            id="player-name"
             value={name}
             onChange={setName}
-            placeholder="e.g., Cloud Strife"
+            placeholder="Enter player name"
             autoFocus
           />
+          <p className="text-xs text-text-muted mt-1">
+            Leave blank to use "New Player"
+          </p>
         </div>
 
+        {/* Job */}
         <div>
           <Label>Job</Label>
-          <JobPicker selectedJob={job} onJobSelect={setJob} />
+          <button
+            ref={jobButtonRef}
+            type="button"
+            onClick={() => setShowJobPicker(!showJobPicker)}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg text-left hover:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
+          >
+            {job ? (
+              <>
+                <JobIcon job={job} size="sm" />
+                <span className="text-text-primary">{getJobDisplayName(job)}</span>
+              </>
+            ) : (
+              <span className="text-text-muted">Select a job...</span>
+            )}
+          </button>
+          {showJobPicker && createPortal(
+            <div
+              ref={jobPickerRef}
+              className="fixed z-[100] bg-surface-card border border-border-default rounded-lg shadow-xl [&>div]:w-full [&_div.w-80]:w-full"
+              style={{
+                top: getJobPickerPosition().top,
+                left: getJobPickerPosition().left,
+                width: getJobPickerPosition().width,
+                maxHeight: '400px',
+                overflow: 'auto',
+              }}
+            >
+              <JobPicker
+                selectedJob={job}
+                onJobSelect={handleJobSelect}
+                onRequestClose={() => setShowJobPicker(false)}
+              />
+            </div>,
+            document.body
+          )}
         </div>
 
-        <div>
-          <Label htmlFor="playerNotes">
-            Notes <span className="text-text-muted">(optional)</span>
-          </Label>
-          <Input
-            id="playerNotes"
-            value={notes}
-            onChange={setNotes}
-            placeholder="e.g., Out Dec 28-Jan 2"
-          />
-        </div>
+        {/* Position - only show if job is selected */}
+        {job && positionOptions.length > 0 && (
+          <div>
+            <Label htmlFor="player-position">Position (Optional)</Label>
+            <Select
+              id="player-position"
+              value={position}
+              onChange={(value) => setPosition(value as RaidPosition | '')}
+              options={[
+                { value: '', label: 'No position' },
+                ...positionOptions,
+              ]}
+            />
+            <p className="text-xs text-text-muted mt-1">
+              Used for G1/G2 light party grouping
+            </p>
+          </div>
+        )}
 
-        <Checkbox
-          checked={isSubstitute}
-          onChange={setIsSubstitute}
-          label="This player is a substitute"
-        />
+        {/* Tank Role - only show for tanks */}
+        {isTank && (
+          <div>
+            <Label htmlFor="player-tank-role">Tank Role (Optional)</Label>
+            <Select
+              id="player-tank-role"
+              value={tankRole}
+              onChange={(value) => setTankRole(value as TankRole | '')}
+              options={[
+                { value: '', label: 'Not specified' },
+                { value: 'MT', label: 'Main Tank (MT)' },
+                { value: 'OT', label: 'Off Tank (OT)' },
+              ]}
+            />
+          </div>
+        )}
 
-        <div className="flex gap-3 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-4 border-t border-border-default">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleClose}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={!name.trim() || !job} className="flex-1">
+          <Button
+            type="submit"
+            disabled={!canSubmit || isLoading}
+            loading={isLoading}
+          >
+            <UserPlus className="w-4 h-4 mr-1.5" />
             Add Player
           </Button>
         </div>
@@ -118,3 +268,5 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, existingPlayerCount }: 
     </Modal>
   );
 }
+
+export default AddPlayerModal;

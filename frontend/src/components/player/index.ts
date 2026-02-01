@@ -1,4 +1,4 @@
-export { AddPlayerModal } from './AddPlayerModal';
+export { AddPlayerModal, type AddPlayerData } from './AddPlayerModal';
 export { AddSlotCard } from './AddSlotCard';
 export { BiSImportModal } from './BiSImportModal';
 export { DragOverlayCard } from './DragOverlayCard';

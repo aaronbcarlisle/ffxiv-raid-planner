@@ -454,7 +454,7 @@ export function AdminDashboard() {
                   <tr
                     key={group.id}
                     onClick={() => navigate(`/group/${group.shareCode}?adminMode=true`)}
-                    className="hover:bg-surface-interactive transition-colors cursor-pointer"
+                    className="hover:bg-surface-elevated transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3">
                       <span className="font-medium text-accent hover:text-accent-bright">

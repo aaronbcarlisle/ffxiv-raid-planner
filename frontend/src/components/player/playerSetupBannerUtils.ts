@@ -46,14 +46,16 @@ export function getBannerState(
 
   // Show needs-bis banner when card has no BiS configured:
   // - For user's own claimed card
-  // - For owner/lead looking at ANY card (including unclaimed) when setup banners are hidden
+  // - For owner/lead viewing any card they can manage
   if (!hasBiS && !options.hideBisBanners) {
     if (isClaimedByMe) {
       return 'needs-bis';
     }
-    // Owner/lead can see BiS status of unclaimed cards when they've hidden setup banners
-    // This lets solo managers track BiS progress without seeing "Assign Player" prompts
-    if (isOwnerOrLead && isUnclaimed && options.hideSetupBanners) {
+    // Owner/lead can see BiS status of cards when:
+    // - Card is claimed by someone else (they're managing others' cards)
+    // - Card is unclaimed but they've hidden setup banners (solo manager mode)
+    // Note: if card is unclaimed and setup banners are shown, they already see 'unclaimed-owner'
+    if (isOwnerOrLead && (!isUnclaimed || options.hideSetupBanners)) {
       return 'needs-bis';
     }
   }

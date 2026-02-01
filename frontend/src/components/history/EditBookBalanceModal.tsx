@@ -77,8 +77,6 @@ export function EditBookBalanceModal({
               value={currentBalance}
               onChange={() => {}}
               disabled
-              showButtons={false}
-              size="sm"
               className="opacity-60"
             />
           </div>
@@ -87,8 +85,6 @@ export function EditBookBalanceModal({
             <NumberInput
               value={newBalance}
               onChange={(val) => setNewBalance(val ?? 0)}
-              showButtons={false}
-              size="sm"
             />
           </div>
         </div>

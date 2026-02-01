@@ -372,7 +372,7 @@ export function Dashboard() {
                   size="md"
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
-                  className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
+                  className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20 text-accent' : ''}`}
                 />
               </Tooltip>
               <Tooltip content="Display statics as a list">
@@ -383,7 +383,7 @@ export function Dashboard() {
                   size="md"
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
-                  className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
+                  className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20 text-accent' : ''}`}
                 />
               </Tooltip>
             </div>
@@ -606,7 +606,7 @@ export function Dashboard() {
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="flex items-center justify-between p-3 sm:p-4 hover:bg-surface-interactive transition-colors cursor-pointer group"
+              className="flex items-center justify-between p-3 sm:p-4 hover:bg-surface-elevated transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                 <h3 className="font-display text-base sm:text-lg text-accent group-hover:text-accent-bright transition-colors truncate">

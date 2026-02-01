@@ -34,8 +34,9 @@ const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
 };
 
 // Color classes for each toast type
+// Success uses accent color for brand consistency
 const TOAST_COLORS: Record<ToastType, string> = {
-  success: 'bg-status-success/20 border-status-success/40 text-status-success',
+  success: 'bg-accent/20 border-accent/40 text-accent',
   error: 'bg-status-error/20 border-status-error/40 text-status-error',
   warning: 'bg-status-warning/20 border-status-warning/40 text-status-warning',
   info: 'bg-accent/20 border-accent/40 text-accent',
@@ -69,7 +70,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       className={`
         flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg
         backdrop-blur-md sm:backdrop-blur-none
-        animate-in slide-in-from-top-full sm:slide-in-from-right-full fade-in-0 duration-200
+        animate-in slide-in-from-top-full sm:slide-in-from-left-full fade-in-0 duration-200
         ${TOAST_COLORS[toast.type]}
       `}
       role="alert"
@@ -110,7 +111,7 @@ export function ToastContainer() {
 
   return (
     <div
-      className="fixed top-16 sm:top-auto sm:bottom-4 right-4 left-4 sm:left-auto z-[100] flex flex-col gap-2 max-w-md w-auto sm:w-full pointer-events-none"
+      className="fixed top-16 sm:top-auto sm:bottom-4 left-4 right-4 sm:right-auto z-[100] flex flex-col gap-2 max-w-md w-auto sm:w-full pointer-events-none"
       aria-live="polite"
       aria-atomic="false"
     >

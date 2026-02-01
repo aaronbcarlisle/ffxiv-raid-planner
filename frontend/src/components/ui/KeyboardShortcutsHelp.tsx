@@ -7,6 +7,7 @@
 import { useState, useMemo } from 'react';
 import { Keyboard } from 'lucide-react';
 import { Modal } from './Modal';
+import { Toggle } from './Toggle';
 import { areShortcutsEnabled, setShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
 
 interface ShortcutItem {
@@ -48,19 +49,27 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Management',
+    title: 'Tier & Roster',
     shortcuts: [
       { key: 'Alt+Shift+P', description: 'Add Player' },
       { key: 'Alt+Shift+N', description: 'New Tier' },
       { key: 'Alt+Shift+R', description: 'Copy to New Tier' },
-      { key: 'Alt+Shift+S', description: 'Static Settings' },
+    ],
+  },
+  {
+    title: 'Static Settings',
+    shortcuts: [
+      { key: 'Alt+G', description: 'General' },
+      { key: 'Alt+P', description: 'Priority' },
+      { key: 'Alt+M', description: 'Members' },
+      { key: 'Alt+I', description: 'Invitations' },
     ],
   },
   {
     title: 'Quick Actions',
     shortcuts: [
       { key: 'Alt+L', description: 'Log Loot' },
-      { key: 'Alt+M', description: 'Log Material' },
+      { key: 'Alt+U', description: 'Log Material' },
       { key: 'Alt+B', description: 'Mark Floor Cleared' },
     ],
   },
@@ -99,8 +108,7 @@ export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false }: Keyb
     }));
   }, [isAdmin]);
 
-  const handleToggle = () => {
-    const newValue = !enabled;
+  const handleToggle = (newValue: boolean) => {
     setEnabled(newValue);
     setShortcutsEnabled(newValue);
   };
@@ -118,7 +126,7 @@ export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false }: Keyb
       size="4xl"
     >
       {/* Scrollable shortcuts area - constrained on mobile */}
-      <div className="max-h-[60vh] sm:max-h-none overflow-y-auto -mr-2 pr-2">
+      <div className={`max-h-[60vh] sm:max-h-none overflow-y-auto -mr-2 pr-2 transition-opacity ${enabled ? '' : 'opacity-40'}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredGroups.map((group) => (
             <div
@@ -148,29 +156,12 @@ export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false }: Keyb
         <p className="text-xs text-text-muted">
           Shortcuts disabled when typing or in modals
         </p>
-        <label // design-system-ignore - toggle switch wrapper, not a form field label
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <span className="text-xs text-text-secondary">Enable shortcuts</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={handleToggle}
-            className={`
-              relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
-              ${enabled ? 'bg-accent' : 'bg-surface-interactive'}
-            `}
-          >
-            <span
-              className={`
-                inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform
-                ${enabled ? 'translate-x-5' : 'translate-x-1'}
-              `}
-            />
-          </button>
-        </label>
+        <Toggle
+          checked={enabled}
+          onChange={handleToggle}
+          label="Enable shortcuts"
+          size="sm"
+        />
       </div>
     </Modal>
   );

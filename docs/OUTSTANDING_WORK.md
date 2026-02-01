@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 25, 2026
+**Last Updated:** January 31, 2026
 **Current Version:** v1.9.1
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -147,6 +147,22 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - ✅ React Refresh warnings - resolved
 - ✅ Refs during render - resolved
 - ✅ Earlier quick wins (unused variables, prefer-const, no-constant-condition)
+
+---
+
+## In Progress
+
+### UI Reorganization: Header, Settings, and Actions
+- **Branch:** `feature/ui-reorganization` (to be created)
+- **Plan:** See `docs/UI_REORGANIZATION_PLAN.md` for detailed implementation steps
+- **Scope:**
+  1. Header breadcrumb layout: `[Static ▼] > [Tier ▼] [⋮]`
+  2. Tier actions in dedicated kebab menu (⋮)
+  3. Settings slide-out panel with 4 tabs (replaces modal)
+  4. Add Player button on Roster tab
+  5. Log tab toolbar consolidation
+- **Status:** Planned, ready for implementation
+- **Phases:** 4 (see plan for details)
 
 ---
 

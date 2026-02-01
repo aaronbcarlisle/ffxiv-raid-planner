@@ -5,7 +5,8 @@
  * Jobs can be dragged between groups to change priority tiers.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useDoubleClickConfirm } from '../../hooks/useDoubleClickConfirm';
 import {
   DndContext,
   closestCenter,
@@ -37,7 +38,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { Button, IconButton } from '../primitives';
-import { Input, NumberInput, Checkbox } from '../ui';
+import { Input, NumberInput, Toggle } from '../ui';
 import { JobIcon } from '../ui/JobIcon';
 import { getJobsByRole } from '../../gamedata';
 import type {
@@ -171,6 +172,10 @@ function SortableGroupHeader({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
 
+  // Double-click confirm for delete
+  const { isArmed: isDeleteArmed, handleClick: handleDeleteClick, handleBlur: handleDeleteBlur } =
+    useDoubleClickConfirm({ onConfirm: onDelete });
+
   const {
     attributes,
     listeners,
@@ -285,12 +290,13 @@ function SortableGroupHeader({
                 aria-label="Rename group"
               />
               <IconButton
-                icon={<Trash2 className="w-3.5 h-3.5" />}
-                onClick={onDelete}
+                icon={isDeleteArmed ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
+                onClick={handleDeleteClick}
+                onBlur={handleDeleteBlur}
                 variant="ghost"
                 size="sm"
-                aria-label="Delete group"
-                className="text-status-error hover:text-status-error"
+                aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
+                className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
               />
             </>
           )}
@@ -571,15 +577,44 @@ export function JobBasedEditor({
     );
   }, [config]);
 
+  // Keyboard shortcut: 'v' to toggle all groups expanded/collapsed
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setExpandedGroups((prev) => {
+          const allGroupIds = config.groups.map((g) => g.id);
+          // If all are expanded, collapse all; otherwise expand all
+          const allExpanded = allGroupIds.every((id) => prev.has(id));
+          return allExpanded ? new Set<string>() : new Set(allGroupIds);
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [config.groups]);
+
   return (
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
-        <Checkbox
+        <Toggle
           checked={config.showAdvancedControls}
           onChange={handleToggleAdvanced}
           disabled={disabled}
           label="Show priority values"
+          size="sm"
         />
         <div className="flex-1" />
         <Button

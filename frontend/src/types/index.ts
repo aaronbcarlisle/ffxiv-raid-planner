@@ -255,6 +255,7 @@ export interface AdvancedPriorityOptions {
   balancePenaltyCapDrops: number;
 
   // Core multipliers
+  useMultipliers: boolean;
   rolePriorityMultiplier: number;
   gearNeededMultiplier: number;
   lootReceivedPenalty: number;
@@ -284,6 +285,7 @@ export const DEFAULT_ADVANCED_OPTIONS: AdvancedPriorityOptions = {
   droughtBonusCapWeeks: 5,
   balancePenaltyMultiplier: 15,
   balancePenaltyCapDrops: 3,
+  useMultipliers: true,
   rolePriorityMultiplier: 25,
   gearNeededMultiplier: 10,
   lootReceivedPenalty: 15,

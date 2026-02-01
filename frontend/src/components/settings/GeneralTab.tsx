@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
-import { Checkbox, Label, Input, ErrorBox } from '../ui';
+import { Label, Input, ErrorBox, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -46,7 +46,6 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
 
   const handleSave = async () => {
     if (!hasChanges) {
-      onClose();
       return;
     }
 
@@ -79,7 +78,6 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
 
       await updateGroup(group.id, updateData);
       toast.success('Settings saved!');
-      onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save changes';
       setError(message);
@@ -166,7 +164,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto space-y-6 min-h-0" style={{ scrollbarGutter: 'stable' }}>
+      <div className="flex-1 overflow-y-auto space-y-6 min-h-0 ml-[3px]" style={{ scrollbarGutter: 'stable' }}>
         {error && <ErrorBox message={error} size="sm" />}
 
       {/* Static Name */}
@@ -181,43 +179,31 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
       </div>
 
       {/* Public/Private Toggle */}
-      <div>
-        <Checkbox
-          checked={isPublic}
-          onChange={setIsPublic}
-          disabled={!isOwner}
-          label="Public Static"
-        />
-        <p className="text-xs text-text-muted ml-6 mt-1">
-          Anyone with the share link can view this static (read-only)
-        </p>
-      </div>
+      <Toggle
+        checked={isPublic}
+        onChange={setIsPublic}
+        disabled={!isOwner}
+        label="Public Static"
+        hint="Anyone with the share link can view this static (read-only)"
+      />
 
       {/* Hide Setup Banners */}
-      <div>
-        <Checkbox
-          checked={hideSetupBanners}
-          onChange={setHideSetupBanners}
-          disabled={!canEdit}
-          label="Hide unclaimed banners"
-        />
-        <p className="text-xs text-text-muted ml-6 mt-1">
-          Hide "Unclaimed" prompts on player cards
-        </p>
-      </div>
+      <Toggle
+        checked={hideSetupBanners}
+        onChange={setHideSetupBanners}
+        disabled={!canEdit}
+        label="Hide unclaimed banners"
+        hint="Hide 'Unclaimed' prompts on player cards"
+      />
 
       {/* Hide BiS Banners */}
-      <div>
-        <Checkbox
-          checked={hideBisBanners}
-          onChange={setHideBisBanners}
-          disabled={!canEdit}
-          label="Hide BiS banners"
-        />
-        <p className="text-xs text-text-muted ml-6 mt-1">
-          Hide "No BiS configured" prompts on player cards
-        </p>
-      </div>
+      <Toggle
+        checked={hideBisBanners}
+        onChange={setHideBisBanners}
+        disabled={!canEdit}
+        label="Hide BiS banners"
+        hint="Hide 'No BiS configured' prompts on player cards"
+      />
 
         {/* Share Code */}
         <div>
@@ -245,7 +231,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
       </div>
 
       {/* Sticky Action Buttons footer */}
-      <div className="flex-shrink-0 flex justify-between pt-4 pb-4 border-t border-border-default">
+      <div className="flex-shrink-0 flex justify-between pt-4 pb-4 pr-4 border-t border-border-default">
         <div>
           {isOwner && (
             <Button

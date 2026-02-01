@@ -795,18 +795,16 @@ export function GroupView() {
                       }
                     >
                       <Button
-                        variant="secondary"
                         size="md"
                         onClick={() => setShowAddPlayerModal(true)}
                         disabled={isSaving}
                       >
-                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Player
+                        + Add Player
                       </Button>
                     </Tooltip>
                   )}
+                  {/* Divider */}
+                  {canEdit && <div className="h-6 border-l border-border-subtle" />}
                   <SortModeSelector
                     sortPreset={sortPreset}
                     onPresetChange={setSortPresetWithTier}
@@ -1038,6 +1036,7 @@ export function GroupView() {
           }}
           group={currentGroup}
           players={mainRosterPlayers}
+          tierId={currentTier?.tierId}
           isAdmin={isAdmin}
           initialTab={settingsTab}
           highlightCreateInvite={highlightCreateInvite}
