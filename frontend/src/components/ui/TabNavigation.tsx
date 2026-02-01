@@ -51,7 +51,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border
               ${
                 activeTab === tab.id
-                  ? 'bg-surface-elevated text-text-primary border-accent'
+                  ? 'bg-[#143536] text-text-primary border-accent'
                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
               }
             `}
