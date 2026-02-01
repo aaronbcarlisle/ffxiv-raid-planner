@@ -1,7 +1,7 @@
 /**
- * History View
+ * Log View
  *
- * Main container for the History tab (now called "Log" tab).
+ * Main container for the Log tab.
  * Shows sectioned view with Loot, Materials, and Books sections.
  */
 

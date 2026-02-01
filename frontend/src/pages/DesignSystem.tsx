@@ -3017,7 +3017,7 @@ export function DesignSystem() {
                 <div className="flex items-center gap-2 bg-surface-elevated rounded-lg p-1">
                   <span className="px-4 py-1.5 bg-accent text-accent-contrast text-sm font-medium rounded">Players</span>
                   <span className="px-4 py-1.5 text-sm text-text-secondary">Loot</span>
-                  <span className="px-4 py-1.5 text-sm text-text-secondary">History</span>
+                  <span className="px-4 py-1.5 text-sm text-text-secondary">Log</span>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border-2 border-accent/50" />
               </div>
@@ -3328,7 +3328,7 @@ export function DesignSystem() {
   <header className="bg-surface-raised border-b border-border-default">
     <div className="px-6 py-3 flex items-center justify-between">
       <StaticSwitcher />
-      <TabNavigation tabs={['Players', 'Loot', 'History']} />
+      <TabNavigation tabs={['Players', 'Loot', 'Log']} />
       <UserMenu />
     </div>
   </header>

@@ -474,7 +474,7 @@ export default function HowToDocs() {
             </h3>
 
             <p className="text-text-secondary mb-4">
-              Use the History tab's manual log form when you need to:
+              Use the Log tab's manual log form when you need to:
             </p>
 
             <ul className="list-disc list-inside text-text-secondary space-y-1">
@@ -526,7 +526,7 @@ export default function HowToDocs() {
               book of that floor's type.
             </p>
 
-            <Step number={1} title="Go to the History tab">
+            <Step number={1} title="Go to the Log tab">
               <p>Find it next to Loot Priority on your static's page.</p>
             </Step>
 
@@ -590,7 +590,7 @@ export default function HowToDocs() {
               spent.
             </p>
 
-            <Step number={1} title="Go to the History tab">
+            <Step number={1} title="Go to the Log tab">
               <p>Find the Page Balances panel showing each player's book counts.</p>
             </Step>
 

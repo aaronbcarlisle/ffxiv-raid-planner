@@ -110,7 +110,7 @@ Testing instructions for the flexible priority settings feature (Phase 1).
    - Save
 
 2. **Log Some Loot** (if not already done)
-   - Go to Loot History and log a few drops for different players
+   - Go to the Log tab and log a few drops for different players
 
 3. **Verify Enhanced Scoring**
    - Go to Loot Priority panel

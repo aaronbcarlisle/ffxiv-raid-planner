@@ -728,7 +728,7 @@ export function GroupView() {
     );
   }
 
-  // Prevent page scroll for History/Log tab (internal scroll only)
+  // Prevent page scroll for Log tab (internal scroll only)
   // On mobile: also prevent for Loot tab
   const preventPageScroll = pageMode === 'history' || (isSmallScreen && pageMode === 'loot');
 
@@ -975,7 +975,7 @@ export function GroupView() {
             />
           )}
 
-          {/* History Tab - wrapped in flex-1 container for proper scroll containment */}
+          {/* Log Tab - wrapped in flex-1 container for proper scroll containment */}
           {pageMode === 'history' && currentTier?.players && tierInfo && (
             <div className={preventPageScroll ? 'flex-1 min-h-0 flex flex-col w-full' : ''}>
               <HistoryView
