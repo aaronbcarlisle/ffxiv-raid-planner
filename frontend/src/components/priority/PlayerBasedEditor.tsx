@@ -15,7 +15,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  useDroppable,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import {
@@ -168,6 +167,9 @@ function SortableGroupHeader({
   isCustomGroup: _isCustomGroup,
   canDelete,
   onBasePriorityChange,
+  showInsertBefore,
+  showInsertAfter,
+  showSwap,
 }: {
   group: PriorityGroupConfig;
   isExpanded: boolean;
@@ -180,6 +182,9 @@ function SortableGroupHeader({
   isCustomGroup?: boolean;
   canDelete: boolean;
   onBasePriorityChange: (priority: number) => void;
+  showInsertBefore?: boolean;
+  showInsertAfter?: boolean;
+  showSwap?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -215,127 +220,120 @@ function SortableGroupHeader({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      }`}
-    >
-      <span
-        className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
-        {...attributes}
-        {...listeners}
+    <div className="relative">
+      {/* Insert indicator - horizontal line above */}
+      {showInsertBefore && (
+        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
+      )}
+
+      <div
+        ref={setNodeRef}
+        data-droppable-id={`group-${group.id}`}
+        style={style}
+        className={`flex items-center gap-2 px-3 py-2 bg-surface-elevated border rounded-lg transition-all duration-150 ${
+          isDragging ? 'opacity-50 shadow-lg z-50' : ''
+        } ${showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'}`}
       >
-        <GripVertical className="w-5 h-5" />
-      </span>
+        <span
+          className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-5 h-5" />
+        </span>
 
-      <button
-        type="button"
-        onClick={onToggle}
-        className="text-text-muted hover:text-text-primary"
-        disabled={disabled}
-      >
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-      </button>
-
-      {isEditing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <Input
-            value={editName}
-            onChange={setEditName}
-            size="sm"
-            className="flex-1"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveRename();
-              if (e.key === 'Escape') handleCancelRename();
-            }}
-          />
-          <IconButton
-            icon={<Check className="w-4 h-4" />}
-            onClick={handleSaveRename}
-            variant="ghost"
-            size="sm"
-            aria-label="Save"
-          />
-          <IconButton
-            icon={<X className="w-4 h-4" />}
-            onClick={handleCancelRename}
-            variant="ghost"
-            size="sm"
-            aria-label="Cancel"
-          />
-        </div>
-      ) : (
-        <>
-          <span className="text-text-primary font-medium flex-1">{group.name}</span>
-          <span className="text-xs text-text-muted">({playerCount} players)</span>
-
-          {showAdvanced && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-text-muted">Base:</span>
-              <NumberInput
-                value={group.basePriority}
-                onChange={(value) => onBasePriorityChange(value ?? 0)}
-                min={0}
-                max={200}
-                step={25}
-                size="sm"
-                disabled={disabled}
-                className="w-24"
-              />
-            </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-text-muted hover:text-text-primary"
+          disabled={disabled}
+        >
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
           )}
+        </button>
 
-          {!disabled && (
-            <>
-              <IconButton
-                icon={<Pencil className="w-3.5 h-3.5" />}
-                onClick={() => setIsEditing(true)}
-                variant="ghost"
-                size="sm"
-                aria-label="Rename group"
-              />
-              {canDelete && (
+        {isEditing ? (
+          <div className="flex items-center gap-2 flex-1">
+            <Input
+              value={editName}
+              onChange={setEditName}
+              size="sm"
+              className="flex-1"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveRename();
+                if (e.key === 'Escape') handleCancelRename();
+              }}
+            />
+            <IconButton
+              icon={<Check className="w-4 h-4" />}
+              onClick={handleSaveRename}
+              variant="ghost"
+              size="sm"
+              aria-label="Save"
+            />
+            <IconButton
+              icon={<X className="w-4 h-4" />}
+              onClick={handleCancelRename}
+              variant="ghost"
+              size="sm"
+              aria-label="Cancel"
+            />
+          </div>
+        ) : (
+          <>
+            <span className="text-text-primary font-medium flex-1">{group.name}</span>
+            <span className="text-xs text-text-muted">({playerCount} players)</span>
+
+            {showAdvanced && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-text-muted">Base:</span>
+                <NumberInput
+                  value={group.basePriority}
+                  onChange={(value) => onBasePriorityChange(value ?? 0)}
+                  min={0}
+                  max={200}
+                  step={25}
+                  size="sm"
+                  disabled={disabled}
+                  className="w-24"
+                />
+              </div>
+            )}
+
+            {!disabled && (
+              <>
                 <IconButton
-                  icon={isDeleteArmed ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  onClick={handleDeleteClick}
-                  onBlur={handleDeleteBlur}
+                  icon={<Pencil className="w-3.5 h-3.5" />}
+                  onClick={() => setIsEditing(true)}
                   variant="ghost"
                   size="sm"
-                  aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
-                  className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
+                  aria-label="Rename group"
                 />
-              )}
-            </>
-          )}
-        </>
+                {canDelete && (
+                  <IconButton
+                    icon={isDeleteArmed ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    onClick={handleDeleteClick}
+                    onBlur={handleDeleteBlur}
+                    variant="ghost"
+                    size="sm"
+                    aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
+                    className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Insert indicator - horizontal line below */}
+      {showInsertAfter && (
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
-    </div>
-  );
-}
-
-// Droppable zone for groups to accept player drops
-function DroppableGroupZone({ groupId, isEmpty }: { groupId: string; isEmpty: boolean }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `dropzone-${groupId}`,
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`ml-6 py-3 px-4 border-2 border-dashed rounded-lg text-sm text-center transition-colors ${
-        isOver
-          ? 'border-accent bg-accent/10 text-accent'
-          : 'border-border-default text-text-muted'
-      }`}
-    >
-      {isEmpty ? 'Drop players here' : 'Drop here to add to this group'}
     </div>
   );
 }
@@ -429,8 +427,8 @@ export function PlayerBasedEditor({
     const handlePointerMove = (e: PointerEvent) => {
       pointerRef.current = { x: e.clientX, y: e.clientY };
 
-      // Recalculate dropMode continuously while dragging over a player
-      if (activeId && overId && !overId.startsWith('group-') && !overId.startsWith('dropzone-')) {
+      // Recalculate dropMode continuously while dragging over a player or group
+      if (activeId && overId) {
         const element = document.querySelector(`[data-droppable-id="${overId}"]`);
         if (element) {
           const newDropMode = calculateDropMode(element, e.clientY);
@@ -460,12 +458,10 @@ export function PlayerBasedEditor({
 
     setOverId(newOverId);
 
-    // Only calculate drop mode for player items (not groups or dropzones)
-    if (!newOverId.startsWith('group-') && !newOverId.startsWith('dropzone-')) {
-      const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
-      if (element) {
-        setDropMode(calculateDropMode(element, pointerRef.current.y));
-      }
+    // Calculate drop mode for both players and groups
+    const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
+    if (element) {
+      setDropMode(calculateDropMode(element, pointerRef.current.y));
     } else {
       setDropMode(null);
     }
@@ -491,30 +487,31 @@ export function PlayerBasedEditor({
       const overGroupId = overIdStr.replace('group-', '');
 
       const oldIndex = ensuredConfig.groups.findIndex((g) => g.id === activeGroupId);
-      const newIndex = ensuredConfig.groups.findIndex((g) => g.id === overGroupId);
+      let targetIndex = ensuredConfig.groups.findIndex((g) => g.id === overGroupId);
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newGroups = arrayMove(ensuredConfig.groups, oldIndex, newIndex).map(
+      if (oldIndex !== -1 && targetIndex !== -1) {
+        // Handle swap mode - directly swap the two groups
+        if (currentDropMode === 'swap') {
+          const swapped = [...ensuredConfig.groups];
+          [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
+          const newGroups = swapped.map((g, i) => ({ ...g, sortOrder: i }));
+          onChange({ ...ensuredConfig, groups: newGroups });
+          return;
+        }
+
+        // Handle insert mode
+        if (currentDropMode === 'insert-after') {
+          targetIndex = targetIndex + 1;
+        }
+        // Adjust if moving from before the target
+        if (oldIndex < targetIndex) {
+          targetIndex--;
+        }
+
+        const newGroups = arrayMove(ensuredConfig.groups, oldIndex, targetIndex).map(
           (g, i) => ({ ...g, sortOrder: i })
         );
         onChange({ ...ensuredConfig, groups: newGroups });
-      }
-      return;
-    }
-
-    // Handle player dropped onto a dropzone (empty group area)
-    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('dropzone-')) {
-      const targetGroupId = overIdStr.replace('dropzone-', '');
-      const activePlayer = ensuredConfig.players.find((p) => p.playerId === activeIdStr);
-
-      if (activePlayer && activePlayer.groupId !== targetGroupId) {
-        const newPlayers = ensuredConfig.players.map((p) => {
-          if (p.playerId === activeIdStr) {
-            return { ...p, groupId: targetGroupId, sortOrder: 0 };
-          }
-          return p;
-        });
-        onChange({ ...ensuredConfig, players: newPlayers });
       }
       return;
     }
@@ -792,6 +789,10 @@ export function PlayerBasedEditor({
               {ensuredConfig.groups.map((group) => {
                 const groupPlayers = playersByGroup[group.id] || [];
                 const isExpanded = expandedGroups.has(group.id);
+                // Only show group indicators when dragging a group
+                const isDraggingGroup = activeId?.startsWith('group-');
+                const isOverGroup = overId === `group-${group.id}` && activeId !== `group-${group.id}`;
+                const showGroupIndicators = isDraggingGroup && isOverGroup;
 
                 return (
                   <div key={group.id} className="space-y-2">
@@ -809,6 +810,9 @@ export function PlayerBasedEditor({
                       onBasePriorityChange={(priority) =>
                         handleGroupBasePriorityChange(group.id, priority)
                       }
+                      showInsertBefore={showGroupIndicators && dropMode === 'insert-before'}
+                      showInsertAfter={showGroupIndicators && dropMode === 'insert-after'}
+                      showSwap={showGroupIndicators && dropMode === 'swap'}
                     />
 
                     {isExpanded && groupPlayers.length > 0 && (
@@ -818,7 +822,10 @@ export function PlayerBasedEditor({
                       >
                         <div className="ml-6 space-y-1">
                           {groupPlayers.map(({ player, config: playerConfig }) => {
-                            const isOverThisItem = overId === player.id && activeId !== player.id;
+                            // Only show player indicators when dragging a player (not a group)
+                            const isDraggingPlayer = activeId && !activeId.startsWith('group-');
+                            const isOverPlayer = overId === player.id && activeId !== player.id;
+                            const showPlayerIndicators = isDraggingPlayer && isOverPlayer;
                             return (
                               <SortablePlayerItem
                                 key={player.id}
@@ -827,9 +834,9 @@ export function PlayerBasedEditor({
                                 showAdvanced={ensuredConfig.showAdvancedControls}
                                 disabled={disabled}
                                 onOffsetChange={handlePlayerOffsetChange}
-                                showInsertBefore={isOverThisItem && dropMode === 'insert-before'}
-                                showInsertAfter={isOverThisItem && dropMode === 'insert-after'}
-                                showSwap={isOverThisItem && dropMode === 'swap'}
+                                showInsertBefore={showPlayerIndicators && dropMode === 'insert-before'}
+                                showInsertAfter={showPlayerIndicators && dropMode === 'insert-after'}
+                                showSwap={showPlayerIndicators && dropMode === 'swap'}
                               />
                             );
                           })}
@@ -837,9 +844,6 @@ export function PlayerBasedEditor({
                       </SortableContext>
                     )}
 
-                    {isExpanded && (
-                      <DroppableGroupZone groupId={group.id} isEmpty={groupPlayers.length === 0} />
-                    )}
                   </div>
                 );
               })}

@@ -15,7 +15,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  useDroppable,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import {
@@ -196,6 +195,9 @@ function SortableGroupHeader({
   showAdvanced,
   disabled,
   onBasePriorityChange,
+  showInsertBefore,
+  showInsertAfter,
+  showSwap,
 }: {
   group: PriorityGroupConfig;
   isExpanded: boolean;
@@ -206,6 +208,9 @@ function SortableGroupHeader({
   showAdvanced: boolean;
   disabled?: boolean;
   onBasePriorityChange: (priority: number) => void;
+  showInsertBefore?: boolean;
+  showInsertAfter?: boolean;
+  showSwap?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(group.name);
@@ -241,125 +246,118 @@ function SortableGroupHeader({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-2 px-3 py-2 bg-surface-elevated border border-border-default rounded-lg ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      }`}
-    >
-      <span
-        className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="w-5 h-5" />
-      </span>
-
-      <button
-        type="button"
-        onClick={onToggle}
-        className="text-text-muted hover:text-text-primary"
-        disabled={disabled}
-      >
-        {isExpanded ? (
-          <ChevronDown className="w-4 h-4" />
-        ) : (
-          <ChevronRight className="w-4 h-4" />
-        )}
-      </button>
-
-      {isEditing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <Input
-            value={editName}
-            onChange={setEditName}
-            size="sm"
-            className="flex-1"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveRename();
-              if (e.key === 'Escape') handleCancelRename();
-            }}
-          />
-          <IconButton
-            icon={<Check className="w-4 h-4" />}
-            onClick={handleSaveRename}
-            variant="ghost"
-            size="sm"
-            aria-label="Save"
-          />
-          <IconButton
-            icon={<X className="w-4 h-4" />}
-            onClick={handleCancelRename}
-            variant="ghost"
-            size="sm"
-            aria-label="Cancel"
-          />
-        </div>
-      ) : (
-        <>
-          <span className="text-text-primary font-medium flex-1">{group.name}</span>
-          <span className="text-xs text-text-muted">({jobCount} jobs)</span>
-
-          {showAdvanced && (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-text-muted">Base:</span>
-              <NumberInput
-                value={group.basePriority}
-                onChange={(value) => onBasePriorityChange(value ?? 0)}
-                min={0}
-                max={200}
-                step={25}
-                size="sm"
-                disabled={disabled}
-                className="w-24"
-              />
-            </div>
-          )}
-
-          {!disabled && (
-            <>
-              <IconButton
-                icon={<Pencil className="w-3.5 h-3.5" />}
-                onClick={() => setIsEditing(true)}
-                variant="ghost"
-                size="sm"
-                aria-label="Rename group"
-              />
-              <IconButton
-                icon={isDeleteArmed ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
-                onClick={handleDeleteClick}
-                onBlur={handleDeleteBlur}
-                variant="ghost"
-                size="sm"
-                aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
-                className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
-              />
-            </>
-          )}
-        </>
+    <div className="relative">
+      {/* Insert indicator - horizontal line above */}
+      {showInsertBefore && (
+        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
       )}
-    </div>
-  );
-}
 
-// Droppable zone for groups to accept job drops
-function DroppableGroupZone({ groupId, isEmpty }: { groupId: string; isEmpty: boolean }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `dropzone-${groupId}`,
-  });
+      <div
+        ref={setNodeRef}
+        data-droppable-id={`group-${group.id}`}
+        style={style}
+        className={`flex items-center gap-2 px-3 py-2 bg-surface-elevated border rounded-lg transition-all duration-150 ${
+          isDragging ? 'opacity-50 shadow-lg z-50' : ''
+        } ${showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20 border-accent' : 'border-border-default'}`}
+      >
+        <span
+          className={`text-text-muted ${disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-5 h-5" />
+        </span>
 
-  return (
-    <div
-      ref={setNodeRef}
-      className={`ml-6 py-3 px-4 border-2 border-dashed rounded-lg text-sm text-center transition-colors ${
-        isOver
-          ? 'border-accent bg-accent/10 text-accent'
-          : 'border-border-default text-text-muted'
-      }`}
-    >
-      {isEmpty ? 'Drop jobs here' : 'Drop here to add to this group'}
+        <button
+          type="button"
+          onClick={onToggle}
+          className="text-text-muted hover:text-text-primary"
+          disabled={disabled}
+        >
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </button>
+
+        {isEditing ? (
+          <div className="flex items-center gap-2 flex-1">
+            <Input
+              value={editName}
+              onChange={setEditName}
+              size="sm"
+              className="flex-1"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveRename();
+                if (e.key === 'Escape') handleCancelRename();
+              }}
+            />
+            <IconButton
+              icon={<Check className="w-4 h-4" />}
+              onClick={handleSaveRename}
+              variant="ghost"
+              size="sm"
+              aria-label="Save"
+            />
+            <IconButton
+              icon={<X className="w-4 h-4" />}
+              onClick={handleCancelRename}
+              variant="ghost"
+              size="sm"
+              aria-label="Cancel"
+            />
+          </div>
+        ) : (
+          <>
+            <span className="text-text-primary font-medium flex-1">{group.name}</span>
+            <span className="text-xs text-text-muted">({jobCount} jobs)</span>
+
+            {showAdvanced && (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-text-muted">Base:</span>
+                <NumberInput
+                  value={group.basePriority}
+                  onChange={(value) => onBasePriorityChange(value ?? 0)}
+                  min={0}
+                  max={200}
+                  step={25}
+                  size="sm"
+                  disabled={disabled}
+                  className="w-24"
+                />
+              </div>
+            )}
+
+            {!disabled && (
+              <>
+                <IconButton
+                  icon={<Pencil className="w-3.5 h-3.5" />}
+                  onClick={() => setIsEditing(true)}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Rename group"
+                />
+                <IconButton
+                  icon={isDeleteArmed ? <Check className="w-3.5 h-3.5" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  onClick={handleDeleteClick}
+                  onBlur={handleDeleteBlur}
+                  variant="ghost"
+                  size="sm"
+                  aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
+                  className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
+                />
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Insert indicator - horizontal line below */}
+      {showInsertAfter && (
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent rounded-full shadow-lg shadow-accent/50 z-10" />
+      )}
     </div>
   );
 }
@@ -425,8 +423,8 @@ export function JobBasedEditor({
     const handlePointerMove = (e: PointerEvent) => {
       pointerRef.current = { x: e.clientX, y: e.clientY };
 
-      // Recalculate dropMode continuously while dragging over a job
-      if (activeId && overId && !overId.startsWith('group-') && !overId.startsWith('dropzone-')) {
+      // Recalculate dropMode continuously while dragging over a job or group
+      if (activeId && overId) {
         const element = document.querySelector(`[data-droppable-id="${overId}"]`);
         if (element) {
           const newDropMode = calculateDropMode(element, e.clientY);
@@ -456,12 +454,10 @@ export function JobBasedEditor({
 
     setOverId(newOverId);
 
-    // Only calculate drop mode for job items (not groups or dropzones)
-    if (!newOverId.startsWith('group-') && !newOverId.startsWith('dropzone-')) {
-      const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
-      if (element) {
-        setDropMode(calculateDropMode(element, pointerRef.current.y));
-      }
+    // Calculate drop mode for both jobs and groups
+    const element = document.querySelector(`[data-droppable-id="${newOverId}"]`);
+    if (element) {
+      setDropMode(calculateDropMode(element, pointerRef.current.y));
     } else {
       setDropMode(null);
     }
@@ -487,30 +483,31 @@ export function JobBasedEditor({
       const overGroupId = overIdStr.replace('group-', '');
 
       const oldIndex = config.groups.findIndex((g) => g.id === activeGroupId);
-      const newIndex = config.groups.findIndex((g) => g.id === overGroupId);
+      let targetIndex = config.groups.findIndex((g) => g.id === overGroupId);
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newGroups = arrayMove(config.groups, oldIndex, newIndex).map(
+      if (oldIndex !== -1 && targetIndex !== -1) {
+        // Handle swap mode - directly swap the two groups
+        if (currentDropMode === 'swap') {
+          const swapped = [...config.groups];
+          [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
+          const newGroups = swapped.map((g, i) => ({ ...g, sortOrder: i }));
+          onChange({ ...config, groups: newGroups });
+          return;
+        }
+
+        // Handle insert mode
+        if (currentDropMode === 'insert-after') {
+          targetIndex = targetIndex + 1;
+        }
+        // Adjust if moving from before the target
+        if (oldIndex < targetIndex) {
+          targetIndex--;
+        }
+
+        const newGroups = arrayMove(config.groups, oldIndex, targetIndex).map(
           (g, i) => ({ ...g, sortOrder: i })
         );
         onChange({ ...config, groups: newGroups });
-      }
-      return;
-    }
-
-    // Handle job dropped onto a dropzone (empty group area)
-    if (!activeIdStr.startsWith('group-') && overIdStr.startsWith('dropzone-')) {
-      const targetGroupId = overIdStr.replace('dropzone-', '');
-      const activeJob = config.jobs.find((j) => j.job === activeIdStr);
-
-      if (activeJob && activeJob.groupId !== targetGroupId) {
-        const newJobs = config.jobs.map((j) => {
-          if (j.job === activeIdStr) {
-            return { ...j, groupId: targetGroupId, sortOrder: 0 };
-          }
-          return j;
-        });
-        onChange({ ...config, jobs: newJobs });
       }
       return;
     }
@@ -779,6 +776,10 @@ export function JobBasedEditor({
             {config.groups.map((group) => {
               const groupJobs = jobsByGroup[group.id] || [];
               const isExpanded = expandedGroups.has(group.id);
+              // Only show group indicators when dragging a group
+              const isDraggingGroup = activeId?.startsWith('group-');
+              const isOverGroup = overId === `group-${group.id}` && activeId !== `group-${group.id}`;
+              const showGroupIndicators = isDraggingGroup && isOverGroup;
 
               return (
                 <div key={group.id} className="space-y-2">
@@ -794,6 +795,9 @@ export function JobBasedEditor({
                     onBasePriorityChange={(priority) =>
                       handleGroupBasePriorityChange(group.id, priority)
                     }
+                    showInsertBefore={showGroupIndicators && dropMode === 'insert-before'}
+                    showInsertAfter={showGroupIndicators && dropMode === 'insert-after'}
+                    showSwap={showGroupIndicators && dropMode === 'swap'}
                   />
 
                   {isExpanded && groupJobs.length > 0 && (
@@ -803,7 +807,10 @@ export function JobBasedEditor({
                     >
                       <div className="ml-6 space-y-1">
                         {groupJobs.map((jobConfig) => {
-                          const isOver = overId === jobConfig.job && activeId !== jobConfig.job;
+                          // Only show job indicators when dragging a job (not a group)
+                          const isDraggingJob = activeId && !activeId.startsWith('group-');
+                          const isOverJob = overId === jobConfig.job && activeId !== jobConfig.job;
+                          const showJobIndicators = isDraggingJob && isOverJob;
                           return (
                             <SortableJobItem
                               key={jobConfig.job}
@@ -813,9 +820,9 @@ export function JobBasedEditor({
                               showAdvanced={config.showAdvancedControls}
                               disabled={disabled}
                               onOffsetChange={handleJobOffsetChange}
-                              showInsertBefore={isOver && dropMode === 'insert-before'}
-                              showInsertAfter={isOver && dropMode === 'insert-after'}
-                              showSwap={isOver && dropMode === 'swap'}
+                              showInsertBefore={showJobIndicators && dropMode === 'insert-before'}
+                              showInsertAfter={showJobIndicators && dropMode === 'insert-after'}
+                              showSwap={showJobIndicators && dropMode === 'swap'}
                             />
                           );
                         })}
@@ -823,9 +830,6 @@ export function JobBasedEditor({
                     </SortableContext>
                   )}
 
-                  {isExpanded && (
-                    <DroppableGroupZone groupId={group.id} isEmpty={groupJobs.length === 0} />
-                  )}
                 </div>
               );
             })}
