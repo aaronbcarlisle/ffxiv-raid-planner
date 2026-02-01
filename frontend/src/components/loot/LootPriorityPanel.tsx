@@ -30,7 +30,6 @@ import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 import { LogWeekWizard } from './LogWeekWizard';
 import { Button } from '../primitives';
-import { ClipboardList } from 'lucide-react';
 
 interface EnhancedPriorityEntry extends PriorityEntry {
   enhancedScore?: number;
@@ -661,13 +660,10 @@ export function LootPriorityPanel({
               />
               {showLogButtons && groupId && tierId && (
                 <Button
-                  variant="secondary"
                   size="sm"
                   onClick={() => setLogFloorWizardOpen(true)}
-                  leftIcon={<ClipboardList className="w-3 h-3" />}
-                  className="text-xs"
                 >
-                  Log Floor
+                  + Log Floor
                 </Button>
               )}
             </div>

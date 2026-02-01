@@ -36,7 +36,7 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
 
   return (
     <label
-      className={`flex items-center gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer group'} ${className}`}
+      className={`flex items-start gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer group'} ${className}`}
       onClick={handleClick}
     >
       {/* Hidden native checkbox for form compatibility */}
