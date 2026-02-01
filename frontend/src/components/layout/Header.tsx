@@ -1,13 +1,13 @@
 /**
  * Header - Unified application header
  *
- * On group pages: [Logo] [Static ▼][Owner][Code] ... [Tier ▼][⚙️][User]
- * On other pages: [Logo] ... [User]
+ * New layout with breadcrumb hierarchy:
+ * [Logo] ─ [Static ▼] > [Tier ▼] [⋮] ─── [Invite] [⚙️] [User ▼]
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2 } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
@@ -16,10 +16,11 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
-import { SettingsPopover, TipsCarousel } from '../ui';
-import { Tooltip } from '../primitives/Tooltip';
+import { TierActionsMenu, TipsCarousel } from '../ui';
+import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
+
 // Custom event types for communication with GroupView
 export const HEADER_EVENTS = {
   TIER_CHANGE: 'header:tier-change',
@@ -38,7 +39,7 @@ export function Header() {
   const [inviteCopied, setInviteCopied] = useState(false);
 
   const { currentGroup, groups, fetchGroups } = useStaticGroupStore();
-  const { tiers, currentTier, isSaving } = useTierStore();
+  const { tiers, currentTier } = useTierStore();
   const { user, isLoading } = useAuthStore();
   const isHydrated = useAuthHydrated();
   const { viewAsUser } = useViewAsStore();
@@ -91,10 +92,6 @@ export function Header() {
   // Calculate available tiers for creation
   const existingTierIds = tiers.map(t => t.tierId);
   const availableTiers = RAID_TIERS.filter(t => !existingTierIds.includes(t.id));
-
-  // Count configured players
-  const configuredPlayerCount = currentTier?.players?.filter(p => p.configured).length ?? 0;
-  const totalPlayerCount = currentTier?.players?.length ?? 0;
 
   // Handle share code copy (hold Shift for full URL with tier)
   const handleCopyCode = async (e: React.MouseEvent) => {
@@ -172,33 +169,15 @@ export function Header() {
   const tierPermission = canManageTiers(userRole, isAdminAccess);
   const groupPermission = canManageGroup(userRole, isAdminAccess);
 
-  // Build settings actions
-  const settingsActions = useMemo(() => {
+  // Build tier actions for kebab menu
+  const tierActions = useMemo(() => {
     if (!tierPermission.allowed) return [];
 
     return [
       {
-        id: 'add-player',
-        label: 'Add Player',
-        badge: currentTier ? `${configuredPlayerCount}/${totalPlayerCount}` : undefined,
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        ),
-        shortcut: 'Alt+Shift+P',
-        disabled: !currentTier || isSaving,
-        tooltip: !currentTier ? 'Create a tier first' : isSaving ? 'Saving...' : undefined,
-        onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ADD_PLAYER),
-      },
-      {
         id: 'new-tier',
-        label: 'New Tier',
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        ),
+        label: 'Create New Tier',
+        icon: <Plus className="w-4 h-4" />,
         shortcut: 'Alt+Shift+N',
         disabled: availableTiers.length === 0,
         tooltip: availableTiers.length === 0 ? 'All tiers have been created' : undefined,
@@ -207,50 +186,30 @@ export function Header() {
       {
         id: 'rollover',
         label: 'Copy to New Tier',
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        ),
+        icon: <Copy className="w-4 h-4" />,
         shortcut: 'Alt+Shift+R',
         disabled: !currentTier || availableTiers.length === 0,
         tooltip: !currentTier ? 'Create a tier first' : availableTiers.length === 0 ? 'All tiers have been created' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ROLLOVER),
       },
-      ...(groupPermission.allowed ? [{
-        id: 'settings',
-        label: 'Static Settings',
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        ),
-        shortcut: 'Alt+Shift+S',
-        onClick: () => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS),
-      }] : []),
       {
         id: 'delete-tier',
         label: 'Delete Tier',
-        icon: (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        ),
+        icon: <Trash2 className="w-4 h-4" />,
         danger: true,
         disabled: !currentTier || tiers.length <= 1,
         tooltip: !currentTier ? 'No tier to delete' : tiers.length <= 1 ? 'Cannot delete the last tier' : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.DELETE_TIER),
       },
     ];
-  }, [tierPermission.allowed, groupPermission.allowed, currentTier, configuredPlayerCount, totalPlayerCount, isSaving, availableTiers.length, tiers.length, dispatchHeaderEvent]);
+  }, [tierPermission.allowed, currentTier, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-3 sm:gap-4">
-        {/* Left side: Logo + Group context */}
+        {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         {/* On mobile, flex-1 allows static selector to fill available space (Invite/Share buttons hidden on mobile) */}
-        <div className={`flex items-center gap-2 sm:gap-4 min-w-0 ${isGroupRoute && currentGroup ? 'flex-1 sm:flex-initial' : ''}`}>
+        <div className={`flex items-center gap-2 sm:gap-3 min-w-0 ${isGroupRoute && currentGroup ? 'flex-1 sm:flex-initial' : ''}`}>
           {/* Logo */}
           <Tooltip
             content={
@@ -280,19 +239,57 @@ export function Header() {
           {/* Group context (only on group pages) */}
           {isGroupRoute && currentGroup && (
             <>
-              {/* Divider - hidden on mobile */}
-              <span className="text-border-default hidden sm:inline">/</span>
+              {/* Static Switcher - with left border divider on desktop */}
+              <div className="hidden sm:block border-l border-border-subtle pl-3">
+                <StaticSwitcher
+                  currentGroup={currentGroup}
+                  groups={groups}
+                  onFetchGroups={fetchGroups}
+                  isMember={isMember}
+                  userRole={userRole ?? undefined}
+                />
+              </div>
+              {/* Static Switcher - full width on mobile (no border) */}
+              <div className="sm:hidden flex-1">
+                <StaticSwitcher
+                  currentGroup={currentGroup}
+                  groups={groups}
+                  onFetchGroups={fetchGroups}
+                  isMember={isMember}
+                  userRole={userRole ?? undefined}
+                  fullWidthMobile
+                />
+              </div>
 
-              {/* Static Switcher */}
-              <StaticSwitcher
-                currentGroup={currentGroup}
-                groups={groups}
-                onFetchGroups={fetchGroups}
-                isMember={isMember}
-                userRole={userRole ?? undefined}
-                fullWidthMobile
-              />
+              {/* Breadcrumb separator and Tier selector - hidden on mobile */}
+              {tiers.length > 0 && (
+                <div className="hidden sm:flex items-center gap-1">
+                  <span className="text-text-muted text-lg">›</span>
+                  <TierSelector
+                    tiers={tiers}
+                    currentTierId={currentTier?.tierId}
+                    onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+                  />
+                  {/* Tier actions kebab menu */}
+                  {canEdit && tierActions.length > 0 && (
+                    <TierActionsMenu actions={tierActions} />
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
+        {/* Center: Tips carousel (hidden on mobile, shown on group pages) */}
+        {isGroupRoute && currentGroup && (
+          <TipsCarousel className="hidden xl:flex flex-grow justify-center max-w-md" />
+        )}
+
+        {/* Right side: Invite + Settings + Auth */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Group controls (only on group pages) */}
+          {isGroupRoute && currentGroup && (
+            <>
               {/* Invite Members button (for owners/leads) - hidden on mobile */}
               {canManageInvitations && (
                 <div className="hidden sm:block">
@@ -364,35 +361,32 @@ export function Header() {
                 </Tooltip>
                 </div>
               )}
-            </>
-          )}
-        </div>
 
-        {/* Center: Tips carousel (hidden on mobile, shown on group pages) */}
-        {isGroupRoute && currentGroup && (
-          <TipsCarousel className="hidden xl:flex flex-grow justify-center max-w-md" />
-        )}
-
-        {/* Right side: Tier + Settings + Auth */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Group controls (only on group pages) */}
-          {isGroupRoute && currentGroup && tiers.length > 0 && (
-            <>
-              {/* Tier selector - hidden on mobile, shown in Controls sheet instead */}
-              <div className="hidden sm:block">
-                <TierSelector
-                  tiers={tiers}
-                  currentTierId={currentTier?.tierId}
-                  onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-                />
-              </div>
-
-              {/* Settings popover (only for editors) */}
-              {/* Negative margins on mobile balance visual spacing with StaticSwitcher dropdown */}
-              {canEdit && settingsActions.length > 0 && (
-                <div className="-ml-2 -mr-2 sm:ml-0 sm:mr-0">
-                  <SettingsPopover actions={settingsActions} />
-                </div>
+              {/* Settings gear icon (opens slide-out settings panel) */}
+              {groupPermission.allowed && (
+                <Tooltip
+                  content={
+                    <div>
+                      <div className="font-medium">Static Settings</div>
+                      <div className="text-text-secondary text-xs mt-0.5">
+                        Manage settings, members, and invitations
+                      </div>
+                      <div className="text-text-muted text-xs mt-1 flex gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
+                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">P</kbd>
+                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">M</kbd>
+                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">I</kbd>
+                      </div>
+                    </div>
+                  }
+                >
+                  <IconButton
+                    icon={<Settings className="w-5 h-5" />}
+                    onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS)}
+                    variant="ghost"
+                    aria-label="Static settings"
+                  />
+                </Tooltip>
               )}
             </>
           )}
