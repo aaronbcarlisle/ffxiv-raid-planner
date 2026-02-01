@@ -1231,7 +1231,7 @@ export function GroupView() {
                     }}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
                       lootSubTab === 'matrix'
-                        ? 'bg-accent text-accent-contrast border-accent'
+                        ? 'bg-accent/20 text-accent border-accent/50'
                         : 'bg-surface-raised border-border-default text-text-secondary'
                     }`}
                   >
@@ -1244,7 +1244,7 @@ export function GroupView() {
                     }}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
                       lootSubTab === 'gear'
-                        ? 'bg-accent text-accent-contrast border-accent'
+                        ? 'bg-accent/20 text-accent border-accent/50'
                         : 'bg-surface-raised border-border-default text-text-secondary'
                     }`}
                   >
@@ -1257,7 +1257,7 @@ export function GroupView() {
                     }}
                     className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
                       lootSubTab === 'weapon'
-                        ? 'bg-accent text-accent-contrast border-accent'
+                        ? 'bg-accent/20 text-accent border-accent/50'
                         : 'bg-surface-raised border-border-default text-text-secondary'
                     }`}
                   >

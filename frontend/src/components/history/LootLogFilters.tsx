@@ -285,7 +285,7 @@ export function LootLogFilters({
               </div>
             }
           >
-            <Button size="sm" onClick={onOpenLootModal}>
+            <Button size="sm" variant="accent-subtle" onClick={onOpenLootModal}>
               + Log Loot
             </Button>
           </Tooltip>
@@ -303,7 +303,7 @@ export function LootLogFilters({
               </div>
             }
           >
-            <Button size="sm" onClick={onOpenMaterialModal}>
+            <Button size="sm" variant="accent-subtle" onClick={onOpenMaterialModal}>
               + Log Material
             </Button>
           </Tooltip>

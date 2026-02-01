@@ -578,8 +578,8 @@ export function LootPriorityPanel({
                 onClick={() => setActiveSubTab('matrix')}
                 className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
                   activeSubTab === 'matrix'
-                    ? 'bg-accent text-accent-contrast'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                 }`}
               >
                 Who Needs It
@@ -601,8 +601,8 @@ export function LootPriorityPanel({
                 onClick={() => setActiveSubTab('gear')}
                 className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
                   activeSubTab === 'gear'
-                    ? 'bg-accent text-accent-contrast'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                 }`}
               >
                 Gear Priority
@@ -624,8 +624,8 @@ export function LootPriorityPanel({
                 onClick={() => setActiveSubTab('weapon')}
                 className={`px-3 py-1 text-sm rounded transition-colors font-bold ${
                   activeSubTab === 'weapon'
-                    ? 'bg-accent text-accent-contrast'
-                    : 'text-text-secondary hover:text-text-primary'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                 }`}
               >
                 Weapon Priority

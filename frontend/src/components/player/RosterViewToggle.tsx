@@ -24,7 +24,7 @@ export function RosterViewToggle({ viewMode, onViewModeChange, visible }: Roster
         onClick={() => onViewModeChange('compact')}
         className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
           viewMode === 'compact'
-            ? 'bg-accent text-accent-contrast'
+            ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
         aria-label="Compact view"
@@ -42,7 +42,7 @@ export function RosterViewToggle({ viewMode, onViewModeChange, visible }: Roster
         onClick={() => onViewModeChange('expanded')}
         className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
           viewMode === 'expanded'
-            ? 'bg-accent text-accent-contrast'
+            ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
         aria-label="Expanded view"

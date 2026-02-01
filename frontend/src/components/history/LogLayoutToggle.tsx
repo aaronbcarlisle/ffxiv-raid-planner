@@ -22,7 +22,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
         onClick={() => onLayoutChange('grid')}
         className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
           layoutMode === 'grid'
-            ? 'bg-accent text-accent-contrast'
+            ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
         aria-label="Week view"
@@ -40,7 +40,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
         onClick={() => onLayoutChange('split')}
         className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
           layoutMode === 'split'
-            ? 'bg-accent text-accent-contrast'
+            ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
         aria-label="History view"

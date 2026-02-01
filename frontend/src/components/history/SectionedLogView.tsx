@@ -1033,12 +1033,13 @@ export function SectionedLogView({
         />
 
         {/* Mobile Panel Tabs */}
+        {/* design-system-ignore: Mobile panel toggle requires specific styling */}
         <div className="md:hidden flex bg-surface-card border border-border-default rounded-lg p-1 mt-3">
           <button
             onClick={() => setMobilePanel('loot')}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               mobilePanel === 'loot'
-                ? 'bg-accent text-accent-contrast'
+                ? 'bg-accent/20 text-accent'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -1048,7 +1049,7 @@ export function SectionedLogView({
             onClick={() => setMobilePanel('books')}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               mobilePanel === 'books'
-                ? 'bg-accent text-accent-contrast'
+                ? 'bg-accent/20 text-accent'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -1124,8 +1125,8 @@ export function SectionedLogView({
                         onClick={() => setLootViewMode('byFloor')}
                         className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
                           lootViewMode === 'byFloor'
-                            ? 'bg-accent text-accent-contrast'
-                            : 'text-text-secondary hover:text-text-primary'
+                            ? 'bg-accent/20 text-accent'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                         }`}
                       >
                         By Floor
@@ -1147,8 +1148,8 @@ export function SectionedLogView({
                         onClick={() => setLootViewMode('chronological')}
                         className={`px-2.5 py-1 text-xs rounded transition-colors font-bold ${
                           lootViewMode === 'chronological'
-                            ? 'bg-accent text-accent-contrast'
-                            : 'text-text-secondary hover:text-text-primary'
+                            ? 'bg-accent/20 text-accent'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                         }`}
                       >
                         Timeline
@@ -1288,8 +1289,8 @@ export function SectionedLogView({
                       onClick={() => setBookViewMode('week')}
                       className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
                         bookViewMode === 'week'
-                          ? 'bg-accent text-accent-contrast'
-                          : 'text-text-secondary hover:text-text-primary'
+                          ? 'bg-accent/20 text-accent'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                       }`}
                     >
                       Week {currentWeek}
@@ -1298,8 +1299,8 @@ export function SectionedLogView({
                       onClick={() => setBookViewMode('allTime')}
                       className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
                         bookViewMode === 'allTime'
-                          ? 'bg-accent text-accent-contrast'
-                          : 'text-text-secondary hover:text-text-primary'
+                          ? 'bg-accent/20 text-accent'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
                       }`}
                     >
                       ALL
@@ -1487,12 +1488,13 @@ export function SectionedLogView({
                 <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-border-default">
                   <div className="flex items-center gap-2">
                     <h3 className="font-display text-base text-text-primary">Loot Log</h3>
+                    {/* design-system-ignore: View mode toggle requires specific styling */}
                     <div className="flex bg-surface-base rounded-lg p-0.5">
                       <button
                         onClick={() => setLootViewMode('byFloor')}
-                        className={`px-2 py-1 text-xs rounded transition-colors font-bold ${
+                        className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
                           lootViewMode === 'byFloor'
-                            ? 'bg-accent text-accent-contrast'
+                            ? 'bg-accent/20 text-accent'
                             : 'text-text-secondary hover:text-text-primary'
                         }`}
                       >
@@ -1500,9 +1502,9 @@ export function SectionedLogView({
                       </button>
                       <button
                         onClick={() => setLootViewMode('chronological')}
-                        className={`px-2 py-1 text-xs rounded transition-colors font-bold ${
+                        className={`px-2 py-1 text-xs rounded transition-colors font-medium ${
                           lootViewMode === 'chronological'
-                            ? 'bg-accent text-accent-contrast'
+                            ? 'bg-accent/20 text-accent'
                             : 'text-text-secondary hover:text-text-primary'
                         }`}
                       >
@@ -1608,12 +1610,13 @@ export function SectionedLogView({
             <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border-default">
               <div className="flex items-center gap-2">
                 <h3 className="font-medium text-sm text-text-primary">Books</h3>
+                {/* design-system-ignore: View mode toggle requires specific styling */}
                 <div className="flex bg-surface-base rounded p-0.5">
                   <button
                     onClick={() => setBookViewMode('week')}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                    className={`px-2 py-0.5 text-xs rounded transition-colors font-medium ${
                       bookViewMode === 'week'
-                        ? 'bg-accent text-accent-contrast'
+                        ? 'bg-accent/20 text-accent'
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >
@@ -1621,9 +1624,9 @@ export function SectionedLogView({
                   </button>
                   <button
                     onClick={() => setBookViewMode('allTime')}
-                    className={`px-2 py-0.5 text-xs rounded transition-colors font-bold ${
+                    className={`px-2 py-0.5 text-xs rounded transition-colors font-medium ${
                       bookViewMode === 'allTime'
-                        ? 'bg-accent text-accent-contrast'
+                        ? 'bg-accent/20 text-accent'
                         : 'text-text-secondary hover:text-text-primary'
                     }`}
                   >

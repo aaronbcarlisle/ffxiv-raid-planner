@@ -222,8 +222,8 @@ export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProp
             onClick={() => setActiveSubTab('mode')}
             className={`px-3 py-1.5 text-sm rounded transition-colors font-medium ${
               activeSubTab === 'mode'
-                ? 'bg-accent text-accent-contrast'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-accent/20 text-accent'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
             }`}
           >
             Mode
@@ -238,8 +238,8 @@ export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProp
               settings.mode === 'disabled'
                 ? 'text-text-disabled cursor-not-allowed'
                 : activeSubTab === 'advanced'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
             }`}
           >
             Advanced
