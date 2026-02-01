@@ -5,7 +5,7 @@
  * Full integration with PlayerCard components, DnD, loot/stats tabs.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
@@ -18,16 +18,17 @@ import { getTierById } from '../gamedata';
 import { DragOverlayCard } from '../components/player/DragOverlayCard';
 import { PlayerGrid } from '../components/player/PlayerGrid';
 import { RosterViewToggle } from '../components/player/RosterViewToggle';
+import { AddPlayerModal, type AddPlayerData } from '../components/player/AddPlayerModal';
 import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
-import { PriorityTab } from '../components/priority';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav, SlideOutPanel } from '../components/ui';
+import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
-import { AlertTriangle, Copy, Check, Settings2 } from 'lucide-react';
+import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
-import { GroupSettingsModal, RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
+import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
+import { SettingsPanel, type SettingsTab } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
@@ -50,12 +51,15 @@ export function GroupView() {
     tiers,
     currentTier,
     isLoading: tierLoading,
+    isSaving,
     error: tierError,
     errorStack: tierErrorStack,
     fetchTiers,
     fetchTier,
     clearTiers,
     clearError: clearTierError,
+    addPlayer,
+    updatePlayer,
   } = useTierStore();
   const { user, login } = useAuthStore();
   const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
@@ -105,6 +109,8 @@ export function GroupView() {
     setShowLogWeekWizard,
     logWeekWizardFloor,
     setLogWeekWizardFloor,
+    logWeekWizardWeek,
+    setLogWeekWizardWeek,
     playerModalCount,
     setPlayerModalCount,
     highlightedPlayerId,
@@ -118,12 +124,21 @@ export function GroupView() {
   // Device capabilities for responsive behavior
   const { isSmallScreen } = useDevice();
 
-  // Settings modal options (for opening to specific tab with highlight)
-  const [settingsModalTab, setSettingsModalTab] = useState<'general' | 'priority' | 'members' | 'invitations'>('general');
+  // Settings panel options (for opening to specific tab with highlight)
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
-  const [showPriorityPanel, setShowPriorityPanel] = useState(false);
+
+  // Add Player modal state
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [isAddingPlayer, setIsAddingPlayer] = useState(false);
+
+  // Refs to access current state in event handlers (avoids stale closures)
+  const settingsModalRef = useRef(showSettingsModal);
+  const settingsTabRef = useRef(settingsTab);
+  useEffect(() => { settingsModalRef.current = showSettingsModal; }, [showSettingsModal]);
+  useEffect(() => { settingsTabRef.current = settingsTab; }, [settingsTab]);
 
 
   // Handle viewAs URL parameter
@@ -382,6 +397,49 @@ export function GroupView() {
     materialLog,
   });
 
+  // Handler for Add Player modal submission
+  const handleAddPlayerSubmit = useCallback(async (data: AddPlayerData) => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+
+    setIsAddingPlayer(true);
+    try {
+      // Create the player
+      const newPlayer = await addPlayer(currentGroup.id, currentTier.tierId);
+
+      // Update with the provided data
+      await updatePlayer(currentGroup.id, currentTier.tierId, newPlayer.id, {
+        name: data.name,
+        job: data.job,
+        role: data.role,
+        position: data.position,
+        tankRole: data.tankRole,
+        configured: true,
+      });
+
+      // Scroll to and highlight the new player
+      setHighlightedPlayerId(newPlayer.id);
+
+      // Scroll the player card into view after a brief delay for render
+      setTimeout(() => {
+        const playerElement = document.getElementById(`player-card-${newPlayer.id}`);
+        if (playerElement) {
+          playerElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
+      // Clear highlight after animation
+      setTimeout(() => {
+        setHighlightedPlayerId(null);
+      }, 3000);
+
+      toast.success(`Added ${data.name} to the roster`);
+    } catch {
+      // Error handled in store
+    } finally {
+      setIsAddingPlayer(false);
+    }
+  }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer, setHighlightedPlayerId]);
+
   // Listen for header events
   useEffect(() => {
     const handleTierChangeEvent = (e: Event) => {
@@ -390,16 +448,27 @@ export function GroupView() {
         handleTierChange(detail.tierId);
       }
     };
-    const handleAddPlayerEvent = () => { handleAddPlayer(); };
+    const handleAddPlayerEvent = () => { setShowAddPlayerModal(true); };
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
-    const handleSettingsEvent = () => {
-      setSettingsModalTab('general');
-      setHighlightCreateInvite(false);
-      setShowSettingsModal(true);
+    const handleSettingsEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ tab?: SettingsTab }>;
+      const requestedTab = customEvent.detail?.tab || 'general';
+      const isOpen = settingsModalRef.current;
+      const currentTab = settingsTabRef.current;
+
+      if (isOpen && requestedTab === currentTab) {
+        // Same tab requested while open - close the panel
+        setShowSettingsModal(false);
+      } else {
+        // Different tab or panel was closed - open/switch to requested tab
+        setSettingsTab(requestedTab);
+        setHighlightCreateInvite(requestedTab === 'invitations');
+        setShowSettingsModal(true);
+      }
     };
     const handleOpenSettingsInvitationsEvent = () => {
-      setSettingsModalTab('invitations');
+      setSettingsTab('invitations');
       setHighlightCreateInvite(true);
       setShowSettingsModal(true);
     };
@@ -505,7 +574,7 @@ export function GroupView() {
                           showDeleteTierConfirm || showCreateTierModal ||
                           showKeyboardHelp || showLogLootModal ||
                           showLogMaterialModal || showMarkFloorClearedModal ||
-                          showLogWeekWizard ||
+                          showLogWeekWizard || showAddPlayerModal ||
                           isErrorModalOpen ||
                           playerModalCount > 0;
 
@@ -703,7 +772,7 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* Toolbar: Tabs + Context Controls */}
-          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
             {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
             <div className="hidden sm:block">
               <TabNavigation activeTab={pageMode} onTabChange={setPageMode} showPriorityTab={canEdit} />
@@ -713,6 +782,31 @@ export function GroupView() {
               <>
                 {/* Desktop controls - hidden on mobile */}
                 <div className="hidden sm:flex items-center gap-3">
+                  {/* Add Player button - visible for leads/owners */}
+                  {canEdit && (
+                    <Tooltip
+                      content={
+                        <div>
+                          <div className="font-medium">Add Player</div>
+                          <div className="text-text-muted text-xs mt-1">
+                            <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+Shift+P</kbd>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        onClick={() => setShowAddPlayerModal(true)}
+                        disabled={isSaving}
+                      >
+                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Player
+                      </Button>
+                    </Tooltip>
+                  )}
                   <SortModeSelector
                     sortPreset={sortPreset}
                     onPresetChange={setSortPresetWithTier}
@@ -844,23 +938,7 @@ export function GroupView() {
 
           {/* Loot Tab */}
           {pageMode === 'loot' && tierInfo && mainRosterPlayers.length > 0 && (
-            <div className="flex flex-col h-full">
-              {/* Priority Settings button - only for leads/owners */}
-              {canEdit && (
-                <div className="flex justify-end mb-2">
-                  <Tooltip content="Configure priority settings">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowPriorityPanel(true)}
-                    >
-                      <Settings2 className="w-4 h-4 mr-1.5" />
-                      Priority Settings
-                    </Button>
-                  </Tooltip>
-                </div>
-              )}
-              <LootPriorityPanel
+            <LootPriorityPanel
                 players={mainRosterPlayers}
                 settings={{
                   ...DEFAULT_SETTINGS,
@@ -887,7 +965,6 @@ export function GroupView() {
                   }
                 }}
               />
-            </div>
           )}
 
           {/* Summary Tab */}
@@ -922,7 +999,7 @@ export function GroupView() {
                 onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
                 openMarkFloorClearedModal={showMarkFloorClearedModal}
                 onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
-                onLogWeek={() => { setLogWeekWizardFloor(null); setShowLogWeekWizard(true); }}
+                onLogWeek={(week) => { setLogWeekWizardFloor(null); setLogWeekWizardWeek(week); setShowLogWeekWizard(true); }}
                 onLogFloor={(floor) => { setLogWeekWizardFloor(floor); setShowLogWeekWizard(true); }}
               />
             </div>
@@ -942,17 +1019,27 @@ export function GroupView() {
         />
       )}
 
-      {/* Group Settings Modal */}
-      {showSettingsModal && currentGroup && (
-        <GroupSettingsModal
-          group={currentGroup}
+      {/* Add Player Modal */}
+      <AddPlayerModal
+        isOpen={showAddPlayerModal}
+        onClose={() => setShowAddPlayerModal(false)}
+        onAdd={handleAddPlayerSubmit}
+        isLoading={isAddingPlayer}
+      />
+
+      {/* Settings Panel (slide-out) */}
+      {currentGroup && (
+        <SettingsPanel
+          isOpen={showSettingsModal}
           onClose={() => {
             setShowSettingsModal(false);
-            setSettingsModalTab('general');
+            setSettingsTab('general');
             setHighlightCreateInvite(false);
           }}
+          group={currentGroup}
+          players={mainRosterPlayers}
           isAdmin={isAdmin}
-          initialTab={settingsModalTab}
+          initialTab={settingsTab}
           highlightCreateInvite={highlightCreateInvite}
         />
       )}
@@ -1250,26 +1337,11 @@ export function GroupView() {
         />
       )}
 
-      {/* Priority Settings Slide-Out Panel */}
-      {currentGroup && currentTier?.players && (
-        <SlideOutPanel
-          isOpen={showPriorityPanel}
-          onClose={() => setShowPriorityPanel(false)}
-          title="Priority Settings"
-          width="2xl"
-        >
-          <PriorityTab
-            group={currentGroup}
-            players={mainRosterPlayers}
-          />
-        </SlideOutPanel>
-      )}
-
       {/* Log Week Wizard */}
       {currentGroup && currentTier && tierInfo && (
         <LogWeekWizard
           isOpen={showLogWeekWizard}
-          onClose={() => { setShowLogWeekWizard(false); setLogWeekWizardFloor(null); }}
+          onClose={() => { setShowLogWeekWizard(false); setLogWeekWizardFloor(null); setLogWeekWizardWeek(null); }}
           groupId={currentGroup.id}
           tierId={currentTier.tierId}
           players={mainRosterPlayers}
@@ -1278,8 +1350,9 @@ export function GroupView() {
             ...currentGroup.settings,
           }}
           floors={tierInfo.floors}
-          currentWeek={storeCurrentWeek}
+          currentWeek={logWeekWizardWeek ?? storeCurrentWeek}
           lootLog={lootLog}
+          materialLog={materialLog}
           singleFloorMode={logWeekWizardFloor !== null}
           initialFloor={logWeekWizardFloor ?? 1}
           onSuccess={() => {
