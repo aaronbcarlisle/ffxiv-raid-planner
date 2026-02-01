@@ -22,6 +22,7 @@ import { Label } from '../components/ui/Label';
 import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
+import { GearStatusCircle } from '../components/ui/GearStatusCircle';
 import { Toggle } from '../components/ui/Toggle';
 import { NumberInput } from '../components/ui/NumberInput';
 import { WeekStepper } from '../components/history/WeekStepper';
@@ -692,6 +693,7 @@ function FormsSection() {
   const [inputGroupValue, setInputGroupValue] = useState('');
   const [checkboxValue, setCheckboxValue] = useState(false);
   const [threeState, setThreeState] = useState<ThreeState>('none');
+  const [gearState, setGearState] = useState<'missing' | 'have' | 'augmented'>('missing');
   const [selectValue, setSelectValue] = useState('');
   const [searchableSelectValue, setSearchableSelectValue] = useState('');
   const [categorizedSelectValue, setCategorizedSelectValue] = useState('');
@@ -1009,10 +1011,96 @@ const options = users.map(u => ({
         </div>
       </Subsection>
 
-      {/* ThreeStateCheckbox */}
-      <Subsection title="Three-State Checkbox (Tome Gear)">
+      {/* GearStatusCircle */}
+      <Subsection title="Gear Status Circle">
         <p className="text-sm text-text-muted mb-4">
-          Cycles through: empty → have → augmented. Used for tome BiS gear tracking.
+          Target-style status indicator for gear tracking. Uses 2-state cycle for raid gear (missing ↔ complete)
+          and 3-state cycle for tome gear needing augmentation (missing → have → augmented).
+        </p>
+        <div className="space-y-6">
+          {/* Raid gear - 2 state */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Raid BiS (2-state)</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle
+                  state={gearState}
+                  bisSource="raid"
+                  requiresAugmentation={false}
+                  onChange={setGearState}
+                />
+                <span className="text-sm text-text-secondary">
+                  Interactive ({gearState})
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource="raid" requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Missing</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Complete</span>
+              </div>
+            </div>
+          </div>
+          {/* Tome gear - 3 state */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Tome BiS (3-state, needs augment)</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Missing</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Have (needs aug)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="augmented" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Augmented</span>
+              </div>
+            </div>
+          </div>
+          {/* Sizes */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Sizes</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="sm" />
+                <span className="text-sm text-text-muted">Small</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="md" />
+                <span className="text-sm text-text-muted">Medium (default)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="lg" />
+                <span className="text-sm text-text-muted">Large</span>
+              </div>
+            </div>
+          </div>
+          {/* Disabled & null bisSource */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Special States</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} disabled />
+                <span className="text-sm text-text-muted">Disabled</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource={null} requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">No BiS set</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* ThreeStateCheckbox - Legacy */}
+      <Subsection title="Three-State Checkbox (Legacy)">
+        <p className="text-sm text-text-muted mb-4">
+          <span className="text-status-warning">Legacy component</span> — Use GearStatusCircle instead for gear tracking.
+          This component uses checkmark-style visuals. Cycles through: empty → have → augmented.
         </p>
         <div className="flex flex-wrap gap-8 items-center">
           <div className="flex items-center gap-3">
@@ -1323,7 +1411,7 @@ const options = users.map(u => ({
           language="tsx"
           code={`// Import components
 import { Input, TextArea, Label, InputGroup, Checkbox, Select } from '@/components/ui';
-import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
+import { GearStatusCircle } from '@/components/ui/GearStatusCircle';
 
 // Basic Input
 <Input
@@ -1349,9 +1437,11 @@ import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
   description="We'll never share your email"
 />
 
-// ThreeStateCheckbox for tome gear
-<ThreeStateCheckbox
-  state={gearState}  // 'none' | 'have' | 'augmented'
+// GearStatusCircle for gear tracking
+<GearStatusCircle
+  state={gearState}  // 'missing' | 'have' | 'augmented'
+  bisSource="tome"   // 'raid' | 'tome' | 'base_tome' | 'crafted'
+  requiresAugmentation={true}
   onChange={setGearState}
 />`}
         />

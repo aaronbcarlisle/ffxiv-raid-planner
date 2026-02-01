@@ -51,9 +51,11 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 | Job selection | `JobPicker` | `player/JobPicker.tsx` |
 | Position (T1-R2) | `PositionSelector` | `player/PositionSelector.tsx` |
 | Tank role (MT/OT) | `TankRoleSelector` | `player/TankRoleSelector.tsx` |
+| BiS source (R/T/BT/C) | `BiSSourceSelector` | `player/BiSSourceSelector.tsx` |
 | Text input | `Input` | `ui/Input.tsx` |
 | Dropdown | `Select` | `ui/Select.tsx` |
 | Checkbox | `Checkbox` | `ui/Checkbox.tsx` |
+| Gear status | `GearStatusCircle` | `ui/GearStatusCircle.tsx` |
 | Modal | `Modal` + `useModal` | `ui/Modal.tsx` |
 | Confirm dialog | `ConfirmModal` | `ui/ConfirmModal.tsx` |
 | Context menu | `ContextMenu` | `ui/ContextMenu.tsx` |
