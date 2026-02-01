@@ -87,6 +87,9 @@ export function AdminDashboard() {
   // Track if search change came from URL sync (back/forward navigation)
   // to prevent the debounce effect from resetting the page
   const searchFromUrlSyncRef = useRef(false);
+  // Track if page change came from our setPage call (not URL sync)
+  // to prevent the URL sync effect from interfering with our state update
+  const pageChangeIntentionalRef = useRef(false);
   const [page, setPageState] = useState(() => {
     const urlPage = searchParams.get('page');
     return urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
@@ -119,10 +122,15 @@ export function AdminDashboard() {
       setDebouncedSearch(urlSearch);
     }
 
-    const urlPageParam = searchParams.get('page');
-    const urlPage = urlPageParam ? Math.max(0, parseInt(urlPageParam, 10) || 0) : 0;
-    if (urlPage !== page) {
-      setPageState(urlPage);
+    // Skip page sync if we initiated this URL change
+    if (pageChangeIntentionalRef.current) {
+      pageChangeIntentionalRef.current = false;
+    } else {
+      const urlPageParam = searchParams.get('page');
+      const urlPage = urlPageParam ? Math.max(0, parseInt(urlPageParam, 10) || 0) : 0;
+      if (urlPage !== page) {
+        setPageState(urlPage);
+      }
     }
 
     const urlSort = searchParams.get('sort');
@@ -162,6 +170,8 @@ export function AdminDashboard() {
 
   // Wrapper to set page and sync URL
   const setPage = useCallback((pageOrFn: number | ((prev: number) => number)) => {
+    // Mark this as an intentional page change to prevent URL sync effect interference
+    pageChangeIntentionalRef.current = true;
     setPageState(prev => {
       const newPage = typeof pageOrFn === 'function' ? pageOrFn(prev) : pageOrFn;
       // Update URL - omit if default (0)
