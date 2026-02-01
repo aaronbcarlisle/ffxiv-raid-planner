@@ -29,6 +29,7 @@ import {
   GripVertical,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Plus,
   Trash2,
   RotateCcw,
@@ -159,21 +160,19 @@ function SortableJobItem({
             In Use
           </span>
         )}
-        {showAdvanced && (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-text-muted">Offset:</span>
-            <NumberInput
-              value={config.priorityOffset}
-              onChange={(value) => onOffsetChange(job, value ?? 0)}
-              min={-100}
-              max={100}
-              step={5}
-              size="sm"
-              disabled={disabled}
-              className="w-24"
-            />
-          </div>
-        )}
+        <div className={`flex items-center gap-1 ${showAdvanced ? '' : 'invisible'}`}>
+          <span className="text-xs text-text-muted">Offset:</span>
+          <NumberInput
+            value={config.priorityOffset}
+            onChange={(value) => onOffsetChange(job, value ?? 0)}
+            min={-100}
+            max={100}
+            step={5}
+            size="sm"
+            disabled={disabled}
+            className="w-24"
+          />
+        </div>
       </div>
 
       {/* Insert indicator - horizontal line below */}
@@ -191,6 +190,10 @@ function SortableGroupHeader({
   onToggle,
   onRename,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   jobCount,
   showAdvanced,
   disabled,
@@ -204,6 +207,10 @@ function SortableGroupHeader({
   onToggle: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   jobCount: number;
   showAdvanced: boolean;
   disabled?: boolean;
@@ -314,24 +321,38 @@ function SortableGroupHeader({
             <span className="text-text-primary font-medium flex-1">{group.name}</span>
             <span className="text-xs text-text-muted">({jobCount} jobs)</span>
 
-            {showAdvanced && (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-text-muted">Base:</span>
-                <NumberInput
-                  value={group.basePriority}
-                  onChange={(value) => onBasePriorityChange(value ?? 0)}
-                  min={0}
-                  max={200}
-                  step={25}
-                  size="sm"
-                  disabled={disabled}
-                  className="w-24"
-                />
-              </div>
-            )}
+            <div className={`flex items-center gap-1 ${showAdvanced ? '' : 'invisible'}`}>
+              <span className="text-xs text-text-muted">Base:</span>
+              <NumberInput
+                value={group.basePriority}
+                onChange={(value) => onBasePriorityChange(value ?? 0)}
+                min={0}
+                max={200}
+                step={25}
+                size="sm"
+                disabled={disabled}
+                className="w-24"
+              />
+            </div>
 
             {!disabled && (
-              <>
+              <div className="flex items-center gap-0.5">
+                <IconButton
+                  icon={<ChevronUp className="w-3.5 h-3.5" />}
+                  onClick={onMoveUp}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Move group up"
+                  disabled={!canMoveUp}
+                />
+                <IconButton
+                  icon={<ChevronDown className="w-3.5 h-3.5" />}
+                  onClick={onMoveDown}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Move group down"
+                  disabled={!canMoveDown}
+                />
                 <IconButton
                   icon={<Pencil className="w-3.5 h-3.5" />}
                   onClick={() => setIsEditing(true)}
@@ -348,7 +369,7 @@ function SortableGroupHeader({
                   aria-label={isDeleteArmed ? 'Confirm delete' : 'Delete group'}
                   className={isDeleteArmed ? 'text-status-warning hover:text-status-warning' : 'text-status-error hover:text-status-error'}
                 />
-              </>
+              </div>
             )}
           </>
         )}
@@ -629,6 +650,30 @@ export function JobBasedEditor({
     [config, onChange]
   );
 
+  const handleMoveGroupUp = useCallback(
+    (groupId: string) => {
+      const index = config.groups.findIndex((g) => g.id === groupId);
+      if (index <= 0) return;
+
+      const newGroups = [...config.groups];
+      [newGroups[index - 1], newGroups[index]] = [newGroups[index], newGroups[index - 1]];
+      onChange({ ...config, groups: newGroups.map((g, i) => ({ ...g, sortOrder: i })) });
+    },
+    [config, onChange]
+  );
+
+  const handleMoveGroupDown = useCallback(
+    (groupId: string) => {
+      const index = config.groups.findIndex((g) => g.id === groupId);
+      if (index < 0 || index >= config.groups.length - 1) return;
+
+      const newGroups = [...config.groups];
+      [newGroups[index], newGroups[index + 1]] = [newGroups[index + 1], newGroups[index]];
+      onChange({ ...config, groups: newGroups.map((g, i) => ({ ...g, sortOrder: i })) });
+    },
+    [config, onChange]
+  );
+
   const handleAddGroup = useCallback(() => {
     const newGroupId = `custom-${Date.now()}`;
     const newGroup: PriorityGroupConfig = {
@@ -773,7 +818,7 @@ export function JobBasedEditor({
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-3">
-            {config.groups.map((group) => {
+            {config.groups.map((group, groupIndex) => {
               const groupJobs = jobsByGroup[group.id] || [];
               const isExpanded = expandedGroups.has(group.id);
               // Only show group indicators when dragging a group
@@ -789,6 +834,10 @@ export function JobBasedEditor({
                     onToggle={() => handleToggleGroup(group.id)}
                     onRename={(name) => handleRenameGroup(group.id, name)}
                     onDelete={() => handleDeleteGroup(group.id)}
+                    onMoveUp={() => handleMoveGroupUp(group.id)}
+                    onMoveDown={() => handleMoveGroupDown(group.id)}
+                    canMoveUp={groupIndex > 0}
+                    canMoveDown={groupIndex < config.groups.length - 1}
                     jobCount={groupJobs.length}
                     showAdvanced={config.showAdvancedControls}
                     disabled={disabled}
