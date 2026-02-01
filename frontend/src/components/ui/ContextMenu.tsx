@@ -201,7 +201,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             tabIndex={focusedIndex === index ? 0 : -1}
             className={`
               w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-inset
+              ${item.danger ? 'focus-visible:ring-status-error' : 'focus-visible:ring-accent'}
               ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
               ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10' : ''}
               ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-surface-interactive' : ''}
