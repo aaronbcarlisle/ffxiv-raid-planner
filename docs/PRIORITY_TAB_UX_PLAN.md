@@ -1,7 +1,12 @@
 # Priority Tab UX Reorganization Plan
 
-**Status:** Planned (not yet implemented)
+**Status:** ✅ COMPLETE
 **Created:** 2026-02-01
+**Completed:** 2026-02-01
+
+> **Note:** The UI reorganization described in this plan has been implemented.
+> Additionally, the multipliers defined in Advanced Options are now wired to
+> the actual priority calculations in `utils/priority.ts` and `utils/lootCoordination.ts`.
 
 ## Overview
 Reorganize the Priority tab in Static Settings to improve UX through:

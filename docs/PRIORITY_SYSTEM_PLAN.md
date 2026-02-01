@@ -1,8 +1,8 @@
 # Priority System Overhaul - Implementation Plan
 
-**Status:** In Progress
-**Last Updated:** 2026-01-31
-**Version:** 2.0
+**Status:** UI Complete, Multiplier Wiring Complete
+**Last Updated:** 2026-02-01
+**Version:** 2.1
 
 ---
 
@@ -22,21 +22,24 @@ Major redesign of the priority system to give leads/owners complete control over
 - [x] Priority Settings slide-out panel (basic structure)
 - [x] Mode selector (Role, Job, Player, Manual Planning, Disabled)
 - [x] Role-based editor with DnD
-- [x] Job-based editor (basic - needs DnD improvements)
-- [x] Player-based editor (basic - needs DnD improvements)
+- [x] Job-based editor with DnD (groups work, items work)
+- [x] Player-based editor with DnD (groups work, items work)
 - [x] Advanced options (presets, multipliers)
-- [x] Log Week Wizard (basic - needs refinements)
+- [x] Log Week Wizard (includes materials, slots, augmentation, "Free for All")
 - [x] Priority panel accessible from Loot tab
 - [x] SlideOutPanel component with proper text selection handling
 - [x] Types defined in `types/index.ts`
+- [x] Alt+P keyboard shortcut opens Priority Settings
+- [x] **Multipliers wired to calculations** (2026-02-01)
+  - advancedOptions multipliers now used in priority.ts
+  - useMultipliers, useWeightedNeed, useLootAdjustments toggles work
+  - Enhanced fairness uses configurable drought/balance multipliers
+  - Vestigial `components/priority/PriorityTab.tsx` deleted
 
 ### In Progress / Needs Work
 - [ ] Log Week Wizard refinements (see Phase 5 below)
-- [ ] Material handling in wizard (missing slot selection, augmentation)
-- [ ] DnD improvements for Job/Player modes
-- [ ] Priority panel accessible from Log tab
-- [ ] Alt+P keyboard shortcut
-- [ ] Remove Priority tab from GroupSettingsModal
+- [ ] DnD improvements for Job/Player modes (visual indicators)
+- [ ] Priority panel accessible from Log tab header
 
 ### Not Started
 - [ ] Backend: Weekly assignments table & API (for Manual Planning)

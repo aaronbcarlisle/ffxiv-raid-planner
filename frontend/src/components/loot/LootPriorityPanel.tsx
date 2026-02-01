@@ -17,7 +17,7 @@ import {
 } from '../../utils/priority';
 import {
   calculatePlayerLootStats,
-  calculateEnhancedPriorityScore,
+  calculateEnhancedScoreWithBreakdown,
   calculateAverageDrops,
 } from '../../utils/lootCoordination';
 import { getRoleColor, type Role } from '../../gamedata';
@@ -445,19 +445,21 @@ export function LootPriorityPanel({
       return entriesWithBreakdown;
     }
 
-    // Add enhanced score modifications based on loot history
+    // Add enhanced score modifications based on loot history using shared function
     return entriesWithBreakdown.map((entry) => {
       const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
-      const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
-      const excessDrops = stats.totalDrops - averageDrops;
-      const balancePenalty = excessDrops > 0 ? Math.min(excessDrops * 15, 45) : 0;
-      const enhancedScore = calculateEnhancedPriorityScore(entry.score, stats, averageDrops);
+      const enhanced = calculateEnhancedScoreWithBreakdown(
+        entry.score,
+        stats,
+        averageDrops,
+        settings // Pass settings to use configurable multipliers
+      );
 
       return {
         ...entry,
-        enhancedScore,
-        droughtBonus,
-        balancePenalty,
+        enhancedScore: enhanced.score,
+        droughtBonus: enhanced.droughtBonus,
+        balancePenalty: enhanced.balancePenalty,
       };
     }).sort((a, b) => {
       const scoreA = a.enhancedScore ?? a.score;

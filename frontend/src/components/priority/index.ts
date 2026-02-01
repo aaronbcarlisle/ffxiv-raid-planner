@@ -1,10 +1,10 @@
 /**
  * Priority Components
  *
- * Components for the Priority tab in GroupView.
+ * Components for the Priority tab in GroupView settings.
+ * Note: PriorityTab is now in components/settings/PriorityTab.tsx
  */
 
-export { PriorityTab } from './PriorityTab';
 export { ModeSelector } from './ModeSelector';
 export { RoleBasedEditor } from './RoleBasedEditor';
 export { JobBasedEditor } from './JobBasedEditor';

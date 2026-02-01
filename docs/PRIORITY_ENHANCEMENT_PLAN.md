@@ -19,10 +19,14 @@ Enhance the loot priority system with more flexibility based on user feedback fr
 
 ---
 
-## Phase 1: Flexible Priority Settings (MVP) ✅ IMPLEMENTED
+## Phase 1: Flexible Priority Settings (MVP) ✅ COMPLETE
 
 ### Goal
 Give users control over priority calculations without breaking the default experience.
+
+> **Update 2026-02-01:** Advanced Options multipliers are now fully wired to calculations.
+> All toggles (useMultipliers, useWeightedNeed, useLootAdjustments) work correctly.
+> Enhanced fairness uses configurable drought bonus and balance penalty multipliers.
 
 ### Key User Needs Addressed
 - **Noxus11**: "Turn off role priority" → `priorityMode: 'disabled'`

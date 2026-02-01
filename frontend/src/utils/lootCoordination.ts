@@ -14,7 +14,9 @@ import type {
   SnapshotPlayer,
   StaticSettings,
   GearSlot,
+  AdvancedPriorityOptions,
 } from '../types';
+import { DEFAULT_ADVANCED_OPTIONS } from '../types';
 
 // ==================== Types ====================
 
@@ -405,25 +407,97 @@ export function calculatePlayerLootStats(
 }
 
 /**
+ * Get advanced options from settings with defaults
+ * Used for enhanced priority calculation multipliers
+ */
+function getAdvancedOptions(settings?: StaticSettings): AdvancedPriorityOptions {
+  return settings?.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS;
+}
+
+/**
+ * Enhanced score breakdown for tooltips
+ */
+export interface EnhancedScoreBreakdown {
+  score: number;
+  droughtBonus: number;
+  balancePenalty: number;
+}
+
+/**
+ * Calculate enhanced priority score with detailed breakdown
+ *
+ * Returns both the final score and the individual components for display.
+ * Uses configurable multipliers from settings when provided.
+ *
+ * Note: This function always calculates the enhanced score when called.
+ * The `enableEnhancedFairness` toggle controls whether the UI USES this
+ * function, not whether the function does its calculation.
+ *
+ * @param baseScore - Base priority score from calculatePriorityScore
+ * @param stats - Player's loot statistics
+ * @param averageDrops - Average drops across all players
+ * @param settings - Optional static settings for configurable multipliers
+ */
+export function calculateEnhancedScoreWithBreakdown(
+  baseScore: number,
+  stats: PlayerLootStats,
+  averageDrops: number,
+  settings?: StaticSettings
+): EnhancedScoreBreakdown {
+  const advancedOptions = getAdvancedOptions(settings);
+
+  // Get multipliers - use configured values when useMultipliers is enabled
+  const droughtMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.droughtBonusMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.droughtBonusMultiplier;
+  const droughtCapWeeks = advancedOptions.useMultipliers
+    ? advancedOptions.droughtBonusCapWeeks
+    : DEFAULT_ADVANCED_OPTIONS.droughtBonusCapWeeks;
+  const balanceMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.balancePenaltyMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.balancePenaltyMultiplier;
+  const balanceCapDrops = advancedOptions.useMultipliers
+    ? advancedOptions.balancePenaltyCapDrops
+    : DEFAULT_ADVANCED_OPTIONS.balancePenaltyCapDrops;
+
+  // Drought bonus: reward players who haven't received loot recently
+  const droughtBonus = Math.min(
+    stats.weeksSinceLastDrop * droughtMultiplier,
+    droughtCapWeeks * droughtMultiplier
+  );
+
+  // Balance penalty: penalize players who are ahead of the curve
+  const excessDrops = Math.max(0, stats.totalDrops - averageDrops);
+  const cappedExcess = Math.min(excessDrops, balanceCapDrops);
+  const balancePenalty = cappedExcess * balanceMultiplier;
+
+  return {
+    score: Math.round(baseScore + droughtBonus - balancePenalty),
+    droughtBonus,
+    balancePenalty,
+  };
+}
+
+/**
  * Calculate enhanced priority score with loot history adjustments
  *
  * Modifies base priority score with:
- * - Drought bonus: +10 per week without drops (max +50)
- * - Balance penalty: -15 per drop above average (max -45)
+ * - Drought bonus: reward for weeks without drops (configurable)
+ * - Balance penalty: penalty for drops above average (configurable)
+ *
+ * @param baseScore - Base priority score from calculatePriorityScore
+ * @param stats - Player's loot statistics
+ * @param averageDrops - Average drops across all players
+ * @param settings - Optional static settings for configurable multipliers
  */
 export function calculateEnhancedPriorityScore(
   baseScore: number,
   stats: PlayerLootStats,
-  averageDrops: number
+  averageDrops: number,
+  settings?: StaticSettings
 ): number {
-  // Drought bonus: reward players who haven't received loot recently
-  const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
-
-  // Balance penalty: penalize players who are ahead of the curve
-  const excessDrops = stats.totalDrops - averageDrops;
-  const balancePenalty = excessDrops > 0 ? Math.min(excessDrops * 15, 45) : 0;
-
-  return Math.round(baseScore + droughtBonus - balancePenalty);
+  const breakdown = calculateEnhancedScoreWithBreakdown(baseScore, stats, averageDrops, settings);
+  return breakdown.score;
 }
 
 /**
@@ -475,7 +549,8 @@ export function getEnhancedPriorityForSlot(
     const enhancedScore = calculateEnhancedPriorityScore(
       entry.score,
       stats,
-      averageDrops
+      averageDrops,
+      settings // Pass settings to use configurable multipliers
     );
 
     return {
