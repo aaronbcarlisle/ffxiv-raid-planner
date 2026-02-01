@@ -245,7 +245,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
       </div>
 
       {/* Sticky Action Buttons footer */}
-      <div className="flex-shrink-0 flex justify-between pt-4 border-t border-border-default bg-surface-overlay -mx-4 px-4 -mb-4 pb-4">
+      <div className="flex-shrink-0 flex justify-between py-4 border-t border-border-default bg-surface-card -mx-4 px-4">
         <div>
           {isOwner && (
             <Button

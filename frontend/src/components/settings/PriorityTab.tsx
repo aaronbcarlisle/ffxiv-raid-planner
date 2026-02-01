@@ -384,7 +384,7 @@ export function PriorityTab({ group, players, onClose }: PriorityTabProps) {
 
       {/* Sticky Save button footer */}
       {canEdit && (
-        <div className="flex-shrink-0 flex justify-end pt-4 border-t border-border-default bg-surface-overlay -mx-4 px-4 -mb-4 pb-4">
+        <div className="flex-shrink-0 flex justify-end py-4 border-t border-border-default bg-surface-card -mx-4 px-4">
           <Button
             onClick={handleSave}
             disabled={!hasChanges && !hasAdjustmentChanges}
