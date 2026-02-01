@@ -558,36 +558,12 @@ export function JobBasedEditor({
 
       if (activeJob && overJob) {
         if (activeJob.groupId === overJob.groupId) {
-          // Same group - reorder with precise positioning based on drop mode
+          // Same group - use arrayMove (SortableContext handles visual reordering)
           const groupJobs = jobsByGroup[activeJob.groupId] || [];
           const oldIndex = groupJobs.findIndex((j) => j.job === activeIdStr);
-          let targetIndex = groupJobs.findIndex((j) => j.job === overIdStr);
+          const targetIndex = groupJobs.findIndex((j) => j.job === overIdStr);
 
-          if (oldIndex !== -1 && targetIndex !== -1) {
-            // Handle swap mode - directly swap the two items
-            if (currentDropMode === 'swap') {
-              const swapped = [...groupJobs];
-              [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
-              const newJobs = config.jobs.map((j) => {
-                if (j.groupId === activeJob.groupId) {
-                  const idx = swapped.findIndex((sj) => sj.job === j.job);
-                  return { ...j, sortOrder: idx };
-                }
-                return j;
-              });
-              onChange({ ...config, jobs: newJobs });
-              return;
-            }
-
-            // Handle insert mode
-            if (currentDropMode === 'insert-after') {
-              targetIndex = targetIndex + 1;
-            }
-            // Adjust if moving from before the target
-            if (oldIndex < targetIndex) {
-              targetIndex--;
-            }
-
+          if (oldIndex !== -1 && targetIndex !== -1 && oldIndex !== targetIndex) {
             const reordered = arrayMove(groupJobs, oldIndex, targetIndex);
             const newJobs = config.jobs.map((j) => {
               if (j.groupId === activeJob.groupId) {
@@ -599,14 +575,31 @@ export function JobBasedEditor({
             onChange({ ...config, jobs: newJobs });
           }
         } else {
-          // Different group - move to new group
-          const newJobs = config.jobs.map((j) => {
-            if (j.job === activeIdStr) {
-              return { ...j, groupId: overJob.groupId };
-            }
-            return j;
-          });
-          onChange({ ...config, jobs: newJobs });
+          // Different group - swap or move based on drop mode
+          if (currentDropMode === 'swap') {
+            // Swap: active goes to over's group, over goes to active's group
+            const activeGroupId = activeJob.groupId;
+            const overGroupId = overJob.groupId;
+            const newJobs = config.jobs.map((j) => {
+              if (j.job === activeIdStr) {
+                return { ...j, groupId: overGroupId };
+              }
+              if (j.job === overIdStr) {
+                return { ...j, groupId: activeGroupId };
+              }
+              return j;
+            });
+            onChange({ ...config, jobs: newJobs });
+          } else {
+            // Insert: just move active to over's group
+            const newJobs = config.jobs.map((j) => {
+              if (j.job === activeIdStr) {
+                return { ...j, groupId: overJob.groupId };
+              }
+              return j;
+            });
+            onChange({ ...config, jobs: newJobs });
+          }
         }
       }
     }
@@ -868,6 +861,9 @@ export function JobBasedEditor({
                           const isDraggingJob = activeId && !activeId.startsWith('group-');
                           const isOverJob = overId === jobConfig.job && activeId !== jobConfig.job;
                           const showJobIndicators = isDraggingJob && isOverJob;
+                          // Check if dragged job is in a different group (for swap indicator)
+                          const draggedJob = activeId ? config.jobs.find((j) => j.job === activeId) : null;
+                          const isCrossGroup = draggedJob && draggedJob.groupId !== group.id;
                           return (
                             <SortableJobItem
                               key={jobConfig.job}
@@ -879,7 +875,7 @@ export function JobBasedEditor({
                               onOffsetChange={handleJobOffsetChange}
                               showInsertBefore={showJobIndicators && dropMode === 'insert-before'}
                               showInsertAfter={showJobIndicators && dropMode === 'insert-after'}
-                              showSwap={showJobIndicators && dropMode === 'swap'}
+                              showSwap={showJobIndicators && dropMode === 'swap' && isCrossGroup}
                             />
                           );
                         })}

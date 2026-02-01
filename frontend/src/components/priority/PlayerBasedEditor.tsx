@@ -562,36 +562,12 @@ export function PlayerBasedEditor({
 
       if (activePlayer && overPlayer) {
         if (activePlayer.groupId === overPlayer.groupId) {
-          // Same group - reorder with precise positioning based on drop mode
+          // Same group - use arrayMove (SortableContext handles visual reordering)
           const groupPlayers = playersByGroup[activePlayer.groupId] || [];
           const oldIndex = groupPlayers.findIndex((p) => p.player.id === activeIdStr);
-          let targetIndex = groupPlayers.findIndex((p) => p.player.id === overIdStr);
+          const targetIndex = groupPlayers.findIndex((p) => p.player.id === overIdStr);
 
-          if (oldIndex !== -1 && targetIndex !== -1) {
-            // Handle swap mode - directly swap the two items
-            if (currentDropMode === 'swap') {
-              const swapped = [...groupPlayers];
-              [swapped[oldIndex], swapped[targetIndex]] = [swapped[targetIndex], swapped[oldIndex]];
-              const newPlayers = ensuredConfig.players.map((p) => {
-                if (p.groupId === activePlayer.groupId) {
-                  const idx = swapped.findIndex((sp) => sp.player.id === p.playerId);
-                  return { ...p, sortOrder: idx >= 0 ? idx : p.sortOrder };
-                }
-                return p;
-              });
-              onChange({ ...ensuredConfig, players: newPlayers });
-              return;
-            }
-
-            // Handle insert mode
-            if (currentDropMode === 'insert-after') {
-              targetIndex = targetIndex + 1;
-            }
-            // Adjust if moving from before the target
-            if (oldIndex < targetIndex) {
-              targetIndex--;
-            }
-
+          if (oldIndex !== -1 && targetIndex !== -1 && oldIndex !== targetIndex) {
             const reordered = arrayMove(groupPlayers, oldIndex, targetIndex);
             const newPlayers = ensuredConfig.players.map((p) => {
               if (p.groupId === activePlayer.groupId) {
@@ -603,14 +579,31 @@ export function PlayerBasedEditor({
             onChange({ ...ensuredConfig, players: newPlayers });
           }
         } else {
-          // Different group - move to new group
-          const newPlayers = ensuredConfig.players.map((p) => {
-            if (p.playerId === activeIdStr) {
-              return { ...p, groupId: overPlayer.groupId };
-            }
-            return p;
-          });
-          onChange({ ...ensuredConfig, players: newPlayers });
+          // Different group - swap or move based on drop mode
+          if (currentDropMode === 'swap') {
+            // Swap: active goes to over's group, over goes to active's group
+            const activeGroupId = activePlayer.groupId;
+            const overGroupId = overPlayer.groupId;
+            const newPlayers = ensuredConfig.players.map((p) => {
+              if (p.playerId === activeIdStr) {
+                return { ...p, groupId: overGroupId };
+              }
+              if (p.playerId === overIdStr) {
+                return { ...p, groupId: activeGroupId };
+              }
+              return p;
+            });
+            onChange({ ...ensuredConfig, players: newPlayers });
+          } else {
+            // Insert: just move active to over's group
+            const newPlayers = ensuredConfig.players.map((p) => {
+              if (p.playerId === activeIdStr) {
+                return { ...p, groupId: overPlayer.groupId };
+              }
+              return p;
+            });
+            onChange({ ...ensuredConfig, players: newPlayers });
+          }
         }
       }
     }
@@ -883,6 +876,9 @@ export function PlayerBasedEditor({
                             const isDraggingPlayer = activeId && !activeId.startsWith('group-');
                             const isOverPlayer = overId === player.id && activeId !== player.id;
                             const showPlayerIndicators = isDraggingPlayer && isOverPlayer;
+                            // Check if dragged player is in a different group (for swap indicator)
+                            const draggedPlayer = activeId ? ensuredConfig.players.find((p) => p.playerId === activeId) : null;
+                            const isCrossGroup = draggedPlayer && draggedPlayer.groupId !== group.id;
                             return (
                               <SortablePlayerItem
                                 key={player.id}
@@ -893,7 +889,7 @@ export function PlayerBasedEditor({
                                 onOffsetChange={handlePlayerOffsetChange}
                                 showInsertBefore={showPlayerIndicators && dropMode === 'insert-before'}
                                 showInsertAfter={showPlayerIndicators && dropMode === 'insert-after'}
-                                showSwap={showPlayerIndicators && dropMode === 'swap'}
+                                showSwap={showPlayerIndicators && dropMode === 'swap' && isCrossGroup}
                               />
                             );
                           })}
