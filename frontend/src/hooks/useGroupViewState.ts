@@ -89,7 +89,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
 
   // ===== Modal state =====
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsModalState, setShowSettingsModalState] = useState(() => {
+    return searchParams.get('showSettings') === 'true';
+  });
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -317,6 +319,19 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }, { replace: true });
   }, [setSearchParams]);
 
+  // Wrapper to update showSettingsModal and clear URL param when closing
+  const setShowSettingsModal = useCallback((show: boolean) => {
+    setShowSettingsModalState(show);
+    if (!show) {
+      // Clear URL param when closing settings panel
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.delete('showSettings');
+        return params;
+      }, { replace: true });
+    }
+  }, [setSearchParams]);
+
   return {
     // URL params
     searchParams,
@@ -353,7 +368,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Modal state
     showCreateTierModal,
     setShowCreateTierModal,
-    showSettingsModal,
+    showSettingsModal: showSettingsModalState,
     setShowSettingsModal,
     showRolloverDialog,
     setShowRolloverDialog,
