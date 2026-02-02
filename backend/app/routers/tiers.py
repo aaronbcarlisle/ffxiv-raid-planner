@@ -488,6 +488,17 @@ async def delete_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
+    # Delete associated weekly assignments to prevent orphaned data
+    # Uses canonical tier_id (slug) which is how assignments are stored
+    from sqlalchemy import delete
+
+    await session.execute(
+        delete(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == snapshot.tier_id,
+        )
+    )
+
     await session.delete(snapshot)
     await session.commit()
 
@@ -1848,12 +1859,26 @@ async def bulk_delete_weekly_assignments(
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
+    # Validate tier exists and get canonical tier_id (slug)
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
+    # Use canonical tier_id for consistency with how assignments are stored
+    canonical_tier_id = tier.tier_id
+
     # Build delete query with filters
     from sqlalchemy import delete
 
     query = delete(WeeklyAssignment).where(
         WeeklyAssignment.static_group_id == group_id,
-        WeeklyAssignment.tier_id == data.tier_id,
+        WeeklyAssignment.tier_id == canonical_tier_id,
         WeeklyAssignment.week == data.week,
     )
 

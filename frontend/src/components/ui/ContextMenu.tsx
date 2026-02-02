@@ -145,8 +145,20 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     };
   }, [onClose, handleKeyDown]);
 
-  // Don't auto-focus on mount - let user hover/keyboard navigate
-  // Focus is only set when user uses keyboard navigation
+  // Focus first actionable item on mount for accessibility (standard menu behavior)
+  useEffect(() => {
+    const actionable = getActionableIndices();
+    if (actionable.length > 0) {
+      const firstIndex = actionable[0];
+      setFocusedIndex(firstIndex);
+      // Delay focus to allow menu to render and position
+      requestAnimationFrame(() => {
+        itemRefs.current[firstIndex]?.focus();
+      });
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Adjust position if menu would go off screen
   useEffect(() => {

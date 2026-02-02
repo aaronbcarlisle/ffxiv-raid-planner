@@ -2,6 +2,13 @@
 
 Testing instructions for the flexible priority settings feature (Phase 1).
 
+> **Note**: This test plan was written for an early iteration. The current system uses
+> different mode names: `role-based`, `job-based`, `player-based`, `manual-planning`, and `disabled`.
+> The concepts below map as follows:
+> - "Automatic" → `role-based` mode (default, uses role-based priority)
+> - "Manual" → Mode selector with priority display but no auto-highlighting
+> - "Disabled" → `disabled` mode (all players show score of 0)
+
 ## Prerequisites
 
 1. Start the dev servers: `./dev.sh`

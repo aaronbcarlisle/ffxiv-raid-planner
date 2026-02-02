@@ -13,6 +13,7 @@ import type {
   WeeklyAssignmentUpdate,
   WeeklyAssignmentBulkCreate,
   WeeklyAssignmentBulkDelete,
+  WeeklyAssignmentBulkItem,
 } from '../types';
 
 const log = logger.scope('WeeklyAssignments');
@@ -163,8 +164,9 @@ export function useWeeklyAssignments({
   );
 
   // Bulk create assignments
+  // Accepts items without tierId/week since those are provided by the wrapper
   const bulkCreate = useCallback(
-    async (createAssignments: WeeklyAssignmentCreate[]): Promise<WeeklyAssignment[]> => {
+    async (createAssignments: WeeklyAssignmentBulkItem[]): Promise<WeeklyAssignment[]> => {
       if (!groupId || !tierId || week === undefined) {
         setError('Missing required tier or week');
         return [];

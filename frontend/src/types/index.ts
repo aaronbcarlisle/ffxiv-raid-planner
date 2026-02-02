@@ -978,11 +978,21 @@ export interface WeeklyAssignmentUpdate {
   didNotDrop?: boolean;
 }
 
+// Bulk item - individual assignment within a bulk create request
+// Excludes tierId and week since those are provided at the wrapper level
+export interface WeeklyAssignmentBulkItem {
+  floor: string;
+  slot: string;
+  playerId: string | null;
+  sortOrder?: number;
+  didNotDrop?: boolean;
+}
+
 // Bulk create weekly assignments
 export interface WeeklyAssignmentBulkCreate {
   tierId: string;
   week: number;
-  assignments: WeeklyAssignmentCreate[];
+  assignments: WeeklyAssignmentBulkItem[];
 }
 
 // Bulk delete weekly assignments
