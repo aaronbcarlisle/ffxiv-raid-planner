@@ -669,19 +669,20 @@ async def get_current_week(
     calculated_week = calculate_week_number(tier)
 
     # Find max week from logged entries (loot, material, and page ledger)
+    # Use tier.id (the resolved UUID) instead of tier_id (which may be a slug)
     max_loot_week = await db.execute(
         select(func.max(LootLogEntry.week_number)).where(
-            LootLogEntry.tier_snapshot_id == tier_id
+            LootLogEntry.tier_snapshot_id == tier.id
         )
     )
     max_material_week = await db.execute(
         select(func.max(MaterialLogEntry.week_number)).where(
-            MaterialLogEntry.tier_snapshot_id == tier_id
+            MaterialLogEntry.tier_snapshot_id == tier.id
         )
     )
     max_page_week = await db.execute(
         select(func.max(PageLedgerEntry.week_number)).where(
-            PageLedgerEntry.tier_snapshot_id == tier_id
+            PageLedgerEntry.tier_snapshot_id == tier.id
         )
     )
 

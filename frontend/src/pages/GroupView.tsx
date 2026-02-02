@@ -775,7 +775,7 @@ export function GroupView() {
           <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
             {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
             <div className="hidden sm:block">
-              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} showPriorityTab={canEdit} />
+              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
             </div>
             {/* Roster tab controls - only render when on players tab */}
             {pageMode === 'players' && (

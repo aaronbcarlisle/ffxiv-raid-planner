@@ -89,26 +89,11 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
 
   const handleRemoveMember = async (userId: string, name: string, role: MemberRole) => {
     // Fetch linked players to show which cards will be unlinked
+    // The linked-players endpoint returns ALL linked players (members and non-members)
     try {
       const allLinked = await authRequest<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`);
-      // Also check members who have linked players (they won't be in linked-players list)
-      // We need to find players linked to this specific user
       const linkedToThisUser = allLinked.filter(lp => lp.user.id === userId);
       const linkedPlayerNames = linkedToThisUser.map(lp => lp.playerName);
-
-      // Also need to check if member has linked players (they're not in the linked-players list)
-      // For members, we need to check all tiers for players linked to this user
-      // The linked-players endpoint only returns NON-members, so we fetch all players
-      const tiersData = await authRequest<{ tierId: string; tierName: string; players: { userId?: string; name: string }[] }[]>(
-        `/api/static-groups/${groupId}/tiers`
-      );
-      for (const tier of tiersData) {
-        for (const player of tier.players || []) {
-          if (player.userId === userId && !linkedPlayerNames.includes(player.name)) {
-            linkedPlayerNames.push(player.name);
-          }
-        }
-      }
 
       setMemberToRemove({ id: userId, name, role, linkedPlayerNames });
       setUnlinkPlayers(true); // Reset to default (on)

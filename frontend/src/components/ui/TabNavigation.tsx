@@ -5,8 +5,6 @@ import { Tooltip } from '../primitives/Tooltip';
 interface TabNavigationProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
-  /** @deprecated Priority tab is now a slide-out panel in Loot tab */
-  showPriorityTab?: boolean;
 }
 
 // Map PageMode to TAB_ICONS keys

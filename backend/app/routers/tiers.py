@@ -716,6 +716,7 @@ async def create_snapshot_player(
         lodestone_id=data.lodestone_id,
         bis_link=data.bis_link,
         fflogs_id=data.fflogs_id,
+        priority_modifier=data.priority_modifier,
         gear=gear,
         tome_weapon=tome_weapon,
         created_at=now,
@@ -1553,6 +1554,23 @@ async def create_weekly_assignment(
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
+    # Validate player_id if provided - must belong to a player in this group/tier
+    if data.player_id:
+        player_check = await session.execute(
+            select(SnapshotPlayer)
+            .join(TierSnapshot)
+            .where(
+                SnapshotPlayer.id == data.player_id,
+                TierSnapshot.static_group_id == group_id,
+                TierSnapshot.tier_id == data.tier_id,
+            )
+        )
+        if not player_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Player not found in this tier/group",
+            )
+
     now = datetime.now(timezone.utc).isoformat()
 
     # Check for duplicate
@@ -1627,6 +1645,23 @@ async def update_weekly_assignment(
     if not assignment:
         raise NotFound("Assignment not found")
 
+    # Validate player_id if being updated to a non-null value
+    if data.player_id is not None and data.player_id:
+        player_check = await session.execute(
+            select(SnapshotPlayer)
+            .join(TierSnapshot)
+            .where(
+                SnapshotPlayer.id == data.player_id,
+                TierSnapshot.static_group_id == group_id,
+                TierSnapshot.tier_id == assignment.tier_id,
+            )
+        )
+        if not player_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Player not found in this tier/group",
+            )
+
     # Apply updates
     if data.player_id is not None:
         assignment.player_id = data.player_id if data.player_id else None
@@ -1698,19 +1733,42 @@ async def bulk_create_weekly_assignments(
     now = datetime.now(timezone.utc).isoformat()
     created_assignments: list[WeeklyAssignment] = []
 
-    for assignment_data in data.assignments:
-        # Skip duplicates silently in bulk mode
-        existing = await session.execute(
-            select(WeeklyAssignment).where(
-                WeeklyAssignment.static_group_id == group_id,
-                WeeklyAssignment.tier_id == data.tier_id,
-                WeeklyAssignment.week == data.week,
-                WeeklyAssignment.floor == assignment_data.floor,
-                WeeklyAssignment.slot == assignment_data.slot,
-                WeeklyAssignment.player_id == assignment_data.player_id,
+    # Batch fetch existing assignments to avoid N+1 queries
+    existing_result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == data.tier_id,
+            WeeklyAssignment.week == data.week,
+        )
+    )
+    existing_assignments = existing_result.scalars().all()
+    existing_keys = {(a.floor, a.slot, a.player_id) for a in existing_assignments}
+
+    # Batch validate player_ids - collect unique non-null player IDs
+    player_ids_to_validate = {
+        a.player_id for a in data.assignments if a.player_id
+    }
+    valid_player_ids: set[str] = set()
+    if player_ids_to_validate:
+        valid_players_result = await session.execute(
+            select(SnapshotPlayer.id)
+            .join(TierSnapshot)
+            .where(
+                SnapshotPlayer.id.in_(player_ids_to_validate),
+                TierSnapshot.static_group_id == group_id,
+                TierSnapshot.tier_id == data.tier_id,
             )
         )
-        if existing.scalar_one_or_none():
+        valid_player_ids = {p[0] for p in valid_players_result.all()}
+
+    for assignment_data in data.assignments:
+        # Skip if player_id is invalid (not in tier/group)
+        if assignment_data.player_id and assignment_data.player_id not in valid_player_ids:
+            continue
+
+        # Skip duplicates silently in bulk mode
+        key = (assignment_data.floor, assignment_data.slot, assignment_data.player_id)
+        if key in existing_keys:
             continue
 
         assignment = WeeklyAssignment(
@@ -1728,6 +1786,8 @@ async def bulk_create_weekly_assignments(
         )
         session.add(assignment)
         created_assignments.append(assignment)
+        # Add to existing_keys to prevent duplicates within the same request
+        existing_keys.add(key)
 
     await session.flush()
     await session.commit()
