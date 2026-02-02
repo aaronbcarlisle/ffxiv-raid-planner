@@ -1554,26 +1554,26 @@ async def create_weekly_assignment(
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
-    # Validate tier exists in this group
+    # Validate tier exists in this group and get canonical tier_id (slug)
     tier_check = await session.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
             (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
         )
     )
-    if not tier_check.scalar_one_or_none():
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
         raise NotFound(f"Tier '{data.tier_id}' not found in this group")
 
-    # Validate player_id if provided - must belong to a player in this group/tier
-    # Check both UUID (TierSnapshot.id) and slug (TierSnapshot.tier_id) like tier validation
+    # Use canonical tier_id (slug) for storage and queries to avoid format inconsistencies
+    canonical_tier_id = tier.tier_id
+
+    # Validate player_id if provided - must belong to a player in this tier
     if data.player_id:
         player_check = await session.execute(
-            select(SnapshotPlayer)
-            .join(TierSnapshot)
-            .where(
+            select(SnapshotPlayer).where(
                 SnapshotPlayer.id == data.player_id,
-                TierSnapshot.static_group_id == group_id,
-                (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+                SnapshotPlayer.tier_snapshot_id == tier.id,
             )
         )
         if not player_check.scalar_one_or_none():
@@ -1584,11 +1584,11 @@ async def create_weekly_assignment(
 
     now = datetime.now(timezone.utc).isoformat()
 
-    # Check for duplicate
+    # Check for duplicate using canonical tier_id
     existing = await session.execute(
         select(WeeklyAssignment).where(
             WeeklyAssignment.static_group_id == group_id,
-            WeeklyAssignment.tier_id == data.tier_id,
+            WeeklyAssignment.tier_id == canonical_tier_id,
             WeeklyAssignment.week == data.week,
             WeeklyAssignment.floor == data.floor,
             WeeklyAssignment.slot == data.slot,
@@ -1604,7 +1604,7 @@ async def create_weekly_assignment(
     assignment = WeeklyAssignment(
         id=str(uuid.uuid4()),
         static_group_id=group_id,
-        tier_id=data.tier_id,
+        tier_id=canonical_tier_id,
         week=data.week,
         floor=data.floor,
         slot=data.slot,
@@ -1657,6 +1657,7 @@ async def update_weekly_assignment(
         raise NotFound("Assignment not found")
 
     # Validate player_id if being updated to a non-null value
+    # Handle assignment.tier_id being either UUID or slug (for assignments created before normalization)
     if data.player_id is not None and data.player_id:
         player_check = await session.execute(
             select(SnapshotPlayer)
@@ -1664,7 +1665,8 @@ async def update_weekly_assignment(
             .where(
                 SnapshotPlayer.id == data.player_id,
                 TierSnapshot.static_group_id == group_id,
-                TierSnapshot.tier_id == assignment.tier_id,
+                (TierSnapshot.id == assignment.tier_id)
+                | (TierSnapshot.tier_id == assignment.tier_id),
             )
         )
         if not player_check.scalar_one_or_none():
@@ -1741,24 +1743,28 @@ async def bulk_create_weekly_assignments(
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
-    # Validate tier exists in this group
+    # Validate tier exists in this group and get canonical tier_id (slug)
     tier_check = await session.execute(
         select(TierSnapshot).where(
             TierSnapshot.static_group_id == group_id,
             (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
         )
     )
-    if not tier_check.scalar_one_or_none():
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
         raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
+    # Use canonical tier_id (slug) for storage and queries to avoid format inconsistencies
+    canonical_tier_id = tier.tier_id
 
     now = datetime.now(timezone.utc).isoformat()
     created_assignments: list[WeeklyAssignment] = []
 
-    # Batch fetch existing assignments to avoid N+1 queries
+    # Batch fetch existing assignments using canonical tier_id
     existing_result = await session.execute(
         select(WeeklyAssignment).where(
             WeeklyAssignment.static_group_id == group_id,
-            WeeklyAssignment.tier_id == data.tier_id,
+            WeeklyAssignment.tier_id == canonical_tier_id,
             WeeklyAssignment.week == data.week,
         )
     )
@@ -1771,14 +1777,11 @@ async def bulk_create_weekly_assignments(
     }
     valid_player_ids: set[str] = set()
     if player_ids_to_validate:
-        # Check both UUID (TierSnapshot.id) and slug (TierSnapshot.tier_id) like tier validation
+        # Validate players belong to this tier using tier's UUID
         valid_players_result = await session.execute(
-            select(SnapshotPlayer.id)
-            .join(TierSnapshot)
-            .where(
+            select(SnapshotPlayer.id).where(
                 SnapshotPlayer.id.in_(player_ids_to_validate),
-                TierSnapshot.static_group_id == group_id,
-                (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+                SnapshotPlayer.tier_snapshot_id == tier.id,
             )
         )
         valid_player_ids = {p[0] for p in valid_players_result.all()}
@@ -1796,7 +1799,7 @@ async def bulk_create_weekly_assignments(
         assignment = WeeklyAssignment(
             id=str(uuid.uuid4()),
             static_group_id=group_id,
-            tier_id=data.tier_id,
+            tier_id=canonical_tier_id,
             week=data.week,
             floor=assignment_data.floor,
             slot=assignment_data.slot,
