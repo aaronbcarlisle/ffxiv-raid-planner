@@ -1565,6 +1565,7 @@ async def create_weekly_assignment(
         raise NotFound(f"Tier '{data.tier_id}' not found in this group")
 
     # Validate player_id if provided - must belong to a player in this group/tier
+    # Check both UUID (TierSnapshot.id) and slug (TierSnapshot.tier_id) like tier validation
     if data.player_id:
         player_check = await session.execute(
             select(SnapshotPlayer)
@@ -1572,7 +1573,7 @@ async def create_weekly_assignment(
             .where(
                 SnapshotPlayer.id == data.player_id,
                 TierSnapshot.static_group_id == group_id,
-                TierSnapshot.tier_id == data.tier_id,
+                (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
             )
         )
         if not player_check.scalar_one_or_none():
@@ -1770,13 +1771,14 @@ async def bulk_create_weekly_assignments(
     }
     valid_player_ids: set[str] = set()
     if player_ids_to_validate:
+        # Check both UUID (TierSnapshot.id) and slug (TierSnapshot.tier_id) like tier validation
         valid_players_result = await session.execute(
             select(SnapshotPlayer.id)
             .join(TierSnapshot)
             .where(
                 SnapshotPlayer.id.in_(player_ids_to_validate),
                 TierSnapshot.static_group_id == group_id,
-                TierSnapshot.tier_id == data.tier_id,
+                (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
             )
         )
         valid_player_ids = {p[0] for p in valid_players_result.all()}

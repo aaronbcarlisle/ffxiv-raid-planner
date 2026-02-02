@@ -136,8 +136,10 @@ export function PlayerCardStatus({
   const youBadgeColor = userRole ? ROLE_COLORS[userRole] : ROLE_COLORS.member;
 
   // Weapon priority count (only show if more than 1, since main job doesn't count)
-  const weaponPriorityCount = player.weaponPriorities?.length || 0;
-  const showWeaponPriority = weaponPriorityCount > 1;
+  // Display count excludes the main job - shows additional weapon priorities only
+  const totalWeaponPriorities = player.weaponPriorities?.length || 0;
+  const additionalWeaponPriorities = Math.max(0, totalWeaponPriorities - 1);
+  const showWeaponPriority = totalWeaponPriorities > 1;
 
   // Don't render if nothing to show
   const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther || showWeaponPriority;
@@ -211,12 +213,12 @@ export function PlayerCardStatus({
         </Tooltip>
       )}
 
-      {/* Weapon priority badge */}
+      {/* Weapon priority badge - shows additional weapon priorities beyond main job */}
       {showWeaponPriority && (
-        <Tooltip content={`${weaponPriorityCount} weapon priorities set`}>
+        <Tooltip content={`+${additionalWeaponPriorities} additional weapon ${additionalWeaponPriorities === 1 ? 'priority' : 'priorities'}`}>
           <span className="text-xs bg-surface-interactive text-text-secondary px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
             <Swords className="w-3 h-3" />
-            {weaponPriorityCount}
+            +{additionalWeaponPriorities}
           </span>
         </Tooltip>
       )}

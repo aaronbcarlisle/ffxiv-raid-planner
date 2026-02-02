@@ -103,6 +103,11 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const [logWeekWizardWeek, setLogWeekWizardWeek] = useState<number | null>(null);
   const [playerModalCount, setPlayerModalCount] = useState(0);
 
+  // Note: showSettingsModalState is initialized from URL but not bi-directionally synced.
+  // This matches the pattern for other URL-synced state in this hook (pageMode, viewMode, etc.).
+  // Browser back/forward won't restore modal state, which is intentional - modals are transient UI.
+  // Adding reverse sync (URL -> state) would risk cascading renders and deviate from established patterns.
+
   // ===== Tab state: URL param > localStorage > default =====
   // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
   const [pageMode, setPageModeState] = useState<PageMode>(() => {

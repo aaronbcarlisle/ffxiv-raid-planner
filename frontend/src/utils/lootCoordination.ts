@@ -446,19 +446,12 @@ export function calculateEnhancedScoreWithBreakdown(
 ): EnhancedScoreBreakdown {
   const advancedOptions = getAdvancedOptions(settings);
 
-  // Get multipliers - use configured values when useMultipliers is enabled
-  const droughtMultiplier = advancedOptions.useMultipliers
-    ? advancedOptions.droughtBonusMultiplier
-    : DEFAULT_ADVANCED_OPTIONS.droughtBonusMultiplier;
-  const droughtCapWeeks = advancedOptions.useMultipliers
-    ? advancedOptions.droughtBonusCapWeeks
-    : DEFAULT_ADVANCED_OPTIONS.droughtBonusCapWeeks;
-  const balanceMultiplier = advancedOptions.useMultipliers
-    ? advancedOptions.balancePenaltyMultiplier
-    : DEFAULT_ADVANCED_OPTIONS.balancePenaltyMultiplier;
-  const balanceCapDrops = advancedOptions.useMultipliers
-    ? advancedOptions.balancePenaltyCapDrops
-    : DEFAULT_ADVANCED_OPTIONS.balancePenaltyCapDrops;
+  // Get enhanced fairness multipliers - always use configured values
+  // (useMultipliers only gates base score multipliers like role/gear in priority.ts)
+  const droughtMultiplier = advancedOptions.droughtBonusMultiplier;
+  const droughtCapWeeks = advancedOptions.droughtBonusCapWeeks;
+  const balanceMultiplier = advancedOptions.balancePenaltyMultiplier;
+  const balanceCapDrops = advancedOptions.balancePenaltyCapDrops;
 
   // Drought bonus: reward players who haven't received loot recently
   const droughtBonus = Math.min(
