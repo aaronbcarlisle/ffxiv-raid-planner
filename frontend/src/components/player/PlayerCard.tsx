@@ -363,6 +363,8 @@ export const PlayerCard = memo(function PlayerCard({
     rosterPermission.allowed; // Mark as Sub/Main
 
   // Memoized context menu items to prevent recreation on every render
+  // Note: This useMemo has many dependencies intentionally - don't simplify
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Many dependencies intentional
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
     // === BiS & Gear Section ===
     { sectionHeader: 'BiS & Gear' },
@@ -769,7 +771,7 @@ export const PlayerCard = memo(function PlayerCard({
         onClose={() => setShowPriorityAdjustModal(false)}
         player={player}
         onSave={async (_playerId, adjustment) => {
-          await onUpdate({ lootAdjustment: adjustment });
+          await onUpdate({ priorityModifier: adjustment });
         }}
       />
 

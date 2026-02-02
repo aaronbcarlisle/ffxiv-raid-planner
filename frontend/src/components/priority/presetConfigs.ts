@@ -16,6 +16,7 @@ export const PRESET_CONFIGS: Record<
     droughtBonusCapWeeks: 5,
     balancePenaltyMultiplier: 15,
     balancePenaltyCapDrops: 3,
+    useMultipliers: true,
     rolePriorityMultiplier: 25,
     gearNeededMultiplier: 10,
     lootReceivedPenalty: 15,
@@ -28,6 +29,7 @@ export const PRESET_CONFIGS: Record<
     droughtBonusCapWeeks: 99, // Effectively no cap
     balancePenaltyMultiplier: 20,
     balancePenaltyCapDrops: 99, // Effectively no cap
+    useMultipliers: true,
     rolePriorityMultiplier: 10, // Reduced - fairness matters more than role
     gearNeededMultiplier: 5,
     lootReceivedPenalty: 25,
@@ -40,6 +42,7 @@ export const PRESET_CONFIGS: Record<
     droughtBonusCapWeeks: 5,
     balancePenaltyMultiplier: 15,
     balancePenaltyCapDrops: 3,
+    useMultipliers: true,
     rolePriorityMultiplier: 10, // Reduced
     gearNeededMultiplier: 20, // Increased - missing gear = higher priority
     lootReceivedPenalty: 10,

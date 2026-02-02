@@ -887,9 +887,9 @@ export function PlayerBasedEditor({
                                 showAdvanced={ensuredConfig.showAdvancedControls}
                                 disabled={disabled}
                                 onOffsetChange={handlePlayerOffsetChange}
-                                showInsertBefore={showPlayerIndicators && dropMode === 'insert-before'}
-                                showInsertAfter={showPlayerIndicators && dropMode === 'insert-after'}
-                                showSwap={showPlayerIndicators && dropMode === 'swap' && isCrossGroup}
+                                showInsertBefore={!!(showPlayerIndicators && dropMode === 'insert-before')}
+                                showInsertAfter={!!(showPlayerIndicators && dropMode === 'insert-after')}
+                                showSwap={!!(showPlayerIndicators && dropMode === 'swap' && isCrossGroup)}
                               />
                             );
                           })}

@@ -182,19 +182,19 @@ export function ManualPlanningEditor({
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
 
   // Get gear slots for current floor
-  const gearSlots = useMemo(() => {
+  const gearSlots = useMemo((): GearSlot[] => {
     if (!lootTable) return [];
-    return lootTable.gearSlots.filter((slot) => slot !== 'weapon');
+    return lootTable.gearDrops.filter((slot) => slot !== 'weapon');
   }, [lootTable]);
 
   // Get material slots for current floor
   const materialSlots = useMemo(() => {
     if (!lootTable) return [];
     const slots: MaterialSlot[] = [];
-    if (lootTable.hasTwine) slots.push('twine');
-    if (lootTable.hasGlaze) slots.push('glaze');
-    if (lootTable.hasSolvent) slots.push('solvent');
-    if (lootTable.hasTomestone) slots.push('tomestone');
+    if (lootTable.upgradeMaterials.includes('twine')) slots.push('twine');
+    if (lootTable.upgradeMaterials.includes('glaze')) slots.push('glaze');
+    if (lootTable.upgradeMaterials.includes('solvent')) slots.push('solvent');
+    if (lootTable.upgradeMaterials.includes('universal_tomestone')) slots.push('tomestone');
     return slots;
   }, [lootTable]);
 

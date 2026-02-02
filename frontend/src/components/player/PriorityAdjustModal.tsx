@@ -26,17 +26,17 @@ interface PriorityAdjustModalProps {
 }
 
 export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: PriorityAdjustModalProps) {
-  const [adjustment, setAdjustment] = useState<number>(player.lootAdjustment ?? 0);
+  const [adjustment, setAdjustment] = useState<number>(player.priorityModifier ?? 0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset adjustment state when player changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      setAdjustment(player.lootAdjustment ?? 0);
+      setAdjustment(player.priorityModifier ?? 0);
       setError(null);
     }
-  }, [isOpen, player.id, player.lootAdjustment]);
+  }, [isOpen, player.id, player.priorityModifier]);
 
   const handleSave = async () => {
     // Validate range before saving
@@ -62,7 +62,7 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
     setAdjustment(0);
   };
 
-  const hasChanged = adjustment !== (player.lootAdjustment ?? 0);
+  const hasChanged = adjustment !== (player.priorityModifier ?? 0);
 
   return (
     <Modal
@@ -88,9 +88,9 @@ export function PriorityAdjustModal({ isOpen, onClose, player, onSave }: Priorit
 
         {/* Adjustment input */}
         <div>
-          <Label htmlFor="lootAdjustment">Loot Adjustment</Label>
+          <Label htmlFor="priorityModifier">Priority Modifier</Label>
           <NumberInput
-            id="lootAdjustment"
+            id="priorityModifier"
             value={adjustment}
             onChange={(value) => setAdjustment(value ?? 0)}
             min={PRIORITY_MODIFIER_MIN}

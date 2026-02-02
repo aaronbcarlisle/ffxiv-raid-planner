@@ -178,25 +178,22 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
     setError(null);
 
     try {
-      // Save priority settings if changed
-      if (hasChanges) {
-        // Merge with existing settings to preserve non-priority fields
-        const existingSettings = group.settings || {};
-        // Map new mode to legacy priorityMode for backward compatibility
-        const legacyPriorityMode = settings.mode === 'disabled' ? 'disabled' : 'automatic';
+      // Merge with existing settings to preserve non-priority fields
+      const existingSettings = group.settings || {};
+      // Map new mode to legacy priorityMode for backward compatibility
+      const legacyPriorityMode = settings.mode === 'disabled' ? 'disabled' : 'automatic';
 
-        await updateGroup(group.id, {
-          settings: {
-            ...existingSettings,
-            prioritySettings: settings,
-            // Also update legacy fields for backward compatibility
-            lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'ranged', 'caster', 'tank', 'healer'],
-            priorityMode: legacyPriorityMode,
-            showPriorityScores: settings.advancedOptions.showPriorityScores,
-            enableEnhancedScoring: settings.advancedOptions.enableEnhancedFairness,
-          },
-        });
-      }
+      await updateGroup(group.id, {
+        settings: {
+          ...existingSettings,
+          prioritySettings: settings,
+          // Also update legacy fields for backward compatibility
+          lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          priorityMode: legacyPriorityMode,
+          showPriorityScores: settings.advancedOptions.showPriorityScores,
+          enableEnhancedScoring: settings.advancedOptions.enableEnhancedFairness,
+        },
+      });
 
       toast.success('Priority settings saved!');
       setHasChanges(false);

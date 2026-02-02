@@ -14,7 +14,7 @@
  * </SlideOutPanel>
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
@@ -64,26 +64,33 @@ export function SlideOutPanel({
   const mouseDownOnBackdropRef = useRef(false);
 
   // Animation state - keeps component mounted during exit animation
-  const [shouldRender, setShouldRender] = useState(isOpen);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  // Combined into single state to avoid cascading renders
+  const [animationState, setAnimationState] = useState<'closed' | 'open' | 'closing'>(() =>
+    isOpen ? 'open' : 'closed'
+  );
 
-  // Handle open/close transitions
-  useEffect(() => {
+  // Derived values from animation state
+  const shouldRender = animationState !== 'closed';
+  const isAnimatingOut = animationState === 'closing';
+
+  // Handle open/close transitions (useLayoutEffect to avoid visual flicker)
+  // setState is intentional here for animation state machine transitions
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useLayoutEffect(() => {
     if (isOpen) {
       // Opening: render immediately
-      setShouldRender(true);
-      setIsAnimatingOut(false);
-    } else if (shouldRender) {
+      setAnimationState('open');
+    } else if (animationState === 'open') {
       // Closing: start exit animation
-      setIsAnimatingOut(true);
+      setAnimationState('closing');
       // Wait for animation to complete before unmounting
       const timer = setTimeout(() => {
-        setShouldRender(false);
-        setIsAnimatingOut(false);
+        setAnimationState('closed');
       }, 200); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [isOpen, shouldRender]);
+  }, [isOpen, animationState]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle keyboard events - escape to close, tab for focus trap
   const handleKeyDown = useCallback(

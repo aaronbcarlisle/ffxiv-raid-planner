@@ -666,14 +666,41 @@ async def get_current_week(
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
-    week_number = calculate_week_number(tier)
+    calculated_week = calculate_week_number(tier)
 
-    # Return current week - maxWeek is based solely on the calculated week,
-    # not on logged data. This ensures reverting a week properly restricts navigation.
+    # Find max week from logged entries (loot, material, and page ledger)
+    max_loot_week = await db.execute(
+        select(func.max(LootLogEntry.week_number)).where(
+            LootLogEntry.tier_snapshot_id == tier_id
+        )
+    )
+    max_material_week = await db.execute(
+        select(func.max(MaterialLogEntry.week_number)).where(
+            MaterialLogEntry.tier_snapshot_id == tier_id
+        )
+    )
+    max_page_week = await db.execute(
+        select(func.max(PageLedgerEntry.week_number)).where(
+            PageLedgerEntry.tier_snapshot_id == tier_id
+        )
+    )
+
+    # Get scalar values (None if no entries)
+    loot_max = max_loot_week.scalar() or 0
+    material_max = max_material_week.scalar() or 0
+    page_max = max_page_week.scalar() or 0
+
+    # maxLoggedWeek is the highest week with any logged data
+    max_logged_week = max(loot_max, material_max, page_max)
+
+    # maxWeek is the max of calculated week and logged week
+    # This allows viewing data logged for future weeks while respecting timeline
+    max_week = max(calculated_week, max_logged_week)
+
     return {
-        "currentWeek": week_number,
-        "maxLoggedWeek": week_number,  # Kept for API compatibility
-        "maxWeek": week_number,
+        "currentWeek": calculated_week,
+        "maxLoggedWeek": max_logged_week,
+        "maxWeek": max_week,
     }
 
 

@@ -349,9 +349,10 @@ export function LogMaterialModal({
               }
             } else {
               // User unchecked the box - revert tome weapon to not obtained
+              // Note: Only reset hasItem, NOT isAugmented - augmentation is controlled by solvent
               if (oldRecipient.tomeWeapon.hasItem) {
                 await tierStore.updatePlayer(groupId!, tierId!, selectedPlayer, {
-                  tomeWeapon: { ...oldRecipient.tomeWeapon, hasItem: false, isAugmented: false },
+                  tomeWeapon: { ...oldRecipient.tomeWeapon, hasItem: false },
                 });
               }
             }

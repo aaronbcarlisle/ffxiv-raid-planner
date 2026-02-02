@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
-from ..models import MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, WeeklyAssignment
+from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssignment
 from ..permissions import (
     NotFound,
     PermissionDenied,

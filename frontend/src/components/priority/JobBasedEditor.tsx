@@ -873,9 +873,9 @@ export function JobBasedEditor({
                               showAdvanced={config.showAdvancedControls}
                               disabled={disabled}
                               onOffsetChange={handleJobOffsetChange}
-                              showInsertBefore={showJobIndicators && dropMode === 'insert-before'}
-                              showInsertAfter={showJobIndicators && dropMode === 'insert-after'}
-                              showSwap={showJobIndicators && dropMode === 'swap' && isCrossGroup}
+                              showInsertBefore={!!(showJobIndicators && dropMode === 'insert-before')}
+                              showInsertAfter={!!(showJobIndicators && dropMode === 'insert-after')}
+                              showSwap={!!(showJobIndicators && dropMode === 'swap' && isCrossGroup)}
                             />
                           );
                         })}

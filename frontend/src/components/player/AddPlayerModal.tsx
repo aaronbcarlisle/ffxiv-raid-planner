@@ -4,7 +4,7 @@
  * Modal for adding a new player to the roster with name, job, and position.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { UserPlus } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { Modal } from '../ui/Modal';
@@ -72,6 +72,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
   const positionOptions = role ? POSITION_OPTIONS[role] : [];
 
   // Reset form when modal closes
+  /* eslint-disable react-hooks/set-state-in-effect -- Intentional: reset state on modal close */
   useEffect(() => {
     if (!isOpen) {
       setName('');
@@ -81,6 +82,7 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
       setShowJobPicker(false);
     }
   }, [isOpen]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Close job picker on click outside
   useEffect(() => {
@@ -130,16 +132,20 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
 
   const canSubmit = job !== '';
 
-  // Calculate job picker position
-  const getJobPickerPosition = () => {
-    if (!jobButtonRef.current) return { top: 0, left: 0 };
-    const rect = jobButtonRef.current.getBoundingClientRect();
-    return {
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 320),
-    };
-  };
+  // Track job picker position in state (updated when picker opens)
+  const [jobPickerPosition, setJobPickerPosition] = useState({ top: 0, left: 0, width: 320 });
+
+  // Update position when job picker opens (useLayoutEffect for DOM measurements)
+  useLayoutEffect(() => {
+    if (showJobPicker && jobButtonRef.current) {
+      const rect = jobButtonRef.current.getBoundingClientRect();
+      setJobPickerPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 320),
+      });
+    }
+  }, [showJobPicker]);
 
   return (
     <Modal
@@ -192,9 +198,9 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
               ref={jobPickerRef}
               className="fixed z-[100] bg-surface-card border border-border-default rounded-lg shadow-xl [&>div]:w-full [&_div.w-80]:w-full"
               style={{
-                top: getJobPickerPosition().top,
-                left: getJobPickerPosition().left,
-                width: getJobPickerPosition().width,
+                top: jobPickerPosition.top,
+                left: jobPickerPosition.left,
+                width: jobPickerPosition.width,
                 maxHeight: '400px',
                 overflow: 'auto',
               }}
