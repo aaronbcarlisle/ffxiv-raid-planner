@@ -18,7 +18,7 @@ import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
 import { toast } from '../../stores/toastStore';
-import { parseFloorName, FLOOR_LOOT_TABLES, FLOOR_COLORS, isSlotAugmentationMaterial, type FloorNumber } from '../../gamedata/loot-tables';
+import { parseFloorName, FLOOR_LOOT_TABLES, FLOOR_COLORS, isSlotAugmentationMaterial } from '../../gamedata/loot-tables';
 import {
   getEligibleSlotsForAugmentation,
   needsTomeWeaponItem,

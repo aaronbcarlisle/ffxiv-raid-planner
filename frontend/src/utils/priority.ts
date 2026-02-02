@@ -154,7 +154,7 @@ export interface PriorityScoreOptions {
 export function calculatePriorityScore(
   player: SnapshotPlayer,
   settings: StaticSettings,
-  options?: PriorityScoreOptions
+  _options?: PriorityScoreOptions
 ): number {
   const mode = getEffectivePriorityMode(settings);
 
@@ -243,7 +243,7 @@ export function calculatePriorityScore(
 export function calculatePriorityScoreWithBreakdown(
   player: SnapshotPlayer,
   settings: StaticSettings,
-  options?: PriorityScoreOptions
+  _options?: PriorityScoreOptions
 ): PriorityScoreBreakdown {
   const mode = getEffectivePriorityMode(settings);
 

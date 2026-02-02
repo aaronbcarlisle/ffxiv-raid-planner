@@ -39,7 +39,7 @@ interface PriorityTabProps {
   onClose?: () => void;
 }
 
-export function PriorityTab({ group, players, tierId, onClose }: PriorityTabProps) {
+export function PriorityTab({ group, players, tierId, onClose: _onClose }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
   // Subtab state

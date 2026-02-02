@@ -15,7 +15,7 @@ import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, parseFloorName } from '../../gamedata/loot-tables';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -377,7 +377,7 @@ export function AddLootEntryModal({
     : GEAR_SLOT_NAMES[itemSlot as keyof typeof GEAR_SLOT_NAMES] || itemSlot;
 
   // Build floor options for Select with floor colors
-  const floorOptions = floors.map((f, index) => {
+  const floorOptions = floors.map((f) => {
     const floorNum = parseFloorName(f);
     const floorColor = FLOOR_COLORS[floorNum];
     return { value: f, label: f, textClassName: floorColor.text };
