@@ -1511,13 +1511,26 @@ async def list_weekly_assignments(
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
+    # If tier_id provided, resolve to canonical format (slug) for consistent querying
+    canonical_tier_id = None
+    if tier_id:
+        tier_check = await session.execute(
+            select(TierSnapshot).where(
+                TierSnapshot.static_group_id == group_id,
+                (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
+            )
+        )
+        tier = tier_check.scalar_one_or_none()
+        if tier:
+            canonical_tier_id = tier.tier_id
+
     # Build query with filters
     query = select(WeeklyAssignment).where(
         WeeklyAssignment.static_group_id == group_id
     )
 
-    if tier_id:
-        query = query.where(WeeklyAssignment.tier_id == tier_id)
+    if canonical_tier_id:
+        query = query.where(WeeklyAssignment.tier_id == canonical_tier_id)
     if week:
         query = query.where(WeeklyAssignment.week == week)
     if floor:
