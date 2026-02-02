@@ -31,11 +31,29 @@ interface AdvancedOptionsProps {
 }
 
 /**
- * Info icon with tooltip - always visible next to settings
+ * Enhanced tooltip content with title and structured information
  */
-function InfoTooltip({ content }: { content: string }) {
+function EnhancedTooltipContent({
+  title,
+  children
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Tooltip content={content}>
+    <div className="max-w-xs space-y-1.5">
+      <div className="font-medium text-text-primary">{title}</div>
+      <div className="text-text-secondary">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Info icon with enhanced tooltip - always visible next to settings
+ */
+function InfoTooltip({ content }: { content: React.ReactNode }) {
+  return (
+    <Tooltip content={content} delayDuration={200}>
       <Info className="w-4 h-4 text-text-muted hover:text-text-secondary cursor-help flex-shrink-0" />
     </Tooltip>
   );
@@ -47,7 +65,7 @@ function InfoTooltip({ content }: { content: string }) {
 interface ToggleWithInfoProps {
   label: string;
   hint?: string;
-  tooltip: string;
+  tooltip: React.ReactNode;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -83,7 +101,7 @@ function ToggleWithInfo({ label, hint, tooltip, checked, onChange, disabled, chi
 /**
  * Label with info icon for settings within expandable sections
  */
-function LabelWithInfo({ children, tooltip, size = 'sm' }: { children: React.ReactNode; tooltip: string; size?: 'sm' | 'md' }) {
+function LabelWithInfo({ children, tooltip, size = 'sm' }: { children: React.ReactNode; tooltip: React.ReactNode; size?: 'sm' | 'md' }) {
   return (
     <div className="flex items-center gap-1.5 mb-1">
       <Label size={size} className="mb-0">{children}</Label>
@@ -141,7 +159,17 @@ export function AdvancedOptions({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <Label className="mb-0">Calculation Preset</Label>
-          <InfoTooltip content="Quick presets that configure multiple settings at once. Choose 'Custom' to fine-tune individual values." />
+          <InfoTooltip content={
+            <EnhancedTooltipContent title="Calculation Preset">
+              <p>Quick presets that configure multiple settings at once.</p>
+              <ul className="mt-1.5 space-y-0.5 text-text-muted">
+                <li><span className="text-text-secondary">Balanced</span> — Equal weight to role and gear need</li>
+                <li><span className="text-text-secondary">Role First</span> — Prioritizes role order heavily</li>
+                <li><span className="text-text-secondary">Need First</span> — Prioritizes gear need heavily</li>
+                <li><span className="text-text-secondary">Custom</span> — Fine-tune individual values</li>
+              </ul>
+            </EnhancedTooltipContent>
+          } />
         </div>
         <PresetSelector
           value={options.preset}
@@ -165,7 +193,12 @@ export function AdvancedOptions({
           />
         </div>
         <div className="pt-0.5">
-          <InfoTooltip content="When enabled, shows the calculated priority score next to each player in the Gear Priority list. Useful for understanding why players are ranked the way they are." />
+          <InfoTooltip content={
+            <EnhancedTooltipContent title="Show Priority Scores">
+              <p>Display the calculated priority score next to each player in the Gear Priority list.</p>
+              <p className="mt-1.5 text-text-muted">Hover over scores to see a breakdown of how they were calculated.</p>
+            </EnhancedTooltipContent>
+          } />
         </div>
       </div>
 
@@ -176,7 +209,16 @@ export function AdvancedOptions({
       <ToggleWithInfo
         label="Use weighted need"
         hint="Weight gear slots by value"
-        tooltip="When enabled, high-value slots (weapon, body, legs) contribute more to priority than accessories. When disabled, all incomplete slots are weighted equally."
+        tooltip={
+          <EnhancedTooltipContent title="Weighted Need">
+            <p>High-value slots contribute more to priority than accessories.</p>
+            <div className="mt-1.5 text-text-muted">
+              <p className="font-medium text-text-secondary">Slot weights:</p>
+              <div className="mt-0.5">Weapon (3) › Body/Legs (2) › Everything else (1)</div>
+            </div>
+            <p className="mt-1.5 text-text-muted">When disabled, all incomplete slots count equally.</p>
+          </EnhancedTooltipContent>
+        }
         checked={options.useWeightedNeed}
         onChange={(checked) => handleOptionChange('useWeightedNeed', checked)}
         disabled={disabled}
@@ -191,7 +233,15 @@ export function AdvancedOptions({
           <ToggleWithInfo
             label="Enable player loot adjustments"
             hint="Manual per-player priority adjustments"
-            tooltip="Use this for mid-tier roster changes. Give positive values to players who need to catch up (joined late, missed drops), or negative values to players who've received extra loot."
+            tooltip={
+              <EnhancedTooltipContent title="Player Loot Adjustments">
+                <p>Manually adjust individual player priorities for mid-tier roster changes.</p>
+                <ul className="mt-1.5 space-y-0.5 text-text-muted">
+                  <li><span className="text-status-success">+</span> Positive = boost priority (joined late, missed drops)</li>
+                  <li><span className="text-status-warning">−</span> Negative = reduce priority (received extra loot)</li>
+                </ul>
+              </EnhancedTooltipContent>
+            }
             checked={options.useLootAdjustments}
             onChange={(checked) => handleOptionChange('useLootAdjustments', checked)}
             disabled={disabled}
@@ -212,7 +262,14 @@ export function AdvancedOptions({
               </div>
 
               <div className="max-w-xs">
-                <LabelWithInfo tooltip="Each point of adjustment is multiplied by this value. Example: +5 adjustment × 15 multiplier = +75 priority boost.">
+                <LabelWithInfo tooltip={
+                  <EnhancedTooltipContent title="Adjustment Multiplier">
+                    <p>Each point of adjustment is multiplied by this value.</p>
+                    <div className="mt-1.5 p-1.5 bg-surface-base rounded text-text-muted">
+                      <span className="text-status-success">+5</span> adjustment × <span className="text-accent">15</span> multiplier = <span className="text-text-primary">+75</span> priority
+                    </div>
+                  </EnhancedTooltipContent>
+                }>
                   Adjustment Multiplier
                 </LabelWithInfo>
                 <NumberInput
@@ -252,14 +309,30 @@ export function AdvancedOptions({
       <ToggleWithInfo
         label="Enable enhanced fairness"
         hint="Automatic adjustments based on loot history"
-        tooltip="Automatically adjusts priority based on who has received loot. Players who haven't gotten drops recently get a bonus, while players who've received more than average get a penalty. Great for ensuring everyone gets geared evenly over time."
+        tooltip={
+          <EnhancedTooltipContent title="Enhanced Fairness">
+            <p>Automatically adjusts priority based on loot history.</p>
+            <ul className="mt-1.5 space-y-0.5 text-text-muted">
+              <li><span className="text-status-success">Drought bonus</span> — Players who haven't received drops get a boost</li>
+              <li><span className="text-status-warning">Balance penalty</span> — Players with more than average drops get reduced priority</li>
+            </ul>
+            <p className="mt-1.5 text-text-muted">Great for ensuring everyone gets geared evenly over time.</p>
+          </EnhancedTooltipContent>
+        }
         checked={options.enableEnhancedFairness}
         onChange={(checked) => handleOptionChange('enableEnhancedFairness', checked)}
         disabled={disabled}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <LabelWithInfo tooltip="Priority bonus given for each week a player hasn't received any drops. Helps players who've had bad luck catch up.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Drought Bonus">
+                <p>Priority boost for each week without drops.</p>
+                <div className="mt-1.5 p-1.5 bg-surface-base rounded text-text-muted">
+                  <span className="text-accent">3</span> weeks × <span className="text-accent">10</span> multiplier = <span className="text-status-success">+30</span> bonus
+                </div>
+              </EnhancedTooltipContent>
+            }>
               Drought Bonus Multiplier
             </LabelWithInfo>
             <NumberInput
@@ -279,7 +352,12 @@ export function AdvancedOptions({
           </div>
 
           <div>
-            <LabelWithInfo tooltip="Maximum number of weeks to count for the drought bonus. Prevents the bonus from growing infinitely for very unlucky players.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Drought Cap">
+                <p>Maximum weeks to count for the drought bonus.</p>
+                <p className="mt-1.5 text-text-muted">Prevents the bonus from growing infinitely for very unlucky players.</p>
+              </EnhancedTooltipContent>
+            }>
               Drought Bonus Cap (Weeks)
             </LabelWithInfo>
             <NumberInput
@@ -299,7 +377,14 @@ export function AdvancedOptions({
           </div>
 
           <div>
-            <LabelWithInfo tooltip="Priority penalty for each drop a player has received above the group average. Helps prevent any one player from getting too far ahead.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Balance Penalty">
+                <p>Priority reduction for each drop above the group average.</p>
+                <div className="mt-1.5 p-1.5 bg-surface-base rounded text-text-muted">
+                  <span className="text-accent">2</span> excess drops × <span className="text-accent">15</span> multiplier = <span className="text-status-warning">−30</span> penalty
+                </div>
+              </EnhancedTooltipContent>
+            }>
               Balance Penalty Multiplier
             </LabelWithInfo>
             <NumberInput
@@ -319,7 +404,12 @@ export function AdvancedOptions({
           </div>
 
           <div>
-            <LabelWithInfo tooltip="Maximum number of excess drops to penalize. Prevents the penalty from becoming too harsh for lucky players.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Balance Cap">
+                <p>Maximum excess drops to penalize.</p>
+                <p className="mt-1.5 text-text-muted">Prevents the penalty from becoming too harsh for lucky players.</p>
+              </EnhancedTooltipContent>
+            }>
               Balance Penalty Cap (Drops)
             </LabelWithInfo>
             <NumberInput
@@ -347,14 +437,31 @@ export function AdvancedOptions({
       <ToggleWithInfo
         label="Enable priority multipliers"
         hint="Customize how the base score is calculated"
-        tooltip="Override the default multipliers used to calculate priority scores. Use this to emphasize or de-emphasize certain factors like role priority or gear need."
+        tooltip={
+          <EnhancedTooltipContent title="Priority Multipliers">
+            <p>Override the default multipliers for priority calculation.</p>
+            <ul className="mt-1.5 space-y-0.5 text-text-muted">
+              <li><span className="text-text-secondary">Role</span> — How much role order matters</li>
+              <li><span className="text-text-secondary">Gear Need</span> — How much incomplete slots matter</li>
+            </ul>
+            <p className="mt-1.5 text-text-muted">When disabled, uses defaults (25 role, 10 gear).</p>
+          </EnhancedTooltipContent>
+        }
         checked={options.useMultipliers}
         onChange={(checked) => handleOptionChange('useMultipliers', checked)}
         disabled={disabled}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <LabelWithInfo tooltip="Points given based on role priority order. Higher values make role order more important. Example: If melee is #1 and healer is #5, melee gets (5-0)×25=125 while healer gets (5-4)×25=25.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Role Multiplier">
+                <p>Points based on role priority order. Higher = role matters more.</p>
+                <div className="mt-1.5 p-1.5 bg-surface-base rounded text-text-muted space-y-0.5">
+                  <div>Melee (#1): (5−0) × 25 = <span className="text-text-primary">125</span></div>
+                  <div>Healer (#5): (5−4) × 25 = <span className="text-text-primary">25</span></div>
+                </div>
+              </EnhancedTooltipContent>
+            }>
               Role Priority Multiplier
             </LabelWithInfo>
             <NumberInput
@@ -374,7 +481,15 @@ export function AdvancedOptions({
           </div>
 
           <div>
-            <LabelWithInfo tooltip="Points given based on how much gear a player still needs. Higher values make gear need more important relative to role priority.">
+            <LabelWithInfo tooltip={
+              <EnhancedTooltipContent title="Gear Need Multiplier">
+                <p>Points based on how much gear a player still needs.</p>
+                <div className="mt-1.5 p-1.5 bg-surface-base rounded text-text-muted">
+                  <span className="text-accent">8.5</span> weighted need × <span className="text-accent">10</span> multiplier = <span className="text-text-primary">+85</span> priority
+                </div>
+                <p className="mt-1.5 text-text-muted">Higher values make gear need more important vs role.</p>
+              </EnhancedTooltipContent>
+            }>
               Gear Need Multiplier
             </LabelWithInfo>
             <NumberInput
