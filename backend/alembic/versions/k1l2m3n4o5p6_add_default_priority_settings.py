@@ -120,16 +120,18 @@ def upgrade() -> None:
             # Add prioritySettings to settings
             settings["prioritySettings"] = priority_settings
 
-            # Update the group
+            # Update the group - use proper JSON type binding for Postgres JSON column
             session.execute(
                 sa.text("""
                     UPDATE static_groups
                     SET settings = :settings
                     WHERE id = :group_id
-                """),
+                """).bindparams(
+                    sa.bindparam("settings", type_=sa.JSON),
+                ),
                 {
                     "group_id": group_id,
-                    "settings": json.dumps(settings),
+                    "settings": settings,
                 }
             )
             updated_count += 1
@@ -183,15 +185,18 @@ def downgrade() -> None:
             if "prioritySettings" in settings:
                 del settings["prioritySettings"]
 
+                # Use proper JSON type binding for Postgres JSON column
                 session.execute(
                     sa.text("""
                         UPDATE static_groups
                         SET settings = :settings
                         WHERE id = :group_id
-                    """),
+                    """).bindparams(
+                        sa.bindparam("settings", type_=sa.JSON),
+                    ),
                     {
                         "group_id": group_id,
-                        "settings": json.dumps(settings),
+                        "settings": settings,
                     }
                 )
                 updated_count += 1
