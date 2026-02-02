@@ -19,6 +19,9 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
 
+/** Duration of slide animation in ms - must match CSS */
+const ANIMATION_DURATION_MS = 200;
+
 interface SlideOutPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -62,6 +65,8 @@ export function SlideOutPanel({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   // Track if mousedown started on backdrop (for proper click detection)
   const mouseDownOnBackdropRef = useRef(false);
+  // Timer ref to avoid cleanup race condition
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animation state - keeps component mounted during exit animation
   // Combined into single state to avoid cascading renders
@@ -78,18 +83,41 @@ export function SlideOutPanel({
   /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     if (isOpen) {
-      // Opening: render immediately
+      // Cancel any pending close timer when reopening
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
       setAnimationState('open');
     } else if (animationState === 'open') {
       // Closing: start exit animation
       setAnimationState('closing');
-      // Wait for animation to complete before unmounting
-      const timer = setTimeout(() => {
-        setAnimationState('closed');
-      }, 200); // Match animation duration
-      return () => clearTimeout(timer);
     }
   }, [isOpen, animationState]);
+
+  // Separate effect to handle the closing -> closed transition
+  // This avoids the cleanup race condition where the timer was cleared prematurely
+  useLayoutEffect(() => {
+    if (animationState === 'closing') {
+      closeTimerRef.current = setTimeout(() => {
+        setAnimationState('closed');
+        closeTimerRef.current = null;
+      }, ANIMATION_DURATION_MS);
+    }
+
+    return () => {
+      // Only cleanup on unmount, not on every state change
+    };
+  }, [animationState]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle keyboard events - escape to close, tab for focus trap
