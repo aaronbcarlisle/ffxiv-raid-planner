@@ -53,6 +53,7 @@ from .static_group import (
 from .weekly_assignment import (
     WeeklyAssignmentBulkCreate,
     WeeklyAssignmentBulkDelete,
+    WeeklyAssignmentBulkItem,
     WeeklyAssignmentCreate,
     WeeklyAssignmentResponse,
     WeeklyAssignmentUpdate,
@@ -155,6 +156,7 @@ __all__ = [
     # Weekly Assignment
     "WeeklyAssignmentBulkCreate",
     "WeeklyAssignmentBulkDelete",
+    "WeeklyAssignmentBulkItem",
     "WeeklyAssignmentCreate",
     "WeeklyAssignmentResponse",
     "WeeklyAssignmentUpdate",

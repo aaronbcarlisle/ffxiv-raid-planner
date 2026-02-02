@@ -7,16 +7,8 @@ from .static_group import CamelModel
 # Maximum weeks in a raid tier (practical upper bound)
 MAX_WEEKS = 20
 
-# Valid floor identifiers (current and legacy raid tiers)
-VALID_FLOORS = {
-    # AAC Light-Heavyweight (Dawntrail)
-    "M9S", "M10S", "M11S", "M12S",
-    # AAC Cruiser-Weight (Dawntrail Ultimate)
-    "FRU",
-    # Legacy tiers can be added as needed
-}
-
 # Valid slot identifiers (gear slots + materials)
+# These are universal across all raid tiers
 VALID_SLOTS = {
     # Gear slots
     "head", "body", "hands", "legs", "feet",
@@ -38,12 +30,9 @@ class WeeklyAssignmentCreate(CamelModel):
     sort_order: int = Field(default=0, description="Order for multiple assignments")
     did_not_drop: bool = Field(default=False, description="Mark slot as did not drop")
 
-    @field_validator("floor")
-    @classmethod
-    def validate_floor(cls, v: str) -> str:
-        if v not in VALID_FLOORS:
-            raise ValueError(f"Invalid floor: {v}. Must be one of: {', '.join(sorted(VALID_FLOORS))}")
-        return v
+    # Note: Floor validation is not done here because floor identifiers vary by tier
+    # (e.g., M9S-M12S for current tier, P1S-P4S for legacy). The tier_id provides
+    # implicit validation - if the tier exists, its floors are valid.
 
     @field_validator("slot")
     @classmethod
@@ -79,12 +68,29 @@ class WeeklyAssignmentResponse(CamelModel):
     updated_at: str
 
 
+class WeeklyAssignmentBulkItem(CamelModel):
+    """Schema for individual items in bulk create (without tier_id/week which come from parent)"""
+
+    floor: str = Field(..., description="Floor identifier (e.g., 'M9S')")
+    slot: str = Field(..., description="Slot identifier (e.g., 'head', 'body', 'twine')")
+    player_id: str | None = Field(default=None, description="Player ID to assign")
+    sort_order: int = Field(default=0, description="Order for multiple assignments")
+    did_not_drop: bool = Field(default=False, description="Mark slot as did not drop")
+
+    @field_validator("slot")
+    @classmethod
+    def validate_slot(cls, v: str) -> str:
+        if v not in VALID_SLOTS:
+            raise ValueError(f"Invalid slot: {v}. Must be one of: {', '.join(sorted(VALID_SLOTS))}")
+        return v
+
+
 class WeeklyAssignmentBulkCreate(CamelModel):
     """Schema for bulk creating weekly assignments"""
 
     tier_id: str = Field(..., description="Tier identifier")
     week: int = Field(..., ge=1, le=MAX_WEEKS, description="Week number")
-    assignments: list[WeeklyAssignmentCreate] = Field(
+    assignments: list[WeeklyAssignmentBulkItem] = Field(
         ..., description="List of assignments to create"
     )
 

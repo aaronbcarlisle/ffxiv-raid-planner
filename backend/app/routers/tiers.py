@@ -1554,6 +1554,16 @@ async def create_weekly_assignment(
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
 
+    # Validate tier exists in this group
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    if not tier_check.scalar_one_or_none():
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
     # Validate player_id if provided - must belong to a player in this group/tier
     if data.player_id:
         player_check = await session.execute(
@@ -1729,6 +1739,16 @@ async def bulk_create_weekly_assignments(
     """Bulk create weekly assignments (Owner/Lead only)"""
     await get_static_group(session, group_id)
     await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Validate tier exists in this group
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    if not tier_check.scalar_one_or_none():
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
 
     now = datetime.now(timezone.utc).isoformat()
     created_assignments: list[WeeklyAssignment] = []
