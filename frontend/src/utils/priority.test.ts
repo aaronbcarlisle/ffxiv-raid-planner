@@ -500,6 +500,7 @@ describe('calculatePriorityScore', () => {
     });
 
     it('handles unknown role gracefully in role-based mode', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const player = createPlayer({ role: 'unknown' as any });
       const score = calculatePriorityScore(player, defaultSettings);
       // Unknown role gets roleIndex -1, which is handled as 0 priority for role component
