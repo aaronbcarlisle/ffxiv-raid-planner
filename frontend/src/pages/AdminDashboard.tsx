@@ -84,12 +84,6 @@ export function AdminDashboard() {
   // Search and pagination - initialized from URL params
   const [search, setSearchState] = useState(() => searchParams.get('q') || '');
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get('q') || '');
-  // Track if search change came from URL sync (back/forward navigation)
-  // to prevent the debounce effect from resetting the page
-  const searchFromUrlSyncRef = useRef(false);
-  // Track if page change came from our setPage call (not URL sync)
-  // to prevent the URL sync effect from interfering with our state update
-  const pageChangeIntentionalRef = useRef(false);
   const [page, setPageState] = useState(() => {
     const urlPage = searchParams.get('page');
     return urlPage ? Math.max(0, parseInt(urlPage, 10)) : 0;
@@ -116,21 +110,14 @@ export function AdminDashboard() {
   useEffect(() => {
     const urlSearch = searchParams.get('q') || '';
     if (urlSearch !== search) {
-      // Mark this as a URL sync change to prevent debounce from resetting page
-      searchFromUrlSyncRef.current = true;
       setSearchState(urlSearch);
       setDebouncedSearch(urlSearch);
     }
 
-    // Skip page sync if we initiated this URL change
-    if (pageChangeIntentionalRef.current) {
-      pageChangeIntentionalRef.current = false;
-    } else {
-      const urlPageParam = searchParams.get('page');
-      const urlPage = urlPageParam ? Math.max(0, parseInt(urlPageParam, 10) || 0) : 0;
-      if (urlPage !== page) {
-        setPageState(urlPage);
-      }
+    const urlPageParam = searchParams.get('page');
+    const urlPage = urlPageParam ? Math.max(0, parseInt(urlPageParam, 10) || 0) : 0;
+    if (urlPage !== page) {
+      setPageState(urlPage);
     }
 
     const urlSort = searchParams.get('sort');
@@ -148,9 +135,15 @@ export function AdminDashboard() {
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   // Note: Intentionally excluding state vars to prevent loops - we only want to sync FROM URL
 
-  // Helper to update URL params
+  // Stabilize setSearchParams via ref so updateUrlParams has a stable identity.
+  // React Router's setSearchParams changes on every URL change, which would
+  // cause updateUrlParams to recreate and trigger dependent effects.
+  const setSearchParamsRef = useRef(setSearchParams);
+  useEffect(() => { setSearchParamsRef.current = setSearchParams; }, [setSearchParams]);
+
+  // Helper to update URL params (stable identity - no deps)
   const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
-    setSearchParams(prev => {
+    setSearchParamsRef.current(prev => {
       const params = new URLSearchParams(prev);
       for (const [key, value] of Object.entries(updates)) {
         if (value === null || value === '') {
@@ -161,7 +154,7 @@ export function AdminDashboard() {
       }
       return params;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, []);
 
   // Wrapper to set search and sync URL (debounced via existing effect)
   const setSearch = useCallback((value: string) => {
@@ -170,8 +163,6 @@ export function AdminDashboard() {
 
   // Wrapper to set page and sync URL
   const setPage = useCallback((pageOrFn: number | ((prev: number) => number)) => {
-    // Mark this as an intentional page change to prevent URL sync effect interference
-    pageChangeIntentionalRef.current = true;
     setPageState(prev => {
       const newPage = typeof pageOrFn === 'function' ? pageOrFn(prev) : pageOrFn;
       // Update URL - omit if default (0)
@@ -273,13 +264,6 @@ export function AdminDashboard() {
 
   // Debounce search input and update URL
   useEffect(() => {
-    // Skip if this change came from URL sync (back/forward navigation)
-    // to preserve the page from the URL
-    if (searchFromUrlSyncRef.current) {
-      searchFromUrlSyncRef.current = false;
-      return;
-    }
-
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPageState(0); // Reset to first page on search
