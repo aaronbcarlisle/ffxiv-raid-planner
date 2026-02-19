@@ -66,6 +66,12 @@ export interface UseGroupViewStateReturn {
   setShowLogMaterialModal: (show: boolean) => void;
   showMarkFloorClearedModal: boolean;
   setShowMarkFloorClearedModal: (show: boolean) => void;
+  showLogWeekWizard: boolean;
+  setShowLogWeekWizard: (show: boolean) => void;
+  logWeekWizardFloor: FloorNumber | null;
+  setLogWeekWizardFloor: (floor: FloorNumber | null) => void;
+  logWeekWizardWeek: number | null;
+  setLogWeekWizardWeek: (week: number | null) => void;
   playerModalCount: number;
   setPlayerModalCount: React.Dispatch<React.SetStateAction<number>>;
 
@@ -83,14 +89,24 @@ export function useGroupViewState(): UseGroupViewStateReturn {
 
   // ===== Modal state =====
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsModalState, setShowSettingsModalState] = useState(() => {
+    return searchParams.get('showSettings') === 'true';
+  });
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [showLogLootModal, setShowLogLootModal] = useState(false);
   const [showLogMaterialModal, setShowLogMaterialModal] = useState(false);
   const [showMarkFloorClearedModal, setShowMarkFloorClearedModal] = useState(false);
+  const [showLogWeekWizard, setShowLogWeekWizard] = useState(false);
+  const [logWeekWizardFloor, setLogWeekWizardFloor] = useState<FloorNumber | null>(null);
+  const [logWeekWizardWeek, setLogWeekWizardWeek] = useState<number | null>(null);
   const [playerModalCount, setPlayerModalCount] = useState(0);
+
+  // Note: showSettingsModalState is initialized from URL but not bi-directionally synced.
+  // This matches the pattern for other URL-synced state in this hook (pageMode, viewMode, etc.).
+  // Browser back/forward won't restore modal state, which is intentional - modals are transient UI.
+  // Adding reverse sync (URL -> state) would risk cascading renders and deviate from established patterns.
 
   // ===== Tab state: URL param > localStorage > default =====
   // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
@@ -308,6 +324,19 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }, { replace: true });
   }, [setSearchParams]);
 
+  // Wrapper to update showSettingsModal and clear URL param when closing
+  const setShowSettingsModal = useCallback((show: boolean) => {
+    setShowSettingsModalState(show);
+    if (!show) {
+      // Clear URL param when closing settings panel
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.delete('showSettings');
+        return params;
+      }, { replace: true });
+    }
+  }, [setSearchParams]);
+
   return {
     // URL params
     searchParams,
@@ -344,7 +373,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Modal state
     showCreateTierModal,
     setShowCreateTierModal,
-    showSettingsModal,
+    showSettingsModal: showSettingsModalState,
     setShowSettingsModal,
     showRolloverDialog,
     setShowRolloverDialog,
@@ -358,6 +387,12 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setShowLogMaterialModal,
     showMarkFloorClearedModal,
     setShowMarkFloorClearedModal,
+    showLogWeekWizard,
+    setShowLogWeekWizard,
+    logWeekWizardFloor,
+    setLogWeekWizardFloor,
+    logWeekWizardWeek,
+    setLogWeekWizardWeek,
     playerModalCount,
     setPlayerModalCount,
 

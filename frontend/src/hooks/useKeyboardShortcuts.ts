@@ -17,6 +17,8 @@ export interface KeyboardShortcut {
   requireShift?: boolean;
   /** Require alt key */
   requireAlt?: boolean;
+  /** If true, this shortcut works even when disabled=true (e.g., when modals are open) */
+  alwaysEnabled?: boolean;
 }
 
 interface UseKeyboardShortcutsOptions {
@@ -64,8 +66,8 @@ export function setShortcutsEnabled(enabled: boolean): void {
  */
 export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboardShortcutsOptions) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Skip if globally disabled, locally disabled, or typing in an input
-    if (!areShortcutsEnabled() || disabled || isInputElement(event.target)) return;
+    // Skip if globally disabled or typing in an input
+    if (!areShortcutsEnabled() || isInputElement(event.target)) return;
 
     // Find matching shortcut
     const shortcut = shortcuts.find(s => {
@@ -76,7 +78,8 @@ export function useKeyboardShortcuts({ shortcuts, disabled = false }: UseKeyboar
       return keyMatch && modMatch && shiftMatch && altMatch;
     });
 
-    if (shortcut) {
+    // Skip if disabled (unless shortcut is always enabled)
+    if (shortcut && (shortcut.alwaysEnabled || !disabled)) {
       event.preventDefault();
       shortcut.action();
     }

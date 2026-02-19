@@ -1,19 +1,20 @@
 /**
  * Loot Log Filters
  *
- * Controls for the loot log view:
- * - Layout mode toggle (Grid vs List)
- * - Reset dropdown (for resetting loot/books/all data)
- * - Action buttons (Log Loot, Log Material)
+ * Consolidated toolbar for the Log tab view:
+ * - Left: Layout mode toggle (Grid vs List), Reset dropdown
+ * - Center: Week selector (passed as children or via weekSelector prop)
+ * - Right: Action buttons (Log Loot, Log Material)
  */
 
-import { Package, Gem } from 'lucide-react';
+import { Package, Gem, ClipboardList } from 'lucide-react';
 import {
   Dropdown,
   DropdownTrigger,
   DropdownContent,
   DropdownItem,
   DropdownSeparator,
+  DropdownLabel,
 } from '../primitives/Dropdown';
 import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
@@ -23,37 +24,56 @@ export interface LootLogFiltersProps {
   layoutMode: 'split' | 'grid';
   onLayoutModeChange: (mode: 'split' | 'grid') => void;
 
-  // Reset functionality
+  // Current week for display in menu
+  currentWeek: number;
+
+  // Reset functionality - week-specific
   canEdit: boolean;
-  onResetLoot: () => void;
-  onResetBooks: () => void;
-  onResetAll: () => void;
+  onResetWeekLoot: () => void;
+  onResetWeekBooks: () => void;
+  onResetWeekData: () => void;
+
+  // Reset functionality - tier-wide
+  onResetAllLoot: () => void;
+  onResetAllBooks: () => void;
+  onResetAllData: () => void;
 
   // Action buttons
   onOpenLootModal: () => void;
   onOpenMaterialModal: () => void;
+  onLogWeek?: () => void;
+
+  // Week selector (centered)
+  weekSelector?: React.ReactNode;
 }
 
 export function LootLogFilters({
   layoutMode,
   onLayoutModeChange,
+  currentWeek,
   canEdit,
-  onResetLoot,
-  onResetBooks,
-  onResetAll,
+  onResetWeekLoot,
+  onResetWeekBooks,
+  onResetWeekData,
+  onResetAllLoot,
+  onResetAllBooks,
+  onResetAllData,
   onOpenLootModal,
   onOpenMaterialModal,
+  onLogWeek,
+  weekSelector,
 }: LootLogFiltersProps) {
   return (
-    <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-border-default pb-3">
-      <div className="flex items-center gap-1.5 sm:gap-3">
+    <div className="flex items-center gap-2 sm:gap-3 border-b border-border-default pb-3">
+      {/* Left group: Layout toggle + Reset */}
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-1">
         {/* Layout Mode Toggle - hidden on mobile (floating toggle used instead) */}
-        <div className="hidden sm:flex bg-surface-base rounded-lg p-0.5">
+        <div className="hidden sm:flex bg-surface-raised rounded-lg border border-border-default">
           <Tooltip
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  Grid View
+                  Week View
                   <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
                 <div className="text-text-secondary text-xs mt-0.5">Spreadsheet-style weekly loot grid</div>
@@ -63,10 +83,10 @@ export function LootLogFilters({
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('grid')}
-              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-3 py-2 rounded-l-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                 layoutMode === 'grid'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               {/* Grid icon - 4 squares (matches Roster tab compact icon) */}
@@ -76,27 +96,27 @@ export function LootLogFilters({
                 <rect x="1" y="9" width="6" height="6" rx="1" />
                 <rect x="9" y="9" width="6" height="6" rx="1" />
               </svg>
-              <span className="hidden sm:inline">Grid</span>
+              <span className="hidden sm:inline">Week</span>
             </button>
           </Tooltip>
           <Tooltip
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  List View
+                  History View
                   <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
-                <div className="text-text-secondary text-xs mt-0.5">Traditional chronological loot log</div>
+                <div className="text-text-secondary text-xs mt-0.5">Chronological loot history</div>
               </div>
             }
           >
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('split')}
-              className={`px-2 sm:px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 font-bold ${
+              className={`px-3 py-2 rounded-r-lg text-sm font-medium transition-colors flex items-center gap-1.5 border-l border-border-default ${
                 layoutMode === 'split'
-                  ? 'bg-accent text-accent-contrast'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               {/* List icon - horizontal bars (matches Roster tab expanded icon) */}
@@ -105,7 +125,7 @@ export function LootLogFilters({
                 <rect x="1" y="7" width="14" height="4" rx="1" />
                 <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
               </svg>
-              <span className="hidden sm:inline">List</span>
+              <span className="hidden sm:inline">History</span>
             </button>
           </Tooltip>
         </div>
@@ -118,7 +138,7 @@ export function LootLogFilters({
               content={
                 <div>
                   <div className="font-medium">Reset Data</div>
-                  <div className="text-text-secondary text-xs mt-0.5">Clear loot log, book balances, or all data</div>
+                  <div className="text-text-secondary text-xs mt-0.5">Clear loot, books, or all data</div>
                 </div>
               }
             >
@@ -145,50 +165,77 @@ export function LootLogFilters({
                 </DropdownTrigger>
               </span>
             </Tooltip>
-            <DropdownContent align="start">
+            <DropdownContent align="start" className="w-48">
+              {/* Week-specific resets */}
+              <DropdownLabel>Week {currentWeek}</DropdownLabel>
               <DropdownItem
-                onSelect={onResetLoot}
+                onSelect={onResetWeekLoot}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 }
-                className="hover:text-status-error focus:text-status-error"
+                className="hover:text-status-warning focus:text-status-warning"
               >
-                Reset Loot Log
+                Reset W{currentWeek} Loot
               </DropdownItem>
               <DropdownItem
-                onSelect={onResetBooks}
+                onSelect={onResetWeekBooks}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 }
-                className="hover:text-status-error focus:text-status-error"
+                className="hover:text-status-warning focus:text-status-warning"
               >
-                Reset Book Balances
+                Reset W{currentWeek} Books
               </DropdownItem>
+              <DropdownItem
+                onSelect={onResetWeekData}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                }
+                className="hover:text-status-warning focus:text-status-warning"
+              >
+                Reset W{currentWeek} Data
+              </DropdownItem>
+
               <DropdownSeparator />
+
+              {/* Tier-wide resets */}
+              <DropdownLabel>All Weeks</DropdownLabel>
               <DropdownItem
-                onSelect={onResetAll}
+                onSelect={onResetAllLoot}
                 icon={
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                }
+                className="hover:text-status-error focus:text-status-error"
+              >
+                Reset All Loot
+              </DropdownItem>
+              <DropdownItem
+                onSelect={onResetAllBooks}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                }
+                className="hover:text-status-error focus:text-status-error"
+              >
+                Reset All Books
+              </DropdownItem>
+
+              <DropdownSeparator />
+
+              <DropdownItem
+                onSelect={onResetAllData}
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 }
                 className="font-semibold hover:text-status-error focus:text-status-error"
@@ -201,9 +248,30 @@ export function LootLogFilters({
         </div>
       </div>
 
-      {/* Action buttons - hidden on mobile (FAB used instead) */}
-      {canEdit && (
-        <div className="hidden sm:flex items-center gap-2">
+      {/* Center group: Week selector */}
+      {weekSelector && (
+        <div className="hidden sm:flex flex-shrink-0">
+          {weekSelector}
+        </div>
+      )}
+
+      {/* Right group: Action buttons - hidden on mobile (FAB used instead) */}
+      {canEdit ? (
+        <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
+          {onLogWeek && (
+            <>
+              <Tooltip content="Log all drops for this week using a step-by-step wizard">
+                <Button size="sm" variant="primary" onClick={onLogWeek}>
+                  <ClipboardList className="w-4 h-4 mr-1.5" />
+                  Log Week
+                </Button>
+              </Tooltip>
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-border-default" />
+            </>
+          )}
+
           <Tooltip
             content={
               <div className="flex items-start gap-2">
@@ -217,10 +285,11 @@ export function LootLogFilters({
               </div>
             }
           >
-            <Button size="sm" onClick={onOpenLootModal}>
+            <Button size="sm" variant="accent-subtle" onClick={onOpenLootModal}>
               + Log Loot
             </Button>
           </Tooltip>
+
           <Tooltip
             content={
               <div className="flex items-start gap-2">
@@ -234,11 +303,14 @@ export function LootLogFilters({
               </div>
             }
           >
-            <Button size="sm" onClick={onOpenMaterialModal}>
+            <Button size="sm" variant="accent-subtle" onClick={onOpenMaterialModal}>
               + Log Material
             </Button>
           </Tooltip>
         </div>
+      ) : (
+        /* Spacer to balance the layout when action buttons are hidden */
+        <div className="hidden sm:block flex-1" />
       )}
     </div>
   );

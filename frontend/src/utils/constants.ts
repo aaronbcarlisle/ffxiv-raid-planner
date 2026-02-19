@@ -36,6 +36,11 @@ export const DEFAULT_SETTINGS: StaticSettings = {
   syncFrequency: 'weekly',
   hideSetupBanners: false,
   hideBisBanners: false,
+  // Priority settings defaults
+  priorityMode: 'automatic',
+  jobPriorityModifiers: undefined,
+  showPriorityScores: true,
+  enableEnhancedScoring: false,
 };
 
 // Sort presets for player ordering
@@ -64,6 +69,11 @@ export const SORT_PRESETS = {
 
 // Raid floors shorthand (current tier)
 export const RAID_FLOORS = ['M5S', 'M6S', 'M7S', 'M8S'];
+
+// Priority modifier range constants (shared between GroupSettingsModal and PriorityAdjustModal)
+export const PRIORITY_MODIFIER_MIN = -100;
+export const PRIORITY_MODIFIER_MAX = 100;
+export const PRIORITY_MODIFIER_STEP = 5;
 
 // Template role display configuration
 // Used for empty player slots to show expected role

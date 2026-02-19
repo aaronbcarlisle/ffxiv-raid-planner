@@ -862,20 +862,21 @@ async def list_linked_players(
     }
 
     # Get all linked players across all tiers for this group
+    # Select both SnapshotPlayer and TierSnapshot to get the tier_id (identifier, not UUID)
     result = await session.execute(
-        select(SnapshotPlayer)
+        select(SnapshotPlayer, TierSnapshot.tier_id)
         .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
         .where(TierSnapshot.static_group_id == group_id)
         .where(SnapshotPlayer.user_id.isnot(None))
         .options(selectinload(SnapshotPlayer.user))
     )
-    players = result.scalars().all()
+    rows = result.all()
 
     # Deduplicate by user_id (same user might be linked in multiple tiers)
     seen_users: set[str] = set()
     linked_players: list[LinkedPlayerInfo] = []
 
-    for player in players:
+    for player, tier_id in rows:
         if player.user_id and player.user_id not in seen_users and player.user:
             seen_users.add(player.user_id)
             linked_players.append(
@@ -883,7 +884,7 @@ async def list_linked_players(
                     player_id=player.id,
                     player_name=player.name,
                     player_job=player.job,
-                    tier_id=player.tier_snapshot_id,
+                    tier_id=tier_id,  # Use the tier identifier, not UUID
                     user=LinkedUserInfo(
                         id=player.user.id,
                         discord_id=player.user.discord_id,
@@ -1082,10 +1083,17 @@ async def update_member_role(
 async def remove_member(
     group_id: str,
     user_id: str,
+    unlink_players: bool = True,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Remove a member from a static group (lead/owner, or self)"""
+    """Remove a member from a static group (lead/owner, or self)
+
+    Args:
+        group_id: Static group ID
+        user_id: User ID to remove
+        unlink_players: If True (default), also unlink any player cards assigned to this user
+    """
     from ..permissions import PermissionDenied
 
     group = await get_static_group(session, group_id)
@@ -1099,6 +1107,9 @@ async def remove_member(
     if user_id == current_user.id:
         if target_membership.role == MemberRole.OWNER.value:
             raise PermissionDenied("Owner cannot leave the group. Transfer ownership first.")
+        # Unlink players if requested
+        if unlink_players:
+            await _unlink_user_players(session, group_id, user_id)
         await session.delete(target_membership)
         await session.commit()
         return
@@ -1117,8 +1128,36 @@ async def remove_member(
     ):
         raise PermissionDenied("Only owners can remove leads")
 
+    # Unlink players if requested
+    if unlink_players:
+        await _unlink_user_players(session, group_id, user_id)
+
     await session.delete(target_membership)
     await session.commit()
+
+
+async def _unlink_user_players(session: AsyncSession, group_id: str, user_id: str) -> None:
+    """Unlink all player cards assigned to a user in a group.
+
+    Finds all SnapshotPlayer records across all tiers in the group that are
+    linked to the given user and sets their user_id to None.
+    """
+    # Find all players linked to this user in any tier of this group
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(
+            TierSnapshot.static_group_id == group_id,
+            SnapshotPlayer.user_id == user_id,
+        )
+    )
+    linked_players = result.scalars().all()
+
+    # Unlink each player
+    now = datetime.now(timezone.utc).isoformat()
+    for player in linked_players:
+        player.user_id = None
+        player.updated_at = now
 
 
 @router.post("/{group_id}/transfer-ownership", response_model=StaticGroupResponse)

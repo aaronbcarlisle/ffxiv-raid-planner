@@ -146,7 +146,7 @@ pnpm build
 |-----------|----------|------|
 | JobPicker | Player cards | Open, select, close |
 | FloorSelector | Loot tab | Open, select, close |
-| WeekSelector | History tab | Open, select, close |
+| WeekSelector | Log tab | Open, select, close |
 | Position selector | Player setup | Open, select, close |
 
 For each:

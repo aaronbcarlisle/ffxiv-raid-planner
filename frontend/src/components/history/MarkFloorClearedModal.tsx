@@ -9,6 +9,7 @@ import { BookCheck } from 'lucide-react';
 import { Modal, Select, Checkbox, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
+import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { MarkFloorClearedRequest, SnapshotPlayer } from '../../types';
 
 interface MarkFloorClearedModalProps {
@@ -102,8 +103,12 @@ export function MarkFloorClearedModal({
     }
   };
 
-  // Build floor options for Select
-  const floorOptions = floors.map((f) => ({ value: f, label: f }));
+  // Build floor options for Select with floor colors
+  const floorOptions = floors.map((f, index) => {
+    const floorNum = (index + 1) as FloorNumber;
+    const floorColor = FLOOR_COLORS[floorNum];
+    return { value: f, label: f, textClassName: floorColor.text };
+  });
 
   return (
     <Modal
@@ -125,8 +130,6 @@ export function MarkFloorClearedModal({
               value={weekNumber}
               onChange={(val) => setWeekNumber(val ?? 1)}
               min={1}
-              size="sm"
-              showButtons={false}
             />
           </div>
           <div>
@@ -166,7 +169,7 @@ export function MarkFloorClearedModal({
             </div>
           </div>
 
-          <div className="border border-border-default rounded-lg max-h-64 overflow-y-auto">
+          <div className="border border-border-default rounded-lg max-h-[400px] overflow-y-auto">
             {mainRosterPlayers.map((player) => (
               <div
                 key={player.id}

@@ -31,7 +31,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
       {/* Main stats - Cards with icons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Players */}
-        <div className="bg-surface-base rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
+        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-accent/10">
               <Users className="w-5 h-5 text-accent" />
@@ -44,7 +44,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
         </div>
 
         {/* BiS Completion */}
-        <div className="bg-surface-base rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
+        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
           <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 rounded-lg ${
               summary.completionPercentage === 100
@@ -88,7 +88,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
         </div>
 
         {/* Upgrades Needed */}
-        <div className="bg-surface-base rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
+        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-surface-elevated">
               <Wrench className="w-5 h-5 text-text-secondary" />
@@ -101,7 +101,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
         </div>
 
         {/* Weeks to BiS */}
-        <div className="bg-surface-base rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
+        <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle hover:border-border-default transition-colors">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-surface-elevated">
               <Calendar className="w-5 h-5 text-text-secondary" />
@@ -117,7 +117,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
       {/* Detailed breakdown */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Upgrade Materials */}
-        <div className="bg-surface-base rounded-lg p-5 border border-border-subtle">
+        <div className="bg-surface-elevated rounded-lg p-5 border border-border-subtle">
           <div className="flex items-center gap-2 mb-4">
             <Wrench className="w-4 h-4 text-text-muted" />
             <h3 className="text-text-primary font-medium">Upgrade Materials Needed</h3>
@@ -145,7 +145,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
         </div>
 
         {/* Books Needed */}
-        <div className="bg-surface-base rounded-lg p-5 border border-border-subtle">
+        <div className="bg-surface-elevated rounded-lg p-5 border border-border-subtle">
           <div className="flex items-center gap-2 mb-4">
             <BookOpen className="w-4 h-4 text-text-muted" />
             <h3 className="text-text-primary font-medium">Books Needed (Worst Case)</h3>

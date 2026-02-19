@@ -140,6 +140,7 @@ class SnapshotPlayerCreate(CamelModel):
     page_adjustments: dict[str, int] = Field(
         default_factory=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
     )
+    priority_modifier: int = Field(default=0, ge=-100, le=100)
 
 
 class SnapshotPlayerUpdate(CamelModel):
@@ -163,6 +164,7 @@ class SnapshotPlayerUpdate(CamelModel):
     tome_weapon: TomeWeaponStatus | None = None
     loot_adjustment: int | None = None
     page_adjustments: dict[str, int] | None = None
+    priority_modifier: int | None = Field(default=None, ge=-100, le=100)
 
 
 class AssignPlayerRequest(CamelModel):
@@ -207,6 +209,7 @@ class SnapshotPlayerResponse(CamelModel):
     page_adjustments: dict[str, int] = Field(
         default_factory=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
     )
+    priority_modifier: int = Field(default=0, ge=-100, le=100)
     created_at: str
     updated_at: str
 

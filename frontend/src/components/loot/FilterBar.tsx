@@ -69,7 +69,7 @@ function FloorFilterBar({
 
   return (
     <div className="flex items-center gap-1.5 sm:gap-2">
-      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline">{label}</span>
+      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline w-9">{label}</span>
       {floorNumbers.map((floor) => {
         const isSelected = selectedFloor === floor;
         const floorColors = floor !== 'all' ? FLOOR_COLORS[floor] : null;
@@ -119,7 +119,7 @@ function RoleFilterBar({
 }: Omit<RoleFilterProps, 'type'>) {
   return (
     <div className="flex items-center gap-1.5 sm:gap-2">
-      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline">{label}</span>
+      <span className="text-xs text-text-muted flex-shrink-0 hidden sm:inline w-9">{label}</span>
       {roleFilters.map((role) => {
         // Skip roles that should be hidden (e.g., no jobs in that role)
         if (hiddenRoles?.has(role.id)) return null;

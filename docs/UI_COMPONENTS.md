@@ -20,6 +20,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Searchable dropdown | `SearchableSelect` | `components/ui/SearchableSelect.tsx` |
 | Categorized dropdown | `SearchableSelect` + `groupOrder` | `components/ui/SearchableSelect.tsx` |
 | Checkbox | `Checkbox` | `components/ui/Checkbox.tsx` |
+| Gear status indicator | `GearStatusCircle` | `components/ui/GearStatusCircle.tsx` |
 | Modal dialog | `Modal` | `components/ui/Modal.tsx` |
 | Confirmation dialog | `ConfirmModal` | `components/ui/ConfirmModal.tsx` |
 | Dropdown menu | `Dropdown` | `components/primitives/Dropdown.tsx` |
@@ -610,7 +611,77 @@ import { Checkbox } from '../components/ui/Checkbox';
 />
 ```
 
-**When to use:** Boolean toggles, gear slot checkboxes.
+**When to use:** Boolean toggles, settings, feature flags.
+
+---
+
+### GearStatusCircle
+
+**Path:** `components/ui/GearStatusCircle.tsx`
+
+**Purpose:** Target-style status indicator for gear tracking with 2-state or 3-state cycles based on BiS source type.
+
+**Props:**
+```typescript
+interface GearStatusCircleProps {
+  state: 'missing' | 'have' | 'augmented';
+  bisSource: 'raid' | 'tome' | 'base_tome' | 'crafted' | null;
+  requiresAugmentation: boolean;
+  onChange: (state: GearState) => void;
+  disabled?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+}
+```
+
+**Visual States:**
+- **Missing:** Solid gray filled circle (no ring)
+- **Have (partial):** Colored ring only, no inner fill - for tome gear that needs augmentation
+- **Complete/Augmented:** Colored ring + filled inner circle
+
+**State Cycles:**
+- **Raid/Base Tome/Crafted:** 2-state cycle (missing ↔ complete)
+- **Tome (needs augmentation):** 3-state cycle (missing → have → augmented → missing)
+
+**Color Coding:**
+- Raid gear: Red ring/fill (`gear-raid`)
+- Tome gear: Teal ring/fill (`gear-tome`)
+- Base Tome: Light blue ring/fill (`gear-base-tome`)
+- Crafted: Orange ring/fill (`gear-crafted`)
+
+**Usage:**
+```tsx
+import { GearStatusCircle } from '../components/ui/GearStatusCircle';
+import { toGearState, fromGearState } from '../utils/calculations';
+
+// Basic usage
+<GearStatusCircle
+  state={toGearState(slot.hasItem, slot.isAugmented)}
+  bisSource={slot.bisSource}
+  requiresAugmentation={requiresAugmentation(slot.bisSource)}
+  onChange={(newState) => {
+    const { hasItem, isAugmented } = fromGearState(newState);
+    onUpdate({ hasItem, isAugmented });
+  }}
+/>
+
+// Disabled state
+<GearStatusCircle
+  state="have"
+  bisSource="tome"
+  requiresAugmentation={true}
+  onChange={() => {}}
+  disabled={true}
+/>
+
+// Different sizes
+<GearStatusCircle state="missing" bisSource="raid" size="sm" ... />
+<GearStatusCircle state="have" bisSource="tome" size="md" ... />
+<GearStatusCircle state="augmented" bisSource="tome" size="lg" ... />
+```
+
+**When to use:** Gear slot status tracking in player cards and gear tables.
+
+**Never use:** For generic boolean toggles - use `Checkbox` instead. GearStatusCircle is specifically designed for FFXIV gear tracking with its unique state cycles.
 
 ---
 

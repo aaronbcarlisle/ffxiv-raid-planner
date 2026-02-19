@@ -302,7 +302,7 @@ export interface PlayerGridProps {
 }
 
 // Grid classes - responsive from 1 column (mobile) to max 4 columns (wide screens)
-const gridClasses = 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+const gridClasses = 'grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
 
 export function PlayerGrid({
   players,
@@ -430,7 +430,7 @@ export function PlayerGrid({
   // Grouped View (G1/G2) - G1 on top, G2 below
   if (groupView && groupedPlayers) {
     return (
-      <div className="space-y-8 mb-8">
+      <div className="space-y-3 mb-3">
         {/* Group 1 */}
         {groupedPlayers.group1.length > 0 && (
           <div>
@@ -522,7 +522,7 @@ export function PlayerGrid({
 
   // Standard View - with optional subs section
   return (
-    <div className="space-y-8 mb-8">
+    <div className="space-y-3 mb-3">
       <div className={gridClasses}>
         {subsView
           ? players.filter(p => !p.isSubstitute).map((player) => (

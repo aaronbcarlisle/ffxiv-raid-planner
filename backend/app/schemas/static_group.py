@@ -3,7 +3,9 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.constants import VALID_JOBS
 
 
 def to_camel(string: str) -> str:
@@ -41,6 +43,109 @@ class GroupSourceEnum(str, Enum):
 # Role type for loot priority
 RoleType = Literal["tank", "healer", "melee", "ranged", "caster"]
 
+# Legacy priority mode for backward compatibility
+LegacyPriorityMode = Literal["automatic", "manual", "disabled"]
+
+# New priority system mode
+PrioritySystemMode = Literal["role-based", "job-based", "player-based", "manual-planning", "disabled"]
+
+# Preset types for advanced options
+PriorityPreset = Literal["balanced", "strict-fairness", "gear-need-focus", "custom"]
+
+
+# --- Priority Config Schemas ---
+
+
+class PriorityGroupConfig(CamelModel):
+    """Configuration for a priority group (used in job-based and player-based modes)"""
+
+    id: str = Field(..., description="Unique identifier for this group")
+    name: str = Field(..., description="Display name for this group")
+    sort_order: int = Field(default=0, description="Order in the list")
+    base_priority: int = Field(default=0, description="Base priority for items in this group")
+
+
+class JobPriorityConfig(CamelModel):
+    """Job configuration within a group (for job-based mode)"""
+
+    job: str = Field(..., description="Job abbreviation (e.g., 'DRG', 'WAR')")
+    group_id: str = Field(..., description="ID of the group this job belongs to")
+    sort_order: int = Field(default=0, description="Order within the group")
+    priority_offset: int = Field(default=0, description="Priority adjustment for this job")
+
+
+class PlayerPriorityConfig(CamelModel):
+    """Player configuration within a group (for player-based mode)"""
+
+    player_id: str = Field(..., description="ID of the player")
+    group_id: str = Field(..., description="ID of the group this player belongs to")
+    sort_order: int = Field(default=0, description="Order within the group")
+    priority_offset: int = Field(default=0, description="Priority adjustment for this player")
+
+
+class RoleBasedConfig(CamelModel):
+    """Configuration for role-based priority mode"""
+
+    role_order: list[RoleType] = Field(
+        default=["melee", "ranged", "caster", "tank", "healer"],
+        description="Role priority order",
+    )
+
+
+class JobBasedConfig(CamelModel):
+    """Configuration for job-based priority mode"""
+
+    groups: list[PriorityGroupConfig] = Field(default_factory=list, description="Job groups")
+    jobs: list[JobPriorityConfig] = Field(default_factory=list, description="Job configurations")
+    show_advanced_controls: bool = Field(default=False, description="Show priority offset inputs")
+
+
+class PlayerBasedConfig(CamelModel):
+    """Configuration for player-based priority mode"""
+
+    groups: list[PriorityGroupConfig] = Field(default_factory=list, description="Player groups")
+    players: list[PlayerPriorityConfig] = Field(default_factory=list, description="Player configurations")
+    show_advanced_controls: bool = Field(default=False, description="Show priority offset inputs")
+
+
+class AdvancedPriorityOptions(CamelModel):
+    """Advanced priority calculation options"""
+
+    show_priority_scores: bool = Field(default=True, description="Show priority scores in UI")
+    preset: PriorityPreset = Field(default="balanced", description="Active preset")
+
+    # Enhanced fairness options
+    enable_enhanced_fairness: bool = Field(default=False, description="Enable drought bonus and balance penalty")
+    drought_bonus_multiplier: int = Field(default=10, description="Points per week since last drop")
+    drought_bonus_cap_weeks: int = Field(default=5, description="Max weeks to count for drought bonus")
+    balance_penalty_multiplier: int = Field(default=15, description="Penalty per excess drop")
+    balance_penalty_cap_drops: int = Field(default=3, description="Max excess drops to penalize")
+
+    # Core multipliers
+    use_multipliers: bool = Field(default=True, description="Use custom multipliers vs defaults")
+    role_priority_multiplier: int = Field(default=25, description="Points per role rank")
+    gear_needed_multiplier: int = Field(default=10, description="Points per weighted gear need")
+    loot_received_penalty: int = Field(default=15, description="Penalty per loot received")
+    use_weighted_need: bool = Field(default=True, description="Weight gear slots by value")
+    use_loot_adjustments: bool = Field(default=True, description="Apply per-player loot adjustments")
+
+
+class StaticPrioritySettings(CamelModel):
+    """Complete priority settings for a static group"""
+
+    mode: PrioritySystemMode = Field(default="role-based", description="Priority system mode")
+
+    # Mode-specific configs
+    role_based_config: RoleBasedConfig | None = Field(default=None, description="Role-based mode config")
+    job_based_config: JobBasedConfig | None = Field(default=None, description="Job-based mode config")
+    player_based_config: PlayerBasedConfig | None = Field(default=None, description="Player-based mode config")
+
+    # Advanced options (shared across modes)
+    advanced_options: AdvancedPriorityOptions = Field(
+        default_factory=AdvancedPriorityOptions,
+        description="Advanced priority calculation options",
+    )
+
 
 # --- Static Settings Schema ---
 
@@ -50,7 +155,7 @@ class StaticSettingsSchema(CamelModel):
 
     loot_priority: list[RoleType] = Field(
         default=["melee", "ranged", "caster", "tank", "healer"],
-        description="Role priority order for loot distribution",
+        description="Role priority order for loot distribution (legacy, use priority_settings.role_based_config for new)",
     )
     hide_setup_banners: bool = Field(
         default=False,
@@ -60,6 +165,56 @@ class StaticSettingsSchema(CamelModel):
         default=False,
         description="Hide 'No BiS configured' banners on player cards",
     )
+    # Legacy priority settings (for backward compatibility)
+    priority_mode: LegacyPriorityMode = Field(
+        default="automatic",
+        description="Legacy priority calculation mode (automatic/manual/disabled)",
+    )
+    job_priority_modifiers: dict[str, int] | None = Field(
+        default=None,
+        description="Legacy per-job priority adjustments, e.g., {'PCT': 20, 'WAR': -10}. Values must be between -100 and 100.",
+        json_schema_extra={
+            "additionalProperties": {"type": "integer", "minimum": -100, "maximum": 100}
+        },
+    )
+    show_priority_scores: bool = Field(
+        default=True,
+        description="Legacy: whether to show priority scores in the UI",
+    )
+    enable_enhanced_scoring: bool = Field(
+        default=False,
+        description="Legacy: enable drought bonus and balance penalty",
+    )
+
+    # New priority system (Phase 2)
+    priority_settings: StaticPrioritySettings | None = Field(
+        default=None,
+        description="New priority system configuration. When set, overrides legacy priority fields.",
+    )
+
+    @field_validator("job_priority_modifiers")
+    @classmethod
+    def validate_job_priority_modifiers(cls, v: dict[str, int] | None) -> dict[str, int] | None:
+        """Validate and normalize job modifier keys to uppercase"""
+        if v is not None:
+            normalized = {}
+            for job, modifier in v.items():
+                # Normalize to uppercase for consistent storage
+                job_upper = job.upper()
+                # Validate job abbreviation against whitelist
+                if job.lower() not in VALID_JOBS:
+                    valid_jobs_str = ", ".join(sorted(j.upper() for j in VALID_JOBS))
+                    raise ValueError(
+                        f"Invalid job abbreviation: {job}. Valid jobs: {valid_jobs_str}"
+                    )
+                # Validate modifier range
+                if not -100 <= modifier <= 100:
+                    raise ValueError(
+                        f"Job modifier for {job} must be between -100 and 100, got {modifier}"
+                    )
+                normalized[job_upper] = modifier
+            return normalized
+        return v
 
 
 # --- Membership Schemas ---

@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** January 25, 2026
+**Last Updated:** February 1, 2026
 **Current Version:** v1.9.1
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -8,13 +8,27 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `main`
+**Current Branch:** `feature/flexible-priority-settings`
 
 **Recent Completions:**
 - PR #57 merged: Member permissions fix + Edit Books feature
 - PR #58 merged: Materia display in gear tooltips (L-003 complete)
 - PR #59 merged: Store setIndex in shortlink bisLinks for multi-set XIVGear sheets
 - PR #60 merged: Mobile UX Optimization (Phase 9 first pass ~80%)
+- **2026-02-01:** Priority system multiplier wiring complete
+  - Advanced Options multipliers now used in `priority.ts` calculations
+  - useMultipliers, useWeightedNeed, useLootAdjustments toggles functional
+  - Enhanced fairness uses configurable drought/balance multipliers
+  - Vestigial `components/priority/PriorityTab.tsx` deleted
+- **2026-02-01:** AdminDashboard pagination fix (race condition)
+- **2026-02-01:** Dashboard Settings → navigates to GroupView SettingsPanel
+  - GroupSettingsModal deleted (deprecated), SettingsPanel is now single source
+  - Added `?showSettings=true` URL param support in GroupView
+- **2026-02-01:** Documentation comprehensive update
+  - User docs: Updated gear status UI (HowToDocs, FAQDocs) - checkboxes → GearStatusCircle
+  - Design system: Added GearStatusCircle to UI_COMPONENTS.md and DesignSystem.tsx
+  - CLAUDE.md: Added GearStatusCircle and BiSSourceSelector to Component Reference
+  - Stale docs: Cleaned up old SESSION_HANDOFF files, archived Jan 31 handoff
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
 
@@ -147,6 +161,22 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - ✅ React Refresh warnings - resolved
 - ✅ Refs during render - resolved
 - ✅ Earlier quick wins (unused variables, prefer-const, no-constant-condition)
+
+---
+
+## In Progress
+
+### UI Reorganization: Header, Settings, and Actions
+- **Branch:** `feature/ui-reorganization` (to be created)
+- **Plan:** See `docs/UI_REORGANIZATION_PLAN.md` for detailed implementation steps
+- **Scope:**
+  1. Header breadcrumb layout: `[Static ▼] > [Tier ▼] [⋮]`
+  2. Tier actions in dedicated kebab menu (⋮)
+  3. Settings slide-out panel with 4 tabs (replaces modal)
+  4. Add Player button on Roster tab
+  5. Log tab toolbar consolidation
+- **Status:** Planned, ready for implementation
+- **Phases:** 4 (see plan for details)
 
 ---
 

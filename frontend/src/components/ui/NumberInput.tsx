@@ -1,7 +1,9 @@
 /**
  * NumberInput Component
  *
- * Numeric input with increment/decrement buttons.
+ * Premium numeric input with "Unified Capsule" design.
+ * Features teal +/- buttons on each side with a recessed center
+ * display showing the current value.
  *
  * @example
  * <NumberInput
@@ -12,8 +14,7 @@
  * />
  */
 
-import { forwardRef } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { forwardRef, useState, useCallback } from 'react';
 
 export interface NumberInputProps {
   /** Input element id for label association */
@@ -60,25 +61,25 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     },
     ref
   ) => {
+    const [isDecrementHovered, setIsDecrementHovered] = useState(false);
+    const [isIncrementHovered, setIsIncrementHovered] = useState(false);
     const hasError = Boolean(error);
-
     const currentValue = value ?? 0;
 
-    const handleIncrement = () => {
-      if (disabled) return;
-      const newValue = currentValue + step;
-      if (max === undefined || newValue <= max) {
-        onChange(newValue);
-      }
-    };
+    const canDecrement = min === undefined || currentValue > min;
+    const canIncrement = max === undefined || currentValue < max;
 
-    const handleDecrement = () => {
-      if (disabled) return;
+    const handleIncrement = useCallback(() => {
+      if (disabled || !canIncrement) return;
+      const newValue = currentValue + step;
+      onChange(max !== undefined ? Math.min(newValue, max) : newValue);
+    }, [disabled, canIncrement, currentValue, step, max, onChange]);
+
+    const handleDecrement = useCallback(() => {
+      if (disabled || !canDecrement) return;
       const newValue = currentValue - step;
-      if (min === undefined || newValue >= min) {
-        onChange(newValue);
-      }
-    };
+      onChange(min !== undefined ? Math.max(newValue, min) : newValue);
+    }, [disabled, canDecrement, currentValue, step, min, onChange]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
@@ -98,38 +99,20 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       }
     };
 
-    const sizeStyles = {
-      sm: 'h-8 text-sm',
-      md: 'h-10 text-base',
-    };
+    // Size dimensions for Unified Capsule design
+    // md height matches Select component's desktop height (~38px with py-2 padding)
+    const dimensions = size === 'sm'
+      ? { height: 32, buttonWidth: 28, minCenterWidth: 40, fontSize: 13, buttonFontSize: 14 }
+      : { height: 38, buttonWidth: 38, minCenterWidth: 50, fontSize: 14, buttonFontSize: 18 };
 
-    const buttonSizeStyles = {
-      sm: 'w-8 h-8',
-      md: 'w-10 h-10',
-    };
+    // App color palette
+    const accentColor = '#14b8a6'; // Primary accent
+    const accentHover = 'rgba(20, 184, 166, 0.08)'; // Hover background
 
-    return (
-      <div className={className}>
-        <div className="flex items-center">
-          {showButtons && (
-            <button
-              type="button"
-              onClick={handleDecrement}
-              disabled={disabled || (min !== undefined && currentValue <= min)}
-              className={`
-                ${buttonSizeStyles[size]}
-                flex items-center justify-center
-                bg-surface-elevated border border-border-default border-r-0
-                rounded-l-lg
-                text-text-secondary hover:text-text-primary hover:bg-surface-interactive
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-colors
-              `}
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-          )}
-
+    // If not showing buttons, render simple input
+    if (!showButtons) {
+      return (
+        <div className={className}>
           <input
             ref={ref}
             id={id}
@@ -142,9 +125,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             step={step}
             placeholder={placeholder}
             className={`
-              ${sizeStyles[size]}
-              ${showButtons ? 'rounded-none border-x-0' : 'rounded-lg'}
-              w-full px-3 text-center
+              h-10 w-full px-3 text-center rounded-lg
               bg-surface-elevated border border-border-default
               text-text-primary placeholder:text-text-muted
               focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
@@ -153,25 +134,138 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none
             `}
           />
+          {error && <p className="mt-1.5 text-sm text-status-error">{error}</p>}
+        </div>
+      );
+    }
 
-          {showButtons && (
-            <button
-              type="button"
-              onClick={handleIncrement}
-              disabled={disabled || (max !== undefined && currentValue >= max)}
-              className={`
-                ${buttonSizeStyles[size]}
-                flex items-center justify-center
-                bg-surface-elevated border border-border-default border-l-0
-                rounded-r-lg
-                text-text-secondary hover:text-text-primary hover:bg-surface-interactive
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-colors
-              `}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          )}
+    return (
+      <div className={className}>
+        {/* Unified Capsule Container */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: 'linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%)',
+            borderRadius: 12,
+            border: '1px solid var(--color-border-default)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+            overflow: 'hidden',
+            height: dimensions.height,
+            opacity: disabled ? 0.4 : 1,
+          }}
+        >
+          {/* Decrement Button */}
+          <button
+            type="button"
+            onClick={handleDecrement}
+            disabled={disabled || !canDecrement}
+            onMouseEnter={() => setIsDecrementHovered(true)}
+            onMouseLeave={() => setIsDecrementHovered(false)}
+            style={{
+              width: dimensions.buttonWidth,
+              height: '100%',
+              border: 'none',
+              background: isDecrementHovered && canDecrement && !disabled
+                ? accentHover
+                : 'transparent',
+              color: !canDecrement || disabled
+                ? 'var(--color-text-disabled)'
+                : accentColor,
+              fontSize: dimensions.buttonFontSize,
+              fontWeight: 300,
+              cursor: !canDecrement || disabled ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+              fontFamily: "var(--font-mono)",
+            }}
+            aria-label="Decrease value"
+          >
+            −
+          </button>
+
+          {/* Recessed Center Value Display */}
+          <div
+            style={{
+              minWidth: dimensions.minCenterWidth,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0, 0, 0, 0.25)',
+              borderLeft: '1px solid var(--color-border-subtle)',
+              borderRight: '1px solid var(--color-border-subtle)',
+              boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.3)',
+              fontFamily: "var(--font-mono)",
+              fontSize: dimensions.fontSize,
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              letterSpacing: '0.02em',
+              padding: '0 8px',
+            }}
+          >
+            {/* Input for accessibility and keyboard input */}
+            <input
+              ref={ref}
+              id={id}
+              type="number"
+              value={value ?? ''}
+              onChange={handleChange}
+              disabled={disabled}
+              min={min}
+              max={max}
+              step={step}
+              placeholder={placeholder}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                textAlign: 'center',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                fontWeight: 'inherit',
+                color: 'inherit',
+                letterSpacing: 'inherit',
+                appearance: 'textfield',
+                MozAppearance: 'textfield',
+              }}
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+            />
+          </div>
+
+          {/* Increment Button */}
+          <button
+            type="button"
+            onClick={handleIncrement}
+            disabled={disabled || !canIncrement}
+            onMouseEnter={() => setIsIncrementHovered(true)}
+            onMouseLeave={() => setIsIncrementHovered(false)}
+            style={{
+              width: dimensions.buttonWidth,
+              height: '100%',
+              border: 'none',
+              background: isIncrementHovered && canIncrement && !disabled
+                ? accentHover
+                : 'transparent',
+              color: !canIncrement || disabled
+                ? 'var(--color-text-disabled)'
+                : accentColor,
+              fontSize: dimensions.buttonFontSize,
+              fontWeight: 300,
+              cursor: !canIncrement || disabled ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+              fontFamily: "var(--font-mono)",
+            }}
+            aria-label="Increase value"
+          >
+            +
+          </button>
         </div>
 
         {error && <p className="mt-1.5 text-sm text-status-error">{error}</p>}

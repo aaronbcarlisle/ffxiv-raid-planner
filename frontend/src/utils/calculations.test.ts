@@ -8,6 +8,7 @@ import {
   getEffectiveCurrentSource,
   calculateAverageItemLevel,
   calculateTeamAverageItemLevel,
+  calculatePlayerMaterials,
   requiresAugmentation,
   isSlotComplete,
   toGearState,
@@ -247,6 +248,79 @@ describe('calculateTeamAverageItemLevel', () => {
     ];
     // Only player1 counts
     expect(calculateTeamAverageItemLevel(players, 'aac-heavyweight')).toBe(790);
+  });
+});
+
+describe('calculatePlayerMaterials', () => {
+  it('returns zeroes for empty gear array', () => {
+    expect(calculatePlayerMaterials([])).toEqual({ twine: 0, glaze: 0, solvent: 0 });
+  });
+
+  it('returns zeroes when all BiS is raid (no tome pieces)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'raid' }),
+      createGearSlot({ slot: 'earring', bisSource: 'raid' }),
+    ];
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 0, glaze: 0, solvent: 0 });
+  });
+
+  it('counts twine for tome body (left-side armor)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'tome', itemName: 'Aug. Quetzalli Coat' }),
+    ];
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 1, glaze: 0, solvent: 0 });
+  });
+
+  it('counts glaze for tome earring (accessory)', () => {
+    const gear = [
+      createGearSlot({ slot: 'earring', bisSource: 'tome', itemName: 'Aug. Quetzalli Earring' }),
+    ];
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 0, glaze: 1, solvent: 0 });
+  });
+
+  it('still counts material for already-augmented slots (total needed, not remaining)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'tome', itemName: 'Aug. Quetzalli Coat', isAugmented: true }),
+      createGearSlot({ slot: 'legs', bisSource: 'tome', itemName: 'Aug. Quetzalli Legs', isAugmented: false }),
+    ];
+    // Both slots need twine regardless of augmentation status
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 2, glaze: 0, solvent: 0 });
+  });
+
+  it('skips base_tome BiS (no augmentation needed)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'base_tome', itemName: 'Quetzalli Coat' }),
+    ];
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 0, glaze: 0, solvent: 0 });
+  });
+
+  it('skips tome BiS that does not require augmentation (base tome is BiS)', () => {
+    const gear = [
+      createGearSlot({ slot: 'body', bisSource: 'tome', itemName: 'Quetzalli Coat' }),
+    ];
+    expect(calculatePlayerMaterials(gear)).toEqual({ twine: 0, glaze: 0, solvent: 0 });
+  });
+
+  it('counts solvent for tome weapon when player is pursuing one', () => {
+    const gear = [
+      createGearSlot({ slot: 'weapon', bisSource: 'raid' }),
+    ];
+    const tomeWeapon = { pursuing: true, hasItem: false, isAugmented: false };
+    expect(calculatePlayerMaterials(gear, tomeWeapon)).toEqual({ twine: 0, glaze: 0, solvent: 1 });
+  });
+
+  it('does not count solvent for tome weapon when not pursuing', () => {
+    const gear = [
+      createGearSlot({ slot: 'weapon', bisSource: 'raid' }),
+    ];
+    const tomeWeapon = { pursuing: false, hasItem: false, isAugmented: false };
+    expect(calculatePlayerMaterials(gear, tomeWeapon)).toEqual({ twine: 0, glaze: 0, solvent: 0 });
+  });
+
+  it('counts solvent for tome weapon even if already augmented (total needed)', () => {
+    const gear: GearSlotStatus[] = [];
+    const tomeWeapon = { pursuing: true, hasItem: true, isAugmented: true };
+    expect(calculatePlayerMaterials(gear, tomeWeapon)).toEqual({ twine: 0, glaze: 0, solvent: 1 });
   });
 });
 

@@ -516,7 +516,7 @@ function ReleaseCard({
           <div className="flex items-center gap-4">
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                isExpanded ? 'bg-accent text-accent-contrast' : 'bg-accent/10 text-accent'
+                isExpanded ? 'bg-accent/20 text-accent' : 'bg-accent/10 text-accent'
               }`}
             >
               <ChevronDown

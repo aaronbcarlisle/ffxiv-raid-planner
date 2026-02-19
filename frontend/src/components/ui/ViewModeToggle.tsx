@@ -28,7 +28,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
           className={`flex-1 px-4 py-2 rounded-l-lg text-sm font-medium transition-colors ${
             viewMode === 'compact'
               ? 'bg-accent/20 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
           }`}
         >
           {/* Grid icon - represents compact/thumbnail view */}
@@ -58,7 +58,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
           className={`flex-1 px-4 py-2 rounded-r-lg text-sm font-medium transition-colors border-l border-border-default ${
             viewMode === 'expanded'
               ? 'bg-accent/20 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
           }`}
         >
           {/* List icon - represents expanded/detailed view */}

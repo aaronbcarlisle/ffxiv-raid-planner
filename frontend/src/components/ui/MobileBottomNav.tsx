@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { SlidersHorizontal } from 'lucide-react';
+import { Settings2, SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -16,25 +16,30 @@ interface MobileBottomNavProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
   onControlsClick?: () => void;
+  /** Show the Priority tab (for leads/owners only) */
+  showPriorityTab?: boolean;
 }
 
-// Map PageMode to TAB_ICONS keys
-const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
+// Map PageMode to TAB_ICONS keys (priority uses Lucide icon instead)
+const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
   history: 'history',
 };
 
-const TABS: { id: PageMode; label: string }[] = [
+const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Loot' },
   { id: 'history', label: 'Log' },
   { id: 'stats', label: 'Summary' },
 ];
 
-export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: MobileBottomNavProps) {
+const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Priority' };
+
+export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showPriorityTab }: MobileBottomNavProps) {
   const { isSmallScreen } = useDevice();
+  const TABS = showPriorityTab ? [...BASE_TABS, PRIORITY_TAB] : BASE_TABS;
 
   // Swipe handlers for tab navigation
   const tabIds = TABS.map(t => t.id);
@@ -99,11 +104,15 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
               aria-label={tab.label}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              <img
-                src={TAB_ICONS[PAGE_TO_ICON[tab.id]]}
-                alt=""
-                className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
-              />
+              {tab.id === 'priority' ? (
+                <Settings2 className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
+              ) : (
+                <img
+                  src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
+                  alt=""
+                  className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
+                />
+              )}
               <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
             </button>
           ))}

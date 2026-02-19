@@ -249,24 +249,24 @@ export default function FAQDocs() {
               </p>
             </Question>
 
-            <Question question="What do the checkbox states mean?">
-              <p className="mb-2">For raid BiS slots:</p>
+            <Question question="What do the gear status indicators mean?">
+              <p className="mb-2">For raid BiS slots (2-state cycle):</p>
               <ul className="list-disc list-inside mb-2">
-                <li>Unchecked = Don't have it</li>
-                <li>Checked = Got the raid drop</li>
+                <li>Gray circle = Missing</li>
+                <li>Colored ring with fill = Complete</li>
               </ul>
-              <p className="mb-2">For tome BiS slots:</p>
+              <p className="mb-2">For tome BiS slots needing augmentation (3-state cycle):</p>
               <ul className="list-disc list-inside">
-                <li>Unchecked = Don't have tome piece</li>
-                <li>Half-checked = Have tome piece, not augmented</li>
-                <li>Fully checked = Augmented (BiS complete)</li>
+                <li>Gray circle = Missing</li>
+                <li>Colored ring (empty) = Have tome piece, needs augment</li>
+                <li>Colored ring with fill = Augmented (BiS complete)</li>
               </ul>
             </Question>
 
             <Question question="Why does my iLv look wrong?">
               <p>
-                iLv is calculated from your current gear based on checkboxes, not your BiS target.
-                Make sure your checkboxes accurately reflect what you have equipped.
+                iLv is calculated from your current gear based on status indicators, not your BiS target.
+                Make sure your gear status accurately reflects what you have equipped.
               </p>
             </Question>
 
@@ -384,7 +384,7 @@ export default function FAQDocs() {
 
             <Question question="My gear progress looks wrong">
               <p>
-                Check that your BiS is imported correctly. The app compares your checkboxes against
+                Check that your BiS is imported correctly. The app compares your gear status against
                 your BiS to calculate progress. Try re-importing if things look off.
               </p>
             </Question>

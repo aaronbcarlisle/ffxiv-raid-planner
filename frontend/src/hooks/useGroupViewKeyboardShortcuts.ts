@@ -143,7 +143,7 @@ export function useGroupViewKeyboardShortcuts(
           setShowLogLootModal(true);
         }
       }, requireAlt: true },
-      { key: 'm', description: 'Log Material', action: () => {
+      { key: 'u', description: 'Log Material', action: () => {
         if (canEdit) {
           setPageMode('history');
           setShowLogMaterialModal(true);
@@ -155,6 +155,29 @@ export function useGroupViewKeyboardShortcuts(
           setShowMarkFloorClearedModal(true);
         }
       }, requireAlt: true },
+
+      // ===== Static Settings (Alt+letter) =====
+      // These are alwaysEnabled so you can switch tabs or close panel while it's open
+      { key: 'g', description: 'Settings: General', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'general' } }));
+        }
+      }, requireAlt: true, alwaysEnabled: true },
+      { key: 'p', description: 'Settings: Priority', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'priority' } }));
+        }
+      }, requireAlt: true, alwaysEnabled: true },
+      { key: 'm', description: 'Settings: Members', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'members' } }));
+        }
+      }, requireAlt: true, alwaysEnabled: true },
+      { key: 'i', description: 'Settings: Invitations', action: () => {
+        if (canEdit) {
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'invitations' } }));
+        }
+      }, requireAlt: true, alwaysEnabled: true },
 
       // ===== Navigation (Shift modifiers) =====
       { key: 's', description: 'My Statics', action: () => navigate('/dashboard'), requireShift: true },
@@ -200,11 +223,6 @@ export function useGroupViewKeyboardShortcuts(
       { key: 'r', description: 'Copy to New Tier', action: () => {
         if (canEdit && currentTier) {
           window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ROLLOVER));
-        }
-      }, requireAlt: true, requireShift: true },
-      { key: 's', description: 'Static Settings', action: () => {
-        if (canEdit) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS));
         }
       }, requireAlt: true, requireShift: true },
 

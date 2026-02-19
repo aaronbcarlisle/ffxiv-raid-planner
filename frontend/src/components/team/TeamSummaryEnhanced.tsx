@@ -98,28 +98,28 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
         </div>
       </td>
 
-      {/* Books: I, II, III, IV - simple text values */}
-      <td className="px-2 py-2 text-center text-sm">
-        <ValueCell current={booksBalance.I} needed={booksNeeded.I} />
+      {/* Books: I, II, III, IV - colored by floor */}
+      <td className="px-2 py-2 text-center text-lg">
+        <ValueCell current={booksBalance.I} needed={booksNeeded.I} colorClass="text-green-400" />
       </td>
-      <td className="px-2 py-2 text-center text-sm">
-        <ValueCell current={booksBalance.II} needed={booksNeeded.II} />
+      <td className="px-2 py-2 text-center text-lg">
+        <ValueCell current={booksBalance.II} needed={booksNeeded.II} colorClass="text-blue-400" />
       </td>
-      <td className="px-2 py-2 text-center text-sm">
-        <ValueCell current={booksBalance.III} needed={booksNeeded.III} />
+      <td className="px-2 py-2 text-center text-lg">
+        <ValueCell current={booksBalance.III} needed={booksNeeded.III} colorClass="text-purple-400" />
       </td>
-      <td className="px-2 py-2 text-center text-sm">
-        <ValueCell current={booksBalance.IV} needed={booksNeeded.IV} />
+      <td className="px-2 py-2 text-center text-lg">
+        <ValueCell current={booksBalance.IV} needed={booksNeeded.IV} colorClass="text-amber-400" />
       </td>
 
       {/* Materials: T, G, S - simple text with color */}
-      <td className="px-2 py-2 text-center text-sm">
+      <td className="px-2 py-2 text-center text-lg">
         <ValueCell current={matsReceived.twine} needed={matsNeeded.twine} colorClass="text-material-twine" />
       </td>
-      <td className="px-2 py-2 text-center text-sm">
+      <td className="px-2 py-2 text-center text-lg">
         <ValueCell current={matsReceived.glaze} needed={matsNeeded.glaze} colorClass="text-material-glaze" />
       </td>
-      <td className="px-2 py-2 text-center text-sm">
+      <td className="px-2 py-2 text-center text-lg">
         <ValueCell current={matsReceived.solvent} needed={matsNeeded.solvent} colorClass="text-material-solvent" />
       </td>
     </tr>
@@ -189,7 +189,7 @@ export function TeamSummaryEnhanced({
       .map(player => {
         const gearPercent = calculatePlayerCompletion(player.gear);
         const booksNeededCalc = calculatePlayerBooks(player.gear);
-        const matsNeededCalc = calculatePlayerMaterials(player.gear);
+        const matsNeededCalc = calculatePlayerMaterials(player.gear, player.tomeWeapon);
 
         // Get balances from store
         const pageBalance = pageBalanceMap.get(player.id);
@@ -438,10 +438,10 @@ export function TeamSummaryEnhanced({
             <tr className="border-b border-border-default bg-surface-elevated/50">
               <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary">Player</th>
               <th className="px-3 py-2 text-left text-sm font-medium text-text-secondary" style={{ minWidth: '140px' }}>Gear</th>
-              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[0]}>I</th>
-              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[1]}>II</th>
-              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[2]}>III</th>
-              <th className="px-2 py-2 text-center text-sm font-medium text-text-secondary" title={tierInfo.floors[3]}>IV</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-green-400" title={tierInfo.floors[0]}>I</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-blue-400" title={tierInfo.floors[1]}>II</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-purple-400" title={tierInfo.floors[2]}>III</th>
+              <th className="px-2 py-2 text-center text-sm font-medium text-amber-400" title={tierInfo.floors[3]}>IV</th>
               <th className="px-2 py-2 text-center text-sm font-medium text-material-twine" title={tierInfo.upgradeMaterials.twine}>T</th>
               <th className="px-2 py-2 text-center text-sm font-medium text-material-glaze" title={tierInfo.upgradeMaterials.glaze}>G</th>
               <th className="px-2 py-2 text-center text-sm font-medium text-material-solvent" title={tierInfo.upgradeMaterials.solvent}>S</th>
@@ -464,25 +464,25 @@ export function TeamSummaryEnhanced({
                   {totals.gearPercent}%
                 </span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium">
+              <td className="px-2 py-2 text-center text-lg font-medium text-green-400">
                 {totals.booksBalance.I}<span className="text-text-muted">/{totals.booksNeeded.I}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium">
+              <td className="px-2 py-2 text-center text-lg font-medium text-blue-400">
                 {totals.booksBalance.II}<span className="text-text-muted">/{totals.booksNeeded.II}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium">
+              <td className="px-2 py-2 text-center text-lg font-medium text-purple-400">
                 {totals.booksBalance.III}<span className="text-text-muted">/{totals.booksNeeded.III}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium">
+              <td className="px-2 py-2 text-center text-lg font-medium text-amber-400">
                 {totals.booksBalance.IV}<span className="text-text-muted">/{totals.booksNeeded.IV}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-material-twine">
+              <td className="px-2 py-2 text-center text-lg font-medium text-material-twine">
                 {totals.matsReceived.twine}<span className="text-text-muted">/{totals.matsNeeded.twine}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-material-glaze">
+              <td className="px-2 py-2 text-center text-lg font-medium text-material-glaze">
                 {totals.matsReceived.glaze}<span className="text-text-muted">/{totals.matsNeeded.glaze}</span>
               </td>
-              <td className="px-2 py-2 text-center text-sm font-medium text-material-solvent">
+              <td className="px-2 py-2 text-center text-lg font-medium text-material-solvent">
                 {totals.matsReceived.solvent}<span className="text-text-muted">/{totals.matsNeeded.solvent}</span>
               </td>
             </tr>

@@ -15,9 +15,11 @@ export type ContextMenuItem = {
   onClick?: () => void;
   disabled?: boolean;
   danger?: boolean;
+  accent?: boolean; // Use accent color for positive/important actions
   keepOpen?: boolean; // Don't close menu after clicking
   tooltip?: string; // Tooltip shown on hover (especially useful for disabled items)
   separator?: never;
+  sectionHeader?: never;
 } | {
   separator: true;
   label?: never;
@@ -25,8 +27,21 @@ export type ContextMenuItem = {
   onClick?: never;
   disabled?: never;
   danger?: never;
+  accent?: never;
   keepOpen?: never;
   tooltip?: never;
+  sectionHeader?: never;
+} | {
+  sectionHeader: string;
+  label?: never;
+  icon?: never;
+  onClick?: never;
+  disabled?: never;
+  danger?: never;
+  accent?: never;
+  keepOpen?: never;
+  tooltip?: never;
+  separator?: never;
 };
 
 interface ContextMenuProps {
@@ -41,11 +56,11 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  // Get actionable (non-separator, non-disabled) item indices
+  // Get actionable (non-separator, non-sectionHeader, non-disabled) item indices
   const getActionableIndices = useCallback(() => {
     return items
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => !('separator' in item && item.separator) && !item.disabled)
+      .filter(({ item }) => !('separator' in item && item.separator) && !('sectionHeader' in item && item.sectionHeader) && !item.disabled)
       .map(({ index }) => index);
   }, [items]);
 
@@ -130,19 +145,20 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     };
   }, [onClose, handleKeyDown]);
 
-  // Focus first actionable item on mount
+  // Focus first actionable item on mount for accessibility (standard menu behavior)
   useEffect(() => {
     const actionable = getActionableIndices();
     if (actionable.length > 0) {
       const firstIndex = actionable[0];
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Initialize focus state on mount
       setFocusedIndex(firstIndex);
-      // Small delay to ensure refs are set
+      // Delay focus to allow menu to render and position
       requestAnimationFrame(() => {
         itemRefs.current[firstIndex]?.focus();
       });
     }
-  }, [getActionableIndices]);
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Adjust position if menu would go off screen
   useEffect(() => {
@@ -181,6 +197,18 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           );
         }
 
+        // Render section header
+        if ('sectionHeader' in item && item.sectionHeader) {
+          return (
+            <div
+              key={index}
+              className="px-4 pt-2 pb-1 text-xs font-medium text-text-muted uppercase tracking-wide"
+            >
+              {item.sectionHeader}
+            </div>
+          );
+        }
+
         // Render menu item
         return (
           <button
@@ -203,8 +231,9 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors
               focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset
               ${item.disabled ? 'text-text-muted cursor-not-allowed' : ''}
-              ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10' : ''}
-              ${!item.disabled && !item.danger ? 'text-text-primary hover:bg-surface-interactive' : ''}
+              ${item.danger && !item.disabled ? 'text-status-error hover:bg-status-error/10 focus:bg-status-error/10' : ''}
+              ${item.accent && !item.disabled ? 'text-accent hover:bg-accent/10 focus:bg-accent/10' : ''}
+              ${!item.disabled && !item.danger && !item.accent ? 'text-text-primary hover:bg-surface-interactive focus:bg-surface-interactive' : ''}
             `}
           >
             {item.icon && (

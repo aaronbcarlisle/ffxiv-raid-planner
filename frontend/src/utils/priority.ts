@@ -5,12 +5,108 @@
  * - Role priority (melee > ranged > caster > tank > healer by default)
  * - Slot value weight (weapon > body/legs > head/hands/feet > accessories)
  * - Items needed (more items needed = higher priority)
+ * - Job modifiers (per-job adjustments from settings)
+ * - Player modifiers (per-player adjustments)
+ *
+ * Supports new priority modes:
+ * - role-based: Traditional role-based priority (default)
+ * - job-based: Priority based on job groups and order
+ * - player-based: Priority based on player groups and order
+ * - manual-planning: Weekly assignments, no automatic priority
+ * - disabled: All players equal priority
  */
 
-import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry } from '../types';
+import type { SnapshotPlayer, StaticSettings, GearSlot, PlayerNeeds, RaidPosition, TankRole, MaterialLogEntry, PrioritySystemMode, AdvancedPriorityOptions } from '../types';
+import { DEFAULT_ADVANCED_OPTIONS } from '../types';
 import { SLOT_VALUE_WEIGHTS, TOMESTONE_COSTS, WEEKLY_TOMESTONE_CAP } from '../gamedata/costs';
 import { UPGRADE_MATERIAL_SLOTS } from '../gamedata/loot-tables';
 import { isSlotComplete, requiresAugmentation } from './calculations';
+
+/**
+ * Get advanced options from settings with defaults
+ * Used for priority calculation multipliers and toggles
+ */
+function getAdvancedOptions(settings: StaticSettings): AdvancedPriorityOptions {
+  return settings.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS;
+}
+
+/**
+ * Get the effective priority mode from settings
+ * Prefers new prioritySettings.mode over legacy priorityMode
+ * Exported for use in components that need to check the current mode
+ */
+export function getEffectivePriorityMode(settings: StaticSettings): PrioritySystemMode | 'automatic' | 'manual' {
+  // New settings take precedence
+  if (settings.prioritySettings?.mode) {
+    return settings.prioritySettings.mode;
+  }
+  // Fall back to legacy mode
+  return settings.priorityMode || 'automatic';
+}
+
+/**
+ * Check if priority mode is effectively disabled
+ * Exported for use in components that need to check priority mode state
+ */
+export function isPriorityDisabled(settings: StaticSettings): boolean {
+  const mode = getEffectivePriorityMode(settings);
+  return mode === 'disabled' || mode === 'manual-planning';
+}
+
+/**
+ * Calculate job-based priority for a player
+ * Uses job group base priority + job sort order within group + job offset
+ */
+function calculateJobBasedPriority(player: SnapshotPlayer, settings: StaticSettings): number {
+  const jobConfig = settings.prioritySettings?.jobBasedConfig;
+  if (!jobConfig) return 0;
+
+  const jobEntry = jobConfig.jobs.find(
+    (j) => j.job.toUpperCase() === player.job.toUpperCase()
+  );
+  if (!jobEntry) return 0;
+
+  const group = jobConfig.groups.find((g) => g.id === jobEntry.groupId);
+  if (!group) return 0;
+
+  // Calculate: base priority from group + inverse sort order within group + offset
+  // Groups with higher sortOrder are lower priority (first group is highest)
+  const maxGroupSortOrder = Math.max(...jobConfig.groups.map((g) => g.sortOrder), 0);
+  const groupPriority = (maxGroupSortOrder - group.sortOrder + 1) * 50; // 50 points per group tier
+
+  // Jobs earlier in the list within a group have higher priority
+  const jobsInGroup = jobConfig.jobs.filter((j) => j.groupId === jobEntry.groupId);
+  const maxJobSortOrder = Math.max(...jobsInGroup.map((j) => j.sortOrder), 0);
+  const jobOrderBonus = (maxJobSortOrder - jobEntry.sortOrder) * 5; // 5 points per position
+
+  return group.basePriority + groupPriority + jobOrderBonus + jobEntry.priorityOffset;
+}
+
+/**
+ * Calculate player-based priority for a player
+ * Uses player group base priority + player sort order within group + player offset
+ */
+function calculatePlayerBasedPriority(player: SnapshotPlayer, settings: StaticSettings): number {
+  const playerConfig = settings.prioritySettings?.playerBasedConfig;
+  if (!playerConfig) return 0;
+
+  const playerEntry = playerConfig.players.find((p) => p.playerId === player.id);
+  if (!playerEntry) return 0;
+
+  const group = playerConfig.groups.find((g) => g.id === playerEntry.groupId);
+  if (!group) return 0;
+
+  // Calculate: base priority from group + inverse sort order within group + offset
+  const maxGroupSortOrder = Math.max(...playerConfig.groups.map((g) => g.sortOrder), 0);
+  const groupPriority = (maxGroupSortOrder - group.sortOrder + 1) * 50;
+
+  // Players earlier in the list within a group have higher priority
+  const playersInGroup = playerConfig.players.filter((p) => p.groupId === playerEntry.groupId);
+  const maxPlayerSortOrder = Math.max(...playersInGroup.map((p) => p.sortOrder), 0);
+  const playerOrderBonus = (maxPlayerSortOrder - playerEntry.sortOrder) * 5;
+
+  return group.basePriority + groupPriority + playerOrderBonus + playerEntry.priorityOffset;
+}
 
 export interface PriorityEntry {
   player: SnapshotPlayer;
@@ -25,7 +121,9 @@ export interface PriorityScoreBreakdown {
   rolePriority: number;
   weightedNeed: number;
   weightedNeedBonus: number; // weightedNeed * 10
-  lootAdjustmentPenalty: number; // lootAdjustment * 15 (positive = penalty applied)
+  lootAdjustmentBonus: number; // lootAdjustment * multiplier (positive = priority boost)
+  jobModifier: number; // Job-level adjustment from settings
+  playerModifier: number; // Player-level adjustment from player.priorityModifier
 }
 
 /**
@@ -40,30 +138,100 @@ export interface PriorityScoreOptions {
  * Calculate overall priority score for a player
  * Higher score = higher priority for loot
  *
- * Formula:
+ * The calculation depends on the active priority mode:
+ * - role-based: Role position + weighted need + job/player modifiers
+ * - job-based: Job group position + job offset
+ * - player-based: Player group position + player offset
+ * - manual-planning/disabled: Returns 0 (equal priority)
+ *
+ * Legacy formula (role-based):
  * - Role priority: (5 - roleIndex) * 25 (melee=125, ranged=100, caster=75, tank=50, healer=25)
  * - Weighted need: sum of slot weights for incomplete slots * 10
- * - Loot adjustment: -15 per adjustment point (positive adjustment = lower priority)
+ * - Job modifier: per-job adjustment from settings.jobPriorityModifiers
+ * - Player modifier: per-player adjustment from player.priorityModifier
+ * - Loot adjustment: +15 per adjustment point (positive = priority boost for catch-up)
  */
 export function calculatePriorityScore(
   player: SnapshotPlayer,
   settings: StaticSettings,
-  options?: PriorityScoreOptions
+  _options?: PriorityScoreOptions
 ): number {
-  const roleIndex = settings.lootPriority.indexOf(player.role);
-  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
+  const mode = getEffectivePriorityMode(settings);
 
-  const weightedNeed = player.gear
+  // Disabled/Manual Planning mode: all players have equal priority (0)
+  if (mode === 'disabled' || mode === 'manual-planning') {
+    return 0;
+  }
+
+  // Job-based mode: use job group configuration
+  if (mode === 'job-based') {
+    let score = calculateJobBasedPriority(player, settings);
+    const advancedOptions = getAdvancedOptions(settings);
+
+    // Apply loot adjustments if toggle is on (positive = priority boost)
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
+        ? advancedOptions.lootReceivedPenalty
+        : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+      score += player.lootAdjustment * lootMultiplier;
+    }
+    return Math.round(score);
+  }
+
+  // Player-based mode: use player group configuration
+  if (mode === 'player-based') {
+    let score = calculatePlayerBasedPriority(player, settings);
+    const advancedOptions = getAdvancedOptions(settings);
+
+    // Apply loot adjustments if toggle is on (positive = priority boost)
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
+        ? advancedOptions.lootReceivedPenalty
+        : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+      score += player.lootAdjustment * lootMultiplier;
+    }
+    return Math.round(score);
+  }
+
+  // Role-based mode (default, 'automatic', 'manual'): original calculation
+  const advancedOptions = getAdvancedOptions(settings);
+
+  const roleOrder = settings.prioritySettings?.roleBasedConfig?.roleOrder || settings.lootPriority;
+  const roleIndex = roleOrder.indexOf(player.role);
+
+  // Role priority - use configured multiplier when useMultipliers is enabled
+  const rolePriorityMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.rolePriorityMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.rolePriorityMultiplier;
+  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * rolePriorityMultiplier;
+
+  // Weighted need - respect toggle (when off, gear need contributes 0)
+  const weightedNeedRaw = player.gear
     .filter((g) => !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
+  const weightedNeed = advancedOptions.useWeightedNeed ? weightedNeedRaw : 0;
 
-  let score = Math.round(rolePriority + weightedNeed * 10);
+  // Gear multiplier - use configured when useMultipliers is enabled
+  const gearMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.gearNeededMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.gearNeededMultiplier;
+
+  // Job modifier from settings (use nullish coalescing to handle explicit 0 values)
+  const jobModifier = settings.jobPriorityModifiers?.[player.job.toUpperCase()] ?? 0;
+
+  // Player-level modifier (use nullish coalescing to handle explicit 0 values)
+  const playerModifier = player.priorityModifier ?? 0;
+
+  let score = Math.round(rolePriority + weightedNeed * gearMultiplier + jobModifier + playerModifier);
 
   // Apply loot adjustment for mid-tier roster changes
-  // Positive adjustment = player has received extra loot, lower their priority
-  // Negative adjustment = player missed loot, increase their priority
-  if (options?.includeLootAdjustment && player.lootAdjustment) {
-    score -= player.lootAdjustment * 15;
+  // Positive adjustment = increase priority (player needs to catch up)
+  // Negative adjustment = decrease priority (player has received enough)
+  if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+    const lootMultiplier = advancedOptions.useMultipliers
+      ? advancedOptions.lootReceivedPenalty
+      : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+    score += player.lootAdjustment * lootMultiplier;
   }
 
   return score;
@@ -75,30 +243,98 @@ export function calculatePriorityScore(
 export function calculatePriorityScoreWithBreakdown(
   player: SnapshotPlayer,
   settings: StaticSettings,
-  options?: PriorityScoreOptions
+  _options?: PriorityScoreOptions
 ): PriorityScoreBreakdown {
-  const roleIndex = settings.lootPriority.indexOf(player.role);
-  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
+  const mode = getEffectivePriorityMode(settings);
 
-  const weightedNeed = player.gear
-    .filter((g) => !isSlotComplete(g))
-    .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
-
-  const weightedNeedBonus = Math.round(weightedNeed * 10);
-
-  let lootAdjustmentPenalty = 0;
-  if (options?.includeLootAdjustment && player.lootAdjustment) {
-    lootAdjustmentPenalty = player.lootAdjustment * 15;
+  // Disabled/Manual Planning mode: all components are 0
+  if (mode === 'disabled' || mode === 'manual-planning') {
+    return {
+      score: 0,
+      rolePriority: 0,
+      weightedNeed: 0,
+      weightedNeedBonus: 0,
+      lootAdjustmentBonus: 0,
+      jobModifier: 0,
+      playerModifier: 0,
+    };
   }
 
-  const score = Math.round(rolePriority + weightedNeedBonus - lootAdjustmentPenalty);
+  // For job-based and player-based, we simplify the breakdown
+  // The score comes from the group/position, not traditional factors
+  if (mode === 'job-based' || mode === 'player-based') {
+    const advancedOptions = getAdvancedOptions(settings);
+    const baseScore = mode === 'job-based'
+      ? calculateJobBasedPriority(player, settings)
+      : calculatePlayerBasedPriority(player, settings);
+
+    let lootAdjustmentBonus = 0;
+    if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+      const lootMultiplier = advancedOptions.useMultipliers
+        ? advancedOptions.lootReceivedPenalty
+        : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+      lootAdjustmentBonus = player.lootAdjustment * lootMultiplier;
+    }
+
+    return {
+      score: Math.round(baseScore + lootAdjustmentBonus),
+      rolePriority: baseScore, // Use this field to show the group-based priority
+      weightedNeed: 0,
+      weightedNeedBonus: 0,
+      lootAdjustmentBonus,
+      jobModifier: 0,
+      playerModifier: 0,
+    };
+  }
+
+  // Role-based mode: calculation with breakdown using configurable multipliers
+  const advancedOptions = getAdvancedOptions(settings);
+
+  const roleOrder = settings.prioritySettings?.roleBasedConfig?.roleOrder || settings.lootPriority;
+  const roleIndex = roleOrder.indexOf(player.role);
+
+  // Role priority - use configured multiplier when useMultipliers is enabled
+  const rolePriorityMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.rolePriorityMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.rolePriorityMultiplier;
+  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * rolePriorityMultiplier;
+
+  // Weighted need - respect toggle (when off, gear need contributes 0)
+  const weightedNeedRaw = player.gear
+    .filter((g) => !isSlotComplete(g))
+    .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
+  const weightedNeed = advancedOptions.useWeightedNeed ? weightedNeedRaw : 0;
+
+  // Gear multiplier - use configured when useMultipliers is enabled
+  const gearMultiplier = advancedOptions.useMultipliers
+    ? advancedOptions.gearNeededMultiplier
+    : DEFAULT_ADVANCED_OPTIONS.gearNeededMultiplier;
+  const weightedNeedBonus = Math.round(weightedNeed * gearMultiplier);
+
+  // Job modifier from settings (use nullish coalescing to handle explicit 0 values)
+  const jobModifier = settings.jobPriorityModifiers?.[player.job.toUpperCase()] ?? 0;
+
+  // Player-level modifier (use nullish coalescing to handle explicit 0 values)
+  const playerModifier = player.priorityModifier ?? 0;
+
+  let lootAdjustmentBonus = 0;
+  if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+    const lootMultiplier = advancedOptions.useMultipliers
+      ? advancedOptions.lootReceivedPenalty
+      : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+    lootAdjustmentBonus = player.lootAdjustment * lootMultiplier;
+  }
+
+  const score = Math.round(rolePriority + weightedNeedBonus + jobModifier + playerModifier + lootAdjustmentBonus);
 
   return {
     score,
     rolePriority,
-    weightedNeed,
+    weightedNeed: advancedOptions.useWeightedNeed ? weightedNeedRaw : 0, // Show raw value or 0 based on toggle
     weightedNeedBonus,
-    lootAdjustmentPenalty,
+    lootAdjustmentBonus,
+    jobModifier,
+    playerModifier,
   };
 }
 
@@ -122,7 +358,12 @@ export function getPriorityForItem(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      // Primary: sort by score (highest first)
+      if (b.score !== a.score) return b.score - a.score;
+      // Secondary: alphabetical by name (for disabled mode or ties)
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -145,7 +386,10 @@ export function getPriorityForRing(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -240,12 +484,21 @@ export function getPriorityForUpgradeMaterial(
       const received = receivedCounts.get(player.id) || 0;
       const effectiveNeed = Math.max(0, unaugmentedCount - received);
 
+      // Use configured loot penalty for material need bonus
+      const advancedOptions = getAdvancedOptions(settings);
+      const lootPenalty = advancedOptions.useMultipliers
+        ? advancedOptions.lootReceivedPenalty
+        : DEFAULT_ADVANCED_OPTIONS.lootReceivedPenalty;
+
       return {
         player,
-        score: calculatePriorityScore(player, settings) + effectiveNeed * 15,
+        score: calculatePriorityScore(player, settings) + effectiveNeed * lootPenalty,
       };
     })
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**
@@ -292,7 +545,10 @@ export function getPriorityForUniversalTomestone(
       player,
       score: calculatePriorityScore(player, settings),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.player.name.localeCompare(b.player.name);
+    });
 }
 
 /**

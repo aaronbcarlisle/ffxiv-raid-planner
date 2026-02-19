@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Package } from 'lucide-react';
-import { Modal, Select, Checkbox, Label } from '../ui';
+import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { logLootAndUpdateGear, calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
@@ -49,7 +49,7 @@ export function QuickLogDropModal({
   onSuccess,
 }: QuickLogDropModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
-  const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
+  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +60,7 @@ export function QuickLogDropModal({
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
-      setSelectedWeek(String(maxWeek));
+      setSelectedWeek(maxWeek);
       setUpdateGear(true);
       setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
     }
@@ -80,7 +80,7 @@ export function QuickLogDropModal({
         groupId,
         tierId,
         {
-          weekNumber: Number(selectedWeek),
+          weekNumber: selectedWeek,
           floor,
           itemSlot: slot,
           recipientPlayerId,
@@ -180,12 +180,6 @@ export function QuickLogDropModal({
     return '';
   };
 
-  // Build week options
-  const weekOptions = Array.from({ length: maxWeek }, (_, i) => ({
-    value: String(i + 1),
-    label: `Week ${i + 1}`,
-  }));
-
   // Build recipient options with job icons
   const recipientOptions = sortedRecipients.map(({ player, priority, needsItem }) => ({
     value: player.id,
@@ -226,13 +220,13 @@ export function QuickLogDropModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <div className="w-32">
-              <Select
-                value={selectedWeek}
-                onChange={setSelectedWeek}
-                options={weekOptions}
-              />
-            </div>
+            <NumberInput
+              value={selectedWeek}
+              onChange={(val) => setSelectedWeek(val ?? maxWeek)}
+              min={1}
+              max={maxWeek}
+              size="sm"
+            />
           </div>
         </div>
 

@@ -22,6 +22,10 @@ import { Label } from '../components/ui/Label';
 import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
+import { GearStatusCircle } from '../components/ui/GearStatusCircle';
+import { Toggle } from '../components/ui/Toggle';
+import { NumberInput } from '../components/ui/NumberInput';
+import { WeekStepper } from '../components/history/WeekStepper';
 import { Select } from '../components/ui/Select';
 import { SearchableSelect, type GroupConfig } from '../components/ui/SearchableSelect';
 import {
@@ -689,9 +693,14 @@ function FormsSection() {
   const [inputGroupValue, setInputGroupValue] = useState('');
   const [checkboxValue, setCheckboxValue] = useState(false);
   const [threeState, setThreeState] = useState<ThreeState>('none');
+  const [gearState, setGearState] = useState<'missing' | 'have' | 'augmented'>('missing');
   const [selectValue, setSelectValue] = useState('');
   const [searchableSelectValue, setSearchableSelectValue] = useState('');
   const [categorizedSelectValue, setCategorizedSelectValue] = useState('');
+  const [toggleValue, setToggleValue] = useState(false);
+  const [toggleWithLabelValue, setToggleWithLabelValue] = useState(true);
+  const [numberValue, setNumberValue] = useState<number | null>(5);
+  const [weekStepperWeek, setWeekStepperWeek] = useState(3);
 
   // Sample data for categorized dropdown demo
   const ROLE_GROUP_CONFIG: Record<string, GroupConfig> = {
@@ -1002,10 +1011,96 @@ const options = users.map(u => ({
         </div>
       </Subsection>
 
-      {/* ThreeStateCheckbox */}
-      <Subsection title="Three-State Checkbox (Tome Gear)">
+      {/* GearStatusCircle */}
+      <Subsection title="Gear Status Circle">
         <p className="text-sm text-text-muted mb-4">
-          Cycles through: empty → have → augmented. Used for tome BiS gear tracking.
+          Target-style status indicator for gear tracking. Uses 2-state cycle for raid gear (missing ↔ complete)
+          and 3-state cycle for tome gear needing augmentation (missing → have → augmented).
+        </p>
+        <div className="space-y-6">
+          {/* Raid gear - 2 state */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Raid BiS (2-state)</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle
+                  state={gearState}
+                  bisSource="raid"
+                  requiresAugmentation={false}
+                  onChange={setGearState}
+                />
+                <span className="text-sm text-text-secondary">
+                  Interactive ({gearState})
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource="raid" requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Missing</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Complete</span>
+              </div>
+            </div>
+          </div>
+          {/* Tome gear - 3 state */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Tome BiS (3-state, needs augment)</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Missing</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Have (needs aug)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="augmented" bisSource="tome" requiresAugmentation={true} onChange={() => {}} />
+                <span className="text-sm text-text-muted">Augmented</span>
+              </div>
+            </div>
+          </div>
+          {/* Sizes */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Sizes</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="sm" />
+                <span className="text-sm text-text-muted">Small</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="md" />
+                <span className="text-sm text-text-muted">Medium (default)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} size="lg" />
+                <span className="text-sm text-text-muted">Large</span>
+              </div>
+            </div>
+          </div>
+          {/* Disabled & null bisSource */}
+          <div>
+            <p className="text-xs text-text-muted mb-2 uppercase tracking-wide">Special States</p>
+            <div className="flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="have" bisSource="raid" requiresAugmentation={false} onChange={() => {}} disabled />
+                <span className="text-sm text-text-muted">Disabled</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GearStatusCircle state="missing" bisSource={null} requiresAugmentation={false} onChange={() => {}} />
+                <span className="text-sm text-text-muted">No BiS set</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* ThreeStateCheckbox - Legacy */}
+      <Subsection title="Three-State Checkbox (Legacy)">
+        <p className="text-sm text-text-muted mb-4">
+          <span className="text-status-warning">Legacy component</span> — Use GearStatusCircle instead for gear tracking.
+          This component uses checkmark-style visuals. Cycles through: empty → have → augmented.
         </p>
         <div className="flex flex-wrap gap-8 items-center">
           <div className="flex items-center gap-3">
@@ -1045,6 +1140,194 @@ const options = users.map(u => ({
               disabled
             />
             <span className="text-sm text-text-muted">Disabled</span>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* Toggle (Recessed Orb) */}
+      <Subsection title="Toggle (Recessed Orb Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Premium toggle switch with "Recessed Orb" design. Dark sphere inset into track,
+          teal track when on, dark track when off. Used for feature toggles and settings.
+        </p>
+        <div className="space-y-6">
+          {/* Basic toggles */}
+          <div className="flex flex-wrap gap-8 items-center">
+            <div className="flex flex-col items-center gap-2">
+              <Toggle
+                checked={toggleValue}
+                onChange={setToggleValue}
+              />
+              <span className="text-xs text-text-muted">Interactive</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={true} onChange={() => {}} />
+              <span className="text-xs text-text-muted">On</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={false} onChange={() => {}} />
+              <span className="text-xs text-text-muted">Off</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={true} onChange={() => {}} disabled />
+              <span className="text-xs text-text-muted">Disabled On</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <Toggle checked={false} onChange={() => {}} disabled />
+              <span className="text-xs text-text-muted">Disabled Off</span>
+            </div>
+          </div>
+
+          {/* Toggle with label */}
+          <div className="space-y-3 max-w-md">
+            <Toggle
+              checked={toggleWithLabelValue}
+              onChange={setToggleWithLabelValue}
+              label="Enable notifications"
+              hint="Receive alerts when loot is logged"
+            />
+            <Toggle
+              checked={false}
+              onChange={() => {}}
+              label="Show priority scores"
+              hint="Display numeric scores in the loot panel"
+            />
+          </div>
+
+          {/* Sizes */}
+          <div className="flex flex-wrap gap-8 items-center">
+            <div className="flex items-center gap-3">
+              <Toggle checked={true} onChange={() => {}} size="sm" />
+              <span className="text-sm text-text-muted">Small</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Toggle checked={true} onChange={() => {}} size="md" />
+              <span className="text-sm text-text-muted">Medium (default)</span>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+
+      {/* NumberInput (Unified Capsule) */}
+      <Subsection title="Number Input (Unified Capsule Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Premium numeric input with teal +/- buttons on sides and recessed center value display.
+          Supports keyboard input, min/max bounds, and step increments.
+        </p>
+        <div className="space-y-6">
+          {/* Basic demos */}
+          <div className="flex flex-wrap gap-6 items-end">
+            <div>
+              <Label size="sm">Interactive</Label>
+              <NumberInput
+                value={numberValue}
+                onChange={setNumberValue}
+                min={0}
+                max={20}
+                step={1}
+              />
+            </div>
+            <div>
+              <Label size="sm">With Bounds (0-100)</Label>
+              <NumberInput
+                value={50}
+                onChange={() => {}}
+                min={0}
+                max={100}
+                step={5}
+              />
+            </div>
+            <div>
+              <Label size="sm">Disabled</Label>
+              <NumberInput
+                value={10}
+                onChange={() => {}}
+                disabled
+              />
+            </div>
+          </div>
+
+          {/* Sizes */}
+          <div className="flex flex-wrap gap-6 items-end">
+            <div>
+              <Label size="sm">Small</Label>
+              <NumberInput
+                value={5}
+                onChange={() => {}}
+                size="sm"
+              />
+            </div>
+            <div>
+              <Label size="sm">Medium (default)</Label>
+              <NumberInput
+                value={10}
+                onChange={() => {}}
+                size="md"
+              />
+            </div>
+          </div>
+
+          {/* Without buttons */}
+          <div className="max-w-[200px]">
+            <Label size="sm">Without Buttons</Label>
+            <NumberInput
+              value={25}
+              onChange={() => {}}
+              showButtons={false}
+            />
+          </div>
+        </div>
+      </Subsection>
+
+      {/* WeekStepper (Dot Stepper) */}
+      <Subsection title="Week Stepper (Dot Stepper Design)">
+        <p className="text-sm text-text-muted mb-4">
+          Navigation component for selecting raid weeks. Features clickable dots for each week,
+          with the current week shown as an expanded pill. Includes status indicators for weeks with data.
+        </p>
+        <div className="space-y-6">
+          {/* Interactive demo */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">Interactive Demo</Label>
+            <WeekStepper
+              currentWeek={weekStepperWeek}
+              maxWeek={8}
+              calculatedCurrentWeek={5}
+              onWeekChange={setWeekStepperWeek}
+              weeksWithEntries={new Set([1, 2, 3, 5])}
+              weekDataTypes={new Map([
+                [1, ['loot', 'books']],
+                [2, ['loot', 'mats']],
+                [3, ['loot', 'books', 'mats']],
+                [5, ['loot']],
+              ])}
+            />
+          </div>
+
+          {/* With action buttons */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">With Start/Revert Actions</Label>
+            <WeekStepper
+              currentWeek={4}
+              maxWeek={8}
+              calculatedCurrentWeek={4}
+              onWeekChange={() => {}}
+              weeksWithEntries={new Set([1, 2, 3, 4])}
+              onStartNextWeek={async () => {}}
+              onRevertWeek={async () => {}}
+            />
+          </div>
+
+          {/* Disabled state */}
+          <div className="max-w-2xl">
+            <Label size="sm" className="mb-2">Disabled</Label>
+            <WeekStepper
+              currentWeek={2}
+              maxWeek={6}
+              calculatedCurrentWeek={2}
+              onWeekChange={() => {}}
+              disabled
+            />
           </div>
         </div>
       </Subsection>
@@ -1128,7 +1411,7 @@ const options = users.map(u => ({
           language="tsx"
           code={`// Import components
 import { Input, TextArea, Label, InputGroup, Checkbox, Select } from '@/components/ui';
-import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
+import { GearStatusCircle } from '@/components/ui/GearStatusCircle';
 
 // Basic Input
 <Input
@@ -1154,9 +1437,11 @@ import { ThreeStateCheckbox } from '@/components/ui/ThreeStateCheckbox';
   description="We'll never share your email"
 />
 
-// ThreeStateCheckbox for tome gear
-<ThreeStateCheckbox
-  state={gearState}  // 'none' | 'have' | 'augmented'
+// GearStatusCircle for gear tracking
+<GearStatusCircle
+  state={gearState}  // 'missing' | 'have' | 'augmented'
+  bisSource="tome"   // 'raid' | 'tome' | 'base_tome' | 'crafted'
+  requiresAugmentation={true}
   onChange={setGearState}
 />`}
         />
@@ -2732,7 +3017,7 @@ export function DesignSystem() {
                 <div className="flex items-center gap-2 bg-surface-elevated rounded-lg p-1">
                   <span className="px-4 py-1.5 bg-accent text-accent-contrast text-sm font-medium rounded">Players</span>
                   <span className="px-4 py-1.5 text-sm text-text-secondary">Loot</span>
-                  <span className="px-4 py-1.5 text-sm text-text-secondary">History</span>
+                  <span className="px-4 py-1.5 text-sm text-text-secondary">Log</span>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-surface-elevated border-2 border-accent/50" />
               </div>
@@ -3043,7 +3328,7 @@ export function DesignSystem() {
   <header className="bg-surface-raised border-b border-border-default">
     <div className="px-6 py-3 flex items-center justify-between">
       <StaticSwitcher />
-      <TabNavigation tabs={['Players', 'Loot', 'History']} />
+      <TabNavigation tabs={['Players', 'Loot', 'Log']} />
       <UserMenu />
     </div>
   </header>

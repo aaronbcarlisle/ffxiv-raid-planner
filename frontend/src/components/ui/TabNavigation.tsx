@@ -8,14 +8,14 @@ interface TabNavigationProps {
 }
 
 // Map PageMode to TAB_ICONS keys
-const PAGE_TO_ICON: Record<PageMode, keyof typeof TAB_ICONS> = {
+const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
   history: 'history',
 };
 
-const TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
+const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
   { id: 'players', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
   { id: 'loot', label: 'Loot', hotkey: '2', description: 'Plan loot distribution and priority' },
   { id: 'history', label: 'Log', hotkey: '3', description: 'Track weekly loot drops and history' },
@@ -23,6 +23,8 @@ const TABS: { id: PageMode; label: string; hotkey: string; description: string }
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+  // Priority tab is now a slide-out panel in Loot tab, so we only show base tabs
+  const TABS = BASE_TABS;
   return (
     <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
       {TABS.map((tab) => (
@@ -47,13 +49,13 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border
               ${
                 activeTab === tab.id
-                  ? 'bg-surface-elevated text-text-primary border-accent'
+                  ? 'bg-accent/20 text-accent border-accent/30'
                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
               }
             `}
           >
             <img
-              src={TAB_ICONS[PAGE_TO_ICON[tab.id]]}
+              src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
               alt=""
               width={20}
               height={20}

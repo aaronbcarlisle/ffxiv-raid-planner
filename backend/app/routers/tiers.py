@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
-from ..models import MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssignment
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -40,6 +40,11 @@ from ..schemas import (
     TierSnapshotWithPlayers,
     WeaponPrioritiesUpdate,
     WeaponPrioritySettingsUpdate,
+    WeeklyAssignmentCreate,
+    WeeklyAssignmentResponse,
+    WeeklyAssignmentUpdate,
+    WeeklyAssignmentBulkCreate,
+    WeeklyAssignmentBulkDelete,
 )
 from ..constants import (
     OPTIMAL_PARTY_COMP,
@@ -193,6 +198,7 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
         weapon_priorities_locked_at=player.weapon_priorities_locked_at,
         loot_adjustment=player.loot_adjustment,
         page_adjustments=player.page_adjustments,
+        priority_modifier=player.priority_modifier,
         created_at=player.created_at,
         updated_at=player.updated_at,
     )
@@ -482,6 +488,17 @@ async def delete_tier_snapshot(
     if not snapshot:
         raise NotFound(f"Tier snapshot for '{tier_id}' not found")
 
+    # Delete associated weekly assignments to prevent orphaned data
+    # Uses canonical tier_id (slug) which is how assignments are stored
+    from sqlalchemy import delete
+
+    await session.execute(
+        delete(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == snapshot.tier_id,
+        )
+    )
+
     await session.delete(snapshot)
     await session.commit()
 
@@ -710,6 +727,7 @@ async def create_snapshot_player(
         lodestone_id=data.lodestone_id,
         bis_link=data.bis_link,
         fflogs_id=data.fflogs_id,
+        priority_modifier=data.priority_modifier,
         gear=gear,
         tome_weapon=tome_weapon,
         created_at=now,
@@ -832,6 +850,8 @@ async def update_snapshot_player(
         player.loot_adjustment = data.loot_adjustment
     if "page_adjustments" in sent_fields and data.page_adjustments is not None:
         player.page_adjustments = data.page_adjustments
+    if "priority_modifier" in sent_fields and data.priority_modifier is not None:
+        player.priority_modifier = data.priority_modifier
 
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
@@ -1449,3 +1469,436 @@ async def update_weapon_priority_settings(
     tier = result.scalar_one()
 
     return snapshot_to_response(tier)
+
+
+# --- Weekly Assignment Endpoints (Manual Planning Mode) ---
+
+
+def assignment_to_response(
+    assignment: WeeklyAssignment, player: SnapshotPlayer | None = None
+) -> WeeklyAssignmentResponse:
+    """Convert WeeklyAssignment model to response schema"""
+    return WeeklyAssignmentResponse(
+        id=assignment.id,
+        static_group_id=assignment.static_group_id,
+        tier_id=assignment.tier_id,
+        week=assignment.week,
+        floor=assignment.floor,
+        slot=assignment.slot,
+        player_id=assignment.player_id,
+        player_name=player.name if player else None,
+        player_job=player.job if player else None,
+        sort_order=assignment.sort_order,
+        did_not_drop=assignment.did_not_drop,
+        created_at=assignment.created_at,
+        updated_at=assignment.updated_at,
+    )
+
+
+@router.get(
+    "/{group_id}/weekly-assignments",
+    response_model=list[WeeklyAssignmentResponse],
+)
+async def list_weekly_assignments(
+    group_id: str,
+    tier_id: str | None = None,
+    week: int | None = None,
+    floor: str | None = None,
+    session: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> list[WeeklyAssignmentResponse]:
+    """List weekly assignments for a static group with optional filters"""
+    group = await get_static_group(session, group_id)
+    await check_view_permission(session, group, current_user)
+
+    # If tier_id provided, resolve to canonical format (slug) for consistent querying
+    canonical_tier_id = None
+    if tier_id:
+        tier_check = await session.execute(
+            select(TierSnapshot).where(
+                TierSnapshot.static_group_id == group_id,
+                (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
+            )
+        )
+        tier = tier_check.scalar_one_or_none()
+        if tier:
+            canonical_tier_id = tier.tier_id
+
+    # Build query with filters
+    query = select(WeeklyAssignment).where(
+        WeeklyAssignment.static_group_id == group_id
+    )
+
+    if canonical_tier_id:
+        query = query.where(WeeklyAssignment.tier_id == canonical_tier_id)
+    if week:
+        query = query.where(WeeklyAssignment.week == week)
+    if floor:
+        query = query.where(WeeklyAssignment.floor == floor)
+
+    query = query.order_by(
+        WeeklyAssignment.week,
+        WeeklyAssignment.floor,
+        WeeklyAssignment.slot,
+        WeeklyAssignment.sort_order,
+    )
+
+    result = await session.execute(query)
+    assignments = result.scalars().all()
+
+    # Get player info for all assignments
+    player_ids = [a.player_id for a in assignments if a.player_id]
+    players_map: dict[str, SnapshotPlayer] = {}
+
+    if player_ids:
+        players_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id.in_(player_ids))
+        )
+        players = players_result.scalars().all()
+        players_map = {p.id: p for p in players}
+
+    return [
+        assignment_to_response(a, players_map.get(a.player_id) if a.player_id else None)
+        for a in assignments
+    ]
+
+
+@router.post(
+    "/{group_id}/weekly-assignments",
+    response_model=WeeklyAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_weekly_assignment(
+    group_id: str,
+    data: WeeklyAssignmentCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyAssignmentResponse:
+    """Create a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Validate tier exists in this group and get canonical tier_id (slug)
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
+    # Use canonical tier_id (slug) for storage and queries to avoid format inconsistencies
+    canonical_tier_id = tier.tier_id
+
+    # Validate player_id if provided - must belong to a player in this tier
+    if data.player_id:
+        player_check = await session.execute(
+            select(SnapshotPlayer).where(
+                SnapshotPlayer.id == data.player_id,
+                SnapshotPlayer.tier_snapshot_id == tier.id,
+            )
+        )
+        if not player_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Player not found in this tier/group",
+            )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Check for duplicate using canonical tier_id
+    existing = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == canonical_tier_id,
+            WeeklyAssignment.week == data.week,
+            WeeklyAssignment.floor == data.floor,
+            WeeklyAssignment.slot == data.slot,
+            WeeklyAssignment.player_id == data.player_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Assignment already exists for this player/slot/week combination",
+        )
+
+    assignment = WeeklyAssignment(
+        id=str(uuid.uuid4()),
+        static_group_id=group_id,
+        tier_id=canonical_tier_id,
+        week=data.week,
+        floor=data.floor,
+        slot=data.slot,
+        player_id=data.player_id,
+        sort_order=data.sort_order,
+        did_not_drop=data.did_not_drop,
+        created_at=now,
+        updated_at=now,
+    )
+
+    session.add(assignment)
+    await session.flush()
+    await session.commit()
+
+    # Get player info if assigned
+    player = None
+    if assignment.player_id:
+        player_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
+        )
+        player = player_result.scalar_one_or_none()
+
+    return assignment_to_response(assignment, player)
+
+
+@router.put(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    response_model=WeeklyAssignmentResponse,
+)
+async def update_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    data: WeeklyAssignmentUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyAssignmentResponse:
+    """Update a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    # Validate player_id if being updated to a non-null value
+    # Handle assignment.tier_id being either UUID or slug (for assignments created before normalization)
+    if data.player_id is not None and data.player_id:
+        player_check = await session.execute(
+            select(SnapshotPlayer)
+            .join(TierSnapshot)
+            .where(
+                SnapshotPlayer.id == data.player_id,
+                TierSnapshot.static_group_id == group_id,
+                (TierSnapshot.id == assignment.tier_id)
+                | (TierSnapshot.tier_id == assignment.tier_id),
+            )
+        )
+        if not player_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Player not found in this tier/group",
+            )
+
+    # Apply updates
+    if data.player_id is not None:
+        assignment.player_id = data.player_id if data.player_id else None
+    if data.sort_order is not None:
+        assignment.sort_order = data.sort_order
+    if data.did_not_drop is not None:
+        assignment.did_not_drop = data.did_not_drop
+
+    assignment.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Get player info if assigned
+    player = None
+    if assignment.player_id:
+        player_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
+        )
+        player = player_result.scalar_one_or_none()
+
+    return assignment_to_response(assignment, player)
+
+
+@router.delete(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    await session.delete(assignment)
+    await session.commit()
+
+
+@router.post(
+    "/{group_id}/weekly-assignments/bulk",
+    response_model=list[WeeklyAssignmentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_create_weekly_assignments(
+    group_id: str,
+    data: WeeklyAssignmentBulkCreate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[WeeklyAssignmentResponse]:
+    """Bulk create weekly assignments (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Validate tier exists in this group and get canonical tier_id (slug)
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
+    # Use canonical tier_id (slug) for storage and queries to avoid format inconsistencies
+    canonical_tier_id = tier.tier_id
+
+    now = datetime.now(timezone.utc).isoformat()
+    created_assignments: list[WeeklyAssignment] = []
+
+    # Batch fetch existing assignments using canonical tier_id
+    existing_result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.static_group_id == group_id,
+            WeeklyAssignment.tier_id == canonical_tier_id,
+            WeeklyAssignment.week == data.week,
+        )
+    )
+    existing_assignments = existing_result.scalars().all()
+    existing_keys = {(a.floor, a.slot, a.player_id) for a in existing_assignments}
+
+    # Batch validate player_ids - collect unique non-null player IDs
+    player_ids_to_validate = {
+        a.player_id for a in data.assignments if a.player_id
+    }
+    valid_player_ids: set[str] = set()
+    if player_ids_to_validate:
+        # Validate players belong to this tier using tier's UUID
+        valid_players_result = await session.execute(
+            select(SnapshotPlayer.id).where(
+                SnapshotPlayer.id.in_(player_ids_to_validate),
+                SnapshotPlayer.tier_snapshot_id == tier.id,
+            )
+        )
+        valid_player_ids = {p[0] for p in valid_players_result.all()}
+
+    for assignment_data in data.assignments:
+        # Skip if player_id is invalid (not in tier/group)
+        if assignment_data.player_id and assignment_data.player_id not in valid_player_ids:
+            continue
+
+        # Skip duplicates silently in bulk mode
+        key = (assignment_data.floor, assignment_data.slot, assignment_data.player_id)
+        if key in existing_keys:
+            continue
+
+        assignment = WeeklyAssignment(
+            id=str(uuid.uuid4()),
+            static_group_id=group_id,
+            tier_id=canonical_tier_id,
+            week=data.week,
+            floor=assignment_data.floor,
+            slot=assignment_data.slot,
+            player_id=assignment_data.player_id,
+            sort_order=assignment_data.sort_order,
+            did_not_drop=assignment_data.did_not_drop,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(assignment)
+        created_assignments.append(assignment)
+        # Add to existing_keys to prevent duplicates within the same request
+        existing_keys.add(key)
+
+    await session.flush()
+    await session.commit()
+
+    # Get player info for all assignments
+    player_ids = [a.player_id for a in created_assignments if a.player_id]
+    players_map: dict[str, SnapshotPlayer] = {}
+
+    if player_ids:
+        players_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id.in_(player_ids))
+        )
+        players = players_result.scalars().all()
+        players_map = {p.id: p for p in players}
+
+    return [
+        assignment_to_response(a, players_map.get(a.player_id) if a.player_id else None)
+        for a in created_assignments
+    ]
+
+
+@router.delete(
+    "/{group_id}/weekly-assignments/bulk",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def bulk_delete_weekly_assignments(
+    group_id: str,
+    data: WeeklyAssignmentBulkDelete,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Bulk delete weekly assignments (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    # Validate tier exists and get canonical tier_id (slug)
+    tier_check = await session.execute(
+        select(TierSnapshot).where(
+            TierSnapshot.static_group_id == group_id,
+            (TierSnapshot.id == data.tier_id) | (TierSnapshot.tier_id == data.tier_id),
+        )
+    )
+    tier = tier_check.scalar_one_or_none()
+    if not tier:
+        raise NotFound(f"Tier '{data.tier_id}' not found in this group")
+
+    # Use canonical tier_id for consistency with how assignments are stored
+    canonical_tier_id = tier.tier_id
+
+    # Build delete query with filters
+    from sqlalchemy import delete
+
+    query = delete(WeeklyAssignment).where(
+        WeeklyAssignment.static_group_id == group_id,
+        WeeklyAssignment.tier_id == canonical_tier_id,
+        WeeklyAssignment.week == data.week,
+    )
+
+    if data.floor:
+        query = query.where(WeeklyAssignment.floor == data.floor)
+    if data.slot:
+        query = query.where(WeeklyAssignment.slot == data.slot)
+
+    await session.execute(query)
+    await session.commit()

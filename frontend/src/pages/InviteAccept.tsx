@@ -78,7 +78,7 @@ export function InviteAccept() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface-elevated flex items-center justify-center">
+      <div className="min-h-screen bg-surface-base flex items-center justify-center">
         <div className="text-text-secondary">Loading invitation...</div>
       </div>
     );
@@ -86,7 +86,7 @@ export function InviteAccept() {
 
   if (error || !preview) {
     return (
-      <div className="min-h-screen bg-surface-elevated flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
         <div className="bg-surface-card border border-border-default rounded-lg p-8 max-w-md w-full text-center">
           <div className="text-6xl mb-4">😕</div>
           <h1 className="text-xl font-display text-text-primary mb-2">Invitation Not Found</h1>
@@ -105,7 +105,7 @@ export function InviteAccept() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-elevated flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
       <div className="bg-surface-card border border-border-default rounded-lg p-8 max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-6">

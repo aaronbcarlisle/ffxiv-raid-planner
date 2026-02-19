@@ -81,6 +81,10 @@ interface LootTrackingState {
   adjustBookBalance: (groupId: string, tierId: string, playerId: string, bookType: string, adjustment: number, currentWeek: number, notes?: string) => Promise<void>;
   deletePlayerLedger: (groupId: string, tierId: string, playerId: string) => Promise<void>;
   clearAllPageLedger: (groupId: string, tierId: string) => Promise<void>;
+  clearWeekPageLedger: (groupId: string, tierId: string, week: number) => Promise<void>;
+  clearFloorPageLedger: (groupId: string, tierId: string, week: number, floor: number) => Promise<void>;
+  clearAllFloorPageLedger: (groupId: string, tierId: string, floor: number) => Promise<void>;
+  clearPlayerWeekPageLedger: (groupId: string, tierId: string, playerId: string, week: number) => Promise<void>;
   startNextWeek: (groupId: string, tierId: string) => Promise<number>;
   revertWeek: (groupId: string, tierId: string) => Promise<number>;
   clearLootTracking: () => void;
@@ -312,16 +316,15 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/loot-log`, data);
       // Update maxWeek if the new entry's week is higher
-      const { maxWeek, weeksWithEntries } = get();
+      const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {
         set({ maxWeek: data.weekNumber });
       }
-      // Add week to weeksWithEntries
-      const newWeeks = new Set(weeksWithEntries);
-      newWeeks.add(data.weekNumber);
-      set({ weeksWithEntries: newWeeks });
-      // Refresh loot log
-      await get().fetchLootLog(groupId, tierId);
+      // Refresh loot log and week data types (for week selector labels)
+      await Promise.all([
+        get().fetchLootLog(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;
@@ -335,7 +338,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       // Refresh loot log and weeks with entries (week may have changed)
       await Promise.all([
         get().fetchLootLog(groupId, tierId),
-        get().fetchWeeksWithEntries(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -350,7 +353,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       // Refresh loot log and weeks with entries (week may now be empty)
       await Promise.all([
         get().fetchLootLog(groupId, tierId),
-        get().fetchWeeksWithEntries(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -363,18 +366,15 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/material-log`, data);
       // Update maxWeek if the new entry's week is higher
-      const { maxWeek, weeksWithEntries } = get();
+      const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {
         set({ maxWeek: data.weekNumber });
       }
-      // Add week to weeksWithEntries
-      const newWeeks = new Set(weeksWithEntries);
-      newWeeks.add(data.weekNumber);
-      set({ weeksWithEntries: newWeeks });
-      // Refresh material log and balances
+      // Refresh material log, balances, and week data types (for week selector labels)
       await Promise.all([
         get().fetchMaterialLog(groupId, tierId),
         get().fetchMaterialBalances(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -390,7 +390,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       await Promise.all([
         get().fetchMaterialLog(groupId, tierId),
         get().fetchMaterialBalances(groupId, tierId),
-        get().fetchWeeksWithEntries(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -417,19 +417,16 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, data);
-      // Update weeksWithEntries if needed
-      const { weeksWithEntries, maxWeek } = get();
-      const newWeeks = new Set(weeksWithEntries);
-      newWeeks.add(data.weekNumber);
+      // Update maxWeek if needed
+      const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {
-        set({ weeksWithEntries: newWeeks, maxWeek: data.weekNumber });
-      } else {
-        set({ weeksWithEntries: newWeeks });
+        set({ maxWeek: data.weekNumber });
       }
-      // Refresh ledger and balances
+      // Refresh ledger, balances, and week data types (for week selector labels)
       await Promise.all([
         get().fetchPageLedger(groupId, tierId),
         get().fetchPageBalances(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -441,19 +438,16 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/mark-floor-cleared`, data);
-      // Update weeksWithEntries and maxWeek
-      const { weeksWithEntries, maxWeek } = get();
-      const newWeeks = new Set(weeksWithEntries);
-      newWeeks.add(data.weekNumber);
+      // Update maxWeek if needed
+      const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {
-        set({ weeksWithEntries: newWeeks, maxWeek: data.weekNumber });
-      } else {
-        set({ weeksWithEntries: newWeeks });
+        set({ maxWeek: data.weekNumber });
       }
-      // Refresh ledger and balances
+      // Refresh ledger, balances, and week data types (for week selector labels)
       await Promise.all([
         get().fetchPageLedger(groupId, tierId),
         get().fetchPageBalances(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
@@ -476,17 +470,16 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         quantity: adjustment,
         notes: notes || 'Manual adjustment',
       });
-      // Update weeksWithEntries and maxWeek
-      const { weeksWithEntries, maxWeek } = get();
-      const newWeeks = new Set(weeksWithEntries);
-      newWeeks.add(currentWeek);
+      // Update maxWeek if needed
+      const { maxWeek } = get();
       if (currentWeek > maxWeek) {
-        set({ weeksWithEntries: newWeeks, maxWeek: currentWeek });
-      } else {
-        set({ weeksWithEntries: newWeeks });
+        set({ maxWeek: currentWeek });
       }
-      // Refresh balances
-      await get().fetchPageBalances(groupId, tierId);
+      // Refresh balances and week data types (for week selector labels)
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;
@@ -521,8 +514,218 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       await Promise.all([
         get().fetchPageBalances(groupId, tierId),
         get().fetchPageLedger(groupId, tierId),
-        get().fetchWeeksWithEntries(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
       ]);
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  clearWeekPageLedger: async (groupId, tierId, week) => {
+    set({ error: null });
+    try {
+      // Delete all ledger entries for this week
+      await api.delete(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger/week/${week}`);
+
+      // Refresh balances and ledger
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchPageLedger(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  clearFloorPageLedger: async (groupId, tierId, week, floor) => {
+    set({ error: null });
+    try {
+      // Map floor number to book type: 1 → I, 2 → II, 3 → III, 4 → IV
+      const bookTypes: Record<number, string> = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV' };
+      const targetBookType = bookTypes[floor];
+      if (!targetBookType) {
+        throw new Error(`Invalid floor number: ${floor}`);
+      }
+
+      // Get all ledger entries for this tier
+      const response = await api.get<PageLedgerEntry[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`
+      );
+
+      // Filter to entries for the specific week AND book type (floor)
+      const floorEntries = response.filter(
+        (entry) => entry.weekNumber === week && entry.bookType === targetBookType
+      );
+
+      // Group by player to calculate reversals
+      const adjustments = new Map<string, number>();
+      for (const entry of floorEntries) {
+        const currentAdj = adjustments.get(entry.playerId) || 0;
+        // All ledger entries add their quantity to the balance, so to reset we subtract the sum
+        adjustments.set(entry.playerId, currentAdj - entry.quantity);
+      }
+
+      // Apply reverse adjustments to zero out the floor's entries
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([playerId, adjustment]) =>
+          api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+            playerId,
+            weekNumber: week,
+            floor: 'adjustment',
+            bookType: targetBookType,
+            transactionType: 'adjustment',
+            quantity: adjustment,
+            notes: `Reset Floor ${floor} books (W${week})`,
+          })
+        );
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
+
+      // Refresh balances and ledger
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchPageLedger(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  clearAllFloorPageLedger: async (groupId, tierId, floor) => {
+    set({ error: null });
+    try {
+      // Map floor number to book type: 1 → I, 2 → II, 3 → III, 4 → IV
+      const bookTypes: Record<number, string> = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV' };
+      const targetBookType = bookTypes[floor];
+      if (!targetBookType) {
+        throw new Error(`Invalid floor number: ${floor}`);
+      }
+
+      // Get all ledger entries for this tier
+      const response = await api.get<PageLedgerEntry[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`
+      );
+
+      // Filter to entries for the specific book type (floor) - ALL weeks
+      const floorEntries = response.filter(
+        (entry) => entry.bookType === targetBookType
+      );
+
+      // Group by player and week to calculate reversals
+      // Key: "playerId:weekNumber"
+      const adjustments = new Map<string, number>();
+      for (const entry of floorEntries) {
+        const key = `${entry.playerId}:${entry.weekNumber}`;
+        const currentAdj = adjustments.get(key) || 0;
+        // All ledger entries add their quantity to the balance, so to reset we subtract the sum
+        adjustments.set(key, currentAdj - entry.quantity);
+      }
+
+      // Apply reverse adjustments to zero out the floor's entries
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([key, adjustment]) => {
+          const [playerId, weekStr] = key.split(':');
+          const weekNumber = parseInt(weekStr, 10);
+          return api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+            playerId,
+            weekNumber,
+            floor: 'adjustment',
+            bookType: targetBookType,
+            transactionType: 'adjustment',
+            quantity: adjustment,
+            notes: `Reset all Floor ${floor} books`,
+          });
+        });
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
+
+      // Refresh balances and ledger
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchPageLedger(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
+    } catch (error) {
+      set({ error: getErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  clearPlayerWeekPageLedger: async (groupId, tierId, playerId, week) => {
+    set({ error: null });
+    try {
+      // Get all ledger entries for this tier
+      const response = await api.get<PageLedgerEntry[]>(
+        `/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`
+      );
+
+      // Filter to entries for the specific player AND week
+      const playerWeekEntries = response.filter(
+        (entry) => entry.playerId === playerId && entry.weekNumber === week
+      );
+
+      // Group by book type to calculate reversals
+      const adjustments = new Map<string, number>();
+      for (const entry of playerWeekEntries) {
+        const currentAdj = adjustments.get(entry.bookType) || 0;
+        // All ledger entries add their quantity to the balance, so to reset we subtract the sum
+        adjustments.set(entry.bookType, currentAdj - entry.quantity);
+      }
+
+      // Apply reverse adjustments to zero out the player's week entries
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([bookType, adjustment]) =>
+          api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+            playerId,
+            weekNumber: week,
+            floor: 'adjustment',
+            bookType,
+            transactionType: 'adjustment',
+            quantity: adjustment,
+            notes: `Reset player books (W${week})`,
+          })
+        );
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
+
+      // Refresh balances and ledger
+      await Promise.all([
+        get().fetchPageBalances(groupId, tierId),
+        get().fetchPageLedger(groupId, tierId),
+        get().fetchWeekDataTypes(groupId, tierId),
+      ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;

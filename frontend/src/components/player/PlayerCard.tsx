@@ -15,6 +15,7 @@ import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { AssignUserModal } from './AssignUserModal';
+import { PriorityAdjustModal } from './PriorityAdjustModal';
 import { ContextMenu, Modal, RadioGroup, type ContextMenuItem } from '../ui';
 import { Button } from '../primitives';
 import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
@@ -38,6 +39,7 @@ import {
   Link2,
   RefreshCw,
   BookOpen,
+  Gauge,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 
@@ -142,6 +144,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
   const [showAdminAssignModal, setShowAdminAssignModal] = useState(false);
   const [showOwnerAssignModal, setShowOwnerAssignModal] = useState(false);
+  const [showPriorityAdjustModal, setShowPriorityAdjustModal] = useState(false);
   const [localHighlight, setLocalHighlight] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -160,7 +163,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -169,7 +172,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -353,8 +356,18 @@ export const PlayerCard = memo(function PlayerCard({
   const rosterPermission = canManageRoster(userRole, isAdminAccess);
   const resetPermission = canResetGear(userRole, player, currentUserId, isAdminAccess);
 
+  // Check if player management section has any items
+  const hasPlayerManagementItems = canClaim || canRelease ||
+    (isGroupOwner && !isAdminAccess && onOwnerAssignPlayer) ||
+    (isAdminAccess && onAdminAssignPlayer) ||
+    rosterPermission.allowed; // Mark as Sub/Main
+
   // Memoized context menu items to prevent recreation on every render
+  // Note: This useMemo has many dependencies intentionally - don't simplify
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- Many dependencies intentional
   const contextMenuItems = useMemo<ContextMenuItem[]>(() => [
+    // === BiS & Gear Section ===
+    { sectionHeader: 'BiS & Gear' },
     {
       label: player.bisLink ? 'Update BiS' : 'Import BiS',
       icon: <FileDown className="w-4 h-4" />,
@@ -369,13 +382,29 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
-    { separator: true },
     {
       label: 'Weapon Priorities',
       icon: <Swords className="w-4 h-4" />,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
+    },
+    {
+      label: 'Reset Gear',
+      icon: <RotateCcw className="w-4 h-4" />,
+      onClick: () => setShowResetConfirm(true),
+      disabled: !onResetGear || !resetPermission.allowed,
+      tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
+    },
+
+    // === Loot Priority Section ===
+    { sectionHeader: 'Loot Priority' },
+    {
+      label: 'Adjust Priority',
+      icon: <Gauge className="w-4 h-4" />,
+      onClick: () => setShowPriorityAdjustModal(true),
+      disabled: !rosterPermission.allowed,
+      tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
     // Edit Books - visible to owners/leads/admins on any card, members on their own card
     ...(onNavigateToBooksPanel && (
@@ -388,7 +417,9 @@ export const PlayerCard = memo(function PlayerCard({
       icon: <BookOpen className="w-4 h-4" />,
       onClick: () => onNavigateToBooksPanel(player.id),
     }] : []),
-    { separator: true },
+
+    // === Clipboard Section ===
+    { sectionHeader: 'Clipboard' },
     {
       label: 'Copy Player',
       icon: <Copy className="w-4 h-4" />,
@@ -415,6 +446,20 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
+
+    // === Player Management Section ===
+    ...(hasPlayerManagementItems ? [{ sectionHeader: 'Player Management' }] : []),
+    ...(canClaim ? [{
+      label: 'Take Ownership',
+      icon: <UserCheck className="w-4 h-4" />,
+      onClick: onClaimPlayer,
+      accent: true,
+    }] : []),
+    ...(canRelease ? [{
+      label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
+      icon: <UserX className="w-4 h-4" />,
+      onClick: onReleasePlayer,
+    }] : []),
     {
       label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
       icon: player.isSubstitute ? <UserPlus className="w-4 h-4" /> : <UserMinus className="w-4 h-4" />,
@@ -422,20 +467,9 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !rosterPermission.allowed,
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
-    { separator: true },
-    ...(canClaim ? [{
-      label: 'Take Ownership',
-      icon: <UserCheck className="w-4 h-4" />,
-      onClick: onClaimPlayer,
-    }] : []),
-    ...(canRelease ? [{
-      label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
-      icon: <UserX className="w-4 h-4" />,
-      onClick: onReleasePlayer,
-    }] : []),
     ...(isGroupOwner && !isAdminAccess && onOwnerAssignPlayer ? [{
       label: 'Assign User (Owner)',
-      icon: <Link2 className="w-4 h-4 text-accent" />,
+      icon: <Link2 className="w-4 h-4" />,
       onClick: () => {
         setShowOwnerAssignModal(true);
         setContextMenu(null);
@@ -449,14 +483,9 @@ export const PlayerCard = memo(function PlayerCard({
         setContextMenu(null);
       },
     }] : []),
+
+    // === Danger Zone ===
     { separator: true },
-    {
-      label: 'Reset Gear',
-      icon: <RotateCcw className="w-4 h-4" />,
-      onClick: () => setShowResetConfirm(true),
-      disabled: !onResetGear || !resetPermission.allowed,
-      tooltip: !onResetGear ? 'Feature not available' : resetPermission.allowed ? undefined : resetPermission.reason,
-    },
     {
       label: 'Remove Player',
       icon: <Trash2 className="w-4 h-4" />,
@@ -734,6 +763,16 @@ export const PlayerCard = memo(function PlayerCard({
         userRole={userRole || 'viewer'}
         isOpen={showWeaponPriorityModal}
         onClose={() => setShowWeaponPriorityModal(false)}
+      />
+
+      {/* Priority Adjust Modal */}
+      <PriorityAdjustModal
+        isOpen={showPriorityAdjustModal}
+        onClose={() => setShowPriorityAdjustModal(false)}
+        player={player}
+        onSave={async (_playerId, adjustment) => {
+          await onUpdate({ priorityModifier: adjustment });
+        }}
       />
 
       {/* Job Change Confirmation Modal */}

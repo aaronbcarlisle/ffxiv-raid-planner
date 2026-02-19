@@ -14,6 +14,8 @@ interface ModalProps {
   variant?: 'dialog' | 'sheet';
   /** Optional sticky footer content */
   footer?: React.ReactNode;
+  /** Optional className to override modal container styles (e.g., background color) */
+  className?: string;
 }
 
 // Get all focusable elements within a container
@@ -40,7 +42,7 @@ const SIZE_CLASSES = {
   '5xl': 'max-w-5xl',
 };
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer, className }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const { isSmallScreen } = useDevice();
@@ -158,7 +160,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className={`bg-surface-card border border-border-default w-full flex flex-col focus:outline-none ${containerClasses}`}
+        className={`bg-surface-card border border-border-default w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
       >
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">

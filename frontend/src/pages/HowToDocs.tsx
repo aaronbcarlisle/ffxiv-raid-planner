@@ -354,16 +354,16 @@ export default function HowToDocs() {
             </Step>
 
             <InfoBox type="info">
-              When you log loot via Quick Log, checkboxes update automatically. You only need to
-              manually check for gear acquired outside the tool (books, etc.).
+              When you log loot via Quick Log, gear status updates automatically. You only need to
+              manually update status for gear acquired outside the tool (books, etc.).
             </InfoBox>
           </Section>
 
-          {/* Checkbox States */}
-          <Section id="checkboxes" title="Understand checkbox states">
+          {/* Gear Status */}
+          <Section id="gear-status" title="Understand gear status indicators">
             <p className="text-text-secondary mb-6">
-              Checkboxes have different states depending on whether BiS is a raid drop or augmented
-              tome piece.
+              Each gear slot shows a status circle that indicates your progress. The indicator style
+              varies depending on whether BiS is a raid drop or augmented tome piece.
             </p>
 
             <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -372,16 +372,16 @@ export default function HowToDocs() {
                 <p className="text-sm text-text-secondary mb-3">
                   For weapon and some accessories where BiS drops directly from savage:
                 </p>
-                <ul className="text-sm text-text-secondary space-y-2">
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-border-default rounded" />
-                    <span>Unchecked = Don't have it</span>
+                <ul className="text-sm text-text-secondary space-y-3">
+                  <li className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-text-muted/50" />
+                    <span>Gray circle = Missing</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-accent rounded flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
+                  <li className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full border-2 border-gear-raid flex items-center justify-center">
+                      <span className="w-2.5 h-2.5 rounded-full bg-gear-raid" />
                     </span>
-                    <span>Checked = Got the raid drop</span>
+                    <span>Blue ring with fill = Complete</span>
                   </li>
                 </ul>
               </div>
@@ -391,28 +391,28 @@ export default function HowToDocs() {
                 <p className="text-sm text-text-secondary mb-3">
                   For armor and accessories where BiS is augmented tomestone:
                 </p>
-                <ul className="text-sm text-text-secondary space-y-2">
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-border-default rounded" />
-                    <span>Unchecked = Don't have tome piece</span>
+                <ul className="text-sm text-text-secondary space-y-3">
+                  <li className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full bg-text-muted/50" />
+                    <span>Gray circle = Missing</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-accent bg-accent/30 rounded" />
-                    <span>Half = Have tome, not augmented</span>
+                  <li className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full border-2 border-gear-tome" />
+                    <span>Teal ring (empty) = Have tome piece, needs augment</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-accent rounded flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
+                  <li className="flex items-center gap-3">
+                    <span className="w-5 h-5 rounded-full border-2 border-gear-tome flex items-center justify-center">
+                      <span className="w-2.5 h-2.5 rounded-full bg-gear-tome" />
                     </span>
-                    <span>Full = Augmented (BiS complete)</span>
+                    <span>Teal ring with fill = Augmented (complete)</span>
                   </li>
                 </ul>
               </div>
             </div>
 
             <InfoBox type="tip">
-              Click once to half-check (tome acquired), click again to fully check (augmented).
-              Click a third time to uncheck.
+              Click the status circle to cycle through states. For raid gear: missing → complete.
+              For tome gear needing augmentation: missing → have → augmented → missing.
             </InfoBox>
           </Section>
 
@@ -474,7 +474,7 @@ export default function HowToDocs() {
             </h3>
 
             <p className="text-text-secondary mb-4">
-              Use the History tab's manual log form when you need to:
+              Use the Log tab's manual log form when you need to:
             </p>
 
             <ul className="list-disc list-inside text-text-secondary space-y-1">
@@ -526,7 +526,7 @@ export default function HowToDocs() {
               book of that floor's type.
             </p>
 
-            <Step number={1} title="Go to the History tab">
+            <Step number={1} title="Go to the Log tab">
               <p>Find it next to Loot Priority on your static's page.</p>
             </Step>
 
@@ -590,7 +590,7 @@ export default function HowToDocs() {
               spent.
             </p>
 
-            <Step number={1} title="Go to the History tab">
+            <Step number={1} title="Go to the Log tab">
               <p>Find the Page Balances panel showing each player's book counts.</p>
             </Step>
 

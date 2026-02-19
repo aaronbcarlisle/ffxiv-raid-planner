@@ -2,6 +2,20 @@
 
 from typing import Any
 
+# Valid job abbreviations (for BiS import and validation)
+VALID_JOBS = frozenset({
+    # Tanks
+    "pld", "war", "drk", "gnb",
+    # Healers
+    "whm", "sch", "ast", "sge",
+    # Melee DPS
+    "mnk", "drg", "nin", "sam", "rpr", "vpr",
+    # Ranged Physical DPS
+    "brd", "mch", "dnc",
+    # Ranged Magical DPS
+    "blm", "smn", "rdm", "pct",
+})
+
 # Default gear slots for a new player
 DEFAULT_GEAR_SLOTS = [
     "weapon",

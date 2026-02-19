@@ -1,11 +1,12 @@
 /**
  * PlayerCard Status - Status badges row
  *
- * Displays SUB, BiS, You, LinkedUser badges.
+ * Displays SUB, BiS, You, LinkedUser, WeaponPriority badges.
  * MT/OT selector moved to PlayerCardHeader for visual alignment.
  * Extracted from PlayerCard for maintainability.
  */
 
+import { Swords } from 'lucide-react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { LinkedUserInfo, SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
@@ -116,8 +117,8 @@ export function PlayerCardStatus({
   userId,
   linkedUser,
   currentUserId,
-  player: _player,
-  userRole: _userRole,
+  player,
+  userRole,
   isAdmin: _isAdmin,
 }: PlayerCardStatusProps) {
   const isLinkedToMe = userId === currentUserId;
@@ -131,8 +132,17 @@ export function PlayerCardStatus({
   // Always show username (role is indicated by color)
   const roleLabel = linkedUser?.displayName || linkedUser?.discordUsername || '';
 
+  // "You" badge color based on current user's role
+  const youBadgeColor = userRole ? ROLE_COLORS[userRole] : ROLE_COLORS.member;
+
+  // Weapon priority count (only show if more than 1, since main job doesn't count)
+  // Display count excludes the main job - shows additional weapon priorities only
+  const totalWeaponPriorities = player.weaponPriorities?.length || 0;
+  const additionalWeaponPriorities = Math.max(0, totalWeaponPriorities - 1);
+  const showWeaponPriority = totalWeaponPriorities > 1;
+
   // Don't render if nothing to show
-  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther;
+  const hasContent = isSubstitute || bisLink || isLinkedToMe || isLinkedToOther || showWeaponPriority;
   if (!hasContent) return null;
 
   return (
@@ -174,10 +184,10 @@ export function PlayerCardStatus({
         </Tooltip>
       )}
 
-      {/* "You" badge */}
+      {/* "You" badge - colored by role */}
       {isLinkedToMe && (
         <Tooltip content="This is you">
-          <span className="text-xs bg-membership-member/20 text-membership-member px-1.5 py-0.5 rounded font-medium">
+          <span className={`text-xs ${youBadgeColor} px-1.5 py-0.5 rounded font-medium`}>
             You
           </span>
         </Tooltip>
@@ -199,6 +209,16 @@ export function PlayerCardStatus({
             <span className="max-w-16 truncate">
               {roleLabel}
             </span>
+          </span>
+        </Tooltip>
+      )}
+
+      {/* Weapon priority badge - shows additional weapon priorities beyond main job */}
+      {showWeaponPriority && (
+        <Tooltip content={`+${additionalWeaponPriorities} additional weapon ${additionalWeaponPriorities === 1 ? 'priority' : 'priorities'}`}>
+          <span className="text-xs bg-surface-interactive text-text-secondary px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
+            <Swords className="w-3 h-3" />
+            +{additionalWeaponPriorities}
           </span>
         </Tooltip>
       )}

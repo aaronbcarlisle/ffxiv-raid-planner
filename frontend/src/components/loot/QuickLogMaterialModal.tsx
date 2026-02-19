@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Gem } from 'lucide-react';
-import { Modal, Select, Label, Checkbox } from '../ui';
+import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -21,7 +21,7 @@ import {
   needsTomeWeaponAugmentation,
   logMaterialAndUpdateGear,
 } from '../../utils/materialCoordination';
-import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface QuickLogMaterialModalProps {
@@ -52,7 +52,8 @@ export function QuickLogMaterialModal({
   onSuccess,
 }: QuickLogMaterialModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
-  const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
+  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
+  const [method, setMethod] = useState<LootMethod>('drop');
   const [isSaving, setIsSaving] = useState(false);
   const [updateGear, setUpdateGear] = useState(true);
   // Compute initial slot selection BEFORE first render using lazy initializer
@@ -119,7 +120,8 @@ export function QuickLogMaterialModal({
   useEffect(() => {
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
-      setSelectedWeek(String(maxWeek));
+      setSelectedWeek(maxWeek);
+      setMethod('drop');
       setUpdateGear(true);
 
       // Use player from allPlayers for consistency with eligibleOptions memo
@@ -196,10 +198,11 @@ export function QuickLogMaterialModal({
         groupId,
         tierId,
         {
-          weekNumber: Number(selectedWeek),
+          weekNumber: selectedWeek,
           floor,
           materialType: material,
           recipientPlayerId,
+          method,
         },
         {
           updateGear: shouldUpdateGear,
@@ -265,12 +268,6 @@ export function QuickLogMaterialModal({
     return '';
   };
 
-  // Build week options
-  const weekOptions = Array.from({ length: maxWeek }, (_, i) => ({
-    value: String(i + 1),
-    label: `Week ${i + 1}`,
-  }));
-
   // Build recipient options with job icons
   const recipientOptions = sortedRecipients.map(({ player, priority, needsMaterial }) => ({
     value: player.id,
@@ -302,13 +299,13 @@ export function QuickLogMaterialModal({
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Week:</span>
-            <div className="w-32">
-              <Select
-                value={selectedWeek}
-                onChange={setSelectedWeek}
-                options={weekOptions}
-              />
-            </div>
+            <NumberInput
+              value={selectedWeek}
+              onChange={(val) => setSelectedWeek(val ?? maxWeek)}
+              min={1}
+              max={maxWeek}
+              size="sm"
+            />
           </div>
         </div>
 
@@ -320,6 +317,21 @@ export function QuickLogMaterialModal({
             value={recipientPlayerId}
             onChange={handleRecipientChange}
             options={recipientOptions}
+          />
+        </div>
+
+        {/* Method */}
+        <div>
+          <Label>Method</Label>
+          <RadioGroup
+            name="material-method"
+            value={method}
+            onChange={(value) => setMethod(value as LootMethod)}
+            options={[
+              { value: 'drop', label: 'Drop' },
+              { value: 'book', label: 'Book' },
+            ]}
+            orientation="horizontal"
           />
         </div>
 

@@ -96,7 +96,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 };
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats' | 'history';
+export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -187,10 +187,125 @@ export interface GearSlotStatus {
   materia?: MateriaSlot[];  // Melded materia from BiS import
 }
 
+// Legacy priority calculation mode (for backward compatibility)
+export type PriorityMode = 'automatic' | 'manual' | 'disabled';
+
+// New priority system mode
+export type PrioritySystemMode = 'role-based' | 'job-based' | 'player-based' | 'manual-planning' | 'disabled';
+
+// Priority preset types
+export type PriorityPreset = 'balanced' | 'strict-fairness' | 'gear-need-focus' | 'custom';
+
+// Role type for priority ordering
+export type RoleType = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+
+// Priority group configuration (used in job-based and player-based modes)
+export interface PriorityGroupConfig {
+  id: string;
+  name: string;
+  sortOrder: number;
+  basePriority: number;
+}
+
+// Job configuration within a group (for job-based mode)
+export interface JobPriorityConfig {
+  job: string;
+  groupId: string;
+  sortOrder: number;
+  priorityOffset: number;
+}
+
+// Player configuration within a group (for player-based mode)
+export interface PlayerPriorityConfig {
+  playerId: string;
+  groupId: string;
+  sortOrder: number;
+  priorityOffset: number;
+}
+
+// Role-based mode configuration
+export interface RoleBasedConfig {
+  roleOrder: RoleType[];
+}
+
+// Job-based mode configuration
+export interface JobBasedConfig {
+  groups: PriorityGroupConfig[];
+  jobs: JobPriorityConfig[];
+  showAdvancedControls: boolean;
+}
+
+// Player-based mode configuration
+export interface PlayerBasedConfig {
+  groups: PriorityGroupConfig[];
+  players: PlayerPriorityConfig[];
+  showAdvancedControls: boolean;
+}
+
+// Advanced priority calculation options
+export interface AdvancedPriorityOptions {
+  showPriorityScores: boolean;
+  preset: PriorityPreset;
+
+  // Enhanced fairness options
+  enableEnhancedFairness: boolean;
+  droughtBonusMultiplier: number;
+  droughtBonusCapWeeks: number;
+  balancePenaltyMultiplier: number;
+  balancePenaltyCapDrops: number;
+
+  // Core multipliers
+  useMultipliers: boolean;
+  rolePriorityMultiplier: number;
+  gearNeededMultiplier: number;
+  lootReceivedPenalty: number;
+  useWeightedNeed: boolean;
+  useLootAdjustments: boolean;
+}
+
+// Complete priority settings for a static group
+export interface StaticPrioritySettings {
+  mode: PrioritySystemMode;
+
+  // Mode-specific configs
+  roleBasedConfig?: RoleBasedConfig;
+  jobBasedConfig?: JobBasedConfig;
+  playerBasedConfig?: PlayerBasedConfig;
+
+  // Advanced options (shared across modes)
+  advancedOptions: AdvancedPriorityOptions;
+}
+
+// Default advanced options
+export const DEFAULT_ADVANCED_OPTIONS: AdvancedPriorityOptions = {
+  showPriorityScores: true,
+  preset: 'balanced',
+  enableEnhancedFairness: false,
+  droughtBonusMultiplier: 10,
+  droughtBonusCapWeeks: 5,
+  balancePenaltyMultiplier: 15,
+  balancePenaltyCapDrops: 3,
+  useMultipliers: true,
+  rolePriorityMultiplier: 25,
+  gearNeededMultiplier: 10,
+  lootReceivedPenalty: 15,
+  useWeightedNeed: true,
+  useLootAdjustments: true,
+};
+
+// Default priority settings
+export const DEFAULT_PRIORITY_SETTINGS: StaticPrioritySettings = {
+  mode: 'role-based',
+  roleBasedConfig: {
+    roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+  },
+  advancedOptions: DEFAULT_ADVANCED_OPTIONS,
+};
+
 // Static (raid group) settings
 export interface StaticSettings {
   displayOrder: string[]; // Role order for display (used by non-custom presets)
-  lootPriority: string[]; // Role order for loot priority
+  lootPriority: string[]; // Role order for loot priority (legacy, use prioritySettings.roleBasedConfig)
   sortPreset: SortPreset; // Current sort preset
   groupView: boolean; // Show G1/G2 light party grouping
   timezone: string;
@@ -198,6 +313,13 @@ export interface StaticSettings {
   syncFrequency: 'daily' | 'weekly';
   hideSetupBanners?: boolean; // Hide "Unclaimed" banners on player cards
   hideBisBanners?: boolean; // Hide "No BiS configured" banners on player cards
+  // Legacy priority settings (for backward compatibility)
+  priorityMode?: PriorityMode; // Default: 'automatic'
+  jobPriorityModifiers?: Record<string, number>; // e.g., { "PCT": +20, "WAR": -10 }
+  showPriorityScores?: boolean; // Default: true
+  enableEnhancedScoring?: boolean; // Default: false (opt-in for drought/balance adjustments)
+  // New priority system (overrides legacy fields when set)
+  prioritySettings?: StaticPrioritySettings;
 }
 
 // Team summary calculations
@@ -392,6 +514,13 @@ export interface StaticGroupSettings {
   lootPriority?: string[];
   hideSetupBanners?: boolean;
   hideBisBanners?: boolean;
+  // Legacy priority settings (for backward compatibility)
+  priorityMode?: PriorityMode;
+  jobPriorityModifiers?: Record<string, number>;
+  showPriorityScores?: boolean;
+  enableEnhancedScoring?: boolean;
+  // New priority system (overrides legacy fields when set)
+  prioritySettings?: StaticPrioritySettings;
 }
 
 // Static group (persistent team identity)
@@ -525,6 +654,8 @@ export interface SnapshotPlayer {
   // Adjustment fields for mid-tier roster changes
   lootAdjustment?: number;
   pageAdjustments?: { I: number; II: number; III: number; IV: number };
+  // Priority modifier for per-player adjustment (-100 to +100)
+  priorityModifier?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -728,6 +859,7 @@ export interface MaterialLogEntry {
   materialType: MaterialType;
   recipientPlayerId: string;
   recipientPlayerName: string;
+  method: LootMethod;
   /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
@@ -752,6 +884,7 @@ export interface MaterialLogEntryCreate {
   floor: string;
   materialType: MaterialType;
   recipientPlayerId: string;
+  method?: LootMethod;
   /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
@@ -763,6 +896,7 @@ export interface MaterialLogEntryUpdate {
   floor?: string;
   materialType?: MaterialType;
   recipientPlayerId?: string;
+  method?: LootMethod;
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
 }
@@ -808,4 +942,66 @@ export interface MarkFloorClearedRequest {
   floor: string;
   playerIds: string[];
   notes?: string;
+}
+
+// ==================== Weekly Assignment Types (Manual Planning Mode) ====================
+
+// Weekly assignment response
+export interface WeeklyAssignment {
+  id: string;
+  staticGroupId: string;
+  tierId: string;
+  week: number;
+  floor: string;
+  slot: string;
+  playerId: string | null;
+  playerName: string | null;
+  playerJob: string | null;
+  sortOrder: number;
+  didNotDrop: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Weekly assignment create request
+export interface WeeklyAssignmentCreate {
+  tierId: string;
+  week: number;
+  floor: string;
+  slot: string;
+  playerId: string | null;
+  sortOrder?: number;
+  didNotDrop?: boolean;
+}
+
+// Weekly assignment update request
+export interface WeeklyAssignmentUpdate {
+  playerId?: string | null;
+  sortOrder?: number;
+  didNotDrop?: boolean;
+}
+
+// Bulk item - individual assignment within a bulk create request
+// Excludes tierId and week since those are provided at the wrapper level
+export interface WeeklyAssignmentBulkItem {
+  floor: string;
+  slot: string;
+  playerId: string | null;
+  sortOrder?: number;
+  didNotDrop?: boolean;
+}
+
+// Bulk create weekly assignments
+export interface WeeklyAssignmentBulkCreate {
+  tierId: string;
+  week: number;
+  assignments: WeeklyAssignmentBulkItem[];
+}
+
+// Bulk delete weekly assignments
+export interface WeeklyAssignmentBulkDelete {
+  tierId: string;
+  week: number;
+  floor?: string;
+  slot?: string;
 }

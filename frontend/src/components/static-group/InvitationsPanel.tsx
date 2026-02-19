@@ -5,7 +5,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { XCircle, Check } from 'lucide-react';
 import { useInvitationStore } from '../../stores/invitationStore';
-import { Select, Label, NumberInput, ErrorMessage } from '../ui';
+import { Select, Label, NumberInput, ErrorMessage, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 import type { Invitation, MemberRole } from '../../types';
@@ -46,6 +46,7 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newRole, setNewRole] = useState<MemberRole>('member');
   const [expiresInDays, setExpiresInDays] = useState<number | null>(null);
+  const [isUnlimited, setIsUnlimited] = useState(true);
   const [maxUses, setMaxUses] = useState<number | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -60,12 +61,13 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
       await createInvitation(groupId, {
         role: newRole,
         expiresInDays: expiresInDays ?? undefined,
-        maxUses: maxUses ?? undefined,
+        maxUses: isUnlimited ? undefined : (maxUses ?? 1),
       });
       setShowCreateForm(false);
       // Reset form
       setNewRole('member');
       setExpiresInDays(7);
+      setIsUnlimited(true);
       setMaxUses(null);
     } catch {
       // Error handled by store
@@ -203,15 +205,30 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
             </div>
 
             <div className="col-span-2">
-              <Label htmlFor="invite-max-uses">Max Uses (optional)</Label>
-              <NumberInput
-                id="invite-max-uses"
-                value={maxUses}
-                onChange={setMaxUses}
-                min={1}
-                max={100}
-                placeholder="Unlimited"
-              />
+              <Label htmlFor="invite-max-uses">Max Uses</Label>
+              <div className="flex items-center gap-4">
+                <Toggle
+                  checked={isUnlimited}
+                  onChange={(unlimited) => {
+                    setIsUnlimited(unlimited);
+                    if (!unlimited && maxUses === null) {
+                      setMaxUses(1);
+                    }
+                  }}
+                  label="Unlimited"
+                  size="sm"
+                />
+                <div className={isUnlimited ? 'invisible' : ''}>
+                  <NumberInput
+                    id="invite-max-uses"
+                    value={maxUses ?? 1}
+                    onChange={(val) => setMaxUses(val ?? 1)}
+                    min={1}
+                    max={100}
+                    size="sm"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

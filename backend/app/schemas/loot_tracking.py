@@ -166,6 +166,7 @@ class MaterialLogEntryCreate(CamelModel):
     floor: str  # "M9S", "M10S", "M11S" (floors that drop materials)
     material_type: MaterialTypeEnum
     recipient_player_id: str
+    method: LootMethodEnum = LootMethodEnum.DROP
     # Which slot was augmented (null for universal_tomestone which marks tome weapon as "have")
     # Values: "weapon", "head", "body", etc., or "tome_weapon" for solvent augmenting tome weapon
     slot_augmented: str | None = None
@@ -179,6 +180,7 @@ class MaterialLogEntryUpdate(CamelModel):
     floor: str | None = None
     material_type: MaterialTypeEnum | None = None
     recipient_player_id: str | None = None
+    method: LootMethodEnum | None = None
     slot_augmented: str | None = None
     notes: str | None = None
 
@@ -193,6 +195,7 @@ class MaterialLogEntryResponse(CamelModel):
     material_type: str
     recipient_player_id: str
     recipient_player_name: str  # Populated from join
+    method: str
     slot_augmented: str | None  # Which slot was augmented (null for universal_tomestone)
     notes: str | None
     created_at: str

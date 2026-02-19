@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.11.1';
+export const CURRENT_VERSION = '1.12.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,54 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.12.0',
+    date: '2026-01-30T22:00:00Z',
+    title: 'Flexible Priority Settings',
+    highlights: ['Priority modes for different group styles', 'Per-job and per-player priority adjustments'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Priority mode selection',
+        description: 'Choose how loot priority is calculated and displayed for your static',
+        details:
+          'Three modes available: Automatic (system calculates and highlights top priority - default), Manual (show priority scores but no highlighting), and Disabled (equal priority for all players - great for groups that rotate loot equally). All existing statics default to Automatic mode, so your current priority behavior is unchanged. To switch modes, go to Group Settings → Priority.',
+        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+      },
+      {
+        category: 'feature',
+        title: 'Job priority modifiers',
+        description: 'Fine-tune priority for specific jobs in your static',
+        details:
+          'Add per-job adjustments from -100 to +100 in Group Settings → Priority → Advanced Options. For example, give +20 priority to PCT if they need extra gear focus, or -15 to tanks if healers should get priority.',
+        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+      },
+      {
+        category: 'feature',
+        title: 'Per-player priority adjustments',
+        description: 'Adjust individual player priority for catch-up or balancing',
+        details:
+          'Right-click any player card and select "Adjust Priority" to set a modifier from -100 to +100. Useful when a new member joins mid-tier and needs catch-up priority, or to balance out a player who got lucky early.',
+        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+      },
+      {
+        category: 'feature',
+        title: 'Enhanced fairness scoring (opt-in)',
+        description: 'Add drought bonuses and balance penalties based on loot history',
+        details:
+          'Enable in Group Settings → Priority → Advanced Options. Players who haven\'t received drops recently get a "drought bonus" while players with more than average drops get a small penalty. Helps ensure more even distribution over time.',
+        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Priority breakdown tooltips',
+        description: 'Hover over priority scores to see exactly how they\'re calculated',
+        details:
+          'The tooltip now shows role priority, gear need, job modifiers, player modifiers, and any enhanced scoring adjustments. Makes it easy to understand why one player has higher priority than another.',
+        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+      },
+    ],
+  },
   {
     version: '1.11.1',
     date: '2026-01-28T12:00:00Z',

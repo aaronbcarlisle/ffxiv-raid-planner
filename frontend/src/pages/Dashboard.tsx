@@ -12,9 +12,8 @@ import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { toast } from '../stores/toastStore';
 import { ContextMenu, Select, Input, Label, Modal, Spinner, StaticGridSkeleton, StaticListSkeleton, ErrorMessage } from '../components/ui';
 import { Button, IconButton, Tooltip } from '../components/primitives';
-import { GroupSettingsModal } from '../components/static-group';
 import { SetupWizard } from '../components/wizard';
-import type { MemberRole, StaticGroup, StaticGroupListItem } from '../types';
+import type { MemberRole, StaticGroupListItem } from '../types';
 
 // Sort options
 type DashboardSort = 'recent' | 'updated' | 'alphabetical';
@@ -64,7 +63,7 @@ const LINKED_BADGE_COLOR = 'bg-membership-linked/20 text-membership-linked borde
 export function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated, isLoading: authLoading, authInitialized } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, authInitialized } = useAuthStore();
   const { groups, isLoading, error, fetchGroups, duplicateGroup, deleteGroup, clearError } = useStaticGroupStore();
 
   const [showCreateWizard, setShowCreateWizard] = useState(false);
@@ -192,7 +191,6 @@ export function Dashboard() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<StaticGroupListItem | null>(null);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -271,9 +269,9 @@ export function Dashboard() {
 
   const handleOpenSettings = useCallback(() => {
     if (selectedGroup) {
-      setShowSettingsModal(true);
+      navigate(`/group/${selectedGroup.shareCode}?showSettings=true`);
     }
-  }, [selectedGroup]);
+  }, [selectedGroup, navigate]);
 
   const handleDeleteStatic = useCallback(() => {
     if (selectedGroup) {
@@ -372,7 +370,7 @@ export function Dashboard() {
                   size="md"
                   aria-label="Grid view"
                   aria-pressed={viewMode === 'grid'}
-                  className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20' : ''}`}
+                  className={`rounded-r-none ${viewMode === 'grid' ? 'bg-accent/20 text-accent' : ''}`}
                 />
               </Tooltip>
               <Tooltip content="Display statics as a list">
@@ -383,7 +381,7 @@ export function Dashboard() {
                   size="md"
                   aria-label="List view"
                   aria-pressed={viewMode === 'list'}
-                  className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20' : ''}`}
+                  className={`rounded-l-none border-l border-border-default ${viewMode === 'list' ? 'bg-accent/20 text-accent' : ''}`}
                 />
               </Tooltip>
             </div>
@@ -606,7 +604,7 @@ export function Dashboard() {
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="flex items-center justify-between p-3 sm:p-4 hover:bg-surface-interactive transition-colors cursor-pointer group"
+              className="flex items-center justify-between p-3 sm:p-4 hover:bg-surface-elevated transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                 <h3 className="font-display text-base sm:text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
@@ -728,18 +726,6 @@ export function Dashboard() {
         onClose={() => setShowCreateWizard(false)}
         onComplete={handleWizardComplete}
       />
-
-      {/* Settings Modal */}
-      {showSettingsModal && selectedGroup && (
-        <GroupSettingsModal
-          group={selectedGroup as StaticGroup}
-          onClose={() => {
-            setShowSettingsModal(false);
-            fetchGroups(); // Refresh list in case name/visibility changed
-          }}
-          isAdmin={user?.isAdmin}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && selectedGroup && (

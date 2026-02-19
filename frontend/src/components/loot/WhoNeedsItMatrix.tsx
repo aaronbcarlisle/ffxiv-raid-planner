@@ -13,7 +13,7 @@
 import { useMemo, useState } from 'react';
 import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
-import { FLOOR_LOOT_TABLES, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
 import { getRoleColor } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { Tooltip } from '../primitives';
@@ -82,23 +82,26 @@ export function WhoNeedsItMatrix({
     });
   }, [players]);
 
-  // Get slots for selected floor, sorted by GEAR_SLOT_ORDER
+  // Always show all slots to prevent layout shift when changing floors
+  // We'll dim slots that aren't relevant to the selected floor
   const visibleSlots = useMemo(() => {
-    let slots: GearSlot[];
+    // Always show all slots in consistent order
+    const allSlots: GearSlot[] = [
+      ...FLOOR_LOOT_TABLES[1].gearDrops,
+      ...FLOOR_LOOT_TABLES[2].gearDrops,
+      ...FLOOR_LOOT_TABLES[3].gearDrops,
+      ...FLOOR_LOOT_TABLES[4].gearDrops,
+    ];
+    return allSlots.sort((a, b) => GEAR_SLOT_ORDER.indexOf(a) - GEAR_SLOT_ORDER.indexOf(b));
+  }, []);
+
+  // Determine which slots are active for the selected floor
+  const activeSlotsForFloor = useMemo(() => {
     if (selectedFloor === 'all') {
-      // Combine all floors, using ring1 as "Ring" (consolidated)
-      slots = [
-        ...FLOOR_LOOT_TABLES[1].gearDrops,
-        ...FLOOR_LOOT_TABLES[2].gearDrops,
-        ...FLOOR_LOOT_TABLES[3].gearDrops,
-        ...FLOOR_LOOT_TABLES[4].gearDrops,
-      ];
-    } else {
-      slots = [...FLOOR_LOOT_TABLES[selectedFloor].gearDrops];
+      return new Set(visibleSlots);
     }
-    // Sort by the defined gear slot order (already a copy, safe to sort in place)
-    return slots.sort((a, b) => GEAR_SLOT_ORDER.indexOf(a) - GEAR_SLOT_ORDER.indexOf(b));
-  }, [selectedFloor]);
+    return new Set(FLOOR_LOOT_TABLES[selectedFloor].gearDrops);
+  }, [selectedFloor, visibleSlots]);
 
   // Calculate needs matrix
   const needsMatrix = useMemo(() => {
@@ -172,16 +175,23 @@ export function WhoNeedsItMatrix({
             </tr>
           </thead>
           <tbody>
-            {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
-              <tr key={slot} className="border-t border-border-default/50 hover:bg-surface-hover/30">
-                <td className="py-2 px-3 text-text-primary font-medium text-xs">
+            {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => {
+              const isActiveSlot = activeSlotsForFloor.has(slot);
+              const slotFloor = getFloorForSlot(slot);
+              // Apply floor color to slot text when a specific floor is selected
+              const slotTextColor = selectedFloor !== 'all' && isActiveSlot
+                ? FLOOR_COLORS[slotFloor].hex
+                : undefined;
+              return (
+              <tr key={slot} className={`border-t border-border-default/50 ${isActiveSlot ? 'hover:bg-surface-hover/30' : 'opacity-30'}`}>
+                <td className="py-2 px-3 font-medium text-xs">
                   <div className="flex items-center gap-1.5">
                     <img
                       src={GEAR_SLOT_ICONS[slot as GearSlot]}
                       alt=""
                       className="w-4 h-4 brightness-[3.0]"
                     />
-                    <span>{displayName}</span>
+                    <span style={slotTextColor ? { color: slotTextColor } : undefined} className={!slotTextColor ? 'text-text-primary' : undefined}>{displayName}</span>
                   </div>
                 </td>
                 {sortedPlayers.map(player => {
@@ -206,10 +216,10 @@ export function WhoNeedsItMatrix({
                                 onLogClick(actualSlot, player, floorName);
                               }
                             }}
-                            disabled={!showLogButtons}
+                            disabled={!showLogButtons || !isActiveSlot}
                             className={`
                               w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all
-                              ${showLogButtons ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
+                              ${showLogButtons && isActiveSlot ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
                             `}
                             style={{
                               backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`,
@@ -242,15 +252,21 @@ export function WhoNeedsItMatrix({
                   )}
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       </div>
 
       {/* Mobile: Card view - scrollable */}
       <div className="flex-1 min-h-0 overflow-y-auto md:hidden divide-y divide-border-default">
-        {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => (
-          <div key={slot} className="p-3">
+        {needsMatrix.map(({ slot, displayName, playersWhoNeed, count, isFree }) => {
+          const isActiveSlot = activeSlotsForFloor.has(slot);
+          const slotFloor = getFloorForSlot(slot);
+          const slotTextColor = selectedFloor !== 'all' && isActiveSlot
+            ? FLOOR_COLORS[slotFloor].hex
+            : undefined;
+          return (
+          <div key={slot} className={`p-3 ${!isActiveSlot ? 'opacity-30' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
                 <img
@@ -258,7 +274,7 @@ export function WhoNeedsItMatrix({
                   alt=""
                   className="w-4 h-4 brightness-[3.0]"
                 />
-                <span className="font-medium text-text-primary">{displayName}</span>
+                <span className={`font-medium ${!slotTextColor ? 'text-text-primary' : ''}`} style={slotTextColor ? { color: slotTextColor } : undefined}>{displayName}</span>
               </div>
               {isFree ? (
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
@@ -282,7 +298,7 @@ export function WhoNeedsItMatrix({
                       <button
                         key={player.id}
                         onClick={() => {
-                          if (showLogButtons && onLogClick) {
+                          if (showLogButtons && onLogClick && isActiveSlot) {
                             const actualSlot = slot === 'ring1'
                               ? getNeededRingSlot(player)
                               : slot as GearSlot;
@@ -291,7 +307,7 @@ export function WhoNeedsItMatrix({
                             onLogClick(actualSlot, player, floorName);
                           }
                         }}
-                        disabled={!showLogButtons}
+                        disabled={!showLogButtons || !isActiveSlot}
                         className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
                         style={{
                           backgroundColor: `color-mix(in srgb, ${roleColor} 20%, transparent)`,
@@ -306,7 +322,7 @@ export function WhoNeedsItMatrix({
               </div>
             )}
           </div>
-        ))}
+        );})}
       </div>
 
       {/* Legend */}

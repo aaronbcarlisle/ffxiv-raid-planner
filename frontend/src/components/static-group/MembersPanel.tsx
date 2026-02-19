@@ -6,11 +6,14 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { UserMinus, Link2Off } from 'lucide-react';
 import { authRequest } from '../../services/api';
 import { JobIcon } from '../ui/JobIcon';
 import { Spinner } from '../ui/Spinner';
 import { ErrorBox } from '../ui/ErrorMessage';
 import { Select, type SelectOption } from '../ui/Select';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { Toggle } from '../ui/Toggle';
 import { Tooltip } from '../primitives/Tooltip';
 import { eventBus, Events } from '../../lib/eventBus';
 import type { Membership, MemberRole, LinkedPlayerInfo } from '../../types';
@@ -29,6 +32,14 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
   const [error, setError] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{
+    id: string;
+    name: string;
+    role: MemberRole;
+    linkedPlayerNames: string[];
+  } | null>(null);
+  const [unlinkPlayers, setUnlinkPlayers] = useState(true);
+  const [linkedPlayerToUnlink, setLinkedPlayerToUnlink] = useState<LinkedPlayerInfo | null>(null);
 
   const isOwner = currentUserRole === 'owner';
   const canManage = currentUserRole === 'owner' || currentUserRole === 'lead' || isAdmin;
@@ -76,17 +87,54 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
     }
   };
 
-  const handleRemoveMember = async (userId: string) => {
-    if (!confirm('Are you sure you want to remove this member?')) return;
+  const handleRemoveMember = async (userId: string, name: string, role: MemberRole) => {
+    // Fetch linked players to show which cards will be unlinked
+    // The linked-players endpoint returns ALL linked players (members and non-members)
+    try {
+      const allLinked = await authRequest<LinkedPlayerInfo[]>(`/api/static-groups/${groupId}/linked-players`);
+      const linkedToThisUser = allLinked.filter(lp => lp.user.id === userId);
+      const linkedPlayerNames = linkedToThisUser.map(lp => lp.playerName);
+
+      setMemberToRemove({ id: userId, name, role, linkedPlayerNames });
+      setUnlinkPlayers(true); // Reset to default (on)
+    } catch {
+      // If we can't fetch linked players, proceed without the info
+      setMemberToRemove({ id: userId, name, role, linkedPlayerNames: [] });
+      setUnlinkPlayers(true);
+    }
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!memberToRemove) return;
 
     setIsSaving(true);
     try {
-      await authRequest(`/api/static-groups/${groupId}/members/${userId}`, {
+      const url = `/api/static-groups/${groupId}/members/${memberToRemove.id}?unlink_players=${unlinkPlayers}`;
+      await authRequest(url, {
         method: 'DELETE',
       });
+      setMemberToRemove(null);
       await fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmUnlinkPlayer = async () => {
+    if (!linkedPlayerToUnlink) return;
+
+    setIsSaving(true);
+    try {
+      await authRequest(
+        `/api/static-groups/${groupId}/tiers/${linkedPlayerToUnlink.tierId}/players/${linkedPlayerToUnlink.playerId}/claim`,
+        { method: 'DELETE' }
+      );
+      setLinkedPlayerToUnlink(null);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to unlink player');
     } finally {
       setIsSaving(false);
     }
@@ -198,7 +246,11 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
                   {canEditThis && (
                     <Tooltip content="Remove member">
                       <button
-                        onClick={() => handleRemoveMember(member.id)}
+                        onClick={() => handleRemoveMember(
+                          member.id,
+                          member.displayName || member.discordUsername || 'Unknown',
+                          membership.role
+                        )}
                         disabled={isSaving}
                         className="p-1 text-text-muted hover:text-status-error transition-colors"
                       >
@@ -262,14 +314,80 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
                   </div>
                 </div>
 
-                <span className="text-xs px-2 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">
-                  Linked
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-0.5 rounded border bg-membership-linked/20 text-membership-linked border-membership-linked/30">
+                    Linked
+                  </span>
+                  {canManage && (
+                    <Tooltip content={`Unlink ${linked.playerName}`}>
+                      <button
+                        onClick={() => setLinkedPlayerToUnlink(linked)}
+                        disabled={isSaving}
+                        className="p-1 text-text-muted hover:text-status-error transition-colors"
+                      >
+                        <Link2Off className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Remove Member Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!memberToRemove}
+        title="Remove Member?"
+        icon={<UserMinus className="w-5 h-5 text-status-error" />}
+        message={
+          <div className="space-y-3">
+            <p>
+              Remove <strong>{memberToRemove?.name}</strong> from this static?
+            </p>
+            <p className="text-text-secondary">
+              They will lose access to this static.
+            </p>
+            {memberToRemove && memberToRemove.linkedPlayerNames.length > 0 && (
+              <div className="pt-2 border-t border-border-subtle">
+                <Toggle
+                  checked={unlinkPlayers}
+                  onChange={setUnlinkPlayers}
+                  size="sm"
+                  label="Unlink player card"
+                  hint={`Also unlink ${memberToRemove.linkedPlayerNames.join(', ')} from their player ${memberToRemove.linkedPlayerNames.length === 1 ? 'card' : 'cards'}`}
+                />
+              </div>
+            )}
+          </div>
+        }
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={confirmRemoveMember}
+        onCancel={() => setMemberToRemove(null)}
+      />
+
+      {/* Unlink Linked Player Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!linkedPlayerToUnlink}
+        title="Unlink Player?"
+        icon={<Link2Off className="w-5 h-5 text-status-warning" />}
+        message={
+          <div className="space-y-2">
+            <p>
+              Unlink <strong>{linkedPlayerToUnlink?.user.displayName || linkedPlayerToUnlink?.user.discordUsername}</strong> from the <strong>{linkedPlayerToUnlink?.playerName}</strong> player card?
+            </p>
+            <p className="text-text-secondary">
+              They will no longer be associated with this player card, but can reclaim it later.
+            </p>
+          </div>
+        }
+        confirmLabel="Unlink"
+        variant="warning"
+        onConfirm={confirmUnlinkPlayer}
+        onCancel={() => setLinkedPlayerToUnlink(null)}
+      />
     </div>
   );
 }
