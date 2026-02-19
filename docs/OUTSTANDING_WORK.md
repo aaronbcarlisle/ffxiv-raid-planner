@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** February 1, 2026
+**Last Updated:** February 19, 2026
 **Current Version:** v1.9.1
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -8,27 +8,21 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `feature/flexible-priority-settings`
+**Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-02-19:** PR #67 merged: PR #66 review follow-ups
+  - Cross-field `model_validator` on `StaticPrioritySettings` (auto-creates empty defaults for all modes)
+  - NULL `player_id` duplicate check fix in `create_weekly_assignment` (`.is_(None)`)
+  - `Promise.allSettled` in `LogWeekWizard` with partial failure handling (retry-safe)
+  - 31 new endpoint tests for weekly assignments + `clear_week_page_ledger`
+  - `LogWeekWizard` split into directory: `GearStep`, `BooksStep`, `ConfirmStep`, `types.ts`
+  - Route ordering fix: `/bulk` endpoints before `/{assignment_id}` params
+- PR #66 merged: Flexible loot priority control and streamlined week/floor drop wizards
 - PR #57 merged: Member permissions fix + Edit Books feature
 - PR #58 merged: Materia display in gear tooltips (L-003 complete)
 - PR #59 merged: Store setIndex in shortlink bisLinks for multi-set XIVGear sheets
 - PR #60 merged: Mobile UX Optimization (Phase 9 first pass ~80%)
-- **2026-02-01:** Priority system multiplier wiring complete
-  - Advanced Options multipliers now used in `priority.ts` calculations
-  - useMultipliers, useWeightedNeed, useLootAdjustments toggles functional
-  - Enhanced fairness uses configurable drought/balance multipliers
-  - Vestigial `components/priority/PriorityTab.tsx` deleted
-- **2026-02-01:** AdminDashboard pagination fix (race condition)
-- **2026-02-01:** Dashboard Settings → navigates to GroupView SettingsPanel
-  - GroupSettingsModal deleted (deprecated), SettingsPanel is now single source
-  - Added `?showSettings=true` URL param support in GroupView
-- **2026-02-01:** Documentation comprehensive update
-  - User docs: Updated gear status UI (HowToDocs, FAQDocs) - checkboxes → GearStatusCircle
-  - Design system: Added GearStatusCircle to UI_COMPONENTS.md and DesignSystem.tsx
-  - CLAUDE.md: Added GearStatusCircle and BiSSourceSelector to Component Reference
-  - Stale docs: Cleaned up old SESSION_HANDOFF files, archived Jan 31 handoff
 
 **Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
 
@@ -134,8 +128,8 @@
 
 ## Technical Debt - Lint Issues (P3)
 
-**Last Audited:** January 25, 2026
-**Current Warning Count:** 148 (design-system + react-hooks combined)
+**Last Audited:** February 19, 2026
+**Current Warning Count:** 152 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
