@@ -56,6 +56,7 @@ class WeeklyAssignment(Base):
         String(36),
         ForeignKey("snapshot_players.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     did_not_drop: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -65,7 +66,10 @@ class WeeklyAssignment(Base):
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
     updated_at: Mapped[str] = mapped_column(
-        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+        Text,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc).isoformat(),
+        onupdate=lambda: datetime.now(timezone.utc).isoformat(),
     )
 
     # Relationships

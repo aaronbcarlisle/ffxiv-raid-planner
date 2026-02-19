@@ -56,8 +56,7 @@ export function SettingsPanel({
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
-  const canManageInvitations = canEdit;
+  const canManageInvitations = group.userRole === 'owner' || group.userRole === 'lead';
 
   // Navigate to next/previous tab
   const navigateTab = useCallback((direction: 'next' | 'prev') => {
@@ -94,6 +93,7 @@ export function SettingsPanel({
           {TAB_ITEMS.map((tab) => {
             const Icon = tab.icon;
             return (
+              /* design-system-ignore: Tab selector with border-bottom active indicator */
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

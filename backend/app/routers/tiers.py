@@ -1531,7 +1531,7 @@ async def list_weekly_assignments(
 
     if canonical_tier_id:
         query = query.where(WeeklyAssignment.tier_id == canonical_tier_id)
-    if week:
+    if week is not None:
         query = query.where(WeeklyAssignment.week == week)
     if floor:
         query = query.where(WeeklyAssignment.floor == floor)
