@@ -3,7 +3,9 @@
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Self
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.constants import VALID_JOBS
 
@@ -145,6 +147,17 @@ class StaticPrioritySettings(CamelModel):
         default_factory=AdvancedPriorityOptions,
         description="Advanced priority calculation options",
     )
+
+    @model_validator(mode="after")
+    def validate_mode_config(self) -> Self:
+        """Ensure the correct config is present for the selected mode."""
+        if self.mode == "role-based" and self.role_based_config is None:
+            self.role_based_config = RoleBasedConfig()
+        elif self.mode == "job-based" and self.job_based_config is None:
+            raise ValueError("job_based_config is required when mode is 'job-based'")
+        elif self.mode == "player-based" and self.player_based_config is None:
+            raise ValueError("player_based_config is required when mode is 'player-based'")
+        return self
 
 
 # --- Static Settings Schema ---

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, LootLogEntry
+from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, LootLogEntry, WeeklyAssignment
 
 
 async def create_user(
@@ -183,6 +183,37 @@ async def create_loot_log_entry(
     session.add(entry)
     await session.flush()
     return entry
+
+
+async def create_weekly_assignment(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    tier_snapshot: TierSnapshot,
+    *,
+    week: int = 1,
+    floor: str = "M9S",
+    slot: str = "head",
+    player: SnapshotPlayer | None = None,
+    sort_order: int = 0,
+    did_not_drop: bool = False,
+) -> WeeklyAssignment:
+    """Create a weekly assignment for testing."""
+    assignment = WeeklyAssignment(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        tier_id=tier_snapshot.tier_id,
+        week=week,
+        floor=floor,
+        slot=slot,
+        player_id=player.id if player else None,
+        sort_order=sort_order,
+        did_not_drop=did_not_drop,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(assignment)
+    await session.flush()
+    return assignment
 
 
 def _generate_share_code() -> str:
