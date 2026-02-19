@@ -250,11 +250,14 @@ function SortableGroupHeader({
           <GripVertical className="w-5 h-5" />
         </span>
 
+        {/* design-system-ignore: Inline toggle within DnD sortable item requires minimal button */}
         <button
           type="button"
           onClick={onToggle}
-          className="text-text-muted hover:text-text-primary"
+          className="text-text-muted hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
           disabled={disabled}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? `Collapse ${group.name}` : `Expand ${group.name}`}
         >
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />

@@ -108,6 +108,8 @@ def upgrade() -> None:
                 if isinstance(legacy_order, list) and all(r in valid_roles for r in legacy_order):
                     priority_settings["roleBasedConfig"]["roleOrder"] = legacy_order
                     print(f"  Group {group_id}: Preserved legacy lootPriority order: {legacy_order}")
+                else:
+                    print(f"  Warning: Group {group_id}: Skipped invalid lootPriority: {legacy_order}")
 
             # Preserve legacy showPriorityScores if explicitly set
             if "showPriorityScores" in settings:

@@ -403,4 +403,143 @@ describe('calculatePriorityScore', () => {
       expect(scoreWithModifiers).toBe(baseScoreWithoutModifiers + 15 + 10 + 30);
     });
   });
+
+  describe('edge cases', () => {
+    it('returns 0 for job-based mode when player job is not in config', () => {
+      const player = createPlayer({ job: 'DRG', role: 'melee' });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        prioritySettings: {
+          mode: 'job-based',
+          jobBasedConfig: {
+            groups: [{ id: 'tanks', name: 'Tanks', sortOrder: 0, basePriority: 100 }],
+            jobs: [{ job: 'WAR', groupId: 'tanks', sortOrder: 0, priorityOffset: 0 }],
+            showAdvancedControls: false,
+          },
+          advancedOptions: {
+            showPriorityScores: true,
+            preset: 'balanced',
+            enableEnhancedFairness: false,
+            droughtBonusMultiplier: 10,
+            droughtBonusCapWeeks: 5,
+            balancePenaltyMultiplier: 15,
+            balancePenaltyCapDrops: 3,
+            useMultipliers: true,
+            rolePriorityMultiplier: 25,
+            gearNeededMultiplier: 10,
+            lootReceivedPenalty: 15,
+            useWeightedNeed: true,
+            useLootAdjustments: true,
+          },
+        },
+      };
+
+      const score = calculatePriorityScore(player, settings);
+      expect(score).toBe(0);
+    });
+
+    it('returns 0 for player-based mode when player is not in config', () => {
+      const player = createPlayer({ id: 'unknown-player', role: 'melee' });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        prioritySettings: {
+          mode: 'player-based',
+          playerBasedConfig: {
+            groups: [{ id: 'default', name: 'All', sortOrder: 0, basePriority: 100 }],
+            players: [{ playerId: 'other-player', groupId: 'default', sortOrder: 0, priorityOffset: 0 }],
+            showAdvancedControls: false,
+          },
+          advancedOptions: {
+            showPriorityScores: true,
+            preset: 'balanced',
+            enableEnhancedFairness: false,
+            droughtBonusMultiplier: 10,
+            droughtBonusCapWeeks: 5,
+            balancePenaltyMultiplier: 15,
+            balancePenaltyCapDrops: 3,
+            useMultipliers: true,
+            rolePriorityMultiplier: 25,
+            gearNeededMultiplier: 10,
+            lootReceivedPenalty: 15,
+            useWeightedNeed: true,
+            useLootAdjustments: true,
+          },
+        },
+      };
+
+      const score = calculatePriorityScore(player, settings);
+      expect(score).toBe(0);
+    });
+
+    it('returns 0 for manual-planning mode', () => {
+      const player = createPlayer({ role: 'melee' });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        prioritySettings: {
+          mode: 'manual-planning',
+          advancedOptions: {
+            showPriorityScores: true,
+            preset: 'balanced',
+            enableEnhancedFairness: false,
+            droughtBonusMultiplier: 10,
+            droughtBonusCapWeeks: 5,
+            balancePenaltyMultiplier: 15,
+            balancePenaltyCapDrops: 3,
+            useMultipliers: true,
+            rolePriorityMultiplier: 25,
+            gearNeededMultiplier: 10,
+            lootReceivedPenalty: 15,
+            useWeightedNeed: true,
+            useLootAdjustments: true,
+          },
+        },
+      };
+
+      const score = calculatePriorityScore(player, settings);
+      expect(score).toBe(0);
+    });
+
+    it('handles unknown role gracefully in role-based mode', () => {
+      const player = createPlayer({ role: 'unknown' as any });
+      const score = calculatePriorityScore(player, defaultSettings);
+      // Unknown role gets roleIndex -1, which is handled as 0 priority for role component
+      expect(typeof score).toBe('number');
+    });
+
+    it('returns 0 for job-based mode when config is missing', () => {
+      const player = createPlayer({ role: 'melee' });
+      const settings: StaticSettings = {
+        ...defaultSettings,
+        prioritySettings: {
+          mode: 'job-based',
+          // jobBasedConfig intentionally missing
+          advancedOptions: {
+            showPriorityScores: true,
+            preset: 'balanced',
+            enableEnhancedFairness: false,
+            droughtBonusMultiplier: 10,
+            droughtBonusCapWeeks: 5,
+            balancePenaltyMultiplier: 15,
+            balancePenaltyCapDrops: 3,
+            useMultipliers: true,
+            rolePriorityMultiplier: 25,
+            gearNeededMultiplier: 10,
+            lootReceivedPenalty: 15,
+            useWeightedNeed: true,
+            useLootAdjustments: true,
+          },
+        },
+      };
+
+      const score = calculatePriorityScore(player, settings);
+      expect(score).toBe(0);
+    });
+
+    it('handles empty gear array without crashing', () => {
+      const player = createPlayer({ gear: [] });
+      const score = calculatePriorityScore(player, defaultSettings);
+      expect(typeof score).toBe('number');
+      expect(score).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

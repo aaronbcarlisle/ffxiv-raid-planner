@@ -154,14 +154,21 @@ export function SlideOutPanel({
     [onClose]
   );
 
-  // Store previous focus and set up event listener
+  // Store previous focus, set up event listener, and lock body scroll
   useEffect(() => {
     if (!isOpen) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement;
 
+    // Lock body scroll while panel is open
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isOpen, handleKeyDown]);
 
   // Set initial focus when panel opens

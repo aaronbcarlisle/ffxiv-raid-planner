@@ -17,6 +17,15 @@ import type { StaticGroup, SnapshotPlayer } from '../../types';
 
 export type SettingsTab = 'general' | 'priority' | 'members' | 'invitations';
 
+const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'members', 'invitations'];
+
+const TAB_ITEMS = [
+  { id: 'general' as const, label: 'General', icon: Settings },
+  { id: 'priority' as const, label: 'Priority', icon: ListOrdered },
+  { id: 'members' as const, label: 'Members', icon: Users },
+  { id: 'invitations' as const, label: 'Invitations', icon: Mail },
+];
+
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,16 +59,13 @@ export function SettingsPanel({
   const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
   const canManageInvitations = canEdit;
 
-  // Tab order for swipe navigation
-  const tabOrder: SettingsTab[] = ['general', 'priority', 'members', 'invitations'];
-
   // Navigate to next/previous tab
   const navigateTab = useCallback((direction: 'next' | 'prev') => {
-    const currentIndex = tabOrder.indexOf(activeTab);
-    if (direction === 'next' && currentIndex < tabOrder.length - 1) {
-      setActiveTab(tabOrder[currentIndex + 1]);
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
+    if (direction === 'next' && currentIndex < TAB_ORDER.length - 1) {
+      setActiveTab(TAB_ORDER[currentIndex + 1]);
     } else if (direction === 'prev' && currentIndex > 0) {
-      setActiveTab(tabOrder[currentIndex - 1]);
+      setActiveTab(TAB_ORDER[currentIndex - 1]);
     }
   }, [activeTab]);
 
@@ -69,13 +75,6 @@ export function SettingsPanel({
     onSwipeRight: () => navigateTab('prev'),
     minSwipeDistance: 50,
   });
-
-  const tabItems = [
-    { id: 'general' as const, label: 'General', icon: Settings },
-    { id: 'priority' as const, label: 'Priority', icon: ListOrdered },
-    { id: 'members' as const, label: 'Members', icon: Users },
-    { id: 'invitations' as const, label: 'Invitations', icon: Mail },
-  ];
 
   return (
     <SlideOutPanel
@@ -92,7 +91,7 @@ export function SettingsPanel({
       <div className="flex flex-col h-[calc(100%+2rem)] -m-4">
         {/* Tabs - scrollable on mobile */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
-          {tabItems.map((tab) => {
+          {TAB_ITEMS.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
