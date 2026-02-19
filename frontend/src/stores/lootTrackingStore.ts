@@ -569,9 +569,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       }
 
       // Apply reverse adjustments to zero out the floor's entries
-      for (const [playerId, adjustment] of adjustments) {
-        if (adjustment !== 0) {
-          await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([playerId, adjustment]) =>
+          api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
             playerId,
             weekNumber: week,
             floor: 'adjustment',
@@ -579,8 +580,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
             transactionType: 'adjustment',
             quantity: adjustment,
             notes: `Reset Floor ${floor} books (W${week})`,
-          });
-        }
+          })
+        );
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
       }
 
       // Refresh balances and ledger
@@ -589,6 +595,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeekDataTypes(groupId, tierId),
       ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;
@@ -626,11 +636,12 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       }
 
       // Apply reverse adjustments to zero out the floor's entries
-      for (const [key, adjustment] of adjustments) {
-        if (adjustment !== 0) {
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([key, adjustment]) => {
           const [playerId, weekStr] = key.split(':');
           const weekNumber = parseInt(weekStr, 10);
-          await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+          return api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
             playerId,
             weekNumber,
             floor: 'adjustment',
@@ -639,7 +650,12 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
             quantity: adjustment,
             notes: `Reset all Floor ${floor} books`,
           });
-        }
+        });
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
       }
 
       // Refresh balances and ledger
@@ -648,6 +664,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeekDataTypes(groupId, tierId),
       ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;
@@ -676,9 +696,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       }
 
       // Apply reverse adjustments to zero out the player's week entries
-      for (const [bookType, adjustment] of adjustments) {
-        if (adjustment !== 0) {
-          await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
+      const postPromises = Array.from(adjustments.entries())
+        .filter(([, adjustment]) => adjustment !== 0)
+        .map(([bookType, adjustment]) =>
+          api.post(`/api/static-groups/${groupId}/tiers/${tierId}/page-ledger`, {
             playerId,
             weekNumber: week,
             floor: 'adjustment',
@@ -686,8 +707,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
             transactionType: 'adjustment',
             quantity: adjustment,
             notes: `Reset player books (W${week})`,
-          });
-        }
+          })
+        );
+
+      const results = await Promise.allSettled(postPromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        logger.error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
       }
 
       // Refresh balances and ledger
@@ -696,6 +722,10 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
         get().fetchPageLedger(groupId, tierId),
         get().fetchWeekDataTypes(groupId, tierId),
       ]);
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${postPromises.length} ledger reversals failed`);
+      }
     } catch (error) {
       set({ error: getErrorMessage(error) });
       throw error;

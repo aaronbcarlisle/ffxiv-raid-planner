@@ -85,6 +85,7 @@ export function useWeeklyAssignments({
     async (
       data: Omit<WeeklyAssignmentCreate, 'tierId' | 'week'> & { tierId?: string; week?: number }
     ): Promise<WeeklyAssignment | null> => {
+      setError(null);
       if (!groupId || (!tierId && !data.tierId) || (week === undefined && data.week === undefined)) {
         setError('Missing required tier or week');
         return null;
@@ -122,6 +123,7 @@ export function useWeeklyAssignments({
   const update = useCallback(
     async (assignmentId: string, data: WeeklyAssignmentUpdate): Promise<WeeklyAssignment | null> => {
       if (!groupId) return null;
+      setError(null);
 
       try {
         const result = await api.put<WeeklyAssignment>(
@@ -147,6 +149,7 @@ export function useWeeklyAssignments({
   const remove = useCallback(
     async (assignmentId: string): Promise<boolean> => {
       if (!groupId) return false;
+      setError(null);
 
       try {
         await api.delete(`/api/static-groups/${groupId}/weekly-assignments/${assignmentId}`);
@@ -167,6 +170,7 @@ export function useWeeklyAssignments({
   // Accepts items without tierId/week since those are provided by the wrapper
   const bulkCreate = useCallback(
     async (createAssignments: WeeklyAssignmentBulkItem[]): Promise<WeeklyAssignment[]> => {
+      setError(null);
       if (!groupId || !tierId || week === undefined) {
         setError('Missing required tier or week');
         return [];
@@ -199,6 +203,7 @@ export function useWeeklyAssignments({
   // Bulk delete assignments
   const bulkDelete = useCallback(
     async (options?: { floor?: string; slot?: string }): Promise<boolean> => {
+      setError(null);
       if (!groupId || !tierId || week === undefined) {
         setError('Missing required tier or week');
         return false;

@@ -71,7 +71,7 @@ function calculateJobBasedPriority(player: SnapshotPlayer, settings: StaticSetti
 
   // Calculate: base priority from group + inverse sort order within group + offset
   // Groups with higher sortOrder are lower priority (first group is highest)
-  const maxGroupSortOrder = Math.max(...jobConfig.groups.map((g) => g.sortOrder));
+  const maxGroupSortOrder = Math.max(...jobConfig.groups.map((g) => g.sortOrder), 0);
   const groupPriority = (maxGroupSortOrder - group.sortOrder + 1) * 50; // 50 points per group tier
 
   // Jobs earlier in the list within a group have higher priority
@@ -97,7 +97,7 @@ function calculatePlayerBasedPriority(player: SnapshotPlayer, settings: StaticSe
   if (!group) return 0;
 
   // Calculate: base priority from group + inverse sort order within group + offset
-  const maxGroupSortOrder = Math.max(...playerConfig.groups.map((g) => g.sortOrder));
+  const maxGroupSortOrder = Math.max(...playerConfig.groups.map((g) => g.sortOrder), 0);
   const groupPriority = (maxGroupSortOrder - group.sortOrder + 1) * 50;
 
   // Players earlier in the list within a group have higher priority
@@ -149,7 +149,7 @@ export interface PriorityScoreOptions {
  * - Weighted need: sum of slot weights for incomplete slots * 10
  * - Job modifier: per-job adjustment from settings.jobPriorityModifiers
  * - Player modifier: per-player adjustment from player.priorityModifier
- * - Loot adjustment: -15 per adjustment point (positive adjustment = lower priority)
+ * - Loot adjustment: +15 per adjustment point (positive = priority boost for catch-up)
  */
 export function calculatePriorityScore(
   player: SnapshotPlayer,

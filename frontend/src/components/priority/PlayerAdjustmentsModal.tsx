@@ -70,12 +70,15 @@ export function PlayerAdjustmentsModal({
         }
         return Promise.resolve();
       });
-      await Promise.all(updatePromises);
-      toast.success('Player adjustments saved!');
-      onClose();
-    } catch (error) {
-      console.error('Failed to save adjustments:', error);
-      toast.error('Failed to save adjustments');
+      const results = await Promise.allSettled(updatePromises);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        console.error('Some adjustments failed:', failed);
+        toast.error(`Failed to update ${failed.length} player(s)`);
+      } else {
+        toast.success('Player adjustments saved!');
+        onClose();
+      }
     } finally {
       setIsSaving(false);
     }
