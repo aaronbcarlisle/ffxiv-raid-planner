@@ -1609,15 +1609,21 @@ async def create_weekly_assignment(
     now = datetime.now(timezone.utc).isoformat()
 
     # Check for duplicate using canonical tier_id
+    # Use .is_(None) for NULL player_id since SQL NULL = NULL evaluates to NULL (falsy)
+    conditions = [
+        WeeklyAssignment.static_group_id == group_id,
+        WeeklyAssignment.tier_id == canonical_tier_id,
+        WeeklyAssignment.week == data.week,
+        WeeklyAssignment.floor == data.floor,
+        WeeklyAssignment.slot == data.slot,
+    ]
+    if data.player_id is None:
+        conditions.append(WeeklyAssignment.player_id.is_(None))
+    else:
+        conditions.append(WeeklyAssignment.player_id == data.player_id)
+
     existing = await session.execute(
-        select(WeeklyAssignment).where(
-            WeeklyAssignment.static_group_id == group_id,
-            WeeklyAssignment.tier_id == canonical_tier_id,
-            WeeklyAssignment.week == data.week,
-            WeeklyAssignment.floor == data.floor,
-            WeeklyAssignment.slot == data.slot,
-            WeeklyAssignment.player_id == data.player_id,
-        )
+        select(WeeklyAssignment).where(*conditions)
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
@@ -1652,104 +1658,6 @@ async def create_weekly_assignment(
         player = player_result.scalar_one_or_none()
 
     return assignment_to_response(assignment, player)
-
-
-@router.put(
-    "/{group_id}/weekly-assignments/{assignment_id}",
-    response_model=WeeklyAssignmentResponse,
-)
-async def update_weekly_assignment(
-    group_id: str,
-    assignment_id: str,
-    data: WeeklyAssignmentUpdate,
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> WeeklyAssignmentResponse:
-    """Update a weekly assignment (Owner/Lead only)"""
-    await get_static_group(session, group_id)
-    await require_can_edit_roster(session, current_user.id, group_id)
-
-    result = await session.execute(
-        select(WeeklyAssignment).where(
-            WeeklyAssignment.id == assignment_id,
-            WeeklyAssignment.static_group_id == group_id,
-        )
-    )
-    assignment = result.scalar_one_or_none()
-
-    if not assignment:
-        raise NotFound("Assignment not found")
-
-    # Validate player_id if being updated to a non-null value
-    # Handle assignment.tier_id being either UUID or slug (for assignments created before normalization)
-    if data.player_id is not None and data.player_id:
-        player_check = await session.execute(
-            select(SnapshotPlayer)
-            .join(TierSnapshot)
-            .where(
-                SnapshotPlayer.id == data.player_id,
-                TierSnapshot.static_group_id == group_id,
-                (TierSnapshot.id == assignment.tier_id)
-                | (TierSnapshot.tier_id == assignment.tier_id),
-            )
-        )
-        if not player_check.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Player not found in this tier/group",
-            )
-
-    # Apply updates
-    if data.player_id is not None:
-        assignment.player_id = data.player_id if data.player_id else None
-    if data.sort_order is not None:
-        assignment.sort_order = data.sort_order
-    if data.did_not_drop is not None:
-        assignment.did_not_drop = data.did_not_drop
-
-    assignment.updated_at = datetime.now(timezone.utc).isoformat()
-
-    await session.flush()
-    await session.commit()
-
-    # Get player info if assigned
-    player = None
-    if assignment.player_id:
-        player_result = await session.execute(
-            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
-        )
-        player = player_result.scalar_one_or_none()
-
-    return assignment_to_response(assignment, player)
-
-
-@router.delete(
-    "/{group_id}/weekly-assignments/{assignment_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def delete_weekly_assignment(
-    group_id: str,
-    assignment_id: str,
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> None:
-    """Delete a weekly assignment (Owner/Lead only)"""
-    await get_static_group(session, group_id)
-    await require_can_edit_roster(session, current_user.id, group_id)
-
-    result = await session.execute(
-        select(WeeklyAssignment).where(
-            WeeklyAssignment.id == assignment_id,
-            WeeklyAssignment.static_group_id == group_id,
-        )
-    )
-    assignment = result.scalar_one_or_none()
-
-    if not assignment:
-        raise NotFound("Assignment not found")
-
-    await session.delete(assignment)
-    await session.commit()
 
 
 @router.post(
@@ -1901,4 +1809,102 @@ async def bulk_delete_weekly_assignments(
         query = query.where(WeeklyAssignment.slot == data.slot)
 
     await session.execute(query)
+    await session.commit()
+
+
+@router.put(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    response_model=WeeklyAssignmentResponse,
+)
+async def update_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    data: WeeklyAssignmentUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> WeeklyAssignmentResponse:
+    """Update a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    # Validate player_id if being updated to a non-null value
+    # Handle assignment.tier_id being either UUID or slug (for assignments created before normalization)
+    if data.player_id is not None and data.player_id:
+        player_check = await session.execute(
+            select(SnapshotPlayer)
+            .join(TierSnapshot)
+            .where(
+                SnapshotPlayer.id == data.player_id,
+                TierSnapshot.static_group_id == group_id,
+                (TierSnapshot.id == assignment.tier_id)
+                | (TierSnapshot.tier_id == assignment.tier_id),
+            )
+        )
+        if not player_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Player not found in this tier/group",
+            )
+
+    # Apply updates
+    if data.player_id is not None:
+        assignment.player_id = data.player_id if data.player_id else None
+    if data.sort_order is not None:
+        assignment.sort_order = data.sort_order
+    if data.did_not_drop is not None:
+        assignment.did_not_drop = data.did_not_drop
+
+    assignment.updated_at = datetime.now(timezone.utc).isoformat()
+
+    await session.flush()
+    await session.commit()
+
+    # Get player info if assigned
+    player = None
+    if assignment.player_id:
+        player_result = await session.execute(
+            select(SnapshotPlayer).where(SnapshotPlayer.id == assignment.player_id)
+        )
+        player = player_result.scalar_one_or_none()
+
+    return assignment_to_response(assignment, player)
+
+
+@router.delete(
+    "/{group_id}/weekly-assignments/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_weekly_assignment(
+    group_id: str,
+    assignment_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a weekly assignment (Owner/Lead only)"""
+    await get_static_group(session, group_id)
+    await require_can_edit_roster(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(WeeklyAssignment).where(
+            WeeklyAssignment.id == assignment_id,
+            WeeklyAssignment.static_group_id == group_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+
+    if not assignment:
+        raise NotFound("Assignment not found")
+
+    await session.delete(assignment)
     await session.commit()

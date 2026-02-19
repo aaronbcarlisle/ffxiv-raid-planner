@@ -3,7 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.static_group import StaticSettingsSchema
+from app.schemas.static_group import (
+    StaticSettingsSchema,
+    StaticPrioritySettings,
+    JobBasedConfig,
+    PlayerBasedConfig,
+    RoleBasedConfig,
+)
 from app.schemas.tier_snapshot import (
     SnapshotPlayerCreate,
     SnapshotPlayerUpdate,
@@ -208,3 +214,43 @@ class TestSnapshotPlayerPriorityModifier:
                 created_at="2026-01-30T00:00:00Z",
                 updated_at="2026-01-30T00:00:00Z",
             )
+
+
+class TestStaticPrioritySettingsValidation:
+    """Tests for cross-field validation on StaticPrioritySettings"""
+
+    def test_role_based_auto_creates_default_config(self):
+        """mode='role-based' with no role_based_config auto-creates default."""
+        settings = StaticPrioritySettings(mode="role-based")
+        assert settings.role_based_config is not None
+        assert settings.role_based_config.role_order == ["melee", "ranged", "caster", "tank", "healer"]
+
+    def test_role_based_preserves_provided_config(self):
+        """mode='role-based' with explicit config preserves it."""
+        config = RoleBasedConfig(role_order=["tank", "healer", "melee", "ranged", "caster"])
+        settings = StaticPrioritySettings(mode="role-based", role_based_config=config)
+        assert settings.role_based_config.role_order == ["tank", "healer", "melee", "ranged", "caster"]
+
+    def test_job_based_auto_creates_default_config(self):
+        """mode='job-based' with no job_based_config auto-creates empty default."""
+        settings = StaticPrioritySettings(mode="job-based")
+        assert settings.job_based_config is not None
+        assert settings.job_based_config.groups == []
+        assert settings.job_based_config.jobs == []
+
+    def test_player_based_auto_creates_default_config(self):
+        """mode='player-based' with no player_based_config auto-creates empty default."""
+        settings = StaticPrioritySettings(mode="player-based")
+        assert settings.player_based_config is not None
+        assert settings.player_based_config.groups == []
+        assert settings.player_based_config.players == []
+
+    def test_manual_planning_no_config_required(self):
+        """mode='manual-planning' needs no mode-specific config."""
+        settings = StaticPrioritySettings(mode="manual-planning")
+        assert settings.mode == "manual-planning"
+
+    def test_disabled_no_config_required(self):
+        """mode='disabled' needs no mode-specific config."""
+        settings = StaticPrioritySettings(mode="disabled")
+        assert settings.mode == "disabled"
