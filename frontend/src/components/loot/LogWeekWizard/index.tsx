@@ -523,7 +523,12 @@ export function LogWeekWizard({
     setError(null);
 
     try {
-      const tracked: { promise: Promise<void>; label: string }[] = [];
+      interface TrackedEntry {
+        promise: Promise<void>;
+        label: string;
+        source: { floor: FloorNumber; type: 'gear' | 'materials' | 'books'; slot?: string };
+      }
+      const tracked: TrackedEntry[] = [];
 
       for (let floorNum = 1; floorNum <= 4; floorNum++) {
         const fn = floorNum as FloorNumber;
@@ -548,6 +553,7 @@ export function LogWeekWizard({
             tracked.push({
               promise: logLootAndUpdateGear(groupId, tierId, data, { updateGear: entry.updateGear }),
               label: `${slotName} → ${playerName}`,
+              source: { floor: fn, type: 'gear', slot },
             });
           }
         }
@@ -574,6 +580,7 @@ export function LogWeekWizard({
                 }
               ),
               label: `${matName} → ${playerName}`,
+              source: { floor: fn, type: 'materials', slot: materialType },
             });
           }
         }
@@ -588,6 +595,7 @@ export function LogWeekWizard({
           tracked.push({
             promise: markFloorCleared(groupId, tierId, clearRequest),
             label: `${floorName} book clears`,
+            source: { floor: fn, type: 'books' },
           });
         }
       }
@@ -611,11 +619,33 @@ export function LogWeekWizard({
         setError(message);
         toast.error(message);
       } else {
+        // Partial failure: remove succeeded entries from floorData so retry only resubmits failures
+        setFloorData((prev) => {
+          const next = { ...prev };
+          for (let i = 0; i < results.length; i++) {
+            if (results[i].status !== 'fulfilled') continue;
+            const { floor: fn, type, slot } = tracked[i].source;
+            const floorCopy = { ...next[fn] };
+            if (type === 'gear' && slot) {
+              const gear = { ...floorCopy.gear };
+              gear[slot] = { ...gear[slot], playerId: null, didNotDrop: true };
+              floorCopy.gear = gear;
+            } else if (type === 'materials' && slot) {
+              const materials = { ...floorCopy.materials };
+              materials[slot] = { ...materials[slot], playerId: null, didNotDrop: true };
+              floorCopy.materials = materials;
+            } else if (type === 'books') {
+              floorCopy.booksCleared = [];
+            }
+            next[fn] = floorCopy;
+          }
+          return next;
+        });
         toast.warning(
           `${succeeded} of ${results.length} logged. Failed: ${failed.join(', ')}`,
           6000,
         );
-        onSuccess?.();
+        setError(`${failed.length} entries failed. You can retry — only failed entries will be resubmitted.`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to log entries';

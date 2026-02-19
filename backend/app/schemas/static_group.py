@@ -150,13 +150,17 @@ class StaticPrioritySettings(CamelModel):
 
     @model_validator(mode="after")
     def validate_mode_config(self) -> Self:
-        """Ensure the correct config is present for the selected mode."""
+        """Ensure the correct config is present for the selected mode.
+
+        Auto-creates empty defaults rather than raising, since this model is also
+        used for deserializing existing DB records which may lack the config.
+        """
         if self.mode == "role-based" and self.role_based_config is None:
             self.role_based_config = RoleBasedConfig()
         elif self.mode == "job-based" and self.job_based_config is None:
-            raise ValueError("job_based_config is required when mode is 'job-based'")
+            self.job_based_config = JobBasedConfig()
         elif self.mode == "player-based" and self.player_based_config is None:
-            raise ValueError("player_based_config is required when mode is 'player-based'")
+            self.player_based_config = PlayerBasedConfig()
         return self
 
 

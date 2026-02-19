@@ -231,17 +231,19 @@ class TestStaticPrioritySettingsValidation:
         settings = StaticPrioritySettings(mode="role-based", role_based_config=config)
         assert settings.role_based_config.role_order == ["tank", "healer", "melee", "ranged", "caster"]
 
-    def test_job_based_requires_config(self):
-        """mode='job-based' without job_based_config raises ValueError."""
-        with pytest.raises(ValidationError) as exc_info:
-            StaticPrioritySettings(mode="job-based")
-        assert "job_based_config" in str(exc_info.value)
+    def test_job_based_auto_creates_default_config(self):
+        """mode='job-based' with no job_based_config auto-creates empty default."""
+        settings = StaticPrioritySettings(mode="job-based")
+        assert settings.job_based_config is not None
+        assert settings.job_based_config.groups == []
+        assert settings.job_based_config.jobs == []
 
-    def test_player_based_requires_config(self):
-        """mode='player-based' without player_based_config raises ValueError."""
-        with pytest.raises(ValidationError) as exc_info:
-            StaticPrioritySettings(mode="player-based")
-        assert "player_based_config" in str(exc_info.value)
+    def test_player_based_auto_creates_default_config(self):
+        """mode='player-based' with no player_based_config auto-creates empty default."""
+        settings = StaticPrioritySettings(mode="player-based")
+        assert settings.player_based_config is not None
+        assert settings.player_based_config.groups == []
+        assert settings.player_based_config.players == []
 
     def test_manual_planning_no_config_required(self):
         """mode='manual-planning' needs no mode-specific config."""
