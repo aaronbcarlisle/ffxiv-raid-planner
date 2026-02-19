@@ -6,11 +6,11 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Gem, Pencil } from 'lucide-react';
-import { Modal, Select, Checkbox, Label, TextArea } from '../ui';
+import { Modal, Select, Checkbox, Label, TextArea, RadioGroup } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
-import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate, GearSlot } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, MaterialLogEntry, MaterialLogEntryUpdate, GearSlot, LootMethod } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 import { MATERIAL_INFO } from '../../hooks/useWeekSummary';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone } from '../../utils/priority';
@@ -35,6 +35,7 @@ interface LogMaterialModalProps {
     floor: string;
     materialType: MaterialType;
     recipientPlayerId: string;
+    method?: LootMethod;
     notes?: string;
   }) => Promise<void>;
   onUpdate?: (data: MaterialLogEntryUpdate) => Promise<void>;
@@ -105,6 +106,7 @@ export function LogMaterialModal({
   );
   const [weekNumber, setWeekNumber] = useState(currentWeek);
   const [notes, setNotes] = useState('');
+  const [method, setMethod] = useState<LootMethod>('drop');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
@@ -207,6 +209,7 @@ export function LogMaterialModal({
         setSelectedMaterial(editEntry.materialType);
         setSelectedPlayer(editEntry.recipientPlayerId);
         setWeekNumber(editEntry.weekNumber);
+        setMethod(editEntry.method || 'drop');
         setNotes(editEntry.notes || '');
         setShowAllRecipients(false);
         // If the recipient is a substitute, enable includeSubs so they appear in dropdown
@@ -258,6 +261,7 @@ export function LogMaterialModal({
         const initialPlayerId = suggestedPlayer?.id || '';
         setSelectedPlayer(initialPlayerId);
         setWeekNumber(currentWeek);
+        setMethod('drop');
         setNotes('');
         setShowAllRecipients(false);
         setIncludeSubs(false);
@@ -332,6 +336,7 @@ export function LogMaterialModal({
           floor: selectedFloor,
           materialType: selectedMaterial,
           recipientPlayerId: selectedPlayer,
+          method,
           slotAugmented: newSlotAugmented,
           notes: notes.trim() || undefined,
         });
@@ -414,6 +419,7 @@ export function LogMaterialModal({
             floor: selectedFloor,
             materialType: selectedMaterial,
             recipientPlayerId: selectedPlayer,
+            method,
             notes: notes.trim() || undefined,
           },
           {
@@ -430,6 +436,7 @@ export function LogMaterialModal({
           floor: selectedFloor,
           materialType: selectedMaterial,
           recipientPlayerId: selectedPlayer,
+          method,
           notes: notes.trim() || undefined,
         });
       }
@@ -686,6 +693,21 @@ export function LogMaterialModal({
               No one needs this material! Enable "Show all players" to assign anyway.
             </div>
           )}
+        </div>
+
+        {/* Method */}
+        <div>
+          <Label>Method</Label>
+          <RadioGroup
+            name="material-method"
+            value={method}
+            onChange={(value) => setMethod(value as LootMethod)}
+            options={[
+              { value: 'drop', label: 'Drop' },
+              { value: 'book', label: 'Book' },
+            ]}
+            orientation="horizontal"
+          />
         </div>
 
         {/* Gear update option */}

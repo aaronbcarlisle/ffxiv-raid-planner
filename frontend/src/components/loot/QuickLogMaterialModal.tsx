@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Gem } from 'lucide-react';
-import { Modal, Select, Label, Checkbox, NumberInput } from '../ui';
+import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -21,7 +21,7 @@ import {
   needsTomeWeaponAugmentation,
   logMaterialAndUpdateGear,
 } from '../../utils/materialCoordination';
-import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface QuickLogMaterialModalProps {
@@ -53,6 +53,7 @@ export function QuickLogMaterialModal({
 }: QuickLogMaterialModalProps) {
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
+  const [method, setMethod] = useState<LootMethod>('drop');
   const [isSaving, setIsSaving] = useState(false);
   const [updateGear, setUpdateGear] = useState(true);
   // Compute initial slot selection BEFORE first render using lazy initializer
@@ -120,6 +121,7 @@ export function QuickLogMaterialModal({
     if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(maxWeek);
+      setMethod('drop');
       setUpdateGear(true);
 
       // Use player from allPlayers for consistency with eligibleOptions memo
@@ -200,6 +202,7 @@ export function QuickLogMaterialModal({
           floor,
           materialType: material,
           recipientPlayerId,
+          method,
         },
         {
           updateGear: shouldUpdateGear,
@@ -314,6 +317,21 @@ export function QuickLogMaterialModal({
             value={recipientPlayerId}
             onChange={handleRecipientChange}
             options={recipientOptions}
+          />
+        </div>
+
+        {/* Method */}
+        <div>
+          <Label>Method</Label>
+          <RadioGroup
+            name="material-method"
+            value={method}
+            onChange={(value) => setMethod(value as LootMethod)}
+            options={[
+              { value: 'drop', label: 'Drop' },
+              { value: 'book', label: 'Book' },
+            ]}
+            orientation="horizontal"
           />
         </div>
 

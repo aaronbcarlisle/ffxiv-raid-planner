@@ -172,23 +172,25 @@ const LootPriorityEntry = memo(function LootPriorityEntry({
       </div>
       {/* Right side - score (never shrinks) */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Log button - shows on hover for any entry */}
+        {/* Log button - accent for top priority, gray for others */}
         {showLogButton && onLogClick && (
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <Tooltip content={`Log ${itemLabel || 'drop'} for ${entry.player.name}`}>
-              <button
-                onClick={() => onLogClick(entry.player)}
-                className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
-              >
-                Log
-              </button>
-            </Tooltip>
-          </div>
+          <Tooltip content={`Log ${itemLabel || 'drop'} for ${entry.player.name}`}>
+            <button
+              onClick={() => onLogClick(entry.player)}
+              className={`px-2 py-0.5 text-xs rounded font-bold transition-colors ${
+                shouldHighlight
+                  ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                  : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+              }`}
+            >
+              Log
+            </button>
+          </Tooltip>
         )}
         {showScores && (
           <Tooltip delayDuration={200} content={<GearScoreTooltip entry={entry} showEnhanced={showEnhanced} />}>
             <span
-              className="text-xs px-1.5 py-0.5 rounded cursor-help"
+              className="text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
               style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
             >
               {displayScore}

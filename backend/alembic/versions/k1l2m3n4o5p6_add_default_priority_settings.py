@@ -90,6 +90,10 @@ def upgrade() -> None:
             else:
                 settings = {}
 
+            # Handle case where settings parsed to None (e.g., JSON "null")
+            if not isinstance(settings, dict):
+                settings = {}
+
             # Skip if prioritySettings already exists
             if settings.get("prioritySettings"):
                 skipped_count += 1

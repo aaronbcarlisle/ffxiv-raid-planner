@@ -311,13 +311,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {/* Log button - shows on hover */}
+                          {/* Log button - accent for top priority, gray for others */}
                           {showLogButtons && onLogClick && (
                             <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={tieEntry.player.name} />}>
                               {/* design-system-ignore: Log button with specific accent styling */}
                               <button
                                 onClick={() => onLogClick(job, tieEntry.player)}
-                                className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                                className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${
+                                  isFirst
+                                    ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                                    : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                                }`}
                               >
                                 Log
                               </button>
@@ -325,7 +329,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                           )}
                           <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                             <span
-                              className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                              className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
                               style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                             >
                               {tieEntry.score}
@@ -376,13 +380,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Log button - shows on hover for any entry */}
+                  {/* Log button - accent for top priority, gray for others */}
                   {showLogButtons && onLogClick && (
                     <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
                       {/* design-system-ignore: Log button with specific accent styling */}
                       <button
                         onClick={() => onLogClick(job, entry.player)}
-                        className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                        className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${
+                          isFirst
+                            ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                            : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                        }`}
                       >
                         Log
                       </button>
@@ -390,7 +398,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                   )}
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
-                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
                       style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}
@@ -549,13 +557,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                {/* Log button - shows on hover */}
+                                {/* Log button - accent for top priority, gray for others */}
                                 {showLogButtons && onLogClick && (
                                   <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={tieEntry.player.name} />}>
                                     {/* design-system-ignore: Log button with specific accent styling */}
                                     <button
                                       onClick={() => onLogClick(job, tieEntry.player)}
-                                      className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                                      className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${
+                                        isFirst
+                                          ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                                          : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                                      }`}
                                     >
                                       Log
                                     </button>
@@ -563,7 +575,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                                 )}
                                 <Tooltip delayDuration={200} content={<ScoreTooltip entry={tieEntry} />}>
                                   <span
-                                    className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                                    className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
                                     style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                                   >
                                     {tieEntry.score}
@@ -616,13 +628,17 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Log button - shows on hover */}
+                    {/* Log button - accent for top priority, gray for others */}
                     {showLogButtons && onLogClick && (
                       <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
                         {/* design-system-ignore: Log button with specific accent styling */}
                         <button
                           onClick={() => onLogClick(job, entry.player)}
-                          className="opacity-0 group-hover:opacity-100 px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-all"
+                          className={`px-2 py-0.5 text-xs rounded font-bold transition-all ${
+                            isFirst
+                              ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                              : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                          }`}
                         >
                           Log
                         </button>
@@ -630,7 +646,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                     )}
                     <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                       <span
-                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                        className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
                         style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                       >
                         {entry.score}
@@ -740,22 +756,24 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                       </button>
                     </Tooltip>
                   )}
-                  {/* Log button - shows on hover */}
+                  {/* Log button - accent for top priority, gray for others */}
                   {showLogButtons && onLogClick && (
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
-                        <button
-                          onClick={() => onLogClick(job, entry.player)}
-                          className="px-2 py-0.5 text-xs rounded bg-accent text-accent-contrast font-bold hover:bg-accent-hover transition-colors"
-                        >
-                          Log
-                        </button>
-                      </Tooltip>
-                    </div>
+                    <Tooltip content={<WeaponLogTooltip job={job} jobName={jobName} playerName={entry.player.name} />}>
+                      <button
+                        onClick={() => onLogClick(job, entry.player)}
+                        className={`px-2 py-0.5 text-xs rounded font-bold transition-colors ${
+                          isFirst
+                            ? 'bg-accent text-accent-contrast hover:bg-accent-hover'
+                            : 'bg-surface-elevated text-text-muted hover:bg-surface-interactive hover:text-text-secondary'
+                        }`}
+                      >
+                        Log
+                      </button>
+                    </Tooltip>
                   )}
                   <Tooltip delayDuration={200} content={<ScoreTooltip entry={entry} />}>
                     <span
-                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help"
+                      className="flex-shrink-0 text-xs px-1.5 py-0.5 rounded cursor-help min-w-[2.5rem] text-center"
                       style={{ backgroundColor: `color-mix(in srgb, ${roleColor} 30%, transparent)`, color: roleColor }}
                     >
                       {entry.score}

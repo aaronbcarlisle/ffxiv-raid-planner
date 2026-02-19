@@ -859,6 +859,7 @@ export interface MaterialLogEntry {
   materialType: MaterialType;
   recipientPlayerId: string;
   recipientPlayerName: string;
+  method: LootMethod;
   /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
@@ -883,6 +884,7 @@ export interface MaterialLogEntryCreate {
   floor: string;
   materialType: MaterialType;
   recipientPlayerId: string;
+  method?: LootMethod;
   /** Which slot was augmented (null for universal_tomestone which marks tome weapon as "have") */
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
@@ -894,6 +896,7 @@ export interface MaterialLogEntryUpdate {
   floor?: string;
   materialType?: MaterialType;
   recipientPlayerId?: string;
+  method?: LootMethod;
   slotAugmented?: GearSlot | 'tome_weapon' | null;
   notes?: string;
 }

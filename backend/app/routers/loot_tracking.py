@@ -1112,6 +1112,7 @@ async def get_material_log(
             material_type=entry.material_type,
             recipient_player_id=entry.recipient_player_id,
             recipient_player_name=entry.recipient_player.name,
+            method=entry.method,
             slot_augmented=entry.slot_augmented,
             notes=entry.notes,
             created_at=entry.created_at,
@@ -1168,6 +1169,7 @@ async def create_material_log_entry(
         floor=data.floor,
         material_type=data.material_type.value,  # Use .value to get lowercase string
         recipient_player_id=data.recipient_player_id,
+        method=data.method.value,
         slot_augmented=validated_slot,
         notes=data.notes,
         created_at=datetime.now(timezone.utc).isoformat(),
@@ -1188,6 +1190,7 @@ async def create_material_log_entry(
         material_type=entry.material_type,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        method=entry.method,
         slot_augmented=entry.slot_augmented,
         notes=entry.notes,
         created_at=entry.created_at,
@@ -1279,6 +1282,8 @@ async def update_material_log_entry(
         entry.material_type = data.material_type.value
     if data.recipient_player_id is not None:
         entry.recipient_player_id = data.recipient_player_id
+    if data.method is not None:
+        entry.method = data.method.value
     # Update slot_augmented: valid slots are set, empty string clears to None
     if isinstance(data.slot_augmented, str):
         if data.slot_augmented in VALID_AUGMENT_SLOTS:
@@ -1299,6 +1304,7 @@ async def update_material_log_entry(
         material_type=entry.material_type,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        method=entry.method,
         slot_augmented=entry.slot_augmented,
         notes=entry.notes,
         created_at=entry.created_at,

@@ -2,7 +2,7 @@
  * Gear and Team Calculations
  */
 
-import type { SnapshotPlayer, GearSlotStatus, TeamSummary } from '../types';
+import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary } from '../types';
 
 // ==================== Gear State Types ====================
 
@@ -109,14 +109,22 @@ export function calculatePlayerCompletion(gear: GearSlotStatus[]): number {
 }
 
 /**
- * Calculate upgrade materials needed for a player
+ * Calculate total upgrade materials needed for a player (target count).
+ *
+ * Returns the total number of each material type required to fully augment
+ * all tome BiS slots, regardless of current augmentation status. This is
+ * used as the denominator in "received / needed" displays.
  *
  * Only 'tome' bisSource requires augmentation materials.
  * 'base_tome' does not need augmentation (base version is BiS).
  *
+ * For solvent, also counts the tome weapon if the player is pursuing one.
+ * (BiS weapon is always raid, but the interim tome weapon needs solvent to augment.)
+ *
  * @param gear - Player's gear array
+ * @param tomeWeapon - Optional tome weapon tracking status
  */
-export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
+export function calculatePlayerMaterials(gear: GearSlotStatus[], tomeWeapon?: TomeWeaponStatus): {
   twine: number;
   glaze: number;
   solvent: number;
@@ -126,14 +134,17 @@ export function calculatePlayerMaterials(gear: GearSlotStatus[]): {
   gear.forEach((slot) => {
     // Only 'tome' pieces need upgrade materials (not base_tome)
     if (slot.bisSource !== 'tome') return;
-    // Already augmented = no material needed
-    if (slot.isAugmented) return;
     // Skip if augmentation is not required (backward compat check)
     if (!requiresAugmentation(slot)) return;
 
     const material = getUpgradeMaterialForSlot(slot.slot);
     materials[material]++;
   });
+
+  // Tome weapon needs 1 solvent to augment (tracked separately from gear array)
+  if (tomeWeapon?.pursuing) {
+    materials.solvent++;
+  }
 
   return materials;
 }
@@ -194,7 +205,7 @@ export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
     totalSlots += player.gear.length;
 
     // Materials
-    const playerMaterials = calculatePlayerMaterials(player.gear);
+    const playerMaterials = calculatePlayerMaterials(player.gear, player.tomeWeapon);
     materials.twine += playerMaterials.twine;
     materials.glaze += playerMaterials.glaze;
     materials.solvent += playerMaterials.solvent;
