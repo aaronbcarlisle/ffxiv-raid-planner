@@ -221,6 +221,32 @@ async def create_loot_log_entry(
         created_by_user_id=current_user.id,
     )
     db.add(entry)
+
+    # If mark_acquired is set, also update the player's gear hasItem for this slot
+    gear_updated = False
+    if data.mark_acquired and (data.method.value in ("drop", "book")) and not data.is_extra:
+        gear = list(recipient_player.gear or [])
+        target_slot = data.item_slot
+
+        # Smart ring handling: if logging ring1/ring2, find which ring actually needs raid BiS
+        if target_slot in ("ring1", "ring2"):
+            ring1 = next((g for g in gear if g.get("slot") == "ring1"), None)
+            ring2 = next((g for g in gear if g.get("slot") == "ring2"), None)
+            needs_ring1 = ring1 and ring1.get("bisSource") == "raid" and not ring1.get("hasItem")
+            needs_ring2 = ring2 and ring2.get("bisSource") == "raid" and not ring2.get("hasItem")
+            if needs_ring1:
+                target_slot = "ring1"
+            elif needs_ring2:
+                target_slot = "ring2"
+
+        updated_gear = [
+            {**g, "hasItem": True} if g.get("slot") == target_slot else g
+            for g in gear
+        ]
+        recipient_player.gear = updated_gear
+        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+        gear_updated = True
+
     await db.commit()
     await db.refresh(entry)
 
@@ -239,6 +265,7 @@ async def create_loot_log_entry(
         is_extra=data.is_extra,
         week_number=data.week_number,
         user_id=current_user.id,
+        gear_updated=gear_updated,
     )
 
     # Load relationships for response
@@ -1178,6 +1205,24 @@ async def create_material_log_entry(
         created_by_user_id=current_user.id,
     )
     db.add(entry)
+
+    # If mark_augmented is set and a valid slot was provided, update the player's gear
+    if data.mark_augmented and validated_slot:
+        gear = list(recipient_player.gear or [])
+
+        if validated_slot == "tome_weapon":
+            # Augment the tome weapon
+            tome_weapon = dict(recipient_player.tome_weapon or {})
+            tome_weapon["isAugmented"] = True
+            recipient_player.tome_weapon = tome_weapon
+        else:
+            # Augment the gear slot
+            recipient_player.gear = [
+                {**g, "isAugmented": True} if g.get("slot") == validated_slot else g
+                for g in gear
+            ]
+        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+
     await db.commit()
     await db.refresh(entry)
 

@@ -494,3 +494,202 @@ class TestPriorityEndpoint:
         )
         assert response.status_code == 200
         assert len(response.json()["players"]) == 2
+
+
+# ==================== Loot Log mark_acquired Tests ====================
+
+
+class TestMarkAcquired:
+    """Tests for the mark_acquired flag on loot-log POST."""
+
+    @pytest_asyncio.fixture
+    async def player_with_gear(self, session: AsyncSession, test_tier):
+        """Create a player with gear that needs raid BiS."""
+        player = await create_snapshot_player(
+            session, test_tier,
+            name="Rin", job="DRG", role="melee", position="M1", sort_order=0,
+            gear=[
+                {"slot": "head", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+                {"slot": "body", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+                {"slot": "ring1", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+                {"slot": "ring2", "bisSource": "tome", "hasItem": True, "isAugmented": False},
+            ],
+        )
+        await session.commit()
+        return player
+
+    @pytest.mark.asyncio
+    async def test_mark_acquired_updates_gear(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_gear
+    ):
+        """Logging loot with markAcquired=true should set hasItem=true on the gear slot."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/loot-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M10S",
+                "itemSlot": "head",
+                "recipientPlayerId": player_with_gear.id,
+                "method": "drop",
+                "markAcquired": True,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+
+        # Verify gear was updated via priority endpoint (which reads fresh gear data)
+        priority_response = await client.get(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/priority?floor=2",
+            headers=auth_headers,
+        )
+        data = priority_response.json()
+        # Player should NOT appear in head priority anymore (they now have it)
+        head_priority = data["priority"]["floor2"]["head"]
+        player_ids = [e["playerId"] for e in head_priority]
+        assert player_with_gear.id not in player_ids
+
+    @pytest.mark.asyncio
+    async def test_without_mark_acquired_does_not_update_gear(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_gear
+    ):
+        """Logging loot without markAcquired should NOT change gear state."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/loot-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M10S",
+                "itemSlot": "head",
+                "recipientPlayerId": player_with_gear.id,
+                "method": "drop",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+
+        # Player should still appear in head priority (gear unchanged)
+        priority_response = await client.get(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/priority?floor=2",
+            headers=auth_headers,
+        )
+        data = priority_response.json()
+        head_priority = data["priority"]["floor2"]["head"]
+        player_ids = [e["playerId"] for e in head_priority]
+        assert player_with_gear.id in player_ids
+
+    @pytest.mark.asyncio
+    async def test_mark_acquired_smart_ring(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_gear
+    ):
+        """Ring logging should find the correct ring slot that needs raid BiS."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/loot-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M9S",
+                "itemSlot": "ring1",
+                "recipientPlayerId": player_with_gear.id,
+                "method": "drop",
+                "markAcquired": True,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+
+        # ring1 has bisSource=raid, so it should be marked as acquired
+        # ring2 has bisSource=tome, should remain unchanged
+        priority_response = await client.get(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/priority?floor=1",
+            headers=auth_headers,
+        )
+        data = priority_response.json()
+        ring_priority = data["priority"]["floor1"]["ring"]
+        player_ids = [e["playerId"] for e in ring_priority]
+        # Player needed ring1 (raid) but not ring2 (tome), so after marking ring1 acquired
+        # they should no longer appear in ring priority
+        assert player_with_gear.id not in player_ids
+
+    @pytest.mark.asyncio
+    async def test_mark_acquired_skipped_for_extra_loot(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_gear
+    ):
+        """Extra/off-spec loot should not update gear even with markAcquired=true."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/loot-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M10S",
+                "itemSlot": "head",
+                "recipientPlayerId": player_with_gear.id,
+                "method": "drop",
+                "isExtra": True,
+                "markAcquired": True,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+
+        # Player should still appear in head priority (extra loot doesn't update gear)
+        priority_response = await client.get(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/priority?floor=2",
+            headers=auth_headers,
+        )
+        data = priority_response.json()
+        head_priority = data["priority"]["floor2"]["head"]
+        player_ids = [e["playerId"] for e in head_priority]
+        assert player_with_gear.id in player_ids
+
+
+class TestMarkAugmented:
+    """Tests for the mark_augmented flag on material-log POST."""
+
+    @pytest_asyncio.fixture
+    async def player_with_tome_gear(self, session: AsyncSession, test_tier):
+        """Create a player with unaugmented tome gear."""
+        player = await create_snapshot_player(
+            session, test_tier,
+            name="Kira", job="WHM", role="healer", position="H1", sort_order=0,
+            gear=[
+                {"slot": "earring", "bisSource": "tome", "hasItem": True, "isAugmented": False, "itemName": "Aug. Earring"},
+            ],
+            tome_weapon={"pursuing": True, "hasItem": True, "isAugmented": False},
+        )
+        await session.commit()
+        return player
+
+    @pytest.mark.asyncio
+    async def test_mark_augmented_updates_gear(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_tome_gear
+    ):
+        """Logging material with markAugmented=true should set isAugmented=true."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/material-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M10S",
+                "materialType": "glaze",
+                "recipientPlayerId": player_with_tome_gear.id,
+                "slotAugmented": "earring",
+                "markAugmented": True,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_mark_augmented_tome_weapon(
+        self, client: AsyncClient, auth_headers: dict, test_group, test_tier, player_with_tome_gear
+    ):
+        """Logging solvent with slot=tome_weapon should augment the tome weapon."""
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/tiers/{test_tier.id}/material-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M11S",
+                "materialType": "solvent",
+                "recipientPlayerId": player_with_tome_gear.id,
+                "slotAugmented": "tome_weapon",
+                "markAugmented": True,
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201

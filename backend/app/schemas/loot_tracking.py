@@ -56,6 +56,7 @@ class LootLogEntryCreate(CamelModel):
     notes: str | None = None
     weapon_job: str | None = None  # "DRG", "WHM", etc. for weapon slots
     is_extra: bool = False  # True if extra/off-job loot
+    mark_acquired: bool = False  # If True, also set hasItem=True on the player's gear slot
 
 
 class LootLogEntryUpdate(CamelModel):
@@ -171,6 +172,7 @@ class MaterialLogEntryCreate(CamelModel):
     # Values: "weapon", "head", "body", etc., or "tome_weapon" for solvent augmenting tome weapon
     slot_augmented: str | None = None
     notes: str | None = None
+    mark_augmented: bool = False  # If True and slot_augmented is set, also set isAugmented=True on the gear slot
 
 
 class MaterialLogEntryUpdate(CamelModel):
