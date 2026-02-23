@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.9.1 | **Next:** Session 4 (MembersPanel), Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.13.0 | **Next:** UI Reorganization, Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
 
@@ -62,6 +62,8 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 | Error display | `ErrorMessage` | `ui/ErrorMessage.tsx` |
 | Loading state | `Skeleton` | `ui/Skeleton.tsx` |
 | Job icon | `JobIcon` | `ui/JobIcon.tsx` |
+| Toggle switch | `Toggle` | `ui/Toggle.tsx` |
+| Theme toggle | `ThemeToggle` | `ui/ThemeToggle.tsx` |
 | Static creation wizard | `SetupWizard` | `wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `player/AssignUserModal.tsx` |
@@ -89,15 +91,15 @@ pnpm dev                          # Frontend only
 pnpm build && pnpm tsc --noEmit   # Build + type check
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
-pnpm test                         # Frontend tests (351)
+pnpm test                         # Frontend tests (503)
 
 # Backend
 cd backend && source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
-pytest tests/ -q                  # Backend tests (209)
+pytest tests/ -q                  # Backend tests (290)
 
 # Scripts
-cd scripts && npm test            # Scripts tests (87)
+cd scripts && npm test            # Scripts tests (95)
 ```
 
 ---
@@ -124,6 +126,7 @@ cd scripts && npm test            # Scripts tests (87)
 - `hooks/useModal.ts` - Modal state management
 - `hooks/useDebounce.ts` - Debounce utilities
 - `hooks/useDoubleClickConfirm.ts` - Double-click confirm pattern
+- `hooks/useTheme.ts` - Dark/light theme state, localStorage, OS preference
 
 ### Pages
 - `pages/GroupView.tsx` - Main group view (~970 lines)

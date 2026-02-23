@@ -1,28 +1,29 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** January 25, 2026
+**Last Updated:** February 23, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.9.1
+### Current Version: v1.13.0
 
 **Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| **Light Mode Theme** | 🔨 In Review | PR #68 - Full light mode with floating day/night toggle |
+| **Flexible Priority Control** | ✅ Complete | PR #66-67 - Priority modes, per-job/player modifiers, log week wizard |
 | **Mobile UX Optimization** | 🔨 ~80% | PR #60 - First pass complete; polish and refinements remaining |
 | **Materia in Gear Tooltips** | ✅ Complete | PR #58 - L-003 resolved |
 | **Multi-Set XIVGear Support** | ✅ Complete | PR #59 - Store setIndex in shortlink bisLinks |
-| **Member Permissions Fix** | ✅ Complete | PR #57 - Edit Books feature added |
 
-### 🔨 Next Up: Session 4 (Optional)
+### 🔨 Next Up
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **MembersPanel Enhancement** | Pending | Add Linked Card dropdown per member (see SETUP_WIZARD_PLAN.md) |
+| **UI Reorganization** | Planned | Header breadcrumbs, settings panel, toolbar consolidation |
 
 ### ✅ Completed Features (Production Ready)
 
@@ -58,6 +59,34 @@
 ---
 
 ## Version History
+
+### v1.13.0 - Light Mode (February 23, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Light Mode Theme** | ✅ Complete | Full light mode via CSS custom property overrides |
+| **ThemeToggle** | ✅ Complete | Floating pill-shaped sun/moon toggle |
+| **useTheme Hook** | ✅ Complete | localStorage persistence, OS preference, FOUC prevention |
+
+### v1.12.0 - Flexible Priority Settings (January 30, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Priority Mode Selection** | ✅ Complete | Automatic, Manual, and Disabled modes |
+| **Job Priority Modifiers** | ✅ Complete | Per-job priority adjustments |
+| **Player Priority Adjustments** | ✅ Complete | Per-player loot adjustment slider |
+| **Log Week Wizard** | ✅ Complete | Streamlined weekly loot logging flow |
+
+### v1.10.0-v1.11.1 - Privacy, Mobile Polish, Loot Improvements (January-February 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Privacy & Security Docs** | ✅ Complete | Comprehensive privacy page with verification |
+| **Quick Drop Logging** | ✅ Complete | Streamlined floor-by-floor loot logging |
+| **Floor Selector Improvements** | ✅ Complete | Better floor navigation for loot tracking |
+| **Mobile Touch Refinements** | ✅ Complete | Long-press tooltips, swipe navigation |
+
+> **Full version history:** See `frontend/src/data/releaseNotes.ts` for complete changelog with commit references.
 
 ### v1.9.1 - Mobile UX & Materia Tooltips (January 25, 2026)
 
@@ -158,7 +187,7 @@
 | **P1-DEVOPS-001** | ✅ Fixed | Removed dual lockfiles, standardized on pnpm |
 | **P1-SEC-004** | ⏭️ N/A | ecdsa CVE not exploitable (we use HS256, not ECDSA) |
 
-**Test Coverage:** 209 backend + 351 frontend + 87 scripts = 647 tests passing
+**Test Coverage:** 290 backend + 503 frontend + 95 scripts = 888 tests passing
 
 ---
 
@@ -308,7 +337,6 @@
 | Issue | Location | Status |
 |-------|----------|--------|
 | **Props drilling** | GroupView | Deferred - hooks mitigate (R-002) |
-| **Materia in tooltips** | GearTable | Future - requires backend changes |
 | **Onboarding tooltips** | First-run experience | Future |
 | **Alt Job Linking** | Multi-job players | Future |
 
@@ -316,9 +344,9 @@
 
 ## Test Coverage
 
-**Total: 647 tests (209 backend + 351 frontend + 87 scripts)**
+**Total: 888 tests (290 backend + 503 frontend + 95 scripts)**
 
-### Backend (209 tests)
+### Backend (290 tests)
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
@@ -329,9 +357,10 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_pr_integration.py` - Integration tests
 - `test_player_assignment.py` - Admin player assignment endpoints
+- `test_weekly_assignments.py` - Weekly assignment endpoints
 - Security middleware tests (CSRF, rate limiting, request size)
 
-### Frontend (351 tests)
+### Frontend (503 tests)
 ```bash
 cd frontend && pnpm test
 ```
@@ -342,13 +371,17 @@ cd frontend && pnpm test
 - `calculations.test.ts` - iLv and priority calculations
 - `priority.test.ts` - Loot priority scoring
 - `releaseNotes.test.ts` - Release notes data validation
-- `uxHelpers.test.ts` - UX patterns and accessibility
 - `lootCoordination.test.ts` - Loot stats and gear sync
+- `materialCoordination.test.ts` - Material coordination logic
 - `useModal.test.ts` - Modal state hooks
 - `useDebounce.test.ts` - Debounce utilities
-- `PlayerSetupBanner.test.ts` - Banner visibility logic (20 tests)
+- `useTheme.test.ts` - Theme state, persistence, OS preference
+- `useDevice.test.ts` - Device capability detection
+- `useSwipe.test.ts` - Swipe gesture handling
+- `useLongPress.test.ts` - Long press gesture handling
+- `ItemHoverCard.test.tsx` - Item hover card rendering
 
-### Scripts (87 tests)
+### Scripts (95 tests)
 ```bash
 cd scripts && npm test
 ```
@@ -358,35 +391,17 @@ cd scripts && npm test
 
 ## Next Steps
 
+See `docs/OUTSTANDING_WORK.md` for the prioritized remaining work list.
+
 ### Immediate Options
-
-**Option A: Session 4 (MembersPanel Enhancement)**
-Add "Linked Card" dropdown to each member row in MembersPanel:
-- Show available cards: unclaimed OR already claimed by this member
-- On selection, call existing assign endpoint
-- Pre-select if member already has a linked card
-
-See `docs/SETUP_WIZARD_PLAN.md` for implementation details.
-
-**Option B: P3 Items (Low Priority)**
-See `docs/OUTSTANDING_WORK.md` for prioritized remaining work:
-- L-001 through L-009: Various low-priority improvements
-- TD-001 through TD-005: Technical debt (lint issues)
+- **UI Reorganization** - Header breadcrumbs, settings panel (see `docs/UI_REORGANIZATION_PLAN.md`)
+- **P3 Items** - L-001 through L-009: Various low-priority improvements
+- **Tech Debt** - TD-001, TD-002: Lint warnings cleanup
 
 ### Future Phases
-
-- **Phase 7:** Lodestone auto-sync - Verify equipped gear against Lodestone
-- **Phase 8:** FFLogs integration - Parse logs for gear verification
-- **Phase 9:** Discord bot - Notifications and commands
-
-### Completed Audit Sessions
-
-All critical (P0) and high (P1) security issues have been resolved:
-- Sessions 1-2: Critical auth hardening, admin N+1 query
-- Session 3: Dependency security (react-router CVEs)
-- Session 4: CSP header, SSRF fix
-- Session 5: Security hardening sprint (CSRF, OAuth binding, etc.)
-- Session 7: UI Consistency Sprint
+- **Phase 7:** Lodestone auto-sync
+- **Phase 8:** FFLogs integration
+- **Phase 10:** Discord bot
 
 ---
 
@@ -396,12 +411,12 @@ All critical (P0) and high (P1) security issues have been resolved:
 docs/
 ├── CONSOLIDATED_STATUS.md       # This file - project status and version history
 ├── OUTSTANDING_WORK.md          # Prioritized list of remaining work (P0-P3)
-├── SESSION_HANDOFF.md           # Current session handoff notes
 ├── UI_COMPONENTS.md             # UI component inventory (READ BEFORE UI WORK)
 ├── CODING_STANDARDS.md          # Code style and patterns
-├── SETUP_WIZARD_PLAN.md         # Setup wizard implementation plan
 ├── GEARING_REFERENCE.md         # FFXIV gearing data
 ├── GEARING_MATH.md              # Gearing mechanics and formulas
+├── UI_REORGANIZATION_PLAN.md    # Planned UI restructure (not started)
+├── SETUP_WIZARD_PLAN.md         # Setup wizard plan (complete)
 ├── plans/                       # Technical audit session plans
 │   ├── COMBINED_AUDIT_PLAN.md   # Master plan (47 issues, 12 sessions)
 │   └── SESSION_01-12.md         # Individual session details

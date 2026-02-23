@@ -32,6 +32,8 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Job icon | `JobIcon` | `components/ui/JobIcon.tsx` |
 | Tooltip | `Tooltip` | `components/primitives/Tooltip.tsx` |
 | Status badge | `Badge` | `components/primitives/Badge.tsx` |
+| Toggle switch | `Toggle` | `components/ui/Toggle.tsx` |
+| Theme toggle | `ThemeToggle` | `components/ui/ThemeToggle.tsx` |
 | Static creation | `SetupWizard` | `components/wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `components/player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `components/player/AssignUserModal.tsx` |
