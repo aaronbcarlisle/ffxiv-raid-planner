@@ -25,11 +25,11 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       className="fixed bottom-[8.5rem] left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
       style={{
-        width: 64,
-        height: 44,
-        borderRadius: 22,
+        width: 80,
+        height: 40,
+        borderRadius: 20,
         border: 'none',
-        padding: '6px 0',
+        padding: 0,
         cursor: 'pointer',
         background: isLight
           ? 'linear-gradient(135deg, #87CEEB 0%, #60A5FA 100%)' // design-system-ignore
@@ -45,8 +45,8 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 12,
-          right: 10,
+          top: 8,
+          right: 12,
           width: 3,
           height: 3,
           borderRadius: '50%',
@@ -59,8 +59,8 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 20,
-          right: 18,
+          top: 18,
+          right: 22,
           width: 2,
           height: 2,
           borderRadius: '50%',
@@ -73,8 +73,8 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 14,
-          right: 26,
+          top: 12,
+          right: 34,
           width: 2,
           height: 2,
           borderRadius: '50%',
@@ -89,10 +89,10 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 9,
-          left: isLight ? 35 : 3,
-          width: 26,
-          height: 26,
+          top: 4,
+          left: isLight ? 44 : 4,
+          width: 32,
+          height: 32,
           borderRadius: '50%',
           // design-system-ignore
           background: isLight
@@ -109,7 +109,7 @@ export function ThemeToggle() {
       >
         {isLight ? (
           // Sun icon
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="5" />
             <line x1="12" y1="1" x2="12" y2="3" />
             <line x1="12" y1="21" x2="12" y2="23" />
@@ -122,7 +122,7 @@ export function ThemeToggle() {
           </svg>
         ) : (
           // Moon icon
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#475569" stroke="#475569" strokeWidth="1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#475569" stroke="#475569" strokeWidth="1">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
         )}
