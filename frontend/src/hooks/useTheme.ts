@@ -39,8 +39,17 @@ export function useTheme() {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [theme, setTheme]);
+    setThemeState((prev) => {
+      const next: Theme = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // Persistence failure — theme is still applied visually
+      }
+      applyTheme(next);
+      return next;
+    });
+  }, []);
 
   // Sync DOM on initial mount only — intentionally excludes `theme` from deps.
   // The IIFE in main.tsx already sets the correct attribute before React renders;
