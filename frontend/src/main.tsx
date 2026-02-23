@@ -7,7 +7,8 @@ import './index.css';
 import App from './App.tsx';
 import { ThemeProvider } from './hooks/useTheme';
 
-// Apply theme before React renders to prevent flash of wrong theme (FOUC)
+// Apply theme before React renders to prevent flash of wrong theme (FOUC).
+// NOTE: Keep detection logic in sync with getInitialTheme() in hooks/useTheme.ts.
 (function initTheme() {
   let saved: string | null = null;
   try { saved = localStorage.getItem('theme'); } catch { /* storage unavailable */ }

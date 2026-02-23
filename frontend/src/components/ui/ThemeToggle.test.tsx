@@ -66,16 +66,14 @@ describe('ThemeToggle', () => {
 
   it('renders moon icon in dark mode', () => {
     mockTheme = 'dark';
-    const { container } = render(<ThemeToggle />);
-    const moonPath = container.querySelector('path[d*="M21 12.79"]');
-    expect(moonPath).not.toBeNull();
+    render(<ThemeToggle />);
+    expect(screen.getByTestId('icon-moon')).toBeDefined();
   });
 
   it('renders sun icon in light mode', () => {
     mockTheme = 'light';
-    const { container } = render(<ThemeToggle />);
-    const sunCircle = container.querySelector('circle[cx="12"][cy="12"]');
-    expect(sunCircle).not.toBeNull();
+    render(<ThemeToggle />);
+    expect(screen.getByTestId('icon-sun')).toBeDefined();
   });
 
   it('marks all decorative elements as aria-hidden', () => {

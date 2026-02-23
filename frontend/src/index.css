@@ -265,6 +265,11 @@
   --color-theme-track-end: #60A5FA;
   --color-theme-orb: #fbbf24;
   --color-theme-orb-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+
+  /* Badge text contrast colors — darker shades for light backgrounds */
+  --color-gear-raid-text: #b91c1c;
+  --color-gear-crafted-text: #9a3412;
+  --color-gear-augmented-text: #92400e;
 }
 
 /* Light mode scrollbar */
@@ -299,7 +304,7 @@
    Acceptable for this app's audience (active FFXIV raiders on modern browsers). */
 [data-theme="light"] .badge-raid {
   background-color: color-mix(in srgb, var(--color-gear-raid) 10%, transparent);
-  color: #b91c1c; /* darker shade of --color-gear-raid for text contrast */
+  color: var(--color-gear-raid-text);
   border-color: color-mix(in srgb, var(--color-gear-raid) 25%, transparent);
 }
 
@@ -311,13 +316,13 @@
 
 [data-theme="light"] .badge-crafted {
   background-color: color-mix(in srgb, var(--color-gear-crafted) 10%, transparent);
-  color: #9a3412; /* darker shade of --color-gear-crafted for text contrast */
+  color: var(--color-gear-crafted-text);
   border-color: color-mix(in srgb, var(--color-gear-crafted) 25%, transparent);
 }
 
 [data-theme="light"] .badge-augmented {
   background-color: color-mix(in srgb, var(--color-gear-augmented) 10%, transparent);
-  color: #92400e; /* darker shade of --color-gear-augmented for text contrast */
+  color: var(--color-gear-augmented-text);
   border-color: color-mix(in srgb, var(--color-gear-augmented) 25%, transparent);
 }
 

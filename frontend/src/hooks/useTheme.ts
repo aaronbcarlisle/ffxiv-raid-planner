@@ -9,6 +9,7 @@ function isValidTheme(value: string | null): value is Theme {
   return value === 'dark' || value === 'light';
 }
 
+// NOTE: Keep in sync with the IIFE in main.tsx that prevents FOUC.
 function getInitialTheme(): Theme {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -59,12 +60,9 @@ function useThemeInternal(): ThemeContextValue {
     });
   }, []);
 
-  // Sync DOM on initial mount only — intentionally excludes `theme` from deps.
-  // The IIFE in main.tsx already sets the correct attribute before React renders;
-  // this guards against external DOM resets (e.g. Radix scroll-lock).
-  useEffect(() => {
-    applyTheme(theme);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // No mount-sync useEffect needed — the IIFE in main.tsx sets data-theme
+  // synchronously before React renders. All subsequent changes go through
+  // setTheme/toggleTheme which call applyTheme directly.
 
   // Listen for OS preference changes when no saved preference
   useEffect(() => {
