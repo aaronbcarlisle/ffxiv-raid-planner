@@ -8,7 +8,7 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { createElement } from 'react';
 import { Toggle } from '../ui';
@@ -36,10 +36,10 @@ function renderThemeToggle(theme: Theme, setTheme: (t: Theme) => void) {
 // ── Tests ──────────────────────────────────────────────────────────
 
 describe('UserMenu theme toggle', () => {
-  let mockSetTheme: vi.Mock<(t: Theme) => void>;
+  let mockSetTheme: Mock<(t: Theme) => void>;
 
   beforeEach(() => {
-    mockSetTheme = vi.fn<(t: Theme) => void>();
+    mockSetTheme = vi.fn();
   });
 
   it('shows "Dark Mode" and unchecked toggle when theme is dark', () => {
