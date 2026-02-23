@@ -1,5 +1,8 @@
 """FastAPI dependencies for authentication and authorization"""
 
+import hashlib
+from datetime import datetime, timezone
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -21,18 +24,76 @@ def _extract_access_token(
 
     Priority:
     1. httpOnly cookie (secure, XSS-resistant)
-    2. Authorization header (backward compatibility)
+    2. Authorization header (backward compatibility + API keys)
     """
     # Try cookie first (preferred, secure method)
     token = request.cookies.get("access_token")
     if token:
         return token
 
-    # Fall back to Authorization header (backward compatibility)
+    # Fall back to Authorization header (backward compatibility + API keys)
     if credentials:
         return credentials.credentials
 
     return None
+
+
+async def _validate_api_key(token: str, session: AsyncSession) -> User:
+    """Validate an API key (xrp_ prefixed token) and return the associated user.
+
+    Looks up the key by SHA-256 hash, verifies it's active and not expired,
+    and updates last_used_at.
+    """
+    from .models import ApiKey
+
+    key_hash = hashlib.sha256(token.encode()).hexdigest()
+    result = await session.execute(
+        select(ApiKey).where(ApiKey.key_hash == key_hash)
+    )
+    api_key = result.scalar_one_or_none()
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not api_key.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check expiration
+    if api_key.expires_at:
+        expires = datetime.fromisoformat(api_key.expires_at)
+        if datetime.now(timezone.utc) > expires:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    # Update last_used_at
+    api_key.last_used_at = datetime.now(timezone.utc).isoformat()
+    await session.flush()
+
+    # Load the associated user
+    user_result = await session.execute(
+        select(User).where(User.id == api_key.user_id)
+    )
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key owner not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
 
 
 async def get_current_user(
@@ -40,10 +101,10 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    """Get the current authenticated user from JWT token.
+    """Get the current authenticated user from JWT token or API key.
 
-    Accepts token from either httpOnly cookie (preferred) or Authorization header.
-    Raises HTTPException if not authenticated.
+    Accepts token from either httpOnly cookie (preferred), Authorization header,
+    or API key (xrp_ prefix). Raises HTTPException if not authenticated.
     """
     token = _extract_access_token(request, credentials)
 
@@ -54,6 +115,11 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # API key path: xrp_ prefix distinguishes API keys from JWTs
+    if token.startswith("xrp_"):
+        return await _validate_api_key(token, session)
+
+    # Existing JWT path
     user_id = verify_token(token, token_type="access")
     if not user_id:
         raise HTTPException(
@@ -83,7 +149,8 @@ async def get_current_user_optional(
 ) -> User | None:
     """Get the current user if authenticated, otherwise return None.
 
-    Accepts token from either httpOnly cookie (preferred) or Authorization header.
+    Accepts token from either httpOnly cookie (preferred), Authorization header,
+    or API key (xrp_ prefix).
     Use this for endpoints that work both with and without authentication.
     """
     token = _extract_access_token(request, credentials)
@@ -91,6 +158,14 @@ async def get_current_user_optional(
     if not token:
         return None
 
+    # API key path
+    if token.startswith("xrp_"):
+        try:
+            return await _validate_api_key(token, session)
+        except HTTPException:
+            return None
+
+    # JWT path
     user_id = verify_token(token, token_type="access")
     if not user_id:
         return None

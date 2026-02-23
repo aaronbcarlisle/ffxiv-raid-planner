@@ -95,7 +95,17 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         return False
 
     def _validate_csrf(self, request: Request) -> bool:
-        """Validate CSRF token from header matches cookie."""
+        """Validate CSRF token from header matches cookie.
+
+        API key requests (Bearer xrp_...) are exempt from CSRF validation
+        because API keys are not automatically sent by browsers and thus
+        are not vulnerable to cross-site request forgery.
+        """
+        # Skip CSRF for API key auth (not vulnerable - keys aren't auto-sent by browsers)
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer xrp_"):
+            return True
+
         cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
         header_token = request.headers.get(CSRF_HEADER_NAME)
 

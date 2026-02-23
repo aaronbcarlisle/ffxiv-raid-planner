@@ -31,9 +31,13 @@ import {
   BookOpen,
   Sun,
   Moon,
+  Key,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
+import { Modal } from '../ui/Modal';
+import { useModal } from '../../hooks/useModal';
 import { Toggle } from '../ui';
+import { ApiKeyManager } from '../settings/ApiKeyManager';
 
 interface UserMenuProps {
   className?: string;
@@ -43,6 +47,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const apiKeysModal = useModal();
 
   if (!user) return null;
 
@@ -50,6 +55,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const avatarUrl = user.avatarUrl || getDefaultAvatar(user.discordId);
 
   return (
+    <>
     <Dropdown>
       <DropdownTrigger>
         {/* design-system-ignore - Radix DropdownTrigger requires native button with asChild */}
@@ -153,6 +159,13 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         </DropdownSub>
 
         <DropdownItem
+          icon={<Key className="w-4 h-4" />}
+          onSelect={() => apiKeysModal.open()}
+        >
+          API Keys
+        </DropdownItem>
+
+        <DropdownItem
           icon={<Keyboard className="w-4 h-4" />}
           onSelect={() => window.dispatchEvent(new CustomEvent('show-keyboard-shortcuts'))}
           shortcut="Shift+?"
@@ -210,6 +223,12 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         </DropdownItem>
       </DropdownContent>
     </Dropdown>
+
+    {/* API Keys Modal */}
+    <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />API Keys</span>} size="lg">
+      <ApiKeyManager />
+    </Modal>
+    </>
   );
 }
 

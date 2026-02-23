@@ -1,5 +1,6 @@
 """SQLAlchemy models"""
 
+from .api_key import ApiKey
 from .invitation import Invitation
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
@@ -12,6 +13,7 @@ from .user import User
 from .weekly_assignment import WeeklyAssignment
 
 __all__ = [
+    "ApiKey",
     "Invitation",
     "LootLogEntry",
     "MaterialLogEntry",

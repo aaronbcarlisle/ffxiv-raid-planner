@@ -43,6 +43,8 @@ from app.schemas import (
     WeekOperationResponse,
 )
 
+from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority
+
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
 # Maximum weeks allowed per tier (~5 months of raiding)
@@ -1373,3 +1375,119 @@ async def get_material_balances(
         )
 
     return balances
+
+
+# Priority Calculation Endpoint
+
+
+# Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts)
+TIER_FLOOR_NAMES: dict[str, list[str]] = {
+    "aac-heavyweight": ["M9S", "M10S", "M11S", "M12S"],
+    "aac-cruiserweight": ["M5S", "M6S", "M7S", "M8S"],
+    "aac-light-heavyweight": ["M1S", "M2S", "M3S", "M4S"],
+    "anabaseios": ["P9S", "P10S", "P11S", "P12S"],
+}
+
+
+def _player_to_dict(player: SnapshotPlayer) -> dict:
+    """Convert a SnapshotPlayer ORM model to a dict matching the TypeScript SnapshotPlayer shape."""
+    return {
+        "id": player.id,
+        "name": player.name,
+        "job": player.job,
+        "role": player.role,
+        "position": player.position,
+        "gear": player.gear or [],
+        "tomeWeapon": player.tome_weapon or {},
+        "lootAdjustment": player.loot_adjustment or 0,
+        "priorityModifier": player.priority_modifier or 0,
+        "configured": player.configured,
+        "isSubstitute": player.is_substitute,
+    }
+
+
+def _material_entry_to_dict(entry: MaterialLogEntry) -> dict:
+    """Convert a MaterialLogEntry ORM model to a dict for the priority calculator."""
+    return {
+        "materialType": entry.material_type,
+        "recipientPlayerId": entry.recipient_player_id,
+        "slotAugmented": entry.slot_augmented,
+    }
+
+
+@router.get("/{group_id}/tiers/{tier_id}/priority")
+async def get_priority(
+    group_id: str,
+    tier_id: str,
+    floor: int | None = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get loot priority rankings for a tier, optionally filtered by floor (1-4).
+
+    Used by the Dalamud plugin to display in-game priority overlay.
+    Also available to the web UI for server-side priority verification.
+    """
+    # Check view permissions (supports anonymous for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier snapshot
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get configured, non-substitute players
+    players_result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+            SnapshotPlayer.configured == True,
+            SnapshotPlayer.is_substitute == False,
+        ).order_by(SnapshotPlayer.sort_order)
+    )
+    players_orm = players_result.scalars().all()
+    players = [_player_to_dict(p) for p in players_orm]
+
+    # Get material log for material priority calculations
+    material_result = await db.execute(
+        select(MaterialLogEntry).where(
+            MaterialLogEntry.tier_snapshot_id == tier.id,
+        )
+    )
+    material_entries = material_result.scalars().all()
+    material_log = [_material_entry_to_dict(e) for e in material_entries]
+
+    # Get settings from the static group
+    settings = group.settings or {}
+
+    # Calculate current week
+    current_week = calculate_week_number(tier)
+
+    # Determine tier floor names
+    tier_floors = TIER_FLOOR_NAMES.get(tier.tier_id, [f"F{i}S" for i in range(1, 5)])
+
+    # Calculate priority
+    if floor is not None:
+        if floor < 1 or floor > 4:
+            raise HTTPException(status_code=400, detail="Floor must be 1-4")
+        priority = {
+            f"floor{floor}": calculate_floor_priority(players, floor, settings, material_log)
+        }
+    else:
+        priority = calculate_all_floors_priority(players, settings, material_log)
+
+    # Build player info list
+    player_info = [
+        {
+            "id": p["id"],
+            "name": p["name"],
+            "job": p["job"],
+            "role": p["role"],
+        }
+        for p in players
+    ]
+
+    return {
+        "currentWeek": current_week,
+        "tierFloors": tier_floors,
+        "players": player_info,
+        "priority": priority,
+    }
