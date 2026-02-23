@@ -48,7 +48,7 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Light mode theme',
-        description: 'Switch between dark and light themes with a floating toggle in the bottom-left corner',
+        description: 'Switch between dark and light themes via the toggle in your user menu',
         details:
           'Full light mode support with carefully tuned colors for readability. The app respects your OS preference by default, and your choice persists across sessions. All surfaces, text, badges, glows, and role colors adapt automatically.',
         commits: [{ hash: '0234686', message: 'feat: add light mode theme with floating day/night toggle' }],

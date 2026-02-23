@@ -33,7 +33,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
-import { Toggle } from '../ui/Toggle';
+import { Toggle } from '../ui';
 
 interface UserMenuProps {
   className?: string;
@@ -42,7 +42,7 @@ interface UserMenuProps {
 export function UserMenu({ className = '' }: UserMenuProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   if (!user) return null;
 
@@ -160,8 +160,11 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           Shortcuts
         </DropdownItem>
 
-        {/* Theme toggle — standalone row (not a Radix Item) so the Toggle button handles its own focus/click.
-            Override off-state orb colors so the handle is visible against the dark menu background. */}
+        {/* Theme toggle — standalone row, not a Radix DropdownMenu.Item.
+            This means arrow-key navigation skips this row; the Toggle is still
+            reachable via Tab. Using a plain div avoids Radix's onSelect closing
+            the menu and prevents nesting interactive elements (button inside menuitem).
+            Off-state orb colors are overridden so the handle is visible against the dark menu. */}
         <div
           className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary"
           style={{
@@ -175,7 +178,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           <span className="flex-1">{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
           <Toggle
             checked={theme === 'light'}
-            onChange={toggleTheme}
+            onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
             size="sm"
             aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           />

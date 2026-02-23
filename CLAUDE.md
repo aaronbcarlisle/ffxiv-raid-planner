@@ -63,7 +63,6 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 | Loading state | `Skeleton` | `ui/Skeleton.tsx` |
 | Job icon | `JobIcon` | `ui/JobIcon.tsx` |
 | Toggle switch | `Toggle` | `ui/Toggle.tsx` |
-| Theme toggle | `ThemeToggle` | `ui/ThemeToggle.tsx` |
 | Static creation wizard | `SetupWizard` | `wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `player/AssignUserModal.tsx` |
