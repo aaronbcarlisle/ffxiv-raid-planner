@@ -549,7 +549,13 @@ export function GroupView() {
     const map = new Map<string, Set<GearSlot>>();
     for (const entry of lootLog) {
       const existing = map.get(entry.recipientPlayerId) ?? new Set<GearSlot>();
-      existing.add(entry.itemSlot as GearSlot);
+      // Loot log stores rings as "ring" — map to both ring1/ring2 for gear slot matching
+      if (entry.itemSlot === 'ring') {
+        existing.add('ring1');
+        existing.add('ring2');
+      } else {
+        existing.add(entry.itemSlot as GearSlot);
+      }
       map.set(entry.recipientPlayerId, existing);
     }
     return map;

@@ -228,8 +228,8 @@ async def create_loot_log_entry(
         gear = list(recipient_player.gear or [])
         target_slot = data.item_slot
 
-        # Smart ring handling: if logging ring1/ring2, find which ring actually needs raid BiS
-        if target_slot in ("ring1", "ring2"):
+        # Smart ring handling: if logging ring/ring1/ring2, find which ring actually needs raid BiS
+        if target_slot in ("ring", "ring1", "ring2"):
             ring1 = next((g for g in gear if g.get("slot") == "ring1"), None)
             ring2 = next((g for g in gear if g.get("slot") == "ring2"), None)
             needs_ring1 = ring1 and ring1.get("bisSource") == "raid" and not ring1.get("hasItem")
