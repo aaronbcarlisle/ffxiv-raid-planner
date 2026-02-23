@@ -62,7 +62,7 @@ class Settings(BaseSettings):
 
     # CORS regex pattern for Vercel preview deployments (opt-in for security)
     # Empty by default - set explicitly to enable preview domain access
-    # Example pattern: https://ffxiv-raid-planner-dev-.*\.vercel\.app
+    # Example pattern: https://ffxiv-raid-planner-.*\.vercel\.app
     # WARNING: Only use for preview/staging deployments, not general *.vercel.app access
     cors_vercel_preview_pattern: str = ""
 

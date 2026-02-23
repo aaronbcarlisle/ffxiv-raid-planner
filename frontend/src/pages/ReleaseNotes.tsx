@@ -441,7 +441,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                     className="flex items-center gap-2 text-sm"
                   >
                     <a
-                      href={`https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/commit/${commit.hash}`}
+                      href={`https://github.com/aaronbcarlisle/ffxiv-raid-planner/commit/${commit.hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline"

@@ -1422,32 +1422,32 @@ export const WEEKLY_TOMESTONE_CAP = 450;`}
 
             <div className="space-y-2">
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/utils/priority.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/utils/priority.ts"
                 title="utils/priority.ts"
                 description="Priority score formulas, item/ring/material priority"
               />
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/utils/calculations.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/utils/calculations.ts"
                 title="utils/calculations.ts"
                 description="Gear state, completion, iLv, team summary"
               />
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/utils/lootCoordination.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/utils/lootCoordination.ts"
                 title="utils/lootCoordination.ts"
                 description="Enhanced priority, loot stats, cross-store coordination"
               />
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/gamedata/costs.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/gamedata/costs.ts"
                 title="gamedata/costs.ts"
                 description="Book/tome costs, slot weights, weekly cap"
               />
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/gamedata/loot-tables.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/gamedata/loot-tables.ts"
                 title="gamedata/loot-tables.ts"
                 description="Floor drops, materials, slot mappings"
               />
               <LinkCard
-                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner-dev/blob/main/frontend/src/gamedata/raid-tiers.ts"
+                href="https://github.com/aaronbcarlisle/ffxiv-raid-planner/blob/main/frontend/src/gamedata/raid-tiers.ts"
                 title="gamedata/raid-tiers.ts"
                 description="Tier definitions, iLv mappings"
               />
