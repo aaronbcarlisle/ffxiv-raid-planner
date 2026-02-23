@@ -36,10 +36,10 @@ function renderThemeToggle(theme: Theme, setTheme: (t: Theme) => void) {
 // ── Tests ──────────────────────────────────────────────────────────
 
 describe('UserMenu theme toggle', () => {
-  let mockSetTheme: ReturnType<typeof vi.fn>;
+  let mockSetTheme: vi.Mock<(t: Theme) => void>;
 
   beforeEach(() => {
-    mockSetTheme = vi.fn();
+    mockSetTheme = vi.fn<(t: Theme) => void>();
   });
 
   it('shows "Dark Mode" and unchecked toggle when theme is dark', () => {
