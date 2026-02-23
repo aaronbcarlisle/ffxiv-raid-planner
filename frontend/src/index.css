@@ -168,10 +168,10 @@
   --theme-toggle-bottom: 8.5rem;
 }
 
-/* Desktop: lower the theme toggle to standard bottom-6 position */
+/* Desktop: lower the theme toggle but keep clearance from page content */
 @media (min-width: 640px) {
   :root, [data-theme="light"] {
-    --theme-toggle-bottom: 1.5rem;
+    --theme-toggle-bottom: 3rem;
   }
 }
 
