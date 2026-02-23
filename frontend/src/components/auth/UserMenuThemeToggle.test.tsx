@@ -1,8 +1,8 @@
 /**
  * Tests for the theme toggle row rendered in UserMenu.
  *
- * Tests the toggle logic in isolation (as recommended) rather than fighting
- * Radix DropdownMenu's portal behavior in jsdom. Renders the same Toggle
+ * Tests the toggle logic in isolation rather than fighting Radix
+ * DropdownMenu's portal behavior in jsdom. Renders the same Toggle
  * with the same props/handler used in UserMenu.
  *
  * @vitest-environment jsdom
@@ -10,7 +10,6 @@
 
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { createElement } from 'react';
 import { Toggle } from '../ui';
 import type { Theme } from '../../hooks/useTheme';
 
@@ -19,17 +18,15 @@ import type { Theme } from '../../hooks/useTheme';
 /** Renders the same Toggle + label markup used in UserMenu's theme row */
 function renderThemeToggle(theme: Theme, setTheme: (t: Theme) => void) {
   return render(
-    createElement(
-      'div',
-      { role: 'none', className: 'flex items-center gap-2' },
-      createElement('span', null, theme === 'light' ? 'Light Mode' : 'Dark Mode'),
-      createElement(Toggle, {
-        checked: theme === 'light',
-        onChange: (checked: boolean) => setTheme(checked ? 'light' : 'dark'),
-        size: 'sm',
-        'aria-label': theme === 'light' ? 'Light mode on' : 'Light mode off',
-      })
-    )
+    <div role="none" className="flex items-center gap-2">
+      <span>{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+      <Toggle
+        checked={theme === 'light'}
+        onChange={(checked: boolean) => setTheme(checked ? 'light' : 'dark')}
+        size="sm"
+        aria-label="Toggle theme"
+      />
+    </div>
   );
 }
 
@@ -72,12 +69,8 @@ describe('UserMenu theme toggle', () => {
     expect(mockSetTheme).toHaveBeenCalledWith('dark');
   });
 
-  it('has correct aria-label reflecting current state', () => {
-    const { unmount } = renderThemeToggle('dark', mockSetTheme);
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-label', 'Light mode off');
-    unmount();
-
-    renderThemeToggle('light', mockSetTheme);
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-label', 'Light mode on');
+  it('has a stable aria-label describing purpose, not state', () => {
+    renderThemeToggle('dark', mockSetTheme);
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-label', 'Toggle theme');
   });
 });

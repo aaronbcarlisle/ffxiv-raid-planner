@@ -169,7 +169,8 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             and --color-toggle-orb-off-end (see Toggle.tsx line 117). */}
         <div
           role="none"
-          className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary cursor-pointer hover:bg-surface-interactive transition-colors"
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           style={{
             '--color-toggle-orb-off-start': 'var(--color-accent)',
             '--color-toggle-orb-off-end': 'var(--color-accent-muted)',
@@ -181,12 +182,15 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           <span className="flex-1">
             {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
           </span>
-          <Toggle
-            checked={theme === 'light'}
-            onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
-            size="sm"
-            aria-label={theme === 'light' ? 'Light mode on' : 'Light mode off'}
-          />
+          {/* Stop propagation so the row click and Toggle click don't double-fire */}
+          <span onClick={(e) => e.stopPropagation()}>
+            <Toggle
+              checked={theme === 'light'}
+              onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
+              size="sm"
+              aria-label="Toggle theme"
+            />
+          </span>
         </div>
 
         <DropdownSeparator />
