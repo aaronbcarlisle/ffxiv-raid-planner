@@ -23,6 +23,8 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
+// NOTE: Single-consumer hook — each instance carries independent state.
+// If multiple components need to read `theme`, wrap in a ThemeProvider context.
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
@@ -40,7 +42,9 @@ export function useTheme() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [theme, setTheme]);
 
-  // Sync DOM on initial mount
+  // Sync DOM on initial mount only — intentionally excludes `theme` from deps.
+  // The IIFE in main.tsx already sets the correct attribute before React renders;
+  // this guards against external DOM resets (e.g. Radix scroll-lock).
   useEffect(() => {
     applyTheme(theme);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

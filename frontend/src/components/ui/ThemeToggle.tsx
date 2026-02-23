@@ -23,7 +23,7 @@ export function ThemeToggle() {
       aria-checked={isLight}
       aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
       onClick={toggleTheme}
-      className="fixed bottom-20 left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
+      className="fixed bottom-[8.5rem] left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
       style={{
         width: 64,
         height: 44,
@@ -37,7 +37,7 @@ export function ThemeToggle() {
         boxShadow: isLight
           ? '0 2px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
           : '0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'background 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         overflow: 'hidden',
       }}
     >
@@ -101,7 +101,7 @@ export function ThemeToggle() {
           boxShadow: isLight
             ? '0 0 8px rgba(251, 191, 36, 0.5)' // design-system-ignore
             : '0 1px 4px rgba(0, 0, 0, 0.3)', // design-system-ignore
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'left 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
