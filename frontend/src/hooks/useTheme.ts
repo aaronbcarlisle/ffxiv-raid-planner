@@ -4,9 +4,17 @@ export type Theme = 'dark' | 'light';
 
 const STORAGE_KEY = 'theme';
 
+function isValidTheme(value: string | null): value is Theme {
+  return value === 'dark' || value === 'light';
+}
+
 function getInitialTheme(): Theme {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'dark' || saved === 'light') return saved;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (isValidTheme(saved)) return saved;
+  } catch {
+    // Storage unavailable (e.g. Safari ITP private browsing, sandboxed iframe)
+  }
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
@@ -20,7 +28,11 @@ export function useTheme() {
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    localStorage.setItem(STORAGE_KEY, t);
+    try {
+      localStorage.setItem(STORAGE_KEY, t);
+    } catch {
+      // Persistence failure — theme is still applied visually
+    }
     applyTheme(t);
   }, []);
 
@@ -28,22 +40,28 @@ export function useTheme() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [theme, setTheme]);
 
-  // Apply on mount (ensures consistency if SSR or concurrent renders)
+  // Sync DOM on initial mount
   useEffect(() => {
     applyTheme(theme);
-  }, [theme]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for OS preference changes when no saved preference
   useEffect(() => {
     const mql = window.matchMedia('(prefers-color-scheme: light)');
     const handler = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        setTheme(e.matches ? 'light' : 'dark');
+      try {
+        if (localStorage.getItem(STORAGE_KEY)) return;
+      } catch {
+        // Storage unavailable — fall through to apply OS preference
       }
+      // Apply OS preference without persisting, so we keep following system changes
+      const next: Theme = e.matches ? 'light' : 'dark';
+      setThemeState(next);
+      applyTheme(next);
     };
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
-  }, [setTheme]);
+  }, []);
 
   return { theme, setTheme, toggleTheme } as const;
 }

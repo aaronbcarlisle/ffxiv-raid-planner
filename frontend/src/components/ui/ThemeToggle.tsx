@@ -4,6 +4,9 @@
  * Pill-shaped toggle fixed to the bottom-left corner.
  * Dark state: dark track with moon+stars, light circle on left.
  * Light state: light track with sun, dark circle on right.
+ *
+ * Uses a raw <button> (like Toggle.tsx) because this is a custom toggle
+ * primitive requiring precise layout control not achievable with Button/IconButton.
  */
 
 import { useTheme } from '../../hooks/useTheme';
@@ -13,21 +16,21 @@ export function ThemeToggle() {
   const isLight = theme === 'light';
 
   return (
+    // design-system-ignore: Custom toggle primitive — same pattern as Toggle.tsx
     <button
       type="button"
       role="switch"
       aria-checked={isLight}
-      aria-label="Toggle theme"
+      aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
       onClick={toggleTheme}
       className="fixed bottom-20 left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
       style={{
         width: 64,
-        height: 32,
-        borderRadius: 16,
+        height: 44,
+        borderRadius: 22,
         border: 'none',
-        padding: 0,
+        padding: '6px 0',
         cursor: 'pointer',
-        position: 'fixed',
         background: isLight
           ? 'linear-gradient(135deg, #87CEEB 0%, #60A5FA 100%)' // design-system-ignore
           : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', // design-system-ignore
@@ -42,7 +45,7 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 6,
+          top: 12,
           right: 10,
           width: 3,
           height: 3,
@@ -56,7 +59,7 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 14,
+          top: 20,
           right: 18,
           width: 2,
           height: 2,
@@ -70,7 +73,7 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 8,
+          top: 14,
           right: 26,
           width: 2,
           height: 2,
@@ -86,7 +89,7 @@ export function ThemeToggle() {
       <span
         style={{
           position: 'absolute',
-          top: 3,
+          top: 9,
           left: isLight ? 35 : 3,
           width: 26,
           height: 26,

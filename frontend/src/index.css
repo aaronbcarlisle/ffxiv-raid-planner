@@ -258,97 +258,97 @@
 }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #b0b0c0;
+  background: var(--color-border-default);
   border-radius: 4px;
 }
 
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #9090a0;
+  background: var(--color-text-muted);
 }
 
 /* Light mode button overrides */
 [data-theme="light"] .btn-primary {
-  background: linear-gradient(135deg, #0f9688 0%, #0773a0 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-deep) 100%);
 }
 
 [data-theme="light"] .btn-primary:hover {
-  box-shadow: 0 0 20px rgba(15, 150, 136, 0.25);
+  box-shadow: 0 0 20px var(--color-accent-dim);
 }
 
 [data-theme="light"] .btn-ghost:hover {
-  background-color: rgba(15, 150, 136, 0.08);
+  background-color: var(--color-accent-dim);
 }
 
-/* Light mode badge overrides */
+/* Light mode badge overrides — use rgba of token base colors for translucent backgrounds */
 [data-theme="light"] .badge-raid {
-  background-color: rgba(220, 38, 38, 0.1);
-  color: #b91c1c;
-  border-color: rgba(220, 38, 38, 0.25);
+  background-color: color-mix(in srgb, var(--color-gear-raid) 10%, transparent);
+  color: #b91c1c; /* darker shade of --color-gear-raid for text contrast */
+  border-color: color-mix(in srgb, var(--color-gear-raid) 25%, transparent);
 }
 
 [data-theme="light"] .badge-tome {
-  background-color: rgba(15, 150, 136, 0.1);
-  color: #0a5c58;
-  border-color: rgba(15, 150, 136, 0.25);
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 [data-theme="light"] .badge-crafted {
-  background-color: rgba(124, 58, 237, 0.1);
-  color: #6d28d9;
-  border-color: rgba(124, 58, 237, 0.25);
+  background-color: color-mix(in srgb, var(--color-membership-lead) 10%, transparent);
+  color: #6d28d9; /* darker shade of --color-membership-lead for text contrast */
+  border-color: color-mix(in srgb, var(--color-membership-lead) 25%, transparent);
 }
 
 [data-theme="light"] .badge-augmented {
-  background-color: rgba(180, 83, 9, 0.1);
-  color: #92400e;
-  border-color: rgba(180, 83, 9, 0.25);
+  background-color: color-mix(in srgb, var(--color-gear-augmented) 10%, transparent);
+  color: #92400e; /* darker shade of --color-gear-augmented for text contrast */
+  border-color: color-mix(in srgb, var(--color-gear-augmented) 25%, transparent);
 }
 
 /* Light mode tab overrides */
 [data-theme="light"] .tab-active {
-  background-color: rgba(15, 150, 136, 0.12);
-  color: #0a5c58;
-  border-color: rgba(15, 150, 136, 0.25);
+  background-color: var(--color-active-bg);
+  color: var(--color-accent-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 /* Light mode progress bar */
 [data-theme="light"] .progress-fill {
-  background: linear-gradient(90deg, #0f9688 0%, #0773a0 100%);
+  background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-deep) 100%);
 }
 
-/* Light mode card/glow overrides */
+/* Light mode card/glow overrides — accent rgba values for subtle glow effects */
 [data-theme="light"] .card-glow:hover {
   box-shadow:
-    0 0 20px rgba(15, 150, 136, 0.08),
-    0 0 40px rgba(15, 150, 136, 0.04);
-  border-color: rgba(15, 150, 136, 0.25);
+    0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent),
+    0 0 40px color-mix(in srgb, var(--color-accent) 4%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 [data-theme="light"] .border-glow {
   box-shadow:
-    inset 0 0 0 1px rgba(15, 150, 136, 0.2),
-    0 0 15px rgba(15, 150, 136, 0.06);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent),
+    0 0 15px color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
 [data-theme="light"] .card-interactive:hover {
-  border-color: rgba(15, 150, 136, 0.25);
-  box-shadow: 0 0 20px rgba(15, 150, 136, 0.08);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
 [data-theme="light"] .card-selected {
   border-color: var(--color-accent);
   box-shadow:
     0 0 0 1px var(--color-accent),
-    0 0 20px rgba(15, 150, 136, 0.12);
+    0 0 20px color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 /* Light mode glow effects */
 [data-theme="light"] .glow-teal {
-  filter: drop-shadow(0 0 8px rgba(15, 150, 136, 0.3));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 30%, transparent));
 }
 
 [data-theme="light"] .glow-teal-strong {
-  filter: drop-shadow(0 0 12px rgba(15, 150, 136, 0.45));
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--color-accent) 45%, transparent));
 }
 
 /* Light mode highlight pulse */
@@ -381,8 +381,8 @@
 
 /* Light mode input focus */
 [data-theme="light"] .input:focus-visible {
-  border-color: rgba(15, 150, 136, 0.5);
-  box-shadow: 0 0 0 3px rgba(15, 150, 136, 0.1);
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 /* Ensure border-box sizing globally */
