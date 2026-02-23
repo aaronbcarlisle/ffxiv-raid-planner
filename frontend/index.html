@@ -32,6 +32,13 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="/og-image.png" />
 
+    <!-- Theme initialization — MUST be inline and before any CSS to prevent FOUC.
+         Sets data-theme attribute so the CSS [data-theme="light"] rules match immediately
+         when stylesheets load. Keep detection logic in sync with getInitialTheme() in useTheme.ts. -->
+    <script>
+      (function(){try{var s=localStorage.getItem('theme');var t=(s==='dark'||s==='light')?s:(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t}catch(e){}})();
+    </script>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

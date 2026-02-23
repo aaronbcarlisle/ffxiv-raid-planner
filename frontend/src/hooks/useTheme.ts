@@ -60,8 +60,8 @@ function useThemeInternal(): ThemeContextValue {
     });
   }, []);
 
-  // No mount-sync useEffect needed — the IIFE in main.tsx sets data-theme
-  // synchronously before React renders. All subsequent changes go through
+  // No mount-sync useEffect needed — the inline <script> in index.html sets
+  // data-theme before CSS loads. All subsequent changes go through
   // setTheme/toggleTheme which call applyTheme directly.
 
   // Listen for OS preference changes when no saved preference

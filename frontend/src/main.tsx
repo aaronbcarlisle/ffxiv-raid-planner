@@ -7,17 +7,9 @@ import './index.css';
 import App from './App.tsx';
 import { ThemeProvider } from './hooks/useTheme';
 
-// Apply theme before React renders to prevent flash of wrong theme (FOUC).
-// NOTE: Keep detection logic in sync with getInitialTheme() in hooks/useTheme.ts.
-(function initTheme() {
-  let saved: string | null = null;
-  try { saved = localStorage.getItem('theme'); } catch { /* storage unavailable */ }
-  const theme = (saved === 'dark' || saved === 'light')
-    ? saved
-    : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-  document.documentElement.setAttribute('data-theme', theme);
-  document.documentElement.style.colorScheme = theme;
-})();
+// FOUC prevention is handled by the inline <script> in index.html which runs
+// before any CSS loads. Keep that script's logic in sync with getInitialTheme()
+// in hooks/useTheme.ts.
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
