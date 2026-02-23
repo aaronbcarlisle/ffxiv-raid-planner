@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.12.0';
+export const CURRENT_VERSION = '1.13.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,22 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.13.0',
+    date: '2026-02-23T08:00:00Z',
+    title: 'Light Mode',
+    highlights: ['Light mode theme with day/night toggle'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Light mode theme',
+        description: 'Switch between dark and light themes with a floating toggle in the bottom-left corner',
+        details:
+          'Full light mode support with carefully tuned colors for readability. The app respects your OS preference by default, and your choice persists across sessions. All surfaces, text, badges, glows, and role colors adapt automatically.',
+        commits: [{ hash: '0234686', message: 'feat: add light mode theme with floating day/night toggle' }],
+      },
+    ],
+  },
   {
     version: '1.12.0',
     date: '2026-01-30T22:00:00Z',
