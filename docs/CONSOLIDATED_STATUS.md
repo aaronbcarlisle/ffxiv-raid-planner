@@ -65,7 +65,7 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | **Light Mode Theme** | ✅ Complete | Full light mode via CSS custom property overrides |
-| **ThemeToggle** | ✅ Complete | Floating pill-shaped sun/moon toggle |
+| **Theme Toggle** | ✅ Complete | Toggle switch in UserMenu dropdown (replaced floating pill) |
 | **useTheme Hook** | ✅ Complete | localStorage persistence, OS preference, FOUC prevention |
 
 ### v1.12.0 - Flexible Priority Settings (January 30, 2026)

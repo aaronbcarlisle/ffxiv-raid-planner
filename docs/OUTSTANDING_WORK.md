@@ -14,7 +14,7 @@
 - **2026-02-23:** PR #68 (in review): Light mode theme with floating day/night toggle
   - Full light mode via CSS custom property overrides (`[data-theme="light"]`)
   - `useTheme` hook with localStorage persistence, OS preference detection, FOUC prevention
-  - Floating ThemeToggle component with sun/moon animation
+  - Theme toggle in UserMenu dropdown (replaced floating pill)
   - 13 new hook tests for useTheme
 - **2026-02-19:** PR #67 merged: PR #66 review follow-ups
   - Cross-field `model_validator` on `StaticPrioritySettings`

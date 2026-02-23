@@ -157,22 +157,6 @@
   --color-toggle-orb-on-end: #0a0a0f;
   --color-toggle-orb-off-start: #1e1e26;
   --color-toggle-orb-off-end: #121218;
-
-  /* Theme toggle track/orb colors */
-  --color-theme-track-start: #1a1a2e;
-  --color-theme-track-end: #16213e;
-  --color-theme-orb: #e2e8f0;
-  --color-theme-orb-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-
-  /* Theme toggle bottom offset — mobile clears MobileBottomNav + floating buttons */
-  --theme-toggle-bottom: 8.5rem;
-}
-
-/* Desktop: lower the theme toggle but keep clearance from page content */
-@media (min-width: 640px) {
-  :root, [data-theme="light"] {
-    --theme-toggle-bottom: 3rem;
-  }
 }
 
 /* ================================
@@ -266,12 +250,6 @@
   --color-toggle-orb-on-end: #9ca3af;
   --color-toggle-orb-off-start: #e5e7eb;
   --color-toggle-orb-off-end: #d1d5db;
-
-  /* Theme toggle track/orb colors */
-  --color-theme-track-start: #87CEEB;
-  --color-theme-track-end: #60A5FA;
-  --color-theme-orb: #fbbf24;
-  --color-theme-orb-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
 
   /* Badge text contrast colors — darker shades for light backgrounds */
   --color-gear-raid-text: #b91c1c;
