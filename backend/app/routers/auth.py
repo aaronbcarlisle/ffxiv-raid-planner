@@ -54,8 +54,16 @@ def _get_client_fingerprint(request: Request) -> str:
     """Generate a fingerprint from client IP and user agent for CSRF protection.
 
     This binds OAuth state to the requesting client to prevent session fixation attacks.
+    Uses X-Forwarded-For header when behind a reverse proxy (Railway, etc.) to get
+    the real client IP, since the proxy's internal IP varies between requests.
     """
-    client_ip = request.client.host if request.client else "unknown"
+    # Prefer X-Forwarded-For (real client IP behind proxy), fall back to direct connection
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        # X-Forwarded-For can be comma-separated; first entry is the original client
+        client_ip = forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "")
 
     # Hash to avoid storing raw user agent (which could be long/sensitive)
