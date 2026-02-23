@@ -164,8 +164,11 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             This means arrow-key navigation skips this row; the Toggle is still
             reachable via Tab. Using a plain div avoids Radix's onSelect closing
             the menu and prevents nesting interactive elements (button inside menuitem).
-            Off-state orb colors are overridden so the handle is visible against the dark menu. */}
+            Off-state orb CSS vars are overridden so the handle is visible against the
+            dark menu. These reference Toggle.tsx internals: --color-toggle-orb-off-start
+            and --color-toggle-orb-off-end (see Toggle.tsx line 117). */}
         <div
+          role="none"
           className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary"
           style={{
             '--color-toggle-orb-off-start': 'var(--color-accent)',
@@ -175,12 +178,14 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           <span className="w-4 h-4 flex items-center justify-center">
             {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </span>
-          <span className="flex-1">{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+          <span className="flex-1">
+            {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
+          </span>
           <Toggle
             checked={theme === 'light'}
             onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
             size="sm"
-            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            aria-label={theme === 'light' ? 'Light mode on' : 'Light mode off'}
           />
         </div>
 
