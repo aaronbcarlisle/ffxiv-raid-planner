@@ -1,0 +1,99 @@
+import { useState, useCallback, useEffect, createContext, useContext, createElement } from 'react';
+import type { ReactNode } from 'react';
+
+export type Theme = 'dark' | 'light';
+
+const STORAGE_KEY = 'theme';
+
+function isValidTheme(value: string | null): value is Theme {
+  return value === 'dark' || value === 'light';
+}
+
+// NOTE: Keep in sync with the IIFE in main.tsx that prevents FOUC.
+function getInitialTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (isValidTheme(saved)) return saved;
+  } catch {
+    // Storage unavailable (e.g. Safari ITP private browsing, sandboxed iframe)
+  }
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.style.colorScheme = theme;
+}
+
+interface ThemeContextValue {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+/** Internal hook — use useTheme() in components instead. */
+function useThemeInternal(): ThemeContextValue {
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    try {
+      localStorage.setItem(STORAGE_KEY, t);
+    } catch {
+      // Persistence failure — theme is still applied visually
+    }
+    applyTheme(t);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next: Theme = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // Persistence failure — theme is still applied visually
+      }
+      applyTheme(next);
+      return next;
+    });
+  }, []);
+
+  // No mount-sync useEffect needed — the IIFE in main.tsx sets data-theme
+  // synchronously before React renders. All subsequent changes go through
+  // setTheme/toggleTheme which call applyTheme directly.
+
+  // Listen for OS preference changes when no saved preference
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (e: MediaQueryListEvent) => {
+      try {
+        if (localStorage.getItem(STORAGE_KEY)) return;
+      } catch {
+        // Storage unavailable — fall through to apply OS preference
+      }
+      // Apply OS preference without persisting, so we keep following system changes
+      const next: Theme = e.matches ? 'light' : 'dark';
+      setThemeState(next);
+      applyTheme(next);
+    };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
+  return { theme, setTheme, toggleTheme };
+}
+
+/** Wrap <App> in ThemeProvider so all consumers share one state instance. */
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const value = useThemeInternal();
+  return createElement(ThemeContext.Provider, { value }, children);
+}
+
+/** Read theme state. Must be used inside ThemeProvider. */
+export function useTheme(): ThemeContextValue {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
+  return ctx;
+}

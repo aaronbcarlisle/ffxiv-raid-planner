@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** February 19, 2026
-**Current Version:** v1.9.1
+**Last Updated:** February 23, 2026
+**Current Version:** v1.13.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -11,20 +11,17 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-02-23:** PR #68 (in review): Light mode theme with floating day/night toggle
+  - Full light mode via CSS custom property overrides (`[data-theme="light"]`)
+  - `useTheme` hook with localStorage persistence, OS preference detection, FOUC prevention
+  - Floating ThemeToggle component with sun/moon animation
+  - 13 new hook tests for useTheme
 - **2026-02-19:** PR #67 merged: PR #66 review follow-ups
-  - Cross-field `model_validator` on `StaticPrioritySettings` (auto-creates empty defaults for all modes)
-  - NULL `player_id` duplicate check fix in `create_weekly_assignment` (`.is_(None)`)
-  - `Promise.allSettled` in `LogWeekWizard` with partial failure handling (retry-safe)
+  - Cross-field `model_validator` on `StaticPrioritySettings`
   - 31 new endpoint tests for weekly assignments + `clear_week_page_ledger`
   - `LogWeekWizard` split into directory: `GearStep`, `BooksStep`, `ConfirmStep`, `types.ts`
-  - Route ordering fix: `/bulk` endpoints before `/{assignment_id}` params
 - PR #66 merged: Flexible loot priority control and streamlined week/floor drop wizards
-- PR #57 merged: Member permissions fix + Edit Books feature
-- PR #58 merged: Materia display in gear tooltips (L-003 complete)
-- PR #59 merged: Store setIndex in shortlink bisLinks for multi-set XIVGear sheets
-- PR #60 merged: Mobile UX Optimization (Phase 9 first pass ~80%)
-
-**Version Correction:** All release versions were corrected to follow semantic versioning in v1.9.0. See `docs/CODING_STANDARDS.md#versioning` for guidelines.
+- PR #57-60: Member permissions, materia tooltips, XIVGear multi-set, mobile UX
 
 ---
 
@@ -35,11 +32,11 @@
 | **Critical (P0)** | 0 | 0 |
 | **High (P1)** | 0 | 0 |
 | **Medium (P2)** | 0 | 0 |
-| **Low (P3)** | 8 | 17.5 |
+| **Low (P3)** | 7 | 15.5 |
 | **Tech Debt - Lint (P3)** | 2 | 6 |
-| **In Progress (Phase 9)** | 1 | ~2 |
+| **Planned** | 1 | TBD |
 | **Future (Phase 7+)** | 4 | TBD |
-| **Total** | 15 | ~25.5 hrs |
+| **Total** | 14 | ~21.5 hrs |
 
 ---
 
@@ -80,10 +77,6 @@
   - Check that all modals follow Modal pattern
   - Verify tables, badges, tooltips match design system
 - **Effort:** 4 hours
-
-### ~~L-003: Materia in Gear Tooltip~~ ✅ DONE
-- **Status:** Completed in PR #58
-- **Implementation:** Materia now displayed in ItemHoverCard tooltips when BiS data includes materia info
 
 ### L-004: Documentation Tasks
 - **Missing Content:**
@@ -128,9 +121,11 @@
 
 ## Technical Debt - Lint Issues (P3)
 
-**Last Audited:** February 19, 2026
+**Last Audited:** February 23, 2026
 **Current Warning Count:** 152 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
+
+**Test Coverage:** 888 tests (290 backend + 503 frontend + 95 scripts)
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
 
@@ -158,10 +153,9 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 
 ---
 
-## In Progress
+## Planned
 
 ### UI Reorganization: Header, Settings, and Actions
-- **Branch:** `feature/ui-reorganization` (to be created)
 - **Plan:** See `docs/UI_REORGANIZATION_PLAN.md` for detailed implementation steps
 - **Scope:**
   1. Header breadcrumb layout: `[Static ▼] > [Tier ▼] [⋮]`
@@ -169,7 +163,7 @@ All lint errors resolved; only warnings remain. These don't affect functionality
   3. Settings slide-out panel with 4 tabs (replaces modal)
   4. Add Player button on Roster tab
   5. Log tab toolbar consolidation
-- **Status:** Planned, ready for implementation
+- **Status:** Not started — infrastructure partially exists (SettingsPanel, PriorityTab, GeneralTab)
 - **Phases:** 4 (see plan for details)
 
 ---
@@ -343,4 +337,4 @@ engine = create_async_engine(
 
 **Document Consolidation:**
 This file consolidates findings from 43 session handoffs, 10 audits, 9 plans, and 6 implementation docs.
-All items have been validated against the actual codebase on January 11, 2026.
+Last validated against the actual codebase on February 23, 2026.

@@ -106,16 +106,15 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
               : 'inset 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.03)',
           }}
         >
-          {/* The dark orb/circle - design-system-ignore: Gradient effects require specific hex values */}
+          {/* The dark orb/circle - uses CSS custom properties for theme awareness */}
           <span
             style={{
               width: dimensions.circleSize,
               height: dimensions.circleSize,
               borderRadius: '50%',
-              // design-system-ignore: Gradient effects require specific hex values
               background: checked
-                ? 'radial-gradient(circle at 35% 35%, #1a1f28, #0a0a0f)' // design-system-ignore
-                : 'linear-gradient(180deg, #1e1e26, #121218)', // design-system-ignore
+                ? 'radial-gradient(circle at 35% 35%, var(--color-toggle-orb-on-start), var(--color-toggle-orb-on-end))'
+                : 'linear-gradient(180deg, var(--color-toggle-orb-off-start), var(--color-toggle-orb-off-end))',
               position: 'absolute',
               top: dimensions.circleTop,
               left: checked ? dimensions.circleOnLeft : dimensions.circleOffLeft,

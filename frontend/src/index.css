@@ -151,6 +151,267 @@
   --duration-fast: 150ms;
   --duration-normal: 200ms;
   --duration-slow: 300ms;
+
+  /* Toggle orb colors */
+  --color-toggle-orb-on-start: #1a1f28;
+  --color-toggle-orb-on-end: #0a0a0f;
+  --color-toggle-orb-off-start: #1e1e26;
+  --color-toggle-orb-off-end: #121218;
+
+  /* Theme toggle track/orb colors */
+  --color-theme-track-start: #1a1a2e;
+  --color-theme-track-end: #16213e;
+  --color-theme-orb: #e2e8f0;
+  --color-theme-orb-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+
+  /* Theme toggle bottom offset — mobile clears MobileBottomNav + floating buttons */
+  --theme-toggle-bottom: 8.5rem;
+}
+
+/* Desktop: lower the theme toggle to standard bottom-6 position */
+@media (min-width: 640px) {
+  :root, [data-theme="light"] {
+    --theme-toggle-bottom: 1.5rem;
+  }
+}
+
+/* ================================
+   LIGHT MODE OVERRIDES
+   Applied via data-theme="light" on <html>
+   ================================ */
+[data-theme="light"] {
+  /* Surfaces - cool blue-tinted whites */
+  --color-surface-base: #f5f5f8;
+  --color-surface-raised: #ededf2;
+  --color-surface-card: #ffffff;
+  --color-surface-elevated: #e8e8ef;
+  --color-surface-overlay: #ffffff;
+  --color-surface-interactive: #dcdce6;
+
+  /* Legacy aliases */
+  --color-bg-primary: var(--color-surface-base);
+  --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-card: var(--color-surface-card);
+  --color-bg-elevated: var(--color-surface-elevated);
+  --color-bg-hover: var(--color-surface-interactive);
+
+  /* Accent - darker teal for light backgrounds */
+  --color-accent: #0f9688;
+  --color-accent-hover: #0d7a6e;
+  --color-accent-dim: rgba(15, 150, 136, 0.12);
+  --color-accent-bright: #0d7a6e;
+  --color-accent-muted: #0a5c58;
+  --color-accent-deep: #0773a0;
+  --color-accent-contrast: #ffffff;
+
+  /* Role colors - darkened for WCAG AA on white */
+  --color-role-tank: #2e7ab4;
+  --color-role-healer: #1a8a4a;
+  --color-role-melee: #c0392b;
+  --color-role-ranged: #a06020;
+  --color-role-caster: #8b34b8;
+
+  /* Membership colors */
+  --color-membership-owner: #0f9688;
+  --color-membership-lead: #7c3aed;
+  --color-membership-member: #2563eb;
+  --color-membership-viewer: #52525b;
+  --color-membership-linked: #b45309;
+
+  /* Gear source colors */
+  --color-gear-raid: #dc2626;
+  --color-gear-tome: #0f9688;
+  --color-gear-base-tome: #2563eb;
+  --color-gear-augmented: #b45309;
+  --color-gear-crafted: #ea580c;
+
+  /* Status colors */
+  --color-status-success: #16a34a;
+  --color-status-warning: #ca8a04;
+  --color-status-error: #dc2626;
+  --color-status-info: #2563eb;
+
+  /* Material colors */
+  --color-material-twine: #2563eb;
+  --color-material-glaze: #7c3aed;
+  --color-material-solvent: #ca8a04;
+  --color-material-tomestone: #ea580c;
+
+  /* Text - dark on light */
+  --color-text-primary: #1a1a24;
+  --color-text-secondary: #4a4a58;
+  --color-text-muted: #6b6b7e;
+  --color-text-disabled: #9898a8;
+
+  /* Borders */
+  --color-border-default: #c8c8d8;
+  --color-border-subtle: #dcdce6;
+  --color-border-highlight: #0f9688;
+  --color-border-focus: rgba(15, 150, 136, 0.5);
+
+  /* Interactive feedback */
+  --color-focus-ring: rgba(15, 150, 136, 0.4);
+  --color-active-bg: rgba(15, 150, 136, 0.12);
+  --color-hover-overlay: rgba(0, 0, 0, 0.04);
+
+  /* Shadows - much lighter */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(15, 150, 136, 0.1);
+
+  /* Toggle orb colors */
+  --color-toggle-orb-on-start: #d1d5db;
+  --color-toggle-orb-on-end: #9ca3af;
+  --color-toggle-orb-off-start: #e5e7eb;
+  --color-toggle-orb-off-end: #d1d5db;
+
+  /* Theme toggle track/orb colors */
+  --color-theme-track-start: #87CEEB;
+  --color-theme-track-end: #60A5FA;
+  --color-theme-orb: #fbbf24;
+  --color-theme-orb-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+
+  /* Badge text contrast colors — darker shades for light backgrounds */
+  --color-gear-raid-text: #b91c1c;
+  --color-gear-crafted-text: #9a3412;
+  --color-gear-augmented-text: #92400e;
+}
+
+/* Light mode scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--color-surface-raised);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: 4px;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Light mode button overrides */
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-deep) 100%);
+}
+
+[data-theme="light"] .btn-primary:hover {
+  box-shadow: 0 0 20px var(--color-accent-dim);
+}
+
+[data-theme="light"] .btn-ghost:hover {
+  background-color: var(--color-accent-dim);
+}
+
+/* Light mode badge overrides — use color-mix() for translucent token-based backgrounds.
+   Browser baseline: Chrome 111+, Firefox 113+, Safari 16.2+ (2023).
+   Acceptable for this app's audience (active FFXIV raiders on modern browsers). */
+[data-theme="light"] .badge-raid {
+  background-color: color-mix(in srgb, var(--color-gear-raid) 10%, transparent);
+  color: var(--color-gear-raid-text);
+  border-color: color-mix(in srgb, var(--color-gear-raid) 25%, transparent);
+}
+
+[data-theme="light"] .badge-tome {
+  background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+[data-theme="light"] .badge-crafted {
+  background-color: color-mix(in srgb, var(--color-gear-crafted) 10%, transparent);
+  color: var(--color-gear-crafted-text);
+  border-color: color-mix(in srgb, var(--color-gear-crafted) 25%, transparent);
+}
+
+[data-theme="light"] .badge-augmented {
+  background-color: color-mix(in srgb, var(--color-gear-augmented) 10%, transparent);
+  color: var(--color-gear-augmented-text);
+  border-color: color-mix(in srgb, var(--color-gear-augmented) 25%, transparent);
+}
+
+/* Light mode tab overrides */
+[data-theme="light"] .tab-active {
+  background-color: var(--color-active-bg);
+  color: var(--color-accent-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+/* Light mode progress bar */
+[data-theme="light"] .progress-fill {
+  background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-deep) 100%);
+}
+
+/* Light mode card/glow overrides — accent rgba values for subtle glow effects */
+[data-theme="light"] .card-glow:hover {
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent),
+    0 0 40px color-mix(in srgb, var(--color-accent) 4%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+[data-theme="light"] .border-glow {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent),
+    0 0 15px color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+[data-theme="light"] .card-interactive:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+[data-theme="light"] .card-selected {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 0 20px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+/* Light mode glow effects */
+[data-theme="light"] .glow-teal {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 30%, transparent));
+}
+
+[data-theme="light"] .glow-teal-strong {
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--color-accent) 45%, transparent));
+}
+
+/* Light mode highlight pulse */
+@keyframes highlight-pulse-light {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+[data-theme="light"] .highlight-pulse {
+  animation: highlight-pulse-light 2s ease-out;
+}
+
+/* Light mode checkbox */
+[data-theme="light"] input[type="checkbox"] {
+  background-color: var(--color-surface-elevated);
+  border-color: var(--color-border-default);
+}
+
+[data-theme="light"] input[type="checkbox"]:checked {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Light mode input focus */
+[data-theme="light"] .input:focus-visible {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 /* Ensure border-box sizing globally */
@@ -163,7 +424,7 @@ html {
   font-family: var(--font-sans);
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised); /* Dark theme scrollbar */
+  scrollbar-color: var(--color-surface-interactive) var(--color-surface-raised);
   scrollbar-width: thin;
   /* Prevent horizontal overscroll without breaking sticky positioning */
   overscroll-behavior-x: none;

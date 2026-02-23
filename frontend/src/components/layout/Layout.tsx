@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { ReleaseBanner } from './ReleaseBanner';
 import { ViewAsBanner } from '../admin';
-import { KeyboardShortcutsHelp } from '../ui';
+import { KeyboardShortcutsHelp, ThemeToggle } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -48,6 +48,8 @@ export function Layout() {
       <main className="w-full pt-1 pb-3 md:py-2 flex-1 min-h-0 flex flex-col overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <Outlet />
       </main>
+
+      <ThemeToggle />
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp
