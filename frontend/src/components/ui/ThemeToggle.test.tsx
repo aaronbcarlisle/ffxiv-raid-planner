@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeToggle } from './ThemeToggle';
 
-// Mock useTheme hook
+// Mock useTheme hook (context-based)
 const mockToggleTheme = vi.fn();
 let mockTheme = 'dark';
 
@@ -54,10 +54,19 @@ describe('ThemeToggle', () => {
     expect(mockToggleTheme).toHaveBeenCalledOnce();
   });
 
+  it('is a native button that supports keyboard activation', () => {
+    // Native <button> handles Space/Enter → click automatically.
+    // jsdom doesn't simulate this, so we verify the element is a <button>
+    // which guarantees keyboard accessibility per HTML spec.
+    render(<ThemeToggle />);
+    const toggle = screen.getByRole('switch');
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('type')).toBe('button');
+  });
+
   it('renders moon icon in dark mode', () => {
     mockTheme = 'dark';
     const { container } = render(<ThemeToggle />);
-    // Moon SVG has a path element with the crescent shape
     const moonPath = container.querySelector('path[d*="M21 12.79"]');
     expect(moonPath).not.toBeNull();
   });
@@ -65,8 +74,14 @@ describe('ThemeToggle', () => {
   it('renders sun icon in light mode', () => {
     mockTheme = 'light';
     const { container } = render(<ThemeToggle />);
-    // Sun SVG has a circle element for the sun body
     const sunCircle = container.querySelector('circle[cx="12"][cy="12"]');
     expect(sunCircle).not.toBeNull();
+  });
+
+  it('marks all decorative elements as aria-hidden', () => {
+    const { container } = render(<ThemeToggle />);
+    const ariaHiddenSpans = container.querySelectorAll('span[aria-hidden="true"]');
+    // 3 star spans + 1 orb span = 4
+    expect(ariaHiddenSpans.length).toBe(4);
   });
 });

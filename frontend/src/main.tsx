@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import './index.css';
 import App from './App.tsx';
+import { ThemeProvider } from './hooks/useTheme';
 
 // Apply theme before React renders to prevent flash of wrong theme (FOUC)
 (function initTheme() {
@@ -20,7 +21,9 @@ import App from './App.tsx';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
       <Analytics />
       <SpeedInsights />
     </BrowserRouter>

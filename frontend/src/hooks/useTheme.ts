@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, createContext, useContext, createElement } from 'react';
+import type { ReactNode } from 'react';
 
 export type Theme = 'dark' | 'light';
 
@@ -23,9 +24,16 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
-// NOTE: Single-consumer hook — each instance carries independent state.
-// If multiple components need to read `theme`, wrap in a ThemeProvider context.
-export function useTheme() {
+interface ThemeContextValue {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+/** Internal hook — use useTheme() in components instead. */
+function useThemeInternal(): ThemeContextValue {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
   const setTheme = useCallback((t: Theme) => {
@@ -76,5 +84,18 @@ export function useTheme() {
     return () => mql.removeEventListener('change', handler);
   }, []);
 
-  return { theme, setTheme, toggleTheme } as const;
+  return { theme, setTheme, toggleTheme };
+}
+
+/** Wrap <App> in ThemeProvider so all consumers share one state instance. */
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const value = useThemeInternal();
+  return createElement(ThemeContext.Provider, { value }, children);
+}
+
+/** Read theme state. Must be used inside ThemeProvider. */
+export function useTheme(): ThemeContextValue {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
+  return ctx;
 }

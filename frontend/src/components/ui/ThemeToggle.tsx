@@ -7,6 +7,9 @@
  *
  * Uses a raw <button> (like Toggle.tsx) because this is a custom toggle
  * primitive requiring precise layout control not achievable with Button/IconButton.
+ *
+ * Track/orb colors are CSS custom properties (--color-theme-*) defined in index.css,
+ * so they update automatically when data-theme changes.
  */
 
 import { useTheme } from '../../hooks/useTheme';
@@ -23,17 +26,16 @@ export function ThemeToggle() {
       aria-checked={isLight}
       aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
       onClick={toggleTheme}
-      className="fixed bottom-[8.5rem] left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
+      className="fixed left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
       style={{
+        bottom: 'var(--theme-toggle-mobile-bottom)',
         width: 80,
         height: 40,
         borderRadius: 20,
         border: 'none',
         padding: 0,
         cursor: 'pointer',
-        background: isLight
-          ? 'linear-gradient(135deg, #87CEEB 0%, #60A5FA 100%)' // design-system-ignore
-          : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', // design-system-ignore
+        background: 'linear-gradient(135deg, var(--color-theme-track-start) 0%, var(--color-theme-track-end) 100%)',
         boxShadow: isLight
           ? '0 2px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
           : '0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
@@ -88,24 +90,21 @@ export function ThemeToggle() {
         }}
       />
 
-      {/* Sliding circle with sun/moon icon — decorative, hidden from screen readers */}
+      {/* Sliding circle with sun/moon icon — decorative, hidden from screen readers.
+          Uses translateX instead of left for GPU-accelerated compositing. */}
       <span
         aria-hidden="true"
         style={{
           position: 'absolute',
           top: 4,
-          left: isLight ? 44 : 4,
+          left: 4,
           width: 32,
           height: 32,
           borderRadius: '50%',
-          // design-system-ignore
-          background: isLight
-            ? '#fbbf24'
-            : '#e2e8f0',
-          boxShadow: isLight
-            ? '0 0 8px rgba(251, 191, 36, 0.5)' // design-system-ignore
-            : '0 1px 4px rgba(0, 0, 0, 0.3)', // design-system-ignore
-          transition: 'left 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          background: 'var(--color-theme-orb)',
+          boxShadow: 'var(--color-theme-orb-shadow)',
+          transform: isLight ? 'translateX(40px)' : 'translateX(0)',
+          transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         {isLight ? (

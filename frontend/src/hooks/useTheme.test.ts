@@ -6,7 +6,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useTheme } from './useTheme';
+import { createElement } from 'react';
+import { useTheme, ThemeProvider } from './useTheme';
+
+// Wrapper to provide ThemeProvider context for hook tests
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  createElement(ThemeProvider, null, children);
 
 describe('useTheme', () => {
   let matchMediaListeners: Map<string, (e: MediaQueryListEvent) => void>;
@@ -45,7 +50,7 @@ describe('useTheme', () => {
 
   describe('initial theme', () => {
     it('defaults to dark when no saved preference and OS prefers dark', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('dark');
     });
 
@@ -61,26 +66,26 @@ describe('useTheme', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('light');
     });
 
     it('uses saved localStorage value over OS preference', () => {
       localStorage.setItem('theme', 'light');
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('light');
     });
 
     it('ignores invalid localStorage values', () => {
       localStorage.setItem('theme', 'sepia');
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('dark');
     });
   });
 
   describe('toggleTheme', () => {
     it('toggles from dark to light', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('dark');
 
       act(() => result.current.toggleTheme());
@@ -91,7 +96,7 @@ describe('useTheme', () => {
 
     it('toggles from light to dark', () => {
       localStorage.setItem('theme', 'light');
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('light');
 
       act(() => result.current.toggleTheme());
@@ -103,7 +108,7 @@ describe('useTheme', () => {
 
   describe('setTheme', () => {
     it('persists to localStorage', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
 
       act(() => result.current.setTheme('light'));
 
@@ -111,7 +116,7 @@ describe('useTheme', () => {
     });
 
     it('applies data-theme attribute to document', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
 
       act(() => result.current.setTheme('light'));
 
@@ -119,7 +124,7 @@ describe('useTheme', () => {
     });
 
     it('sets color-scheme CSS property', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
 
       act(() => result.current.setTheme('light'));
 
@@ -129,12 +134,12 @@ describe('useTheme', () => {
 
   describe('OS preference listener', () => {
     it('registers a media query change listener', () => {
-      renderHook(() => useTheme());
+      renderHook(() => useTheme(), { wrapper });
       expect(matchMediaListeners.has('(prefers-color-scheme: light)')).toBe(true);
     });
 
     it('cleans up the listener on unmount', () => {
-      const { unmount } = renderHook(() => useTheme());
+      const { unmount } = renderHook(() => useTheme(), { wrapper });
       expect(matchMediaListeners.has('(prefers-color-scheme: light)')).toBe(true);
 
       unmount();
@@ -143,7 +148,7 @@ describe('useTheme', () => {
     });
 
     it('follows OS changes when no saved preference', () => {
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
       expect(result.current.theme).toBe('dark');
 
       const handler = matchMediaListeners.get('(prefers-color-scheme: light)');
@@ -160,7 +165,7 @@ describe('useTheme', () => {
 
     it('ignores OS changes when user has saved preference', () => {
       localStorage.setItem('theme', 'dark');
-      const { result } = renderHook(() => useTheme());
+      const { result } = renderHook(() => useTheme(), { wrapper });
 
       const handler = matchMediaListeners.get('(prefers-color-scheme: light)');
       act(() => {
