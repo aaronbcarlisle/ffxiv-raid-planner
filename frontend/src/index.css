@@ -164,15 +164,6 @@
   --color-theme-orb: #e2e8f0;
   --color-theme-orb-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 
-  /* Theme toggle bottom offset — mobile clears MobileBottomNav + floating buttons */
-  --theme-toggle-bottom: 8.5rem;
-}
-
-/* Desktop: lower the theme toggle but keep clearance from page content */
-@media (min-width: 640px) {
-  :root, [data-theme="light"] {
-    --theme-toggle-bottom: 3rem;
-  }
 }
 
 /* ================================

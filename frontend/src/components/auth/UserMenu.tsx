@@ -29,7 +29,11 @@ import {
   Shield,
   Keyboard,
   BookOpen,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../../hooks/useTheme';
+import { Toggle } from '../ui/Toggle';
 
 interface UserMenuProps {
   className?: string;
@@ -38,6 +42,7 @@ interface UserMenuProps {
 export function UserMenu({ className = '' }: UserMenuProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   if (!user) return null;
 
@@ -154,6 +159,27 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         >
           Shortcuts
         </DropdownItem>
+
+        {/* Theme toggle — standalone row (not a Radix Item) so the Toggle button handles its own focus/click.
+            Override off-state orb colors so the handle is visible against the dark menu background. */}
+        <div
+          className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary"
+          style={{
+            '--color-toggle-orb-off-start': 'var(--color-accent)',
+            '--color-toggle-orb-off-end': 'var(--color-accent-muted)',
+          } as React.CSSProperties}
+        >
+          <span className="w-4 h-4 flex items-center justify-center">
+            {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </span>
+          <span className="flex-1">{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+          <Toggle
+            checked={theme === 'light'}
+            onChange={toggleTheme}
+            size="sm"
+            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          />
+        </div>
 
         <DropdownSeparator />
 
