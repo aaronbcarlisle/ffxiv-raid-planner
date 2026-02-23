@@ -26,9 +26,9 @@ export function ThemeToggle() {
       aria-checked={isLight}
       aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
       onClick={toggleTheme}
-      className="fixed left-4 sm:bottom-6 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
+      className="fixed left-4 sm:left-6 z-30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base rounded-full"
       style={{
-        bottom: 'var(--theme-toggle-mobile-bottom)',
+        bottom: 'var(--theme-toggle-bottom)',
         width: 80,
         height: 40,
         borderRadius: 20,
