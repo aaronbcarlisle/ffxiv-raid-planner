@@ -565,9 +565,12 @@ export function GroupView() {
   const playerSlotsWithMaterialEntries = useMemo(() => {
     const map = new Map<string, Set<GearSlot | 'tome_weapon'>>();
     for (const entry of materialLog) {
-      if (entry.slotAugmented) {
+      // Universal tomestone doesn't have slotAugmented but maps to tome_weapon
+      const slot = entry.slotAugmented
+        ?? (entry.materialType === 'universal_tomestone' ? 'tome_weapon' : null);
+      if (slot) {
         const existing = map.get(entry.recipientPlayerId) ?? new Set<GearSlot | 'tome_weapon'>();
-        existing.add(entry.slotAugmented);
+        existing.add(slot);
         map.set(entry.recipientPlayerId, existing);
       }
     }
