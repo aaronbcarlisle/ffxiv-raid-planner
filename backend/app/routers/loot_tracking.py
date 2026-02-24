@@ -43,7 +43,7 @@ from app.schemas import (
     WeekOperationResponse,
 )
 
-from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority
+from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
@@ -1223,6 +1223,13 @@ async def create_material_log_entry(
             ]
         recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
 
+    # Universal tomestone with mark_augmented: mark tome weapon as obtained
+    if data.mark_augmented and data.material_type.value == "universal_tomestone" and not validated_slot:
+        tome_weapon = dict(recipient_player.tome_weapon or {})
+        tome_weapon["hasItem"] = True
+        recipient_player.tome_weapon = tome_weapon
+        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+
     await db.commit()
     await db.refresh(entry)
 
@@ -1519,16 +1526,34 @@ async def get_priority(
     else:
         priority = calculate_all_floors_priority(players, settings, material_log)
 
-    # Build player info list
-    player_info = [
-        {
+    # Build player info list with augmentable slots for the plugin
+    player_info = []
+    for p in players:
+        augmentable: dict[str, list[str]] = {}
+        gear = p.get("gear", [])
+        tome_weapon = p.get("tomeWeapon", {})
+
+        for mat, slots in UPGRADE_MATERIAL_SLOTS.items():
+            eligible = [
+                g["slot"] for g in gear
+                if g.get("slot") in slots
+                and g.get("bisSource") == "tome"
+                and g.get("hasItem") is True
+                and g.get("isAugmented") is not True
+            ]
+            # Solvent: also check tome weapon augmentation
+            if mat == "solvent" and tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
+                eligible.append("tome_weapon")
+            if eligible:
+                augmentable[mat] = eligible
+
+        player_info.append({
             "id": p["id"],
             "name": p["name"],
             "job": p["job"],
             "role": p["role"],
-        }
-        for p in players
-    ]
+            "augmentableSlots": augmentable,
+        })
 
     return {
         "currentWeek": current_week,
