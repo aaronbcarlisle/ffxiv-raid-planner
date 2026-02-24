@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** February 23, 2026
+**Last Updated:** February 24, 2026
 **Current Version:** v1.13.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -11,6 +11,12 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-02-24:** Backend support for Dalamud plugin BiS tracking feature
+  - Added `item_id` field to `GearSlotStatus` schema (persisted through BiS imports)
+  - New `GET .../players/{playerId}/gear` endpoint for plugin BiS viewer
+  - `LootMethodEnum.PURCHASE` for vendor purchase self-logging
+  - Members can self-log purchases for their own linked player
+  - UUID | slug lookup fix on 4 player endpoints (plugin passes UUIDs)
 - **2026-02-23:** PR #68 (in review): Light mode theme with floating day/night toggle
   - Full light mode via CSS custom property overrides (`[data-theme="light"]`)
   - `useTheme` hook with localStorage persistence, OS preference detection, FOUC prevention

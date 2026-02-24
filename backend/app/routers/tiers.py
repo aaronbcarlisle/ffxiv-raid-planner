@@ -51,7 +51,7 @@ from ..constants import (
     create_default_gear_ring2_tome,
     create_default_tome_weapon,
 )
-from ..schemas.tier_snapshot import GearSlotStatus, MateriaSlot, TomeWeaponStatus
+from ..schemas.tier_snapshot import GearSlotStatus, MateriaSlot, PlayerGearResponse, TomeWeaponStatus
 
 router = APIRouter(prefix="/api/static-groups", tags=["tiers"])
 
@@ -121,6 +121,7 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
             current_source=g.get("currentSource", "unknown"),
             has_item=g.get("hasItem", False),
             is_augmented=g.get("isAugmented", False),
+            item_id=g.get("itemId"),
             item_name=g.get("itemName"),
             item_level=g.get("itemLevel"),
             item_icon=g.get("itemIcon"),
@@ -753,6 +754,77 @@ async def create_snapshot_player(
     return player_to_response(player, membership_role)
 
 
+@router.get("/{group_id}/tiers/{tier_id}/players/{player_id}/gear", response_model=PlayerGearResponse)
+async def get_player_gear(
+    group_id: str,
+    tier_id: str,
+    player_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> PlayerGearResponse:
+    """Get a player's full gear status (used by Dalamud plugin for BiS tracking)"""
+    group = await get_static_group(session, group_id)
+    await check_view_permission(session, group, current_user)
+
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
+        )
+    )
+    player = result.scalar_one_or_none()
+
+    if not player:
+        raise NotFound("Player not found")
+
+    # Build gear list
+    gear = [
+        GearSlotStatus(
+            slot=g["slot"],
+            bis_source=g.get("bisSource", "raid"),
+            current_source=g.get("currentSource", "unknown"),
+            has_item=g.get("hasItem", False),
+            is_augmented=g.get("isAugmented", False),
+            item_id=g.get("itemId"),
+            item_name=g.get("itemName"),
+            item_level=g.get("itemLevel"),
+            item_icon=g.get("itemIcon"),
+            item_stats=g.get("itemStats"),
+            materia=[
+                MateriaSlot(
+                    item_id=m.get("itemId", 0),
+                    item_name=m.get("itemName", ""),
+                    stat=m.get("stat"),
+                    tier=m.get("tier"),
+                    icon=m.get("icon"),
+                )
+                for m in g.get("materia", [])
+            ],
+        )
+        for g in (player.gear or [])
+    ]
+
+    tw = player.tome_weapon or {}
+    tome_weapon = TomeWeaponStatus(
+        pursuing=tw.get("pursuing", False),
+        has_item=tw.get("hasItem", False),
+        is_augmented=tw.get("isAugmented", False),
+    )
+
+    return PlayerGearResponse(
+        player_id=player.id,
+        player_name=player.name,
+        job=player.job,
+        bis_link=player.bis_link,
+        gear=gear,
+        tome_weapon=tome_weapon,
+    )
+
+
 @router.put("/{group_id}/tiers/{tier_id}/players/{player_id}", response_model=SnapshotPlayerResponse)
 async def update_snapshot_player(
     group_id: str,
@@ -779,7 +851,8 @@ async def update_snapshot_player(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -931,7 +1004,8 @@ async def claim_player(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -997,7 +1071,8 @@ async def release_player(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -1078,7 +1153,8 @@ async def _assign_player_impl(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -1225,7 +1301,8 @@ async def update_weapon_priorities(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -1322,7 +1399,8 @@ async def lock_player_weapon_priorities(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )
@@ -1378,7 +1456,8 @@ async def unlock_player_weapon_priorities(
         .where(
             SnapshotPlayer.id == player_id,
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            # Support both UUID (id) and slug (tier_id) lookups
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(SnapshotPlayer.user))
     )

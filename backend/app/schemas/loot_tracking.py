@@ -31,6 +31,7 @@ class LootMethodEnum(str, Enum):
     DROP = "drop"
     BOOK = "book"
     TOME = "tome"
+    PURCHASE = "purchase"  # Purchased from vendor (tome/book exchange)
 
 
 class TransactionTypeEnum(str, Enum):

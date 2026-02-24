@@ -182,7 +182,7 @@ frontend/src/
 
 **Tiers:** `GET/POST .../tiers`, `GET/PUT/DELETE .../tiers/{tierId}`, `POST .../rollover`
 
-**Players:** `PUT/DELETE .../players/{playerId}`, `POST .../players`, `POST/DELETE .../claim`, `POST .../assign`
+**Players:** `PUT/DELETE .../players/{playerId}`, `GET .../players/{playerId}/gear`, `POST .../players`, `POST/DELETE .../claim`, `POST .../assign`
 
 **Invitations:** `GET/POST .../invitations`, `DELETE .../invitations/{id}`, `GET/POST /api/invitations/{code}`
 

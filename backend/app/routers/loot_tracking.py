@@ -18,14 +18,18 @@ from app.dependencies import get_current_user, get_current_user_optional
 from app.models import (
     LootLogEntry,
     MaterialLogEntry,
+    MemberRole,
     PageLedgerEntry,
     SnapshotPlayer,
     TierSnapshot,
     User,
 )
 from app.permissions import (
+    PermissionDenied,
     check_view_permission,
     get_static_group,
+    get_user_membership,
+    is_user_admin,
     require_can_edit_roster,
 )
 from app.schemas import (
@@ -42,6 +46,7 @@ from app.schemas import (
     PageLedgerEntryResponse,
     WeekOperationResponse,
 )
+from app.schemas.loot_tracking import LootMethodEnum, MaterialTypeEnum
 
 from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS
 
@@ -184,10 +189,20 @@ async def create_loot_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new loot log entry (requires lead or owner role)"""
+    """Create a new loot log entry (requires lead/owner, or member for self-purchase)"""
     # Check permissions
     await get_static_group(db, group_id)
-    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Members can self-log purchases for their own linked player
+    is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        if not membership:
+            user_is_admin = await is_user_admin(db, current_user.id)
+            if not user_is_admin:
+                raise PermissionDenied("You are not a member of this static group")
+    else:
+        await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -205,6 +220,15 @@ async def create_loot_log_entry(
     recipient_player = result.scalar_one_or_none()
     if not recipient_player:
         raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
+
+    # For self-purchase: verify the recipient player is linked to the current user
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+        user_is_admin = await is_user_admin(db, current_user.id)
+        if not is_lead_or_owner and not user_is_admin:
+            if recipient_player.user_id != current_user.id:
+                raise PermissionDenied("Members can only log purchases for their own character")
 
     # Create entry
     entry = LootLogEntry(
@@ -1164,10 +1188,20 @@ async def create_material_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new material log entry (requires lead or owner role)"""
+    """Create a new material log entry (requires lead/owner, or member for self-purchase)"""
     # Check permissions
     await get_static_group(db, group_id)
-    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Members can self-log purchases for their own linked player
+    is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        if not membership:
+            user_is_admin = await is_user_admin(db, current_user.id)
+            if not user_is_admin:
+                raise PermissionDenied("You are not a member of this static group")
+    else:
+        await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -1185,6 +1219,15 @@ async def create_material_log_entry(
     recipient_player = result.scalar_one_or_none()
     if not recipient_player:
         raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
+
+    # For self-purchase: verify the recipient player is linked to the current user
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+        user_is_admin = await is_user_admin(db, current_user.id)
+        if not is_lead_or_owner and not user_is_admin:
+            if recipient_player.user_id != current_user.id:
+                raise PermissionDenied("Members can only log purchases for their own character")
 
     # Validate slot_augmented if provided
     validated_slot = None
