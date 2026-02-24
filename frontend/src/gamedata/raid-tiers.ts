@@ -233,14 +233,15 @@ export function getItemLevelForCategory(
   // Base iLv by category (using tier's item level definitions)
   const { savage, savageWeapon, tome, tomeAugmented, crafted, minimum } = tier.itemLevels;
 
-  // Weapon bonus is typically +5 iLv for non-savage gear
+  // Weapon bonus: only crafted/relic/normal weapons are +5 iLv above their armor tier.
+  // Tome weapons are the SAME iLv as tome armor (no +5 bonus).
   const weaponBonus = isWeapon ? 5 : 0;
 
   const iLvMap: Record<import('../types').GearSourceCategory, number> = {
-    savage: isWeapon ? savageWeapon : savage,        // Raid drops
+    savage: isWeapon ? savageWeapon : savage,        // Raid drops (weapon has its own iLv)
     tome_up: tomeAugmented,                           // Augmented tomestone (same iLv as savage armor)
     catchup: tome,                                    // Alliance/catch-up (same iLv as unaugmented tome)
-    tome: tome + weaponBonus,                         // Unaugmented tomestone
+    tome: tome,                                       // Unaugmented tomestone (NO weapon bonus)
     relic: crafted + 5 + weaponBonus,                 // Relic is usually +5 above crafted
     crafted: crafted + weaponBonus,                   // Crafted pentamelded
     prep: crafted + weaponBonus,                      // Previous BiS (treated as crafted tier)
