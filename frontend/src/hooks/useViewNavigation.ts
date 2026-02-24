@@ -115,7 +115,9 @@ export function useViewNavigation({
     // Clear any existing timeout
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the material entry for this player and slot
-    const entry = materialLog.find(e => e.recipientPlayerId === playerId && e.slotAugmented === slot);
+    // Universal tomestone has no slotAugmented but maps to 'tome_weapon'
+    const entry = materialLog.find(e => e.recipientPlayerId === playerId &&
+      (e.slotAugmented === slot || (slot === 'tome_weapon' && e.materialType === 'universal_tomestone' && !e.slotAugmented)));
     if (!entry) {
       toast.info('No material entry found for this slot');
       return;
