@@ -86,9 +86,8 @@ export async function logLootAndUpdateGear(
       let slot = data.itemSlot as GearSlot;
 
       // Special handling for ring drops: find which ring slot needs raid BiS
-      // Floor 1 drops a generic "ring" (stored as ring1), but we need to mark
-      // the correct ring slot based on the player's BiS configuration
-      if (slot === 'ring1' || slot === 'ring2') {
+      // Loot log stores rings as "ring" but gear uses ring1/ring2
+      if (slot === 'ring' || slot === 'ring1' || slot === 'ring2') {
         const ring1 = player.gear.find((g) => g.slot === 'ring1');
         const ring2 = player.gear.find((g) => g.slot === 'ring2');
         const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
@@ -182,7 +181,14 @@ export async function updateLootAndSyncGear(
         (p) => p.id === originalEntry.recipientPlayerId
       );
       if (oldPlayer) {
-        const oldSlot = originalEntry.itemSlot as GearSlot;
+        let oldSlot = originalEntry.itemSlot as GearSlot;
+        // Ring: find which ring slot to revert (loot log stores "ring", gear uses ring1/ring2)
+        if (oldSlot === 'ring' || oldSlot === 'ring1' || oldSlot === 'ring2') {
+          const ring1 = oldPlayer.gear.find((g) => g.slot === 'ring1');
+          const ring2 = oldPlayer.gear.find((g) => g.slot === 'ring2');
+          if (ring1?.bisSource === 'raid' && ring1?.hasItem) oldSlot = 'ring1';
+          else if (ring2?.bisSource === 'raid' && ring2?.hasItem) oldSlot = 'ring2';
+        }
         const updatedGear = oldPlayer.gear.map((g) =>
           g.slot === oldSlot ? { ...g, hasItem: false } : g
         );
@@ -205,8 +211,8 @@ export async function updateLootAndSyncGear(
       if (newPlayer) {
         let targetSlot = newSlot;
 
-        // Special handling for rings
-        if (targetSlot === 'ring1' || targetSlot === 'ring2') {
+        // Special handling for rings (loot log stores "ring", gear uses ring1/ring2)
+        if (targetSlot === 'ring' || targetSlot === 'ring1' || targetSlot === 'ring2') {
           const ring1 = newPlayer.gear.find((g) => g.slot === 'ring1');
           const ring2 = newPlayer.gear.find((g) => g.slot === 'ring2');
           const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
@@ -229,7 +235,14 @@ export async function updateLootAndSyncGear(
           (p) => p.id === newRecipientId
         );
         if (player) {
-          const oldSlot = originalEntry.itemSlot as GearSlot;
+          let oldSlot = originalEntry.itemSlot as GearSlot;
+          // Ring: find which ring slot to revert
+          if (oldSlot === 'ring' || oldSlot === 'ring1' || oldSlot === 'ring2') {
+            const ring1 = player.gear.find((g) => g.slot === 'ring1');
+            const ring2 = player.gear.find((g) => g.slot === 'ring2');
+            if (ring1?.bisSource === 'raid' && ring1?.hasItem) oldSlot = 'ring1';
+            else if (ring2?.bisSource === 'raid' && ring2?.hasItem) oldSlot = 'ring2';
+          }
           const updatedGear = player.gear.map((g) =>
             g.slot === oldSlot ? { ...g, hasItem: false } : g
           );
@@ -276,8 +289,8 @@ export async function deleteLootAndRevertGear(
     if (player) {
       let slot = entry.itemSlot as GearSlot;
 
-      // Special handling for ring drops (same as logLootAndUpdateGear)
-      if (slot === 'ring1' || slot === 'ring2') {
+      // Special handling for ring drops (loot log stores "ring", gear uses ring1/ring2)
+      if (slot === 'ring' || slot === 'ring1' || slot === 'ring2') {
         const ring1 = player.gear.find((g) => g.slot === 'ring1');
         const ring2 = player.gear.find((g) => g.slot === 'ring2');
         // Find which ring slot has the item (to revert)
