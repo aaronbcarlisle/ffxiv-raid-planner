@@ -62,6 +62,13 @@ VALID_AUGMENT_SLOTS = {
     "tome_weapon",  # Special case for tome weapon augmentation
 }
 
+# Material type → compatible augmentation slots
+MATERIAL_SLOT_COMPATIBILITY = {
+    "twine": {"head", "body", "hands", "legs", "feet"},
+    "glaze": {"earring", "necklace", "bracelet", "ring1", "ring2"},
+    "solvent": {"weapon", "tome_weapon"},
+}
+
 
 # Helper functions
 
@@ -1242,6 +1249,13 @@ async def create_material_log_entry(
     # Validate slot_augmented if provided
     validated_slot = None
     if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
+        # Validate material/slot compatibility
+        compatible_slots = MATERIAL_SLOT_COMPATIBILITY.get(data.material_type.value)
+        if compatible_slots and data.slot_augmented not in compatible_slots:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Slot '{data.slot_augmented}' is not compatible with material type '{data.material_type.value}'",
+            )
         validated_slot = data.slot_augmented
 
     # Create entry
