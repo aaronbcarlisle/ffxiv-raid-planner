@@ -262,14 +262,20 @@ async def create_loot_log_entry(
                 target_slot = "ring1"
             elif needs_ring2:
                 target_slot = "ring2"
+            else:
+                target_slot = None  # Neither ring needs raid BiS, skip gear update
 
-        updated_gear = [
-            {**g, "hasItem": True} if g.get("slot") == target_slot else g
-            for g in gear
-        ]
-        recipient_player.gear = updated_gear
-        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
-        gear_updated = True
+        # Only update gear if the target slot has raid BiS source
+        if target_slot:
+            slot_data = next((g for g in gear if g.get("slot") == target_slot), None)
+            if slot_data and slot_data.get("bisSource") == "raid":
+                updated_gear = [
+                    {**g, "hasItem": True} if g.get("slot") == target_slot else g
+                    for g in gear
+                ]
+                recipient_player.gear = updated_gear
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+                gear_updated = True
 
     await db.commit()
     await db.refresh(entry)

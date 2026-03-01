@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user_jwt_only
 from app.models import ApiKey, User
 from app.schemas.api_key import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse
 
@@ -24,25 +24,26 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["api-keys"])
 
-# Key format: xrp_ + 40 random hex chars
+# Key format: xrp_ + 40 random hex chars (20 random bytes = 160 bits of entropy)
 KEY_PREFIX = "xrp_"
-KEY_RANDOM_LENGTH = 40  # 160 bits of entropy
+KEY_RANDOM_BYTES = 20
 
 # Maximum keys per user
 MAX_KEYS_PER_USER = 10
 
-# Valid scopes
-VALID_SCOPES = {
+# All available scopes — stored on keys for future per-scope enforcement.
+# Currently all keys receive all scopes; enforcement is not yet implemented.
+ALL_SCOPES = [
     "priority:read",
     "loot:write",
     "materials:write",
     "pages:write",
-}
+]
 
 
 def _generate_api_key() -> str:
     """Generate a new API key with xrp_ prefix."""
-    return KEY_PREFIX + secrets.token_hex(KEY_RANDOM_LENGTH // 2)
+    return KEY_PREFIX + secrets.token_hex(KEY_RANDOM_BYTES)
 
 
 def _hash_key(raw_key: str) -> str:
@@ -54,17 +55,9 @@ def _hash_key(raw_key: str) -> str:
 async def create_api_key(
     data: ApiKeyCreate,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_jwt_only),
 ):
     """Generate a new API key. The raw key is returned ONCE in the response."""
-    # Validate scopes
-    invalid_scopes = set(data.scopes) - VALID_SCOPES
-    if invalid_scopes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid scopes: {', '.join(invalid_scopes)}",
-        )
-
     # Check key count limit
     result = await db.execute(
         select(ApiKey).where(
@@ -93,7 +86,7 @@ async def create_api_key(
         key_hash=key_hash,
         key_prefix=key_prefix,
         name=data.name,
-        scopes=data.scopes,
+        scopes=ALL_SCOPES,
         is_active=True,
         created_at=now,
     )
@@ -105,7 +98,6 @@ async def create_api_key(
         key_id=key_id,
         key_prefix=key_prefix,
         user_id=current_user.id,
-        scopes=data.scopes,
     )
 
     return ApiKeyCreateResponse(
@@ -113,7 +105,7 @@ async def create_api_key(
         name=data.name,
         key=raw_key,
         key_prefix=key_prefix,
-        scopes=data.scopes,
+        scopes=ALL_SCOPES,
         created_at=now,
     )
 
@@ -121,12 +113,12 @@ async def create_api_key(
 @router.get("/api-keys", response_model=list[ApiKeyResponse])
 async def list_api_keys(
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_jwt_only),
 ):
-    """List all API keys for the current user. Never returns raw keys."""
+    """List active API keys for the current user. Never returns raw keys."""
     result = await db.execute(
         select(ApiKey)
-        .where(ApiKey.user_id == current_user.id)
+        .where(ApiKey.user_id == current_user.id, ApiKey.is_active == True)
         .order_by(ApiKey.created_at.desc())
     )
     keys = result.scalars().all()
@@ -150,7 +142,7 @@ async def list_api_keys(
 async def revoke_api_key(
     key_id: str,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_jwt_only),
 ):
     """Revoke an API key (soft delete by setting is_active=False)."""
     result = await db.execute(

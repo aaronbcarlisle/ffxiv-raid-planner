@@ -57,7 +57,7 @@ function Start-Servers {
     if (-not (Test-Path $VenvUvicorn)) {
         Write-Host "  ERROR: Backend venv not found. Run:" -ForegroundColor Red
         Write-Host "    cd backend && python -m venv venv" -ForegroundColor Yellow
-        Write-Host "    backend\venv\Scripts\pip.exe install -r backend\requirements.txt" -ForegroundColor Yellow
+        Write-Host "    venv\Scripts\pip.exe install -r requirements.txt" -ForegroundColor Yellow
         return
     }
 

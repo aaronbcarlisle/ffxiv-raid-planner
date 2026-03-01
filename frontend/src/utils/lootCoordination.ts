@@ -14,6 +14,7 @@ import type {
   SnapshotPlayer,
   StaticSettings,
   GearSlot,
+  LootSlot,
   AdvancedPriorityOptions,
 } from '../types';
 import { DEFAULT_ADVANCED_OPTIONS } from '../types';
@@ -83,7 +84,7 @@ export async function logLootAndUpdateGear(
     );
 
     if (player) {
-      let slot = data.itemSlot as GearSlot;
+      let slot: LootSlot = data.itemSlot as LootSlot;
 
       // Special handling for ring drops: find which ring slot needs raid BiS
       // Loot log stores rings as "ring" but gear uses ring1/ring2
@@ -181,7 +182,7 @@ export async function updateLootAndSyncGear(
         (p) => p.id === originalEntry.recipientPlayerId
       );
       if (oldPlayer) {
-        let oldSlot = originalEntry.itemSlot as GearSlot;
+        let oldSlot: LootSlot = originalEntry.itemSlot as LootSlot;
         // Ring: find which ring slot to revert (loot log stores "ring", gear uses ring1/ring2)
         if (oldSlot === 'ring' || oldSlot === 'ring1' || oldSlot === 'ring2') {
           const ring1 = oldPlayer.gear.find((g) => g.slot === 'ring1');
@@ -200,7 +201,7 @@ export async function updateLootAndSyncGear(
 
     // Mark new recipient's gear if recipient changed, or update slot if slot changed
     const newRecipientId = updates.recipientPlayerId || originalEntry.recipientPlayerId;
-    const newSlot = (updates.itemSlot || originalEntry.itemSlot) as GearSlot;
+    const newSlot: LootSlot = (updates.itemSlot || originalEntry.itemSlot) as LootSlot;
 
     if (recipientChanged || slotChanged) {
       // Refetch state after previous update
@@ -209,7 +210,7 @@ export async function updateLootAndSyncGear(
         (p) => p.id === newRecipientId
       );
       if (newPlayer) {
-        let targetSlot = newSlot;
+        let targetSlot: LootSlot = newSlot;
 
         // Special handling for rings (loot log stores "ring", gear uses ring1/ring2)
         if (targetSlot === 'ring' || targetSlot === 'ring1' || targetSlot === 'ring2') {
@@ -235,7 +236,7 @@ export async function updateLootAndSyncGear(
           (p) => p.id === newRecipientId
         );
         if (player) {
-          let oldSlot = originalEntry.itemSlot as GearSlot;
+          let oldSlot: LootSlot = originalEntry.itemSlot as LootSlot;
           // Ring: find which ring slot to revert
           if (oldSlot === 'ring' || oldSlot === 'ring1' || oldSlot === 'ring2') {
             const ring1 = player.gear.find((g) => g.slot === 'ring1');
@@ -287,7 +288,7 @@ export async function deleteLootAndRevertGear(
     );
 
     if (player) {
-      let slot = entry.itemSlot as GearSlot;
+      let slot: LootSlot = entry.itemSlot as LootSlot;
 
       // Special handling for ring drops (loot log stores "ring", gear uses ring1/ring2)
       if (slot === 'ring' || slot === 'ring1' || slot === 'ring2') {

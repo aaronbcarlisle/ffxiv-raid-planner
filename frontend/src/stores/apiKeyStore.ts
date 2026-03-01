@@ -37,7 +37,7 @@ interface ApiKeyState {
   error: string | null;
 
   fetchKeys: () => Promise<void>;
-  createKey: (name: string, scopes?: string[]) => Promise<ApiKeyCreateResponse>;
+  createKey: (name: string) => Promise<ApiKeyCreateResponse>;
   revokeKey: (keyId: string) => Promise<void>;
 }
 
@@ -58,14 +58,15 @@ export const useApiKeyStore = create<ApiKeyState>((set, get) => ({
     }
   },
 
-  createKey: async (name: string, scopes?: string[]) => {
-    const body: { name: string; scopes?: string[] } = { name };
-    if (scopes) body.scopes = scopes;
+  createKey: async (name: string) => {
+    const result = await api.post<ApiKeyCreateResponse>('/api/auth/api-keys', { name });
 
-    const result = await api.post<ApiKeyCreateResponse>('/api/auth/api-keys', body);
-
-    // Refresh the key list
-    await get().fetchKeys();
+    // Refresh the key list (don't let failure here lose the raw key)
+    try {
+      await get().fetchKeys();
+    } catch {
+      // Key was created successfully; list refresh can be retried
+    }
 
     return result;
   },

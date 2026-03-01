@@ -24,12 +24,12 @@ class CamelModel(BaseModel):
 
 
 class ApiKeyCreate(CamelModel):
-    """Request schema for creating an API key"""
+    """Request schema for creating an API key.
+
+    All keys receive full access. Scope enforcement is planned for a future release.
+    """
 
     name: str = Field(..., min_length=1, max_length=100)
-    scopes: list[str] = Field(
-        default_factory=lambda: ["priority:read", "loot:write", "materials:write", "pages:write"]
-    )
 
 
 class ApiKeyCreateResponse(CamelModel):

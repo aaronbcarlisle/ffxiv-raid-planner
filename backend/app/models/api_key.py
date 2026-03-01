@@ -33,7 +33,7 @@ class ApiKey(Base):
     # SHA-256 hash of the full key (for lookup)
     key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
 
-    # First 8 chars of the key for display (e.g., "xrp_a1b2...")
+    # First 12 chars of the key for display (xrp_ + 8 hex chars, e.g., "xrp_a1b2c3d4...")
     key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)
 
     # User-provided label

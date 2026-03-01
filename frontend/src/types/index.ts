@@ -22,6 +22,9 @@ export type GearSlot =
   | 'ring1'
   | 'ring2';
 
+// Loot log slots — includes 'ring' which gets normalized to ring1/ring2 for gear updates
+export type LootSlot = GearSlot | 'ring';
+
 // Where the BiS gear comes from
 export type GearSource = 'raid' | 'tome' | 'base_tome' | 'crafted';
 

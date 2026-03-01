@@ -31,25 +31,19 @@ class TestCreateApiKey:
         assert "loot:write" in data["scopes"]
 
     @pytest.mark.asyncio
-    async def test_create_api_key_custom_scopes(self, client: AsyncClient, auth_headers: dict):
+    async def test_create_api_key_always_assigns_all_scopes(self, client: AsyncClient, auth_headers: dict):
+        """All keys receive full scopes regardless of request body."""
         response = await client.post(
             "/api/auth/api-keys",
-            json={"name": "Read Only", "scopes": ["priority:read"]},
+            json={"name": "Full Access"},
             headers=auth_headers,
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["scopes"] == ["priority:read"]
-
-    @pytest.mark.asyncio
-    async def test_create_api_key_invalid_scopes(self, client: AsyncClient, auth_headers: dict):
-        response = await client.post(
-            "/api/auth/api-keys",
-            json={"name": "Bad Key", "scopes": ["admin:all"]},
-            headers=auth_headers,
-        )
-        assert response.status_code == 400
-        assert "Invalid scopes" in response.json()["detail"]
+        assert "priority:read" in data["scopes"]
+        assert "loot:write" in data["scopes"]
+        assert "materials:write" in data["scopes"]
+        assert "pages:write" in data["scopes"]
 
     @pytest.mark.asyncio
     async def test_create_api_key_requires_auth(self, client: AsyncClient):
@@ -155,12 +149,11 @@ class TestRevokeApiKey:
         response = await client.delete(f"/api/auth/api-keys/{key_id}", headers=auth_headers)
         assert response.status_code == 204
 
-        # Verify it shows as inactive
+        # Revoked keys are filtered from the list
         list_response = await client.get("/api/auth/api-keys", headers=auth_headers)
         keys = list_response.json()
         revoked = [k for k in keys if k["id"] == key_id]
-        assert len(revoked) == 1
-        assert revoked[0]["isActive"] is False
+        assert len(revoked) == 0
 
     @pytest.mark.asyncio
     async def test_revoke_nonexistent_key(self, client: AsyncClient, auth_headers: dict):
@@ -293,3 +286,35 @@ class TestApiKeyAuthentication:
         keys = list_response.json()
         assert len(keys) == 1
         assert keys[0]["lastUsedAt"] is not None
+
+    @pytest.mark.asyncio
+    async def test_api_key_cannot_manage_keys(self, client: AsyncClient, auth_headers: dict):
+        """API keys should not be able to create, list, or revoke other API keys."""
+        # Create a key via normal auth
+        create_response = await client.post(
+            "/api/auth/api-keys",
+            json={"name": "Management Test"},
+            headers=auth_headers,
+        )
+        raw_key = create_response.json()["key"]
+        api_key_headers = {"Authorization": f"Bearer {raw_key}"}
+
+        # Try to list keys via API key — should be rejected
+        response = await client.get("/api/auth/api-keys", headers=api_key_headers)
+        assert response.status_code == 403
+
+        # Try to create a key via API key — should be rejected
+        response = await client.post(
+            "/api/auth/api-keys",
+            json={"name": "Escalation Attempt"},
+            headers=api_key_headers,
+        )
+        assert response.status_code == 403
+
+        # Try to revoke a key via API key — should be rejected
+        key_id = create_response.json()["id"]
+        response = await client.delete(
+            f"/api/auth/api-keys/{key_id}",
+            headers=api_key_headers,
+        )
+        assert response.status_code == 403

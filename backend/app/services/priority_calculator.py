@@ -74,14 +74,16 @@ DEFAULT_ADVANCED_OPTIONS: dict[str, Any] = {
 
 
 def _get_advanced_options(settings: dict) -> dict:
-    """Get advanced options from settings with defaults."""
+    """Get advanced options from settings with defaults.
+
+    Uses all-or-nothing semantics to match the frontend behavior
+    (settings.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS).
+    Falls back to defaults if advancedOptions is missing/empty.
+    """
     priority_settings = settings.get("prioritySettings") or {}
     advanced = priority_settings.get("advancedOptions")
     if advanced:
-        # Merge with defaults to fill missing keys
-        merged = dict(DEFAULT_ADVANCED_OPTIONS)
-        merged.update(advanced)
-        return merged
+        return advanced
     return dict(DEFAULT_ADVANCED_OPTIONS)
 
 
@@ -325,7 +327,12 @@ def calculate_priority_score(player: dict, settings: dict) -> int:
 
 
 def _sort_priority_entries(entries: list[dict]) -> list[dict]:
-    """Sort priority entries by score (desc), then name (asc) for ties."""
+    """Sort priority entries by score (desc), then name (asc) for ties.
+
+    Note: Uses Python string ordering for tie-breaking. The frontend uses
+    localeCompare, which may differ for non-ASCII names. Both produce stable
+    deterministic ordering; in practice FFXIV character names are ASCII.
+    """
     return sorted(entries, key=lambda e: (-e["score"], e["playerName"]))
 
 

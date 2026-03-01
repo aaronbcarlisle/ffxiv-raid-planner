@@ -102,8 +102,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         are not vulnerable to cross-site request forgery.
         """
         # Skip CSRF for API key auth (not vulnerable - keys aren't auto-sent by browsers)
+        # Authorization schemes are case-insensitive per RFC 7235
         auth_header = request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer xrp_"):
+        parts = auth_header.strip().split(None, 1)
+        if len(parts) == 2 and parts[0].lower() == "bearer" and parts[1].startswith("xrp_"):
             return True
 
         cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
