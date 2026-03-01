@@ -46,7 +46,7 @@ from app.schemas import (
     PageLedgerEntryResponse,
     WeekOperationResponse,
 )
-from app.schemas.loot_tracking import LootMethodEnum, MaterialTypeEnum
+from app.schemas.loot_tracking import LootMethodEnum
 
 from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS
 
@@ -193,7 +193,7 @@ async def create_loot_log_entry(
     # Check permissions
     await get_static_group(db, group_id)
 
-    # Members can self-log purchases for their own linked player
+    # Members can self-log purchases for their own linked player (viewers excluded)
     is_self_purchase = data.method == LootMethodEnum.PURCHASE
     if is_self_purchase:
         membership = await get_user_membership(db, current_user.id, group_id)
@@ -201,6 +201,8 @@ async def create_loot_log_entry(
             user_is_admin = await is_user_admin(db, current_user.id)
             if not user_is_admin:
                 raise PermissionDenied("You are not a member of this static group")
+        elif membership.role == MemberRole.VIEWER.value:
+            raise PermissionDenied("Viewers cannot log purchases")
     else:
         await require_can_edit_roster(db, current_user.id, group_id)
 
@@ -1198,7 +1200,7 @@ async def create_material_log_entry(
     # Check permissions
     await get_static_group(db, group_id)
 
-    # Members can self-log purchases for their own linked player
+    # Members can self-log purchases for their own linked player (viewers excluded)
     is_self_purchase = data.method == LootMethodEnum.PURCHASE
     if is_self_purchase:
         membership = await get_user_membership(db, current_user.id, group_id)
@@ -1206,6 +1208,8 @@ async def create_material_log_entry(
             user_is_admin = await is_user_admin(db, current_user.id)
             if not user_is_admin:
                 raise PermissionDenied("You are not a member of this static group")
+        elif membership.role == MemberRole.VIEWER.value:
+            raise PermissionDenied("Viewers cannot log purchases")
     else:
         await require_can_edit_roster(db, current_user.id, group_id)
 

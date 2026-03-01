@@ -5,7 +5,6 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User
 from app.services.priority_calculator import (
     calculate_priority_score,
     get_priority_for_item,
@@ -15,7 +14,7 @@ from app.services.priority_calculator import (
     calculate_floor_priority,
     calculate_all_floors_priority,
 )
-from tests.factories import create_snapshot_player, create_static_group, create_tier_snapshot
+from tests.factories import create_snapshot_player
 
 
 # ==================== Fixtures ====================

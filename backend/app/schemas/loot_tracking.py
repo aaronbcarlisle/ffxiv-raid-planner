@@ -173,7 +173,7 @@ class MaterialLogEntryCreate(CamelModel):
     # Values: "weapon", "head", "body", etc., or "tome_weapon" for solvent augmenting tome weapon
     slot_augmented: str | None = None
     notes: str | None = None
-    mark_augmented: bool = False  # If True and slot_augmented is set, also set isAugmented=True on the gear slot
+    mark_augmented: bool = False  # If True: with slot_augmented, sets isAugmented=True; with universal_tomestone (no slot), marks tome weapon as obtained
 
 
 class MaterialLogEntryUpdate(CamelModel):

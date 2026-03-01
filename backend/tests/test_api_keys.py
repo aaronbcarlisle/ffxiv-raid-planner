@@ -1,7 +1,5 @@
 """Tests for API key CRUD endpoints and authentication"""
 
-import hashlib
-
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
