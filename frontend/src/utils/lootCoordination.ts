@@ -84,7 +84,7 @@ export async function logLootAndUpdateGear(
     );
 
     if (player) {
-      let slot: LootSlot = data.itemSlot as LootSlot;
+      let slot: LootSlot | null = data.itemSlot as LootSlot;
 
       // Special handling for ring drops: find which ring slot needs raid BiS
       // Loot log stores rings as "ring" but gear uses ring1/ring2
@@ -94,21 +94,27 @@ export async function logLootAndUpdateGear(
         const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
         const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
 
-        // Prefer ring1 if both need it, otherwise use the one that needs raid
         if (needsRing1) {
           slot = 'ring1';
         } else if (needsRing2) {
           slot = 'ring2';
+        } else {
+          slot = null; // Neither ring needs raid BiS, skip gear update
         }
-        // If neither needs raid, fall back to ring1 (original behavior)
       }
 
-      const updatedGear = player.gear.map((g) =>
-        g.slot === slot ? { ...g, hasItem: true } : g
-      );
-      await tierStore.updatePlayer(groupId, tierId, data.recipientPlayerId, {
-        gear: updatedGear,
-      });
+      // Only update gear if the slot has raid BiS source (matches backend mark_acquired)
+      if (slot) {
+        const slotData = player.gear.find((g) => g.slot === slot);
+        if (slotData?.bisSource === 'raid') {
+          const updatedGear = player.gear.map((g) =>
+            g.slot === slot ? { ...g, hasItem: true } : g
+          );
+          await tierStore.updatePlayer(groupId, tierId, data.recipientPlayerId, {
+            gear: updatedGear,
+          });
+        }
+      }
     }
   }
 
@@ -210,7 +216,7 @@ export async function updateLootAndSyncGear(
         (p) => p.id === newRecipientId
       );
       if (newPlayer) {
-        let targetSlot: LootSlot = newSlot;
+        let targetSlot: LootSlot | null = newSlot;
 
         // Special handling for rings (loot log stores "ring", gear uses ring1/ring2)
         if (targetSlot === 'ring' || targetSlot === 'ring1' || targetSlot === 'ring2') {
@@ -220,14 +226,20 @@ export async function updateLootAndSyncGear(
           const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
           if (needsRing1) targetSlot = 'ring1';
           else if (needsRing2) targetSlot = 'ring2';
+          else targetSlot = null;
         }
 
-        const updatedGear = newPlayer.gear.map((g) =>
-          g.slot === targetSlot ? { ...g, hasItem: true } : g
-        );
-        await tierStore.updatePlayer(groupId, tierId, newRecipientId, {
-          gear: updatedGear,
-        });
+        if (targetSlot) {
+          const slotData = newPlayer.gear.find((g) => g.slot === targetSlot);
+          if (slotData?.bisSource === 'raid') {
+            const updatedGear = newPlayer.gear.map((g) =>
+              g.slot === targetSlot ? { ...g, hasItem: true } : g
+            );
+            await tierStore.updatePlayer(groupId, tierId, newRecipientId, {
+              gear: updatedGear,
+            });
+          }
+        }
       }
 
       // If slot changed but not recipient, also revert the old slot
@@ -288,7 +300,7 @@ export async function deleteLootAndRevertGear(
     );
 
     if (player) {
-      let slot: LootSlot = entry.itemSlot as LootSlot;
+      let slot: LootSlot | null = entry.itemSlot as LootSlot;
 
       // Special handling for ring drops (loot log stores "ring", gear uses ring1/ring2)
       if (slot === 'ring' || slot === 'ring1' || slot === 'ring2') {
@@ -301,15 +313,19 @@ export async function deleteLootAndRevertGear(
           slot = 'ring1';
         } else if (hasRing2) {
           slot = 'ring2';
+        } else {
+          slot = null; // Neither ring has raid item, nothing to revert
         }
       }
 
-      const updatedGear = player.gear.map((g) =>
-        g.slot === slot ? { ...g, hasItem: false } : g
-      );
-      await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
-        gear: updatedGear,
-      });
+      if (slot) {
+        const updatedGear = player.gear.map((g) =>
+          g.slot === slot ? { ...g, hasItem: false } : g
+        );
+        await tierStore.updatePlayer(groupId, tierId, entry.recipientPlayerId, {
+          gear: updatedGear,
+        });
+      }
     }
   }
 

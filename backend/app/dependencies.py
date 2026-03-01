@@ -83,13 +83,26 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
     # Save user_id before committing (ORM objects expire after commit)
     user_id = api_key.user_id
 
-    # Update last_used_at and commit immediately so it persists even on GET endpoints
-    await session.execute(
-        update(ApiKey).where(ApiKey.id == api_key.id).values(
-            last_used_at=datetime.now(timezone.utc).isoformat()
+    # Throttle last_used_at updates to reduce write load from high-volume polling
+    now = datetime.now(timezone.utc)
+    should_update = True
+    if api_key.last_used_at:
+        last_str = api_key.last_used_at.replace("Z", "+00:00")
+        last = datetime.fromisoformat(last_str)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        should_update = (now - last).total_seconds() > 300  # 5-minute threshold
+
+    if should_update:
+        await session.execute(
+            update(ApiKey).where(ApiKey.id == api_key.id).values(
+                last_used_at=now.isoformat()
+            )
         )
-    )
-    await session.commit()
+        await session.commit()
+    else:
+        # Ensure a clean transaction for the handler
+        await session.commit()
 
     # Load user in fresh transaction
     user_result = await session.execute(

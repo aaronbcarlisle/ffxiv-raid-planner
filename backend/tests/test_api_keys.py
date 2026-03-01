@@ -254,12 +254,22 @@ class TestApiKeyAuthentication:
             transport=ASGITransport(app=the_app),
             base_url="http://test",
         ) as raw_client:
-            # GET should work (no CSRF needed for GET anyway)
+            api_key_headers = {"Authorization": f"Bearer {raw_key}"}
+
+            # GET works (no CSRF needed for GET anyway)
             response = await raw_client.get(
                 "/api/static-groups",
-                headers={"Authorization": f"Bearer {raw_key}"},
+                headers=api_key_headers,
             )
             assert response.status_code == 200
+
+            # POST (state-changing) should also work without CSRF token
+            response = await raw_client.post(
+                "/api/static-groups",
+                json={"name": "CSRF Bypass Test Static", "shareCode": "csrftest"},
+                headers=api_key_headers,
+            )
+            assert response.status_code == 201
 
     @pytest.mark.asyncio
     async def test_api_key_updates_last_used(
