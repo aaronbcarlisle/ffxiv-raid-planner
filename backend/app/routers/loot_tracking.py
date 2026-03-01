@@ -67,6 +67,7 @@ MATERIAL_SLOT_COMPATIBILITY = {
     "twine": {"head", "body", "hands", "legs", "feet"},
     "glaze": {"earring", "necklace", "bracelet", "ring1", "ring2"},
     "solvent": {"weapon", "tome_weapon"},
+    "universal_tomestone": set(),  # No slot_augmented; marks tome weapon via separate path
 }
 
 
@@ -202,6 +203,8 @@ async def create_loot_log_entry(
 
     # Members can self-log purchases for their own linked player (viewers excluded)
     is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    membership = None
+    user_is_admin = False
     if is_self_purchase:
         membership = await get_user_membership(db, current_user.id, group_id)
         if not membership:
@@ -232,9 +235,7 @@ async def create_loot_log_entry(
 
     # For self-purchase: verify the recipient player is linked to the current user
     if is_self_purchase:
-        membership = await get_user_membership(db, current_user.id, group_id)
         is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
-        user_is_admin = await is_user_admin(db, current_user.id)
         if not is_lead_or_owner and not user_is_admin:
             if recipient_player.user_id != current_user.id:
                 raise PermissionDenied("Members can only log purchases for their own character")
@@ -1209,6 +1210,8 @@ async def create_material_log_entry(
 
     # Members can self-log purchases for their own linked player (viewers excluded)
     is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    membership = None
+    user_is_admin = False
     if is_self_purchase:
         membership = await get_user_membership(db, current_user.id, group_id)
         if not membership:
@@ -1239,9 +1242,7 @@ async def create_material_log_entry(
 
     # For self-purchase: verify the recipient player is linked to the current user
     if is_self_purchase:
-        membership = await get_user_membership(db, current_user.id, group_id)
         is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
-        user_is_admin = await is_user_admin(db, current_user.id)
         if not is_lead_or_owner and not user_is_admin:
             if recipient_player.user_id != current_user.id:
                 raise PermissionDenied("Members can only log purchases for their own character")
@@ -1251,7 +1252,7 @@ async def create_material_log_entry(
     if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
         # Validate material/slot compatibility
         compatible_slots = MATERIAL_SLOT_COMPATIBILITY.get(data.material_type.value)
-        if compatible_slots and data.slot_augmented not in compatible_slots:
+        if compatible_slots is not None and data.slot_augmented not in compatible_slots:
             raise HTTPException(
                 status_code=400,
                 detail=f"Slot '{data.slot_augmented}' is not compatible with material type '{data.material_type.value}'",

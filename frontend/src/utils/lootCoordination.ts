@@ -72,8 +72,8 @@ export async function logLootAndUpdateGear(
   // 1. Create the loot entry
   await lootStore.createLootEntry(groupId, tierId, data);
 
-  // 2. Update gear if requested and method is 'drop' or 'book'
-  if (options.updateGear && (data.method === 'drop' || data.method === 'book')) {
+  // 2. Update gear if requested, method is 'drop' or 'book', and not extra/off-spec loot
+  if (options.updateGear && (data.method === 'drop' || data.method === 'book') && !data.isExtra) {
     // Ensure tier is loaded before trying to find the player
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
