@@ -48,7 +48,7 @@ from app.schemas import (
 )
 from app.schemas.loot_tracking import LootMethodEnum
 
-from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS
+from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS, _requires_augmentation
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
@@ -1606,6 +1606,7 @@ async def get_priority(
                 g["slot"] for g in gear
                 if g.get("slot") in slots
                 and g.get("bisSource") == "tome"
+                and _requires_augmentation(g)
                 and g.get("hasItem") is True
                 and g.get("isAugmented") is not True
             ]

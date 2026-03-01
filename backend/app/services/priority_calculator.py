@@ -82,7 +82,7 @@ def _get_advanced_options(settings: dict) -> dict:
     """
     priority_settings = settings.get("prioritySettings") or {}
     advanced = priority_settings.get("advancedOptions")
-    if advanced:
+    if advanced is not None:
         return advanced
     return dict(DEFAULT_ADVANCED_OPTIONS)
 
