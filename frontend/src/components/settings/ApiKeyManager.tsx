@@ -142,6 +142,7 @@ export function ApiKeyManager() {
                 size="sm"
                 onClick={() => setRevokeTarget(key)}
                 className="text-status-error hover:text-status-error"
+                aria-label={`Revoke API key "${key.name}"`}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

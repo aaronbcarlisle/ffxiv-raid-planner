@@ -1250,6 +1250,12 @@ async def create_material_log_entry(
 
     # Validate slot_augmented if provided
     validated_slot = None
+    if isinstance(data.slot_augmented, str) and data.slot_augmented:
+        if data.slot_augmented not in VALID_AUGMENT_SLOTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid slot_augmented value: '{data.slot_augmented}'",
+            )
     if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
         # Validate material/slot compatibility
         compatible_slots = MATERIAL_SLOT_COMPATIBILITY.get(data.material_type.value)
