@@ -68,11 +68,18 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
 
     # Check expiration
     if api_key.expires_at:
-        # Normalize ISO format: handle 'Z' suffix and ensure timezone awareness
-        expires_str = api_key.expires_at.replace("Z", "+00:00")
-        expires = datetime.fromisoformat(expires_str)
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
+        try:
+            expires_str = api_key.expires_at.replace("Z", "+00:00")
+            expires = datetime.fromisoformat(expires_str)
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+        except (ValueError, AttributeError):
+            # Treat unparseable expiration as expired (fail closed)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         if datetime.now(timezone.utc) > expires:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,18 +87,21 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    # Save user_id before committing (ORM objects expire after commit)
+    # Save user_id before flushing (ORM objects may expire after flush)
     user_id = api_key.user_id
 
     # Throttle last_used_at updates to reduce write load from high-volume polling
     now = datetime.now(timezone.utc)
     should_update = True
     if api_key.last_used_at:
-        last_str = api_key.last_used_at.replace("Z", "+00:00")
-        last = datetime.fromisoformat(last_str)
-        if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
-        should_update = (now - last).total_seconds() > 300  # 5-minute threshold
+        try:
+            last_str = api_key.last_used_at.replace("Z", "+00:00")
+            last = datetime.fromisoformat(last_str)
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            should_update = (now - last).total_seconds() > 300  # 5-minute threshold
+        except (ValueError, AttributeError):
+            should_update = True  # Can't parse last_used_at, update it
 
     if should_update:
         await session.execute(

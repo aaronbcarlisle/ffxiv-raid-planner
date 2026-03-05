@@ -87,13 +87,13 @@ export function useViewNavigation({
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the loot entry for this player and slot
     // Ring slots: gear uses ring1/ring2, loot log may store as "ring", "ring1", or "ring2"
+    // Prefer exact slot match first, then fall back to any ring variant
     const isRingSlot = slot === 'ring1' || slot === 'ring2';
-    const entry = lootLog.find(e =>
-      e.recipientPlayerId === playerId &&
-      (isRingSlot
-        ? (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2')
-        : e.itemSlot === slot)
-    );
+    const entry = isRingSlot
+      ? (lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot)
+        ?? lootLog.find(e => e.recipientPlayerId === playerId &&
+          (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2')))
+      : lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
     if (!entry) {
       toast.info('No loot entry found for this slot');
       return;

@@ -170,7 +170,7 @@ export function ApiKeyManager() {
                 <code className="flex-1 text-sm bg-surface-tertiary p-2 rounded border border-border-default font-mono break-all text-text-primary">
                   {createdKey.key}
                 </code>
-                <Button variant="secondary" size="sm" onClick={handleCopyKey}>
+                <Button variant="secondary" size="sm" onClick={handleCopyKey} aria-label="Copy API key">
                   {copied ? <Check className="w-4 h-4 text-status-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>

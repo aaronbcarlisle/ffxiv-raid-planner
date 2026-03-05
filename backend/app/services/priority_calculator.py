@@ -76,12 +76,14 @@ DEFAULT_ADVANCED_OPTIONS: dict[str, Any] = {
 def _get_advanced_options(settings: dict) -> dict:
     """Get advanced options from settings with defaults.
 
-    Uses all-or-nothing semantics to match the frontend behavior
-    (settings.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS).
-    Falls back to defaults if advancedOptions is missing, empty, or not a dict.
+    The frontend uses all-or-nothing semantics:
+      settings.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS
+    which means a partial object is used as-is (no merge).
 
-    When advancedOptions is present, merges with defaults to ensure all required
-    keys exist (guards against partial dicts from older clients).
+    The backend intentionally merges with defaults to guard against KeyError on
+    partial dicts from older clients or API callers. For well-formed data from the
+    web UI, the result is identical since all keys are always present.
+    Falls back to defaults if advancedOptions is missing, empty, or not a dict.
     """
     priority_settings = settings.get("prioritySettings") or {}
     advanced = priority_settings.get("advancedOptions")

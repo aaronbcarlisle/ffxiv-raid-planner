@@ -12,7 +12,7 @@ import uuid
 import structlog
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
@@ -59,15 +59,15 @@ async def create_api_key(
     current_user: User = Depends(get_current_user_jwt_only),
 ):
     """Generate a new API key. The raw key is returned ONCE in the response."""
-    # Check key count limit
-    result = await db.execute(
-        select(ApiKey).where(
+    # Check key count limit (COUNT query to avoid loading all key objects)
+    count_result = await db.execute(
+        select(func.count()).select_from(ApiKey).where(
             ApiKey.user_id == current_user.id,
             ApiKey.is_active == True,
         )
     )
-    existing_keys = result.scalars().all()
-    if len(existing_keys) >= MAX_KEYS_PER_USER:
+    key_count = count_result.scalar() or 0
+    if key_count >= MAX_KEYS_PER_USER:
         raise HTTPException(
             status_code=400,
             detail=f"Maximum of {MAX_KEYS_PER_USER} active API keys per user",
