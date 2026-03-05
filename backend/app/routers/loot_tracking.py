@@ -48,7 +48,7 @@ from app.schemas import (
 )
 from app.schemas.loot_tracking import LootMethodEnum
 
-from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS, _requires_augmentation
+from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS, requires_augmentation
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
@@ -62,13 +62,14 @@ VALID_AUGMENT_SLOTS = {
     "tome_weapon",  # Special case for tome weapon augmentation
 }
 
-# Material type → compatible augmentation slots
-MATERIAL_SLOT_COMPATIBILITY = {
-    "twine": {"head", "body", "hands", "legs", "feet"},
-    "glaze": {"earring", "necklace", "bracelet", "ring1", "ring2"},
-    "solvent": {"weapon", "tome_weapon"},
-    "universal_tomestone": set(),  # No slot_augmented; marks tome weapon via separate path
+# Material type → compatible augmentation slots (derived from UPGRADE_MATERIAL_SLOTS)
+MATERIAL_SLOT_COMPATIBILITY: dict[str, set[str]] = {
+    material: set(slots) for material, slots in UPGRADE_MATERIAL_SLOTS.items()
 }
+# Solvent also supports tome_weapon augmentation
+MATERIAL_SLOT_COMPATIBILITY["solvent"].add("tome_weapon")
+# Universal tomestones have no slot_augmented; they mark tome weapon via separate path
+MATERIAL_SLOT_COMPATIBILITY["universal_tomestone"] = set()
 
 
 # Helper functions
@@ -1279,24 +1280,35 @@ async def create_material_log_entry(
         gear = list(recipient_player.gear or [])
 
         if validated_slot == "tome_weapon":
-            # Augment the tome weapon
+            # Validate tome weapon is being pursued and has the item
             tome_weapon = dict(recipient_player.tome_weapon or {})
-            tome_weapon["isAugmented"] = True
-            recipient_player.tome_weapon = tome_weapon
+            if tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
+                tome_weapon["isAugmented"] = True
+                recipient_player.tome_weapon = tome_weapon
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
         else:
-            # Augment the gear slot
-            recipient_player.gear = [
-                {**g, "isAugmented": True} if g.get("slot") == validated_slot else g
-                for g in gear
-            ]
-        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+            # Validate the gear slot is tome BiS, has the item, requires augmentation, and isn't already augmented
+            slot_data = next((g for g in gear if g.get("slot") == validated_slot), None)
+            if (
+                slot_data
+                and slot_data.get("bisSource") == "tome"
+                and slot_data.get("hasItem")
+                and not slot_data.get("isAugmented")
+                and requires_augmentation(slot_data)
+            ):
+                recipient_player.gear = [
+                    {**g, "isAugmented": True} if g.get("slot") == validated_slot else g
+                    for g in gear
+                ]
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
 
     # Universal tomestone with mark_augmented: mark tome weapon as obtained
     if data.mark_augmented and data.material_type.value == "universal_tomestone" and not validated_slot:
         tome_weapon = dict(recipient_player.tome_weapon or {})
-        tome_weapon["hasItem"] = True
-        recipient_player.tome_weapon = tome_weapon
-        recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+        if tome_weapon.get("pursuing") and not tome_weapon.get("hasItem"):
+            tome_weapon["hasItem"] = True
+            recipient_player.tome_weapon = tome_weapon
+            recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await db.commit()
     await db.refresh(entry)
@@ -1606,7 +1618,7 @@ async def get_priority(
                 g["slot"] for g in gear
                 if g.get("slot") in slots
                 and g.get("bisSource") == "tome"
-                and _requires_augmentation(g)
+                and requires_augmentation(g)
                 and g.get("hasItem") is True
                 and g.get("isAugmented") is not True
             ]

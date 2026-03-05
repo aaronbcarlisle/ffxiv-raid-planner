@@ -78,12 +78,16 @@ def _get_advanced_options(settings: dict) -> dict:
 
     Uses all-or-nothing semantics to match the frontend behavior
     (settings.prioritySettings?.advancedOptions || DEFAULT_ADVANCED_OPTIONS).
-    Falls back to defaults if advancedOptions is missing/empty.
+    Falls back to defaults if advancedOptions is missing, empty, or not a dict.
+
+    When advancedOptions is present, merges with defaults to ensure all required
+    keys exist (guards against partial dicts from older clients).
     """
     priority_settings = settings.get("prioritySettings") or {}
     advanced = priority_settings.get("advancedOptions")
-    if advanced is not None:
-        return advanced
+    if advanced and isinstance(advanced, dict):
+        # Merge with defaults so missing keys don't cause KeyError
+        return {**DEFAULT_ADVANCED_OPTIONS, **advanced}
     return dict(DEFAULT_ADVANCED_OPTIONS)
 
 
@@ -98,7 +102,7 @@ def _get_effective_priority_mode(settings: dict) -> str:
     return settings.get("priorityMode") or "automatic"
 
 
-def _requires_augmentation(slot: dict) -> bool:
+def requires_augmentation(slot: dict) -> bool:
     """Check if a BiS slot requires augmentation to be complete.
 
     Port of calculations.ts:requiresAugmentation
@@ -134,7 +138,7 @@ def _is_slot_complete(slot: dict) -> bool:
         return True
     if bis_source == "crafted":
         return True
-    if not _requires_augmentation(slot):
+    if not requires_augmentation(slot):
         return True
     return slot.get("isAugmented", False)
 
@@ -418,7 +422,7 @@ def get_priority_for_upgrade_material(
             and g.get("bisSource") == "tome"
             and g.get("hasItem")
             and not g.get("isAugmented")
-            and _requires_augmentation(g)
+            and requires_augmentation(g)
         ]
 
         total_need = len(unaugmented)

@@ -171,8 +171,10 @@ export async function updateLootAndSyncGear(
   // 1. Update the loot entry
   await lootStore.updateLootEntry(groupId, tierId, entryId, updates);
 
-  // 2. Sync gear if requested and the original was a drop or book
-  if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book')) {
+  // 2. Sync gear if requested, the original was a drop or book, and not extra/off-spec
+  const isOriginalExtra = originalEntry.isExtra;
+  const isNewExtra = updates.isExtra !== undefined ? updates.isExtra : isOriginalExtra;
+  if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book') && !isOriginalExtra) {
     // Ensure tier is loaded
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
@@ -210,34 +212,37 @@ export async function updateLootAndSyncGear(
     const newSlot: LootSlot = (updates.itemSlot || originalEntry.itemSlot) as LootSlot;
 
     if (recipientChanged || slotChanged) {
-      // Refetch state after previous update
-      const freshState = useTierStore.getState();
-      const newPlayer = freshState.currentTier?.players?.find(
-        (p) => p.id === newRecipientId
-      );
-      if (newPlayer) {
-        let targetSlot: LootSlot | null = newSlot;
+      // Only mark new gear if the (possibly updated) entry is not extra/off-spec
+      if (!isNewExtra) {
+        // Refetch state after previous update
+        const freshState = useTierStore.getState();
+        const newPlayer = freshState.currentTier?.players?.find(
+          (p) => p.id === newRecipientId
+        );
+        if (newPlayer) {
+          let targetSlot: LootSlot | null = newSlot;
 
-        // Special handling for rings (loot log stores "ring", gear uses ring1/ring2)
-        if (targetSlot === 'ring' || targetSlot === 'ring1' || targetSlot === 'ring2') {
-          const ring1 = newPlayer.gear.find((g) => g.slot === 'ring1');
-          const ring2 = newPlayer.gear.find((g) => g.slot === 'ring2');
-          const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
-          const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
-          if (needsRing1) targetSlot = 'ring1';
-          else if (needsRing2) targetSlot = 'ring2';
-          else targetSlot = null;
-        }
+          // Special handling for rings (loot log stores "ring", gear uses ring1/ring2)
+          if (targetSlot === 'ring' || targetSlot === 'ring1' || targetSlot === 'ring2') {
+            const ring1 = newPlayer.gear.find((g) => g.slot === 'ring1');
+            const ring2 = newPlayer.gear.find((g) => g.slot === 'ring2');
+            const needsRing1 = ring1?.bisSource === 'raid' && !ring1?.hasItem;
+            const needsRing2 = ring2?.bisSource === 'raid' && !ring2?.hasItem;
+            if (needsRing1) targetSlot = 'ring1';
+            else if (needsRing2) targetSlot = 'ring2';
+            else targetSlot = null;
+          }
 
-        if (targetSlot) {
-          const slotData = newPlayer.gear.find((g) => g.slot === targetSlot);
-          if (slotData?.bisSource === 'raid') {
-            const updatedGear = newPlayer.gear.map((g) =>
-              g.slot === targetSlot ? { ...g, hasItem: true } : g
-            );
-            await tierStore.updatePlayer(groupId, tierId, newRecipientId, {
-              gear: updatedGear,
-            });
+          if (targetSlot) {
+            const slotData = newPlayer.gear.find((g) => g.slot === targetSlot);
+            if (slotData?.bisSource === 'raid') {
+              const updatedGear = newPlayer.gear.map((g) =>
+                g.slot === targetSlot ? { ...g, hasItem: true } : g
+              );
+              await tierStore.updatePlayer(groupId, tierId, newRecipientId, {
+                gear: updatedGear,
+              });
+            }
           }
         }
       }
@@ -288,8 +293,8 @@ export async function deleteLootAndRevertGear(
   // 1. Delete the entry
   await lootStore.deleteLootEntry(groupId, tierId, entryId);
 
-  // 2. Revert gear if requested and was a drop or book
-  if (options.revertGear && (entry.method === 'drop' || entry.method === 'book')) {
+  // 2. Revert gear if requested, was a drop or book, and not extra/off-spec
+  if (options.revertGear && (entry.method === 'drop' || entry.method === 'book') && !entry.isExtra) {
     // Ensure tier is loaded before trying to find the player
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
