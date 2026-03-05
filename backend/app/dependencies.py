@@ -99,9 +99,12 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
                 last_used_at=now.isoformat()
             )
         )
-        await session.commit()
+        # Use flush (not commit) so the update stays in the route handler's transaction.
+        # If the handler fails and rolls back, the last_used_at update rolls back too,
+        # which is fine — it's a non-critical audit timestamp.
+        await session.flush()
 
-    # Load user in fresh transaction
+    # Load user (same transaction — no commit boundary needed)
     user_result = await session.execute(
         select(User).where(User.id == user_id)
     )
@@ -111,6 +114,33 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API key owner not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+async def _validate_jwt(token: str, session: AsyncSession) -> User:
+    """Validate a JWT token and return the associated user.
+
+    Shared logic for all JWT-based auth paths. Uses a generic error message
+    for both invalid tokens and missing users to prevent user enumeration.
+    """
+    user_id = verify_token(token, token_type="access")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -140,27 +170,7 @@ async def get_current_user(
     if token.startswith("xrp_"):
         return await _validate_api_key(token, session)
 
-    # Existing JWT path
-    user_id = verify_token(token, token_type="access")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    result = await session.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        # Use same generic message to prevent user enumeration via timing attacks
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return user
+    return await _validate_jwt(token, session)
 
 
 async def get_current_user_jwt_only(
@@ -188,25 +198,7 @@ async def get_current_user_jwt_only(
             detail="API keys cannot access this endpoint. Use browser authentication.",
         )
 
-    user_id = verify_token(token, token_type="access")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    result = await session.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return user
+    return await _validate_jwt(token, session)
 
 
 async def get_current_user_optional(
@@ -233,9 +225,7 @@ async def get_current_user_optional(
             return None
 
     # JWT path
-    user_id = verify_token(token, token_type="access")
-    if not user_id:
+    try:
+        return await _validate_jwt(token, session)
+    except HTTPException:
         return None
-
-    result = await session.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
