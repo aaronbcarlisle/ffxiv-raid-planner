@@ -100,9 +100,6 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
             )
         )
         await session.commit()
-    else:
-        # Ensure a clean transaction for the handler
-        await session.commit()
 
     # Load user in fresh transaction
     user_result = await session.execute(

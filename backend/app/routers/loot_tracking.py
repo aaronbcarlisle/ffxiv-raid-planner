@@ -198,7 +198,12 @@ async def create_loot_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new loot log entry (requires lead/owner, or member for self-purchase)"""
+    """Create a new loot log entry (requires lead/owner, or member for self-purchase).
+
+    Note: mark_acquired only updates gear for 'drop' and 'book' methods.
+    Purchases don't auto-mark gear because tome purchases are tracked via
+    the material log / augmentation flow, not the loot log gear sync.
+    """
     # Check permissions
     await get_static_group(db, group_id)
 
@@ -1518,7 +1523,9 @@ async def get_material_balances(
 # Priority Calculation Endpoint
 
 
-# Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts)
+# Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts).
+# When adding a new tier, update both this dict and the frontend raid-tiers.ts.
+# Unknown tiers fall back to generic ["F1S", "F2S", "F3S", "F4S"] names.
 TIER_FLOOR_NAMES: dict[str, list[str]] = {
     "aac-heavyweight": ["M9S", "M10S", "M11S", "M12S"],
     "aac-cruiserweight": ["M5S", "M6S", "M7S", "M8S"],
@@ -1528,7 +1535,11 @@ TIER_FLOOR_NAMES: dict[str, list[str]] = {
 
 
 def _player_to_dict(player: SnapshotPlayer) -> dict:
-    """Convert a SnapshotPlayer ORM model to a dict matching the TypeScript SnapshotPlayer shape."""
+    """Convert a SnapshotPlayer ORM model to a dict matching the TypeScript SnapshotPlayer shape.
+
+    Note: weaponPriorities is omitted because the priority calculator only uses gear slots,
+    role, job, and loot adjustment — weapon priorities are a UI-only concern for weapon drops.
+    """
     return {
         "id": player.id,
         "name": player.name,

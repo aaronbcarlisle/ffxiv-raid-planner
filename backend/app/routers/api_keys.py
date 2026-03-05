@@ -28,7 +28,8 @@ router = APIRouter(prefix="/api/auth", tags=["api-keys"])
 KEY_PREFIX = "xrp_"
 KEY_RANDOM_BYTES = 20
 
-# Maximum keys per user
+# Maximum active keys per user (revoked keys don't count toward this limit,
+# allowing users to rotate keys freely without hitting the cap)
 MAX_KEYS_PER_USER = 10
 
 # All available scopes — stored on keys for future per-scope enforcement.

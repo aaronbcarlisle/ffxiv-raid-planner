@@ -760,9 +760,12 @@ async def get_player_gear(
     tier_id: str,
     player_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> PlayerGearResponse:
-    """Get a player's full gear status (used by Dalamud plugin for BiS tracking)"""
+    """Get a player's full gear status (used by Dalamud plugin for BiS tracking).
+
+    Supports anonymous access for public groups (consistent with priority endpoint).
+    """
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
