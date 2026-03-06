@@ -615,13 +615,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+var baseUrl = Environment.GetEnvironmentVariable("RAID_PLANNER_URL") ?? "https://api.xivraidplanner.app/api";
 var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
     ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Verify your API key
-var response = await client.GetAsync("https://api.xivraidplanner.app/api/auth/me");
+var response = await client.GetAsync($"{baseUrl}/auth/me");
 response.EnsureSuccessStatusCode();
 
 var me = await response.Content.ReadFromJsonAsync<JsonDocument>();
@@ -654,13 +655,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
+var baseUrl = Environment.GetEnvironmentVariable("RAID_PLANNER_URL") ?? "https://api.xivraidplanner.app/api";
 var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
     ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // List all your statics
-var response = await client.GetAsync("https://api.xivraidplanner.app/api/static-groups");
+var response = await client.GetAsync($"{baseUrl}/static-groups");
 response.EnsureSuccessStatusCode();
 
 var statics = await response.Content.ReadFromJsonAsync<JsonDocument>();
