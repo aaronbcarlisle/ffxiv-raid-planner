@@ -35,7 +35,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'intro', label: 'Introduction' },
       { id: 'setup', label: 'Setup & Installation' },
-      { id: 'auth-flow', label: 'Authentication Flow' },
+      { id: 'auth-flow', label: 'Authentication' },
     ],
   },
   {
@@ -306,7 +306,7 @@ export default function ApiCookbook() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Base URL</h4>
-                <code className="text-accent text-sm">http://localhost:8000/api</code>
+                <code className="text-accent text-sm">https://api.xivraidplanner.app/api</code>
               </div>
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Content Type</h4>
@@ -315,9 +315,10 @@ export default function ApiCookbook() {
             </div>
 
             <InfoBox type="info" title="Prerequisites">
-              These examples assume you have a running instance of the FFXIV Raid Planner
-              backend at <code>localhost:8000</code>. For production use, replace the base URL
-              with your deployment URL.
+              You need an API key to use the API. Log in at{' '}
+              <a href="https://www.xivraidplanner.app" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">xivraidplanner.app</a>,
+              click your avatar in the top-right corner, then go to <strong>API Keys</strong> and
+              create a new key. Copy the key — it is only shown once.
             </InfoBox>
           </Section>
 
@@ -354,15 +355,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("RAID_PLANNER_URL", "http://localhost:8000/api")
-ACCESS_TOKEN = os.getenv("RAID_PLANNER_TOKEN", "")
+BASE_URL = os.getenv("RAID_PLANNER_URL", "https://api.xivraidplanner.app/api")
+API_KEY = os.getenv("RAID_PLANNER_API_KEY", "")
 
 def get_client():
     """Create an authenticated HTTP client."""
     return httpx.Client(
         base_url=BASE_URL,
         headers={
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
+            "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json",
         },
         timeout=30.0,
@@ -371,28 +372,28 @@ def get_client():
 def api_get(path: str):
     """Make an authenticated GET request."""
     with get_client() as client:
-        response = client.get(path)
+        response = client.get(path.lstrip("/"))
         response.raise_for_status()
         return response.json()
 
 def api_post(path: str, data: dict):
     """Make an authenticated POST request."""
     with get_client() as client:
-        response = client.post(path, json=data)
+        response = client.post(path.lstrip("/"), json=data)
         response.raise_for_status()
         return response.json()
 
 def api_put(path: str, data: dict):
     """Make an authenticated PUT request."""
     with get_client() as client:
-        response = client.put(path, json=data)
+        response = client.put(path.lstrip("/"), json=data)
         response.raise_for_status()
         return response.json()
 
 def api_delete(path: str):
     """Make an authenticated DELETE request."""
     with get_client() as client:
-        response = client.delete(path)
+        response = client.delete(path.lstrip("/"))
         response.raise_for_status()
         return response.status_code == 204`}
                   />
@@ -403,8 +404,8 @@ def api_delete(path: str):
                   <CodeBlock
                     language="bash"
                     title=".env"
-                    code={`RAID_PLANNER_URL=http://localhost:8000/api
-RAID_PLANNER_TOKEN=your-access-token-here`}
+                    code={`RAID_PLANNER_URL=https://api.xivraidplanner.app/api
+RAID_PLANNER_API_KEY=xrp_your_api_key_here`}
                   />
                 </>
               )}
@@ -439,11 +440,11 @@ public class RaidPlannerClient : IDisposable
     private readonly HttpClient _client;
     private readonly string _baseUrl;
 
-    public RaidPlannerClient(string? baseUrl = null, string? token = null)
+    public RaidPlannerClient(string? baseUrl = null, string? apiKey = null)
     {
         _baseUrl = baseUrl ?? Environment.GetEnvironmentVariable("RAID_PLANNER_URL")
-                   ?? "http://localhost:8000/api";
-        var accessToken = token ?? Environment.GetEnvironmentVariable("RAID_PLANNER_TOKEN") ?? "";
+                   ?? "https://api.xivraidplanner.app/api";
+        var resolvedKey = apiKey ?? Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY") ?? "";
 
         _client = new HttpClient
         {
@@ -454,10 +455,10 @@ public class RaidPlannerClient : IDisposable
         _client.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
 
-        if (!string.IsNullOrEmpty(accessToken))
+        if (!string.IsNullOrEmpty(resolvedKey))
         {
             _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", accessToken);
+                new AuthenticationHeaderValue("Bearer", resolvedKey);
         }
     }
 
@@ -503,8 +504,8 @@ public class RaidPlannerClient : IDisposable
                   </p>
                   <CodeBlock
                     language="bash"
-                    code={`$env:RAID_PLANNER_URL = "http://localhost:8000/api"
-$env:RAID_PLANNER_TOKEN = "your-access-token-here"`}
+                    code={`$env:RAID_PLANNER_URL = "https://api.xivraidplanner.app/api"
+$env:RAID_PLANNER_API_KEY = "xrp_your_api_key_here"`}
                   />
 
                   <p className="text-text-secondary mt-6 mb-4">
@@ -515,8 +516,8 @@ $env:RAID_PLANNER_TOKEN = "your-access-token-here"`}
                     title="appsettings.json"
                     code={`{
   "RaidPlanner": {
-    "BaseUrl": "http://localhost:8000/api",
-    "AccessToken": "your-access-token-here"
+    "BaseUrl": "https://api.xivraidplanner.app/api",
+    "ApiKey": "xrp_your_api_key_here"
   }
 }`}
                   />
@@ -542,8 +543,8 @@ $env:RAID_PLANNER_TOKEN = "your-access-token-here"`}
                   </p>
                   <CodeBlock
                     language="bash"
-                    code={`export RAID_PLANNER_URL="http://localhost:8000/api"
-export TOKEN="your-access-token-here"
+                    code={`export RAID_PLANNER_URL="https://api.xivraidplanner.app/api"
+export RAID_PLANNER_API_KEY="xrp_your_api_key_here"
 
 # Add to ~/.bashrc or ~/.zshrc to persist across sessions`}
                   />
@@ -553,8 +554,8 @@ export TOKEN="your-access-token-here"
                   </p>
                   <CodeBlock
                     language="bash"
-                    code={`$env:RAID_PLANNER_URL = "http://localhost:8000/api"
-$env:TOKEN = "your-access-token-here"
+                    code={`$env:RAID_PLANNER_URL = "https://api.xivraidplanner.app/api"
+$env:RAID_PLANNER_API_KEY = "xrp_your_api_key_here"
 
 # Add to $PROFILE to persist across sessions`}
                   />
@@ -564,12 +565,12 @@ $env:TOKEN = "your-access-token-here"
                   </p>
                   <CodeBlock
                     language="bash"
-                    code={`set RAID_PLANNER_URL=http://localhost:8000/api
-set TOKEN=your-access-token-here`}
+                    code={`set RAID_PLANNER_URL=https://api.xivraidplanner.app/api
+set RAID_PLANNER_API_KEY=xrp_your_api_key_here`}
                   />
 
                   <InfoBox type="tip" title="Using curl with environment variables">
-                    Throughout this guide, curl examples use <code>$TOKEN</code> and <code>$STATIC_ID</code>
+                    Throughout this guide, curl examples use <code>$RAID_PLANNER_API_KEY</code> and <code>$STATIC_ID</code>
                     placeholders. Replace them with actual values or set them as environment variables for
                     easy copy-paste.
                   </InfoBox>
@@ -578,151 +579,100 @@ set TOKEN=your-access-token-here`}
             </TabGroup>
           </Section>
 
-          {/* Authentication Flow */}
-          <Section id="auth-flow" title="Authentication Flow">
+          {/* Authentication */}
+          <Section id="auth-flow" title="Authentication">
             <p className="text-text-secondary mb-6">
-              The API uses Discord OAuth for authentication. Here's the complete flow:
+              The API uses API keys for authentication. Pass your key in the
+              {' '}<code>Authorization</code> header as a Bearer token. API keys don't expire
+              by default — no refresh flow needed.
             </p>
 
-            <Subsection title="Step 1: Get OAuth URL">
+            <Subsection title="Verify Your API Key">
               <p className="text-text-secondary mb-4">
-                First, get the Discord OAuth authorization URL:
+                Confirm your API key is valid by calling the <code>/auth/me</code> endpoint:
               </p>
               <TripleCodeBlock
-                python={`import httpx
+                python={`from raid_planner import api_get
 
-BASE_URL = "http://localhost:8000/api"
+# Verify your API key
+me = api_get("/auth/me")
 
-# Get the Discord OAuth URL
-response = httpx.get(f"{BASE_URL}/auth/discord")
-data = response.json()
-
-print(f"Redirect user to: {data['url']}")
-print(f"State token: {data['state']}")`}
-                curl={`curl -X GET "http://localhost:8000/api/auth/discord"
+print(f"Logged in as: {me['displayName']}")
+print(f"User ID: {me['id']}")`}
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/auth/me" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Response:
 # {
-#   "url": "https://discord.com/oauth2/authorize?...",
-#   "state": "random-state-token"
+#   "id": "your-user-uuid",
+#   "displayName": "YourName#1234",
+#   ...
 # }`}
                 csharp={`using System;
 using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
-
-var baseUrl = "http://localhost:8000/api";
-using var client = new HttpClient();
-
-// Get the Discord OAuth URL
-var response = await client.GetAsync($"{baseUrl}/auth/discord");
-response.EnsureSuccessStatusCode();
-
-var data = await response.Content.ReadFromJsonAsync<JsonDocument>();
-var url = data.RootElement.GetProperty("url").GetString();
-var state = data.RootElement.GetProperty("state").GetString();
-
-Console.WriteLine($"Redirect user to: {url}");
-Console.WriteLine($"State token: {state}");`}
-              />
-            </Subsection>
-
-            <Subsection title="Step 2: Handle Callback">
-              <p className="text-text-secondary mb-4">
-                After user authorizes, Discord redirects with a code. Exchange it for tokens:
-              </p>
-              <TripleCodeBlock
-                python={`import httpx
-
-BASE_URL = "http://localhost:8000/api"
-
-# Exchange the authorization code for tokens
-response = httpx.post(
-    f"{BASE_URL}/auth/discord/callback",
-    json={
-        "code": "discord-auth-code-from-redirect",
-        "state": "state-from-url"
-    }
-)
-tokens = response.json()
-
-print(f"Access Token: {tokens['accessToken']}")
-print(f"Refresh Token: {tokens['refreshToken']}")
-print(f"Expires In: {tokens['expiresIn']} seconds")`}
-                curl={`curl -X POST "http://localhost:8000/api/auth/discord/callback" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "code": "discord-auth-code-from-redirect",
-    "state": "state-from-url"
-  }'`}
-                csharp={`using System;
-using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var baseUrl = "http://localhost:8000/api";
+var baseUrl = Environment.GetEnvironmentVariable("RAID_PLANNER_URL") ?? "https://api.xivraidplanner.app/api";
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-// Exchange the authorization code for tokens
-var payload = new
+// Verify your API key
+var response = await client.GetAsync($"{baseUrl}/auth/me");
+response.EnsureSuccessStatusCode();
+
+var me = await response.Content.ReadFromJsonAsync<JsonDocument>();
+var displayName = me.RootElement.GetProperty("displayName").GetString();
+var id = me.RootElement.GetProperty("id").GetString();
+
+Console.WriteLine($"Logged in as: {displayName}");
+Console.WriteLine($"User ID: {id}");`}
+              />
+            </Subsection>
+
+            <Subsection title="List Your Statics">
+              <p className="text-text-secondary mb-4">
+                A quick smoke test — list all statics you belong to:
+              </p>
+              <TripleCodeBlock
+                python={`from raid_planner import api_get
+
+# List all your statics
+statics = api_get("/static-groups")
+
+for s in statics:
+    print(f"{s['name']} (ID: {s['id']}, Role: {s['userRole']})")`}
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
+                csharp={`using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+var baseUrl = Environment.GetEnvironmentVariable("RAID_PLANNER_URL") ?? "https://api.xivraidplanner.app/api";
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
+using var client = new HttpClient();
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+// List all your statics
+var response = await client.GetAsync($"{baseUrl}/static-groups");
+response.EnsureSuccessStatusCode();
+
+var statics = await response.Content.ReadFromJsonAsync<JsonDocument>();
+foreach (var s in statics.RootElement.EnumerateArray())
 {
-    code = "discord-auth-code-from-redirect",
-    state = "state-from-url"
-};
-
-var response = await client.PostAsJsonAsync($"{baseUrl}/auth/discord/callback", payload);
-response.EnsureSuccessStatusCode();
-
-var tokens = await response.Content.ReadFromJsonAsync<JsonDocument>();
-var accessToken = tokens.RootElement.GetProperty("accessToken").GetString();
-var refreshToken = tokens.RootElement.GetProperty("refreshToken").GetString();
-var expiresIn = tokens.RootElement.GetProperty("expiresIn").GetInt32();
-
-Console.WriteLine($"Access Token: {accessToken}");
-Console.WriteLine($"Refresh Token: {refreshToken}");
-Console.WriteLine($"Expires In: {expiresIn} seconds");`}
-              />
-            </Subsection>
-
-            <Subsection title="Step 3: Refresh Tokens">
-              <p className="text-text-secondary mb-4">
-                Access tokens expire after 15 minutes. Use the refresh token to get new ones:
-              </p>
-              <TripleCodeBlock
-                python={`import httpx
-
-BASE_URL = "http://localhost:8000/api"
-refresh_token = "your-refresh-token"
-
-response = httpx.post(
-    f"{BASE_URL}/auth/refresh",
-    json={"refreshToken": refresh_token}
-)
-new_tokens = response.json()
-
-print(f"New Access Token: {new_tokens['accessToken']}")`}
-                curl={`curl -X POST "http://localhost:8000/api/auth/refresh" \\
-  -H "Content-Type: application/json" \\
-  -d '{"refreshToken": "your-refresh-token"}'`}
-                csharp={`using System;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Threading.Tasks;
-
-var baseUrl = "http://localhost:8000/api";
-var refreshToken = "your-refresh-token";
-using var client = new HttpClient();
-
-var payload = new { refreshToken };
-var response = await client.PostAsJsonAsync($"{baseUrl}/auth/refresh", payload);
-response.EnsureSuccessStatusCode();
-
-var newTokens = await response.Content.ReadFromJsonAsync<JsonDocument>();
-var newAccessToken = newTokens.RootElement.GetProperty("accessToken").GetString();
-
-Console.WriteLine($"New Access Token: {newAccessToken}");`}
+    var name = s.GetProperty("name").GetString();
+    var id = s.GetProperty("id").GetString();
+    var role = s.GetProperty("userRole").GetString();
+    Console.WriteLine($"{name} (ID: {id}, Role: {role})");
+}`}
               />
             </Subsection>
           </Section>
@@ -748,8 +698,8 @@ static = api_post("/static-groups", {
 
 print(f"Static ID: {static['id']}")
 print(f"Share Code: {static['shareCode']}")`}
-              curl={`curl -X POST "http://localhost:8000/api/static-groups" \\
-  -H "Authorization: Bearer $TOKEN" \\
+              curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "My Awesome Static",
@@ -765,11 +715,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var baseUrl = "http://localhost:8000/api";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var baseUrl = "https://api.xivraidplanner.app/api";
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Create a new static group
 var payload = new
@@ -820,8 +771,8 @@ tier = api_post(f"/static-groups/{static_id}/tiers", {
 
 print(f"Tier Snapshot ID: {tier['id']}")
 print(f"Tier: {tier['tierId']}")`}
-              curl={`curl -X POST "http://localhost:8000/api/static-groups/$STATIC_ID/tiers" \\
-  -H "Authorization: Bearer $TOKEN" \\
+              curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "tierId": "aac-heavyweight",
@@ -836,10 +787,11 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Create a new tier snapshot
 var payload = new
@@ -849,7 +801,7 @@ var payload = new
     isActive = true
 };
 
-var response = await client.PostAsJsonAsync($"http://localhost:8000/api/static-groups/{staticId}/tiers", payload);
+var response = await client.PostAsJsonAsync($"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers", payload);
 response.EnsureSuccessStatusCode();
 
 var tier = await response.Content.ReadFromJsonAsync<JsonDocument>();
@@ -893,8 +845,8 @@ player = api_post(
 
 print(f"Player ID: {player['id']}")
 print(f"Job: {player['job']}")`}
-                curl={`curl -X POST "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players" \\
-  -H "Authorization: Bearer $TOKEN" \\
+                curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "Warrior of Light",
@@ -911,10 +863,11 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Add a new player
 var payload = new
@@ -926,7 +879,7 @@ var payload = new
 };
 
 var response = await client.PostAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/players",
     payload
 );
 response.EnsureSuccessStatusCode();
@@ -970,8 +923,8 @@ api_put(
 )
 
 print("Gear updated successfully")`}
-                curl={`curl -X PUT "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
-  -H "Authorization: Bearer $TOKEN" \\
+                curl={`curl -X PUT "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "gear": [
@@ -988,10 +941,11 @@ using System.Threading.Tasks;
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
 var playerId = "your-player-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Update player's gear status
 var payload = new
@@ -1004,7 +958,7 @@ var payload = new
 };
 
 var response = await client.PutAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
     payload
 );
 response.EnsureSuccessStatusCode();
@@ -1026,8 +980,8 @@ tier = api_get(f"/static-groups/{static_id}/tiers/{tier_id}")
 for player in tier['players']:
     bis_count = sum(1 for g in player['gear'] if g.get('hasItem'))
     print(f"{player['name']} ({player['job']}): {bis_count}/11 BiS")`}
-                curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID" \\
-  -H "Authorization: Bearer $TOKEN"`}
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1037,13 +991,14 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Get tier with all players
-var response = await client.GetAsync($"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}");
+var response = await client.GetAsync($"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}");
 response.EnsureSuccessStatusCode();
 
 var tier = await response.Content.ReadFromJsonAsync<JsonDocument>();
@@ -1101,12 +1056,12 @@ api_put(
 
 print(f"Imported {len(gear)} gear slots from XIVGear")`}
                 curl={`# First, fetch BiS data from XIVGear
-curl -X GET "http://localhost:8000/api/bis/xivgear/https://xivgear.app/?page=sl|UUID" \\
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET "https://api.xivraidplanner.app/api/bis/xivgear/https://xivgear.app/?page=sl|UUID" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Then update the player with the gear data
-curl -X PUT "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
-  -H "Authorization: Bearer $TOKEN" \\
+curl -X PUT "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"gear": [...], "bisLink": "..."}'`}
                 csharp={`using System;
@@ -1121,14 +1076,15 @@ using System.Threading.Tasks;
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
 var playerId = "your-player-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Fetch BiS data from XIVGear
 var xivgearUrl = "https://xivgear.app/?page=sl|12345678-1234-1234-1234-123456789abc";
-var bisResponse = await client.GetAsync($"http://localhost:8000/api/bis/xivgear/{xivgearUrl}");
+var bisResponse = await client.GetAsync($"https://api.xivraidplanner.app/api/bis/xivgear/{xivgearUrl}");
 bisResponse.EnsureSuccessStatusCode();
 
 var bisData = await bisResponse.Content.ReadFromJsonAsync<JsonDocument>();
@@ -1149,7 +1105,7 @@ var gear = slots.Select(slotData => new
 // Update player with BiS data
 var updatePayload = new { gear, bisLink = xivgearUrl };
 var updateResponse = await client.PutAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/players/{playerId}",
     updatePayload
 );
 updateResponse.EnsureSuccessStatusCode();
@@ -1169,31 +1125,35 @@ print(f"Available presets for DRG:")
 for preset in presets['presets']:
     print(f"  - {preset['name']} (GCD: {preset.get('gcd', 'N/A')})")
 
-# Use a preset UUID with the xivgear endpoint
+# Load a preset using the bis|job|tier format (job must be lowercase)
 if presets['presets']:
-    preset_uuid = presets['presets'][0]['uuid']
-    bis_data = api_get(f"/bis/xivgear/{preset_uuid}")
+    preset = presets['presets'][0]
+    job = "drg"  # lowercase job abbreviation
+    tier = preset.get('githubTier', 'current')
+    bis_data = api_get(f"/bis/xivgear/bis|{job}|{tier}")
     print(f"Loaded preset: {bis_data['name']}")`}
                 curl={`# Get presets for a job
-curl -X GET "http://localhost:8000/api/bis/presets/DRG?category=savage" \\
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET "https://api.xivraidplanner.app/api/bis/presets/DRG?category=savage" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
-# Then fetch the preset data
-curl -X GET "http://localhost:8000/api/bis/xivgear/$PRESET_UUID" \\
-  -H "Authorization: Bearer $TOKEN"`}
+# Load preset data using bis|job|tier format
+curl -X GET "https://api.xivraidplanner.app/api/bis/xivgear/bis|drg|current" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Get available presets for a job
-var presetsResponse = await client.GetAsync("http://localhost:8000/api/bis/presets/DRG?category=savage");
+var presetsResponse = await client.GetAsync("https://api.xivraidplanner.app/api/bis/presets/DRG?category=savage");
 presetsResponse.EnsureSuccessStatusCode();
 
 var presetsData = await presetsResponse.Content.ReadFromJsonAsync<JsonDocument>();
@@ -1207,11 +1167,11 @@ foreach (var preset in presets)
     Console.WriteLine($"  - {name} (GCD: {gcd})");
 }
 
-// Use a preset UUID with the xivgear endpoint
+// Load a preset using the bis|job|tier format
 if (presets.Any())
 {
-    var presetUuid = presets[0].GetProperty("uuid").GetString();
-    var bisResponse = await client.GetAsync($"http://localhost:8000/api/bis/xivgear/{presetUuid}");
+    var tier = presets[0].TryGetProperty("githubTier", out var tierProp) ? tierProp.GetString() : "current";
+    var bisResponse = await client.GetAsync($"https://api.xivraidplanner.app/api/bis/xivgear/bis|drg|{tier}");
     bisResponse.EnsureSuccessStatusCode();
 
     var bisData = await bisResponse.Content.ReadFromJsonAsync<JsonDocument>();
@@ -1248,8 +1208,8 @@ loot_entry = api_post(
 )
 
 print(f"Logged loot entry #{loot_entry['id']}")`}
-                curl={`curl -X POST "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
-  -H "Authorization: Bearer $TOKEN" \\
+                curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "weekNumber": 1,
@@ -1267,10 +1227,11 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Log a loot drop
 var payload = new
@@ -1283,7 +1244,7 @@ var payload = new
 };
 
 var response = await client.PostAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/loot-log",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/loot-log",
     payload
 );
 response.EnsureSuccessStatusCode();
@@ -1317,12 +1278,12 @@ for week, entries in sorted(by_week.items()):
     print(f"\\nWeek {week}:")
     for e in entries:
         print(f"  {e['floor']} {e['itemSlot']} -> {e['recipientPlayerName']}")`}
-                curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
-  -H "Authorization: Bearer $TOKEN"
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Filter by week
-curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log?week=1" \\
-  -H "Authorization: Bearer $TOKEN"`}
+curl -X GET "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log?week=1" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1332,14 +1293,15 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Get all loot entries
 var response = await client.GetAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/loot-log"
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/loot-log"
 );
 response.EnsureSuccessStatusCode();
 
@@ -1394,8 +1356,8 @@ api_post(
 )
 
 print("Floor clear marked for all players")`}
-                curl={`curl -X POST "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/mark-floor-cleared" \\
-  -H "Authorization: Bearer $TOKEN" \\
+                curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/mark-floor-cleared" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "weekNumber": 1,
@@ -1410,10 +1372,11 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Mark a floor as cleared for multiple players
 var payload = new
@@ -1430,7 +1393,7 @@ var payload = new
 };
 
 var response = await client.PostAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/mark-floor-cleared",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/mark-floor-cleared",
     payload
 );
 response.EnsureSuccessStatusCode();
@@ -1453,8 +1416,8 @@ print("Book Balances:")
 print("-" * 50)
 for player in balances:
     print(f"{player['playerName']:20} I:{player['bookI']:2} II:{player['bookII']:2} III:{player['bookIII']:2} IV:{player['bookIV']:2}")`}
-                curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/tiers/$TIER_ID/page-balances" \\
-  -H "Authorization: Bearer $TOKEN"`}
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/page-balances" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -1463,14 +1426,15 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Get current book balances for all players
 var response = await client.GetAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/tiers/{tierId}/page-balances"
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/tiers/{tierId}/page-balances"
 );
 response.EnsureSuccessStatusCode();
 
@@ -1515,10 +1479,10 @@ invite = api_post(
 )
 
 print(f"Invite Code: {invite['inviteCode']}")
-print(f"Invite URL: https://yoursite.com/invite/{invite['inviteCode']}")
+print(f"Invite URL: https://www.xivraidplanner.app/invite/{invite['inviteCode']}")
 print(f"Expires: {invite['expiresAt']}")`}
-                curl={`curl -X POST "http://localhost:8000/api/static-groups/$STATIC_ID/invitations" \\
-  -H "Authorization: Bearer $TOKEN" \\
+                curl={`curl -X POST "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/invitations" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "role": "member",
@@ -1533,10 +1497,11 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Create an invitation link
 var payload = new
@@ -1547,7 +1512,7 @@ var payload = new
 };
 
 var response = await client.PostAsJsonAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/invitations",
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/invitations",
     payload
 );
 response.EnsureSuccessStatusCode();
@@ -1557,7 +1522,7 @@ var inviteCode = invite.RootElement.GetProperty("inviteCode").GetString();
 var expiresAt = invite.RootElement.GetProperty("expiresAt").GetString();
 
 Console.WriteLine($"Invite Code: {inviteCode}");
-Console.WriteLine($"Invite URL: https://yoursite.com/invite/{inviteCode}");
+Console.WriteLine($"Invite URL: https://www.xivraidplanner.app/invite/{inviteCode}");
 Console.WriteLine($"Expires: {expiresAt}");`}
               />
             </Subsection>
@@ -1575,8 +1540,8 @@ print("Active Invitations:")
 for invite in invites:
     if invite['isValid']:
         print(f"  {invite['inviteCode']} - {invite['role']} ({invite['useCount']}/{invite['maxUses']} uses)")`}
-                curl={`curl -X GET "http://localhost:8000/api/static-groups/$STATIC_ID/invitations" \\
-  -H "Authorization: Bearer $TOKEN"`}
+                curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups/$STATIC_ID/invitations" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1585,14 +1550,15 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var token = Environment.GetEnvironmentVariable("TOKEN");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
-client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
 // Get all invitations
 var response = await client.GetAsync(
-    $"http://localhost:8000/api/static-groups/{staticId}/invitations"
+    $"https://api.xivraidplanner.app/api/static-groups/{staticId}/invitations"
 );
 response.EnsureSuccessStatusCode();
 
@@ -1692,7 +1658,7 @@ def safe_api_call(method: str, path: str, data: dict = None):
         status = e.response.status_code
 
         if status == 401:
-            print("Authentication failed - refresh your token")
+            print("Authentication failed - check your API key")
         elif status == 403:
             print("Permission denied - check your role")
         elif status == 404:
@@ -1711,8 +1677,8 @@ def safe_api_call(method: str, path: str, data: dict = None):
         print(f"Network error: {e}")
         return None`}
                 curl={`# Example: Handle 404 error
-curl -X GET "http://localhost:8000/api/static-groups/invalid-id" \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
+curl -X GET "https://api.xivraidplanner.app/api/static-groups/invalid-id" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -w "\\nHTTP Status: %{http_code}\\n"
 
 # Response:
@@ -1722,8 +1688,8 @@ curl -X GET "http://localhost:8000/api/static-groups/invalid-id" \\
 # }
 
 # Example: Handle 403 permission denied
-curl -X DELETE "http://localhost:8000/api/static-groups/{id}" \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
+curl -X DELETE "https://api.xivraidplanner.app/api/static-groups/{id}" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -w "\\nHTTP Status: %{http_code}\\n"
 
 # Response:
@@ -1733,8 +1699,8 @@ curl -X DELETE "http://localhost:8000/api/static-groups/{id}" \\
 # }
 
 # Example: Handle 429 rate limit
-curl -X POST "http://localhost:8000/api/static-groups" \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
+curl -X POST "https://api.xivraidplanner.app/api/static-groups" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "Test"}' \\
   -w "\\nHTTP Status: %{http_code}\\nRetry-After: %{header_retry_after}\\n"
@@ -1775,7 +1741,7 @@ public async Task<T> SafeApiCall<T>(
             switch (response.StatusCode)
             {
                 case HttpStatusCode.Unauthorized:
-                    Console.WriteLine("Authentication failed - refresh your token");
+                    Console.WriteLine("Authentication failed - check your API key");
                     break;
                 case HttpStatusCode.Forbidden:
                     Console.WriteLine("Permission denied - check your role");
@@ -1824,7 +1790,7 @@ public async Task<T> SafeApiCall<T>(
                     <tr>
                       <td className="py-2 text-accent font-mono">401</td>
                       <td className="py-2 text-text-secondary">Unauthorized</td>
-                      <td className="py-2 text-text-secondary">Refresh your access token</td>
+                      <td className="py-2 text-text-secondary">Check your API key is valid and active</td>
                     </tr>
                     <tr>
                       <td className="py-2 text-accent font-mono">403</td>
