@@ -27,7 +27,7 @@
   - `LootMethodEnum.PURCHASE` for vendor purchase self-logging
   - Members can self-log purchases for their own linked player
   - UUID | slug lookup fix on 4 player endpoints (plugin passes UUIDs)
-- **2026-02-23:** PR #68 (in review): Light mode theme with floating day/night toggle
+- **2026-02-23:** PR #68 merged: Light mode theme with day/night toggle in user menu
   - Full light mode via CSS custom property overrides (`[data-theme="light"]`)
   - `useTheme` hook with localStorage persistence, OS preference detection, FOUC prevention
   - Theme toggle in UserMenu dropdown (replaced floating pill)
