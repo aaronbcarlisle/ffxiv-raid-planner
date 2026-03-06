@@ -1122,7 +1122,6 @@ if presets['presets']:
     preset = presets['presets'][0]
     job = "drg"
     tier = preset.get('githubTier', 'current')
-    index = preset.get('githubIndex', 0)
     bis_data = api_get(f"/bis/xivgear/bis|{job}|{tier}")
     print(f"Loaded preset: {bis_data['name']}")`}
                 curl={`# Get presets for a job
