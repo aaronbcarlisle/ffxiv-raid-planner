@@ -372,28 +372,28 @@ def get_client():
 def api_get(path: str):
     """Make an authenticated GET request."""
     with get_client() as client:
-        response = client.get(path)
+        response = client.get(path.lstrip("/"))
         response.raise_for_status()
         return response.json()
 
 def api_post(path: str, data: dict):
     """Make an authenticated POST request."""
     with get_client() as client:
-        response = client.post(path, json=data)
+        response = client.post(path.lstrip("/"), json=data)
         response.raise_for_status()
         return response.json()
 
 def api_put(path: str, data: dict):
     """Make an authenticated PUT request."""
     with get_client() as client:
-        response = client.put(path, json=data)
+        response = client.put(path.lstrip("/"), json=data)
         response.raise_for_status()
         return response.json()
 
 def api_delete(path: str):
     """Make an authenticated DELETE request."""
     with get_client() as client:
-        response = client.delete(path)
+        response = client.delete(path.lstrip("/"))
         response.raise_for_status()
         return response.status_code == 204`}
                   />
