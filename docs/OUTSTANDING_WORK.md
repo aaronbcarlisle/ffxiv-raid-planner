@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** March 1, 2026
+**Last Updated:** March 6, 2026
 **Current Version:** v1.14.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -11,6 +11,16 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-03-06:** PR #72 merged: API docs updated to document API key auth
+  - ApiDocs and ApiCookbook updated with Python/C#/curl examples using Bearer xrp_ auth
+  - Base URL convention fixed, C# snippets use env vars consistently
+- **2026-03-01:** PR #70 merged: API key auth + server-side priority for Dalamud plugin
+  - `ApiKey` model with SHA-256 hashing, per-user key limits, optional expiry
+  - `GET .../priority` endpoint returns pre-calculated priority for plugin overlay
+  - `LootMethodEnum.PURCHASE` for vendor purchase self-logging
+  - `GET .../players/{playerId}/gear` for plugin BiS viewer
+  - Ring slot normalization fix (ring1/ring2 mapping)
+- **2026-02-28:** PR #71 merged: FOUC prevention moved to inline HTML script
 - **2026-02-24:** Backend support for Dalamud plugin BiS tracking feature
   - Added `item_id` field to `GearSlotStatus` schema (persisted through BiS imports)
   - New `GET .../players/{playerId}/gear` endpoint for plugin BiS viewer
@@ -131,7 +141,8 @@
 **Current Warning Count:** 152 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
-**Test Coverage:** 888 tests (290 backend + 503 frontend + 95 scripts)
+**Test Coverage:** ~949 tests (346 backend + 508 frontend + 95 scripts)
+**Note:** 5 fixture errors in `tests/test_httponly_cookies.py` (pre-existing, tests run but async fixtures fail in isolation)
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
 

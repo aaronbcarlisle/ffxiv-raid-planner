@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.13.0 | **Next:** UI Reorganization, Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.14.0 | **Next:** UI Reorganization, Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
 
@@ -91,12 +91,12 @@ pnpm dev                          # Frontend only
 pnpm build && pnpm tsc --noEmit   # Build + type check
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
-pnpm test                         # Frontend tests (503)
+pnpm test                         # Frontend tests (508)
 
 # Backend
 cd backend && source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
-pytest tests/ -q                  # Backend tests (290)
+pytest tests/ -q                  # Backend tests (346)
 
 # Scripts
 cd scripts && npm test            # Scripts tests (95)
