@@ -171,10 +171,14 @@ export async function updateLootAndSyncGear(
   // 1. Update the loot entry
   await lootStore.updateLootEntry(groupId, tierId, entryId, updates);
 
-  // 2. Sync gear if requested, the original was a drop or book, and not extra/off-spec
+  // 2. Sync gear if requested and the original was a drop or book
   const isOriginalExtra = originalEntry.isExtra;
   const isNewExtra = updates.isExtra !== undefined ? updates.isExtra : isOriginalExtra;
-  if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book') && !isOriginalExtra) {
+  const extraChanged = isOriginalExtra !== isNewExtra;
+
+  // Enter sync block when at least one side is non-extra, or when extra status changed
+  if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book')
+      && (!isOriginalExtra || !isNewExtra)) {
     // Ensure tier is loaded
     if (!tierStore.currentTier?.players) {
       await tierStore.fetchTier(groupId, tierId);
@@ -184,8 +188,8 @@ export async function updateLootAndSyncGear(
     const recipientChanged = updates.recipientPlayerId && updates.recipientPlayerId !== originalEntry.recipientPlayerId;
     const slotChanged = updates.itemSlot && updates.itemSlot !== originalEntry.itemSlot;
 
-    // Revert old recipient's gear if recipient changed
-    if (recipientChanged) {
+    // Revert old recipient's gear if recipient changed (only if original was not extra)
+    if (recipientChanged && !isOriginalExtra) {
       const oldPlayer = currentState.currentTier?.players?.find(
         (p) => p.id === originalEntry.recipientPlayerId
       );
@@ -207,12 +211,34 @@ export async function updateLootAndSyncGear(
       }
     }
 
-    // Mark new recipient's gear if recipient changed, or update slot if slot changed
+    // Revert gear if transitioning from non-extra to extra (normal→extra)
+    if (extraChanged && isNewExtra && !recipientChanged) {
+      const player = useTierStore.getState().currentTier?.players?.find(
+        (p) => p.id === originalEntry.recipientPlayerId
+      );
+      if (player) {
+        let revertSlot: LootSlot = originalEntry.itemSlot as LootSlot;
+        if (revertSlot === 'ring' || revertSlot === 'ring1' || revertSlot === 'ring2') {
+          const ring1 = player.gear.find((g) => g.slot === 'ring1');
+          const ring2 = player.gear.find((g) => g.slot === 'ring2');
+          if (ring1?.bisSource === 'raid' && ring1?.hasItem) revertSlot = 'ring1';
+          else if (ring2?.bisSource === 'raid' && ring2?.hasItem) revertSlot = 'ring2';
+        }
+        const updatedGear = player.gear.map((g) =>
+          g.slot === revertSlot ? { ...g, hasItem: false } : g
+        );
+        await tierStore.updatePlayer(groupId, tierId, originalEntry.recipientPlayerId, {
+          gear: updatedGear,
+        });
+      }
+    }
+
+    // Mark new recipient's gear if recipient/slot changed, or if transitioning extra→normal
     const newRecipientId = updates.recipientPlayerId || originalEntry.recipientPlayerId;
     const newSlot: LootSlot = (updates.itemSlot || originalEntry.itemSlot) as LootSlot;
 
-    if (recipientChanged || slotChanged) {
-      // Only mark new gear if the (possibly updated) entry is not extra/off-spec
+    if (recipientChanged || slotChanged || (extraChanged && !isNewExtra)) {
+      // Only mark new gear if the updated entry is not extra/off-spec
       if (!isNewExtra) {
         // Refetch state after previous update
         const freshState = useTierStore.getState();
@@ -247,8 +273,8 @@ export async function updateLootAndSyncGear(
         }
       }
 
-      // If slot changed but not recipient, also revert the old slot
-      if (slotChanged && !recipientChanged) {
+      // If slot changed but not recipient, also revert the old slot (only if original was not extra)
+      if (slotChanged && !recipientChanged && !isOriginalExtra) {
         const player = useTierStore.getState().currentTier?.players?.find(
           (p) => p.id === newRecipientId
         );

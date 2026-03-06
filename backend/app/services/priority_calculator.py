@@ -5,7 +5,9 @@ Python port of frontend/src/utils/priority.ts
 Calculates loot priority rankings for the Dalamud plugin API.
 
 The frontend TypeScript implementation is the source of truth for the algorithm.
-This port must produce identical ordering for the same inputs.
+This port produces identical ordering for the same well-formed inputs (as sent
+by the web UI). For partial/incomplete data from API callers, the backend merges
+advancedOptions with defaults to prevent KeyError — see _get_advanced_options.
 """
 
 from __future__ import annotations
