@@ -714,7 +714,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var baseUrl = "https://api.xivraidplanner.app/api";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);

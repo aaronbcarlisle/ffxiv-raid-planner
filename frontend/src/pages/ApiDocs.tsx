@@ -385,7 +385,7 @@ export default function ApiDocs() {
               <p className="text-text-secondary mt-4">
                 API keys use the format <code className="text-accent">xrp_</code> followed by 40 hex characters.
                 They don't expire by default unless you set an expiry date during creation.
-                No CSRF token or token refresh is needed. Note: API key management endpoints
+                No CSRF token or token refresh is needed when authenticating with an API key. Note: API key management endpoints
                 (creating, listing, and revoking keys) require browser authentication and cannot
                 be accessed with an API key.
               </p>
