@@ -785,7 +785,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -860,7 +861,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -937,7 +939,8 @@ using System.Threading.Tasks;
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
 var playerId = "your-player-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -986,7 +989,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1070,7 +1074,8 @@ using System.Threading.Tasks;
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
 var playerId = "your-player-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1118,10 +1123,10 @@ print(f"Available presets for DRG:")
 for preset in presets['presets']:
     print(f"  - {preset['name']} (GCD: {preset.get('gcd', 'N/A')})")
 
-# Load a preset using the bis|job|tier format
+# Load a preset using the bis|job|tier format (job must be lowercase)
 if presets['presets']:
     preset = presets['presets'][0]
-    job = "drg"
+    job = "drg"  # lowercase job abbreviation
     tier = preset.get('githubTier', 'current')
     bis_data = api_get(f"/bis/xivgear/bis|{job}|{tier}")
     print(f"Loaded preset: {bis_data['name']}")`}
@@ -1220,7 +1225,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1285,7 +1291,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1363,7 +1370,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1416,7 +1424,8 @@ using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
 var tierId = "your-tier-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1486,7 +1495,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -1538,7 +1548,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 var staticId = "your-static-uuid";
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
