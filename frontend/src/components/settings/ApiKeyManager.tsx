@@ -236,6 +236,7 @@ function formatDate(iso: string): string {
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
+  if (days < 0) return date.toLocaleDateString();
   if (days === 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days}d ago`;

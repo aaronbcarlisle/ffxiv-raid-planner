@@ -292,6 +292,21 @@ async def create_loot_log_entry(
                 recipient_player.gear = updated_gear
                 recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
                 gear_updated = True
+            elif slot_data:
+                logger.warning(
+                    "mark_acquired_skipped_non_raid_bis",
+                    item_slot=data.item_slot,
+                    target_slot=target_slot,
+                    bis_source=slot_data.get("bisSource"),
+                    player_id=data.recipient_player_id,
+                )
+            else:
+                logger.warning(
+                    "mark_acquired_skipped_unknown_slot",
+                    item_slot=data.item_slot,
+                    target_slot=target_slot,
+                    player_id=data.recipient_player_id,
+                )
 
     await db.commit()
     await db.refresh(entry)
