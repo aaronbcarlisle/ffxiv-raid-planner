@@ -15,6 +15,9 @@ from .models import User
 # HTTP Bearer token security scheme (for backward compatibility with Authorization header)
 security = HTTPBearer(auto_error=False)
 
+# Throttle last_used_at updates to reduce write load from high-volume polling (seconds)
+LAST_USED_UPDATE_INTERVAL = 300
+
 
 def _extract_access_token(
     request: Request,
@@ -99,7 +102,7 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
             last = datetime.fromisoformat(last_str)
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
-            should_update = (now - last).total_seconds() > 300  # 5-minute threshold
+            should_update = (now - last).total_seconds() > LAST_USED_UPDATE_INTERVAL
         except (ValueError, AttributeError):
             should_update = True  # Can't parse last_used_at, update it
 

@@ -4,23 +4,9 @@ API Key Schemas
 Pydantic schemas for API key management.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-
-def to_camel(string: str) -> str:
-    """Convert snake_case to camelCase"""
-    components = string.split("_")
-    return components[0] + "".join(x[0].upper() + x[1:] if x else "" for x in components[1:])
-
-
-class CamelModel(BaseModel):
-    """Base model with camelCase conversion for API responses"""
-
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-        serialize_by_alias=True,
-    )
+from .loot_tracking import CamelModel
 
 
 class ApiKeyCreate(CamelModel):
