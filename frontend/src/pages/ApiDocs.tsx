@@ -330,7 +330,7 @@ export default function ApiDocs() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Base URL</h4>
-                <code className="text-accent text-sm">http://localhost:8000/api</code>
+                <code className="text-accent text-sm">https://www.xivraidplanner.app/api</code>
               </div>
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Content Type</h4>
@@ -353,42 +353,46 @@ export default function ApiDocs() {
           {/* Authentication */}
           <Section id="authentication" title="Authentication">
             <p className="text-text-secondary mb-6">
-              The API uses JWT (JSON Web Tokens) for authentication via Discord OAuth.
+              API keys are the recommended way to authenticate with the API. They are long-lived,
+              don't require token refresh, and work with all authenticated endpoints.
             </p>
 
-            <Subsection title="Authentication Flow">
+            <Subsection title="Generating an API Key">
               <ol className="list-decimal list-inside space-y-2 text-text-secondary mb-6">
-                <li>User clicks "Login with Discord"</li>
-                <li>Frontend redirects to <code className="text-accent">/api/auth/discord</code></li>
-                <li>Backend returns Discord OAuth URL</li>
-                <li>User authorizes on Discord</li>
-                <li>Discord redirects to callback with authorization code</li>
-                <li>Frontend sends code to <code className="text-accent">/api/auth/discord/callback</code></li>
-                <li>Backend exchanges code for tokens, creates/updates user, returns JWT</li>
+                <li>Log in to <a href="https://www.xivraidplanner.app" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">xivraidplanner.app</a> with your Discord account</li>
+                <li>Click your avatar in the top right corner</li>
+                <li>Select <strong className="text-text-primary">API Keys</strong></li>
+                <li>Click <strong className="text-text-primary">Create New Key</strong>, give it a name, and optionally set an expiry</li>
+                <li>Copy the key — it will only be shown once</li>
               </ol>
+
+              <InfoBox type="warning" title="Save your key">
+                The raw API key is only displayed at the time of creation. If you lose it,
+                you'll need to delete the old key and create a new one.
+              </InfoBox>
             </Subsection>
 
-            <Subsection title="Using the Token">
+            <Subsection title="Using the API Key">
               <p className="text-text-secondary mb-4">
-                Include the access token in the Authorization header:
+                Include your API key in the <code className="text-accent">Authorization</code> header on every request:
               </p>
               <CodeBlock
                 language="bash"
-                code={`Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`}
+                code={`Authorization: Bearer xrp_your_key_here`}
               />
+              <p className="text-text-secondary mt-4">
+                API keys use the format <code className="text-accent">xrp_</code> followed by 40 hex characters.
+                They don't expire by default unless you set an expiry date during creation.
+                No CSRF token or token refresh is needed.
+              </p>
             </Subsection>
 
-            <Subsection title="Token Refresh">
-              <p className="text-text-secondary mb-4">
-                Access tokens expire after 15 minutes. Use the refresh token to get a new access token:
+            <Subsection title="Web App Authentication">
+              <p className="text-text-secondary">
+                The web app itself uses Discord OAuth with JWT tokens stored in httpOnly cookies.
+                The Discord OAuth and Token Management endpoints documented below are used internally
+                by the web app and are not relevant for API key users.
               </p>
-              <CodeBlock
-                language="json"
-                title="POST /api/auth/refresh"
-                code={`{
-  "refreshToken": "your-refresh-token"
-}`}
-              />
             </Subsection>
           </Section>
 
@@ -436,7 +440,7 @@ export default function ApiDocs() {
                     </tr>
                     <tr>
                       <td className="py-2 text-accent font-mono">401</td>
-                      <td className="py-2 text-text-secondary">Unauthorized - Not authenticated</td>
+                      <td className="py-2 text-text-secondary">Unauthorized - Invalid or missing API key</td>
                     </tr>
                     <tr>
                       <td className="py-2 text-accent font-mono">403</td>
@@ -462,6 +466,11 @@ export default function ApiDocs() {
 
           {/* Auth - Discord OAuth */}
           <Section id="auth-discord" title="Discord OAuth">
+            <InfoBox type="info" title="Internal Use">
+              These endpoints are used internally by the web app for browser-based login.
+              If you are building an API integration, use an API key instead (see Authentication above).
+            </InfoBox>
+
             <EndpointCard
               method="GET"
               path="/api/auth/discord"
@@ -491,6 +500,11 @@ export default function ApiDocs() {
 
           {/* Auth - Token Management */}
           <Section id="auth-tokens" title="Token Management">
+            <InfoBox type="info" title="Internal Use">
+              These endpoints manage JWT sessions for the web app's browser-based login.
+              API key users do not need token refresh or logout — keys remain valid until deleted or expired.
+            </InfoBox>
+
             <EndpointCard
               method="POST"
               path="/api/auth/refresh"
