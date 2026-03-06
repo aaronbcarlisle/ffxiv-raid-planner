@@ -12,7 +12,17 @@ advancedOptions with defaults to prevent KeyError — see _get_advanced_options.
 
 from __future__ import annotations
 
+import math
 from typing import Any
+
+
+def _js_round(x: float) -> int:
+    """Round using JavaScript Math.round() semantics (half-up).
+
+    Python's round() uses banker's rounding (half-to-even), which can differ
+    from JS for half-values (e.g., round(72.5) = 72 in Python, 73 in JS).
+    """
+    return math.floor(x + 0.5)
 
 
 # ==================== Constants (mirrored from frontend gamedata) ====================
@@ -262,7 +272,7 @@ def calculate_priority_score(player: dict, settings: dict) -> int:
                 else DEFAULT_ADVANCED_OPTIONS["lootReceivedPenalty"]
             )
             score += loot_adj * loot_multiplier
-        return round(score)
+        return _js_round(score)
 
     # Player-based mode
     if mode == "player-based":
@@ -277,7 +287,7 @@ def calculate_priority_score(player: dict, settings: dict) -> int:
                 else DEFAULT_ADVANCED_OPTIONS["lootReceivedPenalty"]
             )
             score += loot_adj * loot_multiplier
-        return round(score)
+        return _js_round(score)
 
     # Role-based mode (default, 'automatic', 'manual')
     advanced = _get_advanced_options(settings)
@@ -319,7 +329,7 @@ def calculate_priority_score(player: dict, settings: dict) -> int:
     # Player modifier
     player_modifier = player.get("priorityModifier") or 0
 
-    score = round(role_priority + weighted_need * gear_multiplier + job_modifier + player_modifier)
+    score = _js_round(role_priority + weighted_need * gear_multiplier + job_modifier + player_modifier)
 
     # Loot adjustment
     loot_adj = player.get("lootAdjustment") or 0
