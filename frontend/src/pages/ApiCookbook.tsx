@@ -316,9 +316,9 @@ export default function ApiCookbook() {
 
             <InfoBox type="info" title="Prerequisites">
               You need an API key to use the API. Log in at{' '}
-              <a href="https://www.xivraidplanner.app" className="text-accent hover:underline">xivraidplanner.app</a>,
+              <a href="https://www.xivraidplanner.app" className="text-accent hover:underline" target="_blank" rel="noopener noreferrer">xivraidplanner.app</a>,
               click your avatar in the top-right corner, then go to <strong>API Keys</strong> and
-              create a new key. Save the key immediately — it is only shown once.
+              create a new key. Copy the key — it is only shown once.
             </InfoBox>
           </Section>
 
@@ -544,7 +544,7 @@ $env:RAID_PLANNER_API_KEY = "xrp_your_api_key_here"`}
                   <CodeBlock
                     language="bash"
                     code={`export RAID_PLANNER_URL="https://www.xivraidplanner.app/api"
-export API_KEY="xrp_your_api_key_here"
+export RAID_PLANNER_API_KEY="xrp_your_api_key_here"
 
 # Add to ~/.bashrc or ~/.zshrc to persist across sessions`}
                   />
@@ -555,7 +555,7 @@ export API_KEY="xrp_your_api_key_here"
                   <CodeBlock
                     language="bash"
                     code={`$env:RAID_PLANNER_URL = "https://www.xivraidplanner.app/api"
-$env:API_KEY = "xrp_your_api_key_here"
+$env:RAID_PLANNER_API_KEY = "xrp_your_api_key_here"
 
 # Add to $PROFILE to persist across sessions`}
                   />
@@ -566,11 +566,11 @@ $env:API_KEY = "xrp_your_api_key_here"
                   <CodeBlock
                     language="bash"
                     code={`set RAID_PLANNER_URL=https://www.xivraidplanner.app/api
-set API_KEY=xrp_your_api_key_here`}
+set RAID_PLANNER_API_KEY=xrp_your_api_key_here`}
                   />
 
                   <InfoBox type="tip" title="Using curl with environment variables">
-                    Throughout this guide, curl examples use <code>$API_KEY</code> and <code>$STATIC_ID</code>
+                    Throughout this guide, curl examples use <code>$RAID_PLANNER_API_KEY</code> and <code>$STATIC_ID</code>
                     placeholders. Replace them with actual values or set them as environment variables for
                     easy copy-paste.
                   </InfoBox>
@@ -600,7 +600,7 @@ me = api_get("/auth/me")
 print(f"Logged in as: {me['displayName']}")
 print(f"User ID: {me['id']}")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/auth/me" \\
-  -H "Authorization: Bearer $API_KEY"
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Response:
 # {
@@ -644,7 +644,7 @@ statics = api_get("/static-groups")
 for s in statics:
     print(f"{s['name']} (ID: {s['id']}, Role: {s['membership']['role']})")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/static-groups" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -693,7 +693,7 @@ static = api_post("/static-groups", {
 print(f"Static ID: {static['id']}")
 print(f"Share Code: {static['shareCode']}")`}
               curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "My Awesome Static",
@@ -765,7 +765,7 @@ tier = api_post(f"/static-groups/{static_id}/tiers", {
 print(f"Tier Snapshot ID: {tier['id']}")
 print(f"Tier: {tier['tierId']}")`}
               curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "tierId": "aac-heavyweight",
@@ -838,7 +838,7 @@ player = api_post(
 print(f"Player ID: {player['id']}")
 print(f"Job: {player['job']}")`}
                 curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "Warrior of Light",
@@ -915,7 +915,7 @@ api_put(
 
 print("Gear updated successfully")`}
                 curl={`curl -X PUT "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "gear": [
@@ -971,7 +971,7 @@ for player in tier['players']:
     bis_count = sum(1 for g in player['gear'] if g.get('hasItem'))
     print(f"{player['name']} ({player['job']}): {bis_count}/11 BiS")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1046,11 +1046,11 @@ api_put(
 print(f"Imported {len(gear)} gear slots from XIVGear")`}
                 curl={`# First, fetch BiS data from XIVGear
 curl -X GET "https://www.xivraidplanner.app/api/bis/xivgear/https://xivgear.app/?page=sl|UUID" \\
-  -H "Authorization: Bearer $API_KEY"
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Then update the player with the gear data
 curl -X PUT "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/players/$PLAYER_ID" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"gear": [...], "bisLink": "..."}'`}
                 csharp={`using System;
@@ -1120,11 +1120,11 @@ if presets['presets']:
     print(f"Loaded preset: {bis_data['name']}")`}
                 curl={`# Get presets for a job
 curl -X GET "https://www.xivraidplanner.app/api/bis/presets/DRG?category=savage" \\
-  -H "Authorization: Bearer $API_KEY"
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Then fetch the preset data
 curl -X GET "https://www.xivraidplanner.app/api/bis/xivgear/$PRESET_UUID" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1193,7 +1193,7 @@ loot_entry = api_post(
 
 print(f"Logged loot entry #{loot_entry['id']}")`}
                 curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "weekNumber": 1,
@@ -1262,11 +1262,11 @@ for week, entries in sorted(by_week.items()):
     for e in entries:
         print(f"  {e['floor']} {e['itemSlot']} -> {e['recipientPlayerName']}")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log" \\
-  -H "Authorization: Bearer $API_KEY"
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
 # Filter by week
 curl -X GET "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/loot-log?week=1" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1339,7 +1339,7 @@ api_post(
 
 print("Floor clear marked for all players")`}
                 curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/mark-floor-cleared" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "weekNumber": 1,
@@ -1398,7 +1398,7 @@ print("-" * 50)
 for player in balances:
     print(f"{player['playerName']:20} I:{player['bookI']:2} II:{player['bookII']:2} III:{player['bookIII']:2} IV:{player['bookIV']:2}")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/tiers/$TIER_ID/page-balances" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -1462,7 +1462,7 @@ print(f"Invite Code: {invite['inviteCode']}")
 print(f"Invite URL: https://www.xivraidplanner.app/invite/{invite['inviteCode']}")
 print(f"Expires: {invite['expiresAt']}")`}
                 curl={`curl -X POST "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/invitations" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "role": "member",
@@ -1520,7 +1520,7 @@ for invite in invites:
     if invite['isValid']:
         print(f"  {invite['inviteCode']} - {invite['role']} ({invite['useCount']}/{invite['maxUses']} uses)")`}
                 curl={`curl -X GET "https://www.xivraidplanner.app/api/static-groups/$STATIC_ID/invitations" \\
-  -H "Authorization: Bearer $API_KEY"`}
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
@@ -1656,7 +1656,7 @@ def safe_api_call(method: str, path: str, data: dict = None):
         return None`}
                 curl={`# Example: Handle 404 error
 curl -X GET "https://www.xivraidplanner.app/api/static-groups/invalid-id" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -w "\\nHTTP Status: %{http_code}\\n"
 
 # Response:
@@ -1667,7 +1667,7 @@ curl -X GET "https://www.xivraidplanner.app/api/static-groups/invalid-id" \\
 
 # Example: Handle 403 permission denied
 curl -X DELETE "https://www.xivraidplanner.app/api/static-groups/{id}" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -w "\\nHTTP Status: %{http_code}\\n"
 
 # Response:
@@ -1678,7 +1678,7 @@ curl -X DELETE "https://www.xivraidplanner.app/api/static-groups/{id}" \\
 
 # Example: Handle 429 rate limit
 curl -X POST "https://www.xivraidplanner.app/api/static-groups" \\
-  -H "Authorization: Bearer $API_KEY" \\
+  -H "Authorization: Bearer $RAID_PLANNER_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "Test"}' \\
   -w "\\nHTTP Status: %{http_code}\\nRetry-After: %{header_retry_after}\\n"
