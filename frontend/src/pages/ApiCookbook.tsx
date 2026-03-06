@@ -611,10 +611,12 @@ print(f"User ID: {me['id']}")`}
                 csharp={`using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
@@ -642,16 +644,18 @@ Console.WriteLine($"User ID: {id}");`}
 statics = api_get("/static-groups")
 
 for s in statics:
-    print(f"{s['name']} (ID: {s['id']}, Role: {s['membership']['role']})")`}
+    print(f"{s['name']} (ID: {s['id']}, Role: {s['userRole']})")`}
                 curl={`curl -X GET "https://api.xivraidplanner.app/api/static-groups" \\
   -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
@@ -664,7 +668,7 @@ foreach (var s in statics.RootElement.EnumerateArray())
 {
     var name = s.GetProperty("name").GetString();
     var id = s.GetProperty("id").GetString();
-    var role = s.GetProperty("membership").GetProperty("role").GetString();
+    var role = s.GetProperty("userRole").GetString();
     Console.WriteLine($"{name} (ID: {id}, Role: {role})");
 }`}
               />

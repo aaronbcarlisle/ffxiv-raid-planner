@@ -354,7 +354,8 @@ export default function ApiDocs() {
           <Section id="authentication" title="Authentication">
             <p className="text-text-secondary mb-6">
               API keys are the recommended way to authenticate with the API. They are long-lived,
-              don't require token refresh, and work with all authenticated endpoints.
+              don't require token refresh, and work with most endpoints. An API key acts as the user
+              who created it — it has the same permissions across all statics that user belongs to.
             </p>
 
             <Subsection title="Generating an API Key">
@@ -368,7 +369,8 @@ export default function ApiDocs() {
 
               <InfoBox type="warning" title="Save your key">
                 The raw API key is only displayed at the time of creation. If you lose it,
-                you'll need to delete the old key and create a new one.
+                you'll need to delete the old key and create a new one. If a key is compromised,
+                delete it immediately from the API Keys page.
               </InfoBox>
             </Subsection>
 
@@ -383,8 +385,31 @@ export default function ApiDocs() {
               <p className="text-text-secondary mt-4">
                 API keys use the format <code className="text-accent">xrp_</code> followed by 40 hex characters.
                 They don't expire by default unless you set an expiry date during creation.
-                No CSRF token or token refresh is needed.
+                No CSRF token or token refresh is needed. Note: API key management endpoints
+                (creating, listing, and revoking keys) require browser authentication and cannot
+                be accessed with an API key.
               </p>
+            </Subsection>
+
+            <Subsection title="Verify Your Key">
+              <p className="text-text-secondary mb-4">
+                Use <code className="text-accent">GET /api/auth/me</code> to verify your API key and retrieve your user profile:
+              </p>
+              <EndpointCard
+                method="GET"
+                path="/api/auth/me"
+                description="Get the currently authenticated user's information. Works with both API keys and JWT tokens."
+                auth={true}
+                responseBody={`{
+  "id": "uuid",
+  "discordId": "123456789",
+  "discordUsername": "Player",
+  "displayName": "Player Name",
+  "discordAvatar": "abc123",
+  "avatarUrl": "https://cdn.discordapp.com/...",
+  "createdAt": "2024-01-01T00:00:00Z"
+}`}
+              />
             </Subsection>
 
             <Subsection title="Web App Authentication">
@@ -440,7 +465,7 @@ export default function ApiDocs() {
                     </tr>
                     <tr>
                       <td className="py-2 text-accent font-mono">401</td>
-                      <td className="py-2 text-text-secondary">Unauthorized - Invalid or missing API key</td>
+                      <td className="py-2 text-text-secondary">Unauthorized - Not authenticated or invalid API key</td>
                     </tr>
                     <tr>
                       <td className="py-2 text-accent font-mono">403</td>
@@ -530,20 +555,6 @@ export default function ApiDocs() {
 }`}
             />
 
-            <EndpointCard
-              method="GET"
-              path="/api/auth/me"
-              description="Get the currently authenticated user's information."
-              auth={true}
-              responseBody={`{
-  "id": "uuid",
-  "discordId": "123456789",
-  "discordUsername": "Player",
-  "discordAvatar": "abc123",
-  "avatarUrl": "https://cdn.discordapp.com/...",
-  "createdAt": "2024-01-01T00:00:00Z"
-}`}
-            />
           </Section>
 
           {/* Static Groups - CRUD */}
