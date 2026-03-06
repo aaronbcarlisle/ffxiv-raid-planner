@@ -4,7 +4,7 @@ API Key Schemas
 Pydantic schemas for API key management.
 """
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from .loot_tracking import CamelModel
 
@@ -16,6 +16,14 @@ class ApiKeyCreate(CamelModel):
     """
 
     name: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Name cannot be blank")
+        return stripped
 
 
 class ApiKeyCreateResponse(CamelModel):

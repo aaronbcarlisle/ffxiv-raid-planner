@@ -1603,7 +1603,7 @@ async def get_priority(
         select(SnapshotPlayer).where(
             SnapshotPlayer.tier_snapshot_id == tier.id,
             SnapshotPlayer.configured.is_(True),
-            SnapshotPlayer.is_substitute == False,
+            SnapshotPlayer.is_substitute.is_(False),
         ).order_by(SnapshotPlayer.sort_order)
     )
     players_orm = players_result.scalars().all()

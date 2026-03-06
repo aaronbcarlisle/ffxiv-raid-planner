@@ -57,7 +57,7 @@ class LootLogEntryCreate(CamelModel):
     notes: str | None = None
     weapon_job: str | None = None  # "DRG", "WHM", etc. for weapon slots
     is_extra: bool = False  # True if extra/off-job loot
-    mark_acquired: bool = False  # If True, also set hasItem=True on the player's gear slot
+    mark_acquired: bool = False  # If True, also set hasItem=True on the player's gear slot (only applies to drop/book methods; ignored for purchase/tome)
 
 
 class LootLogEntryUpdate(CamelModel):
