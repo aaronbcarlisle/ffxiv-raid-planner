@@ -55,19 +55,19 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
     )
     api_key = result.scalar_one_or_none()
 
+    # Use a generic error message for all failure cases to prevent
+    # key-state enumeration (attacker can't distinguish not-found vs revoked vs expired)
+    _API_KEY_AUTH_FAILED = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired API key",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _API_KEY_AUTH_FAILED
 
     if not api_key.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _API_KEY_AUTH_FAILED
 
     # Check expiration
     if api_key.expires_at:
@@ -78,17 +78,9 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
                 expires = expires.replace(tzinfo=timezone.utc)
         except (ValueError, AttributeError):
             # Treat unparseable expiration as expired (fail closed)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API key has expired",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise _API_KEY_AUTH_FAILED
         if datetime.now(timezone.utc) > expires:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API key has expired",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise _API_KEY_AUTH_FAILED
 
     # Save user_id before flushing (ORM objects may expire after flush)
     user_id = api_key.user_id

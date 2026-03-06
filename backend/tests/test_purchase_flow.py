@@ -183,6 +183,26 @@ class TestMemberSelfPurchaseLoot:
         )
         assert response.status_code == 403
 
+    async def test_admin_non_member_can_purchase_for_anyone(
+        self, client: AsyncClient, session: AsyncSession,
+    ):
+        """Admins can log purchases for any player even without group membership."""
+        owner, group, tier, _, player_other = await _setup_group_with_players(session)
+
+        admin = await create_user(session, discord_username="admin_user")
+        admin.is_admin = True
+        await session.flush()
+
+        from app.auth_utils import create_access_token
+        headers = {"Authorization": f"Bearer {create_access_token(admin.id)}"}
+
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log",
+            json=_loot_payload(player_other.id),
+            headers=headers,
+        )
+        assert response.status_code == 201
+
 
 class TestMemberSelfPurchaseMaterial:
     """Members can log purchase materials for their own linked player."""

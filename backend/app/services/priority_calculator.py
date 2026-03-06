@@ -425,6 +425,13 @@ def get_priority_for_upgrade_material(
                 pid = entry.get("recipientPlayerId", "")
                 received_counts[pid] = received_counts.get(pid, 0) + 1
 
+    advanced = _get_advanced_options(settings)
+    loot_penalty = (
+        advanced["lootReceivedPenalty"]
+        if advanced.get("useMultipliers", True)
+        else DEFAULT_ADVANCED_OPTIONS["lootReceivedPenalty"]
+    )
+
     entries = []
     for p in players:
         gear = p.get("gear", [])
@@ -453,13 +460,6 @@ def get_priority_for_upgrade_material(
             continue
 
         effective_need = max(0, unaugmented_count - received)
-
-        advanced = _get_advanced_options(settings)
-        loot_penalty = (
-            advanced["lootReceivedPenalty"]
-            if advanced.get("useMultipliers", True)
-            else DEFAULT_ADVANCED_OPTIONS["lootReceivedPenalty"]
-        )
 
         entries.append({
             "playerId": p["id"],

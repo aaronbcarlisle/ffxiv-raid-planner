@@ -326,3 +326,70 @@ class TestApiKeyAuthentication:
             headers=api_key_headers,
         )
         assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_expired_key_returns_401(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession
+    ):
+        """An expired API key should be rejected with a generic error."""
+        from datetime import datetime, timezone, timedelta
+
+        # Create a key
+        create_response = await client.post(
+            "/api/auth/api-keys",
+            json={"name": "Expiry Test"},
+            headers=auth_headers,
+        )
+        raw_key = create_response.json()["key"]
+        key_id = create_response.json()["id"]
+
+        # Manually set expires_at to the past
+        from sqlalchemy import update
+        from app.models import ApiKey
+        past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        await session.execute(
+            update(ApiKey).where(ApiKey.id == key_id).values(expires_at=past)
+        )
+        await session.commit()
+
+        # Try to use the expired key
+        response = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {raw_key}"},
+        )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Invalid or expired API key"
+
+    @pytest.mark.asyncio
+    async def test_revoked_key_returns_generic_error(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession
+    ):
+        """Revoked keys should return the same generic error as invalid keys."""
+        # Create and revoke a key
+        create_response = await client.post(
+            "/api/auth/api-keys",
+            json={"name": "Revoke Error Test"},
+            headers=auth_headers,
+        )
+        raw_key = create_response.json()["key"]
+        key_id = create_response.json()["id"]
+
+        await client.delete(f"/api/auth/api-keys/{key_id}", headers=auth_headers)
+
+        # Try to use the revoked key
+        response = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {raw_key}"},
+        )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Invalid or expired API key"
+
+    @pytest.mark.asyncio
+    async def test_invalid_key_returns_generic_error(self, client: AsyncClient):
+        """Invalid keys should return the same generic error as revoked/expired keys."""
+        response = await client.get(
+            "/api/auth/me",
+            headers={"Authorization": "Bearer xrp_0000000000000000000000000000000000000000"},
+        )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Invalid or expired API key"
