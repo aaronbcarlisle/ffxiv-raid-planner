@@ -1117,26 +1117,31 @@ print(f"Available presets for DRG:")
 for preset in presets['presets']:
     print(f"  - {preset['name']} (GCD: {preset.get('gcd', 'N/A')})")
 
-# Use a preset UUID with the xivgear endpoint
+# Load a preset using the bis|job|tier format
 if presets['presets']:
-    preset_uuid = presets['presets'][0]['uuid']
-    bis_data = api_get(f"/bis/xivgear/{preset_uuid}")
+    preset = presets['presets'][0]
+    job = "drg"
+    tier = preset.get('githubTier', 'current')
+    index = preset.get('githubIndex', 0)
+    bis_data = api_get(f"/bis/xivgear/bis|{job}|{tier}")
     print(f"Loaded preset: {bis_data['name']}")`}
                 curl={`# Get presets for a job
 curl -X GET "https://api.xivraidplanner.app/api/bis/presets/DRG?category=savage" \\
   -H "Authorization: Bearer $RAID_PLANNER_API_KEY"
 
-# Then fetch the preset data
-curl -X GET "https://api.xivraidplanner.app/api/bis/xivgear/$PRESET_UUID" \\
+# Load preset data using bis|job|tier format
+curl -X GET "https://api.xivraidplanner.app/api/bis/xivgear/bis|drg|current" \\
   -H "Authorization: Bearer $RAID_PLANNER_API_KEY"`}
                 csharp={`using System;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY");
+var apiKey = Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY")
+    ?? throw new Exception("Set RAID_PLANNER_API_KEY environment variable");
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
@@ -1155,11 +1160,11 @@ foreach (var preset in presets)
     Console.WriteLine($"  - {name} (GCD: {gcd})");
 }
 
-// Use a preset UUID with the xivgear endpoint
+// Load a preset using the bis|job|tier format
 if (presets.Any())
 {
-    var presetUuid = presets[0].GetProperty("uuid").GetString();
-    var bisResponse = await client.GetAsync($"https://api.xivraidplanner.app/api/bis/xivgear/{presetUuid}");
+    var tier = presets[0].TryGetProperty("githubTier", out var tierProp) ? tierProp.GetString() : "current";
+    var bisResponse = await client.GetAsync($"https://api.xivraidplanner.app/api/bis/xivgear/bis|drg|{tier}");
     bisResponse.EnsureSuccessStatusCode();
 
     var bisData = await bisResponse.Content.ReadFromJsonAsync<JsonDocument>();
