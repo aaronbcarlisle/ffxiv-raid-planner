@@ -477,7 +477,7 @@ async def get_page_balances(
     # Get all players in tier
     result = await db.execute(
         select(SnapshotPlayer)
-        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured.is_(True))
         .order_by(SnapshotPlayer.sort_order)
     )
     players = result.scalars().all()
@@ -1478,7 +1478,7 @@ async def get_material_balances(
     # Get all players in tier
     players_result = await db.execute(
         select(SnapshotPlayer)
-        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured.is_(True))
         .order_by(SnapshotPlayer.sort_order)
     )
     players = players_result.scalars().all()
@@ -1587,7 +1587,7 @@ async def get_priority(
     players_result = await db.execute(
         select(SnapshotPlayer).where(
             SnapshotPlayer.tier_snapshot_id == tier.id,
-            SnapshotPlayer.configured == True,
+            SnapshotPlayer.configured.is_(True),
             SnapshotPlayer.is_substitute == False,
         ).order_by(SnapshotPlayer.sort_order)
     )

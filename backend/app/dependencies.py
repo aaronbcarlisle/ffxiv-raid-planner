@@ -112,10 +112,11 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
                 last_used_at=now.isoformat()
             )
         )
-        # Use flush (not commit) so the update stays in the route handler's transaction.
-        # If the handler fails and rolls back, the last_used_at update rolls back too,
-        # which is fine — it's a non-critical audit timestamp.
-        await session.flush()
+        # Commit the last_used_at update immediately so it persists even for
+        # read-only endpoints that never call session.commit(). SQLAlchemy
+        # auto-begins a new transaction after commit, so subsequent operations
+        # in the route handler work normally.
+        await session.commit()
 
     # Load user (same transaction — no commit boundary needed)
     user_result = await session.execute(
