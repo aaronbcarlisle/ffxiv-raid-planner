@@ -444,7 +444,7 @@ public class RaidPlannerClient : IDisposable
     {
         _baseUrl = baseUrl ?? Environment.GetEnvironmentVariable("RAID_PLANNER_URL")
                    ?? "https://api.xivraidplanner.app/api";
-        var key = apiKey ?? Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY") ?? "";
+        var resolvedKey = apiKey ?? Environment.GetEnvironmentVariable("RAID_PLANNER_API_KEY") ?? "";
 
         _client = new HttpClient
         {
@@ -455,10 +455,10 @@ public class RaidPlannerClient : IDisposable
         _client.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
 
-        if (!string.IsNullOrEmpty(key))
+        if (!string.IsNullOrEmpty(resolvedKey))
         {
             _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", key);
+                new AuthenticationHeaderValue("Bearer", resolvedKey);
         }
     }
 

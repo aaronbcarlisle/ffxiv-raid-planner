@@ -330,7 +330,7 @@ export default function ApiDocs() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Base URL</h4>
-                <code className="text-accent text-sm">https://api.xivraidplanner.app/api</code>
+                <code className="text-accent text-sm">https://api.xivraidplanner.app</code>
               </div>
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4">
                 <h4 className="font-medium text-text-primary mb-2">Content Type</h4>
