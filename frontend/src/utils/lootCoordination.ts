@@ -176,7 +176,11 @@ export async function updateLootAndSyncGear(
   const isNewExtra = updates.isExtra !== undefined ? updates.isExtra : isOriginalExtra;
   const extraChanged = isOriginalExtra !== isNewExtra;
 
-  // Enter sync block when at least one side is non-extra, or when extra status changed
+  // Gear sync cases for isExtra transitions:
+  //   normal→normal: revert old gear on recipient/slot change, mark new gear
+  //   normal→extra:  revert old gear (item moved off-spec), skip marking
+  //   extra→normal:  skip revert (was off-spec), mark new gear
+  //   extra→extra:   skip entirely (no gear impact)
   if (options.syncGear && (originalEntry.method === 'drop' || originalEntry.method === 'book')
       && (!isOriginalExtra || !isNewExtra)) {
     // Ensure tier is loaded

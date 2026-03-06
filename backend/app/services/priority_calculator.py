@@ -429,25 +429,18 @@ def get_priority_for_upgrade_material(
             and requires_augmentation(g)
         ]
 
-        total_need = len(unaugmented)
-
-        # For solvent, also check tome weapon
-        if material == "solvent":
-            tome_weapon = p.get("tomeWeapon") or {}
-            if tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
-                total_need += 1
-
-        # Subtract already-received
-        received = received_counts.get(p["id"], 0)
-        if total_need - received <= 0:
-            continue
-
-        # Calculate score with material need bonus
         unaugmented_count = len(unaugmented)
+
+        # For solvent, also check tome weapon (needs augmentation)
         if material == "solvent":
             tome_weapon = p.get("tomeWeapon") or {}
             if tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
                 unaugmented_count += 1
+
+        # Subtract already-received
+        received = received_counts.get(p["id"], 0)
+        if unaugmented_count - received <= 0:
+            continue
 
         effective_need = max(0, unaugmented_count - received)
 

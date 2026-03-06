@@ -63,7 +63,7 @@ async def create_api_key(
     count_result = await db.execute(
         select(func.count()).select_from(ApiKey).where(
             ApiKey.user_id == current_user.id,
-            ApiKey.is_active == True,
+            ApiKey.is_active.is_(True),
         )
     )
     key_count = count_result.scalar() or 0
@@ -119,7 +119,7 @@ async def list_api_keys(
     """List active API keys for the current user. Never returns raw keys."""
     result = await db.execute(
         select(ApiKey)
-        .where(ApiKey.user_id == current_user.id, ApiKey.is_active == True)
+        .where(ApiKey.user_id == current_user.id, ApiKey.is_active.is_(True))
         .order_by(ApiKey.created_at.desc())
     )
     keys = result.scalars().all()

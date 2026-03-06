@@ -19,7 +19,8 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 ## Quick Start
 
 ```bash
-./dev.sh              # Start both servers
+./dev.sh              # Start both servers (Linux/macOS/Git Bash)
+./dev.ps1             # Start both servers (Windows PowerShell)
 ./dev.sh stop         # Stop servers
 ./dev.sh logs         # Tail logs
 ```
