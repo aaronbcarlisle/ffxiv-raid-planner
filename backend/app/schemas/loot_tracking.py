@@ -31,6 +31,7 @@ class LootMethodEnum(str, Enum):
     DROP = "drop"
     BOOK = "book"
     TOME = "tome"
+    PURCHASE = "purchase"  # Purchased from vendor (tome/book exchange)
 
 
 class TransactionTypeEnum(str, Enum):
@@ -56,6 +57,7 @@ class LootLogEntryCreate(CamelModel):
     notes: str | None = None
     weapon_job: str | None = None  # "DRG", "WHM", etc. for weapon slots
     is_extra: bool = False  # True if extra/off-job loot
+    mark_acquired: bool = False  # If True, also set hasItem=True on the player's gear slot (only applies to drop/book methods; ignored for purchase/tome)
 
 
 class LootLogEntryUpdate(CamelModel):
@@ -171,6 +173,7 @@ class MaterialLogEntryCreate(CamelModel):
     # Values: "weapon", "head", "body", etc., or "tome_weapon" for solvent augmenting tome weapon
     slot_augmented: str | None = None
     notes: str | None = None
+    mark_augmented: bool = False  # If True: with slot_augmented, sets isAugmented=True; with universal_tomestone (no slot), marks tome weapon as obtained
 
 
 class MaterialLogEntryUpdate(CamelModel):

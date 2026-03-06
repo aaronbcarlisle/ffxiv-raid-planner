@@ -141,7 +141,7 @@ class Settings(BaseSettings):
                 )
             # Auto-generate for local development only
             object.__setattr__(self, 'jwt_secret_key', secrets.token_urlsafe(32))
-            print("⚠️  Using auto-generated JWT secret (development mode)")
+            print("WARNING: Using auto-generated JWT secret (development mode)")
 
         if is_production:
             # Validate JWT secret strength

@@ -18,14 +18,18 @@ from app.dependencies import get_current_user, get_current_user_optional
 from app.models import (
     LootLogEntry,
     MaterialLogEntry,
+    MemberRole,
     PageLedgerEntry,
     SnapshotPlayer,
     TierSnapshot,
     User,
 )
 from app.permissions import (
+    PermissionDenied,
     check_view_permission,
     get_static_group,
+    get_user_membership,
+    is_user_admin,
     require_can_edit_roster,
 )
 from app.schemas import (
@@ -42,6 +46,9 @@ from app.schemas import (
     PageLedgerEntryResponse,
     WeekOperationResponse,
 )
+from app.schemas.loot_tracking import LootMethodEnum
+
+from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS, requires_augmentation
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
@@ -54,6 +61,15 @@ VALID_AUGMENT_SLOTS = {
     "earring", "necklace", "bracelet", "ring1", "ring2",
     "tome_weapon",  # Special case for tome weapon augmentation
 }
+
+# Material type → compatible augmentation slots (derived from UPGRADE_MATERIAL_SLOTS)
+MATERIAL_SLOT_COMPATIBILITY: dict[str, set[str]] = {
+    material: set(slots) for material, slots in UPGRADE_MATERIAL_SLOTS.items()
+}
+# Solvent also supports tome_weapon augmentation
+MATERIAL_SLOT_COMPATIBILITY["solvent"].add("tome_weapon")
+# Universal tomestones have no slot_augmented; they mark tome weapon via separate path
+MATERIAL_SLOT_COMPATIBILITY["universal_tomestone"] = set()
 
 
 # Helper functions
@@ -182,10 +198,29 @@ async def create_loot_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new loot log entry (requires lead or owner role)"""
+    """Create a new loot log entry (requires lead/owner, or member for self-purchase).
+
+    Note: mark_acquired only updates gear for 'drop' and 'book' methods.
+    Purchases don't auto-mark gear because tome purchases are tracked via
+    the material log / augmentation flow, not the loot log gear sync.
+    """
     # Check permissions
     await get_static_group(db, group_id)
-    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Members can self-log purchases for their own linked player (viewers excluded)
+    is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    membership = None
+    user_is_admin = False
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        if not membership:
+            user_is_admin = await is_user_admin(db, current_user.id)
+            if not user_is_admin:
+                raise PermissionDenied("You are not a member of this static group")
+        elif membership.role == MemberRole.VIEWER.value:
+            raise PermissionDenied("Viewers cannot log purchases")
+    else:
+        await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -204,6 +239,13 @@ async def create_loot_log_entry(
     if not recipient_player:
         raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
 
+    # For self-purchase: verify the recipient player is linked to the current user
+    if is_self_purchase:
+        is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+        if not is_lead_or_owner and not user_is_admin:
+            if recipient_player.user_id != current_user.id:
+                raise PermissionDenied("Members can only log purchases for their own character")
+
     # Create entry
     entry = LootLogEntry(
         tier_snapshot_id=tier.id,
@@ -219,6 +261,53 @@ async def create_loot_log_entry(
         created_by_user_id=current_user.id,
     )
     db.add(entry)
+
+    # If mark_acquired is set, also update the player's gear hasItem for this slot
+    gear_updated = False
+    if data.mark_acquired and (data.method.value in ("drop", "book")) and not data.is_extra:
+        gear = list(recipient_player.gear or [])
+        target_slot = data.item_slot
+
+        # Smart ring handling: if logging ring/ring1/ring2, find which ring actually needs raid BiS
+        if target_slot in ("ring", "ring1", "ring2"):
+            ring1 = next((g for g in gear if g.get("slot") == "ring1"), None)
+            ring2 = next((g for g in gear if g.get("slot") == "ring2"), None)
+            needs_ring1 = ring1 and ring1.get("bisSource") == "raid" and not ring1.get("hasItem")
+            needs_ring2 = ring2 and ring2.get("bisSource") == "raid" and not ring2.get("hasItem")
+            if needs_ring1:
+                target_slot = "ring1"
+            elif needs_ring2:
+                target_slot = "ring2"
+            else:
+                target_slot = None  # Neither ring needs raid BiS, skip gear update
+
+        # Only update gear if the target slot has raid BiS source
+        if target_slot:
+            slot_data = next((g for g in gear if g.get("slot") == target_slot), None)
+            if slot_data and slot_data.get("bisSource") == "raid":
+                updated_gear = [
+                    {**g, "hasItem": True} if g.get("slot") == target_slot else g
+                    for g in gear
+                ]
+                recipient_player.gear = updated_gear
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+                gear_updated = True
+            elif slot_data:
+                logger.warning(
+                    "mark_acquired_skipped_non_raid_bis",
+                    item_slot=data.item_slot,
+                    target_slot=target_slot,
+                    bis_source=slot_data.get("bisSource"),
+                    player_id=data.recipient_player_id,
+                )
+            else:
+                logger.warning(
+                    "mark_acquired_skipped_unknown_slot",
+                    item_slot=data.item_slot,
+                    target_slot=target_slot,
+                    player_id=data.recipient_player_id,
+                )
+
     await db.commit()
     await db.refresh(entry)
 
@@ -237,6 +326,7 @@ async def create_loot_log_entry(
         is_extra=data.is_extra,
         week_number=data.week_number,
         user_id=current_user.id,
+        gear_updated=gear_updated,
     )
 
     # Load relationships for response
@@ -402,7 +492,7 @@ async def get_page_balances(
     # Get all players in tier
     result = await db.execute(
         select(SnapshotPlayer)
-        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured.is_(True))
         .order_by(SnapshotPlayer.sort_order)
     )
     players = result.scalars().all()
@@ -1135,10 +1225,24 @@ async def create_material_log_entry(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new material log entry (requires lead or owner role)"""
+    """Create a new material log entry (requires lead/owner, or member for self-purchase)"""
     # Check permissions
     await get_static_group(db, group_id)
-    await require_can_edit_roster(db, current_user.id, group_id)
+
+    # Members can self-log purchases for their own linked player (viewers excluded)
+    is_self_purchase = data.method == LootMethodEnum.PURCHASE
+    membership = None
+    user_is_admin = False
+    if is_self_purchase:
+        membership = await get_user_membership(db, current_user.id, group_id)
+        if not membership:
+            user_is_admin = await is_user_admin(db, current_user.id)
+            if not user_is_admin:
+                raise PermissionDenied("You are not a member of this static group")
+        elif membership.role == MemberRole.VIEWER.value:
+            raise PermissionDenied("Viewers cannot log purchases")
+    else:
+        await require_can_edit_roster(db, current_user.id, group_id)
 
     # Get tier
     tier = await get_tier_snapshot(db, group_id, tier_id)
@@ -1157,9 +1261,28 @@ async def create_material_log_entry(
     if not recipient_player:
         raise HTTPException(status_code=404, detail="Recipient player not found in this tier")
 
+    # For self-purchase: verify the recipient player is linked to the current user
+    if is_self_purchase:
+        is_lead_or_owner = membership and membership.role in (MemberRole.OWNER.value, MemberRole.LEAD.value)
+        if not is_lead_or_owner and not user_is_admin:
+            if recipient_player.user_id != current_user.id:
+                raise PermissionDenied("Members can only log purchases for their own character")
+
     # Validate slot_augmented if provided
     validated_slot = None
-    if isinstance(data.slot_augmented, str) and data.slot_augmented in VALID_AUGMENT_SLOTS:
+    if isinstance(data.slot_augmented, str) and data.slot_augmented:
+        if data.slot_augmented not in VALID_AUGMENT_SLOTS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid slot_augmented value: '{data.slot_augmented}'",
+            )
+        # Validate material/slot compatibility
+        compatible_slots = MATERIAL_SLOT_COMPATIBILITY.get(data.material_type.value)
+        if compatible_slots is not None and data.slot_augmented not in compatible_slots:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Slot '{data.slot_augmented}' is not compatible with material type '{data.material_type.value}'",
+            )
         validated_slot = data.slot_augmented
 
     # Create entry
@@ -1176,6 +1299,42 @@ async def create_material_log_entry(
         created_by_user_id=current_user.id,
     )
     db.add(entry)
+
+    # If mark_augmented is set and a valid slot was provided, update the player's gear
+    if data.mark_augmented and validated_slot:
+        gear = list(recipient_player.gear or [])
+
+        if validated_slot == "tome_weapon":
+            # Validate tome weapon is being pursued and has the item
+            tome_weapon = dict(recipient_player.tome_weapon or {})
+            if tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
+                tome_weapon["isAugmented"] = True
+                recipient_player.tome_weapon = tome_weapon
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+        else:
+            # Validate the gear slot is tome BiS, has the item, requires augmentation, and isn't already augmented
+            slot_data = next((g for g in gear if g.get("slot") == validated_slot), None)
+            if (
+                slot_data
+                and slot_data.get("bisSource") == "tome"
+                and slot_data.get("hasItem")
+                and not slot_data.get("isAugmented")
+                and requires_augmentation(slot_data)
+            ):
+                recipient_player.gear = [
+                    {**g, "isAugmented": True} if g.get("slot") == validated_slot else g
+                    for g in gear
+                ]
+                recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+
+    # Universal tomestone with mark_augmented: mark tome weapon as obtained
+    if data.mark_augmented and data.material_type.value == "universal_tomestone" and not validated_slot:
+        tome_weapon = dict(recipient_player.tome_weapon or {})
+        if tome_weapon.get("pursuing") and not tome_weapon.get("hasItem"):
+            tome_weapon["hasItem"] = True
+            recipient_player.tome_weapon = tome_weapon
+            recipient_player.updated_at = datetime.now(timezone.utc).isoformat()
+
     await db.commit()
     await db.refresh(entry)
 
@@ -1334,7 +1493,7 @@ async def get_material_balances(
     # Get all players in tier
     players_result = await db.execute(
         select(SnapshotPlayer)
-        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured == True)
+        .where(SnapshotPlayer.tier_snapshot_id == tier.id, SnapshotPlayer.configured.is_(True))
         .order_by(SnapshotPlayer.sort_order)
     )
     players = players_result.scalars().all()
@@ -1373,3 +1532,144 @@ async def get_material_balances(
         )
 
     return balances
+
+
+# Priority Calculation Endpoint
+
+
+# Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts).
+# When adding a new tier, update both this dict and the frontend raid-tiers.ts.
+# Unknown tiers fall back to generic ["F1S", "F2S", "F3S", "F4S"] names.
+TIER_FLOOR_NAMES: dict[str, list[str]] = {
+    "aac-heavyweight": ["M9S", "M10S", "M11S", "M12S"],
+    "aac-cruiserweight": ["M5S", "M6S", "M7S", "M8S"],
+    "aac-light-heavyweight": ["M1S", "M2S", "M3S", "M4S"],
+    "anabaseios": ["P9S", "P10S", "P11S", "P12S"],
+}
+
+
+def _player_to_dict(player: SnapshotPlayer) -> dict:
+    """Convert a SnapshotPlayer ORM model to a dict matching the TypeScript SnapshotPlayer shape.
+
+    Note: weaponPriorities is omitted because the priority calculator only uses gear slots,
+    role, job, and loot adjustment — weapon priorities are a UI-only concern for weapon drops.
+    """
+    return {
+        "id": player.id,
+        "name": player.name,
+        "job": player.job,
+        "role": player.role,
+        "position": player.position,
+        "gear": player.gear or [],
+        "tomeWeapon": player.tome_weapon or {},
+        "lootAdjustment": player.loot_adjustment or 0,
+        "priorityModifier": player.priority_modifier or 0,
+        "configured": player.configured,
+        "isSubstitute": player.is_substitute,
+    }
+
+
+def _material_entry_to_dict(entry: MaterialLogEntry) -> dict:
+    """Convert a MaterialLogEntry ORM model to a dict for the priority calculator."""
+    return {
+        "materialType": entry.material_type,
+        "recipientPlayerId": entry.recipient_player_id,
+        "slotAugmented": entry.slot_augmented,
+    }
+
+
+@router.get("/{group_id}/tiers/{tier_id}/priority")
+async def get_priority(
+    group_id: str,
+    tier_id: str,
+    floor: int | None = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Get loot priority rankings for a tier, optionally filtered by floor (1-4).
+
+    Used by the Dalamud plugin to display in-game priority overlay.
+    Also available to the web UI for server-side priority verification.
+    """
+    # Check view permissions (supports anonymous for public groups)
+    group = await get_static_group(db, group_id)
+    await check_view_permission(db, group, current_user)
+
+    # Get tier snapshot
+    tier = await get_tier_snapshot(db, group_id, tier_id)
+
+    # Get configured, non-substitute players
+    players_result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.tier_snapshot_id == tier.id,
+            SnapshotPlayer.configured.is_(True),
+            SnapshotPlayer.is_substitute.is_(False),
+        ).order_by(SnapshotPlayer.sort_order)
+    )
+    players_orm = players_result.scalars().all()
+    players = [_player_to_dict(p) for p in players_orm]
+
+    # Get material log for material priority calculations
+    material_result = await db.execute(
+        select(MaterialLogEntry).where(
+            MaterialLogEntry.tier_snapshot_id == tier.id,
+        )
+    )
+    material_entries = material_result.scalars().all()
+    material_log = [_material_entry_to_dict(e) for e in material_entries]
+
+    # Get settings from the static group
+    settings = group.settings or {}
+
+    # Calculate current week
+    current_week = calculate_week_number(tier)
+
+    # Determine tier floor names
+    tier_floors = TIER_FLOOR_NAMES.get(tier.tier_id, [f"F{i}S" for i in range(1, 5)])
+
+    # Calculate priority
+    if floor is not None:
+        if floor < 1 or floor > 4:
+            raise HTTPException(status_code=400, detail="Floor must be 1-4")
+        priority = {
+            f"floor{floor}": calculate_floor_priority(players, floor, settings, material_log)
+        }
+    else:
+        priority = calculate_all_floors_priority(players, settings, material_log)
+
+    # Build player info list with augmentable slots for the plugin
+    player_info = []
+    for p in players:
+        augmentable: dict[str, list[str]] = {}
+        gear = p.get("gear", [])
+        tome_weapon = p.get("tomeWeapon", {})
+
+        for mat, slots in UPGRADE_MATERIAL_SLOTS.items():
+            eligible = [
+                g["slot"] for g in gear
+                if g.get("slot") in slots
+                and g.get("bisSource") == "tome"
+                and requires_augmentation(g)
+                and g.get("hasItem") is True
+                and g.get("isAugmented") is not True
+            ]
+            # Solvent: also check tome weapon augmentation
+            if mat == "solvent" and tome_weapon.get("pursuing") and tome_weapon.get("hasItem") and not tome_weapon.get("isAugmented"):
+                eligible.append("tome_weapon")
+            if eligible:
+                augmentable[mat] = eligible
+
+        player_info.append({
+            "id": p["id"],
+            "name": p["name"],
+            "job": p["job"],
+            "role": p["role"],
+            "augmentableSlots": augmentable,
+        })
+
+    return {
+        "currentWeek": current_week,
+        "tierFloors": tier_floors,
+        "players": player_info,
+        "priority": priority,
+    }

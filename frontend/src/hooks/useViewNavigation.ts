@@ -86,7 +86,14 @@ export function useViewNavigation({
     // Clear any existing timeout
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the loot entry for this player and slot
-    const entry = lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
+    // Ring slots: gear uses ring1/ring2, loot log may store as "ring", "ring1", or "ring2"
+    // Prefer exact slot match first, then fall back to any ring variant
+    const isRingSlot = slot === 'ring1' || slot === 'ring2';
+    const entry = isRingSlot
+      ? (lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot)
+        ?? lootLog.find(e => e.recipientPlayerId === playerId &&
+          (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2')))
+      : lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
     if (!entry) {
       toast.info('No loot entry found for this slot');
       return;
@@ -113,7 +120,9 @@ export function useViewNavigation({
     // Clear any existing timeout
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the material entry for this player and slot
-    const entry = materialLog.find(e => e.recipientPlayerId === playerId && e.slotAugmented === slot);
+    // Universal tomestone has no slotAugmented but maps to 'tome_weapon'
+    const entry = materialLog.find(e => e.recipientPlayerId === playerId &&
+      (e.slotAugmented === slot || (slot === 'tome_weapon' && e.materialType === 'universal_tomestone' && !e.slotAugmented)));
     if (!entry) {
       toast.info('No material entry found for this slot');
       return;

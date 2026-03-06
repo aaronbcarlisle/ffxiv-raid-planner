@@ -63,6 +63,7 @@ class GearSlotStatus(CamelModel):
     current_source: GearSourceCategory = "unknown"  # What's actually equipped
     has_item: bool = False
     is_augmented: bool = False
+    item_id: int | None = None  # In-game item ID from BiS import (for plugin matching)
     item_name: str | None = None
     item_level: int | None = None
     item_icon: str | None = None
@@ -76,6 +77,17 @@ class TomeWeaponStatus(CamelModel):
     pursuing: bool = False
     has_item: bool = False
     is_augmented: bool = False
+
+
+class PlayerGearResponse(CamelModel):
+    """Response for GET player gear endpoint (used by Dalamud plugin)"""
+
+    player_id: str
+    player_name: str
+    job: str
+    bis_link: str | None = None
+    gear: list[GearSlotStatus] = Field(default_factory=list)
+    tome_weapon: TomeWeaponStatus = Field(default_factory=TomeWeaponStatus)
 
 
 class WeaponPriority(CamelModel):

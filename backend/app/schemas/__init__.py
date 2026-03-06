@@ -1,5 +1,10 @@
 """Pydantic schemas"""
 
+from .api_key import (
+    ApiKeyCreate,
+    ApiKeyCreateResponse,
+    ApiKeyResponse,
+)
 from .invitation import (
     InvitationAcceptResponse,
     InvitationCreate,
@@ -87,6 +92,10 @@ from .user import (
 )
 
 __all__ = [
+    # API Key
+    "ApiKeyCreate",
+    "ApiKeyCreateResponse",
+    "ApiKeyResponse",
     # Gear Status (from tier_snapshot)
     "GearSlotStatus",
     "LinkedPlayerInfo",

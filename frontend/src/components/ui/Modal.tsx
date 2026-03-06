@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
@@ -45,6 +45,7 @@ const SIZE_CLASSES = {
 export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer, className }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
   const { isSmallScreen } = useDevice();
 
   // Auto-select variant based on screen size if not specified
@@ -158,13 +159,13 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
         tabIndex={-1}
         className={`bg-surface-card border border-border-default w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
       >
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
-          <h2 id="modal-title" className="font-display text-xl text-accent">{title}</h2>
+          <h2 id={titleId} className="font-display text-xl text-accent">{title}</h2>
           <IconButton
             icon={<X className="w-5 h-5" />}
             onClick={onClose}

@@ -22,6 +22,9 @@ export type GearSlot =
   | 'ring1'
   | 'ring2';
 
+// Loot log slots — includes 'ring' which gets normalized to ring1/ring2 for gear updates
+export type LootSlot = GearSlot | 'ring';
+
 // Where the BiS gear comes from
 export type GearSource = 'raid' | 'tome' | 'base_tome' | 'crafted';
 
@@ -180,6 +183,7 @@ export interface GearSlotStatus {
   currentSource?: GearSourceCategory; // What's actually equipped (9 categories)
   hasItem: boolean;
   isAugmented: boolean;
+  itemId?: number;  // In-game item ID from BiS import (for plugin matching)
   itemName?: string;
   itemLevel?: number;
   itemIcon?: string;
@@ -797,7 +801,7 @@ export interface BiSPresetsResponse {
 // ==================== Loot Tracking Types ====================
 
 // Loot acquisition method
-export type LootMethod = 'drop' | 'book' | 'tome';
+export type LootMethod = 'drop' | 'book' | 'tome' | 'purchase';
 
 // Page ledger transaction type
 export type TransactionType = 'earned' | 'spent' | 'missed' | 'adjustment';

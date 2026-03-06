@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.13.0';
+export const CURRENT_VERSION = '1.14.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,36 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.14.0',
+    date: '2026-03-01T08:00:00Z',
+    title: 'Plugin API',
+    highlights: ['API key auth for Dalamud plugin', 'Server-side loot priority'],
+    items: [
+      {
+        category: 'feature',
+        title: 'API key authentication',
+        description: 'Generate API keys to connect the Dalamud plugin to your static',
+        details:
+          'Create and manage API keys from your user menu. Keys use the xrp_ prefix, are hashed with SHA-256, and can be revoked at any time. Manage keys under Settings > API Keys.',
+        commits: [{ hash: 'f0581b0', message: 'feat: add API key auth system and server-side priority endpoint' }],
+      },
+      {
+        category: 'feature',
+        title: 'Server-side loot priority',
+        description: 'Loot priority calculations are now available via API for the in-game overlay',
+        details:
+          'The priority algorithm has been ported server-side so the Dalamud plugin can display accurate priority rankings in-game without needing the web app open.',
+        commits: [{ hash: 'fb253ce', message: 'test: add tests for API key system and priority calculator' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Ring slot normalization',
+        description: 'Loot log ring entries correctly map to ring1/ring2 gear slots',
+        commits: [{ hash: '9a9ce72', message: 'fix: handle ring slot name mismatch between loot log and gear' }],
+      },
+    ],
+  },
   {
     version: '1.13.0',
     date: '2026-02-23T08:00:00Z',

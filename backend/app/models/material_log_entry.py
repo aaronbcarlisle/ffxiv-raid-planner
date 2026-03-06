@@ -30,7 +30,7 @@ class MaterialLogEntry(Base):
     slot_augmented: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # How the material was obtained: 'drop' (savage) or 'book' (purchased with pages)
     method: Mapped[str] = mapped_column(
-        SQLEnum("drop", "book", "tome", name="lootmethod", create_type=False),
+        SQLEnum("drop", "book", "tome", "purchase", name="lootmethod", create_type=False),
         server_default="drop",
         nullable=False,
     )

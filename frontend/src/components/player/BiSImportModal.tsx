@@ -406,6 +406,7 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         bisSource: importedSlot.source,
         currentSource,
         // Include item metadata from import
+        itemId: importedSlot.itemId,
         itemName: importedSlot.itemName,
         itemLevel: importedSlot.itemLevel,
         itemIcon: importedSlot.itemIcon,

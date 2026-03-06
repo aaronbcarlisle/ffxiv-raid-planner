@@ -23,7 +23,7 @@ class LootLogEntry(Base):
     recipient_player_id: Mapped[str] = mapped_column(String(36), ForeignKey("snapshot_players.id"), nullable=False, index=True)
     # Use explicit string values to match PostgreSQL enum (avoids Python enum name vs value issue)
     method: Mapped[str] = mapped_column(
-        SQLEnum("drop", "book", "tome", name="lootmethod", create_type=False),
+        SQLEnum("drop", "book", "tome", "purchase", name="lootmethod", create_type=False),
         nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
