@@ -8,8 +8,8 @@ param(
 )
 
 $ProjectRoot = $PSScriptRoot
-$FrontendPort = 5173
-$BackendPort = 8000
+$FrontendPort = 5174
+$BackendPort = 8001
 $LogDir = Join-Path $ProjectRoot ".logs"
 $VenvPython = Join-Path $ProjectRoot "backend\venv\Scripts\python.exe"
 $VenvUvicorn = Join-Path $ProjectRoot "backend\venv\Scripts\uvicorn.exe"
@@ -84,14 +84,14 @@ function Start-Servers {
     $frontendLog = Join-Path $LogDir "frontend.log"
     if ($PnpmPath) {
         $frontendProc = Start-Process -FilePath $PnpmPath `
-            -ArgumentList "dev" `
+            -ArgumentList "dev", "--port", $FrontendPort, "--strictPort" `
             -WorkingDirectory (Join-Path $ProjectRoot "frontend") `
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `
             -NoNewWindow -PassThru
     } else {
         $frontendProc = Start-Process -FilePath "npm" `
-            -ArgumentList "run", "dev" `
+            -ArgumentList "run", "dev", "--", "--port", $FrontendPort, "--strictPort" `
             -WorkingDirectory (Join-Path $ProjectRoot "frontend") `
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `

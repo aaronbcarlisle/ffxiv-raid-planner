@@ -6,8 +6,8 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_PORT=5173
-BACKEND_PORT=8000
+FRONTEND_PORT=5174
+BACKEND_PORT=8001
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,7 +47,16 @@ mkdir -p "$LOG_DIR"
 # Start backend
 echo -e "\n${YELLOW}Starting backend server...${NC}"
 cd "$PROJECT_ROOT/backend"
-source venv/bin/activate
+if [ ! -d venv ]; then
+    echo -e "  ${RED}ERROR: Backend venv not found. Run:${NC}"
+    echo -e "    ${YELLOW}cd backend && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt${NC}"
+    exit 1
+fi
+if [ -f venv/Scripts/activate ]; then
+    source venv/Scripts/activate
+else
+    source venv/bin/activate
+fi
 uvicorn app.main:app --reload --port $BACKEND_PORT > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo -e "  ${GREEN}Backend started${NC} (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
@@ -56,7 +65,7 @@ echo -e "  Log: $LOG_DIR/backend.log"
 # Start frontend
 echo -e "\n${YELLOW}Starting frontend server...${NC}"
 cd "$PROJECT_ROOT/frontend"
-pnpm dev > "$LOG_DIR/frontend.log" 2>&1 &
+pnpm dev --port $FRONTEND_PORT --strictPort > "$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 echo -e "  ${GREEN}Frontend started${NC} (PID: $FRONTEND_PID, Port: $FRONTEND_PORT)"
 echo -e "  Log: $LOG_DIR/frontend.log"

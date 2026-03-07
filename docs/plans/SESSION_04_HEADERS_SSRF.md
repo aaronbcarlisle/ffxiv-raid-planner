@@ -52,7 +52,7 @@ response.headers["Content-Security-Policy"] = (
 
 **Testing:**
 1. Start the dev server
-2. Verify header present: `curl -I http://localhost:8000/health | grep Content-Security-Policy`
+2. Verify header present: `curl -I http://localhost:8001/health | grep Content-Security-Policy`
 3. Test that the frontend still works (no CSP violations in console)
 
 Commit: "feat(security): add Content-Security-Policy header"
@@ -107,7 +107,7 @@ After all changes:
 cd backend && pytest tests/ -q
 
 # Check CSP header
-curl -I http://localhost:8000/health | grep -i security
+curl -I http://localhost:8001/health | grep -i security
 
 # Test BiS import still works
 # (Manual test via UI)
@@ -138,7 +138,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self' ...  # NEW
 pytest tests/ -q
 
 # CSP verification
-curl -I http://localhost:8000/health
+curl -I http://localhost:8001/health
 ```
 
 ---

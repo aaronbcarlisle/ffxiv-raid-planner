@@ -10,7 +10,7 @@ import { act } from '@testing-library/react';
 
 // Mock the services/api module to break circular dependency with authStore
 vi.mock('../services/api', () => ({
-  API_BASE_URL: 'http://localhost:8000',
+  API_BASE_URL: 'http://localhost:8001',
   api: {
     get: vi.fn(),
     post: vi.fn(),

@@ -25,7 +25,7 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 ./dev.sh logs         # Tail logs
 ```
 
-**API:** http://localhost:8000 | **Frontend:** http://localhost:5173
+**API:** http://localhost:8001 | **Frontend:** http://localhost:5174
 
 ---
 
@@ -95,7 +95,7 @@ pnpm test                         # Frontend tests (508)
 
 # Backend
 cd backend && source venv/bin/activate
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8001
 pytest tests/ -q                  # Backend tests (346)
 
 # Scripts
@@ -357,7 +357,7 @@ Custom slash commands for Claude Code (invoke with `/project:`):
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**
 - **[DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md)** - Design system integration quick reference
 - **[DESIGN_SYSTEM_ENFORCEMENT.md](./docs/DESIGN_SYSTEM_ENFORCEMENT.md)** - How design system is enforced
-- **[/docs/design-system](http://localhost:5173/docs/design-system)** - Interactive visual reference (dev server)
+- **[/docs/design-system](http://localhost:5174/docs/design-system)** - Interactive visual reference (dev server)
 
 ### Development
 - **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Code style and patterns
