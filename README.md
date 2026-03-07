@@ -83,8 +83,8 @@ pnpm install
 pnpm dev
 ```
 
-**Backend:** http://localhost:8000
-**Frontend:** http://localhost:5173
+**Backend:** http://localhost:8001
+**Frontend:** http://localhost:5174
 
 ### Environment Variables
 
@@ -93,9 +93,9 @@ Create `backend/.env`:
 DATABASE_URL=sqlite+aiosqlite:///./data/raid_planner.db
 DISCORD_CLIENT_ID=your_discord_client_id
 DISCORD_CLIENT_SECRET=your_discord_client_secret
-DISCORD_REDIRECT_URI=http://localhost:5173/auth/callback
+DISCORD_REDIRECT_URI=http://localhost:5174/auth/callback
 JWT_SECRET=your_jwt_secret
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5174
 ```
 
 ## Project Structure

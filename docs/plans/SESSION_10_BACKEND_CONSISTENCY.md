@@ -206,7 +206,7 @@ pytest tests/ -q
 Test that API errors return consistent format:
 ```bash
 # Should return {"error": "...", "message": "...", "details": {...}}
-curl http://localhost:8000/api/static-groups/nonexistent | jq
+curl http://localhost:8001/api/static-groups/nonexistent | jq
 ```
 ```
 

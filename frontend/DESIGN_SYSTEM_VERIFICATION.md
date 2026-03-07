@@ -15,7 +15,7 @@ Quick tests to verify your design system is working correctly.
 
 2. Open design system page:
    ```
-   http://localhost:5173/docs/design-system
+   http://localhost:5174/docs/design-system
    ```
 
 3. Make a test change to a component:
