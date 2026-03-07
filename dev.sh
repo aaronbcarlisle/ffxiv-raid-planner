@@ -47,6 +47,11 @@ mkdir -p "$LOG_DIR"
 # Start backend
 echo -e "\n${YELLOW}Starting backend server...${NC}"
 cd "$PROJECT_ROOT/backend"
+if [ ! -d venv ]; then
+    echo -e "  ${RED}ERROR: Backend venv not found. Run:${NC}"
+    echo -e "    ${YELLOW}cd backend && python -m venv venv && pip install -r requirements.txt${NC}"
+    exit 1
+fi
 if [ -f venv/Scripts/activate ]; then
     source venv/Scripts/activate
 else
