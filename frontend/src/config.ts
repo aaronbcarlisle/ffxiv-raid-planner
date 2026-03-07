@@ -6,7 +6,7 @@
  */
 
 // Get API base URL from environment or default to localhost
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 // Environment detection
 export const isBrowser = typeof window !== 'undefined';

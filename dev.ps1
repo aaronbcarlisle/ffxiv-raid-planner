@@ -8,8 +8,8 @@ param(
 )
 
 $ProjectRoot = $PSScriptRoot
-$FrontendPort = 5173
-$BackendPort = 8000
+$FrontendPort = 5174
+$BackendPort = 8001
 $LogDir = Join-Path $ProjectRoot ".logs"
 $VenvPython = Join-Path $ProjectRoot "backend\venv\Scripts\python.exe"
 $VenvUvicorn = Join-Path $ProjectRoot "backend\venv\Scripts\uvicorn.exe"

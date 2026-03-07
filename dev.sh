@@ -6,8 +6,8 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_PORT=5173
-BACKEND_PORT=8000
+FRONTEND_PORT=5174
+BACKEND_PORT=8001
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,7 +47,11 @@ mkdir -p "$LOG_DIR"
 # Start backend
 echo -e "\n${YELLOW}Starting backend server...${NC}"
 cd "$PROJECT_ROOT/backend"
-source venv/bin/activate
+if [ -f venv/Scripts/activate ]; then
+    source venv/Scripts/activate
+else
+    source venv/bin/activate
+fi
 uvicorn app.main:app --reload --port $BACKEND_PORT > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo -e "  ${GREEN}Backend started${NC} (PID: $BACKEND_PID, Port: $BACKEND_PORT)"
