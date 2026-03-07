@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         return url
 
     # CORS - development includes common Vite dev server ports
-    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:5181,http://localhost:5182,http://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:5181,http://localhost:5182,http://127.0.0.1:5174"
 
     # CORS for production - only the actual frontend domain (set via CORS_ORIGINS_PRODUCTION)
     cors_origins_production: str = ""  # e.g., "https://raidplanner.example.com"
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # Discord OAuth
     discord_client_id: str = ""
     discord_client_secret: str = ""
-    discord_redirect_uri: str = "http://localhost:5173/auth/callback"
+    discord_redirect_uri: str = "http://localhost:5174/auth/callback"
 
     # JWT Configuration
     jwt_secret_key: str = ""  # Set via JWT_SECRET_KEY env var (required in production)
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 7
 
     # Frontend URL (for redirects)
-    frontend_url: str = "http://localhost:5173"
+    frontend_url: str = "http://localhost:5174"
 
     # Admin Discord IDs (comma-separated) - users with these Discord IDs
     # automatically get admin privileges on login. This is the only way to
