@@ -55,7 +55,10 @@ class Settings(BaseSettings):
         return url
 
     # CORS - development includes common Vite dev server ports
-    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178,http://localhost:5179,http://localhost:5180,http://localhost:5181,http://localhost:5182,http://127.0.0.1:5174"
+    cors_origins: str = ",".join(
+        [f"http://localhost:{port}" for port in range(5173, 5183)]
+        + [f"http://127.0.0.1:{port}" for port in range(5173, 5183)]
+    )
 
     # CORS for production - only the actual frontend domain (set via CORS_ORIGINS_PRODUCTION)
     cors_origins_production: str = ""  # e.g., "https://raidplanner.example.com"

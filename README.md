@@ -94,7 +94,7 @@ DATABASE_URL=sqlite+aiosqlite:///./data/raid_planner.db
 DISCORD_CLIENT_ID=your_discord_client_id
 DISCORD_CLIENT_SECRET=your_discord_client_secret
 DISCORD_REDIRECT_URI=http://localhost:5174/auth/callback
-JWT_SECRET=your_jwt_secret
+JWT_SECRET_KEY=your_jwt_secret
 FRONTEND_URL=http://localhost:5174
 ```
 
