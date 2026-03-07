@@ -60,7 +60,7 @@ echo -e "  Log: $LOG_DIR/backend.log"
 # Start frontend
 echo -e "\n${YELLOW}Starting frontend server...${NC}"
 cd "$PROJECT_ROOT/frontend"
-pnpm dev > "$LOG_DIR/frontend.log" 2>&1 &
+pnpm dev --port $FRONTEND_PORT --strictPort > "$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 echo -e "  ${GREEN}Frontend started${NC} (PID: $FRONTEND_PID, Port: $FRONTEND_PORT)"
 echo -e "  Log: $LOG_DIR/frontend.log"

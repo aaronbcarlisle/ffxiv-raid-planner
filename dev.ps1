@@ -84,14 +84,14 @@ function Start-Servers {
     $frontendLog = Join-Path $LogDir "frontend.log"
     if ($PnpmPath) {
         $frontendProc = Start-Process -FilePath $PnpmPath `
-            -ArgumentList "dev" `
+            -ArgumentList "dev", "--port", $FrontendPort, "--strictPort" `
             -WorkingDirectory (Join-Path $ProjectRoot "frontend") `
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `
             -NoNewWindow -PassThru
     } else {
         $frontendProc = Start-Process -FilePath "npm" `
-            -ArgumentList "run", "dev" `
+            -ArgumentList "run", "dev", "--", "--port", $FrontendPort, "--strictPort" `
             -WorkingDirectory (Join-Path $ProjectRoot "frontend") `
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `
