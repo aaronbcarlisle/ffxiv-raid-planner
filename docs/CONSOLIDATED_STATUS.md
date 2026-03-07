@@ -1,19 +1,21 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** February 23, 2026
+**Last Updated:** March 6, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.13.0
+### Current Version: v1.14.0
 
 **Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Light Mode Theme** | 🔨 In Review | PR #68 - Full light mode with floating day/night toggle |
+| **API Key Auth** | ✅ Complete | PR #70 - API keys for Dalamud plugin, server-side loot priority |
+| **API Docs Update** | ✅ Complete | PR #72 - API docs updated to document API key auth |
+| **Light Mode Theme** | ✅ Complete | PR #68 - Full light mode with day/night toggle in user menu |
 | **Flexible Priority Control** | ✅ Complete | PR #66-67 - Priority modes, per-job/player modifiers, log week wizard |
 | **Mobile UX Optimization** | 🔨 ~80% | PR #60 - First pass complete; polish and refinements remaining |
 | **Materia in Gear Tooltips** | ✅ Complete | PR #58 - L-003 resolved |
@@ -55,10 +57,22 @@
 | **Admin System** | 6.6 | ✅ Complete | Super-user access, View As feature, admin dashboard |
 | **Keyboard Shortcuts** | 6.6 | ✅ Complete | Global shortcuts with help modal (Shift+?) |
 | **User Documentation Restructure** | 6.7 | ✅ Complete | Phases 1-6 complete - unified guides, simplified landing, FAQ |
+| **API Key Authentication** | 6.8 | ✅ Complete | xrp_ prefixed keys, SHA-256 hashed, per-user key management |
+| **Server-Side Priority** | 6.8 | ✅ Complete | Priority calculator ported to backend; API endpoint for Dalamud plugin |
 
 ---
 
 ## Version History
+
+### v1.14.0 - Plugin API (March 1, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **API Key Authentication** | ✅ Complete | Generate xrp_ prefixed keys from user menu; SHA-256 hashed; revocable |
+| **Server-Side Loot Priority** | ✅ Complete | Priority algorithm ported server-side for Dalamud plugin overlay |
+| **Ring Slot Normalization** | ✅ Complete | Loot log ring entries correctly map to ring1/ring2 gear slots |
+| **FOUC Prevention Fix** | ✅ Complete | Theme script inlined in HTML before CSS for correct initial render |
+| **API Docs Overhaul** | ✅ Complete | Docs updated to document API key auth with Python/C#/curl examples |
 
 ### v1.13.0 - Light Mode (February 23, 2026)
 
@@ -187,7 +201,7 @@
 | **P1-DEVOPS-001** | ✅ Fixed | Removed dual lockfiles, standardized on pnpm |
 | **P1-SEC-004** | ⏭️ N/A | ecdsa CVE not exploitable (we use HS256, not ECDSA) |
 
-**Test Coverage:** 290 backend + 503 frontend + 95 scripts = 888 tests passing
+**Test Coverage:** 346 backend (5 fixture errors in test_httponly_cookies.py) + 508 frontend + 95 scripts = ~949 tests
 
 ---
 
@@ -344,23 +358,33 @@
 
 ## Test Coverage
 
-**Total: 888 tests (290 backend + 503 frontend + 95 scripts)**
+**Total: ~949 tests (346 backend + 508 frontend + 95 scripts)**
 
-### Backend (290 tests)
+### Backend (346 tests)
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
-- `test_auth.py` - Authentication endpoints
+- `test_api_keys.py` - API key creation, listing, revocation, auth
+- `test_admin_system.py` - Admin access and View As feature
 - `test_auth_utils.py` - JWT token creation/verification
+- `test_bis_materia.py` - BiS import and materia parsing
+- `test_cache.py` - Cache TTL enforcement
 - `test_config_validation.py` - Production config validation
 - `test_duplicate_group.py` - Bulk duplication endpoint
-- `test_tier_deactivation.py` - Tier activation logic
-- `test_pr_integration.py` - Integration tests
+- `test_health.py` - Health check endpoint
+- `test_httponly_cookies.py` - Cookie auth (5 fixture errors, pre-existing)
+- `test_pagination.py` - Loot log pagination
+- `test_permissions.py` - Role-based permission checks
 - `test_player_assignment.py` - Admin player assignment endpoints
-- `test_weekly_assignments.py` - Weekly assignment endpoints
-- Security middleware tests (CSRF, rate limiting, request size)
+- `test_pr_integration.py` - Integration tests
+- `test_priority.py` / `test_priority_schemas.py` - Server-side priority calculator
+- `test_purchase_flow.py` - Member self-log purchase flow
+- `test_rate_limit.py` / `test_security.py` - Security middleware
+- `test_static_groups.py` - Static group CRUD
+- `test_tier_deactivation.py` - Tier activation logic
+- `test_week_management.py` / `test_weekly_assignments.py` - Weekly loot workflows
 
-### Frontend (503 tests)
+### Frontend (508 tests)
 ```bash
 cd frontend && pnpm test
 ```
@@ -380,6 +404,7 @@ cd frontend && pnpm test
 - `useSwipe.test.ts` - Swipe gesture handling
 - `useLongPress.test.ts` - Long press gesture handling
 - `ItemHoverCard.test.tsx` - Item hover card rendering
+- `UserMenuThemeToggle.test.tsx` - Theme toggle in user menu
 
 ### Scripts (95 tests)
 ```bash

@@ -80,5 +80,5 @@ Each store includes async actions for API communication with automatic token ref
 
 Create `.env.local`:
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8001
 ```

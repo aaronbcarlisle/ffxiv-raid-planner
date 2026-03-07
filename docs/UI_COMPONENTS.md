@@ -1630,7 +1630,7 @@ import { GEAR_SLOT_ICONS, GearSlot } from '../types';
 
 ### Icon Gallery (Developer Tool)
 
-**URL:** `http://localhost:5173/icon-gallery.html`
+**URL:** `http://localhost:5174/icon-gallery.html`
 
 **Purpose:** Visual reference for all custom icons in the application.
 

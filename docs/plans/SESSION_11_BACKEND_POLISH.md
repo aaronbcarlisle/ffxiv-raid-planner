@@ -209,7 +209,7 @@ pytest tests/ -q
 
 Test request ID:
 ```bash
-curl -I http://localhost:8000/health
+curl -I http://localhost:8001/health
 # Should include X-Request-ID header
 ```
 ```

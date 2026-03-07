@@ -16,7 +16,7 @@ You're working on the **FFXIV Raid Planner**, a React + TypeScript web applicati
 ## Before Starting
 
 1. **Read `CLAUDE.md`** - Contains project conventions, file locations, patterns
-2. **Start dev server:** `./dev.sh` (runs both frontend :5173 and backend :8000)
+2. **Start dev server:** `./dev.sh` (runs both frontend :5174 and backend :8001)
 3. **Check design system:** `./frontend/scripts/check-design-system.sh`
 
 ---
