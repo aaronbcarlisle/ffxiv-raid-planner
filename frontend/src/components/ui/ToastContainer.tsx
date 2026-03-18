@@ -7,7 +7,10 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToastStore, type Toast, type ToastType } from '../../stores/toastStore';
+import { useDevice } from '../../hooks/useDevice';
+import { toastSlideIn, toastSlideInMobile, instantVariants } from '../../lib/motion';
 
 // Icons for each toast type
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
@@ -70,7 +73,6 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       className={`
         flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg
         backdrop-blur-md sm:backdrop-blur-none
-        animate-in slide-in-from-top-full sm:slide-in-from-left-full fade-in-0 duration-200
         ${TOAST_COLORS[toast.type]}
       `}
       role="alert"
@@ -106,8 +108,13 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
 export function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
+  const { isSmallScreen, prefersReducedMotion } = useDevice();
 
-  if (toasts.length === 0) return null;
+  const variants = prefersReducedMotion
+    ? instantVariants
+    : isSmallScreen
+      ? toastSlideInMobile
+      : toastSlideIn;
 
   return (
     <div
@@ -115,11 +122,21 @@ export function ToastContainer() {
       aria-live="polite"
       aria-atomic="false"
     >
-      {toasts.map((toast) => (
-        <div key={toast.id} className="pointer-events-auto">
-          <ToastItem toast={toast} onDismiss={removeToast} />
-        </div>
-      ))}
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <motion.div
+            key={toast.id}
+            variants={variants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            layout
+            className="pointer-events-auto"
+          >
+            <ToastItem toast={toast} onDismiss={removeToast} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
