@@ -27,6 +27,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Right-click menu | `ContextMenu` | `components/ui/ContextMenu.tsx` |
 | Error display | `ErrorMessage` | `components/ui/ErrorMessage.tsx` |
 | Inline error | `ErrorBox` | `components/ui/ErrorMessage.tsx` |
+| Empty state | `EmptyState` | `components/ui/EmptyState.tsx` |
 | Loading spinner | `Spinner` | `components/ui/Spinner.tsx` |
 | Loading placeholder | `Skeleton` | `components/ui/Skeleton.tsx` |
 | Job icon | `JobIcon` | `components/ui/JobIcon.tsx` |
@@ -60,7 +61,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 **Props:**
 ```typescript
 interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning' | 'success' | 'link';
+  variant?: 'primary' | 'secondary' | 'accent-subtle' | 'ghost' | 'danger' | 'warning' | 'success' | 'link';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;      // Shows spinner, disables interaction
   leftIcon?: ReactNode;

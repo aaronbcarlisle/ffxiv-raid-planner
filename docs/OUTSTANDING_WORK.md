@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** March 6, 2026
+**Last Updated:** March 18, 2026
 **Current Version:** v1.14.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
@@ -8,9 +8,16 @@
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `main`
+**Current Branch:** `frontend/ui-upgrade-2026` (active UI upgrade work)
 
 **Recent Completions:**
+- **2026-03-18:** Frontend UI upgrade (branch: `frontend/ui-upgrade-2026`, 6 phases):
+  - Phase 1: Typography (Exo 2 display font), activated dormant card depth classes, fixed 9 Skeleton design system violations
+  - Phase 2: Motion system (framer-motion presets), CSS stagger animations, shimmer skeletons, page transitions, card hover lift
+  - Phase 3: Landing page transformation (hero gradient, staggered entrance, feature card icons, tier timeline)
+  - Phase 4: Toast enter/exit animations, PageSkeleton loader, EmptyState component
+  - Phase 5: Header gradient accent, progress ring glow at 75%+
+  - Phase 6: Bundle size monitoring (size-limit), framer-motion chunk splitting
 - **2026-03-06:** PR #72 merged: API docs updated to document API key auth
   - ApiDocs and ApiCookbook updated with Python/C#/curl examples using Bearer xrp_ auth
   - Base URL convention fixed, C# snippets use env vars consistently
@@ -120,9 +127,8 @@
 - **Effort:** 2 hours investigation
 
 ### L-008: Deprecated execCommand Clipboard
-- **Files:** Dashboard.tsx:209, Home.tsx:58, Header.tsx:122,148
+- **Files:** Dashboard.tsx:215, Home.tsx:61, Header.tsx:125,151
 - **Issue:** Using deprecated `document.execCommand('copy')` as fallback
-- **Note:** AdminDashboard.tsx no longer uses execCommand (was refactored)
 - **Fix:** Show toast on fallback failure, consider removing fallback entirely
 - **Effort:** 30 minutes
 
@@ -173,7 +179,7 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 ## Planned
 
 ### UI Reorganization: Header, Settings, and Actions
-- **Plan:** See `docs/UI_REORGANIZATION_PLAN.md` for detailed implementation steps
+- **Plan:** Implementation steps outlined below (plan doc not yet created)
 - **Scope:**
   1. Header breadcrumb layout: `[Static ▼] > [Tier ▼] [⋮]`
   2. Tier actions in dedicated kebab menu (⋮)
@@ -354,4 +360,4 @@ engine = create_async_engine(
 
 **Document Consolidation:**
 This file consolidates findings from 43 session handoffs, 10 audits, 9 plans, and 6 implementation docs.
-Last validated against the actual codebase on February 23, 2026.
+Last validated against the actual codebase on March 18, 2026.

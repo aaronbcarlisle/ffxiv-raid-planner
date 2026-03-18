@@ -168,7 +168,7 @@ As of this commit:
 - ✅ ESLint rules: Active (warn mode)
 - ✅ Bash checks: Active (CI blocking)
 - ✅ Documentation: Complete
-- ⚠️  Violations: ~200 warnings (being addressed)
+- ⚠️  Violations: 152 warnings (design-system + react-hooks combined)
 
 ## 🎓 Learning Resources
 
