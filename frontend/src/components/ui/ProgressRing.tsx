@@ -91,6 +91,21 @@ export function ProgressRing({
             className="stroke-surface-elevated"
             strokeWidth={strokeWidth}
           />
+          {/* Glow effect for high progress */}
+          {percentage >= 75 && (
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              className="stroke-accent opacity-30"
+              strokeWidth={strokeWidth + 4}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              style={{ filter: 'blur(3px)' }}
+            />
+          )}
           {/* Progress circle */}
           <circle
             cx={center}
