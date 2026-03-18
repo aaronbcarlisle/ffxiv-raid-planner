@@ -40,6 +40,9 @@ export default defineConfig({
             '@radix-ui/react-select',
           ],
 
+          // Animation library
+          'motion': ['framer-motion'],
+
           // Icons (can be large)
           'icons': ['lucide-react'],
         },

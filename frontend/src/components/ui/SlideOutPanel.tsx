@@ -247,7 +247,7 @@ export function SlideOutPanel({
         aria-modal="true"
         aria-labelledby="panel-title"
         tabIndex={-1}
-        className={`bg-surface-card border-l border-border-default w-full ${widthClass} h-full flex flex-col focus:outline-none ${panelAnimation}`}
+        className={`bg-surface-card border-l border-border-default shadow-xl w-full ${widthClass} h-full flex flex-col focus:outline-none ${panelAnimation}`}
       >
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">

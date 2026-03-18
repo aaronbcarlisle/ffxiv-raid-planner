@@ -161,7 +161,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`bg-surface-card border border-border-default w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
+        className={`bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
       >
         {/* Header - sticky */}
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">

@@ -169,12 +169,12 @@ export function Home() {
           <h2 className="font-display text-xl text-text-primary mb-4 text-left">
             Recent Statics
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 stagger-children">
             {recentStatics.map((group) => (
               <Link
                 key={group.id}
                 to={`/group/${group.shareCode}`}
-                className="bg-surface-card p-6 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left group"
+                className="card-interactive p-6 text-left group"
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
@@ -251,20 +251,20 @@ export function Home() {
       ) : (
         /* Feature cards for non-logged-in users */
         <>
-          <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+          <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto stagger-children">
+            <div className="card-interactive p-6">
               <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
               <p className="text-text-secondary text-sm">
                 Track BiS progress for your entire static. See who needs what at a glance.
               </p>
             </div>
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+            <div className="card-interactive p-6">
               <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
               <p className="text-text-secondary text-sm">
                 Smart loot suggestions based on need, role priority, and past distributions.
               </p>
             </div>
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+            <div className="card-interactive p-6">
               <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
               <p className="text-text-secondary text-sm">
                 See total materials needed, books required, and estimated weeks to BiS.
@@ -273,7 +273,7 @@ export function Home() {
           </div>
 
           {/* Multi-tier feature highlight */}
-          <div className="mt-12 max-w-2xl mx-auto bg-surface-card p-6 rounded-lg border border-accent/20">
+          <div className="mt-12 max-w-2xl mx-auto card-interactive border-glow p-6">
             <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
             <p className="text-text-secondary text-sm">
               Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.

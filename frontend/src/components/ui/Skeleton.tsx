@@ -15,7 +15,7 @@ interface SkeletonProps {
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse bg-slate-700/50 rounded ${className}`}
+      className={`animate-shimmer rounded ${className}`}
       aria-hidden="true"
     />
   );
@@ -26,7 +26,7 @@ export function Skeleton({ className = '' }: SkeletonProps) {
  */
 export function PlayerCardSkeleton() {
   return (
-    <div className="bg-slate-800 rounded-lg p-4 space-y-3 border border-slate-700">
+    <div className="bg-surface-card rounded-lg p-4 space-y-3 border border-border-default">
       {/* Header: avatar + name + job */}
       <div className="flex items-center gap-3">
         <Skeleton className="w-10 h-10 rounded-full shrink-0" />
@@ -71,7 +71,7 @@ export function PlayerGridSkeleton({ count = 8 }: { count?: number }) {
  */
 export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
   return (
-    <tr className="border-b border-slate-700">
+    <tr className="border-b border-border-default">
       {Array.from({ length: columns }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <Skeleton className="h-4 w-full max-w-[120px]" />
@@ -86,9 +86,9 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
  */
 export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; columns?: number }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-700">
+    <div className="overflow-hidden rounded-lg border border-border-default">
       <table className="w-full">
-        <thead className="bg-slate-800">
+        <thead className="bg-surface-card">
           <tr>
             {Array.from({ length: columns }).map((_, i) => (
               <th key={i} className="px-4 py-3 text-left">
@@ -97,7 +97,7 @@ export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; column
             ))}
           </tr>
         </thead>
-        <tbody className="bg-slate-900">
+        <tbody className="bg-surface-raised">
           {Array.from({ length: rows }).map((_, i) => (
             <TableRowSkeleton key={i} columns={columns} />
           ))}
@@ -112,7 +112,7 @@ export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; column
  */
 export function ListItemSkeleton() {
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-surface-card rounded-lg">
       <Skeleton className="w-8 h-8 rounded-full shrink-0" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-4 w-32" />
@@ -141,7 +141,7 @@ export function ListSkeleton({ count = 5 }: { count?: number }) {
  */
 export function CardSkeleton() {
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700 space-y-3">
+    <div className="bg-surface-card rounded-lg p-4 border border-border-default space-y-3">
       <Skeleton className="h-5 w-32" />
       <div className="space-y-2">
         <Skeleton className="h-4 w-full" />

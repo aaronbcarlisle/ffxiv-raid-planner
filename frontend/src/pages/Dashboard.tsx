@@ -483,13 +483,13 @@ export function Dashboard() {
         </div>
       ) : viewMode === 'grid' ? (
         /* Groups grid */
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full stagger-children">
           {sortedGroups.map((group) => (
             <div
               key={group.id}
               onClick={() => navigate(`/group/${group.shareCode}`)}
               onContextMenu={(e) => handleContextMenu(e, group)}
-              className="block bg-surface-card rounded-lg border border-border-default p-4 hover:border-accent/50 transition-colors group cursor-pointer"
+              className="block card-interactive p-4 group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate mr-2">

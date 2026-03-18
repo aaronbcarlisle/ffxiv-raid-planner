@@ -132,7 +132,7 @@
   /* ================================
      TYPOGRAPHY
      ================================ */
-  --font-display: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Exo 2", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
@@ -658,6 +658,7 @@ a:focus:not(:focus-visible),
 .card-interactive:hover {
   border-color: rgba(20, 184, 166, 0.3);
   box-shadow: 0 0 20px rgba(20, 184, 166, 0.1);
+  transform: translateY(-1px);
 }
 
 .card-selected {
@@ -905,13 +906,75 @@ dialog input[type="radio"] {
   animation: fade-out 0.15s ease-in forwards;
 }
 
+/* ================================
+   SHIMMER SKELETON ANIMATION
+   ================================ */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-interactive) 0%,
+    var(--color-surface-overlay) 50%,
+    var(--color-surface-interactive) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ================================
+   STAGGERED ENTRANCE ANIMATION
+   CSS-only stagger for grid children
+   ================================ */
+
+@keyframes stagger-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-children > * {
+  animation: stagger-fade-in 0.2s ease-out backwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.04s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.04s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.08s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.08s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.16s; }
+.stagger-children > *:nth-child(n+9) { animation-delay: 0.2s; }
+
 /* Respect reduced motion preference for animations */
 @media (prefers-reduced-motion: reduce) {
   .animate-slide-up,
   .animate-slide-in-right,
   .animate-fade-in,
   .animate-slide-out-right,
-  .animate-fade-out {
+  .animate-fade-out,
+  .animate-shimmer {
     animation: none;
+  }
+
+  .stagger-children > * {
+    animation: none;
+  }
+
+  .card-interactive:hover {
+    transform: none;
   }
 }
