@@ -130,7 +130,7 @@ export function ToastContainer() {
             initial="hidden"
             animate="visible"
             exit="exit"
-            layout
+            layout={!prefersReducedMotion}
             className="pointer-events-auto"
           >
             <ToastItem toast={toast} onDismiss={removeToast} />
