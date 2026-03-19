@@ -19,6 +19,8 @@ build/
 .idea/
 .vscode/
 .claude/
+.superpowers/
+docs/superpowers/
 *.swp
 *.swo
 *~
