@@ -5,6 +5,7 @@
  */
 
 import { toast } from '../stores/toastStore';
+import { errorReporter } from '../services/errorReporter';
 
 export interface ApiError {
   message: string;
@@ -130,6 +131,8 @@ export function handleApiError(
   if (showToast) {
     toast.error(`Failed to ${context}`);
   }
+
+  errorReporter.report('api_error', error, { action: context });
 
   return parsed;
 }

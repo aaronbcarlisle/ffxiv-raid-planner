@@ -5,6 +5,8 @@ import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
+import { analytics } from './services/analytics';
+import { errorReporter } from './services/errorReporter';
 
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
@@ -58,6 +60,8 @@ function App() {
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
     initializeAuth();
+    analytics.init();
+    errorReporter.init();
   }, []);
 
   return (
