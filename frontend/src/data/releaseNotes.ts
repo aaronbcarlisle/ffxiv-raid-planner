@@ -49,6 +49,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Typography upgrade',
         description: 'Exo 2 display font for headings and titles, Inter for body text',
+        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
       },
       {
         category: 'improvement',
@@ -83,6 +84,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Skeleton design system compliance',
         description: 'Fixed 9 hardcoded bg-slate-* colors in skeleton components with semantic design tokens',
+        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
       },
       {
         category: 'improvement',
