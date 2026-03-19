@@ -214,8 +214,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         hideBisBanners={hideBisBanners}
         groupId={groupId}
         tierId={tierId}
-        isHighlighted={highlightedPlayerId === player.id && !highlightedSlot}
-        highlightedSlot={highlightedPlayerId === player.id ? highlightedSlot : null}
+        isHighlighted={highlightedPlayerId === player.id && (!highlightedSlot || viewMode !== 'expanded')}
+        highlightedSlot={highlightedPlayerId === player.id && viewMode === 'expanded' ? highlightedSlot : null}
         onUpdate={handleUpdate}
         onRemove={handleRemove}
         onCopy={handleCopy}

@@ -67,16 +67,22 @@ export function useViewNavigation({
   const handleNavigateToPlayer = useCallback((playerId: string, slot?: string) => {
     // Clear any existing timeout
     if (playerHighlightTimeoutRef.current) clearTimeout(playerHighlightTimeoutRef.current);
+    // Normalize slot values to match gear row IDs in GearTable
+    // - tome_weapon → weapon (tome weapon sub-row is part of the weapon section)
+    // - ring → ring1 (generic "ring" from loot log maps to first ring row)
+    const normalizedSlot = slot === 'tome_weapon' ? 'weapon'
+      : slot === 'ring' ? 'ring1'
+      : slot;
     // Switch to players tab
     setPageMode('players');
     // Set highlighted player and optional slot
     setHighlightedPlayerId(playerId);
-    setHighlightedSlot(slot ?? null);
+    setHighlightedSlot(normalizedSlot ?? null);
     // Scroll to player card (or specific gear row) after short delay to allow tab change render
     setTimeout(() => {
       // If a slot is specified, try to scroll to the gear row
-      const scrollTarget = slot
-        ? document.getElementById(`gear-row-${playerId}-${slot}`)
+      const scrollTarget = normalizedSlot
+        ? document.getElementById(`gear-row-${playerId}-${normalizedSlot}`)
         : document.getElementById(`player-card-${playerId}`);
       const element = scrollTarget ?? document.getElementById(`player-card-${playerId}`);
       if (element) {
