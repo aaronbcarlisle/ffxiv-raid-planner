@@ -66,7 +66,7 @@ export const pageTransition: Variants = {
 // --- Reduced motion variants (instant, no movement) ---
 
 export const instantVariants: Variants = {
-  hidden: { opacity: 0 },
+  hidden: { opacity: 1 },
   visible: { opacity: 1, transition: { duration: 0 } },
   exit: { opacity: 0, transition: { duration: 0 } },
 };

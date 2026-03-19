@@ -2,7 +2,7 @@
  * Toast Container - Fixed position container for toast notifications
  *
  * Mobile: Displays toasts at top (below sticky header) to avoid bottom nav/FABs.
- * Desktop: Displays toasts in bottom-right corner.
+ * Desktop: Displays toasts in bottom-left corner.
  * Auto-dismiss after duration.
  */
 
