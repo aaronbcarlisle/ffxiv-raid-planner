@@ -218,11 +218,11 @@ def register_exception_handlers(app: FastAPI) -> None:
             details=exc.details,
         )
 
-        # Capture ExternalServiceError (502) for admin visibility
+        # Capture ExternalServiceError (502) for admin visibility (non-blocking)
         if isinstance(exc, ExternalServiceError):
-            await _capture_error_report(
+            asyncio.create_task(_capture_error_report(
                 request, exc, error_type="external_service_error", severity="error"
-            )
+            ))
 
         return JSONResponse(
             status_code=exc.status_code,
@@ -245,10 +245,10 @@ def register_exception_handlers(app: FastAPI) -> None:
             message=str(exc),
         )
 
-        # Capture unhandled 500s for admin visibility
-        await _capture_error_report(
+        # Capture unhandled 500s for admin visibility (non-blocking)
+        asyncio.create_task(_capture_error_report(
             request, exc, error_type="backend_error", severity="critical"
-        )
+        ))
 
         # Don't expose internal error details in production
         return JSONResponse(

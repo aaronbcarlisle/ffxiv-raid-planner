@@ -65,7 +65,7 @@ class AnalyticsCollector {
   }
 
   track(category: string, name: string, data?: Record<string, unknown>): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.buffer.length >= MAX_BUFFER_SIZE) return;
     this.buffer.push({
       category,
       name,

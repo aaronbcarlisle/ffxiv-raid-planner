@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
 from ..database import async_session_maker
@@ -22,27 +21,16 @@ async def run_retention() -> None:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     async with async_session_maker() as session:
-        # Claim today's run with INSERT ... ON CONFLICT DO NOTHING.
-        # Only the first worker to insert succeeds; others get rowcount=0 and skip.
-        try:
-            marker_stmt = pg_insert(AnalyticsDailyAggregate).values(
-                date=today,
-                metric_name="_retention_ran",
-                metric_value=1.0,
-                dimension_key="daily_check",
-                dimensions=None,
-            ).on_conflict_do_nothing(
-                constraint="uq_daily_aggregate_metric"
+        # Check if already ran today (idempotent)
+        existing = await session.execute(
+            select(AnalyticsDailyAggregate.id).where(
+                AnalyticsDailyAggregate.date == today,
+                AnalyticsDailyAggregate.metric_name == "_retention_ran",
+                AnalyticsDailyAggregate.dimension_key == "daily_check",
             )
-            result = await session.execute(marker_stmt)
-            await session.commit()
-
-            if result.rowcount == 0:
-                logger.debug("retention_already_ran", date=today)
-                return
-        except IntegrityError:
-            await session.rollback()
-            logger.debug("retention_already_ran_conflict", date=today)
+        )
+        if existing.scalar_one_or_none() is not None:
+            logger.debug("retention_already_ran", date=today)
             return
 
         cutoff = (
@@ -64,21 +52,29 @@ async def run_retention() -> None:
         )
         old_events = old_events_result.all()
 
-        # Bulk upsert aggregates using ON CONFLICT DO UPDATE
+        # Upsert aggregates (works on both PostgreSQL and SQLite)
         aggregated_count = 0
         for row in old_events:
             dim_key = f"event_name={row.event_name}"
-            stmt = pg_insert(AnalyticsDailyAggregate).values(
-                date=row.date,
-                metric_name="event_count",
-                metric_value=row.count,
-                dimension_key=dim_key,
-                dimensions={"event_name": row.event_name},
-            ).on_conflict_do_update(
-                constraint="uq_daily_aggregate_metric",
-                set_={"metric_value": AnalyticsDailyAggregate.metric_value + row.count},
+            # Check if aggregate exists
+            existing_agg = await session.execute(
+                select(AnalyticsDailyAggregate).where(
+                    AnalyticsDailyAggregate.date == row.date,
+                    AnalyticsDailyAggregate.metric_name == "event_count",
+                    AnalyticsDailyAggregate.dimension_key == dim_key,
+                )
             )
-            await session.execute(stmt)
+            agg = existing_agg.scalar_one_or_none()
+            if agg:
+                agg.metric_value += row.count
+            else:
+                session.add(AnalyticsDailyAggregate(
+                    date=row.date,
+                    metric_name="event_count",
+                    metric_value=row.count,
+                    dimension_key=dim_key,
+                    dimensions={"event_name": row.event_name},
+                ))
             aggregated_count += row.count
 
         # Delete old raw events
@@ -91,7 +87,22 @@ async def run_retention() -> None:
             delete(ErrorReport).where(ErrorReport.created_at < cutoff)
         )
 
-        await session.commit()
+        # Mark retention as complete AFTER all work succeeds
+        # If this fails due to a race (another worker inserted first), that's fine —
+        # the work is idempotent (upsert aggregates, already-deleted rows are no-ops).
+        try:
+            session.add(AnalyticsDailyAggregate(
+                date=today,
+                metric_name="_retention_ran",
+                metric_value=1.0,
+                dimension_key="daily_check",
+                dimensions=None,
+            ))
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            logger.debug("retention_marker_conflict", date=today)
+            return
 
         logger.info(
             "retention_completed",

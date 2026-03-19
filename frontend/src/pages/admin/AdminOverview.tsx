@@ -93,6 +93,7 @@ export function AdminOverview() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingGrowth, setLoadingGrowth] = useState(true);
   const [loadingTables, setLoadingTables] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   // Sort state for Top Users table
   const [userSortField, setUserSortField] = useState<OverviewSortField>('staticsCreated');
@@ -158,11 +159,12 @@ export function AdminOverview() {
   // Fetch overview KPIs
   const fetchOverview = useCallback(async () => {
     setLoadingOverview(true);
+    setFetchError(false);
     try {
       const data = await api.get<OverviewData>('/api/admin/analytics/overview');
       setOverview(data);
     } catch {
-      // Silently handle - cards will show loading then empty
+      setFetchError(true);
     } finally {
       setLoadingOverview(false);
     }
@@ -223,6 +225,13 @@ export function AdminOverview() {
         <h1 className="text-3xl font-display text-status-warning">Admin Overview</h1>
         <p className="text-text-muted mt-1">System health and growth at a glance</p>
       </div>
+
+      {fetchError && (
+        <div className="bg-surface-card border border-status-error/30 rounded-lg p-6 text-center">
+          <p className="text-status-error mb-2">Failed to load overview data</p>
+          <Button variant="ghost" size="sm" onClick={() => { fetchOverview(); fetchGrowth(timeRange); fetchTables(); }}>Retry</Button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
