@@ -9,6 +9,7 @@
 
 import { parseApiError } from '../lib/errorHandler';
 import { API_BASE_URL } from '../config';
+import { getCsrfToken } from './analytics';
 
 class ErrorReporter {
   private recentFingerprints = new Map<string, number>(); // fingerprint -> timestamp
@@ -64,9 +65,16 @@ class ErrorReporter {
     });
 
     // Fire-and-forget -- never recurse on error reporting failures
+    const csrfToken = getCsrfToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
     fetch(`${API_BASE_URL}/api/analytics/errors`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body,
       credentials: 'include',
     }).catch(() => {});

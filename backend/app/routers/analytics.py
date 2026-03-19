@@ -439,17 +439,33 @@ async def get_error_groups(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     source: str = Query("", pattern="^(frontend|backend|)$"),
-    severity: str = Query("", pattern="^(error|warning|info|)$"),
+    severity: str = Query("", pattern="^(critical|error|warning|info|)$"),
 ) -> ErrorGroupListResponse:
     """Get error reports grouped by fingerprint with filtering and pagination."""
     await require_admin(user, session)
+
+    # Map severity to numeric order so max() picks the highest severity,
+    # not the lexicographically largest string ("warning" > "error" > "critical").
+    severity_rank = case(
+        (ErrorReport.severity == "critical", 3),
+        (ErrorReport.severity == "error", 2),
+        (ErrorReport.severity == "warning", 1),
+        else_=0,
+    )
+    # Reverse map: convert the max numeric rank back to a severity string.
+    max_severity = case(
+        (func.max(severity_rank) == 3, "critical"),
+        (func.max(severity_rank) == 2, "error"),
+        (func.max(severity_rank) == 1, "warning"),
+        else_="info",
+    )
 
     # Base query: group by fingerprint
     query = select(
         ErrorReport.fingerprint,
         func.max(ErrorReport.message).label("message"),
         func.max(ErrorReport.error_type).label("error_type"),
-        func.max(ErrorReport.severity).label("severity"),
+        max_severity.label("severity"),
         func.max(ErrorReport.source).label("source"),
         func.count(ErrorReport.id).label("count"),
         func.count(distinct(ErrorReport.user_id)).label("affected_users"),

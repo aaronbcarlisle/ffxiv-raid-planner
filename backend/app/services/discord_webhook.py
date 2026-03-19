@@ -1,6 +1,5 @@
 """Discord webhook service for error alerts."""
 
-import asyncio
 from datetime import datetime, timezone
 
 import httpx

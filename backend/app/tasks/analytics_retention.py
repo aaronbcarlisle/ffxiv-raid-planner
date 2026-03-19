@@ -25,6 +25,7 @@ async def run_retention() -> None:
             select(AnalyticsDailyAggregate.id).where(
                 AnalyticsDailyAggregate.date == today,
                 AnalyticsDailyAggregate.metric_name == "_retention_ran",
+                AnalyticsDailyAggregate.dimension_key == "daily_check",
             )
         )
         if existing.scalar_one_or_none() is not None:
@@ -85,13 +86,13 @@ async def run_retention() -> None:
             delete(ErrorReport).where(ErrorReport.created_at < cutoff)
         )
 
-        # Mark retention as ran today
+        # Mark retention as ran today (use non-NULL dimension_key for multi-worker safety)
         session.add(
             AnalyticsDailyAggregate(
                 date=today,
                 metric_name="_retention_ran",
                 metric_value=1.0,
-                dimension_key=None,
+                dimension_key="daily_check",
                 dimensions=None,
             )
         )

@@ -44,20 +44,20 @@ interface GrowthData {
 }
 
 interface TopUser {
-  id: string;
-  discordUsername: string;
-  displayName: string | null;
+  userId: string;
+  username: string;
   avatarUrl: string | null;
   staticsCreated: number;
   staticsJoined: number;
+  lastActive: string | null;
 }
 
 interface TopStatic {
-  id: string;
+  staticId: string;
   name: string;
   memberCount: number;
   lootEntries: number;
-  lastLogDate: string | null;
+  lastLog: string | null;
 }
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
@@ -328,7 +328,7 @@ export function AdminOverview() {
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {topUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-surface-elevated transition-colors">
+                  <tr key={u.userId} className="hover:bg-surface-elevated transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         {u.avatarUrl ? (
@@ -339,11 +339,11 @@ export function AdminOverview() {
                           />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-xs text-text-muted">
-                            {(u.displayName || u.discordUsername).charAt(0).toUpperCase()}
+                            {u.username.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <span className="text-sm text-text-primary truncate">
-                          {u.displayName || u.discordUsername}
+                          {u.username}
                         </span>
                       </div>
                     </td>
@@ -398,7 +398,7 @@ export function AdminOverview() {
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {topStatics.map((s) => (
-                  <tr key={s.id} className="hover:bg-surface-elevated transition-colors">
+                  <tr key={s.staticId} className="hover:bg-surface-elevated transition-colors">
                     <td className="px-4 py-2">
                       <span className="text-sm text-accent font-medium truncate">
                         {s.name}
@@ -411,8 +411,8 @@ export function AdminOverview() {
                       {s.lootEntries}
                     </td>
                     <td className="px-4 py-2 text-right text-sm text-text-muted">
-                      {s.lastLogDate
-                        ? new Date(s.lastLogDate).toLocaleDateString()
+                      {s.lastLog
+                        ? new Date(s.lastLog).toLocaleDateString()
                         : 'Never'}
                     </td>
                   </tr>

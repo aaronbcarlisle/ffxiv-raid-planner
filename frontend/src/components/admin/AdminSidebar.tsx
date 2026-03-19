@@ -108,7 +108,7 @@ export function AdminSidebar() {
         className={`
           bg-surface-card border-r border-border-default w-[220px] flex-shrink-0
           lg:relative lg:translate-x-0
-          fixed top-0 left-0 z-45 h-full transition-transform duration-200
+          fixed top-0 left-0 z-40 h-full transition-transform duration-200
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >

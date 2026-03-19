@@ -5,7 +5,6 @@
  */
 
 import { toast } from '../stores/toastStore';
-import { errorReporter } from '../services/errorReporter';
 
 export interface ApiError {
   message: string;
@@ -132,7 +131,10 @@ export function handleApiError(
     toast.error(`Failed to ${context}`);
   }
 
-  errorReporter.report('api_error', error, { action: context });
+  // Dynamic import to break circular dependency (errorHandler <-> errorReporter)
+  import('../services/errorReporter').then(({ errorReporter }) => {
+    errorReporter.report('api_error', error, { action: context });
+  }).catch(() => {});
 
   return parsed;
 }

@@ -14,8 +14,18 @@ interface AnalyticsEvent {
   name: string;
   data?: Record<string, unknown>;
   pageUrl: string;
-  timestamp: string;
 }
+
+/** Read the CSRF token from cookies for POST requests. */
+export function getCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Maximum events per batch (backend enforces max_length=50). */
+const MAX_BATCH_SIZE = 50;
+/** Maximum buffer size to prevent memory leaks. */
+const MAX_BUFFER_SIZE = 200;
 
 class AnalyticsCollector {
   private buffer: AnalyticsEvent[] = [];
@@ -24,6 +34,11 @@ class AnalyticsCollector {
   private enabled: boolean;
 
   constructor() {
+    if (typeof window === 'undefined') {
+      this.sessionId = '';
+      this.enabled = false;
+      return;
+    }
     // Generate session ID or restore from sessionStorage
     this.sessionId = sessionStorage.getItem('analytics_session_id') || crypto.randomUUID();
     sessionStorage.setItem('analytics_session_id', this.sessionId);
@@ -59,39 +74,63 @@ class AnalyticsCollector {
       name,
       data,
       pageUrl: location.pathname,
-      timestamp: new Date().toISOString(),
     });
   }
 
   private flush(isUnload = false): void {
     if (this.buffer.length === 0) return;
-    const events = [...this.buffer];
+
+    // Cap buffer to prevent memory leaks
+    if (this.buffer.length > MAX_BUFFER_SIZE) {
+      this.buffer = this.buffer.slice(-MAX_BUFFER_SIZE);
+    }
+
+    const allEvents = [...this.buffer];
     this.buffer = [];
 
-    const body = JSON.stringify({
-      sessionId: this.sessionId,
-      events,
-    });
-
-    if (isUnload) {
-      // Use fetch with keepalive for page unload -- supports credentials + CORS
-      fetch(`${API_BASE_URL}/api/analytics/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        credentials: 'include',
-        keepalive: true,
-      }).catch(() => {}); // Best-effort on unload
-    } else {
-      fetch(`${API_BASE_URL}/api/analytics/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        credentials: 'include',
-      }).catch(() => {
-        // Re-add to buffer on failure (will retry next flush)
-        this.buffer.unshift(...events);
+    // Chunk into batches of MAX_BATCH_SIZE to respect backend limit
+    for (let i = 0; i < allEvents.length; i += MAX_BATCH_SIZE) {
+      const chunk = allEvents.slice(i, i + MAX_BATCH_SIZE);
+      const csrfToken = getCsrfToken();
+      const body = JSON.stringify({
+        sessionId: this.sessionId,
+        events: chunk.map(e => ({
+          eventCategory: e.category,
+          eventName: e.name,
+          eventData: e.data,
+          pageUrl: e.pageUrl,
+        })),
       });
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
+      if (isUnload) {
+        // Use fetch with keepalive for page unload -- supports credentials + CORS
+        fetch(`${API_BASE_URL}/api/analytics/events`, {
+          method: 'POST',
+          headers,
+          body,
+          credentials: 'include',
+          keepalive: true,
+        }).catch(() => {}); // Best-effort on unload
+      } else {
+        fetch(`${API_BASE_URL}/api/analytics/events`, {
+          method: 'POST',
+          headers,
+          body,
+          credentials: 'include',
+        }).catch(() => {
+          // Re-add to buffer on failure, but only if under cap
+          if (this.buffer.length < MAX_BUFFER_SIZE) {
+            this.buffer.unshift(...chunk.slice(0, MAX_BUFFER_SIZE - this.buffer.length));
+          }
+        });
+      }
     }
   }
 

@@ -102,19 +102,18 @@ export function AdminUsage() {
       .sort((a, b) => b.count - a.count);
   }, [usageData]);
 
-  // Derive tab visit data for pie chart
-  const tabVisitData = useMemo(() => {
-    if (!usageData) return [];
-    const tabEvents = usageData.events.filter((e) => e.eventName === 'tab_switch');
-    if (tabEvents.length === 0) return [];
-    // Each tab_switch event may have a different category; aggregate by eventName context
-    // Since all tab_switch events share the same eventName, we return it as a single entry
-    // The backend should ideally break this out by tab name. For now, we use the event data as-is.
-    // If there are multiple tab_switch entries (one per tab name), use them directly.
-    return tabEvents.map((e) => ({
-      name: e.category,
-      value: e.count,
-    }));
+  // Derive top event names for pie chart.
+  // NOTE: Tab-level breakdown (which tab was switched to) would require per-event-data
+  // aggregation in the backend, which isn't available yet. Instead, show top event names
+  // distribution which gives a useful overview of feature usage.
+  const topEventData = useMemo(() => {
+    if (!usageData || usageData.events.length === 0) return [];
+    return usageData.events
+      .slice(0, 6) // Top 6 event names (already sorted by count from backend)
+      .map((e) => ({
+        name: e.eventName,
+        value: e.count,
+      }));
   }, [usageData]);
 
   // Sorted events for the top events table
@@ -187,21 +186,21 @@ export function AdminUsage() {
           )}
         </div>
 
-        {/* Tab Visit Distribution Pie Chart */}
+        {/* Top Events Pie Chart */}
         <div className="bg-surface-card border border-border-default rounded-lg p-4">
           <h2 className="text-lg font-display font-semibold text-text-primary mb-4">
-            Tab Visit Distribution
+            Top Events
           </h2>
           {loading || !usageData ? (
             <Skeleton className="h-[300px] w-full" />
-          ) : tabVisitData.length === 0 ? (
-            <p className="text-text-muted text-center py-12">No tab visit data available</p>
+          ) : topEventData.length === 0 ? (
+            <p className="text-text-muted text-center py-12">No event data available</p>
           ) : (
             <div className="flex items-center justify-center">
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={tabVisitData}
+                    data={topEventData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -213,7 +212,7 @@ export function AdminUsage() {
                       `${name} (${(percent * 100).toFixed(0)}%)`
                     }
                   >
-                    {tabVisitData.map((_, index) => (
+                    {topEventData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={TAB_COLORS[index % TAB_COLORS.length]}  // design-system-ignore: Recharts SVG fill
