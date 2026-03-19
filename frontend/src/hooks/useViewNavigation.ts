@@ -18,6 +18,7 @@ interface HighlightedEntry {
 interface UseViewNavigationParams {
   setPageMode: (mode: PageMode) => void;
   setHighlightedPlayerId: (id: string | null) => void;
+  setHighlightedSlot: (slot: string | null) => void;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
   setHighlightedBookPlayerId: (id: string | null) => void;
   lootLog: LootLogEntry[];
@@ -25,8 +26,8 @@ interface UseViewNavigationParams {
 }
 
 export interface UseViewNavigationReturn {
-  /** Navigate to a player card and highlight it */
-  handleNavigateToPlayer: (playerId: string) => void;
+  /** Navigate to a player card and highlight it (optionally highlight a specific gear slot) */
+  handleNavigateToPlayer: (playerId: string, slot?: string) => void;
 
   /** Navigate to a loot entry from a player's gear slot */
   handleNavigateToLootEntry: (playerId: string, slot: string) => void;
@@ -41,6 +42,7 @@ export interface UseViewNavigationReturn {
 export function useViewNavigation({
   setPageMode,
   setHighlightedPlayerId,
+  setHighlightedSlot,
   setHighlightedEntry,
   setHighlightedBookPlayerId,
   lootLog,
@@ -60,17 +62,23 @@ export function useViewNavigation({
     };
   }, []);
 
-  // Navigate to player card from other tabs (e.g., from Log entry context menu)
-  const handleNavigateToPlayer = useCallback((playerId: string) => {
+  // Navigate to player card from other tabs (e.g., from Log entry alt+click)
+  // When slot is provided, highlights the specific gear row instead of the whole card
+  const handleNavigateToPlayer = useCallback((playerId: string, slot?: string) => {
     // Clear any existing timeout
     if (playerHighlightTimeoutRef.current) clearTimeout(playerHighlightTimeoutRef.current);
     // Switch to players tab
     setPageMode('players');
-    // Set highlighted player ID
+    // Set highlighted player and optional slot
     setHighlightedPlayerId(playerId);
-    // Scroll to player card after short delay to allow tab change render
+    setHighlightedSlot(slot ?? null);
+    // Scroll to player card (or specific gear row) after short delay to allow tab change render
     setTimeout(() => {
-      const element = document.getElementById(`player-card-${playerId}`);
+      // If a slot is specified, try to scroll to the gear row
+      const scrollTarget = slot
+        ? document.getElementById(`gear-row-${playerId}-${slot}`)
+        : document.getElementById(`player-card-${playerId}`);
+      const element = scrollTarget ?? document.getElementById(`player-card-${playerId}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -78,8 +86,9 @@ export function useViewNavigation({
     // Clear highlight after animation completes
     playerHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedPlayerId(null);
+      setHighlightedSlot(null);
     }, 2500);
-  }, [setPageMode, setHighlightedPlayerId]);
+  }, [setPageMode, setHighlightedPlayerId, setHighlightedSlot]);
 
   // Navigate to loot entry from player card (gear slot → loot entry)
   const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {

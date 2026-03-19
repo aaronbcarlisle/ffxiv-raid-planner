@@ -30,7 +30,7 @@ interface HistoryViewProps {
   currentUserId?: string;
   /** Highlighted book player ID (from navigation) */
   highlightedBookPlayerId?: string | null;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
   highlightedEntryId?: string | null;
   highlightedEntryType?: 'loot' | 'material' | null;
   /** Target week for navigation (switches to this week when set) */

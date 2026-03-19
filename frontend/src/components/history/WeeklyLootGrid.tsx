@@ -50,7 +50,7 @@ interface WeeklyLootGridProps {
   onEditMaterial?: (entry: MaterialLogEntry) => void;
   onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onEditNote?: (floor: FloorNumber, note: string) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
   /** Handler to open Log Floor wizard for a specific floor */
   onLogFloor?: (floor: FloorNumber) => void;
   /** Handler to reset floor loot (opens confirmation modal) */
@@ -568,10 +568,10 @@ export function WeeklyLootGrid({
                           onCopyEntryUrl(lootEntry.id, 'loot');
                           return;
                         }
-                        // Alt+Click navigates to player
+                        // Alt+Click navigates to player and highlights the gear slot
                         if (e.altKey && lootEntry && onNavigateToPlayer) {
                           e.preventDefault();
-                          onNavigateToPlayer(lootEntry.recipientPlayerId);
+                          onNavigateToPlayer(lootEntry.recipientPlayerId, lootEntry.itemSlot);
                           return;
                         }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)
@@ -683,10 +683,10 @@ export function WeeklyLootGrid({
                           onCopyEntryUrl(matEntry.id, 'material');
                           return;
                         }
-                        // Alt+Click navigates to player
+                        // Alt+Click navigates to player and highlights the gear slot
                         if (e.altKey && matEntry && onNavigateToPlayer) {
                           e.preventDefault();
-                          onNavigateToPlayer(matEntry.recipientPlayerId);
+                          onNavigateToPlayer(matEntry.recipientPlayerId, matEntry.slotAugmented ?? undefined);
                           return;
                         }
                         // Edit takes priority over log (mutually exclusive but use else for clarity)

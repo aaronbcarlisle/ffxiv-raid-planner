@@ -63,7 +63,7 @@ interface SectionedLogViewProps {
   /** Highlighted book player ID (from navigation) */
   highlightedBookPlayerId?: string | null;
   onWeekChange?: (weekNumber: number) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
   /** External highlighted entry ID (e.g., from navigation) */
   highlightedEntryId?: string | null;
   /** External highlighted entry type */

@@ -37,6 +37,8 @@ interface PlayerCardGearProps {
   onNavigateToLootEntry?: (slot: GearSlot) => void;
   /** Navigate to material entry for a slot */
   onNavigateToMaterialEntry?: (slot: string) => void;
+  /** Currently highlighted gear slot (from alt+click navigation) */
+  highlightedSlot?: string | null;
 }
 
 export function PlayerCardGear({
@@ -53,6 +55,7 @@ export function PlayerCardGear({
   slotsWithMaterialEntries,
   onNavigateToLootEntry,
   onNavigateToMaterialEntry,
+  highlightedSlot,
 }: PlayerCardGearProps) {
   if (isExpanded) {
     return (
@@ -68,6 +71,7 @@ export function PlayerCardGear({
           isAdminAccess={isAdminAccess}
           slotsWithLootEntries={slotsWithLootEntries}
           slotsWithMaterialEntries={slotsWithMaterialEntries}
+          highlightedSlot={highlightedSlot}
           onNavigateToLootEntry={onNavigateToLootEntry}
           onNavigateToMaterialEntry={onNavigateToMaterialEntry}
         />

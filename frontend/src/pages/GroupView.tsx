@@ -115,6 +115,8 @@ export function GroupView() {
     setPlayerModalCount,
     highlightedPlayerId,
     setHighlightedPlayerId,
+    highlightedSlot,
+    setHighlightedSlot,
     highlightedEntry,
     setHighlightedEntry,
     highlightedBookPlayerId,
@@ -391,6 +393,7 @@ export function GroupView() {
   const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToMaterialEntry, handleNavigateToBooksPanel } = useViewNavigation({
     setPageMode,
     setHighlightedPlayerId,
+    setHighlightedSlot,
     setHighlightedEntry,
     setHighlightedBookPlayerId,
     lootLog,
@@ -887,6 +890,7 @@ export function GroupView() {
                   editingPlayerId={editingPlayerId}
                   clipboardPlayer={clipboardPlayer}
                   highlightedPlayerId={highlightedPlayerId}
+                  highlightedSlot={highlightedSlot}
                   dragState={dnd.dragState}
                   canEdit={canEdit}
                   effectiveUserId={effectiveUserId}

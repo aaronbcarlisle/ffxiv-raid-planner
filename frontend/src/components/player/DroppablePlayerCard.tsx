@@ -34,6 +34,7 @@ interface DroppablePlayerCardProps {
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
+  highlightedSlot?: string | null;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
   onRemove: () => void;
   onCopy: () => void;

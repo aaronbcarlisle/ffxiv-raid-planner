@@ -65,6 +65,7 @@ interface PlayerCardProps {
   groupId: string;
   tierId: string;
   isHighlighted?: boolean;
+  highlightedSlot?: string | null;
   dragListeners?: DragListeners;
   dragAttributes?: DragAttributes;
   onUpdate: (updates: Partial<SnapshotPlayer>) => void;
@@ -111,6 +112,7 @@ export const PlayerCard = memo(function PlayerCard({
   groupId,
   tierId,
   isHighlighted,
+  highlightedSlot,
   dragListeners,
   dragAttributes,
   onUpdate,
@@ -951,6 +953,7 @@ export const PlayerCard = memo(function PlayerCard({
         onTomeWeaponChange={handleTomeWeaponChange}
         slotsWithLootEntries={slotsWithLootEntries}
         slotsWithMaterialEntries={slotsWithMaterialEntries}
+        highlightedSlot={highlightedSlot}
         onNavigateToLootEntry={onNavigateToLootEntry}
         onNavigateToMaterialEntry={onNavigateToMaterialEntry}
       />

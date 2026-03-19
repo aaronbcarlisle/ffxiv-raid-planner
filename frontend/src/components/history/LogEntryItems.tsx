@@ -41,7 +41,7 @@ interface LootLogEntryItemProps {
   onEdit: (entry: LootLogEntry) => void;
   onDelete: (entry: LootLogEntry) => void;
   onContextMenu: (e: React.MouseEvent, entry: LootLogEntry) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
 }
 
 export const LootLogEntryItem = memo(function LootLogEntryItem({
@@ -67,10 +67,10 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
       onCopyUrl(String(entry.id));
       return;
     }
-    // Alt+Click navigates to player
+    // Alt+Click navigates to player and highlights the gear slot
     if (e.altKey && onNavigateToPlayer) {
       e.preventDefault();
-      onNavigateToPlayer(entry.recipientPlayerId);
+      onNavigateToPlayer(entry.recipientPlayerId, entry.itemSlot);
       return;
     }
   };
@@ -163,7 +163,7 @@ interface MaterialLogEntryItemProps {
   onEdit: (entry: MaterialLogEntry) => void;
   onDelete: (entryId: number) => void;
   onContextMenu: (e: React.MouseEvent, entry: MaterialLogEntry) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
 }
 
 export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
@@ -188,10 +188,10 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
       onCopyUrl(String(entry.id), 'material');
       return;
     }
-    // Alt+Click navigates to player
+    // Alt+Click navigates to player and highlights the gear slot
     if (e.altKey && onNavigateToPlayer) {
       e.preventDefault();
-      onNavigateToPlayer(entry.recipientPlayerId);
+      onNavigateToPlayer(entry.recipientPlayerId, entry.slotAugmented ?? undefined);
       return;
     }
   };
