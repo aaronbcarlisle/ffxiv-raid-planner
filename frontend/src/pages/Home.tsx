@@ -312,7 +312,7 @@ export function Home() {
           </div>
 
           {/* Multi-tier feature highlight */}
-          <div className="mt-12 max-w-2xl mx-auto card-interactive border-glow p-6">
+          <div className="mt-12 max-w-2xl mx-auto bg-surface-card rounded-lg border-glow p-6">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
                 <Layers className="w-5 h-5 text-accent" />
