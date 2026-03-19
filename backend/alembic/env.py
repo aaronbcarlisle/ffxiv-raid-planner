@@ -14,6 +14,9 @@ from app.database import Base
 
 # Import all models so they're registered with Base.metadata
 from app.models import (  # noqa: F401
+    AnalyticsDailyAggregate,
+    AnalyticsEvent,
+    ErrorReport,
     Invitation,
     LootLogEntry,
     MaterialLogEntry,
