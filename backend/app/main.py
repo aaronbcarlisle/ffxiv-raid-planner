@@ -21,6 +21,7 @@ from .middleware import (
 )
 from .rate_limit import limiter
 from .routers import (
+    analytics_router,
     api_keys_router,
     auth_router,
     bis_router,
@@ -127,6 +128,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Include routers
+app.include_router(analytics_router)
 app.include_router(api_keys_router)
 app.include_router(auth_router)
 app.include_router(bis_router)

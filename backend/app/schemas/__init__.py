@@ -1,5 +1,21 @@
 """Pydantic schemas"""
 
+from .analytics import (
+    AnalyticsEventBatch,
+    AnalyticsEventIn,
+    ErrorDetailItem,
+    ErrorGroupDetailResponse,
+    ErrorGroupItem,
+    ErrorGroupListResponse,
+    ErrorReportIn,
+    GrowthPoint,
+    GrowthResponse,
+    OverviewResponse,
+    TopStaticItem,
+    TopUserItem,
+    UsageEventItem,
+    UsageResponse,
+)
 from .api_key import (
     ApiKeyCreate,
     ApiKeyCreateResponse,
@@ -92,6 +108,21 @@ from .user import (
 )
 
 __all__ = [
+    # Analytics
+    "AnalyticsEventBatch",
+    "AnalyticsEventIn",
+    "ErrorDetailItem",
+    "ErrorGroupDetailResponse",
+    "ErrorGroupItem",
+    "ErrorGroupListResponse",
+    "ErrorReportIn",
+    "GrowthPoint",
+    "GrowthResponse",
+    "OverviewResponse",
+    "TopStaticItem",
+    "TopUserItem",
+    "UsageEventItem",
+    "UsageResponse",
     # API Key
     "ApiKeyCreate",
     "ApiKeyCreateResponse",
