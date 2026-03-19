@@ -95,14 +95,17 @@ export function useViewNavigation({
     // Clear any existing timeout
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the loot entry for this player and slot
+    // Priority: non-extra entries first (main job weapons), then extra/alt entries
     // Ring slots: gear uses ring1/ring2, loot log may store as "ring", "ring1", or "ring2"
-    // Prefer exact slot match first, then fall back to any ring variant
     const isRingSlot = slot === 'ring1' || slot === 'ring2';
-    const entry = isRingSlot
-      ? (lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot)
-        ?? lootLog.find(e => e.recipientPlayerId === playerId &&
-          (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2')))
-      : lootLog.find(e => e.recipientPlayerId === playerId && e.itemSlot === slot);
+    const matchesSlot = (e: LootLogEntry) =>
+      e.recipientPlayerId === playerId && (
+        e.itemSlot === slot ||
+        (isRingSlot && (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2'))
+      );
+    // Prefer non-extra entries (main job drops) over extra entries (alt weapons from priorities)
+    const entry = lootLog.find(e => matchesSlot(e) && !e.isExtra)
+      ?? lootLog.find(e => matchesSlot(e));
     if (!entry) {
       toast.info('No loot entry found for this slot');
       return;
