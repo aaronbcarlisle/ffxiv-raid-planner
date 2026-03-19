@@ -20,6 +20,7 @@ class AnalyticsEventIn(CamelModel):
 class AnalyticsEventBatch(CamelModel):
     """Batch of analytics events (max 50 per request)."""
 
+    session_id: str = Field(default="", max_length=36)
     events: list[AnalyticsEventIn] = Field(min_length=1, max_length=50)
 
 

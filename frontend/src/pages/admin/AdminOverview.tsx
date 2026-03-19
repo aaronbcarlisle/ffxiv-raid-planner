@@ -26,11 +26,11 @@ import { Button } from '../../components/primitives/Button';
 
 interface OverviewData {
   totalUsers: number;
-  totalUsersChange: number;
-  activeStatics: number;
-  activeStaticsChange: number;
-  avgCardsPerStatic: number;
+  totalStatics: number;
+  avgClaimedCards: number;
   errors24h: number;
+  usersChange7d: number;
+  staticsChange7d: number;
 }
 
 interface GrowthPoint {
@@ -173,18 +173,18 @@ export function AdminOverview() {
             <AdminKpiCard
               label="Total Users"
               value={overview.totalUsers}
-              change={formatChange(overview.totalUsersChange).text}
-              changeDirection={formatChange(overview.totalUsersChange).direction}
+              change={formatChange(overview.usersChange7d).text}
+              changeDirection={formatChange(overview.usersChange7d).direction}
             />
             <AdminKpiCard
               label="Active Statics"
-              value={overview.activeStatics}
-              change={formatChange(overview.activeStaticsChange).text}
-              changeDirection={formatChange(overview.activeStaticsChange).direction}
+              value={overview.totalStatics}
+              change={formatChange(overview.staticsChange7d).text}
+              changeDirection={formatChange(overview.staticsChange7d).direction}
             />
             <AdminKpiCard
               label="Avg Cards/Static"
-              value={overview.avgCardsPerStatic.toFixed(1)}
+              value={overview.avgClaimedCards.toFixed(1)}
             />
             <AdminKpiCard
               label="Errors (24h)"

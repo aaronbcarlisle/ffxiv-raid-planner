@@ -87,7 +87,7 @@ async def receive_events(
     for event_in in batch.events:
         event = AnalyticsEvent(
             user_id=user.id,
-            session_id="",  # Will be set by frontend collector in future
+            session_id=batch.session_id or "",
             event_category=event_in.event_category,
             event_name=event_in.event_name,
             event_data=event_in.event_data,

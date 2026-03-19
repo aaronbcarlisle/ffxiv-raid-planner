@@ -24,8 +24,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/errors', label: 'Error Log', icon: '\u{26A0}\u{FE0F}' },
 ];
 
-interface ErrorCountResponse {
-  count: number;
+interface ErrorListResponse {
+  total: number;
 }
 
 export function AdminSidebar() {
@@ -36,10 +36,10 @@ export function AdminSidebar() {
   useEffect(() => {
     let cancelled = false;
     api
-      .get<ErrorCountResponse>('/api/admin/errors/unreviewed-count')
+      .get<ErrorListResponse>('/api/admin/analytics/errors?status=unreviewed&page_size=1')
       .then((data) => {
         if (!cancelled) {
-          setUnreviewedErrors(data.count);
+          setUnreviewedErrors(data.total);
         }
       })
       .catch(() => {
