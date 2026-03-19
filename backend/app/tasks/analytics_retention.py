@@ -38,17 +38,15 @@ async def run_retention() -> None:
         ).isoformat()
 
         # Aggregate old events by date + event_name
+        date_col = func.substr(AnalyticsEvent.created_at, 1, 10)
         old_events_result = await session.execute(
             select(
-                func.substr(AnalyticsEvent.created_at, 1, 10).label("date"),
+                date_col.label("date"),
                 AnalyticsEvent.event_name,
                 func.count(AnalyticsEvent.id).label("count"),
             )
             .where(AnalyticsEvent.created_at < cutoff)
-            .group_by(
-                func.substr(AnalyticsEvent.created_at, 1, 10),
-                AnalyticsEvent.event_name,
-            )
+            .group_by(date_col, AnalyticsEvent.event_name)
         )
         old_events = old_events_result.all()
 

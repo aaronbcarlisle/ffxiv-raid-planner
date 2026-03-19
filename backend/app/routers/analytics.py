@@ -8,7 +8,7 @@ plus admin-only dashboard queries for usage metrics and error monitoring.
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import distinct, func, select, update, case
+from sqlalchemy import distinct, func, literal_column, select, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
@@ -226,10 +226,11 @@ async def get_growth(
     cutoff = _parse_range(time_range)
 
     # Users by date
+    date_col = func.substr(User.created_at, 1, 10)
     user_query = select(
-        func.substr(User.created_at, 1, 10).label("date"),
+        date_col.label("date"),
         func.count(User.id).label("count"),
-    ).group_by(func.substr(User.created_at, 1, 10)).order_by("date")
+    ).group_by(date_col).order_by(date_col)
 
     if cutoff:
         user_query = user_query.where(User.created_at > cutoff.isoformat())
@@ -240,10 +241,11 @@ async def get_growth(
     ]
 
     # Statics by date
+    static_date_col = func.substr(StaticGroup.created_at, 1, 10)
     static_query = select(
-        func.substr(StaticGroup.created_at, 1, 10).label("date"),
+        static_date_col.label("date"),
         func.count(StaticGroup.id).label("count"),
-    ).group_by(func.substr(StaticGroup.created_at, 1, 10)).order_by("date")
+    ).group_by(static_date_col).order_by(static_date_col)
 
     if cutoff:
         static_query = static_query.where(
