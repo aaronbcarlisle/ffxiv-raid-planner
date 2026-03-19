@@ -141,6 +141,7 @@ export function AdminErrors() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortField, setSortField] = useState<SortField>('count');
+  const [fetchError, setFetchError] = useState(false);
 
   // Expanded row state
   const [expandedFingerprint, setExpandedFingerprint] = useState<string | null>(null);
@@ -153,6 +154,7 @@ export function AdminErrors() {
 
   const fetchErrors = useCallback(async () => {
     setLoading(true);
+    setFetchError(false);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -165,7 +167,7 @@ export function AdminErrors() {
       const data = await api.get<ErrorListData>(`/api/admin/analytics/errors?${params.toString()}`);
       setErrorList(data);
     } catch {
-      // Table stays in loading state on error
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -365,6 +367,13 @@ export function AdminErrors() {
           </Button>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="bg-surface-card border border-status-error/30 rounded-lg p-6 text-center">
+          <p className="text-status-error mb-2">Failed to load error data</p>
+          <Button variant="ghost" size="sm" onClick={() => fetchErrors()}>Retry</Button>
+        </div>
+      )}
 
       {/* Error Groups Table */}
       <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">

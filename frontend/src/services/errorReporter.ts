@@ -9,23 +9,29 @@
 
 import { parseApiError } from '../lib/errorHandler';
 import { API_BASE_URL } from '../config';
-import { getCsrfToken } from './analytics';
+import { getCSRFToken } from './api';
 
 class ErrorReporter {
   private recentFingerprints = new Map<string, number>(); // fingerprint -> timestamp
   private enabled: boolean;
+  private initialized = false;
 
   constructor() {
     this.enabled = typeof window !== 'undefined';
   }
 
   init(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.initialized) return;
+    this.initialized = true;
 
-    window.onerror = (msg, source, line, col, error) => {
-      this.report('js_error', error || String(msg), { source, line, col });
-      return false; // Don't prevent default handling
-    };
+    // Use addEventListener to avoid overwriting existing handlers
+    window.addEventListener('error', (event) => {
+      this.report('js_error', event.error || event.message, {
+        source: event.filename,
+        line: event.lineno,
+        col: event.colno,
+      });
+    });
 
     window.addEventListener('unhandledrejection', (event) => {
       this.report('unhandled_rejection', event.reason);
@@ -65,7 +71,7 @@ class ErrorReporter {
     });
 
     // Fire-and-forget -- never recurse on error reporting failures
-    const csrfToken = getCsrfToken();
+    const csrfToken = getCSRFToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };

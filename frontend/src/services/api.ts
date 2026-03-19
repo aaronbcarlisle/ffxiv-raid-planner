@@ -43,7 +43,7 @@ export function storeCSRFTokenFromResponse(response: Response): void {
  * Get CSRF token from cookie for state-changing requests.
  * Falls back to in-memory token from response headers for cross-domain scenarios.
  */
-function getCSRFToken(): string | null {
+export function getCSRFToken(): string | null {
   // Try cookie first (same-domain scenario)
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {

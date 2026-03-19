@@ -8,18 +8,13 @@
 
 import { eventBus, Events } from '../lib/eventBus';
 import { API_BASE_URL } from '../config';
+import { getCSRFToken } from './api';
 
 interface AnalyticsEvent {
   category: string;
   name: string;
   data?: Record<string, unknown>;
   pageUrl: string;
-}
-
-/** Read the CSRF token from cookies for POST requests. */
-export function getCsrfToken(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
 }
 
 /** Maximum events per batch (backend enforces max_length=50). */
@@ -32,6 +27,7 @@ class AnalyticsCollector {
   private sessionId: string;
   private flushInterval: ReturnType<typeof setInterval> | null = null;
   private enabled: boolean;
+  private initialized = false;
 
   constructor() {
     if (typeof window === 'undefined') {
@@ -47,7 +43,8 @@ class AnalyticsCollector {
   }
 
   init(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.initialized) return;
+    this.initialized = true;
 
     // Subscribe to existing event bus events
     eventBus.on(Events.PLAYER_UPDATED, (data) => this.track('action', 'player_update', data as Record<string, unknown>));
@@ -91,7 +88,7 @@ class AnalyticsCollector {
     // Chunk into batches of MAX_BATCH_SIZE to respect backend limit
     for (let i = 0; i < allEvents.length; i += MAX_BATCH_SIZE) {
       const chunk = allEvents.slice(i, i + MAX_BATCH_SIZE);
-      const csrfToken = getCsrfToken();
+      const csrfToken = getCSRFToken();
       const body = JSON.stringify({
         sessionId: this.sessionId,
         events: chunk.map(e => ({

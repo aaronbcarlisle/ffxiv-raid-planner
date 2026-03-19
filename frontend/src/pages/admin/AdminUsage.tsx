@@ -70,15 +70,17 @@ export function AdminUsage() {
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [sortField, setSortField] = useState<SortField>('count');
 
   const fetchUsage = useCallback(async (range: TimeRange) => {
     setLoading(true);
+    setFetchError(false);
     try {
       const data = await api.get<UsageData>(`/api/admin/analytics/usage?range=${range}`);
       setUsageData(data);
     } catch {
-      // Data stays in loading state on error
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -146,6 +148,13 @@ export function AdminUsage() {
           ))}
         </div>
       </div>
+
+      {fetchError && (
+        <div className="bg-surface-card border border-status-error/30 rounded-lg p-6 text-center">
+          <p className="text-status-error mb-2">Failed to load usage data</p>
+          <Button variant="ghost" size="sm" onClick={() => fetchUsage(timeRange)}>Retry</Button>
+        </div>
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

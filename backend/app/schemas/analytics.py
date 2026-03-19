@@ -44,9 +44,11 @@ class OverviewResponse(CamelModel):
     total_users: int
     total_statics: int
     avg_claimed_cards: float
-    errors_24h: int
-    users_change_7d: int
-    statics_change_7d: int
+    # Explicit aliases: to_camel uses .title() which capitalizes letters after
+    # digits (e.g. "24h" → "24H"), so we override to get correct camelCase.
+    errors_24h: int = Field(serialization_alias="errors24h")
+    users_change_7d: int = Field(serialization_alias="usersChange7d")
+    statics_change_7d: int = Field(serialization_alias="staticsChange7d")
 
 
 class GrowthPoint(CamelModel):
