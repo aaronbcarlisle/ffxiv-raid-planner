@@ -248,6 +248,8 @@ interface WeaponSlotRowProps {
   hasTomeWeaponMaterialEntry?: boolean;
   onNavigateToLootEntry?: (slot: GearSlot) => void;
   onNavigateToMaterialEntry?: (slot: string) => void;
+  highlightedSlot?: string | null;
+  playerId?: string;
 }
 
 function WeaponSlotRow({
@@ -261,6 +263,8 @@ function WeaponSlotRow({
   hasTomeWeaponMaterialEntry = false,
   onNavigateToLootEntry,
   onNavigateToMaterialEntry,
+  highlightedSlot,
+  playerId,
 }: WeaponSlotRowProps) {
   // Handle tome weapon state change (3-state cycle: missing → have → augmented)
   const handleTomeWeaponStateChange = (newState: GearState) => {
@@ -271,7 +275,7 @@ function WeaponSlotRow({
   return (
     <>
       {/* Main weapon row */}
-      <tr className="border-t border-border-default/50">
+      <tr id={playerId ? `gear-row-${playerId}-weapon` : undefined} className={`border-t border-border-default/50 ${highlightedSlot === 'weapon' ? 'highlight-pulse' : ''}`}>
         <td className="py-2 sm:py-1 text-text-secondary">
           <div className="flex items-center gap-3">
             <SlotIcon
@@ -396,6 +400,8 @@ interface GearTableProps {
   onNavigateToLootEntry?: (slot: GearSlot) => void;
   /** Navigate to material entry for a slot */
   onNavigateToMaterialEntry?: (slot: string) => void;
+  /** Currently highlighted gear slot (from alt+click navigation) */
+  highlightedSlot?: string | null;
 }
 
 export function GearTable({
@@ -412,6 +418,7 @@ export function GearTable({
   slotsWithMaterialEntries,
   onNavigateToLootEntry,
   onNavigateToMaterialEntry,
+  highlightedSlot,
 }: GearTableProps) {
   // Check gear edit permission - use isAdminAccess to respect View As context
   const gearPermission = canEditGear(userRole, player, currentUserId, isAdminAccess);
@@ -591,6 +598,8 @@ export function GearTable({
                   hasTomeWeaponMaterialEntry={slotsWithMaterialEntries?.has('tome_weapon')}
                   onNavigateToLootEntry={onNavigateToLootEntry}
                   onNavigateToMaterialEntry={onNavigateToMaterialEntry}
+                  highlightedSlot={highlightedSlot}
+                  playerId={player.id}
                 />
               );
             }
@@ -599,7 +608,7 @@ export function GearTable({
             const needsAug = requiresAugmentation(status);
 
             return (
-              <tr key={slot} className="border-t border-border-default/50">
+              <tr key={slot} id={`gear-row-${player.id}-${slot}`} className={`border-t border-border-default/50 ${highlightedSlot === slot ? 'highlight-pulse' : ''}`}>
                 <td className="py-2 sm:py-1 text-text-secondary">
                   <div className="flex items-center gap-3">
                     <SlotIcon

@@ -63,7 +63,7 @@ interface SectionedLogViewProps {
   /** Highlighted book player ID (from navigation) */
   highlightedBookPlayerId?: string | null;
   onWeekChange?: (weekNumber: number) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
   /** External highlighted entry ID (e.g., from navigation) */
   highlightedEntryId?: string | null;
   /** External highlighted entry type */
@@ -328,6 +328,11 @@ export function SectionedLogView({
   const getPlayerName = useCallback((playerId: string) => {
     const player = players.find(p => p.id === playerId);
     return player?.name || 'Unknown';
+  }, [players]);
+
+  const getPlayerJob = useCallback((playerId: string) => {
+    const player = players.find(p => p.id === playerId);
+    return player?.job;
   }, [players]);
 
   // Handler for MarkFloorClearedModal
@@ -1212,6 +1217,7 @@ export function SectionedLogView({
                               highlightedEntryId={highlightedEntryId}
                               canEdit={canEdit}
                               getPlayerName={getPlayerName}
+                              getPlayerJob={getPlayerJob}
                               onCopyUrl={handleCopyEntryUrl}
                               onEdit={handleEditLootEntry}
                               onDelete={handleDeleteLoot}
@@ -1247,6 +1253,7 @@ export function SectionedLogView({
                         highlightedEntryId={highlightedEntryId}
                         canEdit={canEdit}
                         getPlayerName={getPlayerName}
+                        getPlayerJob={getPlayerJob}
                         onCopyUrl={handleCopyEntryUrl}
                         onEdit={handleEditLootEntry}
                         onDelete={handleDeleteLoot}
@@ -1541,6 +1548,7 @@ export function SectionedLogView({
                                 highlightedEntryId={highlightedEntryId}
                                 canEdit={canEdit}
                                 getPlayerName={getPlayerName}
+                                getPlayerJob={getPlayerJob}
                                 onCopyUrl={handleCopyEntryUrl}
                                 onEdit={handleEditLootEntry}
                                 onDelete={handleDeleteLoot}
@@ -1575,6 +1583,7 @@ export function SectionedLogView({
                           highlightedEntryId={highlightedEntryId}
                           canEdit={canEdit}
                           getPlayerName={getPlayerName}
+                          getPlayerJob={getPlayerJob}
                           onCopyUrl={handleCopyEntryUrl}
                           onEdit={handleEditLootEntry}
                           onDelete={handleDeleteLoot}

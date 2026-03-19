@@ -78,6 +78,8 @@ export interface UseGroupViewStateReturn {
   // Highlight state
   highlightedPlayerId: string | null;
   setHighlightedPlayerId: (id: string | null) => void;
+  highlightedSlot: string | null;
+  setHighlightedSlot: (slot: string | null) => void;
   highlightedEntry: HighlightedEntry | null;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
   highlightedBookPlayerId: string | null;
@@ -184,6 +186,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
 
   // ===== Highlight state =====
   const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+  const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null);
   const [highlightedEntry, setHighlightedEntry] = useState<HighlightedEntry | null>(null);
   const [highlightedBookPlayerId, setHighlightedBookPlayerId] = useState<string | null>(null);
 
@@ -399,6 +402,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Highlight state
     highlightedPlayerId,
     setHighlightedPlayerId,
+    highlightedSlot,
+    setHighlightedSlot,
     highlightedEntry,
     setHighlightedEntry,
     highlightedBookPlayerId,

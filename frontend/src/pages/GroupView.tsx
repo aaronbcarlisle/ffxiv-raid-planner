@@ -115,6 +115,8 @@ export function GroupView() {
     setPlayerModalCount,
     highlightedPlayerId,
     setHighlightedPlayerId,
+    highlightedSlot,
+    setHighlightedSlot,
     highlightedEntry,
     setHighlightedEntry,
     highlightedBookPlayerId,
@@ -262,6 +264,7 @@ export function GroupView() {
     const player = currentTier.players.find(p => p.id === playerParam);
     if (!player) return;
     setHighlightedPlayerId(playerParam);
+    setHighlightedSlot(null); // Clear any stale slot highlight from prior navigation
     setTimeout(() => {
       const element = document.getElementById(`player-card-${playerParam}`);
       if (element) {
@@ -391,6 +394,7 @@ export function GroupView() {
   const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToMaterialEntry, handleNavigateToBooksPanel } = useViewNavigation({
     setPageMode,
     setHighlightedPlayerId,
+    setHighlightedSlot,
     setHighlightedEntry,
     setHighlightedBookPlayerId,
     lootLog,
@@ -418,6 +422,7 @@ export function GroupView() {
 
       // Scroll to and highlight the new player
       setHighlightedPlayerId(newPlayer.id);
+      setHighlightedSlot(null); // Clear any stale slot highlight
 
       // Scroll the player card into view after a brief delay for render
       setTimeout(() => {
@@ -887,6 +892,7 @@ export function GroupView() {
                   editingPlayerId={editingPlayerId}
                   clipboardPlayer={clipboardPlayer}
                   highlightedPlayerId={highlightedPlayerId}
+                  highlightedSlot={highlightedSlot}
                   dragState={dnd.dragState}
                   canEdit={canEdit}
                   effectiveUserId={effectiveUserId}

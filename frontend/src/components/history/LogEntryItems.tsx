@@ -37,11 +37,12 @@ interface LootLogEntryItemProps {
   highlightedEntryId: string | null;
   canEdit: boolean;
   getPlayerName: (playerId: string) => string;
+  getPlayerJob?: (playerId: string) => string | undefined;
   onCopyUrl: (entryId: string) => void;
   onEdit: (entry: LootLogEntry) => void;
   onDelete: (entry: LootLogEntry) => void;
   onContextMenu: (e: React.MouseEvent, entry: LootLogEntry) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
 }
 
 export const LootLogEntryItem = memo(function LootLogEntryItem({
@@ -49,6 +50,7 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
   highlightedEntryId,
   canEdit,
   getPlayerName,
+  getPlayerJob,
   onCopyUrl,
   onEdit,
   onDelete,
@@ -57,6 +59,8 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
 }: LootLogEntryItemProps) {
   const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
   const isWeapon = entry.itemSlot === 'weapon';
+  // For weapon entries without weaponJob (historical data), fall back to the player's current job
+  const effectiveWeaponJob = isWeapon ? (entry.weaponJob || getPlayerJob?.(entry.recipientPlayerId)) : undefined;
   const isHighlighted = highlightedEntryId === String(entry.id);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -67,10 +71,10 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
       onCopyUrl(String(entry.id));
       return;
     }
-    // Alt+Click navigates to player
+    // Alt+Click navigates to player and highlights the gear slot
     if (e.altKey && onNavigateToPlayer) {
       e.preventDefault();
-      onNavigateToPlayer(entry.recipientPlayerId);
+      onNavigateToPlayer(entry.recipientPlayerId, entry.itemSlot);
       return;
     }
   };
@@ -88,11 +92,11 @@ export const LootLogEntryItem = memo(function LootLogEntryItem({
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted border border-border-subtle">
               {entry.floor}
             </span>
-            {isWeapon && entry.weaponJob && (
-              <JobIcon job={entry.weaponJob} size="sm" />
+            {isWeapon && effectiveWeaponJob && (
+              <JobIcon job={effectiveWeaponJob} size="sm" />
             )}
             <span className="text-text-primary font-medium">
-              {isWeapon && entry.weaponJob ? `Weapon (${entry.weaponJob})` : slotName}
+              {isWeapon && effectiveWeaponJob ? `Weapon (${effectiveWeaponJob})` : slotName}
             </span>
             <span className="text-text-muted">→</span>
             <span className="text-text-primary">{getPlayerName(entry.recipientPlayerId)}</span>
@@ -163,7 +167,7 @@ interface MaterialLogEntryItemProps {
   onEdit: (entry: MaterialLogEntry) => void;
   onDelete: (entryId: number) => void;
   onContextMenu: (e: React.MouseEvent, entry: MaterialLogEntry) => void;
-  onNavigateToPlayer?: (playerId: string) => void;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
 }
 
 export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
@@ -188,10 +192,10 @@ export const MaterialLogEntryItem = memo(function MaterialLogEntryItem({
       onCopyUrl(String(entry.id), 'material');
       return;
     }
-    // Alt+Click navigates to player
+    // Alt+Click navigates to player and highlights the gear slot
     if (e.altKey && onNavigateToPlayer) {
       e.preventDefault();
-      onNavigateToPlayer(entry.recipientPlayerId);
+      onNavigateToPlayer(entry.recipientPlayerId, entry.slotAugmented ?? undefined);
       return;
     }
   };

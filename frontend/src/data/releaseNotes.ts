@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.15.0';
+export const CURRENT_VERSION = '1.15.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,32 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.15.1',
+    date: '2026-03-19T06:00:00Z',
+    title: 'Gear Slot Highlighting',
+    highlights: ['Alt+click highlights specific gear row'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Gear slot row highlight',
+        description: 'Alt+clicking a log entry now highlights the specific gear slot row on the player card instead of the entire card',
+        commits: [{ hash: '6dd8d11', message: 'feat: highlight gear slot row instead of whole card on alt+click' }],
+      },
+      {
+        category: 'fix',
+        title: 'Weapon navigation accuracy',
+        description: 'Alt+clicking the weapon row now navigates to the main weapon drop, not extra/alt weapons from Weapon Priorities',
+        commits: [{ hash: '27bd846', message: 'fix: prefer main weapon over extra/alt when navigating from gear slot' }],
+      },
+      {
+        category: 'fix',
+        title: 'Consistent weapon display',
+        description: 'All weapon log entries now show the job icon and abbreviation, including historical entries',
+        commits: [{ hash: 'b7b48cd', message: 'fix: show job icon on all weapon log entries' }],
+      },
+    ],
+  },
   {
     version: '1.15.0',
     date: '2026-03-19T04:00:00Z',

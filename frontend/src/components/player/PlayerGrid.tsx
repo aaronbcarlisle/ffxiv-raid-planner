@@ -40,6 +40,7 @@ interface PlayerCardRendererProps {
   groupId: string;
   tierId: string;
   highlightedPlayerId: string | null;
+  highlightedSlot: string | null;
   playerSlotsWithLootEntries: Set<GearSlot> | undefined;
   playerSlotsWithMaterialEntries?: Set<GearSlot | 'tome_weapon'>;
   onUpdatePlayer: (playerId: string, updates: Partial<SnapshotPlayer>) => Promise<void>;
@@ -83,6 +84,7 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   groupId,
   tierId,
   highlightedPlayerId,
+  highlightedSlot,
   playerSlotsWithLootEntries,
   playerSlotsWithMaterialEntries,
   onUpdatePlayer,
@@ -212,7 +214,8 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         hideBisBanners={hideBisBanners}
         groupId={groupId}
         tierId={tierId}
-        isHighlighted={highlightedPlayerId === player.id}
+        isHighlighted={highlightedPlayerId === player.id && (!highlightedSlot || viewMode !== 'expanded')}
+        highlightedSlot={highlightedPlayerId === player.id && viewMode === 'expanded' ? highlightedSlot : null}
         onUpdate={handleUpdate}
         onRemove={handleRemove}
         onCopy={handleCopy}
@@ -263,6 +266,7 @@ export interface PlayerGridProps {
   editingPlayerId: string | null;
   clipboardPlayer: SnapshotPlayer | null;
   highlightedPlayerId: string | null;
+  highlightedSlot: string | null;
   dragState: DragState;
   canEdit: boolean;
   effectiveUserId: string | undefined;
@@ -314,6 +318,7 @@ export function PlayerGrid({
   editingPlayerId,
   clipboardPlayer,
   highlightedPlayerId,
+  highlightedSlot,
   dragState,
   canEdit,
   effectiveUserId,
@@ -368,6 +373,7 @@ export function PlayerGrid({
     groupId,
     tierId,
     highlightedPlayerId,
+    highlightedSlot,
     onUpdatePlayer,
     onRemovePlayer,
     onConfigurePlayer,
@@ -406,6 +412,7 @@ export function PlayerGrid({
     groupId,
     tierId,
     highlightedPlayerId,
+    highlightedSlot,
     onUpdatePlayer,
     onRemovePlayer,
     onConfigurePlayer,
