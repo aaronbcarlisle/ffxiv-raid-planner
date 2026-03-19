@@ -302,7 +302,7 @@ export interface PlayerGridProps {
 }
 
 // Grid classes - responsive from 1 column (mobile) to max 4 columns (wide screens)
-const gridClasses = 'grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl';
+const gridClasses = 'grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl stagger-children';
 
 export function PlayerGrid({
   players,

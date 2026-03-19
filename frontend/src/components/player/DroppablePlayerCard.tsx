@@ -106,8 +106,8 @@ export function DroppablePlayerCard({
         opacity: isBeingDragged ? 0.3 : 1,
       }}
       className={`
-        relative
-        ${showSwapHighlight ? 'ring-2 ring-accent shadow-lg shadow-accent/20 rounded-lg' : ''}
+        relative card-glow rounded-lg
+        ${showSwapHighlight ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : ''}
         transition-all duration-150
       `}
     >

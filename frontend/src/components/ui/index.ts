@@ -10,6 +10,7 @@ export { Label, type LabelProps } from './Label';
 export { MobileBottomNav } from './MobileBottomNav';
 export { Modal } from './Modal';
 export { ConfirmModal } from './ConfirmModal';
+export { EmptyState } from './EmptyState';
 export { ErrorMessage, InlineError, ErrorBox, type ErrorMessageProps, type ErrorBoxProps } from './ErrorMessage';
 export { NumberInput, type NumberInputProps } from './NumberInput';
 export { ProgressRing } from './ProgressRing';

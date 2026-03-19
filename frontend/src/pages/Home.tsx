@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuthStore, useAuthHydrated } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
+import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
 import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
-import { BookOpen, Users, Calculator, Sparkles } from 'lucide-react';
+import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers } from 'lucide-react';
+import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
 import type { MemberRole } from '../types';
 
 // Role badge colors - using semantic membership tokens
@@ -101,41 +104,68 @@ export function Home() {
     }
   };
 
+  const { prefersReducedMotion } = useDevice();
+  const itemVariants = prefersReducedMotion ? instantVariants : staggerItem;
+  const containerVariants = prefersReducedMotion ? instantVariants : staggerContainer;
+
   return (
     <div className="text-center py-16 px-4 sm:px-6">
-      {/* Hero Logo */}
-      <div className="mb-6">
-        <img
-          src="/logo-hero.svg"
-          alt="FFXIV Raid Planner"
-          className="w-24 h-24 mx-auto"
+      {/* Hero section with atmospheric gradient */}
+      <motion.div
+        className="relative"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Background gradient */}
+        <div
+          className="absolute inset-0 -top-16 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center top, rgba(20,184,166,0.08) 0%, transparent 60%)',
+          }}
+          aria-hidden="true"
         />
-      </div>
 
-      <h1 className="font-display text-4xl text-accent mb-4">
-        FFXIV Raid Planner
-      </h1>
-      <p className="text-text-secondary text-lg mb-8 max-w-2xl mx-auto">
-        Gear tracking & loot planning for your static
-      </p>
+        {/* Hero Logo */}
+        <motion.div className="mb-6 relative" variants={itemVariants}>
+          <img
+            src="/logo-hero.svg"
+            alt="FFXIV Raid Planner"
+            className="w-32 h-32 mx-auto glow-teal"
+          />
+        </motion.div>
 
-      {/* Primary CTA */}
-      <div className="mb-8">
-        {authLoading ? (
-          <Spinner size="xl" className="mx-auto" label="Checking authentication" />
-        ) : user ? (
-          <Link
-            to="/dashboard"
-            className="inline-block bg-accent text-bg-primary px-8 py-4 rounded-lg font-medium text-lg hover:bg-accent-bright transition-colors"
-          >
-            Go to My Statics
-          </Link>
-        ) : (
-          <div className="flex justify-center">
-            <LoginButton className="bg-accent text-bg-primary px-8 py-4 rounded-lg font-medium text-lg hover:bg-accent-bright transition-colors" />
-          </div>
-        )}
-      </div>
+        <motion.h1
+          className="font-display text-4xl sm:text-5xl text-accent mb-4"
+          variants={itemVariants}
+        >
+          FFXIV Raid Planner
+        </motion.h1>
+        <motion.p
+          className="text-text-secondary text-lg mb-8 max-w-2xl mx-auto"
+          variants={itemVariants}
+        >
+          Gear tracking & loot planning for your static
+        </motion.p>
+
+        {/* Primary CTA */}
+        <motion.div className="mb-8" variants={itemVariants}>
+          {authLoading ? (
+            <Spinner size="xl" className="mx-auto" label="Checking authentication" />
+          ) : user ? (
+            <Link
+              to="/dashboard"
+              className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
+            >
+              Go to My Statics
+            </Link>
+          ) : (
+            <div className="flex justify-center">
+              <LoginButton className="bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors" />
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
 
       {/* Divider */}
       <div className="flex items-center gap-4 max-w-md mx-auto mb-8">
@@ -169,12 +199,12 @@ export function Home() {
           <h2 className="font-display text-xl text-text-primary mb-4 text-left">
             Recent Statics
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 stagger-children">
             {recentStatics.map((group) => (
               <Link
                 key={group.id}
                 to={`/group/${group.shareCode}`}
-                className="bg-surface-card p-6 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left group"
+                className="card-interactive p-6 text-left group"
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="font-display text-lg text-accent group-hover:text-accent-bright transition-colors truncate">
@@ -251,20 +281,29 @@ export function Home() {
       ) : (
         /* Feature cards for non-logged-in users */
         <>
-          <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto">
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+          <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto stagger-children">
+            <div className="card-interactive p-6">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
+                <Swords className="w-5 h-5 text-accent" />
+              </div>
               <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
               <p className="text-text-secondary text-sm">
                 Track BiS progress for your entire static. See who needs what at a glance.
               </p>
             </div>
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+            <div className="card-interactive p-6">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
+                <Calculator className="w-5 h-5 text-accent" />
+              </div>
               <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
               <p className="text-text-secondary text-sm">
                 Smart loot suggestions based on need, role priority, and past distributions.
               </p>
             </div>
-            <div className="bg-surface-card p-6 rounded-lg border border-border-default">
+            <div className="card-interactive p-6">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
+                <BarChart3 className="w-5 h-5 text-accent" />
+              </div>
               <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
               <p className="text-text-secondary text-sm">
                 See total materials needed, books required, and estimated weeks to BiS.
@@ -273,12 +312,27 @@ export function Home() {
           </div>
 
           {/* Multi-tier feature highlight */}
-          <div className="mt-12 max-w-2xl mx-auto bg-surface-card p-6 rounded-lg border border-accent/20">
-            <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
-            <p className="text-text-secondary text-sm">
-              Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.
-              Switch between tiers anytime to view historical progress.
-            </p>
+          <div className="mt-12 max-w-2xl mx-auto bg-surface-card rounded-lg border-glow p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Layers className="w-5 h-5 text-accent" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
+                <p className="text-text-secondary text-sm mb-4">
+                  Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.
+                  Switch between tiers anytime to view historical progress.
+                </p>
+                {/* Tier timeline visualization */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2 py-1 rounded bg-surface-elevated text-role-melee font-medium">M1S-M4S</span>
+                  <div className="w-6 h-px bg-border-default" />
+                  <span className="px-2 py-1 rounded bg-surface-elevated text-role-tank font-medium">M5S-M8S</span>
+                  <div className="w-6 h-px bg-border-default" />
+                  <span className="px-2 py-1 rounded bg-accent/20 text-accent font-medium border border-accent/30">M9S-M12S</span>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -293,7 +347,7 @@ export function Home() {
           <div className="grid md:grid-cols-3 gap-4">
             <Link
               to="/docs/quick-start"
-              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+              className="group card-interactive p-5 text-left"
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
@@ -309,7 +363,7 @@ export function Home() {
             </Link>
             <Link
               to="/docs/understanding-priority"
-              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+              className="group card-interactive p-5 text-left"
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
@@ -325,7 +379,7 @@ export function Home() {
             </Link>
             <Link
               to="/docs/how-to"
-              className="group bg-surface-card p-5 rounded-lg border border-border-default hover:border-accent/50 transition-colors text-left"
+              className="group card-interactive p-5 text-left"
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">

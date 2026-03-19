@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.14.0';
+export const CURRENT_VERSION = '1.15.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,61 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.15.0',
+    date: '2026-03-19T04:00:00Z',
+    title: 'UI Polish',
+    highlights: ['Exo 2 display font', 'Smooth page transitions and animations'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Typography upgrade',
+        description: 'Exo 2 display font for headings and titles, Inter for body text',
+        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Motion system',
+        description: 'Smooth page transitions, staggered grid reveals, shimmer skeleton loading, and toast enter/exit animations',
+        details:
+          'Built on framer-motion with reusable animation presets. All animations respect prefers-reduced-motion. Framer-motion split into its own bundle chunk for optimal loading.',
+        commits: [
+          { hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' },
+          { hash: '52d8944', message: 'feat: phase 4 — loading and toast polish' },
+        ],
+      },
+      {
+        category: 'improvement',
+        title: 'Landing page refresh',
+        description: 'Hero gradient atmosphere, staggered entrance animation, feature card icons, and tier timeline visualization',
+        commits: [{ hash: 'a36a82c', message: 'feat: phase 3 — landing page transformation' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Visual depth',
+        description: 'Card hover glow effects, progress ring glow at 75%+ completion, and shadow-xl on modals',
+        commits: [{ hash: 'e00dca8', message: 'feat: phase 5 — surface atmosphere and card polish' }],
+      },
+      {
+        category: 'fix',
+        title: 'Dark Reader compatibility',
+        description: 'Added darkreader-lock meta tag to prevent the Dark Reader extension from conflicting with the built-in theme system',
+        commits: [{ hash: 'ce6db1d', message: 'fix: prevent Dark Reader from overriding app theme' }],
+      },
+      {
+        category: 'fix',
+        title: 'Skeleton design system compliance',
+        description: 'Fixed 9 hardcoded bg-slate-* colors in skeleton components with semantic design tokens',
+        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Bundle size monitoring',
+        description: 'Added size-limit for tracking JS and CSS bundle sizes during development',
+        commits: [{ hash: '19ed38b', message: 'feat: phase 6 — bundle size monitoring' }],
+      },
+    ],
+  },
   {
     version: '1.14.0',
     date: '2026-03-01T08:00:00Z',

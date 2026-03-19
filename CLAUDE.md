@@ -119,6 +119,7 @@ cd scripts && npm test            # Scripts tests (95)
 - `lib/errorHandler.ts` - Centralized error parsing
 - `lib/logger.ts` - Scoped logging utility
 - `lib/eventBus.ts` - Pub/sub for cross-component events
+- `lib/motion.ts` - Framer-motion animation presets
 
 ### Core Hooks
 - `hooks/useGroupViewState.ts` - GroupView URL/localStorage sync
@@ -306,6 +307,10 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 ## Styling
 
 **Theme:** Dark with teal accents. See `index.css`.
+
+**Typography:** Exo 2 (display/headings) + Inter (body text). See `--font-display` and `--font-sans` in `index.css`.
+
+**Animation:** Framer-motion presets in `lib/motion.ts`. CSS stagger via `.stagger-children`. All animations respect `prefers-reduced-motion`.
 
 **Role Colors:** Tank (#5a9fd4), Healer (#5ad490), Melee (#d45a5a), Ranged (#d4a05a), Caster (#b45ad4)
 

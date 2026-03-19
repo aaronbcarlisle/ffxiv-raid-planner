@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
-import { Spinner } from './components/ui/Spinner';
+import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
 
 // Lazy-loaded pages for code splitting
@@ -48,8 +48,8 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetError
 
 function PageLoader() {
   return (
-    <div className="min-h-screen bg-surface-base flex items-center justify-center">
-      <Spinner size="lg" label="Loading page" />
+    <div className="min-h-screen bg-surface-base">
+      <PageSkeleton />
     </div>
   );
 }

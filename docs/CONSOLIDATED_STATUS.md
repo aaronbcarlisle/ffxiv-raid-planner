@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** March 6, 2026
+**Last Updated:** March 18, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
@@ -25,6 +25,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| **Frontend UI Upgrade** | 🔨 In Progress | Branch `frontend/ui-upgrade-2026` — typography, motion system, landing page, toast polish, surface atmosphere, bundle monitoring |
 | **UI Reorganization** | Planned | Header breadcrumbs, settings panel, toolbar consolidation |
 
 ### ✅ Completed Features (Production Ready)
