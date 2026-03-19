@@ -15,6 +15,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m
 const AdminLayout = lazy(() => import('./pages/AdminLayout').then(m => ({ default: m.AdminLayout })));
 const AdminOverview = lazy(() => import('./pages/admin/AdminOverview').then(m => ({ default: m.AdminOverview })));
 const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => ({ default: m.AdminStatics })));
+const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
+const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
@@ -85,6 +87,8 @@ function App() {
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<AdminOverview />} />
               <Route path="statics" element={<AdminStatics />} />
+              <Route path="usage" element={<AdminUsage />} />
+              <Route path="errors" element={<AdminErrors />} />
             </Route>
             <Route path="group/:shareCode" element={<GroupView />} />
             {/* Documentation routes */}
