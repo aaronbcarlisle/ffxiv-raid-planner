@@ -101,17 +101,21 @@ export function useViewNavigation({
     // Clear any existing timeout
     if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
     // Find the loot entry for this player and slot
-    // Priority: non-extra entries first (main job weapons), then extra/alt entries
+    // Search priority: exact slot + non-extra > exact slot > ring variant + non-extra > ring variant
     // Ring slots: gear uses ring1/ring2, loot log may store as "ring", "ring1", or "ring2"
+    const isPlayer = (e: LootLogEntry) => e.recipientPlayerId === playerId;
     const isRingSlot = slot === 'ring1' || slot === 'ring2';
-    const matchesSlot = (e: LootLogEntry) =>
-      e.recipientPlayerId === playerId && (
-        e.itemSlot === slot ||
-        (isRingSlot && (e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2'))
-      );
-    // Prefer non-extra entries (main job drops) over extra entries (alt weapons from priorities)
-    const entry = lootLog.find(e => matchesSlot(e) && !e.isExtra)
-      ?? lootLog.find(e => matchesSlot(e));
+    const isRingVariant = (e: LootLogEntry) =>
+      e.itemSlot === 'ring' || e.itemSlot === 'ring1' || e.itemSlot === 'ring2';
+    const entry =
+      // 1. Exact slot match, non-extra
+      lootLog.find(e => isPlayer(e) && e.itemSlot === slot && !e.isExtra)
+      // 2. Exact slot match, any
+      ?? lootLog.find(e => isPlayer(e) && e.itemSlot === slot)
+      // 3. Ring variant fallback, non-extra (only for ring slots)
+      ?? (isRingSlot ? lootLog.find(e => isPlayer(e) && isRingVariant(e) && !e.isExtra) : undefined)
+      // 4. Ring variant fallback, any
+      ?? (isRingSlot ? lootLog.find(e => isPlayer(e) && isRingVariant(e)) : undefined);
     if (!entry) {
       toast.info('No loot entry found for this slot');
       return;
