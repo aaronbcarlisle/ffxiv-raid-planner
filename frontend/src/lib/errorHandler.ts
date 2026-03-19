@@ -131,6 +131,11 @@ export function handleApiError(
     toast.error(`Failed to ${context}`);
   }
 
+  // Dynamic import to break circular dependency (errorHandler <-> errorReporter)
+  import('../services/errorReporter').then(({ errorReporter }) => {
+    errorReporter.report('api_error', error, { action: context });
+  }).catch(() => {});
+
   return parsed;
 }
 

@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     # Example: "123456789012345678,987654321098765432"
     admin_discord_ids: str = ""
 
+    # Discord webhook URL for error alerts (optional - no alerts if not set)
+    discord_webhook_url: str | None = None
+
     # Trusted proxy IPs (comma-separated) - only these IPs can set
     # X-Forwarded-For and X-Real-IP headers for rate limiting.
     # This prevents rate limit bypass by spoofing client IP.

@@ -19,6 +19,7 @@ import { ReviewStep } from './steps/ReviewStep';
 import { ShareStep } from './steps/ShareStep';
 import { INITIAL_ROSTER, type WizardState, type WizardStep } from './types';
 import { RAID_TIERS } from '../../gamedata/raid-tiers';
+import { analytics } from '../../services/analytics';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useInvitationStore } from '../../stores/invitationStore';
@@ -65,6 +66,13 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   const createTier = useTierStore((s) => s.createTier);
   const updatePlayer = useTierStore((s) => s.updatePlayer);
   const createInvitation = useInvitationStore((s) => s.createInvitation);
+
+  // Track wizard open
+  useEffect(() => {
+    if (isOpen) {
+      analytics.track('wizard', 'setup_wizard_start');
+    }
+  }, [isOpen]);
 
   // Check if wizard has unsaved changes (only relevant before creation)
   const hasChanges = () => {
@@ -181,6 +189,8 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       setCreatedShareCode(shareCode);
       setCreatedInviteLink(inviteLink);
       setIsCreated(true);
+      const configuredCount = state.players.filter(p => p.name.trim() && p.job).length;
+      analytics.track('wizard', 'setup_wizard_complete', { playerCount: configuredCount });
       // Clear pending state since we completed successfully
       setPendingGroupId(null);
       setPendingShareCode(null);

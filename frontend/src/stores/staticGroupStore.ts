@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import type { StaticGroup, StaticGroupListItem, StaticGroupSettings, MemberRole, Membership } from '../types';
 import { authRequest } from '../services/api';
+import { analytics } from '../services/analytics';
 
 interface StaticGroupState {
   // List of user's static groups (dashboard)
@@ -138,6 +139,8 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
         currentGroup: group,
         isCreating: false,
       }));
+
+      analytics.track('admin', 'static_create');
 
       return group;
     } catch (error) {

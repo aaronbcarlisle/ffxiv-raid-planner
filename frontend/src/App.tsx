@@ -1,15 +1,22 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
 import { ErrorBoundary } from 'react-error-boundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
+import { analytics } from './services/analytics';
+import { errorReporter } from './services/errorReporter';
 
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminLayout = lazy(() => import('./pages/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const AdminOverview = lazy(() => import('./pages/admin/AdminOverview').then(m => ({ default: m.AdminOverview })));
+const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => ({ default: m.AdminStatics })));
+const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
+const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
@@ -55,10 +62,19 @@ function PageLoader() {
 }
 
 function App() {
+  const location = useLocation();
+
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
     initializeAuth();
+    analytics.init();
+    errorReporter.init();
   }, []);
+
+  // Track page views on route changes
+  useEffect(() => {
+    analytics.track('navigation', 'page_view', { page: location.pathname });
+  }, [location.pathname]);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
@@ -67,7 +83,13 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="admin/statics" element={<AdminDashboard />} />
+            <Route path="admin" element={<AdminLayout />}>
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<AdminOverview />} />
+              <Route path="statics" element={<AdminStatics />} />
+              <Route path="usage" element={<AdminUsage />} />
+              <Route path="errors" element={<AdminErrors />} />
+            </Route>
             <Route path="group/:shareCode" element={<GroupView />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />

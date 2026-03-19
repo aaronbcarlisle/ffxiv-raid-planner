@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.15.1';
+export const CURRENT_VERSION = '1.16.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,44 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.16.0',
+    date: '2026-03-19T08:00:00Z',
+    title: 'Analytics & Error Reporting',
+    highlights: ['Admin analytics dashboard', 'Automatic error tracking'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Admin analytics dashboard',
+        description: 'Redesigned admin area with sidebar navigation, KPI cards, growth charts, top users/statics tables, and feature usage analytics',
+        commits: [{ hash: 'e1cb8fd', message: 'feat: add admin dashboard shell with sidebar, overview page, and Recharts charts' }],
+      },
+      {
+        category: 'feature',
+        title: 'Automatic error reporting',
+        description: 'Frontend and backend errors are now captured automatically with grouped error log, severity filtering, and mark-as-reviewed workflow',
+        commits: [{ hash: '4a40d1e', message: 'feat: add usage analytics and error log admin pages' }],
+      },
+      {
+        category: 'feature',
+        title: 'Usage analytics tracking',
+        description: 'Tracks feature usage across the app including tab switches, BiS imports, loot logging, wizard usage, and more',
+        commits: [{ hash: '279a8ca', message: 'feat: add analytics tracking points across frontend' }],
+      },
+      {
+        category: 'feature',
+        title: 'Discord error alerts',
+        description: 'Critical and recurring errors trigger Discord webhook notifications for proactive monitoring',
+        commits: [{ hash: 'cc4e6e7', message: 'feat: add Discord webhook alerts and analytics data retention task' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Data retention',
+        description: 'Raw analytics events older than 90 days are automatically aggregated into daily rollups to keep the database lean',
+        commits: [{ hash: 'cc4e6e7', message: 'feat: add Discord webhook alerts and analytics data retention task' }],
+      },
+    ],
+  },
   {
     version: '1.15.1',
     date: '2026-03-19T06:00:00Z',

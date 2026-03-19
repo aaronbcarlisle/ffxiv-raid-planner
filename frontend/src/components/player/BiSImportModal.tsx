@@ -3,6 +3,7 @@ import { Modal, Checkbox, Label, Select, Input, Spinner, JobIcon, ErrorBox } fro
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { Tooltip, TooltipProvider, Button } from '../primitives';
 import { toast } from '../../stores/toastStore';
+import { analytics } from '../../services/analytics';
 import {
   fetchBiSFromXIVGear,
   fetchBiSFromEtro,
@@ -331,6 +332,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       setState('preview');
     } catch (err) {
       setState('error');
+      const previewSource = selectedPresetIndex !== '' ? 'preset' : detectBiSSource(inputValue.trim());
+      analytics.track('player', 'bis_import_error', { source: previewSource, errorType: err instanceof Error ? err.message : 'unknown' });
       if (err instanceof Error) {
         // Provide user-friendly error messages with guidance
         if (err.message.includes('404') || err.message.includes('not found')) {
@@ -446,6 +449,10 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
       gear: newGear,
       bisLink,
     });
+
+    // Track successful BiS import
+    const importSource = presetIdx !== null ? 'preset' : detectBiSSource(inputValue.trim());
+    analytics.track('player', 'bis_import', { source: importSource, job: player.job });
 
     toast.success('BiS imported successfully!');
     handleClose();

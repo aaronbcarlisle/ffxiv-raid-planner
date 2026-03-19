@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import { logger as baseLogger } from '../lib/logger';
 
 const logger = baseLogger.scope('apiKeyStore');
@@ -60,6 +61,7 @@ export const useApiKeyStore = create<ApiKeyState>((set, get) => ({
 
   createKey: async (name: string) => {
     const result = await api.post<ApiKeyCreateResponse>('/api/auth/api-keys', { name });
+    analytics.track('admin', 'api_key_create');
 
     // Refresh the key list (don't let failure here lose the raw key)
     try {

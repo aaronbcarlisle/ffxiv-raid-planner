@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { analytics } from '../services/analytics';
 import type { PageMode, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -241,6 +242,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Wrapper to persist viewMode and update URL
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode);
+    analytics.track('feature', 'view_mode_change', { mode });
     try {
       localStorage.setItem('party-view-mode', mode);
     } catch {
