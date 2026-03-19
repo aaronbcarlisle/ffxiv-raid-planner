@@ -106,7 +106,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         {user.isAdmin && (
           <DropdownItem
             icon={<Shield className="w-4 h-4 text-status-warning" />}
-            onSelect={() => navigate('/admin/statics')}
+            onSelect={() => navigate('/admin')}
           >
             <span className="text-status-warning">Admin Dashboard</span>
           </DropdownItem>
