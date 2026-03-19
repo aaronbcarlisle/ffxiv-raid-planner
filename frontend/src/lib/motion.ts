@@ -12,7 +12,7 @@ const DURATION_FAST = 0.15;
 const DURATION_NORMAL = 0.2;
 const DURATION_SLOW = 0.3;
 
-const ease = [0.4, 0, 0.2, 1] as const; // cubic-bezier matching index.css
+const ease = [0.4, 0, 0.2, 1] as const; // cubic-bezier(0.4, 0, 0.2, 1)
 
 // --- Individual element presets ---
 

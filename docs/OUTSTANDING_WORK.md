@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
 **Last Updated:** March 18, 2026
-**Current Version:** v1.14.0
+**Current Version:** v1.15.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
