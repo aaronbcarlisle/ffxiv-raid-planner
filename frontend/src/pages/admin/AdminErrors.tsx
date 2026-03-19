@@ -327,11 +327,24 @@ export function AdminErrors() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                // Intentionally throw to test error reporting pipeline
-                setTimeout(() => {
-                  throw new Error('[Test] Deliberate error triggered from admin dashboard');
-                }, 0);
+              onClick={async () => {
+                // Directly POST a test error to the backend (bypasses CSRF/timing issues
+                // that can prevent window.onerror → errorReporter → fetch from working)
+                try {
+                  const fingerprint = `test-${Date.now().toString(16)}`;
+                  await api.post('/api/analytics/errors', {
+                    fingerprint,
+                    errorType: 'js_error',
+                    message: `[Test] Deliberate error triggered at ${new Date().toLocaleTimeString()}`,
+                    stackTrace: 'at AdminErrors.tsx (test button click)',
+                    context: { url: location.href, browser: navigator.userAgent, source: 'test_button' },
+                    severity: 'error',
+                  });
+                  // Refresh the error list to show the new entry
+                  fetchErrors();
+                } catch (e) {
+                  console.error('Test error POST failed:', e);
+                }
               }}
             >
               Trigger Test Error
