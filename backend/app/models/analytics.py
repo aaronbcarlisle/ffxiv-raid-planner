@@ -44,7 +44,7 @@ class ErrorReport(Base):
     error_type: Mapped[str] = mapped_column(String(30), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
-    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    context: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     severity: Mapped[str] = mapped_column(String(10), nullable=False)
     source: Mapped[str] = mapped_column(String(10), nullable=False)
     is_reviewed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

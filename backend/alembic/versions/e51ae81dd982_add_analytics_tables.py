@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("error_type", sa.String(length=30), nullable=False),
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("stack_trace", sa.Text(), nullable=True),
-        sa.Column("context", sa.JSON(), nullable=True),
+        sa.Column("context", sa.JSON(), nullable=False),
         sa.Column("severity", sa.String(length=10), nullable=False),
         sa.Column("source", sa.String(length=10), nullable=False),
         sa.Column("is_reviewed", sa.Boolean(), nullable=False),
