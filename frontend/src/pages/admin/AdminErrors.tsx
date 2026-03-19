@@ -10,7 +10,8 @@ import { api } from '../../services/api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/primitives/Button';
 import { Badge } from '../../components/primitives/Badge';
-import { SortableHeader, SortDirection, toggleSort } from '../../components/admin/SortableHeader';
+import { SortableHeader, toggleSort } from '../../components/admin/SortableHeader';
+import type { SortDirection } from '../../components/admin/SortableHeader';
 
 // --- Types ---
 

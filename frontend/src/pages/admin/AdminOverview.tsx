@@ -21,7 +21,8 @@ import { api } from '../../services/api';
 import { AdminKpiCard } from '../../components/admin/AdminKpiCard';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/primitives/Button';
-import { SortableHeader, SortDirection, toggleSort } from '../../components/admin/SortableHeader';
+import { SortableHeader, toggleSort } from '../../components/admin/SortableHeader';
+import type { SortDirection } from '../../components/admin/SortableHeader';
 
 // --- Types ---
 
