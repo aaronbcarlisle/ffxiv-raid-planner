@@ -21,6 +21,7 @@ import {
 import { api } from '../../services/api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/primitives/Button';
+import { SortableHeader, SortDirection, toggleSort } from '../../components/admin/SortableHeader';
 
 // --- Types ---
 
@@ -38,7 +39,7 @@ interface UsageData {
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
-type SortField = 'count' | 'uniqueUsers';
+type UsageSortField = 'eventName' | 'category' | 'count' | 'uniqueUsers';
 
 const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: '7d', label: '7d' },
@@ -71,7 +72,14 @@ export function AdminUsage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('count');
+  const [sortField, setSortField] = useState<UsageSortField>('count');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
+
+  const handleSort = (field: UsageSortField) => {
+    const result = toggleSort(field, sortField, sortDir);
+    setSortField(result.field);
+    setSortDir(result.direction);
+  };
 
   const fetchUsage = useCallback(async (range: TimeRange) => {
     setLoading(true);
@@ -121,10 +129,24 @@ export function AdminUsage() {
   // Sorted events for the top events table
   const sortedEvents = useMemo(() => {
     if (!usageData) return [];
+    const mult = sortDir === 'asc' ? 1 : -1;
     return [...usageData.events]
-      .sort((a, b) => b[sortField] - a[sortField])
+      .sort((a, b) => {
+        switch (sortField) {
+          case 'eventName':
+            return mult * a.eventName.localeCompare(b.eventName);
+          case 'category':
+            return mult * a.category.localeCompare(b.category);
+          case 'count':
+            return mult * (a.count - b.count);
+          case 'uniqueUsers':
+            return mult * (a.uniqueUsers - b.uniqueUsers);
+          default:
+            return 0;
+        }
+      })
       .slice(0, 20);
-  }, [usageData, sortField]);
+  }, [usageData, sortField, sortDir]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -245,7 +267,7 @@ export function AdminUsage() {
 
       {/* Top Events Table */}
       <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-border-subtle">
           <h2 className="text-lg font-display font-semibold text-text-primary">
             Top Events
             {usageData && (
@@ -254,24 +276,6 @@ export function AdminUsage() {
               </span>
             )}
           </h2>
-          <div className="flex gap-1">
-            <Button
-              variant={sortField === 'count' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setSortField('count')}
-              className="!px-2 !py-1 !text-xs !min-h-0"
-            >
-              By Count
-            </Button>
-            <Button
-              variant={sortField === 'uniqueUsers' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setSortField('uniqueUsers')}
-              className="!px-2 !py-1 !text-xs !min-h-0"
-            >
-              By Users
-            </Button>
-          </div>
         </div>
         {loading || !usageData ? (
           <div className="p-4 space-y-3">
@@ -290,18 +294,10 @@ export function AdminUsage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border-subtle bg-surface-elevated">
-                <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Event Name
-                </th>
-                <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Count
-                </th>
-                <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Unique Users
-                </th>
+                <SortableHeader<UsageSortField> field="eventName" label="Event Name" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+                <SortableHeader<UsageSortField> field="category" label="Category" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+                <SortableHeader<UsageSortField> field="count" label="Count" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
+                <SortableHeader<UsageSortField> field="uniqueUsers" label="Unique Users" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">

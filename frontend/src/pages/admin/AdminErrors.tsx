@@ -5,11 +5,12 @@
  * and expandable detail panels with individual occurrences.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../../services/api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/primitives/Button';
 import { Badge } from '../../components/primitives/Badge';
+import { SortableHeader, SortDirection, toggleSort } from '../../components/admin/SortableHeader';
 
 // --- Types ---
 
@@ -60,7 +61,7 @@ interface ErrorDetailData {
 type SourceFilter = 'all' | 'frontend' | 'backend';
 type SeverityFilter = 'all' | 'warning' | 'error' | 'critical';
 type StatusFilter = 'all' | 'unreviewed' | 'reviewed';
-type SortField = 'count' | 'lastSeen' | 'severity';
+type ErrorSortField = 'message' | 'errorType' | 'severity' | 'source' | 'count' | 'affectedUsers' | 'lastSeen' | 'isReviewed';
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -140,8 +141,15 @@ export function AdminErrors() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [sortField, setSortField] = useState<SortField>('count');
+  const [sortField, setSortField] = useState<ErrorSortField>('count');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
   const [fetchError, setFetchError] = useState(false);
+
+  const handleSort = (field: ErrorSortField) => {
+    const result = toggleSort(field, sortField, sortDir);
+    setSortField(result.field);
+    setSortDir(result.direction);
+  };
 
   // Expanded row state
   const [expandedFingerprint, setExpandedFingerprint] = useState<string | null>(null);
@@ -232,6 +240,27 @@ export function AdminErrors() {
     }
   }, [detailData, errorList]);
 
+  // Unreview (re-open) an error
+  const handleUnreview = useCallback(async (fingerprint: string) => {
+    try {
+      await api.post(`/api/admin/analytics/errors/${encodeURIComponent(fingerprint)}/unreview`);
+      // Update local state
+      if (detailData) {
+        setDetailData({ ...detailData, isReviewed: false });
+      }
+      if (errorList) {
+        setErrorList({
+          ...errorList,
+          errors: errorList.errors.map(e =>
+            e.fingerprint === fingerprint ? { ...e, isReviewed: false } : e
+          ),
+        });
+      }
+    } catch {
+      // Silently handle
+    }
+  }, [detailData, errorList]);
+
   // Toggle stack trace visibility
   const toggleStackTrace = useCallback((occurrenceId: number) => {
     setExpandedStackTraces((prev) => {
@@ -246,21 +275,33 @@ export function AdminErrors() {
   }, []);
 
   // Sort errors client-side
-  const sortedErrors = errorList
-    ? [...errorList.errors].sort((a, b) => {
-        switch (sortField) {
-          case 'count':
-            return b.count - a.count;
-          case 'lastSeen':
-            return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
-          case 'severity':
-            return (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 0) -
-              (SEVERITY_ORDER[a.severity.toLowerCase()] ?? 0);
-          default:
-            return 0;
-        }
-      })
-    : [];
+  const sortedErrors = useMemo(() => {
+    if (!errorList) return [];
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...errorList.errors].sort((a, b) => {
+      switch (sortField) {
+        case 'message':
+          return mult * a.message.localeCompare(b.message);
+        case 'errorType':
+          return mult * a.errorType.localeCompare(b.errorType);
+        case 'severity':
+          return mult * ((SEVERITY_ORDER[a.severity.toLowerCase()] ?? 0) -
+            (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 0));
+        case 'source':
+          return mult * a.source.localeCompare(b.source);
+        case 'count':
+          return mult * (a.count - b.count);
+        case 'affectedUsers':
+          return mult * (a.affectedUsers - b.affectedUsers);
+        case 'lastSeen':
+          return mult * (new Date(a.lastSeen).getTime() - new Date(b.lastSeen).getTime());
+        case 'isReviewed':
+          return mult * (Number(a.isReviewed) - Number(b.isReviewed));
+        default:
+          return 0;
+      }
+    });
+  }, [errorList, sortField, sortDir]);
 
   // Count unreviewed for the header badge
   const unreviewedCount = errorList
@@ -279,6 +320,21 @@ export function AdminErrors() {
             <Badge variant="error" size="lg">
               {unreviewedCount} unreviewed
             </Badge>
+          )}
+          {import.meta.env.DEV && (
+            /* design-system-ignore: Temporary dev-only test button */
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                // Intentionally throw to test error reporting pipeline
+                setTimeout(() => {
+                  throw new Error('[Test] Deliberate error triggered from admin dashboard');
+                }, 0);
+              }}
+            >
+              Trigger Test Error
+            </Button>
           )}
         </div>
         <p className="text-text-muted mt-1">
@@ -338,34 +394,6 @@ export function AdminErrors() {
           ))}
         </div>
 
-        {/* Sort */}
-        <div className="flex items-center gap-1 ml-auto">
-          <span className="text-xs text-text-muted uppercase tracking-wider mr-1">Sort:</span>
-          <Button
-            variant={sortField === 'count' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setSortField('count')}
-            className="!px-2 !py-1 !text-xs !min-h-0"
-          >
-            Count
-          </Button>
-          <Button
-            variant={sortField === 'lastSeen' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setSortField('lastSeen')}
-            className="!px-2 !py-1 !text-xs !min-h-0"
-          >
-            Last Seen
-          </Button>
-          <Button
-            variant={sortField === 'severity' ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => setSortField('severity')}
-            className="!px-2 !py-1 !text-xs !min-h-0"
-          >
-            Severity
-          </Button>
-        </div>
       </div>
 
       {fetchError && (
@@ -397,30 +425,14 @@ export function AdminErrors() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Message
-                  </th>
-                  <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Severity
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Count
-                  </th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Users
-                  </th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Last Seen
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Status
-                  </th>
+                  <SortableHeader<ErrorSortField> field="message" label="Message" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+                  <SortableHeader<ErrorSortField> field="errorType" label="Type" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+                  <SortableHeader<ErrorSortField> field="severity" label="Severity" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
+                  <SortableHeader<ErrorSortField> field="source" label="Source" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
+                  <SortableHeader<ErrorSortField> field="count" label="Count" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
+                  <SortableHeader<ErrorSortField> field="affectedUsers" label="Users" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
+                  <SortableHeader<ErrorSortField> field="lastSeen" label="Last Seen" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
+                  <SortableHeader<ErrorSortField> field="isReviewed" label="Status" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -438,6 +450,7 @@ export function AdminErrors() {
                     }
                     markingReviewed={markingReviewed}
                     onMarkReviewed={handleMarkReviewed}
+                    onUnreview={handleUnreview}
                     expandedStackTraces={expandedStackTraces}
                     onToggleStackTrace={toggleStackTrace}
                   />
@@ -490,6 +503,7 @@ interface ErrorRowProps {
   detailLoading: boolean;
   markingReviewed: boolean;
   onMarkReviewed: (fingerprint: string) => void;
+  onUnreview: (fingerprint: string) => void;
   expandedStackTraces: Set<number>;
   onToggleStackTrace: (id: number) => void;
 }
@@ -502,6 +516,7 @@ function ErrorRow({
   detailLoading,
   markingReviewed,
   onMarkReviewed,
+  onUnreview,
   expandedStackTraces,
   onToggleStackTrace,
 }: ErrorRowProps) {
@@ -595,22 +610,31 @@ function ErrorRow({
                         </div>
                       </div>
                       <div className="flex items-center gap-3 pt-2">
-                        {!detailData.isReviewed && (
+                        {detailData.isReviewed ? (
                           <Button
-                            variant="success"
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUnreview(detailData.fingerprint);
+                            }}
+                            className="!min-h-0"
+                          >
+                            Re-open
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="primary"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               onMarkReviewed(detailData.fingerprint);
                             }}
-                            loading={markingReviewed}
+                            disabled={markingReviewed}
                             className="!min-h-0"
                           >
-                            Mark Reviewed
+                            {markingReviewed ? 'Marking...' : 'Mark Reviewed'}
                           </Button>
-                        )}
-                        {detailData.isReviewed && (
-                          <Badge variant="success" size="lg">Reviewed</Badge>
                         )}
                       </div>
                     </div>

@@ -653,3 +653,33 @@ async def mark_error_reviewed(
     )
 
     return {"status": "ok"}
+
+
+@router.post("/api/admin/analytics/errors/{fingerprint}/unreview")
+async def mark_error_unreviewed(
+    fingerprint: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Mark all occurrences of an error group as unreviewed (re-open)."""
+    await require_admin(user, session)
+
+    result = await session.execute(
+        update(ErrorReport)
+        .where(ErrorReport.fingerprint == fingerprint)
+        .values(is_reviewed=False)
+    )
+
+    if result.rowcount == 0:
+        raise NotFound(f"Error group '{fingerprint}' not found")
+
+    await session.commit()
+
+    logger.info(
+        "error_group_unreviewed",
+        fingerprint=fingerprint,
+        unreviewed_by=user.id,
+        count=result.rowcount,
+    )
+
+    return {"status": "ok"}

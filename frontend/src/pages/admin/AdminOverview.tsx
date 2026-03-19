@@ -5,7 +5,7 @@
  * and top users/statics tables. Fetches data from admin analytics endpoints.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -21,6 +21,7 @@ import { api } from '../../services/api';
 import { AdminKpiCard } from '../../components/admin/AdminKpiCard';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/primitives/Button';
+import { SortableHeader, SortDirection, toggleSort } from '../../components/admin/SortableHeader';
 
 // --- Types ---
 
@@ -62,6 +63,9 @@ interface TopStatic {
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
+type OverviewSortField = 'username' | 'staticsCreated' | 'staticsJoined';
+type StaticsSortField = 'name' | 'memberCount' | 'lootEntries' | 'lastLog';
+
 const TIME_RANGES: { value: TimeRange; label: string }[] = [
   { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
@@ -88,6 +92,67 @@ export function AdminOverview() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingGrowth, setLoadingGrowth] = useState(true);
   const [loadingTables, setLoadingTables] = useState(true);
+
+  // Sort state for Top Users table
+  const [userSortField, setUserSortField] = useState<OverviewSortField>('staticsCreated');
+  const [userSortDir, setUserSortDir] = useState<SortDirection>('desc');
+
+  // Sort state for Top Statics table
+  const [staticSortField, setStaticSortField] = useState<StaticsSortField>('lootEntries');
+  const [staticSortDir, setStaticSortDir] = useState<SortDirection>('desc');
+
+  const handleUserSort = (field: OverviewSortField) => {
+    const result = toggleSort(field, userSortField, userSortDir);
+    setUserSortField(result.field);
+    setUserSortDir(result.direction);
+  };
+
+  const handleStaticSort = (field: StaticsSortField) => {
+    const result = toggleSort(field, staticSortField, staticSortDir);
+    setStaticSortField(result.field);
+    setStaticSortDir(result.direction);
+  };
+
+  // Sorted top users
+  const sortedTopUsers = useMemo(() => {
+    if (!topUsers) return [];
+    const mult = userSortDir === 'asc' ? 1 : -1;
+    return [...topUsers].sort((a, b) => {
+      switch (userSortField) {
+        case 'username':
+          return mult * a.username.localeCompare(b.username);
+        case 'staticsCreated':
+          return mult * (a.staticsCreated - b.staticsCreated);
+        case 'staticsJoined':
+          return mult * (a.staticsJoined - b.staticsJoined);
+        default:
+          return 0;
+      }
+    });
+  }, [topUsers, userSortField, userSortDir]);
+
+  // Sorted top statics
+  const sortedTopStatics = useMemo(() => {
+    if (!topStatics) return [];
+    const mult = staticSortDir === 'asc' ? 1 : -1;
+    return [...topStatics].sort((a, b) => {
+      switch (staticSortField) {
+        case 'name':
+          return mult * a.name.localeCompare(b.name);
+        case 'memberCount':
+          return mult * (a.memberCount - b.memberCount);
+        case 'lootEntries':
+          return mult * (a.lootEntries - b.lootEntries);
+        case 'lastLog': {
+          const aTime = a.lastLog ? new Date(a.lastLog).getTime() : 0;
+          const bTime = b.lastLog ? new Date(b.lastLog).getTime() : 0;
+          return mult * (aTime - bTime);
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [topStatics, staticSortField, staticSortDir]);
 
   // Fetch overview KPIs
   const fetchOverview = useCallback(async () => {
@@ -315,19 +380,13 @@ export function AdminOverview() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Joined
-                  </th>
+                  <SortableHeader<OverviewSortField> field="username" label="User" currentField={userSortField} currentDirection={userSortDir} onSort={handleUserSort} />
+                  <SortableHeader<OverviewSortField> field="staticsCreated" label="Created" currentField={userSortField} currentDirection={userSortDir} onSort={handleUserSort} align="center" />
+                  <SortableHeader<OverviewSortField> field="staticsJoined" label="Joined" currentField={userSortField} currentDirection={userSortDir} onSort={handleUserSort} align="center" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {topUsers.map((u) => (
+                {sortedTopUsers.map((u) => (
                   <tr key={u.userId} className="hover:bg-surface-elevated transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
@@ -382,22 +441,14 @@ export function AdminOverview() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
-                  <th className="text-left px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Members
-                  </th>
-                  <th className="text-center px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Loot Entries
-                  </th>
-                  <th className="text-right px-4 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">
-                    Last Log
-                  </th>
+                  <SortableHeader<StaticsSortField> field="name" label="Name" currentField={staticSortField} currentDirection={staticSortDir} onSort={handleStaticSort} />
+                  <SortableHeader<StaticsSortField> field="memberCount" label="Members" currentField={staticSortField} currentDirection={staticSortDir} onSort={handleStaticSort} align="center" />
+                  <SortableHeader<StaticsSortField> field="lootEntries" label="Loot Entries" currentField={staticSortField} currentDirection={staticSortDir} onSort={handleStaticSort} align="center" />
+                  <SortableHeader<StaticsSortField> field="lastLog" label="Last Log" currentField={staticSortField} currentDirection={staticSortDir} onSort={handleStaticSort} align="right" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {topStatics.map((s) => (
+                {sortedTopStatics.map((s) => (
                   <tr key={s.staticId} className="hover:bg-surface-elevated transition-colors">
                     <td className="px-4 py-2">
                       <span className="text-sm text-accent font-medium truncate">
