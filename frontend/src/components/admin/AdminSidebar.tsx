@@ -7,21 +7,23 @@
 
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, Users, BarChart3, AlertTriangle, Menu, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { api } from '../../services/api';
 import { Badge } from '../primitives/Badge';
 
 interface NavItem {
   to: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   end?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/admin/overview', label: 'Overview', icon: '\u{1F4CA}', end: true },
-  { to: '/admin/statics', label: 'Statics', icon: '\u{1F465}' },
-  { to: '/admin/usage', label: 'Usage Analytics', icon: '\u{1F4C8}' },
-  { to: '/admin/errors', label: 'Error Log', icon: '\u{26A0}\u{FE0F}' },
+  { to: '/admin/overview', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/admin/statics', label: 'Statics', icon: Users },
+  { to: '/admin/usage', label: 'Usage Analytics', icon: BarChart3 },
+  { to: '/admin/errors', label: 'Error Log', icon: AlertTriangle },
 ];
 
 interface ErrorListResponse {
@@ -55,31 +57,32 @@ export function AdminSidebar() {
       <h2 className="font-display text-sm font-bold text-status-warning uppercase tracking-wider px-3 mb-3">
         Admin
       </h2>
-      {NAV_ITEMS.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          onClick={() => setMobileOpen(false)}
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'text-accent bg-accent/10 border-l-2 border-accent -ml-px'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-            }`
-          }
-        >
-          <span className="text-base" aria-hidden="true">
-            {item.icon}
-          </span>
-          <span className="flex-1">{item.label}</span>
-          {item.to === '/admin/errors' && unreviewedErrors > 0 && (
-            <Badge variant="error" size="sm">
-              {unreviewedErrors}
-            </Badge>
-          )}
-        </NavLink>
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const Icon = item.icon;
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            onClick={() => setMobileOpen(false)}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isActive
+                  ? 'text-accent bg-accent/10 border-l-2 border-accent -ml-px'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+              }`
+            }
+          >
+            <Icon size={18} aria-hidden="true" />
+            <span className="flex-1">{item.label}</span>
+            {item.to === '/admin/errors' && unreviewedErrors > 0 && (
+              <Badge variant="error" size="sm">
+                {unreviewedErrors}
+              </Badge>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 
@@ -92,7 +95,7 @@ export function AdminSidebar() {
         className="lg:hidden fixed bottom-4 left-4 z-50 bg-accent text-accent-contrast w-10 h-10 rounded-full shadow-lg flex items-center justify-center"
         aria-label={mobileOpen ? 'Close admin menu' : 'Open admin menu'}
       >
-        {mobileOpen ? '\u2715' : '\u2630'}
+        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
       {/* Mobile overlay */}
