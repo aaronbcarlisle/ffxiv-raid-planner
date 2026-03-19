@@ -22,8 +22,8 @@ import type { TemplateRole, StaticSettings } from '../types';
 // Default display order (party list style: tanks first, then healers, then DPS)
 export const DEFAULT_DISPLAY_ORDER = ['tank', 'healer', 'melee', 'ranged', 'caster'];
 
-// Default loot priority (DPS first, as they benefit most from gear)
-export const DEFAULT_LOOT_PRIORITY = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+// Default loot priority (DPS first — casters scale harder than phys ranged due to ranged tax)
+export const DEFAULT_LOOT_PRIORITY = ['melee', 'caster', 'ranged', 'tank', 'healer'];
 
 // Default static group settings (single source of truth)
 export const DEFAULT_SETTINGS: StaticSettings = {
