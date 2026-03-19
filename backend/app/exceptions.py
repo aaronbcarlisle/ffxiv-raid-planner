@@ -1,11 +1,13 @@
 """Centralized exception handling for consistent error responses."""
 
+import asyncio
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import distinct, func, select
 
 from .logging_config import get_logger
 
@@ -154,6 +156,42 @@ async def _capture_error_report(
             )
             session.add(error_report)
             await session.commit()
+
+        # Check if Discord webhook should fire (non-blocking)
+        try:
+            from .services.discord_webhook import discord_webhook
+
+            async with async_session_maker() as check_session:
+                one_hour_ago = (
+                    datetime.now(timezone.utc) - timedelta(hours=1)
+                ).isoformat()
+                result = await check_session.execute(
+                    select(
+                        func.count(ErrorReport.id),
+                        func.count(distinct(ErrorReport.user_id)),
+                    ).where(
+                        ErrorReport.fingerprint == fingerprint,
+                        ErrorReport.created_at > one_hour_ago,
+                    )
+                )
+                count, affected = result.one()
+
+                if count >= 3 or severity == "critical":
+                    asyncio.create_task(
+                        discord_webhook.send_error_alert(
+                            fingerprint=fingerprint,
+                            message=message[:200],
+                            count=count,
+                            affected_users=affected,
+                            severity=severity,
+                        )
+                    )
+        except Exception as webhook_exc:
+            logger.warning(
+                "webhook_check_failed",
+                error=str(webhook_exc),
+                fingerprint=fingerprint,
+            )
     except Exception as capture_exc:
         # Never let error capture break the error response
         logger.warning(

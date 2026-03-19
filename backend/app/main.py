@@ -1,5 +1,6 @@
 """FastAPI application for FFXIV Raid Planner"""
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -20,6 +21,7 @@ from .middleware import (
     SecurityHeadersMiddleware,
 )
 from .rate_limit import limiter
+from .tasks.analytics_retention import retention_loop
 from .routers import (
     analytics_router,
     api_keys_router,
@@ -52,8 +54,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("database_tables_created", mode="auto")
     else:
         logger.info("database_setup", mode="migrations")
+
+    # Start background retention task
+    retention_task = asyncio.create_task(retention_loop())
+
     yield
+
     # Shutdown
+    retention_task.cancel()
+    try:
+        await retention_task
+    except asyncio.CancelledError:
+        pass
     await close_cache()
     logger.info("app_shutdown")
 
