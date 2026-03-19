@@ -330,6 +330,11 @@ export function SectionedLogView({
     return player?.name || 'Unknown';
   }, [players]);
 
+  const getPlayerJob = useCallback((playerId: string) => {
+    const player = players.find(p => p.id === playerId);
+    return player?.job;
+  }, [players]);
+
   // Handler for MarkFloorClearedModal
   const handleMarkFloorCleared = useCallback(async (request: import('../../types').MarkFloorClearedRequest) => {
     const { markFloorCleared } = useLootTrackingStore.getState();
@@ -1212,6 +1217,7 @@ export function SectionedLogView({
                               highlightedEntryId={highlightedEntryId}
                               canEdit={canEdit}
                               getPlayerName={getPlayerName}
+                              getPlayerJob={getPlayerJob}
                               onCopyUrl={handleCopyEntryUrl}
                               onEdit={handleEditLootEntry}
                               onDelete={handleDeleteLoot}
@@ -1247,6 +1253,7 @@ export function SectionedLogView({
                         highlightedEntryId={highlightedEntryId}
                         canEdit={canEdit}
                         getPlayerName={getPlayerName}
+                        getPlayerJob={getPlayerJob}
                         onCopyUrl={handleCopyEntryUrl}
                         onEdit={handleEditLootEntry}
                         onDelete={handleDeleteLoot}
@@ -1541,6 +1548,7 @@ export function SectionedLogView({
                                 highlightedEntryId={highlightedEntryId}
                                 canEdit={canEdit}
                                 getPlayerName={getPlayerName}
+                                getPlayerJob={getPlayerJob}
                                 onCopyUrl={handleCopyEntryUrl}
                                 onEdit={handleEditLootEntry}
                                 onDelete={handleDeleteLoot}
@@ -1575,6 +1583,7 @@ export function SectionedLogView({
                           highlightedEntryId={highlightedEntryId}
                           canEdit={canEdit}
                           getPlayerName={getPlayerName}
+                          getPlayerJob={getPlayerJob}
                           onCopyUrl={handleCopyEntryUrl}
                           onEdit={handleEditLootEntry}
                           onDelete={handleDeleteLoot}
