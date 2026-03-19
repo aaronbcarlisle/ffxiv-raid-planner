@@ -155,13 +155,13 @@ export function Home() {
           ) : user ? (
             <Link
               to="/dashboard"
-              className="inline-block btn-primary px-8 py-4 text-lg rounded-lg"
+              className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
             >
               Go to My Statics
             </Link>
           ) : (
             <div className="flex justify-center">
-              <LoginButton className="btn-primary px-8 py-4 text-lg rounded-lg" />
+              <LoginButton className="bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors" />
             </div>
           )}
         </motion.div>

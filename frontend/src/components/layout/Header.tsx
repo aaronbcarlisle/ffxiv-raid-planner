@@ -205,7 +205,7 @@ export function Header() {
   }, [tierPermission.allowed, currentTier, availableTiers.length, tiers.length, dispatchHeaderEvent]);
 
   return (
-    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default header-gradient">
+    <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-3 sm:gap-4">
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         {/* On mobile, flex-1 allows static selector to fill available space (Invite/Share buttons hidden on mobile) */}
