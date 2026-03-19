@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
 import { authRequest } from '../services/api';
+import { analytics } from '../services/analytics';
 import { logger } from '../lib/logger';
 
 // Stable empty array reference to avoid re-renders when players is undefined
@@ -303,6 +304,11 @@ export const useTierStore = create<TierState>((set, get) => ({
         }
         return { isSaving: false };
       });
+
+      // Track when a player becomes configured (initial setup complete)
+      if (data.configured && !previousPlayer?.configured) {
+        analytics.track('player', 'player_configure', { job: updatedPlayer.job, role: updatedPlayer.role });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update player';
       const errorStack = error instanceof Error ? error.stack || null : null;
@@ -491,6 +497,8 @@ export const useTierStore = create<TierState>((set, get) => ({
         }
         return { isSaving: false };
       });
+
+      analytics.track('player', 'player_claim', { position: updatedPlayer.position });
 
       return updatedPlayer;
     } catch (error) {

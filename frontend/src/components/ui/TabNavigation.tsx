@@ -1,6 +1,7 @@
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
+import { analytics } from '../../services/analytics';
 
 interface TabNavigationProps {
   activeTab: PageMode;
@@ -44,7 +45,10 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
         >
           {/* design-system-ignore: Tab button requires specific toggle styling */}
           <button
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              analytics.track('navigation', 'tab_switch', { tab: tab.id });
+              onTabChange(tab.id);
+            }}
             className={`
               flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border
               ${

@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { analytics } from '../services/analytics';
 import { getErrorMessage } from '../lib/errorHandler';
 import { logger } from '../lib/logger';
 import type {
@@ -315,6 +316,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/loot-log`, data);
+      analytics.track('loot', 'loot_log', { floor: data.floor, slot: data.itemSlot, method: data.method });
       // Update maxWeek if the new entry's week is higher
       const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {
@@ -365,6 +367,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
     set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/tiers/${tierId}/material-log`, data);
+      analytics.track('loot', 'material_log', { floor: data.floor, materialType: data.materialType, method: data.method });
       // Update maxWeek if the new entry's week is higher
       const { maxWeek } = get();
       if (data.weekNumber > maxWeek) {

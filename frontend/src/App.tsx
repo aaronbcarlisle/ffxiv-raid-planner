@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
@@ -57,12 +57,19 @@ function PageLoader() {
 }
 
 function App() {
+  const location = useLocation();
+
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
     initializeAuth();
     analytics.init();
     errorReporter.init();
   }, []);
+
+  // Track page views on route changes
+  useEffect(() => {
+    analytics.track('navigation', 'page_view', { page: location.pathname });
+  }, [location.pathname]);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
