@@ -1,7 +1,7 @@
 /**
  * Motion presets for framer-motion animations.
  *
- * All presets use CSS variable-based durations for consistency with the design system.
+ * Duration constants mirror the CSS design tokens (--duration-fast/normal/slow).
  * Gate on `prefersReducedMotion` from useDevice() before applying.
  */
 
@@ -67,8 +67,8 @@ export const pageTransition: Variants = {
 
 export const instantVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.01 } },
-  exit: { opacity: 0, transition: { duration: 0.01 } },
+  visible: { opacity: 1, transition: { duration: 0 } },
+  exit: { opacity: 0, transition: { duration: 0 } },
 };
 
 // --- Toast presets ---

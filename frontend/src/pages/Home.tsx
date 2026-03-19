@@ -106,7 +106,7 @@ export function Home() {
 
   const { prefersReducedMotion } = useDevice();
   const itemVariants = prefersReducedMotion ? instantVariants : staggerItem;
-  const containerVariants = prefersReducedMotion ? {} : staggerContainer;
+  const containerVariants = prefersReducedMotion ? instantVariants : staggerContainer;
 
   return (
     <div className="text-center py-16 px-4 sm:px-6">

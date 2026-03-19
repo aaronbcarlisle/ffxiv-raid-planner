@@ -349,15 +349,6 @@
     0 0 20px color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
-/* Light mode header gradient */
-[data-theme="light"] .header-gradient {
-  background-image: linear-gradient(
-    180deg,
-    transparent 0%,
-    var(--color-accent-dim) 100%
-  );
-}
-
 /* Light mode glow effects */
 [data-theme="light"] .glow-teal {
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-accent) 30%, transparent));
@@ -929,6 +920,25 @@ dialog input[type="radio"] {
 }
 
 /* ================================
+   TIER BANNER ANIMATION
+   ================================ */
+
+@keyframes tier-banner-in {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-tier-banner-in {
+  animation: tier-banner-in 0.6s ease-out;
+}
+
+/* ================================
    SHIMMER SKELETON ANIMATION
    ================================ */
 
@@ -972,14 +982,14 @@ dialog input[type="radio"] {
   animation: stagger-fade-in 0.2s ease-out backwards;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0s; }
-.stagger-children > *:nth-child(2) { animation-delay: 0.04s; }
-.stagger-children > *:nth-child(3) { animation-delay: 0.04s; }
-.stagger-children > *:nth-child(4) { animation-delay: 0.08s; }
-.stagger-children > *:nth-child(5) { animation-delay: 0.08s; }
-.stagger-children > *:nth-child(6) { animation-delay: 0.12s; }
-.stagger-children > *:nth-child(7) { animation-delay: 0.12s; }
-.stagger-children > *:nth-child(8) { animation-delay: 0.16s; }
-.stagger-children > *:nth-child(n+9) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.03s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.09s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.21s; }
+.stagger-children > *:nth-child(n+9) { animation-delay: 0.24s; }
 
 /* Respect reduced motion preference for animations */
 @media (prefers-reduced-motion: reduce) {
@@ -988,7 +998,8 @@ dialog input[type="radio"] {
   .animate-fade-in,
   .animate-slide-out-right,
   .animate-fade-out,
-  .animate-shimmer {
+  .animate-shimmer,
+  .animate-tier-banner-in {
     animation: none;
   }
 

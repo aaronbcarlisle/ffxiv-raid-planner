@@ -81,6 +81,7 @@ export function ProgressRing({
           width={diameter}
           height={diameter}
           className="transform -rotate-90"
+          style={{ overflow: 'visible' }}
         >
           {/* Background circle (track) */}
           <circle

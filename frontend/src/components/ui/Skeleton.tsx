@@ -2,7 +2,7 @@
  * Skeleton Loading Components
  *
  * Placeholder components shown while content is loading.
- * Uses a subtle pulse animation for better UX.
+ * Uses a shimmer gradient sweep animation for better UX.
  */
 
 interface SkeletonProps {
@@ -10,7 +10,7 @@ interface SkeletonProps {
 }
 
 /**
- * Base skeleton component - a pulsing placeholder block
+ * Base skeleton component - a shimmer placeholder block
  */
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
