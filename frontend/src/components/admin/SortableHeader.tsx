@@ -6,8 +6,7 @@
  */
 
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-
-export type SortDirection = 'asc' | 'desc';
+import type { SortDirection } from './sortUtils';
 
 interface SortableHeaderProps<T extends string> {
   field: T;
@@ -56,16 +55,4 @@ export function SortableHeader<T extends string>({
       </span>
     </th>
   );
-}
-
-/** Toggle sort: same field flips direction, new field starts descending. */
-export function toggleSort<T extends string>(
-  field: T,
-  currentField: T,
-  currentDirection: SortDirection,
-): { field: T; direction: SortDirection } {
-  if (field === currentField) {
-    return { field, direction: currentDirection === 'asc' ? 'desc' : 'asc' };
-  }
-  return { field, direction: 'desc' };
 }
