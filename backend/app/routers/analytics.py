@@ -218,12 +218,12 @@ async def get_overview(
 async def get_growth(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-    range: str = Query("30d", pattern="^(7d|30d|90d|all)$"),
+    time_range: str = Query("30d", alias="range", pattern="^(7d|30d|90d|all)$"),
 ) -> GrowthResponse:
     """Get time-series growth data for users and statics."""
     await require_admin(user, session)
 
-    cutoff = _parse_range(range)
+    cutoff = _parse_range(time_range)
 
     # Users by date
     user_query = select(
@@ -262,12 +262,12 @@ async def get_growth(
 async def get_usage(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
-    range: str = Query("30d", pattern="^(7d|30d|90d|all)$"),
+    time_range: str = Query("30d", alias="range", pattern="^(7d|30d|90d|all)$"),
 ) -> UsageResponse:
     """Get feature usage statistics from analytics events."""
     await require_admin(user, session)
 
-    cutoff = _parse_range(range)
+    cutoff = _parse_range(time_range)
 
     query = select(
         AnalyticsEvent.event_name,
@@ -623,6 +623,9 @@ async def mark_error_reviewed(
         .where(ErrorReport.fingerprint == fingerprint)
         .values(is_reviewed=True)
     )
+
+    if result.rowcount == 0:
+        raise NotFound(f"Error group '{fingerprint}' not found")
 
     await session.commit()
 

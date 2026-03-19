@@ -20,7 +20,7 @@ class AnalyticsEventIn(CamelModel):
 class AnalyticsEventBatch(CamelModel):
     """Batch of analytics events (max 50 per request)."""
 
-    events: list[AnalyticsEventIn] = Field(max_length=50)
+    events: list[AnalyticsEventIn] = Field(min_length=1, max_length=50)
 
 
 class ErrorReportIn(CamelModel):
