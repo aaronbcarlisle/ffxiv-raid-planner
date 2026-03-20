@@ -120,8 +120,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'log') return 'history';
     if (urlTab === 'summary') return 'stats';
     const saved = localStorage.getItem('group-view-tab');
-    // Handle legacy 'stats' tab - redirect to 'players'
+    // Handle legacy tab values - redirect to current equivalents
     if (saved === 'stats') return 'players';
+    if (saved === 'priority') return 'loot';
     return (saved as PageMode) || 'players';
   });
 

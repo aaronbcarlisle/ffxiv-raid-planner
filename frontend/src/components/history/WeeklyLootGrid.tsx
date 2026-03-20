@@ -324,12 +324,14 @@ export function WeeklyLootGrid({
     return players.find(p => p.id === playerId);
   };
 
-  // Get the latest loot entry for a specific floor and slot
+  // Get the latest loot entry for a specific floor and slot (newest by createdAt)
   const getLootForSlot = (floorNum: FloorNumber, slot: string): LootLogEntry | undefined => {
     const floorName = floors[floorNum - 1];
-    return weekLootEntries.find(e =>
+    const matches = weekLootEntries.filter(e =>
       e.floor === floorName && e.itemSlot === slot
     );
+    if (matches.length <= 1) return matches[0];
+    return matches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
   };
 
   // Get ALL loot entries for a specific floor and slot (for multi-entry badge)
@@ -626,7 +628,7 @@ export function WeeklyLootGrid({
                               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                               setPopoverState({ entries: allSlotEntries, anchorRect: rect });
                             }}
-                            className="absolute top-1 right-1 z-[5] px-1 py-0.5 text-[9px] font-bold leading-none rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
+                            className="absolute top-1 right-1 z-[5] px-1 py-0.5 text-[10px] font-bold leading-none rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
                             aria-label={`${allSlotEntries.length} entries for ${slotDisplayName}`}
                           >
                             ×{allSlotEntries.length}

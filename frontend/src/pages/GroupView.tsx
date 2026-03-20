@@ -125,6 +125,13 @@ export function GroupView() {
 
   // Week to navigate to after wizard completion (cleared after HistoryView consumes it)
   const [wizardTargetWeek, setWizardTargetWeek] = useState<number | null>(null);
+  // Clear wizardTargetWeek after one render cycle so it doesn't re-trigger on subsequent renders
+  useEffect(() => {
+    if (wizardTargetWeek !== null) {
+      const timer = requestAnimationFrame(() => setWizardTargetWeek(null));
+      return () => cancelAnimationFrame(timer);
+    }
+  }, [wizardTargetWeek]);
 
   // Device capabilities for responsive behavior
   const { isSmallScreen } = useDevice();
@@ -1379,8 +1386,6 @@ export function GroupView() {
             }
             // Navigate the Loot Log week selector to the logged week
             setWizardTargetWeek(loggedWeek);
-            // Clear after HistoryView consumes it
-            setTimeout(() => setWizardTargetWeek(null), 500);
           }}
         />
       )}

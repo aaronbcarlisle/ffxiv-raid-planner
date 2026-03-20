@@ -122,10 +122,10 @@ export function AllWeeksView({
   }, []);
 
   // Debounce search
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 200);
-    return () => clearTimeout(debounceRef.current);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
   // --- Helpers ---
@@ -505,7 +505,15 @@ export function AllWeeksView({
                     key={`${row.type}-${row.id}`}
                     id={`${row.type}-entry-${row.id}`}
                     className={`hover:bg-surface-elevated/50 transition-colors cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
+                    tabIndex={0}
+                    role="button"
                     onClick={(e) => handleRowClick(e, row)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRowClick(e as unknown as React.MouseEvent, row);
+                      }
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, row)}
                   >
                     {/* Week */}

@@ -65,13 +65,18 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Position the popover below the badge, centered
+  // Position the popover below the badge, centered and clamped to viewport
+  const popoverWidth = 280;
+  const margin = 8;
+  const computedLeft = anchorRect.left + anchorRect.width / 2 - popoverWidth / 2;
+  const clampedLeft = Math.max(margin, Math.min(computedLeft, window.innerWidth - popoverWidth - margin));
+
   const style: React.CSSProperties = {
     position: 'fixed',
     top: anchorRect.bottom + 4,
-    left: Math.max(8, anchorRect.left + anchorRect.width / 2 - 140),
+    left: clampedLeft,
     zIndex: 50,
-    width: 280,
+    width: popoverWidth,
   };
 
   // If popover would go off the bottom, show above
@@ -91,7 +96,7 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
   const slotName = entries[0] ? (GEAR_SLOT_NAMES[entries[0].itemSlot as keyof typeof GEAR_SLOT_NAMES] || entries[0].itemSlot) : 'Slot';
 
   return (
-    <div ref={popoverRef} style={style} className="bg-surface-card border border-border-default rounded-lg shadow-lg overflow-hidden">
+    <div ref={popoverRef} style={style} className="bg-surface-card border border-border-default rounded-lg shadow-lg overflow-hidden animate-fade-in">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border-default bg-surface-raised">
         <div className="text-xs font-medium text-text-primary">

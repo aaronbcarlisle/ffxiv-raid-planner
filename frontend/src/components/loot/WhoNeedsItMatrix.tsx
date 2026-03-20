@@ -128,7 +128,7 @@ function MaterialPieIndicator({ total, augmented, roleColor, size = 28 }: {
         textAnchor="middle"
         dominantBaseline="central"
         fill={roleColor}
-        fontSize={size <= 16 ? 7 : total === 1 ? 10 : 9}
+        fontSize={size <= 16 ? 8 : total === 1 ? 10 : 9}
         fontWeight="bold"
         style={{ fontFamily: 'var(--font-sans)' }}
       >
@@ -238,10 +238,17 @@ export function WhoNeedsItMatrix({
             augmented = player.tomeWeapon?.hasItem ? 1 : 0;
           }
         } else if (material === 'solvent') {
-          // Binary: tome weapon augmentation
+          // Check tomeWeapon tracking first
           if (player.tomeWeapon?.pursuing && player.tomeWeapon?.hasItem) {
             total = 1;
             augmented = player.tomeWeapon?.isAugmented ? 1 : 0;
+          } else {
+            // Fallback: check gear array for tome-sourced weapon (covers players not using tomeWeapon tracking)
+            const weaponGear = player.gear.find(g => g.slot === 'weapon');
+            if (weaponGear?.bisSource === 'tome' && weaponGear?.hasItem) {
+              total = 1;
+              if (weaponGear.isAugmented) augmented = 1;
+            }
           }
         } else {
           // Twine/glaze: count tome BiS slots that have the item (actionable for augmentation)
@@ -287,8 +294,7 @@ export function WhoNeedsItMatrix({
     });
   }, [sortedPlayers]);
 
-  // Check if any materials are visible (floors that have materials)
-  const hasMaterialsForFloor = activeMaterialsForFloor.size > 0;
+
 
   return (
     <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden flex flex-col h-full sm:block sm:h-auto">
@@ -468,6 +474,7 @@ export function WhoNeedsItMatrix({
                                   }
                                 }}
                                 disabled={!showLogButtons || !isActiveMaterial}
+                                aria-label={`${player.name} needs ${counts.needed} ${displayName}. ${counts.augmented} of ${counts.total} augmented.`}
                                 className={`
                                   mx-auto transition-all
                                   ${showLogButtons && isActiveMaterial ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
