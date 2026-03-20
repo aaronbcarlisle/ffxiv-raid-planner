@@ -269,7 +269,16 @@ export function AssignUserModal({
     } catch (error) {
       log.error('Failed to assign user:', error);
       const apiError = parseApiError(error);
-      toast.error(apiError.message || 'Failed to assign user');
+
+      // User-friendly message when the target user hasn't created an account
+      if (apiError.status === 404 && useManualInput && effectiveUserId) {
+        toast.error(
+          'This user hasn\'t created an account yet. Share the invite link so they can join first.',
+          8000,
+        );
+      } else {
+        toast.error(apiError.message || 'Failed to assign user');
+      }
     } finally {
       setIsSubmitting(false);
     }
