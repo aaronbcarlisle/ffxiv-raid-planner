@@ -409,7 +409,7 @@ export function AssignUserModal({
               <p className="text-xs text-status-error mt-1">{manualIdError}</p>
             ) : (
               <p className="text-xs text-text-muted mt-1">
-                The user must have logged in to the app at least once. You can find their Discord ID in User Settings &gt; Advanced.
+                The user must have logged in to the app at least once before they can be assigned.
               </p>
             )}
           </div>
