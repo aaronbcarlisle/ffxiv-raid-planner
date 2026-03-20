@@ -411,7 +411,7 @@ export function AssignUserModal({
             <div className="mt-2 p-2.5 bg-status-warning/10 border border-status-warning/20 rounded-lg flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
               <p className="text-xs text-status-warning">
-                Only users who have signed in with Discord can be assigned. If the user hasn't authenticated yet, ask them to log in first.
+                Only existing users who have signed in via Discord can be assigned. Ensure the user associated with the Discord ID has logged into the App at least once.
               </p>
             </div>
           </div>
