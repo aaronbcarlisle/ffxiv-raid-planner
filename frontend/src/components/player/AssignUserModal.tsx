@@ -98,6 +98,7 @@ export function AssignUserModal({
     setUseManualInput(false);
     setManualId('');
     setManualIdError(null);
+    setAssignError(null);
     setCreateMembership(false);
     setShowReassignConfirm(false);
     setPendingReassignUserId(null);
@@ -273,7 +274,7 @@ export function AssignUserModal({
       const apiError = parseApiError(error);
 
       // User-friendly message when the target user hasn't created an account
-      if (apiError.status === 404 && useManualInput && effectiveUserId) {
+      if (apiError.status === 404 && useManualInput && effectiveUserId && DISCORD_ID_REGEX.test(effectiveUserId)) {
         setAssignError('No account found for this Discord ID. The user must log in to the app at least once before they can be assigned.');
       } else {
         setAssignError(apiError.message || 'Failed to assign user');

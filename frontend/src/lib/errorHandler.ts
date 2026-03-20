@@ -55,6 +55,11 @@ export function parseApiError(error: unknown): ApiError {
 
   // Handle Error objects
   if (error instanceof Error) {
+    // Preserve HTTP status from ApiError (or any Error with a numeric status field)
+    const httpStatus = 'status' in error && typeof (error as { status: unknown }).status === 'number'
+      ? (error as { status: number }).status
+      : undefined;
+
     // Network errors
     const isNetworkError = NETWORK_ERROR_PATTERNS.some((pattern) =>
       error.message.includes(pattern)
@@ -79,7 +84,8 @@ export function parseApiError(error: unknown): ApiError {
 
     return {
       message: error.message,
-      code: 'ERROR',
+      status: httpStatus,
+      code: httpStatus ? `HTTP_${httpStatus}` : 'ERROR',
     };
   }
 

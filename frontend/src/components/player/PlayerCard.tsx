@@ -920,7 +920,7 @@ export const PlayerCard = memo(function PlayerCard({
           }
         }}
         onAssignViewAsUser={viewAsUserId && onAdminAssignPlayer ? () => {
-          onAdminAssignPlayer({ userId: viewAsUserId });
+          void onAdminAssignPlayer({ userId: viewAsUserId }).catch(() => {});
         } : undefined}
         onOpenBiSImport={() => setShowBiSImport(true)}
       />

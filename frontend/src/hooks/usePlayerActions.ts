@@ -78,14 +78,14 @@ export function usePlayerActions({
   // Re-throws so AssignUserModal can catch and show contextual error messages.
   const handleAdminAssignPlayer = useCallback(async (playerId: string, data: AssignPlayerRequest) => {
     if (!groupId || !tierId) return;
-    return adminAssignPlayer(groupId, tierId, playerId, data);
+    await adminAssignPlayer(groupId, tierId, playerId, data);
   }, [groupId, tierId, adminAssignPlayer]);
 
   // Owner assign player handler (owner-only)
   // Re-throws so AssignUserModal can catch and show contextual error messages.
   const handleOwnerAssignPlayer = useCallback(async (playerId: string, data: AssignPlayerRequest) => {
     if (!groupId || !tierId) return;
-    return ownerAssignPlayer(groupId, tierId, playerId, data);
+    await ownerAssignPlayer(groupId, tierId, playerId, data);
   }, [groupId, tierId, ownerAssignPlayer]);
 
   // Configure player (set name, job, role)
