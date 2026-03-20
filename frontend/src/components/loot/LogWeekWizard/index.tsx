@@ -247,7 +247,7 @@ export function LogWeekWizard({
       setError(null);
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, initFloorData, singleFloorMode, initialFloor]);
+  }, [isOpen, initFloorData, singleFloorMode, initialFloor, currentWeek]);
 
   // Handle slot assignment change
   const handleSlotChange = useCallback(
