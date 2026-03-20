@@ -129,9 +129,13 @@ export function AllWeeksView({
   }, [searchQuery]);
 
   // --- Helpers ---
-  const getPlayer = useCallback((playerId: string) =>
-    players.find(p => p.id === playerId),
+  const playerMap = useMemo(() =>
+    new Map(players.map(p => [p.id, p])),
     [players]
+  );
+  const getPlayer = useCallback((playerId: string) =>
+    playerMap.get(playerId),
+    [playerMap]
   );
 
   // --- Build unified rows ---

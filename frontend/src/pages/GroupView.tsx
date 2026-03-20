@@ -123,7 +123,7 @@ export function GroupView() {
     setHighlightedBookPlayerId,
   } = state;
 
-  // Week to navigate to after wizard completion (cleared after HistoryView consumes it)
+  // Week to navigate to after wizard completion (cleared after SectionedLogView consumes it)
   const [wizardTargetWeek, setWizardTargetWeek] = useState<number | null>(null);
   // Clear wizardTargetWeek after one render cycle so it doesn't re-trigger on subsequent renders
   useEffect(() => {

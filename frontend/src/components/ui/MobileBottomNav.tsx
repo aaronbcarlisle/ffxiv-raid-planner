@@ -35,7 +35,7 @@ const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'stats', label: 'Summary' },
 ];
 
-const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Priority' };
+const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Weapon' };
 
 export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showPriorityTab }: MobileBottomNavProps) {
   const { isSmallScreen } = useDevice();

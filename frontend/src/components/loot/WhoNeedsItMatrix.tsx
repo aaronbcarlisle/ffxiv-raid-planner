@@ -19,7 +19,7 @@ import {
   getFloorForUpgradeMaterial,
   type FloorNumber, type UpgradeMaterialType,
 } from '../../gamedata/loot-tables';
-import { getRoleColor } from '../../gamedata';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { Tooltip } from '../primitives';
 import { FilterBar } from './FilterBar';
@@ -323,7 +323,7 @@ export function WhoNeedsItMatrix({
                     <div className="flex items-center gap-1">
                       <span
                         className="text-sm font-bold"
-                        style={{ color: getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster') }}
+                        style={{ color: getRoleColor(getValidRole(player.role)) }}
                       >
                         {player.position || '?'}
                       </span>
@@ -364,7 +364,7 @@ export function WhoNeedsItMatrix({
                 </td>
                 {sortedPlayers.map(player => {
                   const needs = playersWhoNeed.has(player.id);
-                  const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                  const roleColor = getRoleColor(getValidRole(player.role));
 
                   return (
                     <td key={player.id} className="text-center py-2.5 px-2">
@@ -454,7 +454,7 @@ export function WhoNeedsItMatrix({
                     {sortedPlayers.map(player => {
                       const needs = playersWhoNeed.has(player.id);
                       const counts = playerCounts.get(player.id);
-                      const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                      const roleColor = getRoleColor(getValidRole(player.role));
 
                       return (
                         <td key={player.id} className="text-center py-2.5 px-2">
@@ -552,7 +552,7 @@ export function WhoNeedsItMatrix({
                 {sortedPlayers
                   .filter(p => playersWhoNeed.has(p.id))
                   .map(player => {
-                    const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                    const roleColor = getRoleColor(getValidRole(player.role));
                     return (
                       <button
                         key={player.id}
@@ -619,7 +619,7 @@ export function WhoNeedsItMatrix({
                       {sortedPlayers
                         .filter(p => playersWhoNeed.has(p.id))
                         .map(player => {
-                          const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                          const roleColor = getRoleColor(getValidRole(player.role));
                           const counts = playerCounts.get(player.id);
                           return (
                             /* design-system-ignore: Matrix chip button requires specific styling */
