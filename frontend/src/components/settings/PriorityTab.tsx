@@ -99,14 +99,14 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
         // Create default groups by role
         const defaultGroups = [
           { id: 'melee', name: 'Melee DPS', sortOrder: 0, basePriority: 125 },
-          { id: 'ranged', name: 'Physical Ranged', sortOrder: 1, basePriority: 100 },
-          { id: 'caster', name: 'Magical Ranged', sortOrder: 2, basePriority: 75 },
+          { id: 'caster', name: 'Magical Ranged', sortOrder: 1, basePriority: 100 },
+          { id: 'ranged', name: 'Physical Ranged', sortOrder: 2, basePriority: 75 },
           { id: 'tank', name: 'Tank', sortOrder: 3, basePriority: 50 },
           { id: 'healer', name: 'Healer', sortOrder: 4, basePriority: 25 },
         ];
 
         // Create job configs for all jobs grouped by role
-        const roles: RoleType[] = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+        const roles: RoleType[] = ['melee', 'caster', 'ranged', 'tank', 'healer'];
         const jobs = roles.flatMap((role) =>
           getJobsByRole(role).map((job, index) => ({
             job: job.abbreviation,
