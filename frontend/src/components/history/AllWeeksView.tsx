@@ -204,10 +204,11 @@ export function AllWeeksView({
     // Smart search
     if (debouncedQuery.trim()) {
       const q = debouncedQuery.toLowerCase().trim();
+      // Pre-compute week pattern match once (not per-row)
+      const weekMatch = q.match(/^w(?:eek\s*)?(\d+)$/i);
+      const weekNum = weekMatch ? parseInt(weekMatch[1], 10) : null;
       rows = rows.filter(r => {
-        // Match week patterns: "w3", "week 3", "week3"
-        const weekMatch = q.match(/^w(?:eek\s*)?(\d+)$/i);
-        if (weekMatch) return r.weekNumber === parseInt(weekMatch[1], 10);
+        if (weekNum !== null) return r.weekNumber === weekNum;
 
         return (
           r.playerName.toLowerCase().includes(q) ||

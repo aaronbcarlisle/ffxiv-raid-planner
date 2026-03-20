@@ -27,7 +27,7 @@ import { FilterBar } from './FilterBar';
 type FloorFilter = FloorNumber | 'all';
 
 /** Material CSS color variables */
-const MATERIAL_COLORS: Record<string, string> = {
+const MATERIAL_COLORS: Record<UpgradeMaterialType, string> = {
   twine: 'var(--color-material-twine)',
   glaze: 'var(--color-material-glaze)',
   solvent: 'var(--color-material-solvent)',
@@ -470,7 +470,7 @@ export function WhoNeedsItMatrix({
                               <button
                                 onClick={() => {
                                   if (showLogButtons && onMaterialLogClick && isActiveMaterial) {
-                                    onMaterialLogClick(material as MaterialType, player);
+                                    onMaterialLogClick(material, player);
                                   }
                                 }}
                                 disabled={!showLogButtons || !isActiveMaterial}
