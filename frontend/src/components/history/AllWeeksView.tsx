@@ -17,6 +17,7 @@ import { FLOOR_COLORS, parseFloorName, UPGRADE_MATERIAL_DISPLAY_NAMES, type Floo
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { Pencil, Link, Trash2, UserRound, Search, X, LayoutGrid, List } from 'lucide-react';
+import { METHOD_INFO } from './lootMethodDisplay';
 
 /** Map raw material type to CSS color token name (universal_tomestone → tomestone) */
 const MATERIAL_CSS_TOKEN: Record<string, string> = {
@@ -26,13 +27,10 @@ const MATERIAL_CSS_TOKEN: Record<string, string> = {
   universal_tomestone: 'tomestone',
 };
 
-/** Method display names and colors */
-const METHOD_DISPLAY: Record<string, { label: string; className: string }> = {
-  drop: { label: 'Drop', className: 'text-status-success' },
-  purchase: { label: 'Purchase', className: 'text-status-warning' },
-  book: { label: 'Book', className: 'text-accent' },
-  tome: { label: 'Tome', className: 'text-blue-400' },
-};
+/** Method display (text-only variant) derived from shared METHOD_INFO */
+const METHOD_DISPLAY = Object.fromEntries(
+  Object.entries(METHOD_INFO).map(([k, v]) => [k, { label: v.label, className: v.textClass }])
+) as Record<string, { label: string; className: string }>;
 
 type EntryType = 'all' | 'loot' | 'materials';
 type SortField = 'week' | 'floor' | 'slot' | 'player' | 'method' | 'date' | 'extra';

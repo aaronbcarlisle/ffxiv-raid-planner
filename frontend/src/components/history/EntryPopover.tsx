@@ -10,14 +10,12 @@ import { JobIcon } from '../ui/JobIcon';
 import { getRoleColor, getValidRole } from '../../gamedata';
 import type { SnapshotPlayer, LootLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
+import { METHOD_INFO } from './lootMethodDisplay';
 
-/** Method display info */
-const METHOD_BADGE: Record<string, { label: string; className: string }> = {
-  drop: { label: 'Drop', className: 'bg-status-success/15 text-status-success' },
-  purchase: { label: 'Purchase', className: 'bg-status-warning/15 text-status-warning' },
-  book: { label: 'Book', className: 'bg-accent/15 text-accent' },
-  tome: { label: 'Tome', className: 'bg-blue-400/15 text-blue-400' },
-};
+/** Method badge variant derived from shared METHOD_INFO */
+const METHOD_BADGE = Object.fromEntries(
+  Object.entries(METHOD_INFO).map(([k, v]) => [k, { label: v.label, className: v.badgeClass }])
+) as Record<string, { label: string; className: string }>;
 
 interface EntryPopoverProps {
   entries: LootLogEntry[];

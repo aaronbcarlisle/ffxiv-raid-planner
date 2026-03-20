@@ -358,6 +358,7 @@ export function WeeklyLootGrid({
     entries: LootLogEntry[];
     anchorRect: DOMRect;
   } | null>(null);
+  const closePopover = useCallback(() => setPopoverState(null), []);
 
   // Get material entry for a specific floor and type
   const getMaterialForFloor = (floorNum: FloorNumber, materialType: string): MaterialLogEntry | undefined => {
@@ -842,7 +843,7 @@ export function WeeklyLootGrid({
           entries={popoverState.entries}
           players={players}
           anchorRect={popoverState.anchorRect}
-          onClose={() => setPopoverState(null)}
+          onClose={closePopover}
           onEdit={onEditLoot}
         />
       )}
