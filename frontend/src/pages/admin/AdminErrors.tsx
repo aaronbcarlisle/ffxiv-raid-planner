@@ -310,26 +310,14 @@ export function AdminErrors() {
         }
         return prev;
       });
-      // Update error list
-      setErrorList((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          errors: prev.errors.map((e) =>
-            e.fingerprint === fingerprint ? { ...e, isReviewed: true } : e
-          ),
-        };
-      });
-      // Refetch if filtered by status
-      if (statusFilter !== 'all') {
-        fetchErrors();
-      }
+      // Refetch to get updated state from server
+      await fetchErrors();
     } catch {
       // Silently fail - button stays enabled for retry
     } finally {
       setMarkingReviewed(false);
     }
-  }, [statusFilter, fetchErrors]);
+  }, [fetchErrors]);
 
   // Unreview (re-open) an error
   const handleUnreview = useCallback(async (fingerprint: string) => {
@@ -345,24 +333,12 @@ export function AdminErrors() {
         }
         return prev;
       });
-      // Update error list
-      setErrorList((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          errors: prev.errors.map(e =>
-            e.fingerprint === fingerprint ? { ...e, isReviewed: false } : e
-          ),
-        };
-      });
-      // Refetch if filtered by status
-      if (statusFilter !== 'all') {
-        fetchErrors();
-      }
+      // Refetch to get updated state from server
+      await fetchErrors();
     } catch {
       // Silently handle
     }
-  }, [statusFilter, fetchErrors]);
+  }, [fetchErrors]);
 
   // Toggle stack trace visibility
   const toggleStackTrace = useCallback((occurrenceId: number) => {
@@ -414,35 +390,10 @@ export function AdminErrors() {
     if (fingerprints.length === 0) return;
     try {
       await api.post('/api/admin/analytics/errors/batch-review', { fingerprints, action });
-      // Update local state
-      const isReviewed = action === 'review';
-      const selected = new Set(selectedFingerprints);
-      setErrorList((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          errors: prev.errors.map(e =>
-            selected.has(e.fingerprint) ? { ...e, isReviewed } : e
-          ),
-        };
-      });
-      // Update any expanded detail data
-      setDetailDataMap((prev) => {
-        const next = new Map(prev);
-        for (const fp of fingerprints) {
-          const existing = next.get(fp);
-          if (existing) {
-            next.set(fp, { ...existing, isReviewed });
-          }
-        }
-        return next;
-      });
       setSelectedFingerprints(new Set());
       setContextMenu(null);
-      // Refetch if filtered
-      if (statusFilter !== 'all') {
-        fetchErrors();
-      }
+      // Refetch to get updated state from server
+      await fetchErrors();
     } catch {
       // Silently fail
     }
