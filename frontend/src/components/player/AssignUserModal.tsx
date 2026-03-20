@@ -88,6 +88,7 @@ export function AssignUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [interactedUsers, setInteractedUsers] = useState<InteractedUser[]>([]);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [showReassignConfirm, setShowReassignConfirm] = useState(false);
   const [pendingReassignUserId, setPendingReassignUserId] = useState<string | null>(null);
 
@@ -257,6 +258,7 @@ export function AssignUserModal({
       return;
     }
     setManualIdError(null);
+    setAssignError(null);
 
     setIsSubmitting(true);
     try {
@@ -272,12 +274,9 @@ export function AssignUserModal({
 
       // User-friendly message when the target user hasn't created an account
       if (apiError.status === 404 && useManualInput && effectiveUserId) {
-        toast.error(
-          'This user hasn\'t created an account yet. Share the invite link so they can join first.',
-          8000,
-        );
+        setAssignError('This user hasn\'t created an account yet. Share the invite link so they can join first.');
       } else {
-        toast.error(apiError.message || 'Failed to assign user');
+        setAssignError(apiError.message || 'Failed to assign user');
       }
     } finally {
       setIsSubmitting(false);
@@ -444,6 +443,13 @@ export function AssignUserModal({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Inline error message */}
+        {assignError && (
+          <div className="p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
+            <p className="text-sm text-status-error">{assignError}</p>
           </div>
         )}
 
