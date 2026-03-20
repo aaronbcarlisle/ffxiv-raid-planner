@@ -33,7 +33,7 @@ const METHOD_DISPLAY = Object.fromEntries(
 ) as Record<string, { label: string; className: string }>;
 
 type EntryType = 'all' | 'loot' | 'materials';
-type SortField = 'week' | 'floor' | 'slot' | 'player' | 'method' | 'date' | 'extra';
+type SortField = 'week' | 'floor' | 'slot' | 'player' | 'method' | 'date' | 'type';
 
 /** Unified entry for the table */
 interface UnifiedRow {
@@ -119,6 +119,17 @@ export function AllWeeksView({
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
+  // Listen for keyboard shortcut entry type changes (Alt+1/2/3)
+  useEffect(() => {
+    const handler = (e: CustomEvent<string>) => {
+      if (e.detail === 'all' || e.detail === 'loot' || e.detail === 'materials') {
+        setEntryType(e.detail);
+      }
+    };
+    window.addEventListener('log:set-entry-type', handler as EventListener);
+    return () => window.removeEventListener('log:set-entry-type', handler as EventListener);
+  }, []);
+
   // Debounce search
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -199,28 +210,61 @@ export function AllWeeksView({
     // Floor filter
     rows = rows.filter(r => activeFloors.has(r.floorNum));
 
-    // Smart search
+    // Smart search with structured filter syntax (e.g. slot:weapon player:warichard type:extra)
     if (debouncedQuery.trim()) {
-      const q = debouncedQuery.toLowerCase().trim();
-      // Pre-compute week pattern match once (not per-row)
-      const weekMatch = q.match(/^w(?:eek\s*)?(\d+)$/i);
-      const weekNum = weekMatch ? parseInt(weekMatch[1], 10) : null;
-      rows = rows.filter(r => {
-        if (weekNum !== null) return r.weekNumber === weekNum;
+      const tokens = debouncedQuery.trim().split(/\s+/);
+      const filters: { key: string; value: string }[] = [];
+      const freeTerms: string[] = [];
 
-        return (
-          r.playerName.toLowerCase().includes(q) ||
-          r.playerJob.toLowerCase().includes(q) ||
-          r.slot.toLowerCase().includes(q) ||
-          r.slotRaw.toLowerCase().includes(q) ||
-          r.floor.toLowerCase().includes(q) ||
-          r.method.toLowerCase().includes(q) ||
-          r.type.toLowerCase().includes(q) ||
-          (r.weaponJob && r.weaponJob.toLowerCase().includes(q)) ||
-          `w${r.weekNumber}`.includes(q) ||
-          `week ${r.weekNumber}`.includes(q)
-        );
-      });
+      for (const token of tokens) {
+        const colonIdx = token.indexOf(':');
+        if (colonIdx > 0 && colonIdx < token.length - 1) {
+          filters.push({ key: token.slice(0, colonIdx).toLowerCase(), value: token.slice(colonIdx + 1).toLowerCase() });
+        } else {
+          freeTerms.push(token.toLowerCase());
+        }
+      }
+
+      // Apply structured filters (all must match)
+      for (const { key, value } of filters) {
+        rows = rows.filter(r => {
+          switch (key) {
+            case 'slot': return r.slot.toLowerCase().includes(value) || r.slotRaw.toLowerCase().includes(value) || (r.weaponJob && r.weaponJob.toLowerCase().includes(value));
+            case 'player': return r.playerName.toLowerCase().includes(value);
+            case 'type': return value === 'extra' ? r.isExtra : value === 'bis' ? (!r.isExtra && r.type === 'loot') : r.type.toLowerCase().includes(value);
+            case 'floor': return r.floor.toLowerCase().includes(value);
+            case 'method': return r.method.toLowerCase().includes(value);
+            case 'week': { const n = parseInt(value, 10); return !isNaN(n) ? r.weekNumber === n : false; }
+            case 'job': return r.playerJob.toLowerCase().includes(value);
+            default: return true;
+          }
+        });
+      }
+
+      // Apply free-text terms (each must match somewhere)
+      for (const term of freeTerms) {
+        // Week pattern shorthand: w3, week3, week 3
+        const weekMatch = term.match(/^w(?:eek\s*)?(\d+)$/i);
+        if (weekMatch) {
+          const weekNum = parseInt(weekMatch[1], 10);
+          rows = rows.filter(r => r.weekNumber === weekNum);
+        } else {
+          rows = rows.filter(r =>
+            r.playerName.toLowerCase().includes(term) ||
+            r.playerJob.toLowerCase().includes(term) ||
+            r.slot.toLowerCase().includes(term) ||
+            r.slotRaw.toLowerCase().includes(term) ||
+            r.floor.toLowerCase().includes(term) ||
+            r.method.toLowerCase().includes(term) ||
+            r.type.toLowerCase().includes(term) ||
+            (r.weaponJob && r.weaponJob.toLowerCase().includes(term)) ||
+            (term === 'extra' && r.isExtra) ||
+            (term === 'bis' && !r.isExtra && r.type === 'loot') ||
+            `w${r.weekNumber}`.includes(term) ||
+            `week ${r.weekNumber}`.includes(term)
+          );
+        }
+      }
     }
 
     return rows;
@@ -238,7 +282,7 @@ export function AllWeeksView({
         case 'player': cmp = a.playerName.localeCompare(b.playerName); break;
         case 'method': cmp = a.method.localeCompare(b.method); break;
         case 'date': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
-        case 'extra': cmp = Number(a.isExtra) - Number(b.isExtra); break;
+        case 'type': cmp = Number(a.isExtra) - Number(b.isExtra); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -399,7 +443,7 @@ export function AllWeeksView({
             ref={searchInputRef}
             value={searchQuery}
             onChange={(value) => setSearchQuery(value)}
-            placeholder="Search by player, job, slot, floor, week... (Ctrl+Shift+F)"
+            placeholder="Search... slot:weapon player:name type:bis (Ctrl+Shift+F)"
             className="pl-9 pr-8"
           />
           {searchQuery && (
@@ -479,7 +523,7 @@ export function AllWeeksView({
               <SortableHeader field="player" label="Player" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
               <SortableHeader field="method" label="Method" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-24" />
               <SortableHeader field="date" label="Date" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
-              <SortableHeader field="extra" label="Extra" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" className="w-16" />
+              <SortableHeader field="type" label="Type" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" className="w-16" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -577,11 +621,15 @@ export function AllWeeksView({
                       {formatDate(row.createdAt)}
                     </td>
 
-                    {/* Extra */}
+                    {/* Type */}
                     <td className="px-4 py-2.5 text-center">
-                      {row.isExtra && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-status-info/15 text-status-info">
-                          Extra
+                      {row.type === 'loot' && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          row.isExtra
+                            ? 'bg-status-info/15 text-status-info'
+                            : 'bg-accent/10 text-accent'
+                        }`}>
+                          {row.isExtra ? 'Extra' : 'BiS'}
                         </span>
                       )}
                     </td>

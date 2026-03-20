@@ -83,16 +83,27 @@ export function useGroupViewKeyboardShortcuts(
 
       // ===== Sub tabs (Alt+1-3) =====
       // Loot: Matrix (Who Needs It), Gear Priority, Weapon Priority
+      // History/List: By Floor, Timeline
+      // History/All Weeks: All, Gear, Materials
       { key: '1', description: 'Sub tab 1', action: () => {
         if (pageMode === 'loot') setLootSubTab('matrix');
-        if (pageMode === 'history') window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'byFloor' }));
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'byFloor' }));
+          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'all' }));
+        }
       }, requireAlt: true },
       { key: '2', description: 'Sub tab 2', action: () => {
         if (pageMode === 'loot') setLootSubTab('gear');
-        if (pageMode === 'history') window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'chronological' }));
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'chronological' }));
+          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'loot' }));
+        }
       }, requireAlt: true },
       { key: '3', description: 'Sub tab 3', action: () => {
         if (pageMode === 'loot') setLootSubTab('weapon');
+        if (pageMode === 'history') {
+          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'materials' }));
+        }
       }, requireAlt: true },
 
       // ===== View controls =====
