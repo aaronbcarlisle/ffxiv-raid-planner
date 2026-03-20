@@ -274,7 +274,7 @@ export function AssignUserModal({
 
       // User-friendly message when the target user hasn't created an account
       if (apiError.status === 404 && useManualInput && effectiveUserId) {
-        setAssignError('This user hasn\'t created an account yet. Share the invite link so they can join first.');
+        setAssignError('No account found for this Discord ID. The user must log in to the app at least once before they can be assigned.');
       } else {
         setAssignError(apiError.message || 'Failed to assign user');
       }
@@ -398,7 +398,8 @@ export function AssignUserModal({
               value={manualId}
               onChange={(value) => {
                 setManualId(value);
-                setManualIdError(null); // Clear error on change
+                setManualIdError(null);
+                setAssignError(null);
               }}
               placeholder="Enter Discord User ID or internal user ID"
               className={`w-full ${manualIdError ? 'border-status-error' : ''}`}
@@ -408,7 +409,7 @@ export function AssignUserModal({
               <p className="text-xs text-status-error mt-1">{manualIdError}</p>
             ) : (
               <p className="text-xs text-text-muted mt-1">
-                Enter a Discord User ID (17-19 digits) or internal user ID (UUID).
+                The user must have logged in to the app at least once. You can find their Discord ID in User Settings &gt; Advanced.
               </p>
             )}
           </div>
