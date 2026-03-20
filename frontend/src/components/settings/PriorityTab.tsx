@@ -310,7 +310,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
                   Manual planning mode lets you pre-assign loot to players for each week.
-                  Go to the Loot tab to create weekly assignments.
+                  Go to the Priority tab to create weekly assignments.
                 </p>
               </div>
             )}
@@ -318,7 +318,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             {settings.mode === 'disabled' && (
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
-                  Priority is disabled. All players will show equal priority in the Loot tab.
+                  Priority is disabled. All players will show equal priority in the Priority tab.
                   This is useful for groups that prefer equal distribution.
                 </p>
               </div>

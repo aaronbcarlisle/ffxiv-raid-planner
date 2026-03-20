@@ -19,10 +19,12 @@ import {
 import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 
+export type LogLayoutMode = 'grid' | 'split' | 'allWeeks';
+
 export interface LootLogFiltersProps {
   // Layout mode
-  layoutMode: 'split' | 'grid';
-  onLayoutModeChange: (mode: 'split' | 'grid') => void;
+  layoutMode: LogLayoutMode;
+  onLayoutModeChange: (mode: LogLayoutMode) => void;
 
   // Current week for display in menu
   currentWeek: number;
@@ -73,7 +75,7 @@ export function LootLogFilters({
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  Week View
+                  Grid View
                   <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
                 <div className="text-text-secondary text-xs mt-0.5">Spreadsheet-style weekly loot grid</div>
@@ -96,24 +98,24 @@ export function LootLogFilters({
                 <rect x="1" y="9" width="6" height="6" rx="1" />
                 <rect x="9" y="9" width="6" height="6" rx="1" />
               </svg>
-              <span className="hidden sm:inline">Week</span>
+              <span className="hidden sm:inline">Grid</span>
             </button>
           </Tooltip>
           <Tooltip
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  History View
+                  List View
                   <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">G</kbd>
                 </div>
-                <div className="text-text-secondary text-xs mt-0.5">Chronological loot history</div>
+                <div className="text-text-secondary text-xs mt-0.5">Chronological loot list by floor or timeline</div>
               </div>
             }
           >
             {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
             <button
               onClick={() => onLayoutModeChange('split')}
-              className={`px-3 py-2 rounded-r-lg text-sm font-medium transition-colors flex items-center gap-1.5 border-l border-border-default ${
+              className={`px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 border-l border-border-default ${
                 layoutMode === 'split'
                   ? 'bg-accent/20 text-accent'
                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
@@ -125,7 +127,37 @@ export function LootLogFilters({
                 <rect x="1" y="7" width="14" height="4" rx="1" />
                 <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
               </svg>
-              <span className="hidden sm:inline">History</span>
+              <span className="hidden sm:inline">List</span>
+            </button>
+          </Tooltip>
+          <Tooltip
+            content={
+              <div>
+                <div className="font-medium">All Weeks</div>
+                <div className="text-text-secondary text-xs mt-0.5">View all loot across every week</div>
+              </div>
+            }
+          >
+            {/* design-system-ignore: Layout toggle button requires specific toggle styling */}
+            <button
+              onClick={() => onLayoutModeChange('allWeeks')}
+              className={`px-3 py-2 rounded-r-lg text-sm font-medium transition-colors flex items-center gap-1.5 border-l border-border-default ${
+                layoutMode === 'allWeeks'
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
+              }`}
+            >
+              {/* Calendar/table icon for all weeks */}
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                <rect x="1" y="3" width="14" height="12" rx="1.5" fillOpacity="0.15" stroke="currentColor" strokeWidth="1" fill="none" />
+                <rect x="1" y="3" width="14" height="3.5" rx="1.5" />
+                <rect x="3.5" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+                <rect x="7" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+                <rect x="10.5" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+                <rect x="3.5" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
+                <rect x="7" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
+              </svg>
+              <span className="hidden sm:inline">All Weeks</span>
             </button>
           </Tooltip>
         </div>

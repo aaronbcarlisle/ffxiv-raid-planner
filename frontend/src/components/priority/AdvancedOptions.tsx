@@ -189,7 +189,7 @@ export function AdvancedOptions({
             onChange={(checked) => onChange({ ...options, showPriorityScores: checked })}
             disabled={disabled}
             label="Show priority scores"
-            hint="Display numeric scores in the Loot tab"
+            hint="Display numeric scores in the Priority tab"
           />
         </div>
         <div className="pt-0.5">

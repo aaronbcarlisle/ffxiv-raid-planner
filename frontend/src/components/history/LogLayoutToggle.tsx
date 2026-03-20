@@ -1,14 +1,16 @@
 /**
  * Log Layout Toggle
  *
- * Floating layout toggle (Grid/List) for mobile.
+ * Floating layout toggle (Grid/List/All Weeks) for mobile.
  * Positioned at bottom left, opposite to the Log Loot/Material FABs.
  * Uses same icons as the Roster tab's compact/expanded toggle.
  */
 
+import type { LogLayoutMode } from './LootLogFilters';
+
 interface LogLayoutToggleProps {
-  layoutMode: 'grid' | 'split';
-  onLayoutChange: (mode: 'grid' | 'split') => void;
+  layoutMode: LogLayoutMode;
+  onLayoutChange: (mode: LogLayoutMode) => void;
   visible: boolean;
 }
 
@@ -25,7 +27,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="Week view"
+        aria-label="Grid view"
         aria-pressed={layoutMode === 'grid'}
       >
         {/* Grid icon - 4 squares */}
@@ -43,7 +45,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="History view"
+        aria-label="List view"
         aria-pressed={layoutMode === 'split'}
       >
         {/* List icon - horizontal bars */}
@@ -51,6 +53,27 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
           <rect x="1" y="1" width="14" height="4" rx="1" />
           <rect x="1" y="7" width="14" height="4" rx="1" />
           <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onLayoutChange('allWeeks')}
+        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+          layoutMode === 'allWeeks'
+            ? 'bg-accent/20 text-accent'
+            : 'text-text-secondary hover:text-text-primary'
+        }`}
+        aria-label="All weeks view"
+        aria-pressed={layoutMode === 'allWeeks'}
+      >
+        {/* Calendar icon for all weeks */}
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+          <rect x="1" y="3" width="14" height="12" rx="1.5" fillOpacity="0.15" stroke="currentColor" strokeWidth="1" fill="none" />
+          <rect x="1" y="3" width="14" height="3.5" rx="1.5" />
+          <rect x="3.5" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+          <rect x="7" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+          <rect x="10.5" y="8" width="2" height="1.5" rx="0.3" opacity="0.7" />
+          <rect x="3.5" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
+          <rect x="7" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
         </svg>
       </button>
     </div>

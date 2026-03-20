@@ -30,8 +30,8 @@ const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
-  { id: 'loot', label: 'Loot' },
-  { id: 'history', label: 'Log' },
+  { id: 'loot', label: 'Priority' },
+  { id: 'history', label: 'Loot Log' },
   { id: 'stats', label: 'Summary' },
 ];
 

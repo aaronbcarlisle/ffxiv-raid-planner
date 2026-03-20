@@ -77,8 +77,8 @@ export function useGroupViewKeyboardShortcuts(
     shortcuts: [
       // ===== Main tab navigation (1-4) =====
       { key: '1', description: 'Players tab', action: () => setPageMode('players') },
-      { key: '2', description: 'Loot tab', action: () => setPageMode('loot') },
-      { key: '3', description: 'Log tab', action: () => setPageMode('history') },
+      { key: '2', description: 'Priority tab', action: () => setPageMode('loot') },
+      { key: '3', description: 'Loot Log tab', action: () => setPageMode('history') },
       { key: '4', description: 'Summary tab', action: () => setPageMode('stats') },
 
       // ===== Sub tabs (Alt+1-3) =====
