@@ -149,11 +149,11 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   }, [onReleasePlayer, player.id]);
 
   const handleAdminAssignPlayer = useCallback((data: AssignPlayerRequest) => {
-    onAdminAssignPlayer(player.id, data);
+    return onAdminAssignPlayer(player.id, data);
   }, [onAdminAssignPlayer, player.id]);
 
   const handleOwnerAssignPlayer = useCallback((data: AssignPlayerRequest) => {
-    onOwnerAssignPlayer(player.id, data);
+    return onOwnerAssignPlayer(player.id, data);
   }, [onOwnerAssignPlayer, player.id]);
 
   const handleCopyUrl = useCallback(() => {

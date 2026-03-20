@@ -88,6 +88,7 @@ export function AssignUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [interactedUsers, setInteractedUsers] = useState<InteractedUser[]>([]);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [showReassignConfirm, setShowReassignConfirm] = useState(false);
   const [pendingReassignUserId, setPendingReassignUserId] = useState<string | null>(null);
 
@@ -97,6 +98,7 @@ export function AssignUserModal({
     setUseManualInput(false);
     setManualId('');
     setManualIdError(null);
+    setAssignError(null);
     setCreateMembership(false);
     setShowReassignConfirm(false);
     setPendingReassignUserId(null);
@@ -257,6 +259,7 @@ export function AssignUserModal({
       return;
     }
     setManualIdError(null);
+    setAssignError(null);
 
     setIsSubmitting(true);
     try {
@@ -269,7 +272,13 @@ export function AssignUserModal({
     } catch (error) {
       log.error('Failed to assign user:', error);
       const apiError = parseApiError(error);
-      toast.error(apiError.message || 'Failed to assign user');
+
+      // User-friendly message when the target user hasn't created an account
+      if (apiError.status === 404 && useManualInput && effectiveUserId && DISCORD_ID_REGEX.test(effectiveUserId)) {
+        setAssignError('No account found for this Discord ID. The user must log in to the app at least once before they can be assigned.');
+      } else {
+        setAssignError(apiError.message || 'Failed to assign user');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -390,19 +399,22 @@ export function AssignUserModal({
               value={manualId}
               onChange={(value) => {
                 setManualId(value);
-                setManualIdError(null); // Clear error on change
+                setManualIdError(null);
+                setAssignError(null);
               }}
               placeholder="Enter Discord User ID or internal user ID"
               className={`w-full ${manualIdError ? 'border-status-error' : ''}`}
               disabled={isSubmitting}
             />
-            {manualIdError ? (
+            {manualIdError && (
               <p className="text-xs text-status-error mt-1">{manualIdError}</p>
-            ) : (
-              <p className="text-xs text-text-muted mt-1">
-                Enter a Discord User ID (17-19 digits) or internal user ID (UUID).
-              </p>
             )}
+            <div className="mt-2 p-2.5 bg-status-warning/10 border border-status-warning/20 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-status-warning">
+                Only existing users who have signed in via Discord can be assigned. Ensure the user associated with the Discord ID has logged into the App at least once.
+              </p>
+            </div>
           </div>
         )}
 
@@ -435,6 +447,13 @@ export function AssignUserModal({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Inline error message */}
+        {assignError && (
+          <div className="p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
+            <p className="text-sm text-status-error">{assignError}</p>
           </div>
         )}
 
