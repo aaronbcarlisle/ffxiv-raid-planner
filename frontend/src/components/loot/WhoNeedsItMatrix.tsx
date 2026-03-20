@@ -90,7 +90,7 @@ function MaterialPieIndicator({ total, augmented, roleColor, size = 28 }: {
   const cy = size / 2;
   const circumference = 2 * Math.PI * r;
   const gap = total > 1 ? 2 : 0;
-  const segmentLength = circumference / total - gap;
+  const segmentLength = total > 0 ? circumference / total - gap : 0;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
