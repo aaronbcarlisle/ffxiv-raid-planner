@@ -2,17 +2,20 @@
  * Admin Error Log Page
  *
  * Displays grouped error entries with filtering, sorting, pagination,
- * and expandable detail panels with individual occurrences.
+ * expandable detail panels with individual occurrences, multi-select
+ * with batch right-click actions, and multi-expand with shift+click.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../../services/api';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { ContextMenu } from '../../components/ui/ContextMenu';
 import { Button } from '../../components/primitives/Button';
 import { Badge } from '../../components/primitives/Badge';
 import { SortableHeader } from '../../components/admin/SortableHeader';
 import { toggleSort } from '../../components/admin/sortUtils';
 import type { SortDirection } from '../../components/admin/sortUtils';
+import type { ContextMenuItem } from '../../components/ui/ContextMenu';
 
 // --- Types ---
 
@@ -159,11 +162,16 @@ export function AdminErrors() {
     setSortDir(result.direction);
   };
 
-  // Expanded row state
-  const [expandedFingerprint, setExpandedFingerprint] = useState<string | null>(null);
-  const [detailData, setDetailData] = useState<ErrorDetailData | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // Multi-expand state
+  const [expandedFingerprints, setExpandedFingerprints] = useState<Set<string>>(new Set());
+  const [detailDataMap, setDetailDataMap] = useState<Map<string, ErrorDetailData>>(new Map());
+  const [loadingFingerprints, setLoadingFingerprints] = useState<Set<string>>(new Set());
   const [markingReviewed, setMarkingReviewed] = useState(false);
+
+  // Multi-select state
+  const [selectedFingerprints, setSelectedFingerprints] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   // Collapsible stack traces in occurrences
   const [expandedStackTraces, setExpandedStackTraces] = useState<Set<number>>(new Set());
@@ -193,81 +201,144 @@ export function AdminErrors() {
     fetchErrors();
   }, [fetchErrors]);
 
-  // Reset page when filters change
+  // Reset page and selection when filters or sort changes
   useEffect(() => {
     setPage(1);
+    setSelectedFingerprints(new Set());
+    setLastSelectedIndex(null);
   }, [sourceFilter, severityFilter, statusFilter]);
 
-  // Fetch detail when expanding a row
-  const handleExpand = useCallback(async (fingerprint: string) => {
-    if (expandedFingerprint === fingerprint) {
-      setExpandedFingerprint(null);
-      setDetailData(null);
-      setExpandedStackTraces(new Set());
-      return;
-    }
+  // Clear selection when page changes
+  useEffect(() => {
+    setSelectedFingerprints(new Set());
+    setLastSelectedIndex(null);
+  }, [page, sortField, sortDir]);
 
-    setExpandedFingerprint(fingerprint);
-    setDetailLoading(true);
-    setDetailData(null);
-    setExpandedStackTraces(new Set());
+  // Fetch detail data for a fingerprint if not already cached
+  const fetchDetailData = useCallback(async (fingerprint: string) => {
+    setLoadingFingerprints((prev) => {
+      const next = new Set(prev);
+      next.add(fingerprint);
+      return next;
+    });
 
     try {
       const data = await api.get<ErrorDetailData>(
         `/api/admin/analytics/errors/${encodeURIComponent(fingerprint)}`
       );
-      setDetailData(data);
+      setDetailDataMap((prev) => {
+        const next = new Map(prev);
+        next.set(fingerprint, data);
+        return next;
+      });
     } catch {
-      // Detail panel will show loading state
+      // Detail panel will show failed state
     } finally {
-      setDetailLoading(false);
+      setLoadingFingerprints((prev) => {
+        const next = new Set(prev);
+        next.delete(fingerprint);
+        return next;
+      });
     }
-  }, [expandedFingerprint]);
+  }, []);
+
+  // Expand/collapse with shift-key support for multi-expand
+  const handleExpand = useCallback((fingerprint: string, shiftKey: boolean) => {
+    const wasExpanded = expandedFingerprints.has(fingerprint);
+
+    if (!shiftKey) {
+      // Single-expand mode
+      if (wasExpanded && expandedFingerprints.size === 1) {
+        // Already expanded and only one: collapse it
+        setExpandedFingerprints(new Set());
+        setDetailDataMap(new Map());
+      } else {
+        // Collapse all, expand only this one
+        setExpandedFingerprints(new Set([fingerprint]));
+        // Keep only this fingerprint's detail data
+        const existing = detailDataMap.get(fingerprint);
+        if (existing) {
+          setDetailDataMap(new Map([[fingerprint, existing]]));
+        } else {
+          setDetailDataMap(new Map());
+          // Fetch detail data for newly expanded row
+          fetchDetailData(fingerprint);
+        }
+      }
+      setExpandedStackTraces(new Set());
+    } else {
+      // Multi-expand mode (shift+click): toggle this fingerprint
+      if (wasExpanded) {
+        // Collapse this row
+        setExpandedFingerprints((prev) => {
+          const next = new Set(prev);
+          next.delete(fingerprint);
+          return next;
+        });
+        setDetailDataMap((prev) => {
+          const next = new Map(prev);
+          next.delete(fingerprint);
+          return next;
+        });
+      } else {
+        // Expand this row
+        setExpandedFingerprints((prev) => {
+          const next = new Set(prev);
+          next.add(fingerprint);
+          return next;
+        });
+        // Fetch if not already cached
+        if (!detailDataMap.has(fingerprint)) {
+          fetchDetailData(fingerprint);
+        }
+      }
+    }
+  }, [expandedFingerprints, detailDataMap, fetchDetailData]);
 
   // Mark error as reviewed
   const handleMarkReviewed = useCallback(async (fingerprint: string) => {
     setMarkingReviewed(true);
     try {
       await api.post(`/api/admin/analytics/errors/${encodeURIComponent(fingerprint)}/review`);
-      // Update local state
-      if (detailData && detailData.fingerprint === fingerprint) {
-        setDetailData({ ...detailData, isReviewed: true });
-      }
-      if (errorList) {
-        setErrorList({
-          ...errorList,
-          errors: errorList.errors.map((e) =>
-            e.fingerprint === fingerprint ? { ...e, isReviewed: true } : e
-          ),
-        });
-      }
+      // Update detail data map
+      setDetailDataMap((prev) => {
+        const existing = prev.get(fingerprint);
+        if (existing) {
+          const next = new Map(prev);
+          next.set(fingerprint, { ...existing, isReviewed: true });
+          return next;
+        }
+        return prev;
+      });
+      // Refetch to get updated state from server
+      await fetchErrors();
     } catch {
       // Silently fail - button stays enabled for retry
     } finally {
       setMarkingReviewed(false);
     }
-  }, [detailData, errorList]);
+  }, [fetchErrors]);
 
   // Unreview (re-open) an error
   const handleUnreview = useCallback(async (fingerprint: string) => {
     try {
       await api.post(`/api/admin/analytics/errors/${encodeURIComponent(fingerprint)}/unreview`);
-      // Update local state
-      if (detailData) {
-        setDetailData({ ...detailData, isReviewed: false });
-      }
-      if (errorList) {
-        setErrorList({
-          ...errorList,
-          errors: errorList.errors.map(e =>
-            e.fingerprint === fingerprint ? { ...e, isReviewed: false } : e
-          ),
-        });
-      }
+      // Update detail data map
+      setDetailDataMap((prev) => {
+        const existing = prev.get(fingerprint);
+        if (existing) {
+          const next = new Map(prev);
+          next.set(fingerprint, { ...existing, isReviewed: false });
+          return next;
+        }
+        return prev;
+      });
+      // Refetch to get updated state from server
+      await fetchErrors();
     } catch {
       // Silently handle
     }
-  }, [detailData, errorList]);
+  }, [fetchErrors]);
 
   // Toggle stack trace visibility
   const toggleStackTrace = useCallback((occurrenceId: number) => {
@@ -282,7 +353,7 @@ export function AdminErrors() {
     });
   }, []);
 
-  // Sort errors client-side
+  // Sort errors client-side (must be defined before handlers that reference it)
   const sortedErrors = useMemo(() => {
     if (!errorList) return [];
     const mult = sortDir === 'asc' ? 1 : -1;
@@ -312,6 +383,106 @@ export function AdminErrors() {
       }
     });
   }, [errorList, sortField, sortDir]);
+
+  // Batch review handler for context menu actions
+  const handleBatchReview = useCallback(async (action: 'review' | 'unreview') => {
+    const fingerprints = Array.from(selectedFingerprints);
+    if (fingerprints.length === 0) return;
+    try {
+      await api.post('/api/admin/analytics/errors/batch-review', { fingerprints, action });
+      setSelectedFingerprints(new Set());
+      setContextMenu(null);
+      // Refetch to get updated state from server
+      await fetchErrors();
+    } catch {
+      // Silently fail
+    }
+  }, [selectedFingerprints, statusFilter, fetchErrors]);
+
+  // Selection handler for checkbox clicks (supports ctrl+click and shift+click range)
+  const handleSelect = useCallback((fingerprint: string, event: React.MouseEvent) => {
+    const currentIndex = sortedErrors.findIndex(e => e.fingerprint === fingerprint);
+
+    if (event.shiftKey && lastSelectedIndex !== null) {
+      // Range select — clamp indices to current list bounds
+      const clampedLast = Math.min(lastSelectedIndex, sortedErrors.length - 1);
+      const start = Math.min(clampedLast, currentIndex);
+      const end = Math.max(clampedLast, currentIndex);
+      setSelectedFingerprints((prev) => {
+        const next = new Set(prev);
+        for (let i = start; i <= end; i++) {
+          next.add(sortedErrors[i].fingerprint);
+        }
+        return next;
+      });
+    } else if (event.ctrlKey || event.metaKey) {
+      // Toggle individual
+      setSelectedFingerprints((prev) => {
+        const next = new Set(prev);
+        if (next.has(fingerprint)) {
+          next.delete(fingerprint);
+        } else {
+          next.add(fingerprint);
+        }
+        return next;
+      });
+    } else {
+      // Simple toggle (no modifier)
+      setSelectedFingerprints((prev) => {
+        const next = new Set(prev);
+        if (next.has(fingerprint)) {
+          next.delete(fingerprint);
+        } else {
+          next.add(fingerprint);
+        }
+        return next;
+      });
+    }
+    setLastSelectedIndex(currentIndex);
+  }, [lastSelectedIndex, sortedErrors]);
+
+  // Select all / deselect all
+  const handleSelectAll = useCallback(() => {
+    if (selectedFingerprints.size > 0 && selectedFingerprints.size === sortedErrors.length) {
+      // All selected: deselect all
+      setSelectedFingerprints(new Set());
+    } else {
+      // Select all on current page
+      setSelectedFingerprints(new Set(sortedErrors.map(e => e.fingerprint)));
+    }
+  }, [selectedFingerprints.size, sortedErrors]);
+
+  // Context menu handler for rows
+  const handleRowContextMenu = useCallback((fingerprint: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    // If row is not already selected, auto-select just that row
+    if (!selectedFingerprints.has(fingerprint)) {
+      setSelectedFingerprints(new Set([fingerprint]));
+    }
+    setContextMenu({ x: event.clientX, y: event.clientY });
+  }, [selectedFingerprints]);
+
+  // Build context menu items based on selection
+  const contextMenuItems = useMemo((): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+    const selectedErrors = sortedErrors.filter(e => selectedFingerprints.has(e.fingerprint));
+    const hasUnreviewed = selectedErrors.some(e => !e.isReviewed);
+    const hasReviewed = selectedErrors.some(e => e.isReviewed);
+
+    if (hasUnreviewed) {
+      items.push({
+        label: 'Mark Reviewed',
+        onClick: () => handleBatchReview('review'),
+      });
+    }
+    if (hasReviewed) {
+      items.push({
+        label: 'Re-open',
+        onClick: () => handleBatchReview('unreview'),
+      });
+    }
+    return items;
+  }, [sortedErrors, selectedFingerprints, handleBatchReview]);
 
   // Count unreviewed for the header badge
   const unreviewedCount = errorList
@@ -389,6 +560,11 @@ export function AdminErrors() {
           ))}
         </div>
 
+        {/* Selection count badge — always rendered to prevent layout shift */}
+        <Badge variant="info" size="lg" className={selectedFingerprints.size > 0 ? '' : 'invisible'}>
+          {selectedFingerprints.size || 0} selected
+        </Badge>
+
       </div>
 
       {fetchError && (
@@ -420,6 +596,16 @@ export function AdminErrors() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated">
+                  <th className="px-2 py-2 w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all errors on page"
+                      checked={selectedFingerprints.size > 0 && selectedFingerprints.size === sortedErrors.length}
+                      ref={(el) => { if (el) el.indeterminate = selectedFingerprints.size > 0 && selectedFingerprints.size < sortedErrors.length; }}
+                      onChange={handleSelectAll}
+                      className="rounded border-border-subtle text-accent focus:ring-accent cursor-pointer"
+                    />
+                  </th>
                   <SortableHeader<ErrorSortField> field="message" label="Message" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
                   <SortableHeader<ErrorSortField> field="errorType" label="Type" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
                   <SortableHeader<ErrorSortField> field="caught" label="Caught" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
@@ -436,19 +622,18 @@ export function AdminErrors() {
                   <ErrorRow
                     key={error.fingerprint}
                     error={error}
-                    isExpanded={expandedFingerprint === error.fingerprint}
-                    onToggle={() => handleExpand(error.fingerprint)}
-                    detailData={
-                      expandedFingerprint === error.fingerprint ? detailData : null
-                    }
-                    detailLoading={
-                      expandedFingerprint === error.fingerprint && detailLoading
-                    }
+                    isExpanded={expandedFingerprints.has(error.fingerprint)}
+                    onToggle={(shiftKey: boolean) => handleExpand(error.fingerprint, shiftKey)}
+                    detailData={detailDataMap.get(error.fingerprint) ?? null}
+                    detailLoading={loadingFingerprints.has(error.fingerprint)}
                     markingReviewed={markingReviewed}
                     onMarkReviewed={handleMarkReviewed}
                     onUnreview={handleUnreview}
                     expandedStackTraces={expandedStackTraces}
                     onToggleStackTrace={toggleStackTrace}
+                    isSelected={selectedFingerprints.has(error.fingerprint)}
+                    onSelect={handleSelect}
+                    onContextMenu={handleRowContextMenu}
                   />
                 ))}
               </tbody>
@@ -485,6 +670,16 @@ export function AdminErrors() {
           </>
         )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -494,7 +689,7 @@ export function AdminErrors() {
 interface ErrorRowProps {
   error: ErrorGroup;
   isExpanded: boolean;
-  onToggle: () => void;
+  onToggle: (shiftKey: boolean) => void;
   detailData: ErrorDetailData | null;
   detailLoading: boolean;
   markingReviewed: boolean;
@@ -502,6 +697,9 @@ interface ErrorRowProps {
   onUnreview: (fingerprint: string) => void;
   expandedStackTraces: Set<number>;
   onToggleStackTrace: (id: number) => void;
+  isSelected: boolean;
+  onSelect: (fingerprint: string, event: React.MouseEvent) => void;
+  onContextMenu: (fingerprint: string, event: React.MouseEvent) => void;
 }
 
 function ErrorRow({
@@ -515,16 +713,48 @@ function ErrorRow({
   onUnreview,
   expandedStackTraces,
   onToggleStackTrace,
+  isSelected,
+  onSelect,
+  onContextMenu,
 }: ErrorRowProps) {
   return (
     <>
       {/* Summary Row */}
       <tr
-        className={`cursor-pointer transition-colors ${
-          isExpanded ? 'bg-surface-elevated' : 'hover:bg-surface-elevated'
+        className={`cursor-pointer transition-colors select-none ${
+          isSelected
+            ? 'bg-accent/5 shadow-[inset_2px_0_0_0_var(--color-accent)]'
+            : isExpanded
+              ? 'bg-surface-elevated'
+              : 'hover:bg-surface-elevated'
         }`}
-        onClick={onToggle}
+        onClick={(e) => {
+          // Ctrl/Cmd+Click toggles selection
+          if (e.ctrlKey || e.metaKey) {
+            onSelect(error.fingerprint, e);
+            return;
+          }
+          // Prevent text selection on shift+click
+          if (e.shiftKey) {
+            e.preventDefault();
+          }
+          // Shift+Click multi-expands
+          onToggle(e.shiftKey);
+        }}
+        onContextMenu={(e) => onContextMenu(error.fingerprint, e)}
       >
+        <td className="px-2 py-2 w-8" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            aria-label={`Select error: ${truncate(error.message, 40)}`}
+            checked={isSelected}
+            onChange={(e) => {
+              onSelect(error.fingerprint, e as unknown as React.MouseEvent);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded border-border-subtle text-accent focus:ring-accent cursor-pointer"
+          />
+        </td>
         <td className="px-4 py-2 text-sm text-text-primary max-w-xs">
           <span className="block truncate" title={error.message}>
             {truncate(error.message, 80)}
@@ -571,7 +801,7 @@ function ErrorRow({
       {/* Detail Panel (expanded) */}
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="px-0 py-0">
+          <td colSpan={10} className="px-0 py-0">
             <div className="bg-surface-base border-t border-border-subtle p-4 space-y-4">
               {detailLoading ? (
                 <div className="space-y-3">

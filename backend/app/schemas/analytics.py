@@ -1,7 +1,10 @@
 """Pydantic schemas for analytics and error reporting."""
 
+from typing import Literal
+
 from pydantic import Field
 
+from .static_group import MemberRoleEnum
 from .tier_snapshot import CamelModel
 
 
@@ -22,6 +25,13 @@ class AnalyticsEventBatch(CamelModel):
 
     session_id: str = Field(default="", max_length=36)
     events: list[AnalyticsEventIn] = Field(min_length=1, max_length=50)
+
+
+class BatchReviewRequest(CamelModel):
+    """Request to batch review/unreview multiple error groups."""
+
+    fingerprints: list[str] = Field(min_length=1, max_length=100)
+    action: Literal["review", "unreview"]
 
 
 class ErrorReportIn(CamelModel):
@@ -81,6 +91,7 @@ class TopStaticItem(CamelModel):
 
     static_id: str
     name: str
+    share_code: str
     member_count: int
     loot_entries: int
     last_log: str | None
@@ -152,3 +163,20 @@ class ErrorGroupDetailResponse(CamelModel):
     last_seen: str
     is_reviewed: bool
     occurrences: list[ErrorDetailItem]
+
+
+class UserStaticItem(CamelModel):
+    """A static in a user's statics list."""
+
+    static_id: str
+    name: str
+    share_code: str
+    member_count: int
+    role: MemberRoleEnum | None = None  # Only for joined statics
+
+
+class UserStaticsResponse(CamelModel):
+    """Response for a user's created and joined statics."""
+
+    created: list[UserStaticItem]
+    joined: list[UserStaticItem]
