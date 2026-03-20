@@ -589,9 +589,12 @@ export const useTierStore = create<TierState>((set, get) => ({
 
       return updatedPlayer;
     } catch (error) {
+      const isExpected = error instanceof Error && error.message.includes('not found');
       set({
-        error: error instanceof Error ? error.message : 'Failed to assign player',
-        errorStack: error instanceof Error ? error.stack || null : null,
+        ...(isExpected ? {} : {
+          error: error instanceof Error ? error.message : 'Failed to assign player',
+          errorStack: error instanceof Error ? error.stack || null : null,
+        }),
         isSaving: false,
       });
       throw error;
@@ -637,9 +640,14 @@ export const useTierStore = create<TierState>((set, get) => ({
 
       return updatedPlayer;
     } catch (error) {
+      // For expected 404s (user not found), don't set store error state —
+      // AssignUserModal shows a friendly toast instead of the error modal.
+      const isExpected = error instanceof Error && error.message.includes('not found');
       set({
-        error: error instanceof Error ? error.message : 'Failed to assign player',
-        errorStack: error instanceof Error ? error.stack || null : null,
+        ...(isExpected ? {} : {
+          error: error instanceof Error ? error.message : 'Failed to assign player',
+          errorStack: error instanceof Error ? error.stack || null : null,
+        }),
         isSaving: false,
       });
       throw error;
