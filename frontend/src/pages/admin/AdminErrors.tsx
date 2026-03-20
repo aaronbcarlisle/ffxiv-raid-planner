@@ -766,7 +766,7 @@ function ErrorRow({
     <>
       {/* Summary Row */}
       <tr
-        className={`cursor-pointer transition-colors ${
+        className={`cursor-pointer transition-colors select-none ${
           isSelected
             ? 'bg-accent/5 border-l-2 border-l-accent'
             : isExpanded
@@ -778,6 +778,10 @@ function ErrorRow({
           if (e.ctrlKey || e.metaKey) {
             onSelect(error.fingerprint, e);
             return;
+          }
+          // Prevent text selection on shift+click
+          if (e.shiftKey) {
+            e.preventDefault();
           }
           // Shift+Click multi-expands
           onToggle(e.shiftKey);
