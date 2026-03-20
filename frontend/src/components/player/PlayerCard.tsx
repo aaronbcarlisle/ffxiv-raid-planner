@@ -76,8 +76,8 @@ interface PlayerCardProps {
   onResetGear?: (mode: ResetMode) => void;
   onClaimPlayer?: () => void;
   onReleasePlayer?: () => void;
-  onAdminAssignPlayer?: (data: AssignPlayerRequest) => void;
-  onOwnerAssignPlayer?: (data: AssignPlayerRequest) => void;
+  onAdminAssignPlayer?: (data: AssignPlayerRequest) => Promise<void>;
+  onOwnerAssignPlayer?: (data: AssignPlayerRequest) => Promise<void>;
   onModalOpen?: () => void;
   onModalClose?: () => void;
   onCopyUrl?: () => void;
