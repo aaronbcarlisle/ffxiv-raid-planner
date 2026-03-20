@@ -723,7 +723,7 @@ function ErrorRow({
       <tr
         className={`cursor-pointer transition-colors select-none ${
           isSelected
-            ? 'bg-accent/5 border-l-2 border-l-accent'
+            ? 'bg-accent/5 shadow-[inset_2px_0_0_0_var(--color-accent)]'
             : isExpanded
               ? 'bg-surface-elevated'
               : 'hover:bg-surface-elevated'
