@@ -38,7 +38,7 @@ export function AdminKpiCard({ label, value, change, changeDirection = 'neutral'
           <button
             type="button"
             onClick={onChangeClick}
-            className={`text-xs mt-1 ${changeStyles[changeDirection]} hover:underline cursor-pointer`}
+            className={`text-xs mt-1 ${changeStyles[changeDirection]} hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded`}
           >
             <span aria-hidden="true">{changeIcons[changeDirection]}</span>{' '}
             {change}

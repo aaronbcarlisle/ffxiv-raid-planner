@@ -404,9 +404,10 @@ export function AdminErrors() {
     const currentIndex = sortedErrors.findIndex(e => e.fingerprint === fingerprint);
 
     if (event.shiftKey && lastSelectedIndex !== null) {
-      // Range select
-      const start = Math.min(lastSelectedIndex, currentIndex);
-      const end = Math.max(lastSelectedIndex, currentIndex);
+      // Range select — clamp indices to current list bounds
+      const clampedLast = Math.min(lastSelectedIndex, sortedErrors.length - 1);
+      const start = Math.min(clampedLast, currentIndex);
+      const end = Math.max(clampedLast, currentIndex);
       setSelectedFingerprints((prev) => {
         const next = new Set(prev);
         for (let i = start; i <= end; i++) {
@@ -598,6 +599,7 @@ export function AdminErrors() {
                   <th className="px-2 py-2 w-8">
                     <input
                       type="checkbox"
+                      aria-label="Select all errors on page"
                       checked={selectedFingerprints.size > 0 && selectedFingerprints.size === sortedErrors.length}
                       ref={(el) => { if (el) el.indeterminate = selectedFingerprints.size > 0 && selectedFingerprints.size < sortedErrors.length; }}
                       onChange={handleSelectAll}
@@ -744,12 +746,12 @@ function ErrorRow({
         <td className="px-2 py-2 w-8" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
+            aria-label={`Select error: ${truncate(error.message, 40)}`}
             checked={isSelected}
-            onChange={() => {}}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(error.fingerprint, e);
+            onChange={(e) => {
+              onSelect(error.fingerprint, e as unknown as React.MouseEvent);
             }}
+            onClick={(e) => e.stopPropagation()}
             className="rounded border-border-subtle text-accent focus:ring-accent cursor-pointer"
           />
         </td>

@@ -189,7 +189,7 @@ async def get_overview(
     result = await session.execute(
         select(func.count(ErrorReport.id)).where(
             ErrorReport.created_at > twenty_four_hours_ago,
-            ErrorReport.is_reviewed == False,  # noqa: E712
+            ErrorReport.is_reviewed.is_(False),
         )
     )
     errors_24h = result.scalar() or 0
