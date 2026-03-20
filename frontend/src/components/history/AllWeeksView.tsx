@@ -13,17 +13,17 @@ import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { SortableHeader } from '../admin/SortableHeader';
 import { toggleSort, type SortDirection } from '../admin/sortUtils';
 import { getRoleColor, type Role } from '../../gamedata';
-import { FLOOR_COLORS, parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
+import { FLOOR_COLORS, parseFloorName, UPGRADE_MATERIAL_DISPLAY_NAMES, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { Pencil, Link, Trash2, UserRound, Search, X, LayoutGrid, List } from 'lucide-react';
 
-/** Material type display names */
-const MATERIAL_NAMES: Record<string, string> = {
-  twine: 'Twine',
-  glaze: 'Glaze',
-  solvent: 'Solvent',
-  universal_tomestone: 'Tomestone',
+/** Map raw material type to CSS color token name (universal_tomestone → tomestone) */
+const MATERIAL_CSS_TOKEN: Record<string, string> = {
+  twine: 'twine',
+  glaze: 'glaze',
+  solvent: 'solvent',
+  universal_tomestone: 'tomestone',
 };
 
 /** Method display names and colors */
@@ -172,7 +172,7 @@ export function AllWeeksView({
         weekNumber: e.weekNumber,
         floor: e.floor,
         floorNum: parseFloorName(e.floor),
-        slot: MATERIAL_NAMES[e.materialType] || e.materialType,
+        slot: UPGRADE_MATERIAL_DISPLAY_NAMES[e.materialType as keyof typeof UPGRADE_MATERIAL_DISPLAY_NAMES] || e.materialType,
         slotRaw: e.materialType,
         playerName: player?.name || e.recipientPlayerName || 'Unknown',
         playerId: e.recipientPlayerId,
@@ -540,7 +540,7 @@ export function AllWeeksView({
                         {row.type === 'material' && (
                           <span
                             className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: `var(--color-material-${row.slotRaw})` }}
+                            style={{ backgroundColor: `var(--color-material-${MATERIAL_CSS_TOKEN[row.slotRaw] || row.slotRaw})` }}
                           />
                         )}
                         {row.weaponJob && <JobIcon job={row.weaponJob} size="xs" />}

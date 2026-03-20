@@ -750,9 +750,13 @@ export function LogWeekWizard({
           {singleFloorMode ? `Log ${floors[initialFloor - 1]}` : 'Log Week'}
           <NumberInput
             value={selectedWeek}
-            onChange={(val) => setSelectedWeek(val ?? currentWeek)}
+            onChange={(val) => {
+              const raw = val ?? currentWeek;
+              setSelectedWeek(Math.min(effectiveMaxWeek, Math.max(1, Math.trunc(raw))));
+            }}
             min={1}
             max={effectiveMaxWeek}
+            step={1}
             size="sm"
           />
         </span>

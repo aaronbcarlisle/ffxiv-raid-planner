@@ -81,7 +81,7 @@ describe('calculatePriorityScore', () => {
         ...defaultSettings,
         prioritySettings: {
           mode: 'role-based',
-          roleBasedConfig: { roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'] },
+          roleBasedConfig: { roleOrder: ['melee', 'caster', 'ranged', 'tank', 'healer'] },
           advancedOptions: {
             showPriorityScores: true,
             preset: 'balanced',

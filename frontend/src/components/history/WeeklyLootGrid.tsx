@@ -324,22 +324,33 @@ export function WeeklyLootGrid({
     return players.find(p => p.id === playerId);
   };
 
+  // Pre-index loot entries by floor+slot for O(1) lookups per cell
+  const lootIndex = useMemo(() => {
+    const index = new Map<string, LootLogEntry[]>();
+    for (const entry of weekLootEntries) {
+      const key = `${entry.floor}:${entry.itemSlot}`;
+      const arr = index.get(key);
+      if (arr) arr.push(entry);
+      else index.set(key, [entry]);
+    }
+    // Sort each bucket by createdAt desc (newest first)
+    for (const entries of index.values()) {
+      if (entries.length > 1) {
+        entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+    }
+    return index;
+  }, [weekLootEntries]);
+
   // Get the latest loot entry for a specific floor and slot (newest by createdAt)
   const getLootForSlot = (floorNum: FloorNumber, slot: string): LootLogEntry | undefined => {
-    const floorName = floors[floorNum - 1];
-    const matches = weekLootEntries.filter(e =>
-      e.floor === floorName && e.itemSlot === slot
-    );
-    if (matches.length <= 1) return matches[0];
-    return matches.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const entries = lootIndex.get(`${floors[floorNum - 1]}:${slot}`);
+    return entries?.[0];
   };
 
   // Get ALL loot entries for a specific floor and slot (for multi-entry badge)
   const getAllLootForSlot = (floorNum: FloorNumber, slot: string): LootLogEntry[] => {
-    const floorName = floors[floorNum - 1];
-    return weekLootEntries.filter(e =>
-      e.floor === floorName && e.itemSlot === slot
-    );
+    return lootIndex.get(`${floors[floorNum - 1]}:${slot}`) || [];
   };
 
   // Popover state for multi-entry cells
