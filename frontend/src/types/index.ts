@@ -301,7 +301,7 @@ export const DEFAULT_ADVANCED_OPTIONS: AdvancedPriorityOptions = {
 export const DEFAULT_PRIORITY_SETTINGS: StaticPrioritySettings = {
   mode: 'role-based',
   roleBasedConfig: {
-    roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+    roleOrder: ['melee', 'caster', 'ranged', 'tank', 'healer'],
   },
   advancedOptions: DEFAULT_ADVANCED_OPTIONS,
 };

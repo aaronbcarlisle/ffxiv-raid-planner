@@ -429,7 +429,7 @@ export function AllWeeksView({
                     : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
-                {t === 'all' ? 'All' : t === 'loot' ? 'Loot' : 'Materials'}
+                {t === 'all' ? 'All' : t === 'loot' ? 'Gear' : 'Materials'}
               </button>
             ))}
           </div>
@@ -462,7 +462,7 @@ export function AllWeeksView({
           <div className="ml-auto text-xs text-text-muted">
             {stats.total} {stats.total === 1 ? 'entry' : 'entries'}
             {entryType === 'all' && stats.total > 0 && (
-              <span> ({stats.lootCount} loot, {stats.matCount} material)</span>
+              <span> ({stats.lootCount} gear, {stats.matCount} material)</span>
             )}
           </div>
         </div>

@@ -418,7 +418,7 @@ export function WhoNeedsItMatrix({
           </tbody>
 
           {/* Material rows */}
-          {hasMaterialsForFloor && (
+          {(
             <tbody>
               {/* Separator row */}
               <tr>
@@ -577,7 +577,7 @@ export function WhoNeedsItMatrix({
         );})}
 
         {/* Material cards (mobile) */}
-        {hasMaterialsForFloor && (
+        {(
           <>
             <div className="px-3 pt-3 pb-1 border-t border-border-default">
               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Materials</div>

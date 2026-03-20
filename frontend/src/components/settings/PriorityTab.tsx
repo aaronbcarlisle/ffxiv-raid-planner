@@ -93,7 +93,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
       // Initialize mode-specific config if needed
       if (mode === 'role-based' && !newSettings.roleBasedConfig) {
         newSettings.roleBasedConfig = {
-          roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          roleOrder: ['melee', 'caster', 'ranged', 'tank', 'healer'],
         };
       } else if (mode === 'job-based' && !newSettings.jobBasedConfig) {
         // Create default groups by role
@@ -188,7 +188,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
           ...existingSettings,
           prioritySettings: settings,
           // Also update legacy fields for backward compatibility
-          lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'caster', 'ranged', 'tank', 'healer'],
           priorityMode: legacyPriorityMode,
           showPriorityScores: settings.advancedOptions.showPriorityScores,
           enableEnhancedScoring: settings.advancedOptions.enableEnhancedFairness,
