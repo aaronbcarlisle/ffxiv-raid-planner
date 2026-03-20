@@ -708,6 +708,9 @@ async def batch_review_errors(
         .where(ErrorReport.fingerprint.in_(body.fingerprints))
         .values(is_reviewed=is_reviewed)
     )
+    if result.rowcount == 0:
+        raise NotFound("No matching error groups found")
+
     await session.commit()
 
     logger.info(

@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from .static_group import MemberRoleEnum
 from .tier_snapshot import CamelModel
 
 
@@ -29,7 +30,7 @@ class AnalyticsEventBatch(CamelModel):
 class BatchReviewRequest(CamelModel):
     """Request to batch review/unreview multiple error groups."""
 
-    fingerprints: list[str]
+    fingerprints: list[str] = Field(min_length=1, max_length=100)
     action: Literal["review", "unreview"]
 
 
@@ -171,7 +172,7 @@ class UserStaticItem(CamelModel):
     name: str
     share_code: str
     member_count: int
-    role: str | None = None  # Only for joined statics
+    role: MemberRoleEnum | None = None  # Only for joined statics
 
 
 class UserStaticsResponse(CamelModel):
