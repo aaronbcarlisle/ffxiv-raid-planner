@@ -405,13 +405,15 @@ export function AssignUserModal({
               className={`w-full ${manualIdError ? 'border-status-error' : ''}`}
               disabled={isSubmitting}
             />
-            {manualIdError ? (
+            {manualIdError && (
               <p className="text-xs text-status-error mt-1">{manualIdError}</p>
-            ) : (
-              <p className="text-xs text-text-muted mt-1">
-                The user must have logged in to the app at least once before they can be assigned.
-              </p>
             )}
+            <div className="mt-2 p-2.5 bg-status-warning/10 border border-status-warning/20 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-status-warning">
+                Only users who have signed in with Discord can be assigned. If the user hasn't authenticated yet, ask them to log in first.
+              </p>
+            </div>
           </div>
         )}
 
