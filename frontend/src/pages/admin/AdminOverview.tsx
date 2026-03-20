@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AreaChart,
   Area,
@@ -20,9 +21,11 @@ import {
 import { api } from '../../services/api';
 import { AdminKpiCard } from '../../components/admin/AdminKpiCard';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { ContextMenu } from '../../components/ui/ContextMenu';
 import { Button } from '../../components/primitives/Button';
 import { SortableHeader } from '../../components/admin/SortableHeader';
 import { toggleSort } from '../../components/admin/sortUtils';
+import { UserStaticsModal } from './UserStaticsModal';
 import type { SortDirection } from '../../components/admin/sortUtils';
 
 // --- Types ---
@@ -58,6 +61,7 @@ interface TopUser {
 interface TopStatic {
   staticId: string;
   name: string;
+  shareCode: string;
   memberCount: number;
   lootEntries: number;
   lastLog: string | null;
@@ -86,6 +90,7 @@ const CHART_TOOLTIP_TEXT = '#e2e8f0'; // design-system-ignore: Recharts tooltip
 // --- Component ---
 
 export function AdminOverview() {
+  const navigate = useNavigate();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [growthData, setGrowthData] = useState<GrowthData | null>(null);
   const [topUsers, setTopUsers] = useState<TopUser[] | null>(null);
@@ -95,6 +100,13 @@ export function AdminOverview() {
   const [loadingGrowth, setLoadingGrowth] = useState(true);
   const [loadingTables, setLoadingTables] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+
+  // Context menu state for Top Statics table
+  const [staticsContextMenu, setStaticsContextMenu] = useState<{ x: number; y: number; static_: TopStatic } | null>(null);
+
+  // Context menu state for Top Users table
+  const [usersContextMenu, setUsersContextMenu] = useState<{ x: number; y: number; user: TopUser } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<TopUser | null>(null);
 
   // Sort state for Top Users table
   const [userSortField, setUserSortField] = useState<OverviewSortField>('staticsCreated');
@@ -263,10 +275,10 @@ export function AdminOverview() {
               value={overview.avgClaimedCards.toFixed(1)}
             />
             <AdminKpiCard
-              label="Errors (24h)"
+              label="Unreviewed (24h)"
               value={overview.errors24h}
               changeDirection={overview.errors24h > 0 ? 'down' : 'neutral'}
-              change={overview.errors24h > 0 ? 'Needs attention' : 'All clear'}
+              change={overview.errors24h > 0 ? 'Need attention' : 'All clear'}
             />
           </>
         )}
@@ -398,7 +410,14 @@ export function AdminOverview() {
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {sortedTopUsers.map((u) => (
-                  <tr key={u.userId} className="hover:bg-surface-elevated transition-colors">
+                  <tr
+                    key={u.userId}
+                    className="hover:bg-surface-elevated transition-colors"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setUsersContextMenu({ x: e.clientX, y: e.clientY, user: u });
+                    }}
+                  >
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         {u.avatarUrl ? (
@@ -459,22 +478,29 @@ export function AdminOverview() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {sortedTopStatics.map((s) => (
-                  <tr key={s.staticId} className="hover:bg-surface-elevated transition-colors">
+                {sortedTopStatics.map((stat) => (
+                  <tr
+                    key={stat.staticId}
+                    className="hover:bg-surface-elevated transition-colors"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setStaticsContextMenu({ x: e.clientX, y: e.clientY, static_: stat });
+                    }}
+                  >
                     <td className="px-4 py-2">
                       <span className="text-sm text-accent font-medium truncate">
-                        {s.name}
+                        {stat.name}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-center text-sm text-text-secondary">
-                      {s.memberCount}
+                      {stat.memberCount}
                     </td>
                     <td className="px-4 py-2 text-center text-sm text-text-secondary">
-                      {s.lootEntries}
+                      {stat.lootEntries}
                     </td>
                     <td className="px-4 py-2 text-right text-sm text-text-muted">
-                      {s.lastLog
-                        ? new Date(s.lastLog).toLocaleDateString()
+                      {stat.lastLog
+                        ? new Date(stat.lastLog).toLocaleDateString()
                         : 'Never'}
                     </td>
                   </tr>
@@ -484,6 +510,50 @@ export function AdminOverview() {
           )}
         </div>
       </div>
+
+      {/* Context Menus */}
+      {staticsContextMenu && (
+        <ContextMenu
+          x={staticsContextMenu.x}
+          y={staticsContextMenu.y}
+          items={[
+            {
+              label: 'View Static',
+              onClick: () => {
+                navigate(`/group/${staticsContextMenu.static_.shareCode}?adminMode=true`);
+                setStaticsContextMenu(null);
+              },
+            },
+          ]}
+          onClose={() => setStaticsContextMenu(null)}
+        />
+      )}
+
+      {usersContextMenu && (
+        <ContextMenu
+          x={usersContextMenu.x}
+          y={usersContextMenu.y}
+          items={[
+            {
+              label: 'View Statics',
+              onClick: () => {
+                setSelectedUser(usersContextMenu.user);
+                setUsersContextMenu(null);
+              },
+            },
+          ]}
+          onClose={() => setUsersContextMenu(null)}
+        />
+      )}
+
+      {/* User Statics Modal */}
+      {selectedUser && (
+        <UserStaticsModal
+          userId={selectedUser.userId}
+          username={selectedUser.username}
+          onClose={() => setSelectedUser(null)}
+        />
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ from ..permissions import NotFound, PermissionDenied, is_user_admin
 from ..rate_limit import limiter
 from ..schemas.analytics import (
     AnalyticsEventBatch,
+    BatchReviewRequest,
     ErrorGroupDetailResponse,
     ErrorGroupItem,
     ErrorGroupListResponse,
@@ -40,6 +41,8 @@ from ..schemas.analytics import (
     TopUserItem,
     UsageEventItem,
     UsageResponse,
+    UserStaticItem,
+    UserStaticsResponse,
 )
 
 router = APIRouter(tags=["analytics"])
@@ -182,10 +185,11 @@ async def get_overview(
     )
     avg_claimed_cards = round(float(result.scalar() or 0.0), 1)
 
-    # Errors in last 24 hours
+    # Errors in last 24 hours (unreviewed only)
     result = await session.execute(
         select(func.count(ErrorReport.id)).where(
-            ErrorReport.created_at > twenty_four_hours_ago
+            ErrorReport.created_at > twenty_four_hours_ago,
+            ErrorReport.is_reviewed == False,  # noqa: E712
         )
     )
     errors_24h = result.scalar() or 0
@@ -406,6 +410,7 @@ async def get_top_statics(
         select(
             StaticGroup.id,
             StaticGroup.name,
+            StaticGroup.share_code,
             func.coalesce(member_count.c.member_count, 0).label("member_count"),
             func.coalesce(loot_count.c.loot_entries, 0).label("loot_entries"),
             loot_count.c.last_log,
@@ -423,6 +428,7 @@ async def get_top_statics(
         TopStaticItem(
             static_id=row.id,
             name=row.name,
+            share_code=row.share_code,
             member_count=row.member_count,
             loot_entries=row.loot_entries,
             last_log=row.last_log,
@@ -685,3 +691,109 @@ async def mark_error_unreviewed(
     )
 
     return {"status": "ok"}
+
+
+@router.post("/api/admin/analytics/errors/batch-review")
+async def batch_review_errors(
+    body: BatchReviewRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Batch mark/unmark error groups as reviewed."""
+    await require_admin(user, session)
+
+    is_reviewed = body.action == "review"
+    result = await session.execute(
+        update(ErrorReport)
+        .where(ErrorReport.fingerprint.in_(body.fingerprints))
+        .values(is_reviewed=is_reviewed)
+    )
+    await session.commit()
+
+    logger.info(
+        "batch_errors_reviewed",
+        action=body.action,
+        fingerprints=len(body.fingerprints),
+        rows_updated=result.rowcount,
+        admin_user_id=user.id,
+    )
+
+    return {"status": "ok", "count": result.rowcount}
+
+
+@router.get("/api/admin/analytics/users/{user_id}/statics")
+async def get_user_statics(
+    user_id: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserStaticsResponse:
+    """Get statics created and joined by a specific user."""
+    await require_admin(user, session)
+
+    # Statics created (owned)
+    # Need member count for each
+    member_count_sq = (
+        select(
+            Membership.static_group_id,
+            func.count(Membership.id).label("member_count"),
+        )
+        .group_by(Membership.static_group_id)
+        .subquery()
+    )
+
+    created_result = await session.execute(
+        select(
+            StaticGroup.id,
+            StaticGroup.name,
+            StaticGroup.share_code,
+            func.coalesce(member_count_sq.c.member_count, 0).label("member_count"),
+        )
+        .outerjoin(
+            member_count_sq,
+            StaticGroup.id == member_count_sq.c.static_group_id,
+        )
+        .where(StaticGroup.owner_id == user_id)
+        .order_by(StaticGroup.name)
+    )
+    created = [
+        UserStaticItem(
+            static_id=row.id,
+            name=row.name,
+            share_code=row.share_code,
+            member_count=row.member_count,
+        )
+        for row in created_result.all()
+    ]
+
+    # Statics joined (memberships, excluding owned)
+    joined_result = await session.execute(
+        select(
+            StaticGroup.id,
+            StaticGroup.name,
+            StaticGroup.share_code,
+            Membership.role,
+            func.coalesce(member_count_sq.c.member_count, 0).label("member_count"),
+        )
+        .join(Membership, Membership.static_group_id == StaticGroup.id)
+        .outerjoin(
+            member_count_sq,
+            StaticGroup.id == member_count_sq.c.static_group_id,
+        )
+        .where(
+            Membership.user_id == user_id,
+            StaticGroup.owner_id != user_id,
+        )
+        .order_by(StaticGroup.name)
+    )
+    joined = [
+        UserStaticItem(
+            static_id=row.id,
+            name=row.name,
+            share_code=row.share_code,
+            member_count=row.member_count,
+            role=row.role,
+        )
+        for row in joined_result.all()
+    ]
+
+    return UserStaticsResponse(created=created, joined=joined)
