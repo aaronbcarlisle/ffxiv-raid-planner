@@ -142,7 +142,8 @@ export function AllWeeksView({
   const allRows: UnifiedRow[] = useMemo(() => {
     const lootRows: UnifiedRow[] = lootLog.map(e => {
       const player = getPlayer(e.recipientPlayerId);
-      const slotName = GEAR_SLOT_NAMES[e.itemSlot as keyof typeof GEAR_SLOT_NAMES] || e.itemSlot;
+      const slotName = GEAR_SLOT_NAMES[e.itemSlot as keyof typeof GEAR_SLOT_NAMES]
+        || (e.itemSlot === 'ring' ? 'Ring' : e.itemSlot);
       const displaySlot = e.weaponJob ? `Weapon (${e.weaponJob})` : slotName;
       return {
         id: e.id,
@@ -506,7 +507,7 @@ export function AllWeeksView({
                     id={`${row.type}-entry-${row.id}`}
                     className={`hover:bg-surface-elevated/50 transition-colors cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
                     tabIndex={0}
-                    role="button"
+                    aria-label={`${row.type === 'loot' ? 'Loot' : 'Material'}: ${row.slot} - ${row.playerName}, Week ${row.weekNumber}`}
                     onClick={(e) => handleRowClick(e, row)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

@@ -846,7 +846,7 @@ export function LootPriorityPanel({
           currentWeek={currentWeek}
           maxWeek={effectiveMaxWeek}
           lootLog={lootLog}
-          onSuccess={() => {
+          onSuccess={(_loggedWeek: number) => {
             setLogFloorWizardOpen(false);
             onLogSuccess?.();
           }}

@@ -104,7 +104,7 @@ function MaterialPieIndicator({ total, augmented, roleColor, size = 28 }: {
       />
       {/* Segments */}
       {Array.from({ length: total }, (_, i) => {
-        const isFilled = i < augmented; // first N segments are augmented
+        const isFilled = i >= needed; // needed (bright) segments first, then augmented (dim)
         // Offset: rotate so segment 0 starts at top (12 o'clock)
         // stroke-dashoffset is measured clockwise from 3 o'clock, so shift by +circumference/4
         const offset = circumference / 4 - i * (segmentLength + gap);

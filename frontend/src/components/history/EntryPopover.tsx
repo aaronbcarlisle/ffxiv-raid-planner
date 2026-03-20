@@ -93,7 +93,9 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
     }
   }, [onEdit, onClose]);
 
-  const slotName = entries[0] ? (GEAR_SLOT_NAMES[entries[0].itemSlot as keyof typeof GEAR_SLOT_NAMES] || entries[0].itemSlot) : 'Slot';
+  const rawSlot = entries[0]?.itemSlot || '';
+  const slotName = GEAR_SLOT_NAMES[rawSlot as keyof typeof GEAR_SLOT_NAMES]
+    || (rawSlot === 'ring' ? 'Ring' : rawSlot || 'Slot');
 
   return (
     <div ref={popoverRef} style={style} className="bg-surface-card border border-border-default rounded-lg shadow-lg overflow-hidden animate-fade-in">
@@ -115,7 +117,14 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
             <div
               key={entry.id}
               className={`px-3 py-2 hover:bg-surface-elevated/50 transition-colors ${onEdit ? 'cursor-pointer' : ''}`}
+              {...(onEdit ? { role: 'button', tabIndex: 0 } : {})}
               onClick={(e) => handleEntryClick(e, entry)}
+              onKeyDown={(e) => {
+                if (onEdit && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  handleEntryClick(e as unknown as React.MouseEvent, entry);
+                }
+              }}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
