@@ -12,7 +12,7 @@ import { Input } from '../ui/Input';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { SortableHeader } from '../admin/SortableHeader';
 import { toggleSort, type SortDirection } from '../admin/sortUtils';
-import { getRoleColor, type Role } from '../../gamedata';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { FLOOR_COLORS, parseFloorName, UPGRADE_MATERIAL_DISPLAY_NAMES, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -133,10 +133,6 @@ export function AllWeeksView({
     players.find(p => p.id === playerId),
     [players]
   );
-
-  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-  const getValidRole = (role: string): Role =>
-    validRoles.includes(role as Role) ? role as Role : 'melee';
 
   // --- Build unified rows ---
   const allRows: UnifiedRow[] = useMemo(() => {

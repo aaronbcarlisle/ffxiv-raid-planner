@@ -25,6 +25,7 @@ export {
   getJobDisplayName,
   getRoleDisplayName,
   getRoleColor,
+  getValidRole,
   sortJobsByRole,
   groupJobsByRole,
   getJobsForTemplateRole,

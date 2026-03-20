@@ -170,6 +170,15 @@ export function getRoleColor(role: Role): string {
   return ROLE_CONFIG[role].color;
 }
 
+const VALID_ROLES: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
+
+/**
+ * Safely cast a string to a valid Role, falling back to 'melee'
+ */
+export function getValidRole(role: string): Role {
+  return VALID_ROLES.includes(role as Role) ? role as Role : 'melee';
+}
+
 /**
  * Sort jobs by role order, then alphabetically within role
  */

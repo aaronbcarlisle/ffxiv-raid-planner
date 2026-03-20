@@ -7,7 +7,7 @@
 
 import { useRef, useEffect, useCallback } from 'react';
 import { JobIcon } from '../ui/JobIcon';
-import { getRoleColor, type Role } from '../../gamedata';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import type { SnapshotPlayer, LootLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
@@ -31,10 +31,6 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const getPlayer = (playerId: string) => players.find(p => p.id === playerId);
-
-  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-  const getValidRole = (role: string): Role =>
-    validRoles.includes(role as Role) ? role as Role : 'melee';
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);

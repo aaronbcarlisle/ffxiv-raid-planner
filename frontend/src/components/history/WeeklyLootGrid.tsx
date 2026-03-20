@@ -14,7 +14,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
 import { EntryPopover } from './EntryPopover';
-import { getRoleColor, type Role } from '../../gamedata';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -365,12 +365,6 @@ export function WeeklyLootGrid({
     return weekMaterialEntries.find(e =>
       e.floor === floorName && e.materialType === materialType
     );
-  };
-
-  // Get valid roles for color lookup
-  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-  const getValidRole = (role: string): Role => {
-    return validRoles.includes(role as Role) ? role as Role : 'melee';
   };
 
   // Render recipient badge - fixed height container to prevent layout shift
