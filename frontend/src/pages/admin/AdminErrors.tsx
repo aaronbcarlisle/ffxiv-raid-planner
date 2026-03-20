@@ -559,12 +559,10 @@ export function AdminErrors() {
           ))}
         </div>
 
-        {/* Selection count badge */}
-        {selectedFingerprints.size > 0 && (
-          <Badge variant="info" size="lg">
-            {selectedFingerprints.size} selected
-          </Badge>
-        )}
+        {/* Selection count badge — always rendered to prevent layout shift */}
+        <Badge variant="info" size="lg" className={selectedFingerprints.size > 0 ? '' : 'invisible'}>
+          {selectedFingerprints.size || 0} selected
+        </Badge>
 
       </div>
 
