@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { TierSnapshot, SnapshotPlayer, RolloverResponse } from '../types';
-import { authRequest } from '../services/api';
+import { authRequest, ApiError } from '../services/api';
 import { analytics } from '../services/analytics';
 import { logger } from '../lib/logger';
 
@@ -589,9 +589,14 @@ export const useTierStore = create<TierState>((set, get) => ({
 
       return updatedPlayer;
     } catch (error) {
+      // 404s are handled inline by AssignUserModal — skip store error state.
+      // Other errors (403/500/etc.) set store error state for GroupView's error modal.
+      const is404 = error instanceof ApiError && error.status === 404;
       set({
-        error: error instanceof Error ? error.message : 'Failed to assign player',
-        errorStack: error instanceof Error ? error.stack || null : null,
+        ...(!is404 ? {
+          error: error instanceof Error ? error.message : 'Failed to assign player',
+          errorStack: error instanceof Error ? error.stack || null : null,
+        } : {}),
         isSaving: false,
       });
       throw error;
@@ -637,9 +642,12 @@ export const useTierStore = create<TierState>((set, get) => ({
 
       return updatedPlayer;
     } catch (error) {
+      const is404 = error instanceof ApiError && error.status === 404;
       set({
-        error: error instanceof Error ? error.message : 'Failed to assign player',
-        errorStack: error instanceof Error ? error.stack || null : null,
+        ...(!is404 ? {
+          error: error instanceof Error ? error.message : 'Failed to assign player',
+          errorStack: error instanceof Error ? error.stack || null : null,
+        } : {}),
         isSaving: false,
       });
       throw error;

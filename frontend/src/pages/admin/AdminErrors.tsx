@@ -63,7 +63,7 @@ interface ErrorDetailData {
 type SourceFilter = 'all' | 'frontend' | 'backend';
 type SeverityFilter = 'all' | 'warning' | 'error' | 'critical';
 type StatusFilter = 'all' | 'unreviewed' | 'reviewed';
-type ErrorSortField = 'message' | 'errorType' | 'severity' | 'source' | 'count' | 'affectedUsers' | 'lastSeen' | 'isReviewed';
+type ErrorSortField = 'message' | 'errorType' | 'caught' | 'severity' | 'source' | 'count' | 'affectedUsers' | 'lastSeen' | 'isReviewed';
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -127,6 +127,12 @@ function sourceBadgeVariant(source: string): 'info' | 'default' {
     default:
       return 'default';
   }
+}
+
+const HANDLED_ERROR_TYPES = new Set(['api_error']);
+
+function isHandledError(errorType: string): boolean {
+  return HANDLED_ERROR_TYPES.has(errorType);
 }
 
 function truncate(str: string, maxLen: number): string {
@@ -286,6 +292,8 @@ export function AdminErrors() {
           return mult * a.message.localeCompare(b.message);
         case 'errorType':
           return mult * a.errorType.localeCompare(b.errorType);
+        case 'caught':
+          return mult * (Number(isHandledError(a.errorType)) - Number(isHandledError(b.errorType)));
         case 'severity':
           return mult * ((SEVERITY_ORDER[a.severity.toLowerCase()] ?? 0) -
             (SEVERITY_ORDER[b.severity.toLowerCase()] ?? 0));
@@ -414,6 +422,7 @@ export function AdminErrors() {
                 <tr className="border-b border-border-subtle bg-surface-elevated">
                   <SortableHeader<ErrorSortField> field="message" label="Message" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
                   <SortableHeader<ErrorSortField> field="errorType" label="Type" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+                  <SortableHeader<ErrorSortField> field="caught" label="Caught" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
                   <SortableHeader<ErrorSortField> field="severity" label="Severity" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
                   <SortableHeader<ErrorSortField> field="source" label="Source" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" />
                   <SortableHeader<ErrorSortField> field="count" label="Count" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="right" />
@@ -525,6 +534,13 @@ function ErrorRow({
           {error.errorType}
         </td>
         <td className="px-4 py-2 text-center">
+          {isHandledError(error.errorType) ? (
+            <Badge variant="success" size="sm">Handled</Badge>
+          ) : (
+            <Badge variant="error" size="sm">Unhandled</Badge>
+          )}
+        </td>
+        <td className="px-4 py-2 text-center">
           <Badge variant={severityBadgeVariant(error.severity)} size="sm">
             {error.severity}
           </Badge>
@@ -555,7 +571,7 @@ function ErrorRow({
       {/* Detail Panel (expanded) */}
       {isExpanded && (
         <tr>
-          <td colSpan={8} className="px-0 py-0">
+          <td colSpan={9} className="px-0 py-0">
             <div className="bg-surface-base border-t border-border-subtle p-4 space-y-4">
               {detailLoading ? (
                 <div className="space-y-3">
