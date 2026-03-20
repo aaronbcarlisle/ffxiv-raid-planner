@@ -1083,6 +1083,10 @@ export function SectionedLogView({
             onDeleteMaterial={(entry: MaterialLogEntry) => handleDeleteMaterial(entry)}
             onCopyEntryUrl={handleCopyEntryUrlById}
             onNavigateToPlayer={onNavigateToPlayer}
+            onJumpToWeek={(week, layout) => {
+              onWeekChange?.(week);
+              handleLayoutModeChange(layout);
+            }}
             highlightedEntryId={highlightedEntryId}
             highlightedEntryType={highlightedEntryType}
           />
@@ -1653,6 +1657,10 @@ export function SectionedLogView({
                 onDeleteMaterial={(entry: MaterialLogEntry) => handleDeleteMaterial(entry)}
                 onCopyEntryUrl={handleCopyEntryUrlById}
                 onNavigateToPlayer={onNavigateToPlayer}
+                onJumpToWeek={(week, layout) => {
+                  onWeekChange?.(week);
+                  handleLayoutModeChange(layout);
+                }}
                 highlightedEntryId={highlightedEntryId}
                 highlightedEntryType={highlightedEntryType}
               />

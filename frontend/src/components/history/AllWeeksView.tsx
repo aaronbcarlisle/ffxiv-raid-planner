@@ -16,7 +16,7 @@ import { getRoleColor, type Role } from '../../gamedata';
 import { FLOOR_COLORS, parseFloorName, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { Pencil, Link, Trash2, UserRound, Search, X } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound, Search, X, LayoutGrid, List } from 'lucide-react';
 
 /** Material type display names */
 const MATERIAL_NAMES: Record<string, string> = {
@@ -35,7 +35,7 @@ const METHOD_DISPLAY: Record<string, { label: string; className: string }> = {
 };
 
 type EntryType = 'all' | 'loot' | 'materials';
-type SortField = 'week' | 'floor' | 'slot' | 'player' | 'method' | 'date';
+type SortField = 'week' | 'floor' | 'slot' | 'player' | 'method' | 'date' | 'extra';
 
 /** Unified entry for the table */
 interface UnifiedRow {
@@ -53,6 +53,8 @@ interface UnifiedRow {
   method: string;
   isExtra: boolean;
   weaponJob?: string;
+  /** For materials: the gear slot that was augmented */
+  slotAugmented?: string;
   createdAt: string;
   /** Original entry for edit/delete handlers */
   originalLoot?: LootLogEntry;
@@ -71,6 +73,8 @@ interface AllWeeksViewProps {
   onDeleteMaterial?: (entry: MaterialLogEntry) => void;
   onCopyEntryUrl?: (entryId: number, entryType: 'loot' | 'material') => void;
   onNavigateToPlayer?: (playerId: string, slot?: string) => void;
+  /** Navigate to a specific week in Grid or List view */
+  onJumpToWeek?: (week: number, layout: 'grid' | 'split') => void;
   highlightedEntryId?: string | null;
   highlightedEntryType?: 'loot' | 'material' | null;
 }
@@ -87,6 +91,7 @@ export function AllWeeksView({
   onDeleteMaterial,
   onCopyEntryUrl,
   onNavigateToPlayer,
+  onJumpToWeek,
   highlightedEntryId,
   highlightedEntryType,
 }: AllWeeksViewProps) {
@@ -100,6 +105,21 @@ export function AllWeeksView({
   const [contextMenu, setContextMenu] = useState<{
     x: number; y: number; row: UnifiedRow;
   } | null>(null);
+
+  // Search input ref for keyboard shortcut
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl+Shift+F focuses search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   // Debounce search
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -160,6 +180,7 @@ export function AllWeeksView({
         playerRole: player?.role || 'melee',
         method: e.method,
         isExtra: false,
+        slotAugmented: e.slotAugmented ?? undefined,
         createdAt: e.createdAt,
         originalMaterial: e,
       };
@@ -217,6 +238,7 @@ export function AllWeeksView({
         case 'player': cmp = a.playerName.localeCompare(b.playerName); break;
         case 'method': cmp = a.method.localeCompare(b.method); break;
         case 'date': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
+        case 'extra': cmp = Number(a.isExtra) - Number(b.isExtra); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
@@ -253,7 +275,7 @@ export function AllWeeksView({
     // Alt+Click: navigate to player
     if (e.altKey && onNavigateToPlayer) {
       e.preventDefault();
-      onNavigateToPlayer(row.playerId, row.type === 'loot' ? row.slotRaw : undefined);
+      onNavigateToPlayer(row.playerId, row.type === 'loot' ? row.slotRaw : row.slotAugmented);
       return;
     }
     // Regular click: edit
@@ -305,7 +327,22 @@ export function AllWeeksView({
       items.push({
         label: `Jump to ${row.playerName}`,
         icon: <UserRound className="w-4 h-4" />,
-        onClick: () => onNavigateToPlayer(row.playerId, row.type === 'loot' ? row.slotRaw : undefined),
+        onClick: () => onNavigateToPlayer(row.playerId, row.type === 'loot' ? row.slotRaw : row.slotAugmented),
+      });
+    }
+
+    // Jump to week navigation
+    if (onJumpToWeek) {
+      items.push({ separator: true });
+      items.push({
+        label: `View Week ${row.weekNumber} in Grid`,
+        icon: <LayoutGrid className="w-4 h-4" />,
+        onClick: () => onJumpToWeek(row.weekNumber, 'grid'),
+      });
+      items.push({
+        label: `View Week ${row.weekNumber} in List`,
+        icon: <List className="w-4 h-4" />,
+        onClick: () => onJumpToWeek(row.weekNumber, 'split'),
       });
     }
 
@@ -330,7 +367,7 @@ export function AllWeeksView({
     }
 
     return items;
-  }, [contextMenu, canEdit, onEditLoot, onEditMaterial, onDeleteLoot, onDeleteMaterial, onCopyEntryUrl, onNavigateToPlayer]);
+  }, [contextMenu, canEdit, onEditLoot, onEditMaterial, onDeleteLoot, onDeleteMaterial, onCopyEntryUrl, onNavigateToPlayer, onJumpToWeek]);
 
   // --- Stats ---
   const stats = useMemo(() => {
@@ -341,7 +378,13 @@ export function AllWeeksView({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   // --- Render ---
@@ -353,9 +396,10 @@ export function AllWeeksView({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
           <Input
+            ref={searchInputRef}
             value={searchQuery}
             onChange={(value) => setSearchQuery(value)}
-            placeholder="Search by player, job, slot, floor, week..."
+            placeholder="Search by player, job, slot, floor, week... (Ctrl+Shift+F)"
             className="pl-9 pr-8"
           />
           {searchQuery && (
@@ -434,8 +478,8 @@ export function AllWeeksView({
               <SortableHeader field="slot" label="Slot" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
               <SortableHeader field="player" label="Player" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
               <SortableHeader field="method" label="Method" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-24" />
-              <SortableHeader field="date" label="Date" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-24" />
-              <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider w-16">Extra</th>
+              <SortableHeader field="date" label="Date" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+              <SortableHeader field="extra" label="Extra" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" className="w-16" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -521,7 +565,7 @@ export function AllWeeksView({
                     </td>
 
                     {/* Date */}
-                    <td className="px-4 py-2.5 text-text-secondary text-xs">
+                    <td className="px-4 py-2.5 text-text-secondary text-xs whitespace-nowrap">
                       {formatDate(row.createdAt)}
                     </td>
 

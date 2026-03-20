@@ -767,6 +767,7 @@ export function LootPriorityPanel({
             floors={floors}
             showLogButtons={!!canShowLogButtons}
             onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+            onMaterialLogClick={handleMaterialLogClick}
             selectedFloor={matrixFloor}
             onFloorChange={handleMatrixFloorChange}
           />
