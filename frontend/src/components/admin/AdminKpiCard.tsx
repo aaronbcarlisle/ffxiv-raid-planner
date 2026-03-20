@@ -9,6 +9,7 @@ interface AdminKpiCardProps {
   value: string | number;
   change?: string;
   changeDirection?: 'up' | 'down' | 'neutral';
+  onChangeClick?: () => void;
 }
 
 const changeStyles = {
@@ -23,7 +24,7 @@ const changeIcons = {
   neutral: '\u2192',
 } as const;
 
-export function AdminKpiCard({ label, value, change, changeDirection = 'neutral' }: AdminKpiCardProps) {
+export function AdminKpiCard({ label, value, change, changeDirection = 'neutral', onChangeClick }: AdminKpiCardProps) {
   return (
     <div className="bg-surface-card border border-border-default rounded-lg p-4">
       <p className="text-text-muted text-xs uppercase tracking-wider mb-1">
@@ -33,10 +34,21 @@ export function AdminKpiCard({ label, value, change, changeDirection = 'neutral'
         {value}
       </p>
       {change && (
-        <p className={`text-xs mt-1 ${changeStyles[changeDirection]}`}>
-          <span aria-hidden="true">{changeIcons[changeDirection]}</span>{' '}
-          {change}
-        </p>
+        onChangeClick ? (
+          <button
+            type="button"
+            onClick={onChangeClick}
+            className={`text-xs mt-1 ${changeStyles[changeDirection]} hover:underline cursor-pointer`}
+          >
+            <span aria-hidden="true">{changeIcons[changeDirection]}</span>{' '}
+            {change}
+          </button>
+        ) : (
+          <p className={`text-xs mt-1 ${changeStyles[changeDirection]}`}>
+            <span aria-hidden="true">{changeIcons[changeDirection]}</span>{' '}
+            {change}
+          </p>
+        )
       )}
     </div>
   );

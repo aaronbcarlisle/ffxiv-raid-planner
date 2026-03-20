@@ -279,6 +279,7 @@ export function AdminOverview() {
               value={overview.errors24h}
               changeDirection={overview.errors24h > 0 ? 'down' : 'neutral'}
               change={overview.errors24h > 0 ? 'Need attention' : 'All clear'}
+              onChangeClick={overview.errors24h > 0 ? () => navigate('/admin/errors') : undefined}
             />
           </>
         )}
