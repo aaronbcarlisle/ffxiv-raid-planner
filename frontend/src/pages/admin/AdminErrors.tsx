@@ -311,14 +311,15 @@ export function AdminErrors() {
         return prev;
       });
       // Update error list
-      if (errorList) {
-        setErrorList({
-          ...errorList,
-          errors: errorList.errors.map((e) =>
+      setErrorList((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          errors: prev.errors.map((e) =>
             e.fingerprint === fingerprint ? { ...e, isReviewed: true } : e
           ),
-        });
-      }
+        };
+      });
       // Refetch if filtered by status
       if (statusFilter !== 'all') {
         fetchErrors();
@@ -328,7 +329,7 @@ export function AdminErrors() {
     } finally {
       setMarkingReviewed(false);
     }
-  }, [errorList, statusFilter, fetchErrors]);
+  }, [statusFilter, fetchErrors]);
 
   // Unreview (re-open) an error
   const handleUnreview = useCallback(async (fingerprint: string) => {
@@ -345,14 +346,15 @@ export function AdminErrors() {
         return prev;
       });
       // Update error list
-      if (errorList) {
-        setErrorList({
-          ...errorList,
-          errors: errorList.errors.map(e =>
+      setErrorList((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          errors: prev.errors.map(e =>
             e.fingerprint === fingerprint ? { ...e, isReviewed: false } : e
           ),
-        });
-      }
+        };
+      });
       // Refetch if filtered by status
       if (statusFilter !== 'all') {
         fetchErrors();
@@ -360,7 +362,7 @@ export function AdminErrors() {
     } catch {
       // Silently handle
     }
-  }, [errorList, statusFilter, fetchErrors]);
+  }, [statusFilter, fetchErrors]);
 
   // Toggle stack trace visibility
   const toggleStackTrace = useCallback((occurrenceId: number) => {
@@ -414,14 +416,16 @@ export function AdminErrors() {
       await api.post('/api/admin/analytics/errors/batch-review', { fingerprints, action });
       // Update local state
       const isReviewed = action === 'review';
-      if (errorList) {
-        setErrorList({
-          ...errorList,
-          errors: errorList.errors.map(e =>
-            selectedFingerprints.has(e.fingerprint) ? { ...e, isReviewed } : e
+      const selected = new Set(selectedFingerprints);
+      setErrorList((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          errors: prev.errors.map(e =>
+            selected.has(e.fingerprint) ? { ...e, isReviewed } : e
           ),
-        });
-      }
+        };
+      });
       // Update any expanded detail data
       setDetailDataMap((prev) => {
         const next = new Map(prev);
@@ -442,7 +446,7 @@ export function AdminErrors() {
     } catch {
       // Silently fail
     }
-  }, [selectedFingerprints, errorList, statusFilter, fetchErrors]);
+  }, [selectedFingerprints, statusFilter, fetchErrors]);
 
   // Selection handler for checkbox clicks (supports ctrl+click and shift+click range)
   const handleSelect = useCallback((fingerprint: string, event: React.MouseEvent) => {
