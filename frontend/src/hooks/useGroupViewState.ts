@@ -117,6 +117,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     const urlTab = searchParams.get('tab');
     if (urlTab === 'players') return 'players';
     if (urlTab === 'loot' || urlTab === 'priority') return 'loot';
+    if (urlTab === 'weapon') return 'priority';
     if (urlTab === 'log') return 'history';
     if (urlTab === 'summary') return 'stats';
     const saved = localStorage.getItem('group-view-tab');
@@ -211,7 +212,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       // Ignore localStorage errors
     }
     // Map internal PageMode to URL-friendly names
-    const urlTab = mode === 'history' ? 'log' : mode === 'stats' ? 'summary' : mode === 'loot' ? 'priority' : mode;
+    const urlTab = mode === 'history' ? 'log' : mode === 'stats' ? 'summary' : mode === 'loot' ? 'priority' : mode === 'priority' ? 'weapon' : mode;
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('tab', urlTab);

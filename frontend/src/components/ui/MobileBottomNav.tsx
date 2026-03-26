@@ -16,7 +16,7 @@ interface MobileBottomNavProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
   onControlsClick?: () => void;
-  /** Show the Priority tab (for leads/owners only) */
+  /** Show the Weapon Priority tab (for leads/owners only) */
   showPriorityTab?: boolean;
 }
 

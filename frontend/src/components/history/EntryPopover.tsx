@@ -59,6 +59,16 @@ export function EntryPopover({ entries, players, anchorRect, onClose, onEdit }: 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  // Close on scroll or resize (popover uses fixed positioning so it detaches)
+  useEffect(() => {
+    window.addEventListener('resize', onClose);
+    document.addEventListener('scroll', onClose, true);
+    return () => {
+      window.removeEventListener('resize', onClose);
+      document.removeEventListener('scroll', onClose, true);
+    };
+  }, [onClose]);
+
   // Position the popover below the badge, centered and clamped to viewport
   const popoverWidth = 280;
   const margin = 8;

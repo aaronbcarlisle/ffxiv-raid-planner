@@ -107,10 +107,10 @@ export function AllWeeksView({
   // Search input ref for keyboard shortcut
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Ctrl+Shift+F focuses search
+  // Ctrl+Shift+F (or Cmd+Shift+F on macOS) focuses search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
