@@ -282,7 +282,7 @@ export function AllWeeksView({
         case 'player': cmp = a.playerName.localeCompare(b.playerName); break;
         case 'method': cmp = a.method.localeCompare(b.method); break;
         case 'date': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
-        case 'type': cmp = Number(a.isExtra) - Number(b.isExtra); break;
+        case 'type': cmp = a.type.localeCompare(b.type) || Number(a.isExtra) - Number(b.isExtra); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
