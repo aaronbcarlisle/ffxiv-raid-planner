@@ -123,6 +123,16 @@ export function GroupView() {
     setHighlightedBookPlayerId,
   } = state;
 
+  // Week to navigate to after wizard completion (cleared after SectionedLogView consumes it)
+  const [wizardTargetWeek, setWizardTargetWeek] = useState<number | null>(null);
+  // Clear wizardTargetWeek after one render cycle so it doesn't re-trigger on subsequent renders
+  useEffect(() => {
+    if (wizardTargetWeek !== null) {
+      const timer = requestAnimationFrame(() => setWizardTargetWeek(null));
+      return () => cancelAnimationFrame(timer);
+    }
+  }, [wizardTargetWeek]);
+
   // Device capabilities for responsive behavior
   const { isSmallScreen } = useDevice();
 
@@ -1005,7 +1015,7 @@ export function GroupView() {
                 onNavigateToPlayer={handleNavigateToPlayer}
                 highlightedEntryId={highlightedEntry?.id}
                 highlightedEntryType={highlightedEntry?.type}
-                targetWeek={highlightedEntry?.week}
+                targetWeek={wizardTargetWeek ?? highlightedEntry?.week}
                 openLogLootModal={showLogLootModal}
                 onLogLootModalClose={() => setShowLogLootModal(false)}
                 openLogMaterialModal={showLogMaterialModal}
@@ -1365,14 +1375,17 @@ export function GroupView() {
           }}
           floors={tierInfo.floors}
           currentWeek={logWeekWizardWeek ?? storeCurrentWeek}
+          maxWeek={storeMaxWeek}
           lootLog={lootLog}
           materialLog={materialLog}
           singleFloorMode={logWeekWizardFloor !== null}
           initialFloor={logWeekWizardFloor ?? 1}
-          onSuccess={() => {
+          onSuccess={(loggedWeek) => {
             if (currentGroup?.id && currentTier?.tierId) {
               fetchTier(currentGroup.id, currentTier.tierId);
             }
+            // Navigate the Loot Log week selector to the logged week
+            setWizardTargetWeek(loggedWeek);
           }}
         />
       )}

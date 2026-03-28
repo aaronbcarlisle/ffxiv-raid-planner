@@ -767,6 +767,7 @@ export function LootPriorityPanel({
             floors={floors}
             showLogButtons={!!canShowLogButtons}
             onLogClick={(slot, player, floor) => handleLogClick(slot, player, floor)}
+            onMaterialLogClick={handleMaterialLogClick}
             selectedFloor={matrixFloor}
             onFloorChange={handleMatrixFloorChange}
           />
@@ -843,8 +844,9 @@ export function LootPriorityPanel({
           settings={settings}
           floors={floors}
           currentWeek={currentWeek}
+          maxWeek={effectiveMaxWeek}
           lootLog={lootLog}
-          onSuccess={() => {
+          onSuccess={(_loggedWeek: number) => {
             setLogFloorWizardOpen(false);
             onLogSuccess?.();
           }}

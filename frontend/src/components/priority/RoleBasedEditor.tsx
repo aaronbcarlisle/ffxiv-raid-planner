@@ -45,7 +45,8 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 // Default role order
-const DEFAULT_ROLE_ORDER: RoleType[] = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+// Casters scale harder than phys ranged due to ranged tax — community consensus order
+const DEFAULT_ROLE_ORDER: RoleType[] = ['melee', 'caster', 'ranged', 'tank', 'healer'];
 
 // Sortable role item component
 function SortableRoleItem({

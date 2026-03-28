@@ -16,7 +16,7 @@ interface MobileBottomNavProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
   onControlsClick?: () => void;
-  /** Show the Priority tab (for leads/owners only) */
+  /** Show the Weapon Priority tab (for leads/owners only) */
   showPriorityTab?: boolean;
 }
 
@@ -30,12 +30,12 @@ const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'players', label: 'Roster' },
-  { id: 'loot', label: 'Loot' },
-  { id: 'history', label: 'Log' },
+  { id: 'loot', label: 'Priority' },
+  { id: 'history', label: 'Loot Log' },
   { id: 'stats', label: 'Summary' },
 ];
 
-const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Priority' };
+const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Weapon' };
 
 export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showPriorityTab }: MobileBottomNavProps) {
   const { isSmallScreen } = useDevice();

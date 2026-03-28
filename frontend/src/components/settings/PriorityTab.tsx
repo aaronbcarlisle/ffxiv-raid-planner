@@ -93,20 +93,20 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
       // Initialize mode-specific config if needed
       if (mode === 'role-based' && !newSettings.roleBasedConfig) {
         newSettings.roleBasedConfig = {
-          roleOrder: ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          roleOrder: ['melee', 'caster', 'ranged', 'tank', 'healer'],
         };
       } else if (mode === 'job-based' && !newSettings.jobBasedConfig) {
         // Create default groups by role
         const defaultGroups = [
           { id: 'melee', name: 'Melee DPS', sortOrder: 0, basePriority: 125 },
-          { id: 'ranged', name: 'Physical Ranged', sortOrder: 1, basePriority: 100 },
-          { id: 'caster', name: 'Magical Ranged', sortOrder: 2, basePriority: 75 },
+          { id: 'caster', name: 'Magical Ranged', sortOrder: 1, basePriority: 100 },
+          { id: 'ranged', name: 'Physical Ranged', sortOrder: 2, basePriority: 75 },
           { id: 'tank', name: 'Tank', sortOrder: 3, basePriority: 50 },
           { id: 'healer', name: 'Healer', sortOrder: 4, basePriority: 25 },
         ];
 
         // Create job configs for all jobs grouped by role
-        const roles: RoleType[] = ['melee', 'ranged', 'caster', 'tank', 'healer'];
+        const roles: RoleType[] = ['melee', 'caster', 'ranged', 'tank', 'healer'];
         const jobs = roles.flatMap((role) =>
           getJobsByRole(role).map((job, index) => ({
             job: job.abbreviation,
@@ -188,7 +188,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
           ...existingSettings,
           prioritySettings: settings,
           // Also update legacy fields for backward compatibility
-          lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'ranged', 'caster', 'tank', 'healer'],
+          lootPriority: settings.roleBasedConfig?.roleOrder || ['melee', 'caster', 'ranged', 'tank', 'healer'],
           priorityMode: legacyPriorityMode,
           showPriorityScores: settings.advancedOptions.showPriorityScores,
           enableEnhancedScoring: settings.advancedOptions.enableEnhancedFairness,
@@ -310,7 +310,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
                   Manual planning mode lets you pre-assign loot to players for each week.
-                  Go to the Loot tab to create weekly assignments.
+                  Go to the Priority tab to create weekly assignments.
                 </p>
               </div>
             )}
@@ -318,7 +318,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             {settings.mode === 'disabled' && (
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
-                  Priority is disabled. All players will show equal priority in the Loot tab.
+                  Priority is disabled. All players will show equal priority in the Priority tab.
                   This is useful for groups that prefer equal distribution.
                 </p>
               </div>

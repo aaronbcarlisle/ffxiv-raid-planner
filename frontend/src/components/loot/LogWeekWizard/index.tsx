@@ -25,7 +25,7 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { Modal } from '../../ui';
+import { Modal, NumberInput } from '../../ui';
 import { Button } from '../../primitives';
 import { JobIcon } from '../../ui/JobIcon';
 import { toast } from '../../../stores/toastStore';
@@ -54,9 +54,12 @@ interface LogWeekWizardProps {
   settings: StaticSettings;
   floors: string[];
   currentWeek: number;
+  /** Maximum week number for the week selector (defaults to currentWeek) */
+  maxWeek?: number;
   lootLog?: LootLogEntry[];
   materialLog?: import('../../../types').MaterialLogEntry[];
-  onSuccess?: () => void;
+  /** Called after successful submission. Receives the week number entries were logged to. */
+  onSuccess?: (loggedWeek: number) => void;
   /** Single floor mode - only log specified floor, skip floor tabs */
   singleFloorMode?: boolean;
   /** Initial floor to select (used in single floor mode) */
@@ -72,6 +75,7 @@ export function LogWeekWizard({
   settings,
   floors,
   currentWeek,
+  maxWeek: maxWeekProp,
   lootLog: _lootLog = [],
   materialLog = [],
   onSuccess,
@@ -80,6 +84,8 @@ export function LogWeekWizard({
 }: LogWeekWizardProps) {
   const [step, setStep] = useState<WizardStep>('gear');
   const [selectedFloor, setSelectedFloor] = useState<FloorNumber>(singleFloorMode ? initialFloor : 1);
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const effectiveMaxWeek = Math.max(maxWeekProp ?? currentWeek, 1);
   const [floorData, setFloorData] = useState<Record<FloorNumber, FloorEntries>>({} as Record<FloorNumber, FloorEntries>);
   const [clearedFloors, setClearedFloors] = useState<Set<FloorNumber>>(
     singleFloorMode ? new Set([initialFloor]) : new Set([1, 2, 3, 4])
@@ -235,12 +241,13 @@ export function LogWeekWizard({
     if (isOpen && !wasOpenRef.current) {
       setStep('gear');
       setSelectedFloor(singleFloorMode ? initialFloor : 1);
+      setSelectedWeek(currentWeek);
       setFloorData(initFloorData());
       setClearedFloors(singleFloorMode ? new Set([initialFloor]) : new Set([1, 2, 3, 4]));
       setError(null);
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, initFloorData, singleFloorMode, initialFloor]);
+  }, [isOpen, initFloorData, singleFloorMode, initialFloor, currentWeek]);
 
   // Handle slot assignment change
   const handleSlotChange = useCallback(
@@ -547,7 +554,7 @@ export function LogWeekWizard({
               recipientPlayerId: entry.playerId,
               itemSlot: slot,
               floor: floorName,
-              weekNumber: currentWeek,
+              weekNumber: selectedWeek,
               method: 'drop',
             };
             tracked.push({
@@ -568,7 +575,7 @@ export function LogWeekWizard({
                 groupId,
                 tierId,
                 {
-                  weekNumber: currentWeek,
+                  weekNumber: selectedWeek,
                   floor: floorName,
                   materialType: materialType as MaterialType,
                   recipientPlayerId: entry.playerId,
@@ -588,7 +595,7 @@ export function LogWeekWizard({
         // Book clears
         if (floor.booksCleared.length > 0) {
           const clearRequest: MarkFloorClearedRequest = {
-            weekNumber: currentWeek,
+            weekNumber: selectedWeek,
             floor: floorName,
             playerIds: floor.booksCleared,
           };
@@ -609,9 +616,9 @@ export function LogWeekWizard({
       if (failed.length === 0) {
         const toastMsg = singleFloorMode
           ? `Logged ${summary.total} entries for ${floors[initialFloor - 1]}!`
-          : `Logged ${summary.total} entries for Week ${currentWeek}!`;
+          : `Logged ${summary.total} entries for Week ${selectedWeek}!`;
         toast.success(toastMsg);
-        onSuccess?.();
+        onSuccess?.(selectedWeek);
         onClose();
       } else if (succeeded === 0) {
         const firstError = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
@@ -740,7 +747,18 @@ export function LogWeekWizard({
       title={
         <span className="flex items-center gap-2">
           <Package className="w-5 h-5" />
-          {singleFloorMode ? `Log ${floors[initialFloor - 1]} (Week ${currentWeek})` : `Log Week ${currentWeek}`}
+          {singleFloorMode ? `Log ${floors[initialFloor - 1]}` : 'Log Week'}
+          <NumberInput
+            value={selectedWeek}
+            onChange={(val) => {
+              const raw = val ?? currentWeek;
+              setSelectedWeek(Math.min(effectiveMaxWeek, Math.max(1, Math.trunc(raw))));
+            }}
+            min={1}
+            max={effectiveMaxWeek}
+            step={1}
+            size="sm"
+          />
         </span>
       }
       size="4xl"
@@ -838,7 +856,7 @@ export function LogWeekWizard({
                 ) : (
                   <>
                     <Check className="w-4 h-4 mr-1.5" />
-                    {singleFloorMode ? `Log ${floors[initialFloor - 1]}` : `Log Week ${currentWeek}`}
+                    {singleFloorMode ? `Log ${floors[initialFloor - 1]}` : `Log Week ${selectedWeek}`}
                   </>
                 )}
               </Button>

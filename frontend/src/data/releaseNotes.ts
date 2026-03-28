@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.16.0';
+export const CURRENT_VERSION = '1.17.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,44 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.17.0',
+    date: '2026-03-19T12:00:00Z',
+    title: 'Loot Log Restructure',
+    highlights: ['Tab rename: Loot → Priority', 'All Weeks loot view'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Tab rename: Loot → Priority, Log → Loot Log',
+        description: 'Clearer tab names that match their actual function. "Priority" shows loot rankings, "Loot Log" is where you track drops.',
+        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+      },
+      {
+        category: 'feature',
+        title: 'All Weeks loot view',
+        description: 'New "All Weeks" sub-view in the Loot Log tab shows every loot and material entry across all weeks in a filterable, sortable table with smart search.',
+        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Sub-view rename: Week → Grid, History → List',
+        description: 'Layout toggle labels now match what they display — a spreadsheet grid or a chronological list.',
+        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+      },
+      {
+        category: 'feature',
+        title: 'Multi-entry grid badges',
+        description: 'Grid cells with multiple loot entries (e.g., raid drop + book purchase) now show a ×N badge. Click the badge to see all entries for that slot.',
+        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+      },
+      {
+        category: 'improvement',
+        title: 'URL backward compatibility',
+        description: '?tab=loot still works (maps to Priority tab). ?tab=priority added as new canonical URL.',
+        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+      },
+    ],
+  },
   {
     version: '1.16.0',
     date: '2026-03-19T08:00:00Z',

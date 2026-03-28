@@ -13,7 +13,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { Tooltip } from '../primitives/Tooltip';
-import { getRoleColor, type Role } from '../../gamedata';
+import { EntryPopover } from './EntryPopover';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -323,13 +324,41 @@ export function WeeklyLootGrid({
     return players.find(p => p.id === playerId);
   };
 
-  // Get loot entry for a specific floor and slot
+  // Pre-index loot entries by floor+slot for O(1) lookups per cell
+  const lootIndex = useMemo(() => {
+    const index = new Map<string, LootLogEntry[]>();
+    for (const entry of weekLootEntries) {
+      const key = `${entry.floor}:${entry.itemSlot}`;
+      const arr = index.get(key);
+      if (arr) arr.push(entry);
+      else index.set(key, [entry]);
+    }
+    // Sort each bucket by createdAt desc (newest first)
+    for (const entries of index.values()) {
+      if (entries.length > 1) {
+        entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+    }
+    return index;
+  }, [weekLootEntries]);
+
+  // Get the latest loot entry for a specific floor and slot (newest by createdAt)
   const getLootForSlot = (floorNum: FloorNumber, slot: string): LootLogEntry | undefined => {
-    const floorName = floors[floorNum - 1];
-    return weekLootEntries.find(e =>
-      e.floor === floorName && e.itemSlot === slot
-    );
+    const entries = lootIndex.get(`${floors[floorNum - 1]}:${slot}`);
+    return entries?.[0];
   };
+
+  // Get ALL loot entries for a specific floor and slot (for multi-entry badge)
+  const getAllLootForSlot = (floorNum: FloorNumber, slot: string): LootLogEntry[] => {
+    return lootIndex.get(`${floors[floorNum - 1]}:${slot}`) || [];
+  };
+
+  // Popover state for multi-entry cells
+  const [popoverState, setPopoverState] = useState<{
+    entries: LootLogEntry[];
+    anchorRect: DOMRect;
+  } | null>(null);
+  const closePopover = useCallback(() => setPopoverState(null), []);
 
   // Get material entry for a specific floor and type
   const getMaterialForFloor = (floorNum: FloorNumber, materialType: string): MaterialLogEntry | undefined => {
@@ -337,12 +366,6 @@ export function WeeklyLootGrid({
     return weekMaterialEntries.find(e =>
       e.floor === floorName && e.materialType === materialType
     );
-  };
-
-  // Get valid roles for color lookup
-  const validRoles: Role[] = ['tank', 'healer', 'melee', 'ranged', 'caster'];
-  const getValidRole = (role: string): Role => {
-    return validRoles.includes(role as Role) ? role as Role : 'melee';
   };
 
   // Render recipient badge - fixed height container to prevent layout shift
@@ -538,6 +561,8 @@ export function WeeklyLootGrid({
               <div className="flex flex-nowrap sm:flex-wrap flex-1">
                 {floor.items.map(item => {
                   const lootEntry = getLootForSlot(floor.number, item.slot);
+                  const allSlotEntries = getAllLootForSlot(floor.number, item.slot);
+                  const hasMultipleEntries = allSlotEntries.length > 1;
                   const slotDisplayName = GEAR_SLOT_NAMES[item.slot as keyof typeof GEAR_SLOT_NAMES] || item.name;
                   const canClickToLog = canEdit && onLogLoot && !lootEntry;
                   const canClickToEdit = canEdit && onEditLoot && !!lootEntry;
@@ -548,7 +573,7 @@ export function WeeklyLootGrid({
                     <div
                       key={item.slot}
                       id={lootEntry ? `loot-entry-${lootEntry.id}` : undefined}
-                      className={`min-w-[120px] shrink-0 sm:shrink sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
+                      className={`relative min-w-[120px] shrink-0 sm:shrink sm:min-w-0 sm:flex-1 px-3 py-2 border-l border-border-subtle hover:bg-surface-elevated/50 transition-colors select-none ${isClickable ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset' : ''} ${isHighlighted ? 'highlight-pulse' : ''}`}
                       onMouseDown={(e) => {
                         // Prevent focus flash when Shift+Click
                         if (e.shiftKey && lootEntry && onCopyEntryUrl) {
@@ -600,6 +625,22 @@ export function WeeklyLootGrid({
                       role={isClickable ? 'button' : undefined}
                       tabIndex={isClickable ? 0 : -1}
                     >
+                      {/* Multi-entry badge */}
+                      {hasMultipleEntries && (
+                        <Tooltip content={`${allSlotEntries.length} entries — click to view all`}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              setPopoverState({ entries: allSlotEntries, anchorRect: rect });
+                            }}
+                            className="absolute top-1 right-1 z-[5] px-1 py-0.5 text-[10px] font-bold leading-none rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
+                            aria-label={`${allSlotEntries.length} entries for ${slotDisplayName}`}
+                          >
+                            ×{allSlotEntries.length}
+                          </button>
+                        </Tooltip>
+                      )}
                       <div className="text-[10px] text-text-muted mb-1">{slotDisplayName}</div>
                       {renderRecipientBadge(lootEntry)}
                     </div>
@@ -793,6 +834,17 @@ export function WeeklyLootGrid({
           y={floorContextMenu.y}
           items={getFloorContextMenuItems()}
           onClose={() => setFloorContextMenu(null)}
+        />
+      )}
+
+      {/* Multi-entry popover */}
+      {popoverState && (
+        <EntryPopover
+          entries={popoverState.entries}
+          players={players}
+          anchorRect={popoverState.anchorRect}
+          onClose={closePopover}
+          onEdit={onEditLoot}
         />
       )}
     </div>

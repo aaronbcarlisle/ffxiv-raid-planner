@@ -18,8 +18,8 @@ const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
   { id: 'players', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
-  { id: 'loot', label: 'Loot', hotkey: '2', description: 'Plan loot distribution and priority' },
-  { id: 'history', label: 'Log', hotkey: '3', description: 'Track weekly loot drops and history' },
+  { id: 'loot', label: 'Priority', hotkey: '2', description: 'Loot priority rankings and who needs what' },
+  { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
   { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
 ];
 

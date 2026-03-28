@@ -110,7 +110,7 @@ export function QuickLogDropModal({
     }
   };
 
-  // Filter to configured main roster players (subs can only be logged via Log tab)
+  // Filter to configured main roster players (subs can only be logged via Loot Log tab)
   const eligiblePlayers = useMemo(() =>
     allPlayers.filter((p) => p.configured && !p.isSubstitute),
     [allPlayers]

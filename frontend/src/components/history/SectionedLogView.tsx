@@ -18,7 +18,9 @@ import { LootCountBar } from './LootCountBar';
 import { FloorSection } from './FloorSection';
 import { LogFloatingActions } from './LogFloatingActions';
 import { LogLayoutToggle } from './LogLayoutToggle';
+import type { LogLayoutMode } from './LootLogFilters';
 import { WeeklyLootGrid, LootFairnessLegend } from './WeeklyLootGrid';
+import { AllWeeksView } from './AllWeeksView';
 import { LootLogEntryItem, MaterialLogEntryItem } from './LogEntryItems';
 import { type ResetConfig } from '../ui/ResetConfirmModal';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
@@ -534,21 +536,22 @@ export function SectionedLogView({
     }
   }, [resetConfig, groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageBalances, fetchWeekDataTypes, getBalanceWeekParam]);
 
-  // Layout mode: 'grid' (weekly loot grid) or 'split' (traditional list view)
+  // Layout mode: 'grid' (weekly loot grid), 'split' (traditional list view), or 'allWeeks' (all weeks table)
   // Priority: URL param > localStorage > default
-  const [layoutMode, setLayoutMode] = useState<'split' | 'grid'>(() => {
+  const [layoutMode, setLayoutMode] = useState<LogLayoutMode>(() => {
     const urlLayout = searchParams.get('logLayout');
-    if (urlLayout === 'split' || urlLayout === 'grid') return urlLayout;
+    if (urlLayout === 'split' || urlLayout === 'grid' || urlLayout === 'allWeeks') return urlLayout;
     try {
       const saved = localStorage.getItem('log-layout-mode');
-      return saved === 'split' ? 'split' : 'grid';
+      if (saved === 'split' || saved === 'allWeeks') return saved;
+      return 'grid';
     } catch {
       return 'grid';
     }
   });
 
   // Persist layout mode and update URL
-  const handleLayoutModeChange = useCallback((mode: 'split' | 'grid') => {
+  const handleLayoutModeChange = useCallback((mode: LogLayoutMode) => {
     setLayoutMode(mode);
     try {
       localStorage.setItem('log-layout-mode', mode);
@@ -750,7 +753,7 @@ export function SectionedLogView({
     const handleSetView = (e: CustomEvent<'byFloor' | 'chronological'>) => {
       setLootViewMode(e.detail);
     };
-    const handleSetLayout = (e: CustomEvent<'grid' | 'split'>) => {
+    const handleSetLayout = (e: CustomEvent<LogLayoutMode>) => {
       handleLayoutModeChange(e.detail);
     };
     const handleToggleExpandAll = () => {
@@ -762,7 +765,9 @@ export function SectionedLogView({
       }
     };
     const handleToggleLayout = () => {
-      handleLayoutModeChange(layoutMode === 'grid' ? 'split' : 'grid');
+      const modes: LogLayoutMode[] = ['grid', 'split', 'allWeeks'];
+      const idx = modes.indexOf(layoutMode);
+      handleLayoutModeChange(modes[(idx + 1) % modes.length]);
     };
     const handlePrevWeek = () => {
       if (currentWeek > 1) {
@@ -1063,7 +1068,33 @@ export function SectionedLogView({
         </div>
       </div>
 
-      {/* Main Content - Side by Side Layout (Desktop) */}
+      {/* Main Content - All Weeks View (Desktop, full-width, no sidebar) */}
+      {layoutMode === 'allWeeks' && (
+        <div className="hidden md:flex flex-col flex-1 min-h-0">
+          <AllWeeksView
+            players={players}
+            lootLog={lootLog}
+            materialLog={materialLog}
+            floors={floors}
+            canEdit={canEdit}
+            onEditLoot={handleGridEditLoot}
+            onEditMaterial={handleGridEditMaterial}
+            onDeleteLoot={handleDeleteLoot}
+            onDeleteMaterial={(entry: MaterialLogEntry) => handleDeleteMaterial(entry)}
+            onCopyEntryUrl={handleCopyEntryUrlById}
+            onNavigateToPlayer={onNavigateToPlayer}
+            onJumpToWeek={(week, layout) => {
+              onWeekChange?.(week);
+              handleLayoutModeChange(layout);
+            }}
+            highlightedEntryId={highlightedEntryId}
+            highlightedEntryType={highlightedEntryType}
+          />
+        </div>
+      )}
+
+      {/* Main Content - Side by Side Layout (Desktop) - Grid and List modes */}
+      {layoutMode !== 'allWeeks' && (
       <div
         className="hidden md:grid gap-4 flex-1 min-h-0 transition-[grid-template-columns] duration-200"
         style={{ gridTemplateColumns: booksSidebarCollapsed ? '1fr 2.5rem' : '1fr 20rem' }}
@@ -1451,6 +1482,7 @@ export function SectionedLogView({
           </section>
         </div>
       </div>
+      )}
 
       {/* Mobile Swipeable Panels - fills remaining space, swipe left/right to switch */}
       <div
@@ -1460,12 +1492,14 @@ export function SectionedLogView({
         {/* Loot Log Panel */}
         {mobilePanel === 'loot' && (
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-4 w-full pt-1">
-            {/* Shared LootCountBar - above both Grid and List views */}
-            <LootCountBar
-              players={players}
-              lootLog={lootLog}
-              currentWeek={currentWeek}
-            />
+            {/* Shared LootCountBar - above Grid and List views (not All Weeks) */}
+            {layoutMode !== 'allWeeks' && (
+              <LootCountBar
+                players={players}
+                lootLog={lootLog}
+                currentWeek={currentWeek}
+              />
+            )}
 
             {layoutMode === 'grid' && (
               <WeeklyLootGrid
@@ -1609,6 +1643,27 @@ export function SectionedLogView({
                   )}
                 </div>
               </section>
+            )}
+            {layoutMode === 'allWeeks' && (
+              <AllWeeksView
+                players={players}
+                lootLog={lootLog}
+                materialLog={materialLog}
+                floors={floors}
+                canEdit={canEdit}
+                onEditLoot={handleGridEditLoot}
+                onEditMaterial={handleGridEditMaterial}
+                onDeleteLoot={handleDeleteLoot}
+                onDeleteMaterial={(entry: MaterialLogEntry) => handleDeleteMaterial(entry)}
+                onCopyEntryUrl={handleCopyEntryUrlById}
+                onNavigateToPlayer={onNavigateToPlayer}
+                onJumpToWeek={(week, layout) => {
+                  onWeekChange?.(week);
+                  handleLayoutModeChange(layout);
+                }}
+                highlightedEntryId={highlightedEntryId}
+                highlightedEntryType={highlightedEntryType}
+              />
             )}
           </div>
         )}

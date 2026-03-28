@@ -11,20 +11,37 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { SnapshotPlayer, GearSlot, RaidPosition } from '../../types';
+import type { SnapshotPlayer, GearSlot, MaterialType, RaidPosition } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
-import { FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot, type FloorNumber } from '../../gamedata/loot-tables';
-import { getRoleColor } from '../../gamedata';
+import {
+  FLOOR_LOOT_TABLES, FLOOR_COLORS, getFloorForSlot,
+  UPGRADE_MATERIAL_SLOTS, UPGRADE_MATERIAL_DISPLAY_NAMES,
+  getFloorForUpgradeMaterial,
+  type FloorNumber, type UpgradeMaterialType,
+} from '../../gamedata/loot-tables';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { Tooltip } from '../primitives';
 import { FilterBar } from './FilterBar';
 
 type FloorFilter = FloorNumber | 'all';
 
+/** Material CSS color variables */
+const MATERIAL_COLORS: Record<UpgradeMaterialType, string> = {
+  twine: 'var(--color-material-twine)',
+  glaze: 'var(--color-material-glaze)',
+  solvent: 'var(--color-material-solvent)',
+  universal_tomestone: 'var(--color-material-tomestone)',
+};
+
+/** Material order for display */
+const MATERIAL_ORDER: UpgradeMaterialType[] = ['twine', 'glaze', 'solvent', 'universal_tomestone'];
+
 interface WhoNeedsItMatrixProps {
   players: SnapshotPlayer[];
   floors: string[];  // e.g., ["M9S", "M10S", "M11S", "M12S"]
   onLogClick?: (slot: GearSlot, player: SnapshotPlayer, floor: string) => void;
+  onMaterialLogClick?: (material: MaterialType, player: SnapshotPlayer) => void;
   showLogButtons?: boolean;
   /** Controlled floor selection - if provided, component is controlled */
   selectedFloor?: FloorFilter;
@@ -54,10 +71,78 @@ function getNeededRingSlot(player: SnapshotPlayer): GearSlot {
   return 'ring1'; // Fallback (shouldn't trigger - player must need a ring to appear in this row)
 }
 
+/**
+ * Donut progress indicator for material needs.
+ * A segmented ring where each segment = one tome BiS slot for this material.
+ * Bright segments = still needed, dim segments = already augmented.
+ * Uses stroke-dasharray on circles for reliable rendering.
+ */
+function MaterialPieIndicator({ total, augmented, roleColor, size = 28 }: {
+  total: number;
+  augmented: number;
+  roleColor: string;
+  size?: number;
+}) {
+  const needed = total - augmented;
+  const strokeW = 3;
+  const r = (size - strokeW) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const gap = total > 1 ? 2 : 0;
+  const segmentLength = total > 0 ? circumference / total - gap : 0;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+      {/* Background ring */}
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none"
+        stroke={roleColor}
+        strokeWidth={1}
+        strokeOpacity={0.15}
+      />
+      {/* Segments */}
+      {Array.from({ length: total }, (_, i) => {
+        const isComplete = i >= needed; // first `needed` segments are bright (still needed), rest are dim (already acquired)
+        // Offset: rotate so segment 0 starts at top (12 o'clock)
+        // stroke-dashoffset is measured clockwise from 3 o'clock, so shift by +circumference/4
+        const offset = circumference / 4 - i * (segmentLength + gap);
+        return (
+          <circle
+            key={i}
+            cx={cx} cy={cy} r={r}
+            fill="none"
+            stroke={roleColor}
+            strokeWidth={isComplete ? 2 : strokeW}
+            strokeOpacity={isComplete ? 0.25 : 1}
+            strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
+            strokeDashoffset={offset}
+          />
+        );
+      })}
+      {/* Center number */}
+      <text
+        x={cx}
+        y={cy + 0.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={roleColor}
+        fontSize={size <= 16 ? 8 : total === 1 ? 10 : 9}
+        fontWeight="bold"
+        style={{ fontFamily: 'var(--font-sans)' }}
+      >
+        {needed}
+      </text>
+    </svg>
+  );
+}
+
 export function WhoNeedsItMatrix({
   players,
   floors,
   onLogClick,
+  onMaterialLogClick,
   showLogButtons = true,
   selectedFloor: controlledFloor,
   onFloorChange,
@@ -128,6 +213,89 @@ export function WhoNeedsItMatrix({
     });
   }, [visibleSlots, sortedPlayers]);
 
+  // Determine which materials are active for the selected floor
+  const activeMaterialsForFloor = useMemo(() => {
+    if (selectedFloor === 'all') {
+      return new Set(MATERIAL_ORDER);
+    }
+    return new Set(FLOOR_LOOT_TABLES[selectedFloor].upgradeMaterials);
+  }, [selectedFloor]);
+
+  // Calculate material needs matrix with per-player counts
+  const materialNeedsMatrix = useMemo(() => {
+    return MATERIAL_ORDER.map(material => {
+      // Per-player: { total tome BiS slots, augmented count, needed count }
+      const playerCounts = new Map<string, { total: number; augmented: number; needed: number }>();
+
+      sortedPlayers.forEach(player => {
+        let total = 0;
+        let augmented = 0;
+
+        if (material === 'universal_tomestone') {
+          // Binary: pursuing tome weapon or not
+          if (player.tomeWeapon?.pursuing) {
+            total = 1;
+            augmented = player.tomeWeapon?.hasItem ? 1 : 0;
+          }
+        } else if (material === 'solvent') {
+          // Check tomeWeapon tracking first
+          if (player.tomeWeapon?.pursuing && player.tomeWeapon?.hasItem) {
+            total = 1;
+            augmented = player.tomeWeapon?.isAugmented ? 1 : 0;
+          } else {
+            // Fallback: check gear array for tome-sourced weapon (covers players not using tomeWeapon tracking)
+            const weaponGear = player.gear.find(g => g.slot === 'weapon');
+            if (weaponGear?.bisSource === 'tome' && weaponGear?.hasItem) {
+              total = 1;
+              if (weaponGear.isAugmented) augmented = 1;
+            }
+          }
+        } else {
+          // Twine/glaze: count tome BiS slots that have the item (actionable for augmentation)
+          // Only slots with hasItem=true are counted, matching the modal's eligibility logic.
+          // This ensures the pie updates when a material is logged with "mark as augmented".
+          const slotsToCheck = UPGRADE_MATERIAL_SLOTS[material];
+          slotsToCheck.forEach(slot => {
+            const gearSlot = player.gear.find(g => g.slot === slot);
+            if (gearSlot?.bisSource === 'tome' && gearSlot?.hasItem) {
+              total++;
+              if (gearSlot.isAugmented) augmented++;
+            }
+          });
+        }
+
+        const needed = total - augmented;
+        if (total > 0) {
+          playerCounts.set(player.id, { total, augmented, needed });
+        }
+      });
+
+      const playersWhoNeed = new Set(
+        [...playerCounts.entries()]
+          .filter(([, counts]) => counts.needed > 0)
+          .map(([id]) => id)
+      );
+
+      // Sum total materials needed across all players
+      let totalNeeded = 0;
+      for (const [, c] of playerCounts) {
+        totalNeeded += c.needed;
+      }
+
+      return {
+        material,
+        displayName: UPGRADE_MATERIAL_DISPLAY_NAMES[material],
+        playersWhoNeed,
+        playerCounts,
+        count: playersWhoNeed.size,
+        totalNeeded,
+        isFree: playersWhoNeed.size === 0,
+      };
+    });
+  }, [sortedPlayers]);
+
+
+
   return (
     <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden flex flex-col h-full sm:block sm:h-auto">
       {/* Floor Filter Tabs - fixed on mobile */}
@@ -146,30 +314,30 @@ export function WhoNeedsItMatrix({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-elevated/30">
-              <th className="text-left py-2 px-3 text-xs text-text-muted font-medium">
+              <th className="text-left py-2.5 px-3 text-sm text-text-muted font-medium">
                 Slot
               </th>
               {sortedPlayers.map(player => (
-                <th key={player.id} className="text-center py-2 px-2 min-w-[60px]">
+                <th key={player.id} className="text-center py-2.5 px-2 min-w-[68px]">
                   <div className="flex flex-col items-center gap-0.5">
                     <div className="flex items-center gap-1">
                       <span
-                        className="text-xs font-bold"
-                        style={{ color: getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster') }}
+                        className="text-sm font-bold"
+                        style={{ color: getRoleColor(getValidRole(player.role)) }}
                       >
                         {player.position || '?'}
                       </span>
-                      <JobIcon job={player.job} size="xs" />
+                      <JobIcon job={player.job} size="sm" />
                     </div>
                     <Tooltip content={player.name}>
-                      <span className="text-[10px] text-text-muted truncate max-w-[56px] block">
+                      <span className="text-xs text-text-muted truncate max-w-[60px] block">
                         {player.name.split(' ')[0]}
                       </span>
                     </Tooltip>
                   </div>
                 </th>
               ))}
-              <th className="text-center py-2 px-3 text-xs text-text-muted font-medium">
+              <th className="text-center py-2.5 px-3 text-sm text-text-muted font-medium">
                 Need
               </th>
             </tr>
@@ -184,22 +352,22 @@ export function WhoNeedsItMatrix({
                 : undefined;
               return (
               <tr key={slot} className={`border-t border-border-default/50 ${isActiveSlot ? 'hover:bg-surface-hover/30' : 'opacity-30'}`}>
-                <td className="py-2 px-3 font-medium text-xs">
-                  <div className="flex items-center gap-1.5">
+                <td className="py-2.5 px-3 font-medium text-sm">
+                  <div className="flex items-center gap-2">
                     <img
                       src={GEAR_SLOT_ICONS[slot as GearSlot]}
                       alt=""
-                      className="w-4 h-4 brightness-[3.0]"
+                      className="w-5 h-5 brightness-[3.0]"
                     />
                     <span style={slotTextColor ? { color: slotTextColor } : undefined} className={!slotTextColor ? 'text-text-primary' : undefined}>{displayName}</span>
                   </div>
                 </td>
                 {sortedPlayers.map(player => {
                   const needs = playersWhoNeed.has(player.id);
-                  const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                  const roleColor = getRoleColor(getValidRole(player.role));
 
                   return (
-                    <td key={player.id} className="text-center py-2 px-2">
+                    <td key={player.id} className="text-center py-2.5 px-2">
                       {needs ? (
                         <Tooltip
                           content={showLogButtons ? `Log ${displayName} to ${player.name}` : `${player.name} needs ${displayName}`}
@@ -218,7 +386,7 @@ export function WhoNeedsItMatrix({
                             }}
                             disabled={!showLogButtons || !isActiveSlot}
                             className={`
-                              w-6 h-6 rounded-full flex items-center justify-center mx-auto transition-all
+                              w-7 h-7 rounded-full flex items-center justify-center mx-auto transition-all
                               ${showLogButtons && isActiveSlot ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
                             `}
                             style={{
@@ -227,24 +395,24 @@ export function WhoNeedsItMatrix({
                             }}
                           >
                             <div
-                              className="w-2.5 h-2.5 rounded-full"
+                              className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: roleColor }}
                             />
                           </button>
                         </Tooltip>
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-surface-interactive border border-border-subtle mx-auto" />
+                        <div className="w-7 h-7 rounded-full bg-surface-interactive border border-border-subtle mx-auto" />
                       )}
                     </td>
                   );
                 })}
-                <td className="text-center py-2 px-3">
+                <td className="text-center py-2.5 px-3">
                   {isFree ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
+                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-status-success/20 text-status-success border border-status-success/30">
                       FREE
                     </span>
                   ) : (
-                    <span className={`text-xs ${
+                    <span className={`text-sm font-medium ${
                       count > 4 ? 'text-status-error' : count > 2 ? 'text-status-warning' : 'text-text-muted'
                     }`}>
                       {count}/8
@@ -254,6 +422,97 @@ export function WhoNeedsItMatrix({
               </tr>
             );})}
           </tbody>
+
+          {/* Material rows */}
+          {(
+            <tbody>
+              {/* Separator row */}
+              <tr>
+                <td colSpan={sortedPlayers.length + 2} className="px-3 pt-3 pb-1">
+                  <div className="text-xs font-bold text-text-muted uppercase tracking-wider">Materials</div>
+                </td>
+              </tr>
+              {materialNeedsMatrix.map(({ material, displayName, playersWhoNeed, playerCounts, count, totalNeeded, isFree }) => {
+                const isActiveMaterial = activeMaterialsForFloor.has(material);
+                const materialColor = MATERIAL_COLORS[material];
+                const materialFloors = getFloorForUpgradeMaterial(material);
+                const floorColor = materialFloors.length > 0 ? FLOOR_COLORS[materialFloors[0]].hex : undefined;
+
+                return (
+                  <tr key={material} className={`border-t border-border-default/50 ${isActiveMaterial ? 'hover:bg-surface-hover/30' : 'opacity-30'}`}>
+                    <td className="py-2.5 px-3 font-medium text-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-4 h-4 rounded-sm flex-shrink-0"
+                          style={{ backgroundColor: materialColor, opacity: 0.7 }}
+                        />
+                        <span style={floorColor && selectedFloor !== 'all' && isActiveMaterial ? { color: floorColor } : { color: materialColor }}>
+                          {displayName}
+                        </span>
+                      </div>
+                    </td>
+                    {sortedPlayers.map(player => {
+                      const needs = playersWhoNeed.has(player.id);
+                      const counts = playerCounts.get(player.id);
+                      const roleColor = getRoleColor(getValidRole(player.role));
+
+                      return (
+                        <td key={player.id} className="text-center py-2.5 px-2">
+                          {needs && counts ? (
+                            <Tooltip
+                              content={
+                                showLogButtons
+                                  ? `Log ${displayName} to ${player.name} (needs ${counts.needed}${counts.total > 1 ? `/${counts.total}` : ''})`
+                                  : `${player.name} needs ${counts.needed} ${displayName}${counts.total > 1 ? ` (${counts.augmented}/${counts.total} done)` : ''}`
+                              }
+                            >
+                              {/* design-system-ignore: Matrix cell button requires specific pie styling */}
+                              <button
+                                onClick={() => {
+                                  if (showLogButtons && onMaterialLogClick && isActiveMaterial) {
+                                    onMaterialLogClick(material, player);
+                                  }
+                                }}
+                                disabled={!showLogButtons || !isActiveMaterial}
+                                aria-label={`${player.name} needs ${counts.needed} ${displayName}. ${counts.augmented} of ${counts.total} augmented.`}
+                                className={`
+                                  mx-auto transition-all
+                                  ${showLogButtons && isActiveMaterial ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}
+                                `}
+                              >
+                                <MaterialPieIndicator
+                                  total={counts.total}
+                                  augmented={counts.augmented}
+                                  roleColor={roleColor}
+                                />
+                              </button>
+                            </Tooltip>
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-surface-interactive border border-border-subtle mx-auto" />
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="text-center py-2.5 px-3">
+                      {isFree ? (
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-status-success/20 text-status-success border border-status-success/30">
+                          FREE
+                        </span>
+                      ) : (
+                        <Tooltip content={`${count} player${count !== 1 ? 's' : ''} need ${totalNeeded} total`}>
+                          <span className={`text-sm font-medium ${
+                            totalNeeded > 8 ? 'text-status-error' : totalNeeded > 4 ? 'text-status-warning' : 'text-text-muted'
+                          }`}>
+                            {totalNeeded}
+                          </span>
+                        </Tooltip>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          )}
         </table>
       </div>
 
@@ -293,7 +552,7 @@ export function WhoNeedsItMatrix({
                 {sortedPlayers
                   .filter(p => playersWhoNeed.has(p.id))
                   .map(player => {
-                    const roleColor = getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
+                    const roleColor = getRoleColor(getValidRole(player.role));
                     return (
                       <button
                         key={player.id}
@@ -323,17 +582,91 @@ export function WhoNeedsItMatrix({
             )}
           </div>
         );})}
+
+        {/* Material cards (mobile) */}
+        {(
+          <>
+            <div className="px-3 pt-3 pb-1 border-t border-border-default">
+              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Materials</div>
+            </div>
+            {materialNeedsMatrix.map(({ material, displayName, playersWhoNeed, playerCounts, count, totalNeeded, isFree }) => {
+              const isActiveMaterial = activeMaterialsForFloor.has(material);
+              const materialColor = MATERIAL_COLORS[material];
+              return (
+                <div key={material} className={`p-3 ${!isActiveMaterial ? 'opacity-30' : ''}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="w-4 h-4 rounded-sm flex-shrink-0"
+                        style={{ backgroundColor: materialColor, opacity: 0.7 }}
+                      />
+                      <span className="font-medium" style={{ color: materialColor }}>{displayName}</span>
+                    </div>
+                    {isFree ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-success/20 text-status-success border border-status-success/30">
+                        FREE
+                      </span>
+                    ) : (
+                      <span className={`text-xs ${
+                        totalNeeded > 8 ? 'text-status-error' : totalNeeded > 4 ? 'text-status-warning' : 'text-text-muted'
+                      }`}>
+                        {totalNeeded} needed ({count} players)
+                      </span>
+                    )}
+                  </div>
+                  {!isFree && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortedPlayers
+                        .filter(p => playersWhoNeed.has(p.id))
+                        .map(player => {
+                          const roleColor = getRoleColor(getValidRole(player.role));
+                          const counts = playerCounts.get(player.id);
+                          return (
+                            /* design-system-ignore: Matrix chip button requires specific styling */
+                            <button
+                              key={player.id}
+                              onClick={() => {
+                                if (showLogButtons && onMaterialLogClick && isActiveMaterial) {
+                                  onMaterialLogClick(material as MaterialType, player);
+                                }
+                              }}
+                              disabled={!showLogButtons || !isActiveMaterial}
+                              className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
+                              style={{
+                                backgroundColor: `color-mix(in srgb, ${roleColor} 20%, transparent)`,
+                                color: roleColor,
+                              }}
+                            >
+                              <JobIcon job={player.job} size="xs" />
+                              <span>{player.name.split(' ')[0]}</span>
+                              {counts && counts.needed > 0 && (
+                                <span className="font-bold opacity-80">×{counts.needed}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 p-3 border-t border-border-default bg-surface-elevated/30 text-[10px] text-text-muted">
+      <div className="flex flex-wrap items-center gap-4 p-3 border-t border-border-default bg-surface-elevated/30 text-[10px] text-text-muted">
         <div className="flex items-center gap-1.5">
           <div
             className="w-4 h-4 rounded-full flex items-center justify-center bg-role-tank/20 border-2 border-role-tank"
           >
             <div className="w-1.5 h-1.5 rounded-full bg-role-tank" />
           </div>
-          <span>Needs for BiS</span>
+          <span>Needs gear</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MaterialPieIndicator total={3} augmented={1} roleColor="var(--color-role-tank)" size={16} />
+          <span>Needs material (slices = progress)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full bg-surface-interactive border border-border-subtle" />

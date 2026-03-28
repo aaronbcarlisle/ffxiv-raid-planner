@@ -557,6 +557,37 @@ async def get_error_groups(
     )
 
 
+@router.post("/api/admin/analytics/errors/batch-review")
+async def batch_review_errors(
+    body: BatchReviewRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Batch mark/unmark error groups as reviewed."""
+    await require_admin(user, session)
+
+    is_reviewed = body.action == "review"
+    result = await session.execute(
+        update(ErrorReport)
+        .where(ErrorReport.fingerprint.in_(body.fingerprints))
+        .values(is_reviewed=is_reviewed)
+    )
+    if result.rowcount == 0:
+        raise NotFound("No matching error groups found")
+
+    await session.commit()
+
+    logger.info(
+        "batch_errors_reviewed",
+        action=body.action,
+        fingerprints=len(body.fingerprints),
+        rows_updated=result.rowcount,
+        admin_user_id=user.id,
+    )
+
+    return {"status": "ok", "count": result.rowcount}
+
+
 @router.get(
     "/api/admin/analytics/errors/{fingerprint}",
     response_model=ErrorGroupDetailResponse,
@@ -693,35 +724,6 @@ async def mark_error_unreviewed(
     return {"status": "ok"}
 
 
-@router.post("/api/admin/analytics/errors/batch-review")
-async def batch_review_errors(
-    body: BatchReviewRequest,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    """Batch mark/unmark error groups as reviewed."""
-    await require_admin(user, session)
-
-    is_reviewed = body.action == "review"
-    result = await session.execute(
-        update(ErrorReport)
-        .where(ErrorReport.fingerprint.in_(body.fingerprints))
-        .values(is_reviewed=is_reviewed)
-    )
-    if result.rowcount == 0:
-        raise NotFound("No matching error groups found")
-
-    await session.commit()
-
-    logger.info(
-        "batch_errors_reviewed",
-        action=body.action,
-        fingerprints=len(body.fingerprints),
-        rows_updated=result.rowcount,
-        admin_user_id=user.id,
-    )
-
-    return {"status": "ok", "count": result.rowcount}
 
 
 @router.get("/api/admin/analytics/users/{user_id}/statics")
