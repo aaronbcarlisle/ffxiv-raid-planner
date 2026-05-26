@@ -27,6 +27,17 @@ from .invitation import (
     InvitationPreview,
     InvitationResponse,
 )
+from .schedule import (
+    AvailabilityDateSummary,
+    AvailabilitySubmit,
+    RsvpCreate,
+    RsvpResponse,
+    RsvpStatusEnum,
+    ScheduleSessionCreate,
+    ScheduleSessionResponse,
+    ScheduleSessionUpdate,
+    UserAvailabilityResponse,
+)
 from .loot_tracking import (
     LootLogEntryCreate,
     LootLogEntryResponse,
@@ -137,6 +148,16 @@ __all__ = [
     "InvitationCreate",
     "InvitationPreview",
     "InvitationResponse",
+    # Schedule & Availability
+    "AvailabilityDateSummary",
+    "AvailabilitySubmit",
+    "RsvpCreate",
+    "RsvpResponse",
+    "RsvpStatusEnum",
+    "ScheduleSessionCreate",
+    "ScheduleSessionResponse",
+    "ScheduleSessionUpdate",
+    "UserAvailabilityResponse",
     # Loot Tracking
     "LootLogEntryCreate",
     "LootLogEntryResponse",

@@ -29,6 +29,7 @@ from .routers import (
     bis_router,
     invitations_router,
     loot_tracking_router,
+    schedule_router,
     static_groups_router,
     tiers_router,
 )
@@ -146,7 +147,13 @@ app.include_router(auth_router)
 app.include_router(bis_router)
 app.include_router(invitations_router)
 app.include_router(loot_tracking_router)
+app.include_router(schedule_router)
 app.include_router(static_groups_router)
+
+# Dev auth - only in development with explicit opt-in
+if settings.environment == "development" and settings.dev_auth_mode:
+    from .routers.dev_auth import router as dev_auth_router
+    app.include_router(dev_auth_router)
 app.include_router(tiers_router)
 
 

@@ -603,6 +603,8 @@ class TestInteractedUsersEndpoint:
         )
 
         assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.headers["pragma"] == "no-cache"
         data = response.json()
 
         # Should include owner, member, and linked user

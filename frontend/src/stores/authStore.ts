@@ -558,7 +558,7 @@ export function useAuthHydrated(): boolean {
  */
 export async function initializeAuth(): Promise<void> {
   const state = useAuthStore.getState();
-  const { user, fetchUser, refreshAccessToken } = state;
+  const { fetchUser, refreshAccessToken } = state;
 
   // Warn if in production with localhost API
   if (isProduction && isLocalhostApi) {
@@ -569,22 +569,21 @@ export async function initializeAuth(): Promise<void> {
   }
 
   try {
-    // If we have a persisted user, verify session is still valid with backend
-    // This handles the case where httpOnly cookies have expired
-    if (user) {
-      await fetchUser();
+    // Always reconcile auth state with the backend on app startup.
+    // A valid httpOnly cookie session can exist even when persisted Zustand
+    // state is empty, such as in fresh dev-auth or incognito sessions.
+    await fetchUser();
 
-      // If still authenticated after fetchUser, do a proactive refresh to
-      // establish the refresh schedule. This ensures we know when to refresh
-      // even if the initial fetchUser succeeded with an existing valid token.
-      const currentState = useAuthStore.getState();
-      if (currentState.isAuthenticated) {
-        // Await refresh to ensure consistent auth state; silent catch since
-        // failure just means user will re-auth on first API call
-        await refreshAccessToken().catch(() => {
-          // Silent - will re-auth on first API call if needed
-        });
-      }
+    // If still authenticated after fetchUser, do a proactive refresh to
+    // establish the refresh schedule. This ensures we know when to refresh
+    // even if the initial fetchUser succeeded with an existing valid token.
+    const currentState = useAuthStore.getState();
+    if (currentState.isAuthenticated) {
+      // Await refresh to ensure consistent auth state; silent catch since
+      // failure just means user will re-auth on first API call
+      await refreshAccessToken().catch(() => {
+        // Silent - will re-auth on first API call if needed
+      });
     }
   } finally {
     // Mark auth as initialized regardless of outcome

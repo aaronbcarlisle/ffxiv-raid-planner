@@ -51,9 +51,18 @@ class User(Base):
     @property
     def avatar_url(self) -> str | None:
         """Get full Discord avatar URL"""
-        if not self.discord_avatar:
-            return None
-        return f"https://cdn.discordapp.com/avatars/{self.discord_id}/{self.discord_avatar}.png"
+        if self.discord_avatar:
+            return f"https://cdn.discordapp.com/avatars/{self.discord_id}/{self.discord_avatar}.png"
+
+        # Discord's default avatar uses (user_id >> 22) % 6 for numeric snowflakes.
+        # Dev auth and legacy local users may have placeholder IDs, so fall back to
+        # a deterministic string-based index to avoid frontend crashes.
+        if self.discord_id.isdigit():
+            index = (int(self.discord_id) >> 22) % 6
+        else:
+            index = sum(self.discord_id.encode("utf-8")) % 6
+
+        return f"https://cdn.discordapp.com/embed/avatars/{index}.png"
 
     @property
     def effective_name(self) -> str:

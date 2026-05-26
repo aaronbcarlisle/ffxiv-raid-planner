@@ -26,6 +26,7 @@ const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS
   loot: 'loot',
   stats: 'stats',
   history: 'history',
+  schedule: 'schedule',
 };
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
@@ -33,6 +34,7 @@ const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'loot', label: 'Priority' },
   { id: 'history', label: 'Loot Log' },
   { id: 'stats', label: 'Summary' },
+  { id: 'schedule', label: 'Schedule' },
 ];
 
 const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Weapon' };
