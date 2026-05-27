@@ -123,6 +123,29 @@ async function cleanupTestSessions(page: Page) {
   }
 }
 
+async function isLodestoneMockEnabled(page: Page) {
+  const response = await page.context().request.get(`${API_BASE}/api/lodestone/status`);
+  if (!response.ok()) {
+    return false;
+  }
+
+  const payload = await response.json() as { mockMode?: boolean };
+  return payload.mockMode === true;
+}
+
+async function openPlayerContextMenu(page: Page) {
+  const card = page.getByTestId('player-card').first();
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  await card.scrollIntoViewIfNeeded();
+
+  const box = await card.boundingBox();
+  if (!box) {
+    throw new Error('Could not determine PlayerCard bounds');
+  }
+
+  await page.mouse.click(box.x + 24, box.y + 24, { button: 'right' });
+}
+
 /** Today as YYYY-MM-DD. */
 function todayStr(): string {
   const d = new Date();
@@ -254,7 +277,7 @@ test.describe('Schedule', () => {
 
     const grid = page.getByTestId('availability-grid');
     await grid.scrollIntoViewIfNeeded();
-    await expect(grid.getByText('Editable')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid^="avail-cell-"]').first()).toBeVisible({ timeout: 10_000 });
 
     const found = await findUnselectedCell(page);
     if (!found) {
@@ -284,7 +307,7 @@ test.describe('Schedule', () => {
 
     const grid = page.getByTestId('availability-grid');
     await grid.scrollIntoViewIfNeeded();
-    await expect(grid.getByText('Editable')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid^="avail-cell-"]').first()).toBeVisible({ timeout: 10_000 });
 
     // Use late-evening slots that are unlikely to be selected already
     const today = todayStr();
@@ -340,7 +363,7 @@ test.describe('Schedule', () => {
 
     const grid = page.getByTestId('availability-grid');
     await grid.scrollIntoViewIfNeeded();
-    await expect(grid.getByText('Editable')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid^="avail-cell-"]').first()).toBeVisible({ timeout: 10_000 });
 
     // Find or create a selected cell
     const today = todayStr();
@@ -459,5 +482,40 @@ test.describe('Settings access', () => {
         panel.getByRole('button', { name: new RegExp(`^${tab}$`, 'i') }),
       ).toBeVisible();
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 14. Lodestone dev mock flow
+// ═══════════════════════════════════════════════════════════════════════════
+
+test.describe('Lodestone Sync', () => {
+  test('14 — DEV_LODESTONE_MOCK search, preview, and sync work from PlayerCard', async ({ page }) => {
+    await loginAsOwner(page);
+
+    if (!(await isLodestoneMockEnabled(page))) {
+      test.skip(true, 'DEV_LODESTONE_MOCK is not enabled on the backend');
+      return;
+    }
+
+    await goToTestStatic(page);
+
+    await openPlayerContextMenu(page);
+    await page.getByRole('menuitem', { name: /Lodestone Sync|Re-sync Lodestone/i }).click();
+
+    await expect(page.getByTestId('lodestone-dev-mock-hint')).toBeVisible({ timeout: 5_000 });
+    await page.getByTestId('lodestone-mock-search-mock-raider').click();
+    await page.getByTestId('lodestone-search-result-910001').click();
+
+    const preview = page.getByTestId('lodestone-preview-card');
+    await expect(preview.getByText('Mock Raider')).toBeVisible({ timeout: 10_000 });
+    await expect(preview.getByText(/Gilgamesh • DRG/i)).toBeVisible();
+    await expect(preview.getByText("Cruiserweight Champion's Spear")).toBeVisible();
+
+    await page.getByTestId('lodestone-sync-button').click();
+    await expect(page.getByTestId('lodestone-sync-button')).toBeHidden({ timeout: 10_000 });
+
+    await openPlayerContextMenu(page);
+    await expect(page.getByRole('menuitem', { name: /Re-sync Lodestone/i })).toBeVisible();
   });
 });
