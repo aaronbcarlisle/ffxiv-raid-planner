@@ -89,7 +89,7 @@ export function SessionCard({ session, currentUserId, canManage, canRsvp, onRsvp
   };
 
   return (
-    <div className="bg-surface-raised border border-border-default rounded-lg p-4 space-y-3">
+    <div className="bg-surface-raised border border-border-default rounded-lg p-4 space-y-3" data-testid="session-card">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="font-medium text-text-primary text-lg flex items-center gap-2">
@@ -161,6 +161,7 @@ export function SessionCard({ session, currentUserId, canManage, canRsvp, onRsvp
                 onClick={() => handleRsvp(status)}
                 disabled={rsvpLoading !== null}
                 className={isActive ? config.activeClass : ''}
+                data-testid={`rsvp-${status}`}
               >
                 <Icon className="w-4 h-4 mr-1" />
                 {isLoading ? '...' : config.label}

@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import designSystemPlugin from './eslint-design-system-plugin.js'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'e2e', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
