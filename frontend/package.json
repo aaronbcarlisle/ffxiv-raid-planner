@@ -13,7 +13,9 @@
     "fetch:gamedata": "tsx scripts/fetch-xivapi-data.ts",
     "check:design-system": "bash scripts/check-design-system.sh",
     "check:design-system:strict": "bash scripts/check-design-system.sh --strict",
-    "check:bundle": "pnpm build && size-limit"
+    "check:bundle": "pnpm build && size-limit",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
   },
   "size-limit": [
     {
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.0.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",

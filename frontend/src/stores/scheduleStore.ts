@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
-import type { ScheduleSession, ScheduleSessionCreate, ScheduleSessionUpdate, RsvpStatus, ScheduleRsvp } from '../types';
+import type {
+  ScheduleSession,
+  ScheduleSessionCreate,
+  ScheduleSessionUpdate,
+  RsvpStatus,
+  ScheduleRsvp,
+} from '../types';
 
 interface ScheduleState {
   sessions: ScheduleSession[];
@@ -39,7 +45,9 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
         `/api/static-groups/${groupId}/schedule`,
         data
       );
-      set((state) => ({ sessions: [...state.sessions, session] }));
+      set((state) => ({
+        sessions: [...state.sessions, session].sort((left, right) => left.startTime.localeCompare(right.startTime)),
+      }));
     } catch (err) {
       set({ error: (err as Error).message });
       throw err;
@@ -54,7 +62,9 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
         data
       );
       set((state) => ({
-        sessions: state.sessions.map((s) => (s.id === sessionId ? updated : s)),
+        sessions: state.sessions
+          .map((s) => (s.id === sessionId ? updated : s))
+          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
       }));
     } catch (err) {
       set({ error: (err as Error).message });
@@ -98,5 +108,8 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     }
   },
 
-  clearSessions: () => set({ sessions: [], error: null }),
+  clearSessions: () => set({
+    sessions: [],
+    error: null,
+  }),
 }));

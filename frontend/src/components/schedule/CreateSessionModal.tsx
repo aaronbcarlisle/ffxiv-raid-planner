@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
@@ -7,6 +7,12 @@ import { Checkbox } from '../ui/Checkbox';
 import { Button } from '../primitives';
 import { Calendar } from 'lucide-react';
 import type { ScheduleSession, ScheduleSessionCreate } from '../../types';
+import {
+  addDurationInTimeZone,
+  fromZonedDatetimeLocalValue,
+  getBrowserTimezone,
+  toZonedDatetimeLocalValue,
+} from '../../utils/timezone';
 
 const COMMON_TIMEZONES = [
   { value: 'Asia/Tokyo', label: 'JST (Asia/Tokyo)' },
@@ -40,25 +46,7 @@ interface CreateSessionModalProps {
   onClose: () => void;
   onSubmit: (data: ScheduleSessionCreate) => Promise<void>;
   editSession?: ScheduleSession | null;
-}
-
-function getLocalTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-function toLocalDatetimeString(isoString: string): string {
-  const d = new Date(isoString);
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
-}
-
-function addMs(datetimeLocal: string, ms: number): string {
-  const d = new Date(datetimeLocal);
-  if (isNaN(d.getTime())) return '';
-  const result = new Date(d.getTime() + ms);
-  const offset = result.getTimezoneOffset();
-  return new Date(result.getTime() - offset * 60000).toISOString().slice(0, 16);
+  initialDraft?: ScheduleSessionCreate | null;
 }
 
 function parseDaysFromRule(rule: string | null | undefined): Set<string> {
@@ -73,21 +61,50 @@ function buildRecurrenceRule(days: Set<string>): string {
   return `FREQ=WEEKLY;BYDAY=${ordered.join(',')}`;
 }
 
-export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: CreateSessionModalProps) {
-  const [title, setTitle] = useState(editSession?.title ?? '');
-  const [description, setDescription] = useState(editSession?.description ?? '');
-  const [startTime, setStartTime] = useState(
-    editSession ? toLocalDatetimeString(editSession.startTime) : ''
-  );
-  const [endTime, setEndTime] = useState(
-    editSession ? toLocalDatetimeString(editSession.endTime) : ''
-  );
-  const [timezone, setTimezone] = useState(editSession?.timezone ?? getLocalTimezone());
-  const [isRecurring, setIsRecurring] = useState(editSession?.isRecurring ?? false);
-  const [selectedDays, setSelectedDays] = useState<Set<string>>(
-    parseDaysFromRule(editSession?.recurrenceRule)
-  );
+function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?: ScheduleSessionCreate | null) {
+  const source = editSession ?? initialDraft ?? null;
+  const timezone = source?.timezone ?? getBrowserTimezone();
+  return {
+    title: source?.title ?? '',
+    description: source?.description ?? '',
+    startTime: source ? toZonedDatetimeLocalValue(source.startTime, timezone) : '',
+    endTime: source ? toZonedDatetimeLocalValue(source.endTime, timezone) : '',
+    timezone,
+    isRecurring: source?.isRecurring ?? false,
+    selectedDays: parseDaysFromRule(source?.recurrenceRule),
+  };
+}
+
+export function CreateSessionModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  editSession,
+  initialDraft,
+}: CreateSessionModalProps) {
+  const initialState = getInitialFormState(editSession, initialDraft);
+  const [title, setTitle] = useState(initialState.title);
+  const [description, setDescription] = useState(initialState.description);
+  const [startTime, setStartTime] = useState(initialState.startTime);
+  const [endTime, setEndTime] = useState(initialState.endTime);
+  const [timezone, setTimezone] = useState(initialState.timezone);
+  const [isRecurring, setIsRecurring] = useState(initialState.isRecurring);
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(initialState.selectedDays);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const nextState = getInitialFormState(editSession, initialDraft);
+    setTitle(nextState.title);
+    setDescription(nextState.description);
+    setStartTime(nextState.startTime);
+    setEndTime(nextState.endTime);
+    setTimezone(nextState.timezone);
+    setIsRecurring(nextState.isRecurring);
+    setSelectedDays(nextState.selectedDays);
+  }, [editSession, initialDraft, isOpen]);
 
   const toggleDay = (day: string) => {
     setSelectedDays((prev) => {
@@ -104,9 +121,14 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
   const handleStartChange = (value: string) => {
     setStartTime(value);
     if (value && !endTime) {
-      setEndTime(addMs(value, DEFAULT_DURATION_MS));
-    } else if (value && endTime && new Date(value) >= new Date(endTime)) {
-      setEndTime(addMs(value, DEFAULT_DURATION_MS));
+      setEndTime(addDurationInTimeZone(value, DEFAULT_DURATION_MS, timezone));
+    } else if (
+      value
+      && endTime
+      && new Date(fromZonedDatetimeLocalValue(value, timezone))
+        >= new Date(fromZonedDatetimeLocalValue(endTime, timezone))
+    ) {
+      setEndTime(addDurationInTimeZone(value, DEFAULT_DURATION_MS, timezone));
     }
   };
 
@@ -115,14 +137,11 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
 
     setIsSubmitting(true);
     try {
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
-
       await onSubmit({
         title: title.trim(),
         description: description.trim() || undefined,
-        startTime: startDate.toISOString(),
-        endTime: endDate.toISOString(),
+        startTime: fromZonedDatetimeLocalValue(startTime, timezone),
+        endTime: fromZonedDatetimeLocalValue(endTime, timezone),
         timezone,
         isRecurring,
         recurrenceRule: isRecurring ? buildRecurrenceRule(selectedDays) : undefined,
@@ -133,7 +152,12 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
     }
   };
 
-  const endBeforeStart = startTime && endTime && new Date(endTime) <= new Date(startTime);
+  const endBeforeStart = Boolean(
+    startTime
+    && endTime
+    && new Date(fromZonedDatetimeLocalValue(endTime, timezone))
+      <= new Date(fromZonedDatetimeLocalValue(startTime, timezone))
+  );
   const isValid = title.trim() && startTime && endTime && !endBeforeStart;
 
   const selectedDaysSummary = DAYS_OF_WEEK
@@ -160,6 +184,7 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
             value={title}
             onChange={setTitle}
             placeholder="e.g. Weekly Savage Prog"
+            data-testid="session-title-input"
           />
         </div>
 
@@ -180,6 +205,7 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
               type="datetime-local"
               value={startTime}
               onChange={(e) => handleStartChange(e.target.value)}
+              data-testid="session-start-input"
               className="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-border-default text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
           </div>
@@ -190,6 +216,7 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
               type="datetime-local"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
+              data-testid="session-end-input"
               className={`w-full px-3 py-2 rounded-lg bg-surface-elevated border text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 ${
                 endBeforeStart ? 'border-red-500' : 'border-border-default'
               }`}
@@ -241,7 +268,7 @@ export function CreateSessionModal({ isOpen, onClose, onSubmit, editSession }: C
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!isValid || isSubmitting}>
+          <Button onClick={handleSubmit} disabled={!isValid || isSubmitting} data-testid="session-submit-btn">
             {isSubmitting ? 'Saving...' : editSession ? 'Save Changes' : 'Create Session'}
           </Button>
         </div>

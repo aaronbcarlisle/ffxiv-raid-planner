@@ -1,153 +1,71 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Clock3, MousePointer2, Users } from 'lucide-react';
-import { Badge } from '../primitives';
+import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useAuthStore } from '../../stores/authStore';
-import type { AvailabilityDateSummary } from '../../types';
+import { getBrowserTimezone } from '../../utils/timezone';
+import { Badge } from '../primitives';
+import { AvailabilityRecommendations } from './AvailabilityRecommendations';
+import {
+  buildHeatMap,
+  buildUserSlotSet,
+  computeAvailabilityRecommendations,
+  formatDateHeader,
+  formatHoveredSlotLabel,
+  formatTimeLabel,
+  getNextNDates,
+  getScheduleReferenceTimezone,
+  getUtcDateRange,
+  localSlotsToUtcMap,
+  TIME_SLOTS,
+} from './availabilityUtils';
 
 interface AvailabilityGridProps {
   groupId: string;
   canSubmit: boolean;
+  canCreateSession: boolean;
+  sessions: ScheduleSession[];
+  members: Membership[];
+  staticName: string;
+  shareCode: string;
+  onCreateSessionDraft: (draft: ScheduleSessionCreate) => void;
 }
 
-const START_HOUR = 12;
-const END_HOUR = 24;
-
-function generateTimeSlots(): string[] {
-  const slots: string[] = [];
-  for (let h = START_HOUR; h < END_HOUR; h++) {
-    const hh = String(h % 24).padStart(2, '0');
-    slots.push(`${hh}:00`);
-    slots.push(`${hh}:30`);
-  }
-  return slots;
-}
-
-const TIME_SLOTS = generateTimeSlots();
-
-function formatTimeLabel(slot: string): string {
-  const [hStr, mStr] = slot.split(':');
-  const h = parseInt(hStr, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${display}:${mStr} ${ampm}`;
-}
-
-function getNextNDates(n: number): string[] {
-  const dates: string[] = [];
-  const today = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    );
-  }
-  return dates;
-}
-
-function formatDateHeader(dateStr: string): { day: string; date: string } {
-  const d = new Date(dateStr + 'T12:00:00');
-  const day = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return { day, date };
-}
-
-function formatHoveredSlotLabel(slotKey: string): string {
-  const [date, time] = slotKey.split('|');
-  const { day, date: dateLabel } = formatDateHeader(date);
-  return `${day}, ${dateLabel} at ${formatTimeLabel(time)}`;
-}
-
-function localSlotToUtc(localDate: string, localTime: string): { utcDate: string; utcTime: string } {
-  const dt = new Date(`${localDate}T${localTime}:00`);
-  const utcDate = dt.toISOString().slice(0, 10);
-  const utcTime = dt.toISOString().slice(11, 16);
-  return { utcDate, utcTime };
-}
-
-function utcSlotToLocal(utcDate: string, utcTime: string): { localDate: string; localTime: string } {
-  const dt = new Date(`${utcDate}T${utcTime}:00Z`);
-  const localDate = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-  const localTime = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-  return { localDate, localTime };
-}
-
-interface HeatMapEntry {
-  count: number;
-  names: string[];
-}
-
-function buildHeatMap(data: AvailabilityDateSummary[]): Map<string, HeatMapEntry> {
-  const map = new Map<string, HeatMapEntry>();
-  for (const dateSummary of data) {
-    for (const response of dateSummary.responses) {
-      for (const utcTime of response.slots) {
-        const { localDate, localTime } = utcSlotToLocal(dateSummary.date, utcTime);
-        const key = `${localDate}|${localTime}`;
-        const existing = map.get(key) ?? { count: 0, names: [] };
-        existing.count++;
-        if (response.username) existing.names.push(response.username);
-        map.set(key, existing);
+function buildRecommendationSlotRanks(recommendations: ReturnType<typeof computeAvailabilityRecommendations>) {
+  const ranks = new Map<string, number>();
+  recommendations.forEach((recommendation, index) => {
+    recommendation.slotKeys.forEach((slotKey) => {
+      const existing = ranks.get(slotKey);
+      if (existing === undefined || index < existing) {
+        ranks.set(slotKey, index);
       }
-    }
-  }
-  return map;
+    });
+  });
+  return ranks;
 }
 
-function buildUserSlotSet(data: AvailabilityDateSummary[], userId: string): Set<string> {
-  const set = new Set<string>();
-  for (const dateSummary of data) {
-    for (const response of dateSummary.responses) {
-      if (response.userId !== userId) continue;
-      for (const utcTime of response.slots) {
-        const { localDate, localTime } = utcSlotToLocal(dateSummary.date, utcTime);
-        set.add(`${localDate}|${localTime}`);
-      }
-    }
-  }
-  return set;
-}
-
-function getUtcDateRange(localDates: string[]): { startDate: string; endDate: string } {
-  const first = new Date(localDates[0] + 'T00:00:00');
-  const last = new Date(localDates[localDates.length - 1] + 'T23:59:59');
-
-  first.setDate(first.getDate() - 1);
-  last.setDate(last.getDate() + 1);
-
-  return {
-    startDate: first.toISOString().slice(0, 10),
-    endDate: last.toISOString().slice(0, 10),
-  };
-}
-
-function localSlotsToUtcMap(slots: Set<string>): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  for (const slot of slots) {
-    const [localDate, localTime] = slot.split('|');
-    const { utcDate, utcTime } = localSlotToUtc(localDate, localTime);
-    if (!map.has(utcDate)) map.set(utcDate, []);
-    map.get(utcDate)!.push(utcTime);
-  }
-  return map;
-}
-
-export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) {
+export function AvailabilityGrid({
+  groupId,
+  canSubmit,
+  canCreateSession,
+  sessions,
+  members,
+  staticName,
+  shareCode,
+  onCreateSessionDraft,
+}: AvailabilityGridProps) {
   const { user } = useAuthStore();
   const { data, error, fetchAvailability, submitAvailability } = useAvailabilityStore();
   const [dates] = useState(() => getNextNDates(7));
-  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const [durationMinutes, setDurationMinutes] = useState(120);
+  const localTimezone = getBrowserTimezone();
+  const canEditAvailability = canSubmit && !!user;
 
-  // Drag interaction state lives in refs to avoid stale closures in event handlers.
-  // React state batches updates and re-renders asynchronously, so a mouseup handler
-  // registered before the re-render would capture the OLD isSelecting/pendingCells.
-  // Refs are mutable and always current.
   const isSelectingRef = useRef(false);
   const selectModeRef = useRef<'add' | 'remove'>('add');
   const pendingCellsRef = useRef<Set<string>>(new Set());
-  const [renderTick, setRenderTick] = useState(0);
-
+  const [selectMode, setSelectMode] = useState<'add' | 'remove'>('add');
+  const [pendingCellsSnapshot, setPendingCellsSnapshot] = useState<Set<string>>(() => new Set());
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
 
   const utcRange = useMemo(() => getUtcDateRange(dates), [dates]);
@@ -162,105 +80,139 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
     [data, user]
   );
 
-  const totalMembers = useMemo(() => {
-    const userIds = new Set<string>();
-    for (const d of data) {
-      for (const r of d.responses) {
-        userIds.add(r.userId);
+  const trackedMembers = useMemo(
+    () => members.filter((member) => member.role !== 'viewer'),
+    [members]
+  );
+  const responderCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const dateSummary of data) {
+      for (const response of dateSummary.responses) {
+        ids.add(response.userId);
       }
     }
-    return Math.max(userIds.size, 1);
+    return ids.size;
   }, [data]);
+  const totalMembers = trackedMembers.length || responderCount || 1;
+  const referenceTimezone = useMemo(
+    () => getScheduleReferenceTimezone(sessions, localTimezone),
+    [sessions, localTimezone]
+  );
+  const recommendations = useMemo(
+    () => computeAvailabilityRecommendations(data, members, dates, durationMinutes),
+    [data, members, dates, durationMinutes]
+  );
+  const recommendationSlotRanks = useMemo(
+    () => buildRecommendationSlotRanks(recommendations),
+    [recommendations]
+  );
 
-  // Keep a stable ref to values the mouseup handler needs
   const stableRef = useRef({ userSlots, groupId, submitAvailability, user });
-  stableRef.current = { userSlots, groupId, submitAvailability, user };
+  useEffect(() => {
+    stableRef.current = { userSlots, groupId, submitAvailability, user };
+  }, [groupId, submitAvailability, user, userSlots]);
 
   const getEffectiveSelection = (key: string): boolean => {
-    if (pendingCellsRef.current.has(key)) {
-      return selectModeRef.current === 'add';
+    if (pendingCellsSnapshot.has(key)) {
+      return selectMode === 'add';
     }
     return userSlots.has(key);
   };
 
-  // Counter to prevent a stale save from clearing a newer drag's pending cells
   const saveIdRef = useRef(0);
 
   const handleCellMouseDown = (date: string, time: string) => {
-    if (!canSubmit) return;
+    if (!canEditAvailability) {
+      return;
+    }
+
     const key = `${date}|${time}`;
     const isSelected = userSlots.has(key);
-    selectModeRef.current = isSelected ? 'remove' : 'add';
+    const nextMode = isSelected ? 'remove' : 'add';
+    selectModeRef.current = nextMode;
+    setSelectMode(nextMode);
     isSelectingRef.current = true;
-    pendingCellsRef.current = new Set([key]);
-    saveIdRef.current++;
-    setRenderTick((n) => n + 1);
+    const nextPendingCells = new Set([key]);
+    pendingCellsRef.current = nextPendingCells;
+    saveIdRef.current += 1;
+    setPendingCellsSnapshot(nextPendingCells);
   };
 
   const handleCellMouseEnter = (date: string, time: string) => {
     const key = `${date}|${time}`;
     setHoveredCell(key);
-    if (!isSelectingRef.current) return;
+    if (!isSelectingRef.current) {
+      return;
+    }
     pendingCellsRef.current.add(key);
-    setRenderTick((n) => n + 1);
+    setPendingCellsSnapshot(new Set(pendingCellsRef.current));
   };
 
-  // Single stable mouseup handler — reads everything from refs
   useEffect(() => {
     const onMouseUp = async () => {
-      if (!isSelectingRef.current) return;
+      if (!isSelectingRef.current) {
+        return;
+      }
       isSelectingRef.current = false;
 
       const mySaveId = saveIdRef.current;
-      const { userSlots: currentSlots, groupId: gid, submitAvailability: submit, user: u } = stableRef.current;
+      const {
+        userSlots: currentSlots,
+        groupId: currentGroupId,
+        submitAvailability: persistAvailability,
+        user: currentUser,
+      } = stableRef.current;
 
-      if (!u) {
+      if (!currentUser) {
         pendingCellsRef.current = new Set();
-        setRenderTick((n) => n + 1);
+        setPendingCellsSnapshot(new Set());
         return;
       }
 
       const pending = new Set(pendingCellsRef.current);
       const mode = selectModeRef.current;
-
       if (pending.size === 0) {
         pendingCellsRef.current = new Set();
-        setRenderTick((n) => n + 1);
+        setPendingCellsSnapshot(new Set());
         return;
       }
 
-      // Keep pending cells visible during the save — getEffectiveSelection
-      // will continue to show them based on selectMode. Only clear after
-      // the API responds and the store updates userSlots.
-
-      const newUserSlots = new Set(currentSlots);
+      const nextUserSlots = new Set(currentSlots);
       for (const cell of pending) {
-        if (mode === 'add') newUserSlots.add(cell);
-        else newUserSlots.delete(cell);
+        if (mode === 'add') {
+          nextUserSlots.add(cell);
+        } else {
+          nextUserSlots.delete(cell);
+        }
       }
 
-      const utcMap = localSlotsToUtcMap(newUserSlots);
-      const oldUtcMap = localSlotsToUtcMap(currentSlots);
-      const allUtcDates = new Set([...utcMap.keys(), ...oldUtcMap.keys()]);
-
+      const utcMap = localSlotsToUtcMap(nextUserSlots);
+      const previousUtcMap = localSlotsToUtcMap(currentSlots);
+      const allDates = new Set([...utcMap.keys(), ...previousUtcMap.keys()]);
       let anyFailed = false;
-      for (const utcDate of allUtcDates) {
-        const newSlots = utcMap.get(utcDate) ?? [];
-        const oldSlots = new Set(oldUtcMap.get(utcDate) ?? []);
 
-        let changed = newSlots.length !== oldSlots.size;
+      for (const utcDate of allDates) {
+        const nextSlots = utcMap.get(utcDate) ?? [];
+        const previousSlots = new Set(previousUtcMap.get(utcDate) ?? []);
+
+        let changed = nextSlots.length !== previousSlots.size;
         if (!changed) {
-          for (const s of newSlots) {
-            if (!oldSlots.has(s)) { changed = true; break; }
+          for (const slot of nextSlots) {
+            if (!previousSlots.has(slot)) {
+              changed = true;
+              break;
+            }
           }
         }
 
-        if (changed) {
-          try {
-            await submit(gid, utcDate, newSlots);
-          } catch {
-            anyFailed = true;
-          }
+        if (!changed) {
+          continue;
+        }
+
+        try {
+          await persistAvailability(currentGroupId, utcDate, nextSlots);
+        } catch {
+          anyFailed = true;
         }
       }
 
@@ -268,7 +220,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
         if (!anyFailed) {
           pendingCellsRef.current = new Set();
         }
-        setRenderTick((n) => n + 1);
+        setPendingCellsSnapshot(new Set(pendingCellsRef.current));
       }
     };
 
@@ -277,31 +229,65 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
   }, []);
 
   const hoveredInfo = hoveredCell ? heatMap.get(hoveredCell) : null;
-  let selectedSlotCount = 0;
-  for (const date of dates) {
-    for (const time of TIME_SLOTS) {
-      if (getEffectiveSelection(`${date}|${time}`)) {
-        selectedSlotCount++;
+  const selectedSlotCount = useMemo(() => {
+    let total = 0;
+    for (const date of dates) {
+      for (const time of TIME_SLOTS) {
+        const key = `${date}|${time}`;
+        const isSelected = pendingCellsSnapshot.has(key)
+          ? selectMode === 'add'
+          : userSlots.has(key);
+        if (isSelected) {
+          total += 1;
+        }
       }
     }
-  }
+    return total;
+  }, [dates, pendingCellsSnapshot, selectMode, userSlots]);
 
   const sharedWindowCount = useMemo(() => {
     const threshold = Math.max(1, Math.ceil(totalMembers / 2));
     let total = 0;
     for (const entry of heatMap.values()) {
       if (entry.count >= threshold) {
-        total++;
+        total += 1;
       }
     }
     return total;
   }, [heatMap, totalMembers]);
 
-  // renderTick is used to force re-renders when refs change
-  void renderTick;
+  const schedulePageUrl = useMemo(
+    () => new URL(`/group/${shareCode}?tab=schedule`, window.location.origin).toString(),
+    [shareCode]
+  );
+
+  const handleCreateSessionDraft = (recommendation: (typeof recommendations)[number]) => {
+    onCreateSessionDraft({
+      title: 'Recommended Raid Session',
+      description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the scheduler recommendation panel.`,
+      startTime: recommendation.startIso,
+      endTime: recommendation.endIso,
+      timezone: referenceTimezone,
+      isRecurring: false,
+    });
+  };
 
   return (
-    <section className="mx-auto w-full max-w-6xl">
+    <section className="mx-auto w-full max-w-6xl space-y-4" data-testid="availability-grid">
+      <AvailabilityRecommendations
+        recommendations={recommendations}
+        durationMinutes={durationMinutes}
+        onDurationChange={setDurationMinutes}
+        referenceTimezone={referenceTimezone}
+        localTimezone={localTimezone}
+        staticName={staticName}
+        schedulePageUrl={schedulePageUrl}
+        responderCount={responderCount}
+        totalMembers={totalMembers}
+        canCreateSession={canCreateSession}
+        onCreateSession={handleCreateSessionDraft}
+      />
+
       <div className="overflow-hidden rounded-2xl border border-border-default bg-linear-to-br from-surface-raised via-surface-card to-surface-raised shadow-lg shadow-black/20">
         <div className="border-b border-border-subtle bg-surface-raised/80 px-4 py-5 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -324,7 +310,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
 
             <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
               <Badge variant={canSubmit ? 'success' : 'info'}>
-                {canSubmit ? 'Editable' : 'View only'}
+                {canEditAvailability ? 'Editable' : canSubmit ? 'Loading account' : 'View only'}
               </Badge>
               <Badge variant="default">{dates.length} days</Badge>
               <Badge variant="default">{localTimezone}</Badge>
@@ -340,7 +326,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                 {selectedSlotCount}
               </div>
               <div className="text-xs text-text-secondary">
-                {canSubmit ? 'Marked in the next seven days' : 'Sign in as a static member to add yours'}
+                {canEditAvailability ? 'Marked in the next seven days' : 'Sign in as a static member to add yours'}
               </div>
             </div>
 
@@ -352,7 +338,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                 {totalMembers}
               </div>
               <div className="text-xs text-text-secondary">
-                Saved responses currently visible in the grid
+                Static members counted for overlap recommendations
               </div>
             </div>
 
@@ -374,7 +360,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
           <div className="flex flex-wrap items-center justify-center gap-2 text-center lg:justify-between lg:text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
               <MousePointer2 className="h-3.5 w-3.5 text-accent" />
-              {canSubmit ? 'Drag to paint your availability' : 'Hover any slot to inspect overlap'}
+              {canEditAvailability ? 'Drag to paint your availability' : 'Hover any slot to inspect overlap'}
             </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
               <Clock3 className="h-3.5 w-3.5 text-accent" />
@@ -395,10 +381,9 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                     minWidth: `${4.5 + dates.length * 5.5}rem`,
                   }}
                 >
-                  {/* Header row */}
                   <div className="rounded-xl bg-surface-card/90 p-1" />
                   {dates.map((date) => {
-                    const { day, date: dateStr } = formatDateHeader(date);
+                    const { day, date: dateLabel } = formatDateHeader(date);
                     return (
                       <div
                         key={date}
@@ -407,12 +392,11 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
                           {day}
                         </div>
-                        <div className="mt-0.5 text-sm font-medium text-text-primary">{dateStr}</div>
+                        <div className="mt-0.5 text-sm font-medium text-text-primary">{dateLabel}</div>
                       </div>
                     );
                   })}
 
-                  {/* Time slot rows */}
                   {TIME_SLOTS.map((time) => {
                     const isHourBoundary = time.endsWith(':00');
                     return [
@@ -435,6 +419,7 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                         const count = heat?.count ?? 0;
                         const intensity = count / totalMembers;
                         const isHovered = hoveredCell === key;
+                        const recommendationRank = recommendationSlotRanks.get(key);
 
                         let bgColor = 'bg-surface-elevated';
                         let borderColor = 'border-border-subtle/70';
@@ -459,12 +444,25 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
                           textColor = 'text-status-success';
                         }
 
+                        const recommendationClass = recommendationRank === 0
+                          ? 'shadow-[0_0_0_1px_rgba(245,158,11,0.7)]'
+                          : recommendationRank === 1
+                            ? 'shadow-[0_0_0_1px_rgba(34,197,94,0.55)]'
+                            : recommendationRank === 2
+                              ? 'shadow-[0_0_0_1px_rgba(14,165,233,0.55)]'
+                              : '';
+
                         return (
                           <div
                             key={key}
-                            className={`h-7 rounded-lg border ${bgColor} ${borderColor} transition-all duration-100 ${
+                            data-testid={`avail-cell-${date}-${time.replace(':', '')}`}
+                            data-selected={isUserSelected ? 'true' : undefined}
+                            data-user-selected={isUserSelected ? 'true' : 'false'}
+                            data-available-count={count}
+                            data-recommended={recommendationRank !== undefined ? 'true' : 'false'}
+                            className={`h-7 rounded-lg border ${bgColor} ${borderColor} ${recommendationClass} transition-all duration-100 ${
                               isHovered ? 'scale-[1.02] ring-2 ring-inset ring-accent/50' : ''
-                            } ${canSubmit ? 'cursor-pointer hover:border-accent/35' : ''}`}
+                            } ${canEditAvailability ? 'cursor-pointer hover:border-accent/35' : ''}`}
                             onMouseDown={() => handleCellMouseDown(date, time)}
                             onMouseEnter={() => handleCellMouseEnter(date, time)}
                           >
@@ -520,6 +518,10 @@ export function AvailabilityGrid({ groupId, canSubmit }: AvailabilityGridProps) 
               <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
                 <div className="h-3 w-3 rounded-sm border border-status-success/40 bg-status-success/45" />
                 <span>Strong overlap</span>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
+                <div className="h-3 w-3 rounded-sm border border-status-warning/50 bg-status-warning/25" />
+                <span>Recommended window</span>
               </div>
             </div>
           </div>
