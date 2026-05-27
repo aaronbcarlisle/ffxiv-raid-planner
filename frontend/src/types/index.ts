@@ -428,7 +428,7 @@ export const TAB_ICONS = {
   loot: '/icons/loot-transparent-bg.png',
   stats: '/icons/stats-transparent-bg.png',
   history: '/icons/history-transparent-bg.png',
-  schedule: '/icons/party-transparent-bg.png',
+  schedule: '/icons/schedule-transparent-bg.png',
 };
 
 // ==================== User/Auth Types ====================
