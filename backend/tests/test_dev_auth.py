@@ -2,6 +2,7 @@
 
 import json
 
+import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,8 @@ from tests.factories import (
     create_tier_snapshot,
     create_user,
 )
+
+pytestmark = pytest.mark.asyncio
 
 
 class TestDevAuthDuplicateMerge:

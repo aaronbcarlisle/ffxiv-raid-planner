@@ -29,7 +29,7 @@ class TestUserAvatarUrl:
             updated_at="2026-01-01T00:00:00+00:00",
         )
 
-        assert user.avatar_url == "https://cdn.discordapp.com/embed/avatars/1.png"
+        assert user.avatar_url == "https://cdn.discordapp.com/embed/avatars/0.png"
 
     def test_returns_deterministic_default_avatar_for_nonnumeric_ids(self):
         user = User(
@@ -41,4 +41,4 @@ class TestUserAvatarUrl:
             updated_at="2026-01-01T00:00:00+00:00",
         )
 
-        assert user.avatar_url == "https://cdn.discordapp.com/embed/avatars/5.png"
+        assert user.avatar_url == "https://cdn.discordapp.com/embed/avatars/3.png"

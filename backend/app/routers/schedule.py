@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user
+from ..exceptions import ValidationError
 from ..models import User
 from ..models.availability import UserAvailability
 from ..models.schedule import ScheduleRsvp, ScheduleSession
@@ -35,6 +36,11 @@ from ..schemas.schedule import (
 )
 
 router = APIRouter(prefix="/api", tags=["schedule"])
+
+# Upper bound on how many days of availability can be requested in one call.
+# The grid only renders a week at a time, so this leaves generous headroom
+# while preventing an unbounded date range from producing a huge response.
+MAX_AVAILABILITY_RANGE_DAYS = 62
 
 
 def set_no_store_cache_headers(response: Response) -> None:
@@ -306,6 +312,22 @@ async def list_availability(
     await get_static_group(session, group_id)
     await require_membership(session, current_user.id, group_id)
 
+    try:
+        start = date_type.fromisoformat(start_date)
+        end = date_type.fromisoformat(end_date)
+    except ValueError:
+        raise ValidationError(
+            "start_date and end_date must be valid ISO dates (YYYY-MM-DD)"
+        )
+
+    if end < start:
+        raise ValidationError("end_date must be on or after start_date")
+
+    if (end - start).days > MAX_AVAILABILITY_RANGE_DAYS:
+        raise ValidationError(
+            f"Date range cannot exceed {MAX_AVAILABILITY_RANGE_DAYS} days"
+        )
+
     result = await session.execute(
         select(UserAvailability)
         .where(
@@ -331,8 +353,6 @@ async def list_availability(
             )
         )
 
-    start = date_type.fromisoformat(start_date)
-    end = date_type.fromisoformat(end_date)
     result_list = []
     current = start
     while current <= end:

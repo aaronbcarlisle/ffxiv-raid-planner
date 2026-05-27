@@ -1,11 +1,15 @@
 """Tests for schedule/session endpoints"""
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth_utils import create_access_token
 from app.models import MemberRole, User
 from tests.factories import create_membership, create_static_group, create_user
+
+pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
@@ -28,11 +32,6 @@ async def member_user(session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def viewer_user(session: AsyncSession) -> User:
     return await create_user(session, discord_id="viewer_discord_id", discord_username="viewer")
-
-
-import pytest_asyncio
-
-from app.auth_utils import create_access_token
 
 
 @pytest.fixture
@@ -468,3 +467,54 @@ class TestAvailability:
         )
 
         assert response.status_code == 403
+
+    async def test_list_availability_rejects_malformed_dates(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.get(
+            f"/api/static-groups/{test_group.id}/availability?start_date=not-a-date&end_date=2026-06-02",
+            headers=member_headers,
+        )
+
+        assert response.status_code == 422
+
+    async def test_list_availability_rejects_oversized_range(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.get(
+            f"/api/static-groups/{test_group.id}/availability?start_date=2026-01-01&end_date=2026-12-31",
+            headers=member_headers,
+        )
+
+        assert response.status_code == 422
+
+    async def test_list_availability_rejects_inverted_range(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.get(
+            f"/api/static-groups/{test_group.id}/availability?start_date=2026-06-10&end_date=2026-06-01",
+            headers=member_headers,
+        )
+
+        assert response.status_code == 422
