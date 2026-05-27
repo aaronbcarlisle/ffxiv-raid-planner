@@ -99,7 +99,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 };
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority';
+export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -428,6 +428,7 @@ export const TAB_ICONS = {
   loot: '/icons/loot-transparent-bg.png',
   stats: '/icons/stats-transparent-bg.png',
   history: '/icons/history-transparent-bg.png',
+  schedule: '/icons/party-transparent-bg.png',
 };
 
 // ==================== User/Auth Types ====================
@@ -1008,4 +1009,74 @@ export interface WeeklyAssignmentBulkDelete {
   week: number;
   floor?: string;
   slot?: string;
+}
+
+// ==================== Schedule Types ====================
+
+export type RsvpStatus = 'available' | 'unavailable' | 'tentative';
+
+export interface ScheduleRsvp {
+  id: string;
+  sessionId: string;
+  userId: string;
+  username: string | null;
+  status: RsvpStatus;
+  note: string | null;
+  updatedAt: string;
+}
+
+export interface ScheduleSession {
+  id: string;
+  staticGroupId: string;
+  createdById: string;
+  title: string;
+  description: string | null;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rsvps: ScheduleRsvp[];
+}
+
+export interface ScheduleSessionCreate {
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+}
+
+export interface ScheduleSessionUpdate {
+  title?: string;
+  description?: string;
+  startTime?: string;
+  endTime?: string;
+  timezone?: string;
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+}
+
+// ==================== Availability Types ====================
+
+export interface UserAvailabilitySlot {
+  id: string;
+  userId: string;
+  username: string | null;
+  date: string;
+  slots: string[];
+}
+
+export interface AvailabilityDateSummary {
+  date: string;
+  responses: UserAvailabilitySlot[];
+}
+
+export interface AvailabilitySubmit {
+  date: string;
+  slots: string[];
 }

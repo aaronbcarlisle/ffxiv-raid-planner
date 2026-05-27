@@ -92,6 +92,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Prefix match for API docs
         if path.startswith("/docs") or path.startswith("/redoc"):
             return True
+        # Dev auth endpoints (only registered in dev mode anyway)
+        if path.startswith("/api/dev-auth/"):
+            return True
         return False
 
     def _validate_csrf(self, request: Request) -> bool:

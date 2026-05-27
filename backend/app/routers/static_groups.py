@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -56,6 +56,12 @@ logger = structlog.get_logger(__name__)
 
 # TypeVar for generic JSON field types in safe_copy_json
 JSONValue = TypeVar("JSONValue")
+
+
+def _set_no_store_headers(response: Response) -> None:
+    """Disable caching for auth-sensitive membership/link snapshots."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
 
 
 def safe_copy_json(value: Any, default: JSONValue, field_name: str = "unknown") -> JSONValue:
@@ -824,10 +830,13 @@ async def duplicate_group(
 @router.get("/{group_id}/members", response_model=list[MembershipResponse])
 async def list_members(
     group_id: str,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> list[MembershipResponse]:
     """List all members of a static group"""
+    _set_no_store_headers(response)
+
     # Load group with memberships
     result = await session.execute(
         select(StaticGroup)
@@ -848,10 +857,13 @@ async def list_members(
 @router.get("/{group_id}/linked-players", response_model=list[LinkedPlayerInfo])
 async def list_linked_players(
     group_id: str,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> list[LinkedPlayerInfo]:
     """List all users who have claimed player cards in this group (across all tiers)"""
+    _set_no_store_headers(response)
+
     # Check group exists and user has view permission (also loads memberships for role lookup)
     group = await get_static_group(session, group_id, load_memberships=True)
     await check_view_permission(session, group, current_user)
@@ -903,6 +915,7 @@ async def list_linked_players(
 @router.get("/{group_id}/interacted-users", response_model=list[InteractedUserInfo])
 async def list_interacted_users(
     group_id: str,
+    response: Response,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[InteractedUserInfo]:
@@ -910,6 +923,8 @@ async def list_interacted_users(
 
     Owner or admin only. Used for assignment modals to show all possible users.
     """
+    _set_no_store_headers(response)
+
     # Require owner or admin permission
     is_admin = await is_user_admin(session, current_user.id)
     if not is_admin:

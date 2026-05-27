@@ -14,6 +14,7 @@ const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS
   loot: 'loot',
   stats: 'stats',
   history: 'history',
+  schedule: 'schedule',
 };
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
@@ -21,6 +22,7 @@ const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: str
   { id: 'loot', label: 'Priority', hotkey: '2', description: 'Loot priority rankings and who needs what' },
   { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
   { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
+  { id: 'schedule', label: 'Schedule', hotkey: '5', description: 'Raid schedule and RSVP across time zones' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {

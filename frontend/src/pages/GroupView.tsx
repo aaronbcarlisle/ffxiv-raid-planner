@@ -23,6 +23,7 @@ import { useDragAndDrop } from '../components/dnd/useDragAndDrop';
 import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
+import { ScheduleTab } from '../components/schedule';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
@@ -1026,6 +1027,14 @@ export function GroupView() {
                 onLogFloor={(floor) => { setLogWeekWizardFloor(floor); setShowLogWeekWizard(true); }}
               />
             </div>
+          )}
+
+          {/* Schedule Tab */}
+          {pageMode === 'schedule' && currentGroup && (
+            <ScheduleTab
+              groupId={currentGroup.id}
+              userRole={userRole}
+            />
           )}
 
           {/* Priority Tab removed - now a slide-out panel accessible from Loot tab */}

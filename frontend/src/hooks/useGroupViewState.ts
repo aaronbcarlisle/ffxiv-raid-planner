@@ -120,6 +120,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'weapon') return 'priority';
     if (urlTab === 'log') return 'history';
     if (urlTab === 'summary') return 'stats';
+    if (urlTab === 'schedule') return 'schedule';
     const saved = localStorage.getItem('group-view-tab');
     // Handle legacy tab values - redirect to current equivalents
     if (saved === 'stats') return 'players';

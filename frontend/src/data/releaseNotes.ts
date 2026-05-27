@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.17.0';
+export const CURRENT_VERSION = '1.18.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -39,6 +39,35 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.18.0',
+    date: '2026-05-27T12:00:00Z',
+    title: 'Raid Schedule & Availability',
+    highlights: ['Schedule tab with RSVPs', 'When2Meet-style availability grid'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Raid session scheduling',
+        description:
+          "New Schedule tab where leads can post one-off or recurring raid sessions. Times are stored in the static's timezone and auto-convert to each member's local time, and everyone can RSVP as available, tentative, or unavailable.",
+        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+      },
+      {
+        category: 'feature',
+        title: 'Availability heat map',
+        description:
+          "A When2Meet-style grid lets members paint when they're free across the coming week. Overlapping slots are highlighted so the static can spot the strongest raid windows at a glance.",
+        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+      },
+      {
+        category: 'fix',
+        title: 'Member sessions hydrate on load',
+        description:
+          'Fixed a case where a logged-in member could fail to load after a refresh, which blocked member-only edit and save actions until re-login.',
+        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+      },
+    ],
+  },
   {
     version: '1.17.0',
     date: '2026-03-19T12:00:00Z',

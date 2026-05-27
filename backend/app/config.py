@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # Debug mode
     debug: bool = True
 
+    # Dev auth mode - enables local auth bypass (NEVER enable in production)
+    dev_auth_mode: bool = False
+
     # Logging
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
