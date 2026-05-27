@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # Dev auth mode - enables local auth bypass (NEVER enable in production)
     dev_auth_mode: bool = False
 
+    # Dev Lodestone mock mode - enables local Lodestone fixtures (NEVER enable in production)
+    dev_lodestone_mock: bool = False
+
     # Logging
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 

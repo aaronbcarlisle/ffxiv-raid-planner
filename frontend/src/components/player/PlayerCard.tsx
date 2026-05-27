@@ -13,6 +13,7 @@ import { BiSSourceFixBanner } from './BiSSourceFixBanner';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
+import { LodestoneSearchModal } from './LodestoneSearchModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
 import { AssignUserModal } from './AssignUserModal';
 import { PriorityAdjustModal } from './PriorityAdjustModal';
@@ -38,6 +39,7 @@ import {
   Link2Off,
   Link2,
   RefreshCw,
+  Globe,
   BookOpen,
   Gauge,
 } from 'lucide-react';
@@ -141,6 +143,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
+  const [showLodestoneSync, setShowLodestoneSync] = useState(false);
   const [showWeaponPriorityModal, setShowWeaponPriorityModal] = useState(false);
   const [showJobChangeConfirm, setShowJobChangeConfirm] = useState(false);
   const [pendingJobChange, setPendingJobChange] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showLodestoneSync || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -174,7 +177,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showLodestoneSync, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -385,6 +388,13 @@ export const PlayerCard = memo(function PlayerCard({
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
     {
+      label: player.lodestoneId ? 'Re-sync Lodestone' : 'Lodestone Sync',
+      icon: <Globe className="w-4 h-4" />,
+      onClick: () => setShowLodestoneSync(true),
+      disabled: !editPermission.allowed,
+      tooltip: editPermission.allowed ? undefined : editPermission.reason,
+    },
+    {
       label: 'Weapon Priorities',
       icon: <Swords className="w-4 h-4" />,
       onClick: () => setShowWeaponPriorityModal(true),
@@ -498,6 +508,7 @@ export const PlayerCard = memo(function PlayerCard({
     },
   ], [
     player.bisLink,
+    player.lodestoneId,
     player.isSubstitute,
     player.userId,
     player.id,
@@ -553,6 +564,7 @@ export const PlayerCard = memo(function PlayerCard({
   return (
       <div
         id={`player-card-${player.id}`}
+        data-testid="player-card"
         className={`bg-surface-card border border-border-subtle rounded-lg overflow-visible flex flex-col h-full border-l-[3px] shadow-md shadow-black/20 select-none ${isHighlighted || localHighlight ? 'highlight-pulse' : ''}`}
         style={{ borderLeftColor: roleColor }}
         onContextMenu={handleContextMenu}
@@ -755,6 +767,17 @@ export const PlayerCard = memo(function PlayerCard({
           onUpdate(updates);
           triggerHighlight();
         }}
+      />
+
+      {/* Lodestone Sync Modal */}
+      <LodestoneSearchModal
+        isOpen={showLodestoneSync}
+        onClose={() => setShowLodestoneSync(false)}
+        groupId={groupId}
+        playerId={player.id}
+        playerName={player.name}
+        tierId={tierId}
+        currentLodestoneId={player.lodestoneId}
       />
 
       {/* Weapon Priority Modal */}
