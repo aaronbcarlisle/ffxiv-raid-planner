@@ -82,9 +82,11 @@ describe('releaseNotes', () => {
   });
 
   describe('getLatestRelease', () => {
-    it('returns the first release in the array (none are internal currently)', () => {
+    it('returns the first public (non-internal) release', () => {
+      // Not necessarily RELEASES[0]: an internal (dev-only) entry may sit at the
+      // top, in which case getLatestRelease() skips it.
       const latest = getLatestRelease();
-      expect(latest).toBe(RELEASES[0]);
+      expect(latest).toBe(RELEASES.find((r) => !r.internal));
     });
 
     it('returns a valid release object', () => {
