@@ -58,6 +58,13 @@ class PluginAuthAuthorizeRequest(CamelModel):
     code_challenge: str = Field(..., min_length=43, max_length=128)
     code_challenge_method: str = Field(default="S256", min_length=1, max_length=8)
 
+    @field_validator("code_challenge")
+    @classmethod
+    def must_be_ascii(cls, v: str) -> str:
+        if not v.isascii():
+            raise ValueError("must contain only ASCII characters")
+        return v
+
 
 class PluginAuthAuthorizeResponse(CamelModel):
     """Returns the one-time code the frontend should append to the loopback redirect."""
@@ -73,6 +80,13 @@ class PluginAuthExchangeRequest(CamelModel):
 
     code: str = Field(..., min_length=1, max_length=128)
     code_verifier: str = Field(..., min_length=43, max_length=128)
+
+    @field_validator("code", "code_verifier")
+    @classmethod
+    def must_be_ascii(cls, v: str) -> str:
+        if not v.isascii():
+            raise ValueError("must contain only ASCII characters")
+        return v
 
 
 class PluginAuthExchangeResponse(CamelModel):

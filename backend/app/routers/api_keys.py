@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
@@ -295,8 +295,29 @@ async def plugin_auth_exchange(
     if not _verify_pkce(data.code_verifier, record.code_challenge):
         raise HTTPException(status_code=400, detail="PKCE verifier mismatch")
 
-    # Mark code used BEFORE minting the key so a race can't double-mint.
-    record.used = True
+    # Atomic conditional update: only flips used=False → used=True.
+    # Concurrent calls will see rowcount=0 and lose the race gracefully.
+    mark_used = await db.execute(
+        update(PluginAuthCode)
+        .where(PluginAuthCode.id == record.id, PluginAuthCode.used.is_(False))
+        .values(used=True)
+    )
+    if mark_used.rowcount == 0:
+        # Lost the race — another request already marked this code used.
+        raise HTTPException(status_code=400, detail="Code already used")
+
+    # Enforce per-user key limit (same as create_api_key).
+    count_result = await db.execute(
+        select(func.count()).select_from(ApiKey).where(
+            ApiKey.user_id == record.user_id,
+            ApiKey.is_active.is_(True),
+        )
+    )
+    if (count_result.scalar() or 0) >= MAX_KEYS_PER_USER:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum of {MAX_KEYS_PER_USER} active API keys per user",
+        )
 
     raw_key = _generate_api_key()
     key_hash = _hash_key(raw_key)
