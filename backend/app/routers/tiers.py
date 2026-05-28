@@ -1,5 +1,6 @@
 """API router for tier snapshot operations"""
 
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -52,6 +53,25 @@ from ..constants import (
     create_default_tome_weapon,
 )
 from ..schemas.tier_snapshot import GearSlotStatus, MateriaSlot, PlayerGearResponse, TomeWeaponStatus
+
+ALLOWED_FLEX_ROLES = {"MT", "ST", "H1", "H2", "M1", "M2", "R1", "R2"}
+
+
+def parse_flex_roles(raw_value: str | None) -> list[str]:
+    """Parse stored flex-role JSON into safe, displayable raid slot badges."""
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    roles: list[str] = []
+    for role in parsed:
+        if isinstance(role, str) and role in ALLOWED_FLEX_ROLES and role not in roles:
+            roles.append(role)
+    return roles[:4]
 
 router = APIRouter(prefix="/api/static-groups", tags=["tiers"])
 
@@ -183,11 +203,17 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
         position=player.position,
         tank_role=player.tank_role,
         template_role=player.template_role,
+        roster_title=getattr(player, "roster_title", None),
+        roster_note=getattr(player, "roster_note", None),
+        flex_roles=parse_flex_roles(getattr(player, "flex_roles", None)),
         configured=player.configured,
         sort_order=player.sort_order,
         is_substitute=player.is_substitute,
         notes=player.notes,
         lodestone_id=player.lodestone_id,
+        lodestone_name=getattr(player, "lodestone_name", None),
+        lodestone_server=getattr(player, "lodestone_server", None),
+        lodestone_avatar_url=getattr(player, "lodestone_avatar_url", None),
         bis_link=player.bis_link,
         fflogs_id=player.fflogs_id,
         last_sync=player.last_sync,
@@ -584,11 +610,17 @@ async def rollover_tier(
             position=source_player.position,
             tank_role=source_player.tank_role,
             template_role=source_player.template_role,
+            roster_title=getattr(source_player, "roster_title", None),
+            roster_note=getattr(source_player, "roster_note", None),
+            flex_roles=getattr(source_player, "flex_roles", None),
             configured=source_player.configured,
             sort_order=source_player.sort_order,
             is_substitute=source_player.is_substitute,
             notes=source_player.notes,
             lodestone_id=source_player.lodestone_id,
+            lodestone_name=getattr(source_player, "lodestone_name", None),
+            lodestone_server=getattr(source_player, "lodestone_server", None),
+            lodestone_avatar_url=getattr(source_player, "lodestone_avatar_url", None),
             bis_link=source_player.bis_link,
             fflogs_id=source_player.fflogs_id,
             gear=gear,
@@ -721,11 +753,17 @@ async def create_snapshot_player(
         position=data.position,
         tank_role=data.tank_role,
         template_role=data.template_role,
+        roster_title=data.roster_title,
+        roster_note=data.roster_note,
+        flex_roles=json.dumps(data.flex_roles),
         configured=data.configured,
         sort_order=data.sort_order,
         is_substitute=data.is_substitute,
         notes=data.notes,
         lodestone_id=data.lodestone_id,
+        lodestone_name=data.lodestone_name,
+        lodestone_server=data.lodestone_server,
+        lodestone_avatar_url=data.lodestone_avatar_url,
         bis_link=data.bis_link,
         fflogs_id=data.fflogs_id,
         priority_modifier=data.priority_modifier,
@@ -846,6 +884,8 @@ async def update_snapshot_player(
 
     if not membership and not user_is_admin:
         raise PermissionDenied("You are not a member of this static group")
+    if membership and membership.role == MemberRole.VIEWER.value and not user_is_admin:
+        raise PermissionDenied("Viewers cannot edit players")
 
     # Get player with user relationship
     result = await session.execute(
@@ -878,7 +918,8 @@ async def update_snapshot_player(
     if not is_owner_or_lead and is_own_player:
         allowed_fields = {
             "gear", "tome_weapon", "bis_link", "lodestone_id",
-            "job", "name", "role", "position", "tank_role"
+            "job", "name", "role", "position", "tank_role",
+            "roster_title", "roster_note", "flex_roles"
         }
         # Use by_alias=False to get Python field names (snake_case) not JSON aliases (camelCase)
         update_data = data.model_dump(exclude_unset=True, by_alias=False)
@@ -901,6 +942,12 @@ async def update_snapshot_player(
         player.tank_role = data.tank_role  # Can be None to clear
     if "template_role" in sent_fields:
         player.template_role = data.template_role  # Can be None to clear
+    if "roster_title" in sent_fields:
+        player.roster_title = data.roster_title.strip() if data.roster_title else None
+    if "roster_note" in sent_fields:
+        player.roster_note = data.roster_note.strip() if data.roster_note else None
+    if "flex_roles" in sent_fields:
+        player.flex_roles = json.dumps(data.flex_roles or [])
     if "configured" in sent_fields and data.configured is not None:
         player.configured = data.configured
     if "sort_order" in sent_fields and data.sort_order is not None:
@@ -913,6 +960,12 @@ async def update_snapshot_player(
         player.notes = data.notes  # Can be None to clear
     if "lodestone_id" in sent_fields:
         player.lodestone_id = data.lodestone_id  # Can be None to clear
+    if "lodestone_name" in sent_fields:
+        player.lodestone_name = data.lodestone_name  # Can be None to clear
+    if "lodestone_server" in sent_fields:
+        player.lodestone_server = data.lodestone_server  # Can be None to clear
+    if "lodestone_avatar_url" in sent_fields:
+        player.lodestone_avatar_url = data.lodestone_avatar_url  # Can be None to clear
     if "bis_link" in sent_fields:
         # Treat empty string as None to clear the field
         player.bis_link = data.bis_link if data.bis_link else None

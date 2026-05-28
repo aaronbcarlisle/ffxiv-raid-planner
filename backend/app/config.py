@@ -97,6 +97,7 @@ class Settings(BaseSettings):
 
     # Frontend URL (for redirects)
     frontend_url: str = "http://localhost:5174"
+    backend_url: str = "http://localhost:8001"
 
     # Admin Discord IDs (comma-separated) - users with these Discord IDs
     # automatically get admin privileges on login. This is the only way to

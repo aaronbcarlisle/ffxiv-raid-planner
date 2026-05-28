@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calendar, CalendarClock, Link2, Plus, Sparkles } from 'lucide-react';
+import { Bell, Calendar, CalendarClock, Copy, Link2, Plus, RotateCcw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../primitives';
-import { Spinner } from '../ui';
+import { Checkbox, Input, Spinner } from '../ui';
 import { SessionCard } from './SessionCard';
 import { CreateSessionModal } from './CreateSessionModal';
 import { AvailabilityGrid } from './AvailabilityGrid';
@@ -25,8 +25,16 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const { user } = useAuthStore();
   const {
     sessions,
+    settings,
     isLoading,
+    isLoadingSettings,
+    error,
     fetchSessions,
+    fetchSettings,
+    updateSettings,
+    sendTestReminder,
+    regenerateCalendar,
+    revokeCalendar,
     createSession,
     updateSession,
     deleteSession,
@@ -36,6 +44,12 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const createModal = useModal();
   const [editSession, setEditSession] = useState<ScheduleSession | null>(null);
   const [createDraft, setCreateDraft] = useState<ScheduleSessionCreate | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [channelLabel, setChannelLabel] = useState('');
+  const [enable24h, setEnable24h] = useState(false);
+  const [enable1h, setEnable1h] = useState(false);
+  const [enableMissingRsvp, setEnableMissingRsvp] = useState(false);
+  const [integrationMessage, setIntegrationMessage] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<SchedulerSubTab>(() => {
     const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
     return saved === 'availability' || saved === 'integrations' || saved === 'sessions'
@@ -45,10 +59,20 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   useEffect(() => {
     void fetchSessions(groupId).catch(() => undefined);
+    void fetchSettings(groupId).catch(() => undefined);
     return () => {
       clearSessions();
     };
-  }, [groupId, fetchSessions, clearSessions]);
+  }, [groupId, fetchSessions, fetchSettings, clearSessions]);
+
+  useEffect(() => {
+    if (!settings) return;
+    setWebhookUrl('');
+    setChannelLabel(settings.reminderChannelLabel || '');
+    setEnable24h(settings.enable24hReminder);
+    setEnable1h(settings.enable1hReminder);
+    setEnableMissingRsvp(settings.enableMissingRsvpReminder);
+  }, [settings]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
@@ -101,6 +125,24 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     sessionStorage.setItem(`schedule-subtab-${groupId}`, nextTab);
   };
 
+  const handleSaveIntegrations = async () => {
+    await updateSettings(groupId, {
+      webhookUrl: webhookUrl || undefined,
+      reminderChannelLabel: channelLabel || null,
+      enable24hReminder: enable24h,
+      enable1hReminder: enable1h,
+      enableMissingRsvpReminder: enableMissingRsvp,
+    });
+    setWebhookUrl('');
+    setIntegrationMessage('Webhook saved.');
+  };
+
+  const handleCopyCalendarUrl = async () => {
+    if (!settings?.calendarUrl) return;
+    await navigator.clipboard.writeText(settings.calendarUrl);
+    setIntegrationMessage('Copied!');
+  };
+
   const nextSession = sessions[0];
 
   const subTabs: Array<{
@@ -125,7 +167,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     {
       id: 'integrations',
       label: 'Integrations',
-      badge: 'Later',
+      badge: canManage ? 'Setup' : 'View',
       icon: Link2,
     },
   ];
@@ -212,9 +254,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
           {sessions.length === 0 ? (
             <div className="py-12 text-center text-text-muted">
               <Calendar className="mx-auto mb-3 h-12 w-12 opacity-40" />
-              <p className="text-lg">No sessions scheduled</p>
+              <p className="text-lg">No raid sessions yet.</p>
               {canManage && (
-                <p className="mt-1 text-sm">Add a raid session to help your static coordinate times.</p>
+                <p className="mt-1 text-sm">Create your first raid night and start collecting RSVPs.</p>
               )}
             </div>
           ) : (
@@ -253,13 +295,168 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
       {activeSubTab === 'integrations' && (
         <div className="space-y-4" data-testid="schedule-integrations-panel">
-          <div className="rounded-xl border border-border-default bg-surface-card/80 px-4 py-6 text-sm text-text-secondary">
+          {isLoadingSettings && (
+            <div className="flex items-center gap-2 rounded-xl border border-border-default bg-surface-card/80 p-4 text-sm text-text-secondary">
+              <Spinner size="sm" />
+              Checking static integrations...
+            </div>
+          )}
+          {(integrationMessage || error) && (
+            <div className={`rounded-xl border p-3 text-sm ${
+              error
+                ? 'border-status-error/30 bg-status-error/10 text-status-error'
+                : 'border-status-success/30 bg-status-success/10 text-status-success'
+            }`}>
+              {error || integrationMessage}
+            </div>
+          )}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-border-default bg-surface-card/80 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg border border-accent/20 bg-accent/10 p-2 text-accent">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-lg text-text-primary">Discord reminders</p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Keep the static notified before raid night.
+                  </p>
+                  <div className="mt-3 inline-flex rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs text-text-secondary">
+                    {settings?.webhookConfigured ? 'Webhook saved' : 'Not configured'}
+                  </div>
+                  {canManage ? (
+                    <div className="mt-4 space-y-3">
+                      {settings?.webhookConfigured && (
+                        <p className="rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">
+                          Current webhook: {settings.webhookUrlMasked || 'Configured'}
+                        </p>
+                      )}
+                      <Input
+                        value={webhookUrl}
+                        onChange={setWebhookUrl}
+                        type="password"
+                        placeholder={settings?.webhookConfigured ? 'Paste a new webhook URL to replace it' : 'Discord webhook URL'}
+                        fullWidth
+                        data-testid="schedule-webhook-url-input"
+                      />
+                      <Input
+                        value={channelLabel}
+                        onChange={setChannelLabel}
+                        placeholder="Channel label, e.g. raid-reminders"
+                        fullWidth
+                      />
+                      <div className="space-y-2">
+                        <Checkbox checked={enable24h} onChange={setEnable24h} label="24 hour reminder" />
+                        <Checkbox checked={enable1h} onChange={setEnable1h} label="1 hour reminder" />
+                        <Checkbox checked={enableMissingRsvp} onChange={setEnableMissingRsvp} label="Missing RSVP reminder" />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" onClick={() => void handleSaveIntegrations()}>
+                          Save reminders
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Sent'))}
+                          disabled={!settings?.webhookConfigured && !webhookUrl}
+                        >
+                          {integrationMessage === 'Sent' ? 'Sent' : 'Send test'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">
+                      Only Leads and Owners can manage integrations. Members and viewers never see the webhook URL.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border-default bg-surface-card/80 p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg border border-accent/20 bg-accent/10 p-2 text-accent">
+                  <CalendarClock className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-lg text-text-primary">Private calendar feed</p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Let members subscribe from Google Calendar, Apple Calendar, or Outlook.
+                  </p>
+                  <div className="mt-3 inline-flex rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs text-text-secondary">
+                    {settings?.calendarUrl ? 'Token active' : 'Not configured'}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {settings?.calendarUrl ? (
+                      <div className="rounded-lg border border-border-subtle bg-surface-elevated p-3">
+                        <p className="break-all text-xs text-text-secondary">{settings.calendarUrl}</p>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">
+                        Calendar link is not enabled yet.
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        leftIcon={<Copy className="h-4 w-4" />}
+                        onClick={() => void handleCopyCalendarUrl()}
+                        disabled={!settings?.calendarUrl}
+                      >
+                        {integrationMessage === 'Copied!' ? 'Copied!' : 'Copy iCal URL'}
+                      </Button>
+                      {settings?.calendarUrl && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          leftIcon={<Calendar className="h-4 w-4" />}
+                          onClick={() => window.open(`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(settings.calendarUrl || '')}`, '_blank', 'noopener,noreferrer')}
+                        >
+                          Add to Google
+                        </Button>
+                      )}
+                      {canManage && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            leftIcon={<RotateCcw className="h-4 w-4" />}
+                            onClick={() => void regenerateCalendar(groupId)}
+                          >
+                            Regenerate
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="danger"
+                            leftIcon={<Trash2 className="h-4 w-4" />}
+                            onClick={() => void revokeCalendar(groupId)}
+                            disabled={!settings?.calendarEnabled}
+                          >
+                            Revoke
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-status-info/30 bg-status-info/10 p-4 text-sm text-text-secondary">
             <div className="flex items-start gap-3">
-              <Link2 className="mt-0.5 h-5 w-5 text-accent" />
-              <div>
-                <p className="font-medium text-text-primary">Scheduler integrations are not configured yet.</p>
-                <p className="mt-1">
-                  Discord reminders and calendar links will appear here once those settings are available for this static.
+              <ShieldCheck className="mt-0.5 h-5 w-5 text-status-info" />
+              <div className="space-y-1">
+                <p className="font-medium text-text-primary">Private integration data is permission-checked.</p>
+                <p>
+                  Webhook URLs are never shown to members or viewers. Calendar links are private tokens that Owner/Lead
+                  can regenerate or revoke when needed.
                 </p>
               </div>
             </div>

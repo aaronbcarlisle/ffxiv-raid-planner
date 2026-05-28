@@ -37,6 +37,9 @@ export interface SyncResult {
   updatedSlots: number;
   lodestoneId: string;
   lastSync: string;
+  lodestoneName: string | null;
+  lodestoneServer: string | null;
+  lodestoneAvatarUrl: string | null;
   gear: unknown[];
 }
 

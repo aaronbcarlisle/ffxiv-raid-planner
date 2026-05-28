@@ -263,8 +263,8 @@ export function AvailabilityGrid({
 
   const handleCreateSessionDraft = (recommendation: (typeof recommendations)[number]) => {
     onCreateSessionDraft({
-      title: 'Recommended Raid Session',
-      description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the scheduler recommendation panel.`,
+      title: 'Recommended Raid Night',
+      description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the best raid windows panel.`,
       startTime: recommendation.startIso,
       endTime: recommendation.endIso,
       timezone: referenceTimezone,
@@ -303,7 +303,7 @@ export function AvailabilityGrid({
                 <p className="max-w-2xl text-sm text-text-secondary">
                   {canSubmit
                     ? 'Drag across the grid to mark when you are free. Your picks stay highlighted while the static heat map shows the best windows.'
-                    : 'Browse the static heat map to spot the strongest overlap windows for the next seven days.'}
+                    : 'Browse the static heat map to spot the best raid windows for the next seven days.'}
                 </p>
               </div>
             </div>
@@ -338,7 +338,7 @@ export function AvailabilityGrid({
                 {totalMembers}
               </div>
               <div className="text-xs text-text-secondary">
-                Static members counted for overlap recommendations
+                Party members counted for best raid windows
               </div>
             </div>
 

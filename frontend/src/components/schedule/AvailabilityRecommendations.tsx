@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarPlus, Copy, Sparkles } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import { Button, Badge } from '../primitives';
@@ -47,6 +47,13 @@ function formatRecommendationRange(startIso: string, endIso: string, timeZone: s
   return `${startLabel} - ${endLabel}`;
 }
 
+function confidenceLabel(index: number, availableCount: number, totalMembers: number): string {
+  const ratio = totalMembers > 0 ? availableCount / totalMembers : 0;
+  if (index === 0 && ratio >= 0.75) return 'Great fit';
+  if (ratio >= 0.5) return 'Good backup';
+  return 'Thin option';
+}
+
 export function AvailabilityRecommendations({
   recommendations,
   durationMinutes,
@@ -60,6 +67,7 @@ export function AvailabilityRecommendations({
   canCreateSession,
   onCreateSession,
 }: AvailabilityRecommendationsProps) {
+  const [copiedProposal, setCopiedProposal] = useState(false);
   const proposalText = useMemo(() => {
     if (recommendations.length === 0) {
       return '';
@@ -86,7 +94,9 @@ export function AvailabilityRecommendations({
 
     try {
       await navigator.clipboard.writeText(proposalText);
-      toast.success('Copied scheduler proposal');
+      setCopiedProposal(true);
+      window.setTimeout(() => setCopiedProposal(false), 1800);
+      toast.success('Copied!');
     } catch {
       toast.error('Failed to copy scheduler proposal');
     }
@@ -102,11 +112,10 @@ export function AvailabilityRecommendations({
           </div>
           <div className="space-y-1">
             <h4 className="font-display text-lg text-text-primary">
-              Best overlap suggestions
+              Best raid windows
             </h4>
             <p className="max-w-3xl text-sm text-text-secondary">
-              The scheduler looks for continuous blocks in the next seven days, ranks the strongest overlap first,
-              and breaks ties by the earliest upcoming start time.
+              These are the strongest overlap windows from your static&apos;s availability.
             </p>
           </div>
         </div>
@@ -132,15 +141,14 @@ export function AvailabilityRecommendations({
 
       {recommendations.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-border-default bg-surface-elevated/70 px-4 py-5 text-sm text-text-secondary">
-          Not enough availability data yet. Ask more static members to mark their availability, then the scheduler
-          will surface the best continuous windows for this duration.
+          No availability marked yet. Ask your static to paint the grid so the planner can find your best raid windows.
         </div>
       ) : (
         <div className="mt-5 grid gap-3 xl:grid-cols-3">
           {recommendations.map((recommendation, index) => (
             <div
               key={recommendation.id}
-              className="rounded-2xl border border-border-default bg-surface-elevated/80 p-4"
+              className="rounded-2xl border border-border-default bg-surface-elevated/80 p-4 transition-all duration-150 hover:border-accent/35 hover:shadow-lg hover:shadow-accent/10"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -155,6 +163,9 @@ export function AvailabilityRecommendations({
                   {recommendation.availableCount}/{recommendation.totalMembers}
                 </Badge>
               </div>
+              <Badge variant={index === 0 ? 'success' : 'info'} className="mt-3">
+                {confidenceLabel(index, recommendation.availableCount, recommendation.totalMembers)}
+              </Badge>
 
               {referenceTimezone !== localTimezone && (
                 <p className="mt-2 text-xs text-text-muted">
@@ -195,7 +206,7 @@ export function AvailabilityRecommendations({
           disabled={recommendations.length === 0}
           onClick={handleCopyProposal}
         >
-          Copy proposal to Discord
+          {copiedProposal ? 'Copied!' : 'Copy proposal to Discord'}
         </Button>
         {canCreateSession ? (
           <span className="text-xs text-text-muted">

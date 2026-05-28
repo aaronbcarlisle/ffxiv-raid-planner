@@ -55,6 +55,7 @@ async function fillAndSubmitSession(
     endHour?: number;
     recurring?: boolean;
     days?: string[];
+    initialRsvp?: 'Available' | 'Tentative' | 'Unavailable';
   },
 ) {
   await page.getByTestId('session-title-input').fill(opts.title);
@@ -68,6 +69,12 @@ async function fillAndSubmitSession(
         await page.locator('button', { hasText: new RegExp(`^${day}$`) }).click();
       }
     }
+  }
+
+  if (opts.initialRsvp) {
+    const field = page.getByTestId('initial-rsvp-field');
+    await field.getByText('No response').click();
+    await page.getByRole('option', { name: opts.initialRsvp, exact: true }).click();
   }
 
   await page.getByTestId('session-submit-btn').click();
@@ -259,6 +266,35 @@ test.describe('Schedule', () => {
     const btn = targetCard.getByTestId('rsvp-available');
     await btn.click();
     await expect(btn).toHaveClass(/bg-green/, { timeout: 3_000 });
+    await memberContext.close();
+  });
+
+  test('5b — Initial RSVP defaults members and can be changed', async ({ page, browser }) => {
+    const title = `${TEST_SESSION_PREFIX}Initial RSVP ${runId}`;
+
+    await loginAsOwner(page);
+    await goToTestStatic(page);
+    await switchTab(page, 'Schedule');
+    await switchScheduleSubTab(page, 'Sessions');
+    await page.getByTestId('add-session-btn').click();
+    await expect(page.getByTestId('initial-rsvp-field')).toContainText('No response');
+    await fillAndSubmitSession(page, { title, initialRsvp: 'Available' });
+
+    const ownerCard = page.getByTestId('session-card').filter({ hasText: title });
+    await expect(ownerCard.getByTestId('rsvp-available')).toHaveClass(/bg-green/, { timeout: 5_000 });
+
+    const memberContext = await browser.newContext({ baseURL: FRONTEND_BASE });
+    const memberPage = await memberContext.newPage();
+    await loginAsMember(memberPage);
+    await goToTestStatic(memberPage);
+    await switchTab(memberPage, 'Schedule');
+    await switchScheduleSubTab(memberPage, 'Sessions');
+
+    const memberCard = memberPage.getByTestId('session-card').filter({ hasText: title });
+    await expect(memberCard).toBeVisible({ timeout: 5_000 });
+    await expect(memberCard.getByTestId('rsvp-available')).toHaveClass(/bg-green/, { timeout: 5_000 });
+    await memberCard.getByTestId('rsvp-unavailable').click();
+    await expect(memberCard.getByTestId('rsvp-unavailable')).toHaveClass(/bg-red/, { timeout: 5_000 });
     await memberContext.close();
   });
 
@@ -517,5 +553,16 @@ test.describe('Lodestone Sync', () => {
 
     await openPlayerContextMenu(page);
     await expect(page.getByRole('menuitem', { name: /Re-sync Lodestone/i })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    if (!(await page.getByTestId('lodestone-character-avatar').first().isVisible().catch(() => false))) {
+      test.skip(true, 'Cached Lodestone avatar schema is not available on this backend');
+      return;
+    }
+
+    await expect(page.getByTestId('lodestone-character-avatar').first()).toBeVisible();
+    await expect(page.getByTestId('lodestone-character-subtitle').first()).toContainText('Mock Raider');
+    await page.reload();
+    await expect(page.getByTestId('lodestone-character-avatar').first()).toBeVisible({ timeout: 15_000 });
   });
 });

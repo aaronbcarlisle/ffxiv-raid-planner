@@ -8,7 +8,7 @@ from .material_log_entry import MaterialLogEntry
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .availability import UserAvailability
-from .schedule import ScheduleRsvp, ScheduleSession
+from .schedule import ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
 from .tier_snapshot import TierSnapshot
@@ -28,7 +28,9 @@ __all__ = [
     "PageLedgerEntry",
     "ROLE_HIERARCHY",
     "ScheduleRsvp",
+    "ScheduleReminderDelivery",
     "ScheduleSession",
+    "ScheduleSettings",
     "UserAvailability",
     "SnapshotPlayer",
     "StaticGroup",

@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, Boolean
+from sqlalchemy import ForeignKey, String, Text, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -81,3 +81,56 @@ class ScheduleRsvp(Base):
 
     def __repr__(self) -> str:
         return f"<ScheduleRsvp(session={self.session_id}, user={self.user_id}, status={self.status})>"
+
+
+class ScheduleSettings(Base):
+    """Scheduler integration settings for one static group."""
+
+    __tablename__ = "schedule_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    static_group_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("static_groups.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reminder_channel_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    enable_24h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enable_1h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enable_missing_rsvp_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    calendar_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    calendar_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
+    calendar_token_created_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    static_group: Mapped["StaticGroup"] = relationship("StaticGroup")
+
+
+class ScheduleReminderDelivery(Base):
+    """Delivery log used to dedupe scheduled reminder sends."""
+
+    __tablename__ = "schedule_reminder_deliveries"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "reminder_type",
+            "occurrence_start_time",
+            name="uq_schedule_reminder_delivery_occurrence",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("schedule_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    reminder_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    occurrence_start_time: Mapped[str] = mapped_column(Text, nullable=False)
+    sent_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    session: Mapped["ScheduleSession"] = relationship("ScheduleSession")

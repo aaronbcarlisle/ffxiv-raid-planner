@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreVertical } from 'lucide-react';
+import { CheckCircle2, MoreVertical } from 'lucide-react';
 import { JobIcon } from '../ui/JobIcon';
 import { ProgressRing } from '../ui/ProgressRing';
 import { Tooltip } from '../primitives/Tooltip';
@@ -62,6 +62,24 @@ function getSlotItemLevel(
   return getItemLevelForCategory(tierId, effectiveSource, isWeapon);
 }
 
+function formatLastSync(lastSync?: string): string {
+  if (!lastSync) return 'Lodestone synced';
+
+  const timestamp = new Date(lastSync).getTime();
+  if (Number.isNaN(timestamp)) return 'Lodestone synced';
+
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
+  if (diffMinutes < 1) return 'Synced just now';
+  if (diffMinutes < 60) return `Last synced ${diffMinutes}m ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `Last synced ${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `Last synced ${diffDays}d ago`;
+}
+
 interface PlayerCardHeaderProps {
   job: string;
   name: string;
@@ -106,6 +124,7 @@ export function PlayerCardHeader({
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(name);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +147,15 @@ export function PlayerCardHeader({
   useEffect(() => {
     setEditedName(name);
   }, [name]);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [player.lodestoneAvatarUrl]);
+
+  const hasLodestoneIdentity = Boolean(player.lodestoneId && (player.lodestoneName || player.lodestoneServer));
+  const showLodestoneAvatar = Boolean(hasLodestoneIdentity && player.lodestoneAvatarUrl && !avatarFailed);
+  const flexRoles = player.flexRoles ?? [];
+  const hasRosterPersonalization = Boolean(player.rosterTitle || player.rosterNote || flexRoles.length > 0);
 
   const handleJobIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -185,23 +213,56 @@ export function PlayerCardHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        {/* Clickable job icon with dropdown */}
-        <div className="relative">
+        {/* Clickable identity mark with dropdown */}
+        <div className="relative shrink-0">
           <Tooltip
-            content={editPermission.allowed ? 'Click to change job' : editPermission.reason}
+            content={
+              hasLodestoneIdentity
+                ? `Linked to ${player.lodestoneName || 'Lodestone character'}${player.lodestoneServer ? ` on ${player.lodestoneServer}` : ''}`
+                : editPermission.allowed ? 'Click to change job' : editPermission.reason
+            }
           >
             <button
               type="button"
               onClick={handleJobIconClick}
-              className={`p-0.5 rounded transition-all ${
+              title={
+                hasLodestoneIdentity
+                  ? `Linked to ${[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ')}`
+                  : undefined
+              }
+              className={`relative rounded transition-all ${
                 editPermission.allowed
                   ? 'cursor-pointer hover:ring-2 hover:ring-accent/50'
                   : 'cursor-not-allowed opacity-75'
               }`}
-              style={{ backgroundColor: roleColor }}
+              style={{ backgroundColor: showLodestoneAvatar ? undefined : roleColor }}
               disabled={!editPermission.allowed}
+              data-testid={showLodestoneAvatar ? 'lodestone-avatar-frame' : 'job-icon-button'}
             >
-              <JobIcon job={job} size="lg" className="rounded-sm" />
+              {showLodestoneAvatar ? (
+                <img
+                  src={player.lodestoneAvatarUrl}
+                  alt=""
+                  className="h-12 w-12 rounded-xl border border-accent/60 object-cover opacity-95 shadow-lg shadow-accent/20 transition-opacity duration-200 hover:opacity-100"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarFailed(true)}
+                  data-testid="lodestone-character-avatar"
+                />
+              ) : (
+                <span data-testid={hasLodestoneIdentity ? 'lodestone-avatar-fallback-icon' : undefined}>
+                  <JobIcon job={job} size="lg" className="rounded-sm" />
+                </span>
+              )}
+              {hasLodestoneIdentity && (
+                <span
+                  className="absolute -bottom-1 -right-1 rounded-md border border-surface-card bg-surface-overlay p-0.5 shadow-md"
+                  style={{ boxShadow: `0 0 0 1px ${roleColor}` }}
+                  data-testid="lodestone-job-badge"
+                >
+                  <JobIcon job={job} size="xs" className="rounded-sm" />
+                </span>
+              )}
             </button>
           </Tooltip>
 
@@ -221,7 +282,7 @@ export function PlayerCardHeader({
         </div>
 
         {/* Name and position */}
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             {isEditingName ? (
               <input
@@ -288,6 +349,44 @@ export function PlayerCardHeader({
               isAdmin={isAdmin}
             />
           </div>
+          {hasLodestoneIdentity && (
+            <div className="mt-1 space-y-0.5">
+              <p className="truncate text-xs text-text-secondary" data-testid="lodestone-character-subtitle">
+                {[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ')}
+              </p>
+              <p className="flex items-center gap-1 text-[11px] text-accent/80" data-testid="lodestone-sync-status">
+                <CheckCircle2 className="h-3 w-3" />
+                {formatLastSync(player.lastSync)}
+              </p>
+            </div>
+          )}
+          {hasRosterPersonalization && (
+            <div className="mt-1 space-y-1" data-testid="player-roster-personalization">
+              {player.rosterTitle && (
+                <p className="truncate text-[11px] font-medium text-accent/90" data-testid="player-roster-title">
+                  {player.rosterTitle}
+                </p>
+              )}
+              {player.rosterNote && (
+                <p className="line-clamp-2 text-[11px] leading-snug text-text-muted" data-testid="player-roster-note">
+                  {player.rosterNote}
+                </p>
+              )}
+              {flexRoles.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1" data-testid="player-flex-roles">
+                  <span className="text-[10px] uppercase tracking-wide text-text-muted">Flex roles</span>
+                  {flexRoles.map((flexRole) => (
+                    <span
+                      key={flexRole}
+                      className="rounded-full border border-border-subtle bg-surface-elevated/80 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary"
+                    >
+                      {flexRole}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

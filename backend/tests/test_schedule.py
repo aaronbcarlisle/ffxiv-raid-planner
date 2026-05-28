@@ -3,10 +3,11 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, User
+from app.models import MemberRole, ScheduleRsvp, User
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -94,6 +95,151 @@ class TestScheduleCreate:
             headers=member_headers,
         )
         assert response.status_code == 403
+
+    async def test_create_session_with_available_initial_rsvp_seeds_current_members(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        viewer_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await create_membership(session, viewer_user, test_group, role=MemberRole.VIEWER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        rsvps = response.json()["rsvps"]
+        assert len(rsvps) == 2
+        assert {rsvp["status"] for rsvp in rsvps} == {"available"}
+        assert {rsvp["userId"] for rsvp in rsvps} == {test_group.owner_id, member_user.id}
+
+    async def test_create_session_with_tentative_initial_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "tentative"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"tentative"}
+
+    async def test_create_session_with_unavailable_initial_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "unavailable"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"unavailable"}
+
+    async def test_member_can_override_seeded_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+        session_id = create_response.json()["id"]
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+            json={"status": "unavailable"},
+            headers=member_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "unavailable"
+
+        rsvp_result = await session.execute(
+            select(ScheduleRsvp).where(
+                ScheduleRsvp.session_id == session_id,
+                ScheduleRsvp.user_id == member_user.id,
+            )
+        )
+        member_rsvps = rsvp_result.scalars().all()
+        assert len(member_rsvps) == 1
+        assert member_rsvps[0].status == "unavailable"
+
+    async def test_update_session_does_not_overwrite_seeded_rsvps(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+        session_id = create_response.json()["id"]
+
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={"title": "Updated Raid Night", "initialRsvpStatus": "unavailable"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["title"] == "Updated Raid Night"
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"available"}
+
+        rsvp_result = await session.execute(
+            select(ScheduleRsvp).where(ScheduleRsvp.session_id == session_id)
+        )
+        assert len(rsvp_result.scalars().all()) == 2
+
+    async def test_invalid_initial_rsvp_status_is_rejected(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "maybe"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
 
 
 class TestScheduleList:
@@ -484,6 +630,122 @@ class TestAvailability:
         )
 
         assert response.status_code == 422
+
+
+class TestScheduleIntegrations:
+    async def test_owner_can_save_reminder_settings_masked(
+        self, client: AsyncClient, test_group, auth_headers
+    ):
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={
+                "webhookUrl": "https://discord.com/api/webhooks/123/token-secret",
+                "reminderChannelLabel": "raid-reminders",
+                "enable24hReminder": True,
+                "enable1hReminder": True,
+                "enableMissingRsvpReminder": True,
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["webhookConfigured"] is True
+        assert payload["webhookUrlMasked"] != "https://discord.com/api/webhooks/123/token-secret"
+        assert payload["enable24hReminder"] is True
+        assert payload["enable1hReminder"] is True
+        assert payload["enableMissingRsvpReminder"] is True
+
+    async def test_member_cannot_edit_or_view_webhook_url(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={"webhookUrl": "https://discord.com/api/webhooks/123/token-secret"},
+            headers=auth_headers,
+        )
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        get_response = await client.get(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            headers=member_headers,
+        )
+        update_response = await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={"enable24hReminder": False},
+            headers=member_headers,
+        )
+
+        assert get_response.status_code == 200
+        assert get_response.json()["webhookConfigured"] is True
+        assert get_response.json()["webhookUrlMasked"] is None
+        assert update_response.status_code == 403
+
+    async def test_calendar_token_feed_and_revoke(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json=session_data,
+            headers=auth_headers,
+        )
+        assert create_response.status_code == 201
+
+        token_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/regenerate",
+            headers=auth_headers,
+        )
+        assert token_response.status_code == 200
+        calendar_url = token_response.json()["calendarUrl"]
+        token = calendar_url.rsplit("/api/calendar/", 1)[1].removesuffix(".ics")
+
+        feed_response = await client.get(f"/api/calendar/{token}.ics")
+        assert feed_response.status_code == 200
+        assert "text/calendar" in feed_response.headers["content-type"]
+        assert "BEGIN:VCALENDAR" in feed_response.text
+        assert "Weekly Raid Night" in feed_response.text
+
+        revoke_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/revoke",
+            headers=auth_headers,
+        )
+        assert revoke_response.status_code == 200
+        assert revoke_response.json()["calendarEnabled"] is False
+
+        revoked_feed = await client.get(f"/api/calendar/{token}.ics")
+        assert revoked_feed.status_code == 404
+
+    async def test_calendar_feed_escapes_special_text(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                **session_data,
+                "title": "Reclear, prog; cozy\\night",
+                "description": "Bring food, pots; and\\vibes\nPhase 2",
+            },
+            headers=auth_headers,
+        )
+        assert create_response.status_code == 201
+
+        token_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/regenerate",
+            headers=auth_headers,
+        )
+        token = token_response.json()["calendarUrl"].rsplit("/api/calendar/", 1)[1].removesuffix(".ics")
+
+        feed_response = await client.get(f"/api/calendar/{token}.ics")
+
+        assert feed_response.status_code == 200
+        assert "SUMMARY:Reclear\\, prog\\; cozy\\\\night" in feed_response.text
+        assert "DESCRIPTION:Bring food\\, pots\\; and\\\\vibes\\nPhase 2" in feed_response.text
 
     async def test_list_availability_rejects_oversized_range(
         self,

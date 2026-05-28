@@ -7,27 +7,42 @@ export const DEV_SHARE_CODE = 'DEVTST';
 /**
  * Log in via dev-auth and set httpOnly cookies in the browser's native store.
  *
- * We navigate the browser directly to the dev-auth GET endpoint so that the
- * browser processes the Set-Cookie headers natively during the navigation
- * response — exactly as it does during a real OAuth redirect. This is more
- * reliable than ctx.request.post() (which can have a timing gap between
- * Playwright's request cookie store and the browser's native cookie jar in
- * sequential test runs) and avoids the cross-origin fetch complications of
- * page.evaluate() with credentials: 'include'.
+ * We run a POST through Playwright's browser-context request API so the backend
+ * httpOnly cookies land in the same context used by page navigations.
  *
  * After this call the page is pointing at the backend JSON response; call
  * goToTestStatic() to navigate to the app.
  */
+async function loginViaDevAuth(page: Page, index: 0 | 1, expectedRole: 'owner' | 'member'): Promise<void> {
+  const response = await page.context().request.post(`${API_BASE}/api/dev-auth/login/${index}`);
+  const body = await response.text();
+  expect(body.includes(`"${expectedRole}"`), `dev-auth/login/${index} did not return ${expectedRole} role`).toBe(true);
+
+  const cookies = response.headersArray()
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => {
+      const [nameValue] = header.value.split(';');
+      const [name, ...valueParts] = nameValue.split('=');
+      return {
+        name,
+        value: valueParts.join('='),
+        url: API_BASE,
+        sameSite: 'Lax' as const,
+      };
+    })
+    .filter((cookie) => cookie.name && cookie.value);
+
+  if (cookies.length > 0) {
+    await page.context().addCookies(cookies);
+  }
+}
+
 export async function loginAsOwner(page: Page): Promise<void> {
-  await page.goto(`${API_BASE}/api/dev-auth/login/0`, { waitUntil: 'domcontentloaded' });
-  const body = await page.textContent('body').catch(() => '');
-  expect(body?.includes('"owner"'), 'dev-auth/login/0 did not return owner role').toBe(true);
+  await loginViaDevAuth(page, 0, 'owner');
 }
 
 export async function loginAsMember(page: Page): Promise<void> {
-  await page.goto(`${API_BASE}/api/dev-auth/login/1`, { waitUntil: 'domcontentloaded' });
-  const body = await page.textContent('body').catch(() => '');
-  expect(body?.includes('"member"'), 'dev-auth/login/1 did not return member role').toBe(true);
+  await loginViaDevAuth(page, 1, 'member');
 }
 
 /**

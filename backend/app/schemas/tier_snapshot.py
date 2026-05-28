@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def to_camel(string: str) -> str:
@@ -128,6 +128,27 @@ class LinkedPlayerInfo(CamelModel):
 
 # --- Snapshot Player Schemas ---
 
+FlexRole = Literal["MT", "ST", "H1", "H2", "M1", "M2", "R1", "R2"]
+
+
+def validate_flex_roles(value: list[str] | None) -> list[str] | None:
+    """Validate and normalize optional player flex-role badges."""
+    if value is None:
+        return None
+
+    allowed = {"MT", "ST", "H1", "H2", "M1", "M2", "R1", "R2"}
+    normalized: list[str] = []
+    for role in value:
+        if role not in allowed:
+            raise ValueError(f"Invalid flex role: {role}")
+        if role not in normalized:
+            normalized.append(role)
+
+    if len(normalized) > 4:
+        raise ValueError("Select up to 4 flex roles")
+
+    return normalized
+
 
 class SnapshotPlayerCreate(CamelModel):
     """Schema for creating a snapshot player"""
@@ -138,12 +159,18 @@ class SnapshotPlayerCreate(CamelModel):
     position: str | None = None
     tank_role: str | None = None
     template_role: str | None = None
+    roster_title: str | None = Field(default=None, max_length=40)
+    roster_note: str | None = Field(default=None, max_length=160)
+    flex_roles: list[FlexRole] = Field(default_factory=list)
     configured: bool = False
     sort_order: int = 0
     is_substitute: bool = False
     user_id: str | None = None
     notes: str | None = None
     lodestone_id: str | None = None
+    lodestone_name: str | None = Field(default=None, max_length=100)
+    lodestone_server: str | None = Field(default=None, max_length=100)
+    lodestone_avatar_url: str | None = None
     bis_link: str | None = None
     fflogs_id: int | None = None
     gear: list[GearSlotStatus] | None = None
@@ -153,6 +180,11 @@ class SnapshotPlayerCreate(CamelModel):
         default_factory=lambda: {"I": 0, "II": 0, "III": 0, "IV": 0}
     )
     priority_modifier: int = Field(default=0, ge=-100, le=100)
+
+    @field_validator("flex_roles")
+    @classmethod
+    def _validate_flex_roles(cls, value: list[str] | None) -> list[str]:
+        return validate_flex_roles(value) or []
 
 
 class SnapshotPlayerUpdate(CamelModel):
@@ -164,12 +196,18 @@ class SnapshotPlayerUpdate(CamelModel):
     position: str | None = None
     tank_role: str | None = None
     template_role: str | None = None
+    roster_title: str | None = Field(default=None, max_length=40)
+    roster_note: str | None = Field(default=None, max_length=160)
+    flex_roles: list[FlexRole] | None = None
     configured: bool | None = None
     sort_order: int | None = None
     is_substitute: bool | None = None
     user_id: str | None = None
     notes: str | None = None
     lodestone_id: str | None = None
+    lodestone_name: str | None = Field(default=None, max_length=100)
+    lodestone_server: str | None = Field(default=None, max_length=100)
+    lodestone_avatar_url: str | None = None
     bis_link: str | None = None
     fflogs_id: int | None = None
     gear: list[GearSlotStatus] | None = None
@@ -177,6 +215,11 @@ class SnapshotPlayerUpdate(CamelModel):
     loot_adjustment: int | None = None
     page_adjustments: dict[str, int] | None = None
     priority_modifier: int | None = Field(default=None, ge=-100, le=100)
+
+    @field_validator("flex_roles")
+    @classmethod
+    def _validate_flex_roles(cls, value: list[str] | None) -> list[str] | None:
+        return validate_flex_roles(value)
 
 
 class AssignPlayerRequest(CamelModel):
@@ -203,11 +246,17 @@ class SnapshotPlayerResponse(CamelModel):
     position: str | None = None
     tank_role: str | None = None
     template_role: str | None = None
+    roster_title: str | None = None
+    roster_note: str | None = None
+    flex_roles: list[FlexRole] = Field(default_factory=list)
     configured: bool
     sort_order: int
     is_substitute: bool
     notes: str | None = None
     lodestone_id: str | None = None
+    lodestone_name: str | None = None
+    lodestone_server: str | None = None
+    lodestone_avatar_url: str | None = None
     bis_link: str | None = None
     fflogs_id: int | None = None
     last_sync: str | None = None

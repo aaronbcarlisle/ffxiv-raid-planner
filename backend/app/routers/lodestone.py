@@ -28,6 +28,17 @@ logger = get_logger(__name__)
 settings = get_settings()
 
 XIVAPI_BASE = "https://xivapi.com"
+MOCK_RAIDER_AVATAR_URL = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E"
+    "%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E"
+    "%3Cstop stop-color='%2314b8a6'/%3E%3Cstop offset='1' stop-color='%230f172a'/%3E"
+    "%3C/linearGradient%3E%3C/defs%3E%3Crect width='96' height='96' rx='18' fill='url(%23g)'/%3E"
+    "%3Ccircle cx='48' cy='36' r='16' fill='%23e6fffb'/%3E"
+    "%3Cpath d='M22 82c5-19 17-29 26-29s21 10 26 29' fill='%23e6fffb'/%3E"
+    "%3Cpath d='M30 20l8 9M66 20l-8 9' stroke='%23f8fafc' stroke-width='5' stroke-linecap='round'/%3E"
+    "%3C/svg%3E"
+)
+MOCK_BROKEN_AVATAR_URL = "/images/lodestone/mock-avatar-missing.svg"
 LODESTONE_SLOT_MAP = {
     "MainHand": "weapon",
     "Head": "head",
@@ -171,7 +182,7 @@ MOCK_CHARACTER_PAYLOADS: dict[int, dict[str, Any]] = {
             "ID": 910001,
             "Name": "Mock Raider",
             "Server": "Gilgamesh",
-            "Avatar": None,
+            "Avatar": MOCK_RAIDER_AVATAR_URL,
             "Portrait": None,
             "GearSet": {
                 "Class": {"Abbreviation": "DRG"},
@@ -197,7 +208,7 @@ MOCK_CHARACTER_PAYLOADS: dict[int, dict[str, Any]] = {
             "ID": 910002,
             "Name": "Mock Recovering Raider",
             "Server": "Gilgamesh",
-            "Avatar": None,
+            "Avatar": MOCK_BROKEN_AVATAR_URL,
             "Portrait": None,
             "GearSet": {
                 "Class": {"Abbreviation": "DRG"},
@@ -293,6 +304,9 @@ class SyncResult(CamelModel):
     updated_slots: int
     lodestone_id: str
     last_sync: str
+    lodestone_name: str | None = None
+    lodestone_server: str | None = None
+    lodestone_avatar_url: str | None = None
     gear: list[dict[str, Any]]
 
 
@@ -907,10 +921,28 @@ async def sync_player_gear(
             updated_count += 1
 
     now = datetime.now(timezone.utc).isoformat()
+    lodestone_name = str(character.get("Name") or "") or None
+    lodestone_server = str(character.get("Server") or "") or None
+    avatar_value = character.get("Avatar")
+    existing_avatar_url = getattr(player, "lodestone_avatar_url", None)
+    lodestone_avatar_url = (
+        avatar_value.strip()
+        if isinstance(avatar_value, str) and avatar_value.strip()
+        else existing_avatar_url
+    )
+
     player.gear = [dict(gear_slot) for gear_slot in current_gear]
     player.lodestone_id = str(resolved_lodestone_id)
     player.last_sync = now
     player.updated_at = now
+    # These columns are supplied by the follow-up avatar schema. Guard them so
+    # this router remains safe on local databases that only have lodestone_id.
+    if hasattr(player, "lodestone_name"):
+        player.lodestone_name = lodestone_name
+    if hasattr(player, "lodestone_server"):
+        player.lodestone_server = lodestone_server
+    if hasattr(player, "lodestone_avatar_url"):
+        player.lodestone_avatar_url = lodestone_avatar_url
 
     await session.flush()
     await session.commit()
@@ -926,5 +958,8 @@ async def sync_player_gear(
         updated_slots=updated_count,
         lodestone_id=str(resolved_lodestone_id),
         last_sync=now,
+        lodestone_name=lodestone_name,
+        lodestone_server=lodestone_server,
+        lodestone_avatar_url=lodestone_avatar_url,
         gear=current_gear,
     )

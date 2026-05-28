@@ -113,6 +113,8 @@ export type ResetMode = 'progress' | 'unlink' | 'all';
 // Raid position for mechanics (light parties, partners, spread positions)
 export type RaidPosition = 'T1' | 'T2' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
 
+export type FlexRole = 'MT' | 'ST' | 'H1' | 'H2' | 'M1' | 'M2' | 'R1' | 'R2';
+
 // Tank role designation (separate from T1/T2 position)
 export type TankRole = 'MT' | 'OT';
 
@@ -642,11 +644,17 @@ export interface SnapshotPlayer {
   position?: RaidPosition | null;
   tankRole?: TankRole | null;
   templateRole?: TemplateRole | null;
+  rosterTitle?: string | null;
+  rosterNote?: string | null;
+  flexRoles?: FlexRole[];
   configured: boolean;
   sortOrder: number;
   isSubstitute: boolean;
   notes?: string;
   lodestoneId?: string;
+  lodestoneName?: string;
+  lodestoneServer?: string;
+  lodestoneAvatarUrl?: string;
   bisLink?: string;
   fflogsId?: number;
   lastSync?: string;
@@ -1014,6 +1022,7 @@ export interface WeeklyAssignmentBulkDelete {
 // ==================== Schedule Types ====================
 
 export type RsvpStatus = 'available' | 'unavailable' | 'tentative';
+export type InitialRsvpStatus = 'no_response' | RsvpStatus;
 
 export interface ScheduleRsvp {
   id: string;
@@ -1041,6 +1050,37 @@ export interface ScheduleSession {
   rsvps: ScheduleRsvp[];
 }
 
+export interface ScheduleSettings {
+  id?: string | null;
+  staticGroupId: string;
+  webhookConfigured: boolean;
+  webhookUrlMasked?: string | null;
+  reminderChannelLabel?: string | null;
+  enable24hReminder: boolean;
+  enable1hReminder: boolean;
+  enableMissingRsvpReminder: boolean;
+  calendarEnabled: boolean;
+  calendarUrl?: string | null;
+  calendarTokenCreatedAt?: string | null;
+  canManage: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ScheduleSettingsUpdate {
+  webhookUrl?: string | null;
+  reminderChannelLabel?: string | null;
+  enable24hReminder?: boolean;
+  enable1hReminder?: boolean;
+  enableMissingRsvpReminder?: boolean;
+}
+
+export interface CalendarTokenResponse {
+  calendarEnabled: boolean;
+  calendarUrl?: string | null;
+  calendarTokenCreatedAt?: string | null;
+}
+
 export interface ScheduleSessionCreate {
   title: string;
   description?: string;
@@ -1049,6 +1089,7 @@ export interface ScheduleSessionCreate {
   timezone: string;
   isRecurring?: boolean;
   recurrenceRule?: string;
+  initialRsvpStatus?: InitialRsvpStatus;
 }
 
 export interface ScheduleSessionUpdate {

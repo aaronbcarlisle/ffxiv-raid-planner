@@ -6,7 +6,7 @@ import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
 import { Button } from '../primitives';
 import { Calendar } from 'lucide-react';
-import type { ScheduleSession, ScheduleSessionCreate } from '../../types';
+import type { InitialRsvpStatus, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import {
   addDurationInTimeZone,
   fromZonedDatetimeLocalValue,
@@ -40,6 +40,12 @@ const DAYS_OF_WEEK = [
 ];
 
 const DEFAULT_DURATION_MS = 3 * 60 * 60 * 1000;
+const INITIAL_RSVP_OPTIONS = [
+  { value: 'no_response', label: 'No response' },
+  { value: 'available', label: 'Available' },
+  { value: 'tentative', label: 'Tentative' },
+  { value: 'unavailable', label: 'Unavailable' },
+];
 
 interface CreateSessionModalProps {
   isOpen: boolean;
@@ -90,6 +96,7 @@ export function CreateSessionModal({
   const [timezone, setTimezone] = useState(initialState.timezone);
   const [isRecurring, setIsRecurring] = useState(initialState.isRecurring);
   const [selectedDays, setSelectedDays] = useState<Set<string>>(initialState.selectedDays);
+  const [initialRsvpStatus, setInitialRsvpStatus] = useState<InitialRsvpStatus>('no_response');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -104,6 +111,7 @@ export function CreateSessionModal({
     setTimezone(nextState.timezone);
     setIsRecurring(nextState.isRecurring);
     setSelectedDays(nextState.selectedDays);
+    setInitialRsvpStatus('no_response');
   }, [editSession, initialDraft, isOpen]);
 
   const toggleDay = (day: string) => {
@@ -145,6 +153,7 @@ export function CreateSessionModal({
         timezone,
         isRecurring,
         recurrenceRule: isRecurring ? buildRecurrenceRule(selectedDays) : undefined,
+        ...(!editSession ? { initialRsvpStatus } : {}),
       });
       onClose();
     } finally {
@@ -262,6 +271,20 @@ export function CreateSessionModal({
             </div>
             <p className="text-xs text-text-muted mt-1.5">
               Every {selectedDaysSummary}
+            </p>
+          </div>
+        )}
+
+        {!editSession && (
+          <div data-testid="initial-rsvp-field">
+            <Label size="sm">Initial RSVP for members</Label>
+            <Select
+              value={initialRsvpStatus}
+              onChange={(value) => setInitialRsvpStatus(value as InitialRsvpStatus)}
+              options={INITIAL_RSVP_OPTIONS}
+            />
+            <p className="mt-1.5 text-xs text-text-muted">
+              Applies to current members only. Members can change their RSVP later.
             </p>
           </div>
         )}

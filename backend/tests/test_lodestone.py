@@ -123,6 +123,9 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
     assert sync_response.status_code == 200
     payload = sync_response.json()
     assert payload["lodestoneId"] == "999001"
+    assert payload["lodestoneName"] == "Mock Raider"
+    assert payload["lodestoneServer"] == "Gilgamesh"
+    assert payload["lodestoneAvatarUrl"] == "https://example.test/mock-raider.png"
     assert payload["updatedSlots"] == 2
     assert payload["gear"][0]["hasItem"] is True
     assert payload["gear"][0]["currentSource"] == "savage"
@@ -131,6 +134,9 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
 
     await session.refresh(player)
     assert player.lodestone_id == "999001"
+    assert player.lodestone_name == "Mock Raider"
+    assert player.lodestone_server == "Gilgamesh"
+    assert player.lodestone_avatar_url == "https://example.test/mock-raider.png"
     assert player.last_sync is not None
     assert player.gear[0]["hasItem"] is True
     assert player.gear[1]["currentSource"] == "savage"
@@ -374,6 +380,101 @@ async def test_item_lookup_failure_preserves_useful_current_source(client, sessi
     assert player.gear[0]["currentSource"] == "savage"
     assert player.gear[0]["hasItem"] is True
     assert player.last_sync is not None
+
+
+@pytest.mark.asyncio
+async def test_missing_avatar_does_not_crash_sync(client, session, test_user, auth_headers):
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        gear=[
+            _gear_slot(
+                slot="weapon",
+                bis_source="raid",
+                item_id=1001,
+                item_level=795,
+                item_name="Cruiserweight Champion's Spear",
+            )
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "No Avatar Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {"Gear": {"MainHand": {"ID": 1001}}},
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch(
+            "app.routers.lodestone.fetch_item_from_garland",
+            new=AsyncMock(return_value={"id": 1001, "name": "Cruiserweight Champion's Spear", "level": 795, "icon": "weapon.png"}),
+        ),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999009",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    payload = sync_response.json()
+    assert payload["lodestoneName"] == "No Avatar Raider"
+    assert payload["lodestoneServer"] == "Gilgamesh"
+    assert payload["lodestoneAvatarUrl"] is None
+
+
+@pytest.mark.asyncio
+async def test_malformed_avatar_data_preserves_existing_cached_avatar(client, session, test_user, auth_headers):
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        gear=[
+            _gear_slot(
+                slot="weapon",
+                bis_source="raid",
+                item_id=1001,
+                item_level=795,
+                item_name="Cruiserweight Champion's Spear",
+            )
+        ],
+    )
+    player.lodestone_avatar_url = "https://example.test/existing-avatar.png"
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Malformed Avatar Raider",
+                "Server": "Gilgamesh",
+                "Avatar": {"url": "not-a-string"},
+                "GearSet": {"Gear": {"MainHand": {"ID": 1001}}},
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch(
+            "app.routers.lodestone.fetch_item_from_garland",
+            new=AsyncMock(return_value={"id": 1001, "name": "Cruiserweight Champion's Spear", "level": 795, "icon": "weapon.png"}),
+        ),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999010",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    assert sync_response.json()["lodestoneAvatarUrl"] == "https://example.test/existing-avatar.png"
 
 
 @pytest.mark.asyncio
