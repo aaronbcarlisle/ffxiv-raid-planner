@@ -26,11 +26,13 @@ This document explains how the FFXIV Raid Planner enforces design system complia
 **Location:** `frontend/eslint-design-system-plugin.js`
 
 **What it catches:**
-- Same violations as bash script, but at development time
-- Shows inline errors in your editor
+- Raw HTML elements at development time, with broader coverage than the bash script
+- Shows inline warnings in your editor
 - Respects `// design-system-ignore` comments
 
 **Status:** Currently set to `warn` to allow gradual migration
+
+> **Note — the two mechanisms are NOT equivalent.** The bash checker (`frontend/scripts/check-design-system.sh`) currently reports **0** violations because it excludes `primitives/` and several other files, while `pnpm lint` (ESLint) flags many `design-system/no-raw-button` / `no-raw-input` warnings in `pages/`. ESLint has broader coverage, and its design-system rules are set to `warn`, so they don't fail CI on their own.
 
 **To enable strict mode:**
 ```js
@@ -84,6 +86,8 @@ grep -n "function.*Button\|const.*Button.*=" src/pages/DesignSystem.tsx
 ---
 
 ## Recommended Improvements
+
+(These are suggestions / future ideas — none are currently implemented in the repo.)
 
 ### Priority 1: Real-Time Developer Feedback
 

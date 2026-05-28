@@ -1,5 +1,7 @@
 # FFXIV Raid Planner - Mobile UX Audit Report
 
+> **Status (May 27, 2026):** Historical audit. Most P0/P1 issues here were resolved in the v1.9.x–v1.13 mobile work (responsive grids, LootPriorityPanel/WhoNeedsItMatrix mobile card views, 44px touch targets, Modal `sheet` variant, MobileBottomNav wired into GroupView). **Still open:** context menus are not reachable on touch devices (PlayerCard/GearTable are right-click only — see P0-4). Kept as a point-in-time record; do not treat as current.
+
 **Audit Date:** 2026-01-24
 **Auditor:** Mobile UX Specialist Agent
 **Scope:** Complete frontend codebase (`frontend/src/`)

@@ -6,9 +6,9 @@ These files are **not used** in the current codebase but are preserved for histo
 
 ## Contents
 
-- `concept-*.jsx` - Various UI layout concepts explored during initial design phase
-- `header-redesign-mockup.jsx` - Header redesign exploration
-- `priority-panel-redesign.jsx` - Priority panel layout concepts
+- `concept-a-*.jsx` / `concept-b-*.jsx` / `concept-c-*.jsx` / `concept-v4-*.jsx` / `concept-v5-*.jsx` - Various UI layout concepts explored during initial design phase
+- `header-redesign-mockup.jsx`, `simplified-header-mockup.jsx` - Header redesign explorations
+- `ffxiv-gearing-infographic.jsx` - Gearing infographic concept
 
 ## Note
 

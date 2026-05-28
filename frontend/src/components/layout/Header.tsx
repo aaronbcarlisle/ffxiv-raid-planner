@@ -16,10 +16,11 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
-import { TierActionsMenu, TipsCarousel } from '../ui';
+import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
+import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
 
 // Custom event types for communication with GroupView
 export const HEADER_EVENTS = {
@@ -35,7 +36,6 @@ export const HEADER_EVENTS = {
 export function Header() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [copied, setCopied] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
 
   const { currentGroup, groups, fetchGroups } = useStaticGroupStore();
@@ -50,6 +50,7 @@ export function Header() {
 
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
+  const isHomePage = location.pathname === '/';
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -92,43 +93,6 @@ export function Header() {
   // Calculate available tiers for creation
   const existingTierIds = tiers.map(t => t.tierId);
   const availableTiers = RAID_TIERS.filter(t => !existingTierIds.includes(t.id));
-
-  // Handle share code copy (hold Shift for full URL with tier)
-  const handleCopyCode = async (e: React.MouseEvent) => {
-    if (!currentGroup) return;
-    const isFullUrl = e.shiftKey;
-
-    let textToCopy: string;
-    let message: string;
-
-    if (isFullUrl) {
-      // Include current tier in URL so recipient sees the same tier
-      const tierParam = currentTier?.tierId ? `?tier=${currentTier.tierId}` : '';
-      textToCopy = `${window.location.origin}/group/${currentGroup.shareCode}${tierParam}`;
-      message = currentTier?.tierId ? `Full URL with tier copied!` : 'Full URL copied!';
-    } else {
-      textToCopy = currentGroup.shareCode;
-      message = 'Share code copied!';
-    }
-
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-      setCopied(true);
-      toast.success(message);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = textToCopy;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      toast.success(message);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   // Handle invite members button click
   const handleInviteMembers = async () => {
@@ -327,41 +291,6 @@ export function Header() {
                 </div>
               )}
 
-              {/* Share code - shown for non-managers, hidden on mobile (accessible via Controls sheet) */}
-              {!canManageInvitations && (
-                <div className="hidden sm:block">
-                <Tooltip
-                  content={
-                    <div className="flex items-start gap-2 max-w-xs">
-                      <Copy className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-medium">Copy Share Code</div>
-                        <div className="text-text-secondary text-xs mt-0.5">
-                          Click to copy code. Hold <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Shift</kbd> for full URL with current tier.
-                        </div>
-                      </div>
-                    </div>
-                  }
-                >
-                  <button
-                    onClick={(e) => handleCopyCode(e)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-card hover:bg-surface-interactive transition-colors group flex-shrink-0"
-                  >
-                    <span className="font-mono text-xs sm:text-sm text-text-secondary">{currentGroup.shareCode}</span>
-                    {copied ? (
-                      <svg className="w-3.5 h-3.5 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5 text-text-muted group-hover:text-text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </button>
-                </Tooltip>
-                </div>
-              )}
-
               {/* Settings gear icon (opens slide-out settings panel) */}
               {groupPermission.allowed && (
                 <Tooltip
@@ -391,8 +320,43 @@ export function Header() {
             </>
           )}
 
-          {/* Auth: Login button or User menu */}
-          <div className={isGroupRoute && currentGroup ? 'border-l border-border-subtle pl-3' : ''}>
+          {/* External links + theme toggle — hidden on the Home page (login only there) */}
+          {!isHomePage && (
+            <>
+              <div className="flex items-center gap-1">
+                <Tooltip content="Join our Discord community">
+                  <a
+                    href={DISCORD_INVITE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Join our Discord community"
+                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-discord hover:bg-surface-interactive transition-colors flex-shrink-0"
+                  >
+                    <DiscordIcon className="w-5 h-5" />
+                  </a>
+                </Tooltip>
+                <Tooltip content="View source on GitHub">
+                  <a
+                    href={GITHUB_REPO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="View source on GitHub"
+                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors flex-shrink-0"
+                  >
+                    <GitHubIcon className="w-5 h-5" />
+                  </a>
+                </Tooltip>
+              </div>
+              <div className="flex items-center border-l border-border-subtle pl-3">
+                <ThemeToggle />
+              </div>
+            </>
+          )}
+
+          {/* Auth: login button or user menu */}
+          <div
+            className={`flex items-center gap-1 ${!isHomePage ? 'border-l border-border-subtle pl-3' : ''}`}
+          >
             {authLoading ? (
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
             ) : user ? (

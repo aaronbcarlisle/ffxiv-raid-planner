@@ -1,5 +1,7 @@
 # XIV Raid Planner Documentation Implementation Plan
 
+> **Status (May 27, 2026):** Phases 1–6 shipped. The "old documentation files" referenced below have since been **deleted** (not kept) — `QuickStartDocs.tsx`, `LeadsGuideDocs.tsx`, `MembersGuideDocs.tsx`, `CommonTasksDocs.tsx`, and `LootMathDocs.tsx` no longer exist in `frontend/src/pages/`. Historical plan.
+
 **Status:** ✅ Phases 1-6 Complete | Phase 7 Optional/Not Implemented
 
 This document provides phase-by-phase tasks for restructuring the user documentation. Each phase is designed to be a single PR.
@@ -29,22 +31,16 @@ This document provides phase-by-phase tasks for restructuring the user documenta
 
 ### Old Documentation Files
 
-**Status:** Kept for reference/rollback capability
+**Status:** Removed (since deleted from the codebase)
 
-Old doc pages remain in codebase but are unreachable via routing:
-- `frontend/src/pages/QuickStartDocs.tsx` (8.7K)
-- `frontend/src/pages/LeadsGuideDocs.tsx` (26K)
-- `frontend/src/pages/MembersGuideDocs.tsx` (27K)
-- `frontend/src/pages/CommonTasksDocs.tsx` (36K)
-- `frontend/src/pages/LootMathDocs.tsx` (37K)
+These old doc pages were initially retained but unreachable via routing, and have since been **deleted** — they no longer exist:
+- `frontend/src/pages/QuickStartDocs.tsx`
+- `frontend/src/pages/LeadsGuideDocs.tsx`
+- `frontend/src/pages/MembersGuideDocs.tsx`
+- `frontend/src/pages/CommonTasksDocs.tsx`
+- `frontend/src/pages/LootMathDocs.tsx`
 
-**Total:** ~135KB of unreachable code
-
-**Rationale for keeping:**
-- No negative impact (redirects prevent broken links)
-- Allows easy rollback if issues discovered
-- Historical reference for content decisions
-- Can be deleted anytime if desired
+The redirects from Phase 6 still prevent broken links to the old URLs.
 
 ### Phase 7 (Screenshots) - Optional
 

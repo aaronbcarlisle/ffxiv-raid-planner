@@ -35,6 +35,15 @@ export interface Release {
   title?: string;
   highlights?: string[]; // 1-2 key items for banner display
   items: ReleaseItem[];
+  /**
+   * Dev-only release note. When true, this entry is posted to the Discord
+   * changelog (for posterity) but hidden from the release-notes page and the
+   * "what's new" banner. Place `internal: true` as the LAST field of the object
+   * (the changelog script detects it after the `items` array). Do NOT bump
+   * CURRENT_VERSION for an internal-only entry — CURRENT_VERSION should always
+   * track the latest *public* release so the banner stays correct.
+   */
+  internal?: boolean;
 }
 
 // Releases ordered newest-first
@@ -1982,10 +1991,12 @@ export const RELEASES: Release[] = [
 ];
 
 /**
- * Get the latest (most recent) release
+ * Get the latest (most recent) *public* release.
+ * Skips `internal` (dev-only) entries so the banner and any "latest release"
+ * UI never surface a Discord-only note.
  */
-export function getLatestRelease(): Release | undefined {
-  return RELEASES[0];
+export function getLatestRelease(releases: Release[] = RELEASES): Release | undefined {
+  return releases.find((r) => !r.internal);
 }
 
 /**
