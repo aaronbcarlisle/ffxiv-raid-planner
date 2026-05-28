@@ -105,8 +105,8 @@ export default function PluginAuth() {
   if (paramsError) {
     return (
       <ConsentLayout title="Plugin sign-in" variant="error">
-        <p className="text-muted-foreground">{paramsError}</p>
-        <p className="text-sm text-muted-foreground mt-4">
+        <p className="text-text-secondary">{paramsError}</p>
+        <p className="text-sm text-text-muted mt-4">
           Open the plugin's configuration window and try the "Sign in with browser" button again.
         </p>
       </ConsentLayout>
@@ -116,7 +116,7 @@ export default function PluginAuth() {
   if (!isAuthenticated) {
     return (
       <ConsentLayout title="Sign in to authorize the plugin">
-        <p className="text-muted-foreground">
+        <p className="text-text-secondary">
           To link the XIV Raid Planner Dalamud plugin to your account, sign in first with Discord.
         </p>
         <div className="mt-6 flex gap-3">
@@ -129,7 +129,7 @@ export default function PluginAuth() {
   if (status === 'cancelled') {
     return (
       <ConsentLayout title="Sign-in cancelled">
-        <p className="text-muted-foreground">
+        <p className="text-text-secondary">
           The plugin was not authorized. You can close this tab and return to the game.
         </p>
       </ConsentLayout>
@@ -139,7 +139,7 @@ export default function PluginAuth() {
   if (status === 'redirecting') {
     return (
       <ConsentLayout title="Signed in!">
-        <p className="text-muted-foreground">
+        <p className="text-text-secondary">
           Returning to the plugin. If your browser doesn't redirect automatically, close this tab.
         </p>
       </ConsentLayout>
@@ -148,11 +148,11 @@ export default function PluginAuth() {
 
   return (
     <ConsentLayout title="Authorize XIV Raid Planner plugin">
-      <p className="text-muted-foreground">
+      <p className="text-text-secondary">
         The Dalamud plugin is requesting access to your FFXIV Raid Planner account.
       </p>
-      <div className="mt-4 rounded-md border border-border bg-surface-2 p-3 text-sm">
-        Signing in as <span className="font-medium text-foreground">{user?.displayName ?? user?.discordUsername ?? 'you'}</span>.
+      <div className="mt-4 rounded-md border border-border-default bg-surface-elevated p-3 text-sm text-text-secondary">
+        Signing in as <span className="font-medium text-text-primary">{user?.displayName ?? user?.discordUsername ?? 'you'}</span>.
         Approving generates a new API key labeled "Plugin browser sign-in". You can revoke it any
         time from the API key list.
       </div>
@@ -188,9 +188,9 @@ function ConsentLayout({
   variant?: 'error';
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-surface-1 p-6 shadow-lg">
-        <h1 className={`text-xl font-display ${variant === 'error' ? 'text-status-error' : 'text-foreground'}`}>
+    <div className="min-h-screen bg-surface-base flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg rounded-lg border border-border-default bg-surface-card p-6 shadow-xl">
+        <h1 className={`font-display text-xl ${variant === 'error' ? 'text-status-error' : 'text-accent'}`}>
           {title}
         </h1>
         <div className="mt-4 space-y-2">{children}</div>
