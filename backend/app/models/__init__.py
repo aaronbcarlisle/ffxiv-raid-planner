@@ -7,6 +7,7 @@ from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
+from .plugin_auth_code import PluginAuthCode
 from .availability import AvailabilityTemplate, UserAvailability
 from .schedule import DiscordMessageMapping, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from .snapshot_player import SnapshotPlayer
@@ -26,6 +27,7 @@ __all__ = [
     "Membership",
     "MemberRole",
     "PageLedgerEntry",
+    "PluginAuthCode",
     "ROLE_HIERARCHY",
     "DiscordMessageMapping",
     "ScheduleRsvp",

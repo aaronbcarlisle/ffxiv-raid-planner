@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.6';
+export const CURRENT_VERSION = '1.20.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.20.0',
+    date: '2026-06-03T12:00:00Z',
+    title: 'Plugin browser sign-in',
+    highlights: ['One-click plugin authentication', 'No more API key copy/paste'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Sign in to the Dalamud plugin from your browser',
+        description:
+          'The XIV Raid Planner Dalamud plugin can now authenticate via a one-click browser flow. Click "Sign in with browser" in the plugin\'s config window, approve on the web app, and the plugin receives an API key automatically — no more copying and pasting xrp_ tokens. Manual key entry remains available under Advanced for custom or self-hosted servers.',
+        commits: [{ hash: 'pending', message: 'feat: add plugin browser sign-in (loopback OAuth + PKCE)' }],
+      },
+    ],
+  },
   {
     version: '1.19.6',
     date: '2026-06-03T00:00:00Z',
