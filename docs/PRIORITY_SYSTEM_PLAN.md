@@ -1,5 +1,7 @@
 # Priority System Overhaul - Implementation Plan
 
+> **Status (May 27, 2026):** Phases 1–5 are shipped. The weekly-assignments backend (`backend/app/models/weekly_assignment.py`, `/weekly-assignments` endpoints in `backend/app/routers/tiers.py`) and the Manual Planning UI (`components/priority/ManualPlanningEditor.tsx`, `hooks/useWeeklyAssignments.ts`) exist. Settings moved from the old `GroupSettingsModal.tsx` to `components/settings/SettingsPanel.tsx` + `components/settings/PriorityTab.tsx`. Treat the "NOT STARTED" markers and file paths below as historical.
+
 **Status:** UI Complete, Multiplier Wiring Complete
 **Last Updated:** 2026-02-01
 **Version:** 2.1

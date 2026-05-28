@@ -329,12 +329,11 @@ Define on first use:
 // Permission badge
 <PermissionBadge allowed={true|false} />
 
-// Formula display (Loot Math page)
-<FormulaBlock formula="x = y + z" description="What this means" />
-
 // Code display
 <CodeBlock code={`const x = 1;`} />
 ```
+
+**Shared vs. local components:** Only `CodeBlock`, `LinkCard`, and `NavSidebar` are shared, importable components (in `frontend/src/components/docs/`). `Section`, `Subsection`, `Step`, `InfoBox`, and `PermissionBadge` are defined locally inside individual page files — they are not shared imports.
 
 ### Navigation Sidebar
 
@@ -400,9 +399,12 @@ Before considering documentation complete, verify:
 ├── HowToDocs.tsx          # Task-based guides
 ├── UnderstandingPriority.tsx  # Priority system explained
 ├── FAQDocs.tsx            # Consolidated FAQ
-├── ApiDocs.tsx            # API reference (unchanged)
-├── RoadmapDocs.tsx        # Roadmap (unchanged)
-└── ReleaseNotes.tsx       # Release notes (unchanged)
+├── GearMathDocs.tsx       # Gear math explained
+├── PrivacyDocs.tsx        # Privacy policy
+├── ApiDocs.tsx            # API reference
+├── ApiCookbook.tsx        # API usage examples
+├── RoadmapDocs.tsx        # Roadmap
+└── ReleaseNotes.tsx       # Release notes
 ```
 
 Route naming: `/docs/kebab-case`

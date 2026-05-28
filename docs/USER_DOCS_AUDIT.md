@@ -1,5 +1,7 @@
 # XIV Raid Planner User Documentation Audit & Recommendations
 
+> **Status (May 27, 2026):** Historical audit — its recommendations were fully implemented (see DOCS_IMPLEMENTATION_PLAN.md). The "current structure" and "proposed structure" sections describe a docs layout that has since shipped; the old pages it analyzes (QuickStartDocs, LeadsGuideDocs, MembersGuideDocs, CommonTasksDocs, LootMathDocs) have been deleted.
+
 ## Executive Summary
 
 This audit analyzes the current user documentation for FFXIV Raid Planner against industry best practices and gaming community documentation standards. The goal is to create documentation that is **clear, fun, and easy to follow** for users.

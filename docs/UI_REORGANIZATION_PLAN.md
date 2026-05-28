@@ -1,8 +1,13 @@
 # UI Reorganization Plan: Header, Settings, and Actions
 
-**Status:** Ready for Implementation
+**Status:** ✅ Implemented (verified May 27, 2026) — historical plan, kept for reference
 **Created:** 2026-01-31
 **Scope:** Header layout, settings consolidation, toolbar improvements
+
+> **Note:** This plan has been implemented. The breadcrumb header (`[Static ▼] › [Tier ▼]`),
+> `TierActionsMenu` kebab (`components/ui/TierActionsMenu.tsx`), and `SettingsPanel` slide-out
+> (`components/settings/SettingsPanel.tsx`) all ship in the current build. Retained as a design
+> record only.
 
 ---
 

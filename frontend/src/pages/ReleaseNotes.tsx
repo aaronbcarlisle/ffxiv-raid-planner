@@ -153,10 +153,11 @@ function VersionNav({
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const scrollContainerNodeRef = useRef<HTMLDivElement | null>(null);
 
-  // Split releases into recent and older
+  // Split releases into recent and older (internal/dev-only entries are hidden here)
   const { recentReleases, olderReleases, olderByMonth } = useMemo(() => {
-    const recent = RELEASES.slice(0, RECENT_RELEASES_COUNT);
-    const older = RELEASES.slice(RECENT_RELEASES_COUNT);
+    const publicReleases = RELEASES.filter((r) => !r.internal);
+    const recent = publicReleases.slice(0, RECENT_RELEASES_COUNT);
+    const older = publicReleases.slice(RECENT_RELEASES_COUNT);
     const byMonth = groupReleasesByMonth(older);
     return { recentReleases: recent, olderReleases: older, olderByMonth: byMonth };
   }, []);

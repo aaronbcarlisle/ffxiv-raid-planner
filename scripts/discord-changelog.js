@@ -424,6 +424,18 @@ function parseReleaseNotes() {
   const itemsStr = extractArrayContent(releasesContent, itemsStartIndex);
   const items = parseReleaseItems(itemsStr);
 
+  // Detect an optional `internal: true` flag. By convention it's the last field
+  // of the release object, so it lives between the items array's closing `]` and
+  // the object's closing `}` — restrict the search to that span so we only read
+  // the first release's own trailing fields.
+  const itemsCloseIndex = itemsStartIndex + 1 + itemsStr.length; // index of items' `]`
+  const objCloseIndex = releasesContent.indexOf('}', itemsCloseIndex);
+  const firstObjTail =
+    objCloseIndex === -1
+      ? releasesContent.slice(itemsCloseIndex)
+      : releasesContent.slice(itemsCloseIndex, objCloseIndex);
+  const internal = /\binternal:\s*true\b/.test(firstObjTail);
+
   return {
     currentVersion,
     latestRelease: {
@@ -432,6 +444,7 @@ function parseReleaseNotes() {
       title,
       highlights,
       items,
+      internal,
     },
   };
 }
@@ -566,29 +579,45 @@ function getDominantCategoryColor(items) {
  * Returns an array with a single embed for consistency with API
  */
 function buildReleaseEmbeds(release) {
+  const isInternal = !!release.internal;
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
 
-  // Use dominant category color based on release content
-  const embedColor = release.items && release.items.length > 0
-    ? getDominantCategoryColor(release.items)
-    : 0x14b8a6; // Teal fallback
+  // Internal (dev-only) notes use a neutral gray; public releases use the
+  // dominant category color of their items.
+  const embedColor = isInternal
+    ? 0x6b7280 // Gray — dev-only note
+    : release.items && release.items.length > 0
+      ? getDominantCategoryColor(release.items)
+      : 0x14b8a6; // Teal fallback
+
+  const title = isInternal
+    ? `🔧 [Dev] v${release.version}${release.title ? ` — ${release.title}` : ''}`
+    : `v${release.version} — ${release.title}`;
 
   const embed = new EmbedBuilder()
     .setColor(embedColor)
-    .setTitle(`v${release.version} — ${release.title}`)
-    .setURL(versionAnchor)
+    .setTitle(title)
     .setAuthor({
       name: COMMIT_AUTHOR,
       url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
       iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
     });
 
+  // Internal notes have no public release-notes anchor, so don't link the title.
+  if (!isInternal) {
+    embed.setURL(versionAnchor);
+  }
+
   // Use the release.date which contains the full ISO timestamp from releaseNotes.ts
   // This is the accurate merge/release time, backfilled from git commit history
   embed.setTimestamp(new Date(release.date));
 
-  // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix")
-  const footerText = buildReleaseFooter(release.items);
+  // Add footer with item counts (e.g., "3 features • 2 improvements • 1 fix").
+  // Internal notes also flag that they're hidden from the public page.
+  const footerCounts = buildReleaseFooter(release.items);
+  const footerText = isInternal
+    ? `Internal — not shown on the public release notes page${footerCounts ? ` • ${footerCounts}` : ''}`
+    : footerCounts;
   if (footerText) {
     embed.setFooter({ text: footerText });
   }

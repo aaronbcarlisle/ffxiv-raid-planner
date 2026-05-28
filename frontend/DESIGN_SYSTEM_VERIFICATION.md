@@ -78,6 +78,8 @@ Quick tests to verify your design system is working correctly.
 
 **Goal:** Verify design system violations block builds.
 
+> **Note:** The ESLint design-system rules are set to `warn` (not `error`), so they don't block CI by themselves. The gating check is the bash `pnpm check:design-system:strict`, which must report 0 violations.
+
 ### Steps:
 
 1. Run strict check:
@@ -183,7 +185,7 @@ Quick tests to verify your design system is working correctly.
 ### Steps:
 
 1. Pick a component from design system page (e.g., Button)
-2. Note its variants: `primary`, `secondary`, `ghost`, `danger`
+2. Note its variants: `primary`, `secondary`, `accent-subtle`, `ghost`, `danger`, `warning`, `success`, `link`
 3. Check actual component:
    ```bash
    grep -A 5 "variant:" src/components/primitives/Button.tsx
@@ -229,7 +231,7 @@ Your design system is properly integrated if:
 - [x] `pnpm check:design-system` catches violations
 - [x] Design system page shows live components
 - [x] Component changes appear in design system page automatically
-- [x] CI/CD blocks PRs with violations
+- [x] CI/CD blocks PRs via `check:design-system:strict` (the ESLint design-system rules are `warn`, so they don't block CI by themselves)
 - [x] Developers can find components in <2 minutes
 
 ---

@@ -1,5 +1,7 @@
 # Priority Settings Test Plan
 
+> **Status (May 27, 2026):** Largely obsolete. This tests an early priority UI; the current system uses role-based / job-based / player-based / manual-planning / disabled modes in the `SettingsPanel` slide-out (Alt+P), and the tabs were renamed (Loot → Priority, Log → Loot Log). The navigation steps below are stale.
+
 Testing instructions for the flexible priority settings feature (Phase 1).
 
 > **Note**: This test plan was written for an early iteration. The current system uses

@@ -734,6 +734,47 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
     });
   });
 
+  describe('internal (dev-only) releases', () => {
+    const internalRelease = {
+      version: '1.18.1',
+      date: '2026-01-20T00:00:00Z',
+      title: 'Refactor notes',
+      items: [{ category: 'improvement', title: 'Internal cleanup' }],
+      internal: true,
+    };
+
+    it('prefixes the title with the [Dev] marker', () => {
+      const data = buildReleaseEmbed(internalRelease).toJSON();
+      expect(data.title).toBe('🔧 [Dev] v1.18.1 — Refactor notes');
+    });
+
+    it('does not set a public release-notes URL on the title', () => {
+      const data = buildReleaseEmbed(internalRelease).toJSON();
+      expect(data.url).toBeUndefined();
+    });
+
+    it('uses the neutral gray color', () => {
+      const data = buildReleaseEmbed(internalRelease).toJSON();
+      expect(data.color).toBe(0x6b7280);
+    });
+
+    it('footer flags that it is hidden from the public page', () => {
+      const data = buildReleaseEmbed(internalRelease).toJSON();
+      expect(data.footer.text).toContain('Internal — not shown on the public release notes page');
+    });
+
+    it('still posts (returns an embed) so it lands in Discord for posterity', () => {
+      const embeds = buildReleaseEmbeds(internalRelease);
+      expect(embeds).toHaveLength(1);
+    });
+
+    it('public releases keep their version URL (contrast)', () => {
+      const data = buildReleaseEmbed({ ...internalRelease, internal: false }).toJSON();
+      expect(data.url).toContain('#v1.18.1');
+      expect(data.title).toBe('v1.18.1 — Refactor notes');
+    });
+  });
+
   describe('buildReleaseEmbeds description limits', () => {
     it('truncates long descriptions by removing item descriptions first', () => {
       // Create items with long descriptions that exceed limit
