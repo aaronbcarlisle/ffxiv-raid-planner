@@ -215,3 +215,99 @@ class TestPluginAuthExchange:
         )
         assert response.status_code == 400
         assert "expired" in response.json()["detail"].lower()
+
+    async def test_exchange_race_safe_second_call_rejected(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Sequential calls with the same code simulate the race condition fix.
+
+        The atomic UPDATE ensures only the first caller can flip used=False→True;
+        the second caller sees rowcount=0 and receives 400.
+        """
+        code, verifier = await self._issue_code(client, auth_headers)
+
+        first = await client.post(
+            "/api/auth/api-keys/plugin-auth/exchange",
+            json={"code": code, "codeVerifier": verifier},
+        )
+        assert first.status_code == 200
+
+        second = await client.post(
+            "/api/auth/api-keys/plugin-auth/exchange",
+            json={"code": code, "codeVerifier": verifier},
+        )
+        assert second.status_code == 400
+        assert "used" in second.json()["detail"].lower()
+
+    async def test_exchange_rejects_when_user_at_key_limit(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession, test_user: User
+    ):
+        """Exchange must 400 when the user already has MAX_KEYS_PER_USER active keys."""
+        import uuid as _uuid
+        from app.routers.api_keys import MAX_KEYS_PER_USER
+
+        # Pre-populate the user's active key count up to the limit.
+        for _ in range(MAX_KEYS_PER_USER):
+            raw = "xrp_" + secrets.token_hex(20)
+            session.add(ApiKey(
+                id=str(_uuid.uuid4()),
+                user_id=test_user.id,
+                key_hash=hashlib.sha256(raw.encode()).hexdigest(),
+                key_prefix=raw[:12],
+                name="pre-existing",
+                scopes=[],
+                is_active=True,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            ))
+        await session.commit()
+
+        code, verifier = await self._issue_code(client, auth_headers)
+
+        response = await client.post(
+            "/api/auth/api-keys/plugin-auth/exchange",
+            json={"code": code, "codeVerifier": verifier},
+        )
+        assert response.status_code == 400
+        assert str(MAX_KEYS_PER_USER) in response.json()["detail"]
+
+    async def test_exchange_rejects_non_ascii_code(self, client: AsyncClient):
+        """Non-ASCII input must produce 422 from Pydantic, not 500 from .encode('ascii')."""
+        response = await client.post(
+            "/api/auth/api-keys/plugin-auth/exchange",
+            json={"code": "café-invalid", "codeVerifier": "a" * 43},
+        )
+        assert response.status_code == 422
+
+
+class TestPluginAuthAuthorizePrivilegeEscalation:
+    """Authorization boundary tests for the authorize endpoint."""
+
+    async def test_authorize_rejects_api_key_auth(
+        self, client: AsyncClient, test_user: User, session: AsyncSession
+    ):
+        """An existing API key must not be usable to mint new plugin auth codes.
+
+        get_current_user_jwt_only explicitly rejects Bearer xrp_... headers so
+        a plugin cannot bootstrap itself into further keys via its own credential.
+        """
+        import uuid as _uuid
+        raw_key = "xrp_" + secrets.token_hex(20)
+        session.add(ApiKey(
+            id=str(_uuid.uuid4()),
+            user_id=test_user.id,
+            key_hash=hashlib.sha256(raw_key.encode()).hexdigest(),
+            key_prefix=raw_key[:12],
+            name="test",
+            scopes=[],
+            is_active=True,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        ))
+        await session.commit()
+
+        response = await client.post(
+            "/api/auth/api-keys/plugin-auth/authorize",
+            json=_authorize_body(),
+            headers={"Authorization": f"Bearer {raw_key}"},
+        )
+        # get_current_user_jwt_only rejects API key Bearer tokens with 403
+        assert response.status_code == 403
