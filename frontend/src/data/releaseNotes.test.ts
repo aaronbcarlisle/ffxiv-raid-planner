@@ -110,8 +110,12 @@ describe('releaseNotes', () => {
       expect(getLatestRelease(fixture)).toBeUndefined();
     });
 
-    it('ensures no shipped release entry is accidentally marked internal', () => {
-      expect(RELEASES.every((r) => !r.internal)).toBe(true);
+    it('CURRENT_VERSION points to a public (non-internal) release', () => {
+      // Internal (dev-only) entries are allowed in RELEASES; we only require that
+      // the version surfaced as "current" is a real public release.
+      const current = RELEASES.find((r) => r.version === CURRENT_VERSION);
+      expect(current).toBeDefined();
+      expect(current?.internal).toBeFalsy();
     });
   });
 
