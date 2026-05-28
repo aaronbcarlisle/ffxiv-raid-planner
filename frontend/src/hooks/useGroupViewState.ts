@@ -121,6 +121,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'log') return 'history';
     if (urlTab === 'summary') return 'stats';
     if (urlTab === 'schedule') return 'schedule';
+    // Deep links to a specific player (e.g., from the Dalamud plugin) should land
+    // on the Roster tab so the highlighted card is actually visible.
+    if (searchParams.get('player')) return 'players';
     const saved = localStorage.getItem('group-view-tab');
     // Handle legacy tab values - redirect to current equivalents
     if (saved === 'stats') return 'players';
