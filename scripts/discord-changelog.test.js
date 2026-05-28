@@ -64,9 +64,16 @@ describe('discord-changelog', () => {
       expect(existsSync(RELEASE_NOTES_PATH)).toBe(true);
     });
 
-    it('currentVersion matches latestRelease.version', () => {
+    it('currentVersion matches latestRelease.version for public releases', () => {
       const result = parseReleaseNotes();
-      expect(result.currentVersion).toBe(result.latestRelease.version);
+      // An internal (dev-only) entry may sit at the top of RELEASES with its own
+      // version while CURRENT_VERSION intentionally stays on the latest public
+      // release, so only require equality when the latest entry is public.
+      if (!result.latestRelease.internal) {
+        expect(result.currentVersion).toBe(result.latestRelease.version);
+      } else {
+        expect(result.currentVersion).toMatch(/^\d+\.\d+\.\d+$/);
+      }
     });
   });
 
