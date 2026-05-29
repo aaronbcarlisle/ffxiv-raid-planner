@@ -6,6 +6,9 @@ on:
 
 jobs:
   claude-review:
+    # Skip bot-authored PRs (Railway, Dependabot, etc.): the action blocks
+    # non-human actors, and automated PRs aren't worth an AI review.
+    if: github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read

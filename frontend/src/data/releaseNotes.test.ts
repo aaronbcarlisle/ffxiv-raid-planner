@@ -8,6 +8,7 @@ import {
   RELEASES,
   getLatestRelease,
   isNewerVersion,
+  type Release,
   type ReleaseCategory,
 } from './releaseNotes';
 
@@ -81,9 +82,11 @@ describe('releaseNotes', () => {
   });
 
   describe('getLatestRelease', () => {
-    it('returns the first release in the array', () => {
+    it('returns the first public (non-internal) release', () => {
+      // Not necessarily RELEASES[0]: an internal (dev-only) entry may sit at the
+      // top, in which case getLatestRelease() skips it.
       const latest = getLatestRelease();
-      expect(latest).toBe(RELEASES[0]);
+      expect(latest).toBe(RELEASES.find((r) => !r.internal));
     });
 
     it('returns a valid release object', () => {
@@ -92,6 +95,29 @@ describe('releaseNotes', () => {
       expect(latest?.version).toBeDefined();
       expect(latest?.date).toBeDefined();
       expect(latest?.items).toBeDefined();
+    });
+
+    it('skips internal (dev-only) entries and returns the first public release', () => {
+      const fixture: Release[] = [
+        { version: '9.9.9', date: '2026-01-01T00:00:00Z', title: 'Dev note', items: [], internal: true },
+        { version: '1.0.0', date: '2025-12-01T00:00:00Z', title: 'Public', items: [] },
+      ];
+      expect(getLatestRelease(fixture)?.version).toBe('1.0.0');
+    });
+
+    it('returns undefined when every entry is internal', () => {
+      const fixture: Release[] = [
+        { version: '9.9.9', date: '2026-01-01T00:00:00Z', title: 'Dev note', items: [], internal: true },
+      ];
+      expect(getLatestRelease(fixture)).toBeUndefined();
+    });
+
+    it('CURRENT_VERSION points to a public (non-internal) release', () => {
+      // Internal (dev-only) entries are allowed in RELEASES; we only require that
+      // the version surfaced as "current" is a real public release.
+      const current = RELEASES.find((r) => r.version === CURRENT_VERSION);
+      expect(current).toBeDefined();
+      expect(current?.internal).toBeFalsy();
     });
   });
 

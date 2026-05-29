@@ -1,5 +1,7 @@
 # Loot Priority Enhancement & Pre-Planned Distribution
 
+> **Status (May 27, 2026):** Phase 1 shipped but is now the *legacy* path — the newer `prioritySettings` / `PrioritySystemMode` system (see PRIORITY_SYSTEM_PLAN.md) takes precedence (`utils/priority.ts` `getEffectivePriorityMode` prefers it). Phase 3 (pre-planned distribution) was delivered in a different form as Manual Planning (`weekly_assignments`). `components/static-group/GroupSettingsModal.tsx` no longer exists (settings are now under `components/settings/`). Historical plan.
+
 ## Summary
 
 Enhance the loot priority system with more flexibility based on user feedback from Reddit.

@@ -1,5 +1,7 @@
 export { Checkbox } from './Checkbox';
 export { ContextMenu, type ContextMenuItem } from './ContextMenu';
+export { DiscordIcon } from './DiscordIcon';
+export { GitHubIcon } from './GitHubIcon';
 export { GroupViewToggle } from './GroupViewToggle';
 export { Input, type InputProps } from './Input';
 export { InputGroup } from './InputGroup';
@@ -39,6 +41,7 @@ export {
 export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
+export { ThemeToggle } from './ThemeToggle';
 export { TextArea, type TextAreaProps } from './TextArea';
 export { ThreeStateCheckbox } from './ThreeStateCheckbox';
 export { TipsCarousel } from './TipsCarousel';

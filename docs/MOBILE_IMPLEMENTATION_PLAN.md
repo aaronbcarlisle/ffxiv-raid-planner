@@ -1,5 +1,7 @@
 # FFXIV Raid Planner - Mobile UX Optimization Implementation Plan
 
+> **Status (May 27, 2026):** ~90% implemented. PR-01 (useDevice), PR-02 (MobileBottomNav), PR-05 (Modal sheet variant), PR-06/07/08 (responsive panels), PR-10 (44px touch targets) all shipped. **Remaining:** PR-11 (touch-accessible context menu). Note: PR-09's `components/history/LootLogPanel.tsx` path is stale (loot-log UI was restructured). Historical plan.
+
 **Version:** 1.0
 **Created:** 2026-01-24
 **Status:** Ready for Implementation

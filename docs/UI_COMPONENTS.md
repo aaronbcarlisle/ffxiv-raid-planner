@@ -929,9 +929,11 @@ import { BiSSourceSelector } from '../components/player/BiSSourceSelector';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: ReactNode;
-  icon?: ReactNode;           // v1.0.8+: All modals should have icons
+  title: ReactNode;           // Put any icon inside the title node (no separate `icon` prop)
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
+  variant?: 'dialog' | 'sheet';  // 'sheet' slides up from bottom; auto-selects by screen size
+  footer?: ReactNode;         // Optional sticky footer
+  className?: string;
   children: ReactNode;
 }
 ```
@@ -955,8 +957,7 @@ const { isOpen, open, close } = useModal();
 <Modal
   isOpen={isOpen}
   onClose={close}
-  title="Settings"
-  icon={<Settings className="w-5 h-5" />}
+  title={<><Settings className="w-5 h-5" /> Settings</>}
 >
   {/* Modal content */}
 </Modal>
@@ -1145,9 +1146,9 @@ import { ErrorBox } from '../components/ui/ErrorMessage';
 ```typescript
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
-  color?: 'accent' | 'current' | 'white' | 'muted';
+  color?: 'accent' | 'current';   // only these two
   className?: string;
-  label?: string;  // For accessibility
+  label?: string;  // For accessibility (Spinner only)
 }
 ```
 
@@ -1155,8 +1156,8 @@ interface SpinnerProps {
 - `sm` - 16px (inline, buttons)
 - `md` - 24px (default)
 - `lg` - 32px (sections)
-- `xl` - 48px (panels)
-- `2xl` - 64px (full-page)
+- `xl` - 40px (panels)
+- `2xl` - 48px (full-page)
 
 **Usage:**
 ```tsx
@@ -1165,8 +1166,8 @@ import { Spinner, SpinnerOverlay } from '../components/ui/Spinner';
 // Inline spinner
 <Spinner size="sm" />
 
-// Full area overlay
-<SpinnerOverlay size="lg" label="Loading players..." />
+// Full area overlay (note: SpinnerOverlay uses `text`, not `label`)
+<SpinnerOverlay size="lg" text="Loading players..." />
 
 // Button loading state (uses Spinner internally)
 <Button loading={isLoading}>Save</Button>

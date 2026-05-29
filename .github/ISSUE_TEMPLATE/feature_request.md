@@ -10,7 +10,7 @@ assignees: ''
 A clear description of the feature.
 
 ## Phase
-Which implementation phase does this belong to? (1-9)
+Which roadmap phase does this belong to? (see the in-app Roadmap; phases 1–10 + Future)
 
 ## User Story
 As a [type of user], I want [goal] so that [benefit].

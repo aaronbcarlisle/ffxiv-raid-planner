@@ -5,6 +5,8 @@
 1. **Savage Group Sheet** by Udra Virias (v1.8)
 2. **Arcadion Raid Team Gear Planning** by Wyssberk Kajitani (v7.4)
 
+> **Staleness note:** This sheet analyzes external Google Sheets and uses **Patch 7.2 (Cruiserweight)-era** item levels. It references gear categories ("Trash", "Wow", "Either") that do **not** exist in the app. The actual `GearSourceCategory` enum (`frontend/src/types/index.ts`) is: `savage`, `tome_up`, `catchup`, `tome`, `relic`, `crafted`, `prep`, `normal`, `unknown`. For current, code-accurate values see `docs/GEARING_REFERENCE.md` and `frontend/src/gamedata/`.
+
 ---
 
 ## 1. Structural Analysis

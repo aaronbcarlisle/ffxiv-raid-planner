@@ -1,5 +1,7 @@
 # Static Setup Wizard & UX Improvements Implementation Plan
 
+> **Status (May 27, 2026):** Implemented (Sessions 1–3): `components/wizard/SetupWizard.tsx`, `RosterSlot.tsx`, `steps/*`, and `components/player/PlayerSetupBanner.tsx` all shipped. Note: the Session 4 handoff's `PlayerCardActions.tsx` was never created — the `PlayerSetupBanner` approach was used instead. Test counts below are stale. Historical plan.
+
 ## Overview
 
 This plan addresses the unintuitive static creation process by implementing:

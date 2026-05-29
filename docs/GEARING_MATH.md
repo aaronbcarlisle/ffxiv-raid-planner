@@ -1,5 +1,9 @@
 # FFXIV Savage Gearing: Complete Mathematical Guide
 
+> **⚠️ Staleness warning (May 27, 2026):** This guide was last verified against **Patch 7.2 (AAC Cruiserweight)**. The current tier is **7.4 AAC Heavyweight (M9S–M12S)**, so the item-level tables, material names, and example numbers below are from older tiers. For tier-accurate, code-backed numbers use **[GEARING_REFERENCE.md](./GEARING_REFERENCE.md)** and the gamedata in `frontend/src/gamedata/` (`raid-tiers.ts`, `costs.ts`, `loot-tables.ts`).
+>
+> **Known conflicts with the app's actual data** (`frontend/src/gamedata/costs.ts`): the **solvent** weapon-upgrade material is **drop-only**, not book-purchasable; **glaze** costs **4** books (floor 2), not 3; and `SLOT_VALUE_WEIGHTS` uses **weapon 3.0 / body·legs 1.5**, not the 1.5/1.2 weights cited below. The general systems/theory in this guide remain useful, but trust the code for exact figures.
+
 A comprehensive reference for understanding and planning savage raid gear distribution within a static. This document covers the underlying systems, mathematical formulas, and strategic frameworks for optimal gear progression.
 
 ---
@@ -768,7 +772,6 @@ This document was compiled from the following verified sources:
 
 ---
 
-*Document Version: 2.0 (Verified)*  
+*Document Version: 2.0*  
 *For use with: FFXIV Raid Planner Tool*  
-*Last Updated: December 2024*  
-*Verified against: Dawntrail Patch 7.2 (AAC Cruiserweight Tier)*
+*Last verified against: Dawntrail Patch 7.2 (AAC Cruiserweight Tier) — see staleness warning at top; current tier is 7.4 Heavyweight.*

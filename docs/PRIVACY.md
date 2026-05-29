@@ -2,7 +2,7 @@
 
 This document provides transparency about how FFXIV Raid Planner handles your data, including what is collected, how it's stored, and the security measures in place.
 
-**Last Updated:** January 2026 (v1.11.1)
+**Last Updated:** May 2026 (v1.18.0)
 
 ---
 
@@ -19,8 +19,12 @@ This document provides transparency about how FFXIV Raid Planner handles your da
 | Email Address | **No** | Not collected (removed in v1.11.1) |
 | Game Data (BiS, gear) | Yes | Core app functionality |
 | Static Group Data | Yes | Core app functionality |
+| Usage Analytics | Yes | Anonymous-leaning feature usage (see below) |
+| Error Reports | Yes | Automatic crash/error diagnostics (see below) |
 
 *Internal system fields (id, created_at, updated_at, is_admin) are also stored for app functionality.*
+
+> **Note:** Usage analytics and error reporting were added in v1.16.0. See the [Usage Analytics & Error Reporting](#usage-analytics--error-reporting) section below for exactly what is captured and how long it's kept.
 
 ---
 
@@ -69,6 +73,20 @@ params = {
     "state": state,
 }
 ```
+
+### Anti-CSRF Fingerprint
+
+To prevent session-fixation attacks during login, the OAuth handshake is bound to your device with a one-way hash:
+
+```python
+# backend/app/routers/auth.py  -  _get_client_fingerprint()
+fingerprint_data = f"{client_ip}:{user_agent}"
+return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:32]
+```
+
+- Your IP address and browser user-agent are **hashed** (SHA-256, truncated) — the raw values are never stored.
+- The hash is used only to validate the OAuth round-trip and is **not persisted** to the `users` table.
+- This is a standard security measure, not tracking.
 
 ### Revoking Access
 
@@ -149,7 +167,47 @@ Your FFXIV-related data (BiS sets, gear progress, static groups) is stored to pr
 
 ---
 
+## Usage Analytics & Error Reporting
+
+Added in v1.16.0 to understand which features are used and to catch bugs proactively. This data powers the admin dashboard and Discord error alerts.
+
+### What's Collected
+
+**Usage events** (`analytics_events` table):
+
+| Field | Example | Notes |
+|-------|---------|-------|
+| `user_id` | your account UUID | **Nullable** — null for logged-out activity |
+| `session_id` | random per-session UUID | Not tied to your identity |
+| `event_category` / `event_name` | `navigation` / `tab_switch` | What kind of action occurred |
+| `event_data` | `{ "tab": "priority" }` | Small JSON context for the event |
+| `page_url` | `/group/abc/...` | Which page the event happened on |
+| `created_at` | timestamp | When it happened |
+
+Tracked actions include tab switches, BiS imports, loot logging, and wizard usage. **No keystrokes, message content, or gear values are sent as analytics** — only coarse "this feature was used" signals.
+
+**Error reports** (`error_reports` table): when the frontend or backend hits an error, it records the `error_type`, `message`, `stack_trace`, a small `context` JSON, `severity`, `source` (frontend/backend), and (if logged in) your `user_id` / `session_id`. Stack traces can incidentally contain technical details (URLs, component names) but are not used to build a profile of you.
+
+### Data Retention
+
+Raw analytics events older than **90 days** are aggregated into anonymous daily rollups (`analytics_daily_aggregates`) and the raw rows are discarded, so long-term storage holds only counts/metrics — not per-event history.
+
+### Who Can See It
+
+Only admins can view the analytics dashboard and error log. It is not shared with third parties. (Note: the production frontend also loads Vercel Analytics / Speed Insights for aggregate web vitals.)
+
+---
+
 ## Privacy Changes History
+
+### v1.16.0 - Analytics & Error Reporting (March 2026)
+
+**What changed:**
+- Added usage-analytics event tracking and automatic error reporting (see the section above)
+- Added a 90-day retention policy: raw events are rolled up into anonymous daily aggregates
+
+**Why:**
+To see which features are actually used and to catch crashes before users report them. Events are coarse-grained and `user_id` is nullable; no message content or gear values are captured as analytics.
 
 ### v1.11.1 - Email Removal (January 2026)
 

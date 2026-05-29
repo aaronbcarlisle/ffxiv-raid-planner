@@ -70,6 +70,9 @@ const CATEGORY_CONFIG: Record<
 /** Number of recent releases to show before grouping by month */
 const RECENT_RELEASES_COUNT = 10;
 
+/** Public-facing releases only — internal (dev-only) entries are never shown on this page */
+const PUBLIC_RELEASES = RELEASES.filter((r) => !r.internal);
+
 /** Group releases by month for the "older" section */
 function groupReleasesByMonth(releases: Release[]): Map<string, Release[]> {
   const groups = new Map<string, Release[]>();
@@ -153,10 +156,10 @@ function VersionNav({
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const scrollContainerNodeRef = useRef<HTMLDivElement | null>(null);
 
-  // Split releases into recent and older
+  // Split releases into recent and older (internal/dev-only entries are hidden here)
   const { recentReleases, olderReleases, olderByMonth } = useMemo(() => {
-    const recent = RELEASES.slice(0, RECENT_RELEASES_COUNT);
-    const older = RELEASES.slice(RECENT_RELEASES_COUNT);
+    const recent = PUBLIC_RELEASES.slice(0, RECENT_RELEASES_COUNT);
+    const older = PUBLIC_RELEASES.slice(RECENT_RELEASES_COUNT);
     const byMonth = groupReleasesByMonth(older);
     return { recentReleases: recent, olderReleases: older, olderByMonth: byMonth };
   }, []);
@@ -609,7 +612,7 @@ export default function ReleaseNotes() {
     if (hash && hash.startsWith('#v')) {
       return hash.slice(2); // Remove #v
     }
-    return RELEASES[0]?.version || '';
+    return PUBLIC_RELEASES[0]?.version || '';
   })();
 
   const [activeVersion, setActiveVersion] = useState(initialVersion);
@@ -620,7 +623,7 @@ export default function ReleaseNotes() {
   // Track expanded versions - Set allows multiple to be expanded
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(() => {
     // Include hash version in initial expanded set
-    const versions = [RELEASES[0]?.version, initialVersion].filter(Boolean);
+    const versions = [PUBLIC_RELEASES[0]?.version, initialVersion].filter(Boolean);
     return new Set(versions);
   });
 
@@ -667,7 +670,7 @@ export default function ReleaseNotes() {
       const viewportHeight = window.innerHeight;
 
       // Get all version sections
-      const sections = RELEASES.map(r => ({
+      const sections = PUBLIC_RELEASES.map(r => ({
         version: r.version,
         element: document.getElementById(`v${r.version}`),
       })).filter(s => s.element);
@@ -701,7 +704,7 @@ export default function ReleaseNotes() {
 
       // Fallback to first section
       if (!bestVersion) {
-        bestVersion = sections[0]?.version || RELEASES[0]?.version;
+        bestVersion = sections[0]?.version || PUBLIC_RELEASES[0]?.version;
       }
 
       if (bestVersion) {
@@ -778,7 +781,7 @@ export default function ReleaseNotes() {
 
         <main className="flex-1 min-w-0">
           <div className="space-y-4">
-            {RELEASES.map((release, idx) => (
+            {PUBLIC_RELEASES.map((release, idx) => (
               <ReleaseCard
                 key={release.version}
                 release={release}
@@ -789,7 +792,7 @@ export default function ReleaseNotes() {
             ))}
           </div>
 
-          {RELEASES.length === 0 && (
+          {PUBLIC_RELEASES.length === 0 && (
             <div className="text-center py-12 text-text-muted">No releases yet.</div>
           )}
         </main>

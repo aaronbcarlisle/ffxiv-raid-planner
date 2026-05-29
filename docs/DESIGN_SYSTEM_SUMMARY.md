@@ -82,6 +82,8 @@ Complete guide covering:
 
 ### 1. Pre-commit Hook
 
+(suggestion — not currently in the repo)
+
 Add to `package.json`:
 ```json
 {
@@ -92,6 +94,8 @@ Add to `package.json`:
 ```
 
 ### 2. VSCode Task
+
+(suggestion — not currently in the repo)
 
 Create `.vscode/tasks.json`:
 ```json
@@ -114,6 +118,8 @@ Create `.vscode/tasks.json`:
 Press `Ctrl+Shift+B` → "Check Design System"
 
 ### 3. Keyboard Shortcut
+
+(suggestion — not currently in the repo)
 
 Add to `.vscode/keybindings.json`:
 ```json
@@ -168,7 +174,7 @@ As of this commit:
 - ✅ ESLint rules: Active (warn mode)
 - ✅ Bash checks: Active (CI blocking)
 - ✅ Documentation: Complete
-- ⚠️  Violations: 152 warnings (design-system + react-hooks combined)
+- ⚠️  Violations: run `pnpm lint` for the current count (warnings only — these don't fail CI; ~160 at last check)
 
 ## 🎓 Learning Resources
 

@@ -1,23 +1,32 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** March 18, 2026
-**Current Version:** v1.15.0
+**Last Updated:** May 27, 2026
+**Current Version:** v1.18.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
 
 ## Session Continuity (for AI assistants)
 
-**Current Branch:** `frontend/ui-upgrade-2026` (active UI upgrade work)
+**Current Branch:** `main`
 
 **Recent Completions:**
-- **2026-03-18:** Frontend UI upgrade (branch: `frontend/ui-upgrade-2026`, 6 phases):
-  - Phase 1: Typography (Exo 2 display font), activated dormant card depth classes, fixed 9 Skeleton design system violations
-  - Phase 2: Motion system (framer-motion presets), CSS stagger animations, shimmer skeletons, page transitions, card hover lift
-  - Phase 3: Landing page transformation (hero gradient, staggered entrance, feature card icons, tier timeline)
-  - Phase 4: Toast enter/exit animations, PageSkeleton loader, EmptyState component
-  - Phase 5: Header gradient accent, progress ring glow at 75%+
-  - Phase 6: Bundle size monitoring (size-limit), framer-motion chunk splitting
+- **2026-05-27:** v1.18.0 — Raid Schedule & Availability (PR #83):
+  - Schedule tab (`components/schedule/`) for one-off/recurring raid sessions with RSVPs (available/tentative/unavailable)
+  - When2Meet-style availability heat map; times stored in static timezone, auto-converted to local
+  - `schedule` + `availability` models, `schedule.py` router, `dev_auth.py` dev auth gating
+  - Fix: member sessions now hydrate on load (member-only edit/save no longer blocked after refresh)
+- **2026-03-19:** v1.17.0 — Loot Log Restructure (PR #81):
+  - Tab rename: Loot → Priority, Log → Loot Log; sub-view rename Week → Grid, History → List
+  - "All Weeks" loot view (filterable/sortable table across all weeks), multi-entry grid badges (×N)
+  - URL backward compatibility (`?tab=loot` maps to Priority)
+- **2026-03-19:** v1.16.0 — Analytics & Error Reporting (PR #76):
+  - Admin analytics dashboard (sidebar nav, KPI cards, Recharts growth charts, top users/statics, feature usage)
+  - Automatic frontend/backend error reporting with grouped log, severity filtering, mark-as-reviewed
+  - Usage analytics tracking, Discord webhook alerts for critical/recurring errors, 90-day data retention rollups
+  - `analytics` model + `analytics.py` router; admin pages under `pages/admin/`
+- **2026-03-19:** v1.15.1 — Gear slot row highlighting (PR #75): Alt+click highlights specific gear row, weapon nav accuracy fixes
+- **2026-03-19:** v1.15.0 — UI Polish (PR #74): Exo 2 typography, framer-motion system, landing page refresh, visual depth, bundle monitoring (this was the former `frontend/ui-upgrade-2026` branch, now merged)
 - **2026-03-06:** PR #72 merged: API docs updated to document API key auth
   - ApiDocs and ApiCookbook updated with Python/C#/curl examples using Bearer xrp_ auth
   - Base URL convention fixed, C# snippets use env vars consistently
@@ -57,9 +66,8 @@
 | **Medium (P2)** | 0 | 0 |
 | **Low (P3)** | 7 | 15.5 |
 | **Tech Debt - Lint (P3)** | 2 | 6 |
-| **Planned** | 1 | TBD |
 | **Future (Phase 7+)** | 4 | TBD |
-| **Total** | 14 | ~21.5 hrs |
+| **Total** | 13 | ~21.5 hrs |
 
 ---
 
@@ -127,7 +135,7 @@
 - **Effort:** 2 hours investigation
 
 ### L-008: Deprecated execCommand Clipboard
-- **Files:** Dashboard.tsx:215, Home.tsx:61, Header.tsx:125,151
+- **Files:** Dashboard.tsx:215, Home.tsx:61, Header.tsx:114 (invite copy fallback)
 - **Issue:** Using deprecated `document.execCommand('copy')` as fallback
 - **Fix:** Show toast on fallback failure, consider removing fallback entirely
 - **Effort:** 30 minutes
@@ -147,7 +155,7 @@
 **Current Warning Count:** 152 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
-**Test Coverage:** ~949 tests (346 backend + 508 frontend + 95 scripts)
+**Test Coverage:** ~988 tests (390 backend + ~503 frontend + 95 scripts)
 **Note:** 5 fixture errors in `tests/test_httponly_cookies.py` (pre-existing, tests run but async fixtures fail in isolation)
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
@@ -173,21 +181,6 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - ✅ React Refresh warnings - resolved
 - ✅ Refs during render - resolved
 - ✅ Earlier quick wins (unused variables, prefer-const, no-constant-condition)
-
----
-
-## Planned
-
-### UI Reorganization: Header, Settings, and Actions
-- **Plan:** Implementation steps outlined below (plan doc not yet created)
-- **Scope:**
-  1. Header breadcrumb layout: `[Static ▼] > [Tier ▼] [⋮]`
-  2. Tier actions in dedicated kebab menu (⋮)
-  3. Settings slide-out panel with 4 tabs (replaces modal)
-  4. Add Player button on Roster tab
-  5. Log tab toolbar consolidation
-- **Status:** Not started — infrastructure partially exists (SettingsPanel, PriorityTab, GeneralTab)
-- **Phases:** 4 (see plan for details)
 
 ---
 
@@ -226,6 +219,17 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 ---
 
 ## Recently Verified as Complete (v1.7.0+)
+
+### v1.15.0 – v1.18.0 (March–May 2026)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Frontend UI Upgrade** | ✅ DONE | v1.15.0 (PR #74) — Exo 2 typography, framer-motion system, landing refresh, depth, bundle monitoring |
+| **Gear Slot Highlighting** | ✅ DONE | v1.15.1 (PR #75) — Alt+click highlights gear row, weapon nav accuracy |
+| **Analytics & Error Reporting** | ✅ DONE | v1.16.0 (PR #76) — admin analytics dashboard, automatic error log, usage tracking, Discord alerts, retention |
+| **Loot Log Restructure** | ✅ DONE | v1.17.0 (PR #81) — Loot→Priority tab rename, All Weeks view, multi-entry badges |
+| **Raid Schedule & Availability** | ✅ DONE | v1.18.0 (PR #83) — Schedule tab, RSVPs, When2Meet availability grid, dev auth gating |
+| **UI Reorganization** | ✅ DONE | Header breadcrumb (`[Static ▼] › [Tier ▼]`), `TierActionsMenu` kebab, `SettingsPanel` slide-out — formerly tracked under "Planned" |
 
 ### Session 7: UI Consistency Sprint (January 19, 2026)
 
@@ -360,4 +364,4 @@ engine = create_async_engine(
 
 **Document Consolidation:**
 This file consolidates findings from 43 session handoffs, 10 audits, 9 plans, and 6 implementation docs.
-Last validated against the actual codebase on March 18, 2026.
+Last validated against the actual codebase on May 27, 2026.

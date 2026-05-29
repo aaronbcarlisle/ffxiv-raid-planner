@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.14.0 | **Next:** UI Reorganization, Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.18.0 | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
 
 A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
 
@@ -91,12 +91,12 @@ pnpm dev                          # Frontend only
 pnpm build && pnpm tsc --noEmit   # Build + type check
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
-pnpm test                         # Frontend tests (508)
+pnpm test                         # Frontend tests (~503)
 
 # Backend
 cd backend && source venv/bin/activate
 uvicorn app.main:app --reload --port 8001
-pytest tests/ -q                  # Backend tests (346)
+pytest tests/ -q                  # Backend tests (390)
 
 # Scripts
 cd scripts && npm test            # Scripts tests (95)
@@ -156,16 +156,20 @@ See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for prioritized remaining 
 
 ```
 backend/app/
-├── models/        # User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer
+├── models/        # User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer, ScheduleSession, Availability, analytics
 ├── schemas/       # Pydantic request/response
-├── routers/       # auth, static_groups, tiers
+├── routers/       # auth, static_groups, tiers, loot_tracking, bis, invitations, api_keys, schedule, analytics, dev_auth
 └── permissions.py # Role checks, admin helpers
 
 frontend/src/
 ├── components/
 │   ├── player/       # PlayerCard, PlayerGrid, GearTable, BiSImportModal
 │   ├── loot/         # LootPriorityPanel, FloorSelector, QuickLogDropModal
-│   ├── history/      # WeeklyLootGrid, SectionedLogView
+│   ├── priority/     # Priority tab panels
+│   ├── history/      # WeeklyLootGrid, SectionedLogView, All Weeks view
+│   ├── schedule/     # ScheduleTab, AvailabilityGrid, CreateSessionModal, SessionCard
+│   ├── settings/     # SettingsPanel (slide-out, replaces settings modal)
+│   ├── admin/        # AdminSidebar, AdminKpiCard, analytics dashboard pieces
 │   ├── wizard/       # SetupWizard, RosterSlot, step components
 │   └── ui/           # Modal, ContextMenu, Button, Input
 ├── hooks/            # useGroupViewState, usePlayerActions, useModal
@@ -191,6 +195,10 @@ frontend/src/
 **BiS Import:** `GET /api/bis/presets/{job}`, `GET /api/bis/xivgear/{uuid}`, `GET /api/bis/etro/{uuid}`
 
 **Loot:** `GET/POST/DELETE .../loot-log`, `GET/POST/DELETE .../material-log`, `GET/POST .../page-ledger`, `GET .../page-balances`, `POST .../mark-floor-cleared`
+
+**Schedule:** `GET/POST .../static-groups/{id}/schedule`, `PUT/DELETE .../schedule/{sessionId}`, `POST .../schedule/{sessionId}/rsvp`, `GET/PUT .../static-groups/{id}/availability`
+
+**Analytics:** `POST /api/analytics/events`, `POST /api/analytics/errors`, `GET /api/admin/analytics/{overview|growth|usage|top-users|top-statics|errors}` (admin-only)
 
 ---
 

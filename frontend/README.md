@@ -28,8 +28,11 @@ pnpm tsc --noEmit
 # Lint
 pnpm lint
 
-# Format code
-pnpm format
+# Design system compliance
+pnpm check:design-system
+
+# Run tests
+pnpm test
 ```
 
 ## Project Structure
@@ -37,16 +40,23 @@ pnpm format
 ```
 src/
 ├── components/
-│   ├── player/        # PlayerCard, GearTable, JobPicker
-│   ├── loot/          # LootPriority, FloorSelector
-│   ├── team/          # TeamSummary
-│   ├── static-group/  # TierSelector, GroupSettings, Invitations
+│   ├── player/        # PlayerCard, PlayerGrid, GearTable, JobPicker
+│   ├── loot/          # LootPriorityPanel, FloorSelector, QuickLogDropModal
+│   ├── priority/      # Priority tab panels
+│   ├── history/       # WeeklyLootGrid, SectionedLogView, All Weeks view
+│   ├── schedule/      # ScheduleTab, AvailabilityGrid, CreateSessionModal
+│   ├── settings/      # SettingsPanel slide-out
+│   ├── admin/         # Admin analytics dashboard pieces
+│   ├── wizard/        # SetupWizard, RosterSlot, step components
+│   ├── weapon-priority/ # Weapon priority tracking
+│   ├── static-group/  # TierSelector, Invitations
 │   ├── auth/          # LoginButton, UserMenu
 │   ├── layout/        # Header, Layout
-│   └── ui/            # JobIcon, Modal, Toast, ContextMenu
-├── pages/             # Home, Dashboard, GroupView, AuthCallback, InviteAccept
+│   ├── primitives/    # Button, IconButton, low-level primitives
+│   └── ui/            # JobIcon, Modal, Toast, ContextMenu, Select, Input
+├── pages/             # Home, Dashboard, GroupView, AdminDashboard, docs pages
 ├── stores/            # Zustand state management
-├── services/          # API client utilities
+├── hooks/             # Custom hooks (useGroupViewState, usePlayerActions, etc.)
 ├── gamedata/          # Jobs, costs, loot tables, tiers
 ├── utils/             # Calculations, priority logic
 └── types/             # TypeScript interfaces
