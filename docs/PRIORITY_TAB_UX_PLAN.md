@@ -1,5 +1,7 @@
 # Priority Tab UX Reorganization Plan
 
+> **Status (May 27, 2026):** ✅ Implemented and verified (`components/settings/PriorityTab.tsx` with mode/advanced subtabs; the "+ Log Floor" button change shipped in `LootPriorityPanel.tsx`). Historical reference.
+
 **Status:** ✅ COMPLETE
 **Created:** 2026-02-01
 **Completed:** 2026-02-01

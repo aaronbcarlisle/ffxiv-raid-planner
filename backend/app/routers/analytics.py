@@ -12,7 +12,7 @@ from sqlalchemy import distinct, func, literal_column, select, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_current_user_optional
 from ..logging_config import get_logger
 from ..models import (
     AnalyticsEvent,
@@ -81,15 +81,20 @@ def _parse_range(range_str: str) -> datetime | None:
 async def receive_events(
     request: Request,
     batch: AnalyticsEventBatch,
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Receive a batch of analytics events from the frontend."""
+    """Receive a batch of analytics events from the frontend.
+
+    Authentication is optional: anonymous (logged-out) activity is recorded with
+    a null user_id, matching the nullable AnalyticsEvent.user_id column.
+    """
     now = datetime.now(timezone.utc).isoformat()
+    user_id = user.id if user else None
 
     for event_in in batch.events:
         event = AnalyticsEvent(
-            user_id=user.id,
+            user_id=user_id,
             session_id=batch.session_id or "",
             event_category=event_in.event_category,
             event_name=event_in.event_name,
@@ -103,7 +108,7 @@ async def receive_events(
 
     logger.info(
         "analytics_events_received",
-        user_id=user.id,
+        user_id=user_id,
         count=len(batch.events),
     )
 
@@ -115,13 +120,18 @@ async def receive_events(
 async def receive_error_report(
     request: Request,
     report: ErrorReportIn,
-    user: User = Depends(get_current_user),
+    user: User | None = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Receive a single error report from the frontend."""
+    """Receive a single error report from the frontend.
+
+    Authentication is optional: errors from logged-out users are recorded with a
+    null user_id, matching the nullable ErrorReport.user_id column.
+    """
+    user_id = user.id if user else None
     error = ErrorReport(
         fingerprint=report.fingerprint,
-        user_id=user.id,
+        user_id=user_id,
         session_id=None,  # Will be set by frontend reporter in future
         error_type=report.error_type,
         message=report.message,
@@ -137,7 +147,7 @@ async def receive_error_report(
 
     logger.info(
         "error_report_received",
-        user_id=user.id,
+        user_id=user_id,
         fingerprint=report.fingerprint,
         error_type=report.error_type,
         severity=report.severity,

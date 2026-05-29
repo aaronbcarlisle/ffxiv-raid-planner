@@ -18,3 +18,11 @@ export const isLocalhostApi = API_BASE_URL.includes('localhost');
 export const DISCORD_BUG_REPORT_URL =
   import.meta.env.VITE_DISCORD_BUG_REPORT_URL ||
   'https://discord.com/channels/1461997093399957527/1462005836841750587';
+
+// Public Discord community invite
+export const DISCORD_INVITE_URL =
+  import.meta.env.VITE_DISCORD_INVITE_URL || 'https://discord.gg/Ck2tBdzn';
+
+// Source repository
+export const GITHUB_REPO_URL =
+  import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/aaronbcarlisle/ffxiv-raid-planner';

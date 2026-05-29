@@ -212,8 +212,6 @@ const PHASES: Phase[] = [
     icon: Book,
     items: [
       { title: 'Alt job tracking per player' },
-      { title: 'Raid schedule integration' },
-      { title: 'Crafting material tracking' },
       { title: 'Cross-static loot sharing' },
     ],
   },
@@ -226,11 +224,6 @@ interface Issue {
 }
 
 const KNOWN_ISSUES: Issue[] = [
-  {
-    title: 'No database migrations',
-    description: 'Schema changes require manual database updates. Alembic migrations planned.',
-    priority: 'high',
-  },
   {
     title: 'Large component files',
     description: 'Some view components exceed 500 lines. Refactoring into smaller components planned.',
@@ -573,7 +566,7 @@ export default function RoadmapDocs() {
               </div>
             </div>
             <p className="text-sm text-text-muted mt-4">
-              These issues are tracked internally and will be addressed before public launch.
+              These issues are tracked internally and addressed incrementally across releases.
             </p>
           </section>
         </main>

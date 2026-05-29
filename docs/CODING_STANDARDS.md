@@ -282,18 +282,17 @@ const statusColors = {
 
 ### Component Styling
 
-```typescript
-// Use Tailwind classes directly
-<button className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/90">
+```tsx
+// Use design system primitives, not raw elements (see docs/UI_COMPONENTS.md)
+import { Button } from '../components/primitives/Button';
+<Button variant="primary">Save</Button>
 
-// Use cn() utility for conditional classes
-import { cn } from '../lib/utils';
-
-<div className={cn(
-  'base-styles',
-  isActive && 'active-styles',
-  variant === 'danger' && 'text-red-500'
-)}>
+// Conditional classes: use template literals (there is no `cn()` helper in this codebase)
+<div
+  className={`base-styles ${isActive ? 'active-styles' : ''} ${
+    variant === 'danger' ? 'text-status-error' : ''
+  }`}
+>
 
 // Avoid inline styles except for dynamic values
 <div style={{ width: `${percentage}%` }}>

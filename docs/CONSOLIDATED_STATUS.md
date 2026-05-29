@@ -1,32 +1,35 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** March 18, 2026
+**Last Updated:** May 27, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.14.0
+### Current Version: v1.18.0
 
 **Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| **Raid Schedule & Availability** | ✅ Complete | PR #83 - Schedule tab, RSVPs, When2Meet availability grid, dev auth gating |
+| **Loot Log Restructure** | ✅ Complete | PR #81 - Loot→Priority tab rename, All Weeks view, multi-entry badges |
+| **Analytics & Error Reporting** | ✅ Complete | PR #76 - admin analytics dashboard, automatic error log, usage tracking, Discord alerts |
+| **UI Reorganization** | ✅ Complete | Header breadcrumb, TierActionsMenu kebab, SettingsPanel slide-out |
+| **Frontend UI Upgrade** | ✅ Complete | PR #74-75 - Exo 2 typography, framer-motion system, landing refresh, gear slot highlighting |
 | **API Key Auth** | ✅ Complete | PR #70 - API keys for Dalamud plugin, server-side loot priority |
-| **API Docs Update** | ✅ Complete | PR #72 - API docs updated to document API key auth |
 | **Light Mode Theme** | ✅ Complete | PR #68 - Full light mode with day/night toggle in user menu |
 | **Flexible Priority Control** | ✅ Complete | PR #66-67 - Priority modes, per-job/player modifiers, log week wizard |
 | **Mobile UX Optimization** | 🔨 ~80% | PR #60 - First pass complete; polish and refinements remaining |
-| **Materia in Gear Tooltips** | ✅ Complete | PR #58 - L-003 resolved |
-| **Multi-Set XIVGear Support** | ✅ Complete | PR #59 - Store setIndex in shortlink bisLinks |
 
 ### 🔨 Next Up
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Frontend UI Upgrade** | 🔨 In Progress | Branch `frontend/ui-upgrade-2026` — typography, motion system, landing page, toast polish, surface atmosphere, bundle monitoring |
-| **UI Reorganization** | Planned | Header breadcrumbs, settings panel, toolbar consolidation |
+| **Phase 7: Lodestone Auto-Sync** | Planned | Verify equipped gear against Lodestone, character linking |
+| **Phase 8: FFLogs Integration** | Planned | Parse logs for gear verification, link FFLogs profiles |
+| **P3 / Tech Debt** | Backlog | L-001–L-009 polish items, lint warning cleanup (see OUTSTANDING_WORK.md) |
 
 ### ✅ Completed Features (Production Ready)
 
@@ -64,6 +67,45 @@
 ---
 
 ## Version History
+
+### v1.18.0 - Raid Schedule & Availability (May 27, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Raid Session Scheduling** | ✅ Complete | Schedule tab for one-off/recurring sessions; times in static timezone, auto-converted to local; RSVP available/tentative/unavailable |
+| **Availability Heat Map** | ✅ Complete | When2Meet-style grid; overlapping free slots highlighted to find best raid windows |
+| **Dev Auth Gating** | ✅ Complete | `dev_auth.py` router tightens development authentication |
+| **Member Session Hydration Fix** | ✅ Complete | Logged-in members no longer fail to load after refresh (unblocks member edit/save) |
+
+### v1.17.0 - Loot Log Restructure (March 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Tab Rename** | ✅ Complete | Loot → Priority, Log → Loot Log; sub-views Week → Grid, History → List |
+| **All Weeks View** | ✅ Complete | Filterable/sortable table of every loot + material entry across all weeks |
+| **Multi-Entry Grid Badges** | ✅ Complete | Grid cells with multiple entries show ×N badge, click to expand |
+| **URL Backward Compatibility** | ✅ Complete | `?tab=loot` maps to Priority; `?tab=priority` is new canonical |
+
+### v1.16.0 - Analytics & Error Reporting (March 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Admin Analytics Dashboard** | ✅ Complete | Sidebar nav, KPI cards, Recharts growth charts, top users/statics, feature usage (pages under `pages/admin/`) |
+| **Automatic Error Reporting** | ✅ Complete | Frontend + backend errors captured with grouped log, severity filtering, mark-as-reviewed |
+| **Usage Analytics Tracking** | ✅ Complete | Tracks tab switches, BiS imports, loot logging, wizard usage, etc. (`analytics` model + `analytics.py` router) |
+| **Discord Error Alerts** | ✅ Complete | Critical/recurring errors trigger Discord webhook notifications |
+| **Data Retention** | ✅ Complete | Raw events older than 90 days aggregated into daily rollups |
+
+### v1.15.0 / v1.15.1 - UI Polish & Gear Highlighting (March 19, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Typography Upgrade** | ✅ Complete | Exo 2 display font for headings, Inter for body |
+| **Motion System** | ✅ Complete | framer-motion presets: page transitions, staggered reveals, shimmer skeletons, toast animations (respects reduced-motion) |
+| **Landing Page Refresh** | ✅ Complete | Hero gradient, staggered entrance, feature card icons, tier timeline |
+| **Visual Depth** | ✅ Complete | Card hover glow, progress ring glow at 75%+, shadow-xl modals |
+| **Bundle Size Monitoring** | ✅ Complete | size-limit tracking for JS/CSS bundles |
+| **Gear Slot Row Highlight** | ✅ Complete | v1.15.1 - Alt+click highlights specific gear row; weapon nav accuracy fixes |
 
 ### v1.14.0 - Plugin API (March 1, 2026)
 
@@ -202,7 +244,7 @@
 | **P1-DEVOPS-001** | ✅ Fixed | Removed dual lockfiles, standardized on pnpm |
 | **P1-SEC-004** | ⏭️ N/A | ecdsa CVE not exploitable (we use HS256, not ECDSA) |
 
-**Test Coverage:** 346 backend (5 fixture errors in test_httponly_cookies.py) + 508 frontend + 95 scripts = ~949 tests
+**Test Coverage:** 390 backend (5 fixture errors in test_httponly_cookies.py) + ~503 frontend + 95 scripts = ~988 tests
 
 ---
 
@@ -359,12 +401,14 @@
 
 ## Test Coverage
 
-**Total: ~949 tests (346 backend + 508 frontend + 95 scripts)**
+**Total: ~988 tests (390 backend + ~503 frontend + 95 scripts)**
 
-### Backend (346 tests)
+### Backend (390 tests, 25 files)
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
+- `test_schedule.py` - Raid session scheduling and availability
+- `test_dev_auth.py` - Development auth gating
 - `test_api_keys.py` - API key creation, listing, revocation, auth
 - `test_admin_system.py` - Admin access and View As feature
 - `test_auth_utils.py` - JWT token creation/verification
@@ -385,7 +429,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_week_management.py` / `test_weekly_assignments.py` - Weekly loot workflows
 
-### Frontend (508 tests)
+### Frontend (~503 tests, 22 files)
 ```bash
 cd frontend && pnpm test
 ```
@@ -441,7 +485,7 @@ docs/
 ├── CODING_STANDARDS.md          # Code style and patterns
 ├── GEARING_REFERENCE.md         # FFXIV gearing data
 ├── GEARING_MATH.md              # Gearing mechanics and formulas
-├── UI_REORGANIZATION_PLAN.md    # Planned UI restructure (not started)
+├── UI_REORGANIZATION_PLAN.md    # UI restructure plan (implemented)
 ├── SETUP_WIZARD_PLAN.md         # Setup wizard plan (complete)
 ├── plans/                       # Technical audit session plans
 │   ├── COMBINED_AUDIT_PLAN.md   # Master plan (47 issues, 12 sessions)
