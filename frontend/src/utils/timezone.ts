@@ -129,3 +129,24 @@ export function addDurationInTimeZone(value: string, durationMs: number, timeZon
   return toZonedDatetimeLocalValue(endDate.toISOString(), timeZone);
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Advance an ISO datetime by 7-day increments until it falls in the future.
+ *
+ * Used when creating a session from an availability recommendation — the
+ * recommendation's `startIso` may be a past date (the week the availability
+ * data was entered), so we project it forward to the next upcoming occurrence
+ * of the same weekday and time.
+ *
+ * If the input is already in the future it is returned unchanged.
+ */
+export function resolveNearestUpcomingDatetime(isoString: string): string {
+  const date = new Date(isoString);
+  const now = Date.now();
+  while (date.getTime() <= now) {
+    date.setTime(date.getTime() + WEEK_MS);
+  }
+  return date.toISOString();
+}
+

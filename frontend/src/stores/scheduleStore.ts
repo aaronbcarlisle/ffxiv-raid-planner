@@ -22,6 +22,7 @@ interface ScheduleState {
   fetchSettings: (groupId: string) => Promise<void>;
   updateSettings: (groupId: string, data: ScheduleSettingsUpdate) => Promise<void>;
   sendTestReminder: (groupId: string) => Promise<void>;
+  postSessionPreview: (groupId: string) => Promise<void>;
   regenerateCalendar: (groupId: string) => Promise<void>;
   revokeCalendar: (groupId: string) => Promise<void>;
   createSession: (groupId: string, data: ScheduleSessionCreate) => Promise<void>;
@@ -80,6 +81,16 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     set({ error: null });
     try {
       await api.post(`/api/static-groups/${groupId}/scheduler/settings/test-reminder`);
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
+  postSessionPreview: async (groupId: string) => {
+    set({ error: null });
+    try {
+      await api.post(`/api/static-groups/${groupId}/scheduler/settings/post-session-preview`);
     } catch (err) {
       set({ error: (err as Error).message });
       throw err;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Calendar, CalendarClock, Copy, Link2, Plus, RotateCcw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { Bell, Calendar, CalendarClock, Copy, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
@@ -33,6 +33,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     fetchSettings,
     updateSettings,
     sendTestReminder,
+    postSessionPreview,
     regenerateCalendar,
     revokeCalendar,
     createSession,
@@ -358,12 +359,26 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                           type="button"
                           size="sm"
                           variant="secondary"
-                          onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Sent'))}
+                          onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Test sent'))}
                           disabled={!settings?.webhookConfigured && !webhookUrl}
                         >
-                          {integrationMessage === 'Sent' ? 'Sent' : 'Send test'}
+                          {integrationMessage === 'Test sent' ? 'Test sent' : 'Send test'}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          leftIcon={<Send className="h-4 w-4" />}
+                          onClick={() => void postSessionPreview(groupId).then(() => setIntegrationMessage('Session posted to Discord'))}
+                          disabled={!settings?.webhookConfigured || sessions.length === 0}
+                          title={sessions.length === 0 ? 'No upcoming sessions to post' : 'Post the next upcoming session to Discord'}
+                        >
+                          Post latest session
                         </Button>
                       </div>
+                      <p className="text-xs text-text-muted">
+                        Webhook posts planner announcements. Discord reactions and buttons require a future bot integration.
+                      </p>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">

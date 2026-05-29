@@ -3,7 +3,7 @@ import { Clock3, MousePointer2, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useAuthStore } from '../../stores/authStore';
-import { getBrowserTimezone } from '../../utils/timezone';
+import { getBrowserTimezone, resolveNearestUpcomingDatetime } from '../../utils/timezone';
 import { Badge } from '../primitives';
 import { AvailabilityRecommendations } from './AvailabilityRecommendations';
 import {
@@ -262,13 +262,24 @@ export function AvailabilityGrid({
   );
 
   const handleCreateSessionDraft = (recommendation: (typeof recommendations)[number]) => {
+    // Advance past start times to the next upcoming occurrence of the same weekday
+    const resolvedStart = resolveNearestUpcomingDatetime(recommendation.startIso);
+    const durationMs = new Date(recommendation.endIso).getTime() - new Date(recommendation.startIso).getTime();
+    const resolvedEnd = new Date(new Date(resolvedStart).getTime() + durationMs).toISOString();
+
+    // Map JS day-of-week (0=Sun … 6=Sat) to iCal BYDAY key
+    const BYDAY_KEYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
+    const dayIndex = new Date(resolvedStart).getUTCDay();
+    const bydayKey = BYDAY_KEYS[dayIndex];
+
     onCreateSessionDraft({
       title: 'Recommended Raid Night',
       description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the best raid windows panel.`,
-      startTime: recommendation.startIso,
-      endTime: recommendation.endIso,
+      startTime: resolvedStart,
+      endTime: resolvedEnd,
       timezone: referenceTimezone,
-      isRecurring: false,
+      isRecurring: true,
+      recurrenceRule: `FREQ=WEEKLY;BYDAY=${bydayKey}`,
     });
   };
 

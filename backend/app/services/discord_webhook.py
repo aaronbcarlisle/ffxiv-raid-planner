@@ -35,8 +35,11 @@ Message editing:
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -51,6 +54,16 @@ settings = get_settings()
 
 # Discord embed colour — teal accent (#14b8a6)
 _EMBED_COLOR = 0x14B8A6
+
+_BYDAY_FULL: dict[str, str] = {
+    "MO": "Monday",
+    "TU": "Tuesday",
+    "WE": "Wednesday",
+    "TH": "Thursday",
+    "FR": "Friday",
+    "SA": "Saturday",
+    "SU": "Sunday",
+}
 
 _RSVP_LABELS: dict[str, tuple[str, str]] = {
     "available": ("✅", "Available"),
@@ -79,6 +92,64 @@ class SessionAnnouncementData:
     # Total non-viewer member count — used to derive no-response count.
     total_member_count: int = 8
     session_description: str | None = None
+    recurrence_summary: str | None = None
+
+
+def _recurrence_rule_to_text(rule: str | None) -> str | None:
+    """Convert an iCal RRULE string to a human-readable summary.
+
+    Handles ``FREQ=WEEKLY;BYDAY=SA`` and similar forms.
+    Returns ``None`` for unknown/empty rules.
+
+    Examples::
+        'FREQ=WEEKLY;BYDAY=SA'        → 'Repeats weekly on Saturday'
+        'FREQ=WEEKLY;BYDAY=SA,SU'     → 'Repeats weekly on Saturday, Sunday'
+    """
+    if not rule:
+        return None
+    parts = dict(p.split("=", 1) for p in rule.upper().split(";") if "=" in p)
+    freq = parts.get("FREQ", "")
+    if freq != "WEEKLY":
+        return None
+    byday = parts.get("BYDAY", "")
+    if not byday:
+        return "Repeats weekly"
+    day_keys = [d.strip() for d in byday.split(",")]
+    day_names = [_BYDAY_FULL.get(k, k) for k in day_keys]
+    return "Repeats weekly on " + ", ".join(day_names)
+
+
+def _next_occurrence_iso(start_iso: str, recurrence_rule: str | None) -> str:
+    """Return the ISO timestamp of the next upcoming occurrence.
+
+    For a non-recurring session returns ``start_iso`` unchanged.
+    For a weekly recurring session, advances ``start_iso`` by 7-day
+    increments until the result is in the future (UTC).
+
+    If the start cannot be parsed, ``start_iso`` is returned as-is.
+    """
+    dt = _parse_dt(start_iso)
+    if dt is None:
+        return start_iso
+    if not recurrence_rule:
+        return start_iso
+    parts = dict(p.split("=", 1) for p in recurrence_rule.upper().split(";") if "=" in p)
+    if parts.get("FREQ") != "WEEKLY":
+        return start_iso
+    now = datetime.now(timezone.utc)
+    while dt <= now:
+        dt += timedelta(weeks=1)
+    return dt.isoformat()
+
+
+def compute_rsvp_hash(rsvp_counts: dict[str, int]) -> str:
+    """Return a short SHA-256 hex digest of the RSVP counts.
+
+    Used to detect whether the RSVP state changed between two webhook fires
+    so that unchanged states can skip a Discord EDIT call.
+    """
+    canonical = json.dumps(rsvp_counts, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
 def _parse_dt(iso: str) -> datetime | None:
@@ -163,6 +234,13 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
         "inline": False,
     })
 
+    if data.recurrence_summary:
+        fields.append({
+            "name": "Recurrence",
+            "value": data.recurrence_summary,
+            "inline": True,
+        })
+
     subs_needed = compute_subs_needed(data.rsvp_counts, data.total_member_count)
     if subs_needed > 0:
         slot_word = "slot" if subs_needed == 1 else "slots"
@@ -186,6 +264,26 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
     return {
         "embeds": [embed],
         "content": f"[View in planner]({data.session_url})",
+    }
+
+
+def build_cancelled_payload(data: SessionAnnouncementData) -> dict[str, Any]:
+    """Build a Discord webhook payload for a cancelled/deleted session.
+
+    Posts a minimal embed with a ~~struck-through~~ title and a
+    ❌ Cancelled field so the thread is clearly marked without needing
+    to delete the original message (which would require storing thread IDs).
+    """
+    embed: dict[str, Any] = {
+        "title": f"~~{data.session_title}~~",
+        "url": data.session_url,
+        "color": 0x5C5C5C,  # Neutral grey
+        "fields": [{"name": "Status", "value": "❌ Cancelled", "inline": True}],
+        "footer": {"text": data.static_group_name},
+    }
+    return {
+        "embeds": [embed],
+        "content": f"~~[View in planner]({data.session_url})~~",
     }
 
 

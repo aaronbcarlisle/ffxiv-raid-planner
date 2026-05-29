@@ -15,10 +15,19 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..config import get_settings
+from ..logging_config import get_logger
 from ..dependencies import get_current_user
-from ..services.discord_webhook import build_test_reminder_payload
+from ..services.discord_webhook import (
+    SessionAnnouncementData,
+    build_cancelled_payload,
+    build_session_announcement_payload,
+    build_test_reminder_payload,
+    compute_rsvp_hash,
+    _next_occurrence_iso,
+    _recurrence_rule_to_text,
+)
 from ..exceptions import ValidationError
-from ..models import Membership, MemberRole, User
+from ..models import Membership, MemberRole, StaticGroup, User
 from ..models.availability import UserAvailability
 from ..models.schedule import ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
@@ -47,6 +56,7 @@ from ..schemas.schedule import (
 
 router = APIRouter(prefix="/api", tags=["schedule"])
 settings = get_settings()
+logger = get_logger(__name__)
 
 # Upper bound on how many days of availability can be requested in one call.
 # The grid only renders a week at a time, so this leaves generous headroom
@@ -58,6 +68,89 @@ def _mask_webhook_url(webhook_url: str | None) -> str | None:
     if not webhook_url:
         return None
     return f"{webhook_url[:32]}...{webhook_url[-8:]}" if len(webhook_url) > 48 else "Configured"
+
+
+async def _get_member_count(db: AsyncSession, group_id: str) -> int:
+    """Return the count of non-viewer members in a static group."""
+    result = await db.execute(
+        select(Membership.id).where(
+            Membership.static_group_id == group_id,
+            Membership.role != MemberRole.VIEWER.value,
+        )
+    )
+    return len(result.scalars().all())
+
+
+def _build_announcement_data(
+    sched_session: ScheduleSession,
+    static_group: StaticGroup,
+    member_count: int,
+    rsvps: list[ScheduleRsvp] | None = None,
+) -> SessionAnnouncementData:
+    """Assemble a SessionAnnouncementData from ORM objects.
+
+    Computes RSVP counts from the session's loaded rsvps relationship (or
+    the passed-in ``rsvps`` list when the relationship isn't loaded yet),
+    resolves the next upcoming occurrence for recurring sessions, and
+    converts the recurrence rule to human-readable text.
+    """
+    rsvp_list = rsvps if rsvps is not None else list(sched_session.rsvps)
+    rsvp_counts: dict[str, int] = {}
+    for rsvp in rsvp_list:
+        rsvp_counts[rsvp.status] = rsvp_counts.get(rsvp.status, 0) + 1
+
+    start_iso = _next_occurrence_iso(sched_session.start_time, sched_session.recurrence_rule)
+    # Adjust end to match the same offset as start for recurring sessions
+    try:
+        from datetime import datetime as _dt
+        orig_start = _dt.fromisoformat(sched_session.start_time.replace("Z", "+00:00"))
+        orig_end = _dt.fromisoformat(sched_session.end_time.replace("Z", "+00:00"))
+        resolved_start = _dt.fromisoformat(start_iso.replace("Z", "+00:00"))
+        end_iso = (orig_end + (resolved_start - orig_start)).isoformat()
+    except (ValueError, TypeError):
+        end_iso = sched_session.end_time
+
+    session_url = (
+        f"{settings.frontend_url}/group/{static_group.share_code}?tab=schedule"
+    )
+
+    return SessionAnnouncementData(
+        session_title=sched_session.title,
+        start_iso=start_iso,
+        end_iso=end_iso,
+        static_group_name=static_group.name,
+        session_url=session_url,
+        rsvp_counts=rsvp_counts,
+        total_member_count=member_count,
+        session_description=sched_session.description,
+        recurrence_summary=_recurrence_rule_to_text(sched_session.recurrence_rule),
+    )
+
+
+async def _try_fire_webhook(
+    webhook_url: str,
+    payload: dict,
+) -> None:
+    """POST a Discord webhook payload — fire-and-forget, never raises.
+
+    Errors are logged at WARNING level but never propagate. The webhook
+    URL is masked in all log messages so the token is never exposed.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(webhook_url, json=payload)
+        if resp.status_code >= 400:
+            logger.warning(
+                "discord_webhook_rejected",
+                status=resp.status_code,
+                webhook=_mask_webhook_url(webhook_url),
+            )
+    except Exception as exc:
+        logger.warning(
+            "discord_webhook_error",
+            error=str(exc),
+            webhook=_mask_webhook_url(webhook_url),
+        )
 
 
 def _calendar_url(token: str | None) -> str | None:
@@ -282,6 +375,17 @@ async def create_schedule_session(
     )
     created = result.scalar_one()
 
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(created, static_group, member_count)
+        await _try_fire_webhook(
+            sched_settings.webhook_url,
+            build_session_announcement_payload(ann_data),
+        )
+
     return session_to_response(created)
 
 
@@ -321,6 +425,17 @@ async def update_schedule_session(
     await session.flush()
     await session.commit()
 
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(schedule_session, static_group, member_count)
+        await _try_fire_webhook(
+            sched_settings.webhook_url,
+            build_session_announcement_payload(ann_data),
+        )
+
     return session_to_response(schedule_session)
 
 
@@ -349,9 +464,24 @@ async def delete_schedule_session(
     if not schedule_session:
         raise NotFound("Schedule session not found")
 
+    # Capture data before deletion for the webhook
+    sched_settings = await _get_schedule_settings(session, group_id)
+    webhook_payload = None
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(
+            schedule_session, static_group, member_count, rsvps=[]
+        )
+        webhook_payload = build_cancelled_payload(ann_data)
+
     await session.delete(schedule_session)
     await session.flush()
     await session.commit()
+
+    # Fire Discord webhook after successful commit — non-blocking
+    if sched_settings and sched_settings.webhook_url and webhook_payload:
+        await _try_fire_webhook(sched_settings.webhook_url, webhook_payload)
 
 
 @router.post(
@@ -411,6 +541,25 @@ async def create_or_update_rsvp(
 
     await session.flush()
     await session.commit()
+
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        # Re-load the session with all RSVPs for an accurate count
+        rsvp_result = await session.execute(
+            select(ScheduleSession)
+            .where(ScheduleSession.id == session_id)
+            .options(selectinload(ScheduleSession.rsvps))
+        )
+        refreshed = rsvp_result.scalar_one_or_none()
+        if refreshed:
+            static_group = await get_static_group(session, group_id)
+            member_count = await _get_member_count(session, group_id)
+            ann_data = _build_announcement_data(refreshed, static_group, member_count)
+            await _try_fire_webhook(
+                sched_settings.webhook_url,
+                build_session_announcement_payload(ann_data),
+            )
 
     return RsvpResponse(
         id=rsvp.id,
@@ -518,6 +667,59 @@ async def test_schedule_reminder(
         raise ValidationError("Discord webhook rejected the test reminder")
 
     return TestReminderResponse(ok=True, message="Test reminder sent")
+
+
+@router.post(
+    "/static-groups/{group_id}/scheduler/settings/post-session-preview",
+    response_model=TestReminderResponse,
+)
+async def post_session_preview(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TestReminderResponse:
+    """Post the next upcoming session to Discord (lead or owner only).
+
+    If the group has no upcoming sessions this returns a validation error.
+    Unlike the test-reminder, this uses real session and RSVP data.
+    """
+    static_group = await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_schedule_settings(session, group_id)
+    if not row or not row.webhook_url:
+        raise ValidationError("Configure a Discord webhook URL before posting a session preview")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    result = await session.execute(
+        select(ScheduleSession)
+        .where(
+            ScheduleSession.static_group_id == group_id,
+            ScheduleSession.start_time >= now_iso,
+        )
+        .options(selectinload(ScheduleSession.rsvps))
+        .order_by(ScheduleSession.start_time.asc())
+        .limit(1)
+    )
+    upcoming = result.scalar_one_or_none()
+
+    if not upcoming:
+        raise ValidationError("No upcoming sessions found. Create a session first.")
+
+    member_count = await _get_member_count(session, group_id)
+    ann_data = _build_announcement_data(upcoming, static_group, member_count)
+    payload = build_session_announcement_payload(ann_data)
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(row.webhook_url, json=payload)
+    except httpx.RequestError:
+        raise ValidationError("Discord webhook could not be reached")
+
+    if response.status_code >= 400:
+        raise ValidationError("Discord webhook rejected the session preview")
+
+    return TestReminderResponse(ok=True, message="Session preview posted to Discord")
 
 
 @router.post(
