@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..config import get_settings
 from ..dependencies import get_current_user
+from ..services.discord_webhook import build_test_reminder_payload
 from ..exceptions import ValidationError
 from ..models import Membership, MemberRole, User
 from ..models.availability import UserAvailability
@@ -501,12 +502,11 @@ async def test_schedule_reminder(
     if not row or not row.webhook_url:
         raise ValidationError("Configure a Discord webhook URL before sending a test reminder")
 
-    payload = {
-        "content": (
-            f"Test reminder for {static_group.name}. "
-            f"Scheduler reminders are connected. Open: {settings.frontend_url}/group/{static_group.share_code}?tab=schedule"
-        )
-    }
+    payload = build_test_reminder_payload(
+        static_group_name=static_group.name,
+        planner_url=settings.frontend_url,
+        share_code=static_group.share_code,
+    )
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:

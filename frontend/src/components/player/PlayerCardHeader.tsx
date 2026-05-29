@@ -63,10 +63,10 @@ function getSlotItemLevel(
 }
 
 function formatLastSync(lastSync?: string): string {
-  if (!lastSync) return 'Lodestone synced';
+  if (!lastSync) return 'Lodestone identity linked';
 
   const timestamp = new Date(lastSync).getTime();
-  if (Number.isNaN(timestamp)) return 'Lodestone synced';
+  if (Number.isNaN(timestamp)) return 'Lodestone identity linked';
 
   const diffMs = Date.now() - timestamp;
   const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
@@ -119,8 +119,21 @@ export function PlayerCardHeader({
   onTankRoleChange,
   onMenuClick,
 }: PlayerCardHeaderProps) {
-  // Calculate average iLv for display
+  // BiS target average iLv (existing calculation based on hasItem / bisSource / currentSource)
   const averageILv = calculateAverageItemLevel(player.gear, tierId);
+
+  // Current equipped average iLv from Tomestone sync data.
+  // Only computed when at least half the player's gear slots have been synced.
+  const equippedIlvSlots = player.gear.filter((g) => (g.equippedItemLevel ?? 0) > 0);
+  const hasEnoughEquippedData = equippedIlvSlots.length >= Math.ceil(player.gear.length / 2);
+  const equippedAvgIlv = hasEnoughEquippedData
+    ? Math.round(
+        equippedIlvSlots.reduce((sum, g) => sum + g.equippedItemLevel!, 0) /
+          equippedIlvSlots.length
+      )
+    : 0;
+  // Display equipped avg iLv when sync data covers enough slots; fall back to BiS target avg.
+  const displayILv = equippedAvgIlv > 0 ? equippedAvgIlv : averageILv;
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(name);
@@ -401,36 +414,81 @@ export function PlayerCardHeader({
             showLabel
           />
           {/* Average iLv with slot breakdown tooltip */}
-          {averageILv > 0 && (
+          {displayILv > 0 && (
             <LongPressTooltip
               delayDuration={200}
               content={
-                <div className="min-w-[140px]">
+                <div className={equippedAvgIlv > 0 ? 'min-w-[200px]' : 'min-w-[140px]'}>
                   <div className="font-medium mb-1.5">Average Item Level</div>
                   <div className="space-y-0.5 text-xs">
-                    {GEAR_SLOTS.map((slotKey) => {
-                      const gearSlot = player.gear.find(g => g.slot === slotKey);
-                      if (!gearSlot) return null;
-                      const slotILv = getSlotItemLevel(gearSlot, tierId);
-                      return (
-                        <div key={slotKey} className="flex justify-between gap-3">
-                          <span className="text-text-secondary">{GEAR_SLOT_NAMES[slotKey]}</span>
-                          <span className={gearSlot.hasItem ? 'text-status-success' : 'text-text-muted'}>
-                            {slotILv}
-                          </span>
+                    {equippedAvgIlv > 0 ? (
+                      // Two-column layout: current equipped | BiS target
+                      <>
+                        <div className="flex justify-between gap-3 mb-1 text-[10px] text-text-muted">
+                          <span className="w-16" />
+                          <span className="w-8 text-right">Now</span>
+                          <span className="w-8 text-right">BiS</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <div className="border-t border-border-subtle mt-1.5 pt-1.5 flex justify-between font-medium">
-                    <span>Average</span>
-                    <span className="text-accent">i{averageILv}</span>
+                        {GEAR_SLOTS.map((slotKey) => {
+                          const gearSlot = player.gear.find((g) => g.slot === slotKey);
+                          if (!gearSlot) return null;
+                          const bisILv = getSlotItemLevel(gearSlot, tierId);
+                          const nowILv = gearSlot.equippedItemLevel ?? 0;
+                          const diff = nowILv > 0 ? nowILv - bisILv : 0;
+                          return (
+                            <div key={slotKey} className="flex justify-between gap-3">
+                              <span className="text-text-secondary">{GEAR_SLOT_NAMES[slotKey]}</span>
+                              <span className={nowILv > 0 ? (nowILv >= bisILv ? 'text-status-success' : 'text-status-warning') : 'text-text-muted'}>
+                                {nowILv > 0 ? nowILv : '—'}
+                              </span>
+                              <span className={gearSlot.hasItem ? 'text-status-success' : 'text-text-muted'}>
+                                {bisILv}
+                                {diff < 0 && <span className="ml-0.5 text-status-warning">({diff})</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="border-t border-border-subtle mt-1.5 pt-1.5 space-y-0.5">
+                          <div className="flex justify-between font-medium">
+                            <span className="text-text-muted">Equipped avg</span>
+                            <span className="text-accent">i{equippedAvgIlv}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-text-muted">BiS target avg</span>
+                            <span className="text-text-secondary">i{averageILv}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      // Single-column fallback when no sync data
+                      <>
+                        {GEAR_SLOTS.map((slotKey) => {
+                          const gearSlot = player.gear.find((g) => g.slot === slotKey);
+                          if (!gearSlot) return null;
+                          const slotILv = getSlotItemLevel(gearSlot, tierId);
+                          return (
+                            <div key={slotKey} className="flex justify-between gap-3">
+                              <span className="text-text-secondary">{GEAR_SLOT_NAMES[slotKey]}</span>
+                              <span className={gearSlot.hasItem ? 'text-status-success' : 'text-text-muted'}>
+                                {slotILv}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="border-t border-border-subtle mt-1.5 pt-1.5 flex justify-between font-medium">
+                          <span>Average</span>
+                          <span className="text-accent">i{averageILv}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               }
             >
-              <div className="text-sm text-text-muted cursor-help">
-                i{averageILv}
+              <div className="text-sm cursor-help" title={equippedAvgIlv > 0 ? 'Current equipped avg iLv (hover for BiS target)' : undefined}>
+                <span className={equippedAvgIlv > 0 ? 'text-accent' : 'text-text-muted'}>
+                  i{displayILv}
+                </span>
               </div>
             </LongPressTooltip>
           )}

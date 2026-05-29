@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     # Dev Lodestone mock mode - enables local Lodestone fixtures (NEVER enable in production)
     dev_lodestone_mock: bool = False
 
+    # Optional Tomestone API token for experimental backend-only character provider
+    # Set via TOMESTONE_API_TOKEN env var. Never hardcode. Token is never sent to frontend.
+    tomestone_api_token: str = ""
+
     # Logging
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 

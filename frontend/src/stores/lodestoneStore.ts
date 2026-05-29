@@ -31,16 +31,32 @@ export interface CharacterGear {
   activeJob: string | null;
   activeJobLevel: number | null;
   gear: EquippedGearSlot[];
+  gearAvailable: boolean;
+  identityOnly: boolean;
+  source: string;
 }
 
 export interface SyncResult {
   updatedSlots: number;
+  bisMatchedCount: number;
   lodestoneId: string;
   lastSync: string;
   lodestoneName: string | null;
   lodestoneServer: string | null;
   lodestoneAvatarUrl: string | null;
   gear: unknown[];
+}
+
+export interface IdentityLinkResult {
+  lodestoneId: string;
+  lodestoneName: string;
+  lodestoneServer: string;
+  lodestoneAvatarUrl: string | null;
+  gearSyncAvailable: false;
+  gearAvailable: false;
+  identityOnly: true;
+  source: string;
+  message: string;
 }
 
 export interface LodestoneDevStatus {
@@ -79,6 +95,7 @@ interface LodestoneState {
   searchCharacters: (name: string, server?: string) => Promise<void>;
   fetchCharacterGear: (lodestoneId: number) => Promise<void>;
   syncPlayerGear: (groupId: string, playerId: string, lodestoneId?: number) => Promise<SyncResult>;
+  linkIdentityOnly: (groupId: string, playerId: string, lodestoneId: number) => Promise<IdentityLinkResult>;
   clearSearch: () => void;
   clearGear: () => void;
   clearErrors: () => void;
@@ -193,6 +210,35 @@ export const useLodestoneStore = create<LodestoneState>((set, get) => ({
     try {
       const params = lodestoneId ? `?lodestone_id=${lodestoneId}` : '';
       const result = await api.post<SyncResult>(`/api/lodestone/sync/${groupId}/${playerId}${params}`);
+
+      if (get().requestVersion === requestVersion) {
+        set({ isSyncing: false });
+      }
+
+      return result;
+    } catch (err) {
+      if (get().requestVersion === requestVersion) {
+        set({
+          syncError: (err as Error).message,
+          isSyncing: false,
+        });
+      }
+
+      throw err;
+    }
+  },
+
+  linkIdentityOnly: async (groupId: string, playerId: string, lodestoneId: number) => {
+    const requestVersion = get().requestVersion;
+    set({
+      isSyncing: true,
+      syncError: null,
+    });
+
+    try {
+      const result = await api.post<IdentityLinkResult>(
+        `/api/lodestone/identity/${groupId}/${playerId}?lodestone_id=${lodestoneId}`
+      );
 
       if (get().requestVersion === requestVersion) {
         set({ isSyncing: false });

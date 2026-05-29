@@ -5,11 +5,12 @@ import {
   type EquippedGearSlot,
   type LodestoneCharacter,
 } from '../../stores/lodestoneStore';
-import { useTierStore } from '../../stores/tierStore';
-import { GEAR_SLOT_NAMES, type GearSlot } from '../../types';
+import { useTierPlayers, useTierStore } from '../../stores/tierStore';
+import { GEAR_SLOT_NAMES, type GearSlot, type GearSlotStatus } from '../../types';
 import { Button } from '../primitives';
 import { ErrorBox, Input, Modal, Spinner } from '../ui';
 import { API_BASE_URL, isProduction } from '../../config';
+import { parseLodestoneCharacterId } from '../../utils/lodestone';
 
 interface LodestoneSearchModalProps {
   isOpen: boolean;
@@ -49,6 +50,34 @@ function hasEquippedItem(slot: EquippedGearSlot): boolean {
   return Boolean(slot.itemId || slot.itemName || slot.itemLevel);
 }
 
+type BiSMatchStatus = 'match' | 'upgrade_needed' | 'no_target' | 'unknown';
+
+function getBiSMatchStatus(
+  previewSlot: EquippedGearSlot,
+  bisSlot: GearSlotStatus | undefined,
+): BiSMatchStatus {
+  if (!bisSlot || !bisSlot.bisSource) {
+    return 'no_target';
+  }
+  if (!hasEquippedItem(previewSlot)) {
+    return 'unknown';
+  }
+  const bisItemId = bisSlot.itemId;
+  const equippedItemId = previewSlot.itemId;
+  if (bisItemId && equippedItemId) {
+    return bisItemId === equippedItemId ? 'match' : 'upgrade_needed';
+  }
+  // Source + ilvl fallback for manual configs without specific item IDs.
+  return 'unknown';
+}
+
+const BIS_MATCH_BADGES: Record<BiSMatchStatus, { label: string; className: string }> = {
+  match: { label: 'BiS ✓', className: 'text-status-success' },
+  upgrade_needed: { label: 'Upgrade needed', className: 'text-status-warning' },
+  no_target: { label: 'No BiS target', className: 'text-text-muted' },
+  unknown: { label: '', className: '' },
+};
+
 function LodestoneSearchModalBody({
   groupId,
   playerId,
@@ -59,6 +88,8 @@ function LodestoneSearchModalBody({
 }: LodestoneSearchModalBodyProps) {
   const [name, setName] = useState(playerName || '');
   const [server, setServer] = useState('');
+  const [manualCharacterInput, setManualCharacterInput] = useState('');
+  const [manualInputError, setManualInputError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<LodestoneCharacter | null>(null);
 
@@ -76,10 +107,16 @@ function LodestoneSearchModalBody({
     searchCharacters,
     fetchCharacterGear,
     syncPlayerGear,
+    linkIdentityOnly,
     clearErrors,
   } = useLodestoneStore();
 
   const { fetchTier } = useTierStore();
+  const tierPlayers = useTierPlayers();
+  const playerBisGear = useMemo((): GearSlotStatus[] => {
+    const player = tierPlayers.find((p) => p.id === playerId);
+    return player?.gear ?? [];
+  }, [tierPlayers, playerId]);
 
   const linkedLodestoneId = currentLodestoneId ? parseInt(currentLodestoneId, 10) : null;
 
@@ -93,9 +130,40 @@ function LodestoneSearchModalBody({
     [previewSlots]
   );
 
+  const currentAvgIlv = useMemo(() => {
+    const slots = filledPreviewSlots.filter((s) => s.itemLevel > 0);
+    if (!slots.length) return null;
+    return Math.round(slots.reduce((sum, s) => sum + s.itemLevel, 0) / slots.length);
+  }, [filledPreviewSlots]);
+
+  const bisTargetAvgIlv = useMemo(() => {
+    const slots = playerBisGear.filter((g) => g.bisSource && (g.itemLevel ?? 0) > 0);
+    if (!slots.length) return null;
+    return Math.round(slots.reduce((sum, g) => sum + (g.itemLevel ?? 0), 0) / slots.length);
+  }, [playerBisGear]);
+
+  const bisMatchedCount = useMemo(
+    () =>
+      previewSlots.filter((slot) => {
+        const bisSlot = playerBisGear.find((g) => g.slot === slot.slot);
+        return getBiSMatchStatus(slot, bisSlot) === 'match';
+      }).length,
+    [previewSlots, playerBisGear]
+  );
+
+  const totalConfiguredBisSlots = useMemo(
+    () => playerBisGear.filter((g) => g.bisSource).length,
+    [playerBisGear]
+  );
+
   const previewTargetId = characterGear?.lodestoneId ?? selectedCharacter?.lodestoneId ?? linkedLodestoneId;
   const previewTargetName = characterGear?.name || selectedCharacter?.name || playerName;
   const previewTargetServer = characterGear?.server || selectedCharacter?.server || '';
+  const canLinkIdentityOnly = Boolean(
+    previewTargetId &&
+    (gearError === 'upstream_character_unavailable' || characterGear?.identityOnly) &&
+    selectedCharacter
+  );
 
   useEffect(() => {
     void fetchDevStatus();
@@ -140,11 +208,30 @@ function LodestoneSearchModalBody({
   const handlePreviewCharacter = useCallback(
     async (character: LodestoneCharacter) => {
       setSelectedCharacter(character);
+      setManualInputError(null);
       clearErrors();
       await fetchCharacterGear(character.lodestoneId);
     },
     [clearErrors, fetchCharacterGear]
   );
+
+  const handlePreviewManualCharacter = useCallback(async () => {
+    const parsedId = parseLodestoneCharacterId(manualCharacterInput);
+    if (!parsedId) {
+      setManualInputError('Paste a valid Lodestone character URL or numeric character ID.');
+      return;
+    }
+
+    setManualInputError(null);
+    setSelectedCharacter({
+      lodestoneId: parsedId,
+      name: `Lodestone #${parsedId}`,
+      server: '',
+      avatar: null,
+    });
+    clearErrors();
+    await fetchCharacterGear(parsedId);
+  }, [clearErrors, fetchCharacterGear, manualCharacterInput]);
 
   const handlePreviewLinkedCharacter = useCallback(async () => {
     if (!linkedLodestoneId) {
@@ -157,6 +244,7 @@ function LodestoneSearchModalBody({
       server: '',
       avatar: null,
     });
+    setManualInputError(null);
     clearErrors();
     await fetchCharacterGear(linkedLodestoneId);
   }, [clearErrors, fetchCharacterGear, linkedLodestoneId, playerName]);
@@ -178,7 +266,35 @@ function LodestoneSearchModalBody({
     }
   }, [clearErrors, fetchTier, groupId, onRequestClose, playerId, previewTargetId, syncPlayerGear, tierId]);
 
+  const handleLinkIdentityOnly = useCallback(async () => {
+    if (!previewTargetId) {
+      return;
+    }
+
+    try {
+      clearErrors();
+      await linkIdentityOnly(groupId, playerId, previewTargetId);
+      if (tierId) {
+        await fetchTier(groupId, tierId);
+      }
+      onRequestClose();
+    } catch {
+      // Store state surfaces the error for the modal.
+    }
+  }, [clearErrors, fetchTier, groupId, linkIdentityOnly, onRequestClose, playerId, previewTargetId, tierId]);
+
   const activeError = searchError || gearError || syncError;
+  const displayError =
+    activeError === 'upstream_character_unavailable'
+      ? 'Live character providers could not fetch this character. Try mock mode for local visual testing, or try again later.'
+      : activeError;
+  const liveSearchUnavailable =
+    searchError === 'upstream_private' ||
+    searchError === 'upstream_unavailable' ||
+    searchError === 'upstream_bad_response';
+  const showLiveSearchFailureHint = Boolean(
+    !isProduction && !devStatus?.mockMode && searchError
+  );
   const showNoResults = hasSearched && !isSearching && searchResults.length === 0 && !searchError;
   const isLinkedPreview = Boolean(linkedLodestoneId && previewTargetId === linkedLodestoneId);
 
@@ -193,7 +309,8 @@ function LodestoneSearchModalBody({
           <div className="rounded-lg border border-status-info/30 bg-status-info/10 p-3" data-testid="lodestone-dev-mock-hint">
             <p className="text-sm font-medium text-status-info">Dev mock mode enabled</p>
             <p className="mt-1 text-xs text-text-secondary">
-              Try one of these local mock characters without calling Lodestone/XIVAPI.
+              Live search is disabled in mock mode. Search one of these local mock characters
+              without calling Lodestone/XIVAPI.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {devStatus.mockSearchNames.map((mockName) => (
@@ -244,6 +361,38 @@ function LodestoneSearchModalBody({
             Search
           </Button>
         </div>
+        <div className="rounded-lg border border-border-default bg-surface-elevated p-3">
+          <p className="mb-2 text-xs text-text-muted">
+            If search fails, open your character on Lodestone and paste the profile URL here.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={manualCharacterInput}
+              onChange={(value) => {
+                setManualCharacterInput(value);
+                setManualInputError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  void handlePreviewManualCharacter();
+                }
+              }}
+              placeholder="https://na.finalfantasyxiv.com/lodestone/character/12345678/ or 12345678"
+              error={manualInputError ?? undefined}
+              fullWidth
+              data-testid="lodestone-manual-id-input"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void handlePreviewManualCharacter()}
+              disabled={isLoadingGear || isSyncing || !manualCharacterInput.trim()}
+              data-testid="lodestone-manual-preview-button"
+            >
+              Preview by URL/ID
+            </Button>
+          </div>
+        </div>
       </div>
 
       {currentLodestoneId && (
@@ -268,7 +417,38 @@ function LodestoneSearchModalBody({
         </div>
       )}
 
-      <ErrorBox message={activeError} />
+      <ErrorBox message={displayError} />
+      {canLinkIdentityOnly && (
+        <div className="rounded-lg border border-status-warning/30 bg-status-warning/10 p-3" data-testid="lodestone-identity-only-fallback">
+          <p className="text-sm font-medium text-status-warning">
+            Character found, but gear sync is unavailable right now.
+          </p>
+          <p className="mt-1 text-xs text-text-secondary">
+            This character identity can still be linked from Lodestone. Gear, BiS completion, and sync status will stay unchanged.
+          </p>
+          <div className="mt-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void handleLinkIdentityOnly()}
+              disabled={isSyncing}
+              loading={isSyncing}
+              data-testid="lodestone-link-identity-only-button"
+            >
+              Link identity only
+            </Button>
+          </div>
+        </div>
+      )}
+      {showLiveSearchFailureHint && (
+        <div className="rounded-lg border border-status-warning/30 bg-status-warning/10 p-3" data-testid="lodestone-live-search-failure-hint">
+          <p className="text-xs text-status-warning">
+            {liveSearchUnavailable
+              ? 'Live Lodestone search is unavailable right now. You can paste a Lodestone character URL or ID instead.'
+              : 'Live Lodestone/XIVAPI search failed. Try DEV_LODESTONE_MOCK=true for local visual testing, or check backend logs.'}
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div className="space-y-3">
@@ -336,7 +516,7 @@ function LodestoneSearchModalBody({
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-text-primary">Gear preview</h3>
+            <h3 className="font-display text-lg text-text-primary">Current equipped gear</h3>
             {isLoadingGear && (
               <div className="flex items-center gap-2 text-sm text-accent">
                 <Spinner size="sm" />
@@ -397,39 +577,111 @@ function LodestoneSearchModalBody({
                   )}
                 </div>
 
-                {!filledPreviewSlots.length ? (
+                {characterGear.identityOnly ? (
+                  <div className="rounded-lg border border-status-warning/30 bg-status-warning/10 p-4 text-sm text-text-secondary" data-testid="lodestone-identity-only-preview">
+                    <p className="font-medium text-status-warning">
+                      Character found, but gear sync is unavailable right now.
+                    </p>
+                    <p className="mt-1 text-xs">
+                      You can link the identity/avatar only, then try gear sync again later.
+                    </p>
+                  </div>
+                ) : !filledPreviewSlots.length ? (
                   <div className="rounded-lg border border-border-default bg-surface-elevated p-4 text-sm text-text-secondary">
                     No equipped gear details were available for this character.
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {previewSlots.map((slot) => (
-                        <div
-                          key={slot.slot}
-                          className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs uppercase tracking-wide text-text-muted">
-                              {slotLabel(slot.slot)}
-                            </p>
-                            <p className="text-[11px] text-accent">
-                              {formatCurrentSource(slot.currentSource)}
-                            </p>
-                          </div>
-                          <p className="mt-1 text-sm text-text-primary">
-                            {hasEquippedItem(slot)
-                              ? slot.itemName || 'Unavailable item details'
-                              : 'No gear shown'}
-                          </p>
-                          {slot.itemLevel > 0 && (
-                            <p className="mt-1 text-xs text-text-muted">
-                              iLv {slot.itemLevel}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                  <div className="space-y-3">
+                    {/* iLv + BiS match summary */}
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2">
+                      {currentAvgIlv != null && (
+                        <span className="text-xs text-text-muted">
+                          Current avg iLv{' '}
+                          <span className="font-semibold text-text-primary">{currentAvgIlv}</span>
+                        </span>
+                      )}
+                      {bisTargetAvgIlv != null && (
+                        <span className="text-xs text-text-muted">
+                          BiS target avg iLv{' '}
+                          <span className="font-semibold text-text-primary">{bisTargetAvgIlv}</span>
+                        </span>
+                      )}
+                      {totalConfiguredBisSlots > 0 && (
+                        <span className="text-xs text-text-muted">
+                          BiS matched{' '}
+                          <span className={`font-semibold ${bisMatchedCount === totalConfiguredBisSlots ? 'text-status-success' : 'text-text-primary'}`}>
+                            {bisMatchedCount}/{totalConfiguredBisSlots}
+                          </span>
+                        </span>
+                      )}
                     </div>
+
+                    {/* Per-slot comparison grid */}
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {previewSlots.map((slot) => {
+                        const bisSlot = playerBisGear.find((g) => g.slot === slot.slot);
+                        const bisStatus = getBiSMatchStatus(slot, bisSlot);
+                        const badge = BIS_MATCH_BADGES[bisStatus];
+                        const borderClass =
+                          bisStatus === 'match'
+                            ? 'border-status-success/30'
+                            : bisStatus === 'upgrade_needed'
+                              ? 'border-status-warning/25'
+                              : 'border-border-subtle';
+                        return (
+                          <div
+                            key={slot.slot}
+                            className={`rounded-lg border bg-surface-elevated px-3 py-2 ${borderClass}`}
+                          >
+                            {/* Slot label + source */}
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs uppercase tracking-wide text-text-muted">
+                                {slotLabel(slot.slot)}
+                              </p>
+                              <p className="text-[11px] text-accent">
+                                {formatCurrentSource(slot.currentSource)}
+                              </p>
+                            </div>
+
+                            {/* Currently equipped item */}
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <p className="truncate text-sm text-text-primary">
+                                {hasEquippedItem(slot)
+                                  ? slot.itemName || 'Unavailable item details'
+                                  : 'No gear shown'}
+                              </p>
+                              {slot.itemLevel > 0 && (
+                                <p className="shrink-0 text-xs text-text-muted">
+                                  iLv {slot.itemLevel}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* BiS target row — only shown when a better item is needed */}
+                            {bisStatus === 'upgrade_needed' && bisSlot?.itemName && (
+                              <div className="mt-0.5 flex items-center justify-between gap-2">
+                                <p className="truncate text-[11px] text-text-muted">
+                                  → {bisSlot.itemName}
+                                </p>
+                                {(bisSlot.itemLevel ?? 0) > 0 && (
+                                  <p className="shrink-0 text-[11px] text-text-muted">
+                                    iLv {bisSlot.itemLevel}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* BiS match status badge */}
+                            {badge.label && (
+                              <p className={`mt-1 text-right text-[11px] font-medium ${badge.className}`}>
+                                {badge.label}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
                     <p className="text-xs text-text-muted">
                       Previewing {filledPreviewSlots.length} equipped slot
                       {filledPreviewSlots.length === 1 ? '' : 's'}
@@ -449,12 +701,12 @@ function LodestoneSearchModalBody({
                   <Button
                     type="button"
                     onClick={() => void handleSync()}
-                    disabled={!previewTargetId || isSyncing}
+                    disabled={!previewTargetId || isSyncing || !characterGear.gearAvailable}
                     loading={isSyncing}
                     leftIcon={!isSyncing ? <RefreshCw className="h-4 w-4" /> : undefined}
                     data-testid="lodestone-sync-button"
                   >
-                    {isLinkedPreview ? 'Re-sync linked character' : 'Sync equipped gear'}
+                    {isLinkedPreview ? 'Re-sync linked character' : 'Import current gear'}
                   </Button>
                 </div>
 

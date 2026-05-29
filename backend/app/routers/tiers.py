@@ -156,6 +156,10 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
                 )
                 for m in g.get("materia", [])
             ],
+            equipped_item_id=g.get("equippedItemId"),
+            equipped_item_level=g.get("equippedItemLevel"),
+            equipped_item_name=g.get("equippedItemName"),
+            equipped_item_icon=g.get("equippedItemIcon"),
         )
         for g in (player.gear or [])
     ]
@@ -845,6 +849,10 @@ async def get_player_gear(
                 )
                 for m in g.get("materia", [])
             ],
+            equipped_item_id=g.get("equippedItemId"),
+            equipped_item_level=g.get("equippedItemLevel"),
+            equipped_item_name=g.get("equippedItemName"),
+            equipped_item_icon=g.get("equippedItemIcon"),
         )
         for g in (player.gear or [])
     ]

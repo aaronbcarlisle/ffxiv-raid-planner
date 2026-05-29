@@ -1,7 +1,9 @@
 """API router for Lodestone character search and gear sync."""
 
 import asyncio
+import html
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,6 +23,7 @@ from ..models.user import User
 from ..permissions import require_membership
 from ..rate_limit import RATE_LIMITS, limiter
 from ..schemas.user import CamelModel
+from ..services.tomestone_provider import get_tomestone_provider, tomestone_profile_to_xivapi_payload
 from .bis import build_icon_url_from_id, fetch_item_from_garland
 
 router = APIRouter(prefix="/api/lodestone", tags=["lodestone"])
@@ -28,6 +31,7 @@ logger = get_logger(__name__)
 settings = get_settings()
 
 XIVAPI_BASE = "https://xivapi.com"
+LODESTONE_BASE = "https://na.finalfantasyxiv.com"
 MOCK_RAIDER_AVATAR_URL = (
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E"
     "%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E"
@@ -296,18 +300,38 @@ class CharacterGearResponse(CamelModel):
     active_job: str | None = None
     active_job_level: int | None = None
     gear: list[EquippedGearSlot]
+    gear_available: bool = True
+    identity_only: bool = False
+    source: str = "xivapi"
 
 
 class SyncResult(CamelModel):
     """Result of a gear sync operation."""
 
     updated_slots: int
+    # Number of gear slots where the currently equipped item matches the BiS target.
+    # Distinct from updatedSlots (which is change count) and from total slot count.
+    bis_matched_count: int = 0
     lodestone_id: str
     last_sync: str
     lodestone_name: str | None = None
     lodestone_server: str | None = None
     lodestone_avatar_url: str | None = None
     gear: list[dict[str, Any]]
+
+
+class IdentityLinkResult(CamelModel):
+    """Result of linking Lodestone identity without syncing gear."""
+
+    lodestone_id: str
+    lodestone_name: str
+    lodestone_server: str
+    lodestone_avatar_url: str | None = None
+    gear_sync_available: bool = False
+    gear_available: bool = False
+    identity_only: bool = True
+    source: str = "lodestone_identity"
+    message: str = "Lodestone identity linked"
 
 
 def classify_current_source(item_name: str, item_level: int, slot: str) -> str:
@@ -488,6 +512,309 @@ def _mock_search(name: str, server: str) -> CharacterSearchResponse:
     return CharacterSearchResponse(results=results, total=len(results))
 
 
+def _text_from_html_fragment(fragment: str) -> str:
+    text = re.sub(r"<[^>]+>", "", fragment)
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _extract_meta_content(markup: str, property_name: str) -> str | None:
+    patterns = [
+        rf'<meta[^>]+property=["\']{re.escape(property_name)}["\'][^>]+content=["\']([^"\']+)["\']',
+        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']{re.escape(property_name)}["\']',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, markup, re.IGNORECASE)
+        if match:
+            value = html.unescape(match.group(1)).strip()
+            return value or None
+    return None
+
+
+def _is_likely_character_avatar_url(url: Any) -> bool:
+    if not isinstance(url, str):
+        return False
+
+    value = url.strip()
+    if not value:
+        return False
+
+    if value.startswith("data:image/"):
+        return True
+
+    lowered = value.lower()
+    if not lowered.startswith(("http://", "https://", "/")):
+        return False
+
+    generic_markers = [
+        "banner",
+        "facebook",
+        "ogp",
+        "opengraph",
+        "social",
+        "twitter",
+        "logo",
+        "news",
+        "topics",
+        "promo",
+        "promotion",
+        "patch",
+        "expansion",
+        "dawntrail",
+        "endwalker",
+        "shadowbringers",
+        "stormblood",
+        "heavensward",
+        "realm-reborn",
+        "site-image",
+        "share",
+    ]
+    if any(marker in lowered for marker in generic_markers):
+        return False
+
+    character_markers = [
+        "lds-img.finalfantasyxiv.com/h/",
+        "img.finalfantasyxiv.com/lds/",
+        "img2.finalfantasyxiv.com/f/",
+        "character",
+        "avatar",
+        "portrait",
+        "face",
+        "chara",
+    ]
+    return any(marker in lowered for marker in character_markers)
+
+
+def _sanitize_avatar_url(url: Any) -> str | None:
+    if not _is_likely_character_avatar_url(url):
+        return None
+    return str(url).strip()
+
+
+def _extract_lodestone_avatar(markup: str) -> str | None:
+    image_candidates: list[str] = []
+    for match in re.finditer(r"<img\b[^>]+>", markup, re.IGNORECASE):
+        tag = match.group(0)
+        lowered = tag.lower()
+        if not any(marker in lowered for marker in ["frame__chara", "character", "avatar", "portrait", "face", "chara"]):
+            continue
+        src_match = re.search(r'\b(?:src|data-src)=["\']([^"\']+)["\']', tag, re.IGNORECASE)
+        if src_match:
+            image_candidates.append(html.unescape(src_match.group(1)).strip())
+
+    image_candidates.append(_extract_meta_content(markup, "og:image") or "")
+
+    for candidate in image_candidates:
+        sanitized = _sanitize_avatar_url(candidate)
+        if sanitized:
+            return sanitized
+    return None
+
+
+def _extract_lodestone_identity(lodestone_id: int, markup: str) -> dict[str, str | None]:
+    lowered = markup.lower()
+    if any(marker in lowered for marker in ["captcha", "cloudflare", "access denied", "automated"]):
+        raise HTTPException(status_code=502, detail="lodestone_bad_response")
+
+    name_match = re.search(
+        r'class=["\'][^"\']*frame__chara__name[^"\']*["\'][^>]*>(.*?)<',
+        markup,
+        re.IGNORECASE | re.DOTALL,
+    )
+    name = _text_from_html_fragment(name_match.group(1)) if name_match else None
+
+    world_match = re.search(
+        r'class=["\'][^"\']*frame__chara__world[^"\']*["\'][^>]*>(.*?)</p>',
+        markup,
+        re.IGNORECASE | re.DOTALL,
+    )
+    world_text = _text_from_html_fragment(world_match.group(1)) if world_match else None
+    server = None
+    if world_text:
+        server_match = re.match(r"(.+?)(?:\s*\[[^\]]+\])?$", world_text)
+        server = server_match.group(1).strip() if server_match else world_text.strip()
+
+    if not name:
+        og_title = _extract_meta_content(markup, "og:title")
+        if og_title and "|" in og_title:
+            name = og_title.split("|", 1)[0].strip()
+
+    avatar = _extract_lodestone_avatar(markup)
+
+    if not name or not server:
+        logger.warning(
+            "lodestone_identity_parse_failed",
+            lodestone_id=lodestone_id,
+            has_name=bool(name),
+            has_server=bool(server),
+            has_avatar=bool(avatar),
+        )
+        raise HTTPException(status_code=502, detail="lodestone_bad_response")
+
+    return {
+        "lodestone_name": name,
+        "lodestone_server": server,
+        "lodestone_avatar_url": avatar,
+        "source": "lodestone_identity",
+    }
+
+
+async def _fetch_lodestone_identity(lodestone_id: int) -> dict[str, str | None]:
+    upstream_url = f"{LODESTONE_BASE}/lodestone/character/{lodestone_id}/"
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        try:
+            response = await client.get(
+                upstream_url,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "User-Agent": "ffxiv-raid-planner/identity-link",
+                },
+                timeout=15.0,
+            )
+        except httpx.TimeoutException:
+            logger.warning(
+                "lodestone_identity_fetch_failed",
+                lodestone_id=lodestone_id,
+                upstream_url=upstream_url,
+                status_code=None,
+                error_type="timeout",
+            )
+            raise HTTPException(status_code=504, detail="lodestone_timeout")
+        except httpx.RequestError as exc:
+            logger.warning(
+                "lodestone_identity_fetch_failed",
+                lodestone_id=lodestone_id,
+                upstream_url=upstream_url,
+                status_code=None,
+                error_type=exc.__class__.__name__,
+            )
+            raise HTTPException(status_code=502, detail="lodestone_unavailable")
+
+    if response.status_code == 404:
+        logger.warning(
+            "lodestone_identity_fetch_failed",
+            lodestone_id=lodestone_id,
+            upstream_url=upstream_url,
+            status_code=response.status_code,
+            error_type="not_found",
+        )
+        raise HTTPException(status_code=404, detail="Character not found on Lodestone")
+
+    if response.status_code == 403:
+        logger.warning(
+            "lodestone_identity_fetch_failed",
+            lodestone_id=lodestone_id,
+            upstream_url=upstream_url,
+            status_code=response.status_code,
+            error_type="forbidden",
+        )
+        raise HTTPException(status_code=502, detail="lodestone_unavailable")
+
+    if response.status_code != 200:
+        logger.warning(
+            "lodestone_identity_fetch_failed",
+            lodestone_id=lodestone_id,
+            upstream_url=upstream_url,
+            status_code=response.status_code,
+            error_type="unexpected_status",
+        )
+        raise HTTPException(status_code=502, detail="lodestone_unavailable")
+
+    content_type = response.headers.get("content-type", "")
+    if "text/html" not in content_type.lower():
+        logger.warning(
+            "lodestone_identity_fetch_failed",
+            lodestone_id=lodestone_id,
+            upstream_url=upstream_url,
+            status_code=response.status_code,
+            error_type="unexpected_content_type",
+        )
+        raise HTTPException(status_code=502, detail="lodestone_bad_response")
+
+    return _extract_lodestone_identity(lodestone_id, response.text)
+
+
+def _payload_has_usable_gear(data: dict[str, Any]) -> bool:
+    char = data.get("Character")
+    if not isinstance(char, dict):
+        return False
+
+    gear_set = char.get("GearSet")
+    if not isinstance(gear_set, dict):
+        return False
+
+    gear_items = gear_set.get("Gear")
+    if not isinstance(gear_items, dict):
+        return False
+
+    return any(
+        isinstance(item, dict) and _coerce_int(item.get("ID"))
+        for item in gear_items.values()
+    )
+
+
+async def _fetch_tomestone_character_payload(lodestone_id: int) -> dict[str, Any] | None:
+    provider = get_tomestone_provider(settings)
+    if not provider.enabled:
+        return None
+
+    result = await provider.fetch_profile_by_id(lodestone_id)
+    if not result.available or result.raw is None:
+        return None
+
+    payload = tomestone_profile_to_xivapi_payload(result.raw, fallback_lodestone_id=lodestone_id)
+    if payload is None:
+        logger.warning(
+            "tomestone_character_payload_unusable",
+            lodestone_id=lodestone_id,
+            reason="unrecognized_shape",
+        )
+        return None
+
+    has_gear = _payload_has_usable_gear(payload)
+    payload["__source"] = "tomestone" if has_gear else "tomestone_identity"
+    logger.info(
+        "tomestone_character_payload_ready",
+        lodestone_id=lodestone_id,
+        has_gear=has_gear,
+    )
+    if settings.debug:
+        char = payload.get("Character") or {}
+        gear_set = char.get("GearSet") or {}
+        gear = gear_set.get("Gear") or {}
+        logger.debug(
+            "tomestone_payload_shape",
+            lodestone_id=lodestone_id,
+            character_keys=sorted(str(k) for k in char.keys()),
+            gear_slot_count=len(gear) if isinstance(gear, dict) else 0,
+        )
+    return payload
+
+
+async def _fetch_tomestone_identity(lodestone_id: int) -> dict[str, str | None] | None:
+    payload = await _fetch_tomestone_character_payload(lodestone_id)
+    if not payload:
+        return None
+
+    character = payload.get("Character")
+    if not isinstance(character, dict):
+        return None
+
+    name = str(character.get("Name") or "").strip()
+    server = str(character.get("Server") or "").strip()
+    avatar = _sanitize_avatar_url(character.get("Avatar")) or _sanitize_avatar_url(character.get("Portrait"))
+    if not name or not server:
+        return None
+
+    return {
+        "lodestone_name": name,
+        "lodestone_server": server,
+        "lodestone_avatar_url": avatar,
+        "source": "tomestone_identity",
+    }
+
+
 async def _fetch_xivapi_json(
     path: str,
     *,
@@ -495,60 +822,158 @@ async def _fetch_xivapi_json(
     timeout: float,
     not_found_detail: str | None,
     service_label: str,
+    log_context: dict[str, Any] | None = None,
+    dev_error_codes: bool = False,
 ) -> dict[str, Any]:
+    upstream_url = f"{XIVAPI_BASE}{path}"
+    safe_context = log_context or {}
+
+    def controlled_detail(code: str, message: str) -> str:
+        if dev_error_codes and settings.environment != "production":
+            return code
+        return message
+
+    is_character_endpoint = path.startswith("/character/") and path != "/character/search"
+
+    def log_failure(
+        reason: str,
+        *,
+        status_code: int | None = None,
+        error: str | None = None,
+        error_type: str | None = None,
+    ) -> None:
+        logger.warning(
+            "xivapi_live_request_failed",
+            reason=reason,
+            upstream_url=upstream_url,
+            path=path,
+            status_code=status_code,
+            service_label=service_label,
+            **({"error_type": error_type} if error_type else {}),
+            **safe_context,
+            **({"error": error} if error else {}),
+        )
+
     async with httpx.AsyncClient(follow_redirects=False) as client:
         try:
             response = await client.get(
-                f"{XIVAPI_BASE}{path}",
+                upstream_url,
                 params=params,
                 timeout=timeout,
             )
         except httpx.TimeoutException:
+            log_failure("timeout")
             raise HTTPException(
                 status_code=504,
-                detail=f"{service_label} timed out. Lodestone may be slow right now.",
+                detail=controlled_detail(
+                    "upstream_timeout",
+                    f"{service_label} timed out. Lodestone may be slow right now.",
+                ),
             )
         except httpx.RequestError as exc:
+            log_failure("request_error", error=exc.__class__.__name__)
             raise HTTPException(
                 status_code=502,
-                detail=f"Failed to reach XIVAPI: {exc}",
+                detail=controlled_detail("upstream_unavailable", "Unable to reach XIVAPI"),
             )
 
     if 300 <= response.status_code < 400:
-        logger.warning("xivapi_unexpected_redirect", path=path, status=response.status_code)
+        log_failure("unexpected_redirect", status_code=response.status_code)
         raise HTTPException(
             status_code=502,
-            detail="External service returned an unexpected redirect",
+            detail=controlled_detail(
+                "upstream_bad_response",
+                "External service returned an unexpected redirect",
+            ),
         )
 
     if response.status_code == 403:
+        is_private_response = False
+        try:
+            error_payload = response.json()
+            if isinstance(error_payload, dict):
+                message = str(error_payload.get("Message") or "")
+                exception_name = str(error_payload.get("Ex") or "")
+                is_private_response = (
+                    "private" in message.lower()
+                    or "LodestonePrivateException" in exception_name
+                )
+        except Exception:
+            is_private_response = False
+
+        if is_character_endpoint:
+            log_failure(
+                "upstream_character_unavailable",
+                status_code=response.status_code,
+                error_type="upstream_character_unavailable",
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=controlled_detail(
+                    "upstream_character_unavailable",
+                    f"{service_label} is unavailable right now",
+                ),
+            )
+
+        log_failure(
+            "forbidden_private" if is_private_response else "forbidden",
+            status_code=response.status_code,
+        )
         raise HTTPException(
             status_code=502,
-            detail=f"{service_label} is unavailable right now",
+            detail=controlled_detail(
+                "upstream_private" if is_private_response else "upstream_unavailable",
+                f"{service_label} is unavailable right now",
+            ),
         )
 
     if response.status_code == 404 and not_found_detail:
+        log_failure("not_found", status_code=response.status_code)
         raise HTTPException(status_code=404, detail=not_found_detail)
 
     if response.status_code >= 500:
+        if is_character_endpoint:
+            log_failure(
+                "upstream_character_unavailable",
+                status_code=response.status_code,
+                error_type="upstream_character_unavailable",
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=controlled_detail(
+                    "upstream_character_unavailable",
+                    f"{service_label} is temporarily unavailable",
+                ),
+            )
+
+        log_failure("server_error", status_code=response.status_code)
         raise HTTPException(
             status_code=502,
-            detail=f"{service_label} is temporarily unavailable",
+            detail=controlled_detail("upstream_unavailable", f"{service_label} is temporarily unavailable"),
         )
 
     if response.status_code != 200:
+        log_failure("unexpected_status", status_code=response.status_code)
         raise HTTPException(
             status_code=502,
-            detail=f"XIVAPI error: {response.status_code}",
+            detail=controlled_detail("upstream_unavailable", f"XIVAPI error: {response.status_code}"),
         )
 
     try:
         data = response.json()
     except Exception:
-        raise HTTPException(status_code=502, detail="Invalid response from XIVAPI")
+        log_failure("bad_json", status_code=response.status_code)
+        raise HTTPException(
+            status_code=502,
+            detail=controlled_detail("upstream_bad_response", "Invalid response from XIVAPI"),
+        )
 
     if not isinstance(data, dict):
-        raise HTTPException(status_code=502, detail="Invalid response from XIVAPI")
+        log_failure("missing_payload", status_code=response.status_code)
+        raise HTTPException(
+            status_code=502,
+            detail=controlled_detail("upstream_bad_response", "Invalid response from XIVAPI"),
+        )
 
     return data
 
@@ -557,18 +982,27 @@ async def _fetch_character_payload(
     lodestone_id: int,
     *,
     require_usable_gear: bool,
+    dev_error_codes: bool = False,
 ) -> dict[str, Any]:
     if _is_dev_lodestone_mock_enabled():
         data = MOCK_CHARACTER_PAYLOADS.get(lodestone_id)
         if data is None:
             raise HTTPException(status_code=404, detail="Character not found on Lodestone")
+        data = {**data, "__source": "dev_mock"}
     else:
-        data = await _fetch_xivapi_json(
-            f"/character/{lodestone_id}",
-            timeout=20.0,
-            not_found_detail="Character not found on Lodestone",
-            service_label="Lodestone character data",
-        )
+        tomestone_data = await _fetch_tomestone_character_payload(lodestone_id)
+        if tomestone_data and (_payload_has_usable_gear(tomestone_data) or not require_usable_gear):
+            data = tomestone_data
+        else:
+            data = await _fetch_xivapi_json(
+                f"/character/{lodestone_id}",
+                timeout=20.0,
+                not_found_detail="Character not found on Lodestone",
+                service_label="Lodestone character data",
+                log_context={"lodestone_id": lodestone_id},
+                dev_error_codes=dev_error_codes,
+            )
+            data["__source"] = "xivapi"
 
     char = data.get("Character")
     if not isinstance(char, dict):
@@ -612,12 +1046,26 @@ async def _resolve_equipped_item(
         item_info = await fetch_item_from_garland(item_id)
 
     lookup_succeeded = _has_known_item_details(item_info)
-    item_name = item_info.get("name") if lookup_succeeded else None
-    item_level = _coerce_int(item_info.get("level")) or 0
+    # Use Garland data when available; fall back to Tomestone-sourced name/level
+    # (stored as "Name"/"ItemLevel" in item_data by _normalize_tomestone_gear_list)
+    item_name = (
+        item_info.get("name")
+        if lookup_succeeded
+        else (item_data.get("Name") if isinstance(item_data, dict) else None)
+    )
+    item_level = (
+        _coerce_int(item_info.get("level"))
+        or (
+            _coerce_int(item_data.get("ItemLevel"))
+            if isinstance(item_data, dict)
+            else 0
+        )
+        or 0
+    )
     item_icon = item_info.get("icon") or _fallback_icon_url(item_data)
     current_source = (
         classify_current_source(item_name, item_level, slot_name)
-        if lookup_succeeded and item_name
+        if item_name and item_level
         else "unknown"
     )
 
@@ -642,7 +1090,7 @@ async def _build_slot_snapshot(
         return EquippedGearSlot(slot=our_slot), None
 
     resolved = await _resolve_equipped_item(item_id, our_slot, item_data)
-    display_name = resolved["item_name"] if resolved["lookup_succeeded"] else "Unavailable item details"
+    display_name = resolved["item_name"] or "Unavailable item details"
 
     return (
         EquippedGearSlot(
@@ -697,29 +1145,43 @@ def _calculate_has_item(
     gear_slot: dict[str, Any],
     equipped: dict[str, Any] | None,
 ) -> bool:
+    """Determine whether the player has obtained their BiS item for this slot.
+
+    Semantics (in priority order):
+    1. No equipped item → never complete.
+    2. No BiS target configured (bisSource unset) → never complete.
+    3. BiS has a specific item ID → exact ID match required.
+       The item ID comes from the gear payload directly, so a failed Garland
+       lookup does not prevent a match as long as the raw ID is present.
+    4. BiS has no specific item ID (manual bisSource-only config) → fall back
+       to source + item level matching. This preserves behaviour for manual BiS
+       configurations where the user chose a source category without importing
+       a specific item from xivgear/etro.
+    """
     if not equipped or not equipped.get("has_equipped_item"):
+        return False
+
+    bis_source = gear_slot.get("bisSource")
+    if not bis_source:
+        # No BiS target configured — this slot cannot be complete.
         return False
 
     expected_item_id = _coerce_int(gear_slot.get("itemId"))
     equipped_item_id = _coerce_int(equipped.get("item_id"))
-    bis_source = gear_slot.get("bisSource")
+
+    if expected_item_id:
+        # BiS has a specific item ID: exact match only.
+        # If the equipped item has no resolved ID, we cannot confirm a match.
+        return bool(equipped_item_id and expected_item_id == equipped_item_id)
+
+    # No specific BiS item ID configured: fall back to source + item level matching.
     current_source = equipped.get("current_source", "unknown")
+    if not _source_satisfies_bis(bis_source, current_source):
+        return False
+
     bis_item_level = _coerce_int(gear_slot.get("itemLevel")) or 0
     equipped_item_level = _coerce_int(equipped.get("item_level")) or 0
-
-    if expected_item_id and equipped_item_id and expected_item_id == equipped_item_id:
-        return True
-
-    if _source_satisfies_bis(bis_source, current_source):
-        return True
-
-    if bis_source == "raid" and bis_item_level and equipped_item_level >= bis_item_level and current_source != "unknown":
-        return True
-
-    if not expected_item_id and bis_item_level and equipped_item_level >= bis_item_level and current_source != "unknown":
-        return True
-
-    return False
+    return not bis_item_level or equipped_item_level >= bis_item_level
 
 
 def _calculate_is_augmented(
@@ -752,17 +1214,53 @@ async def search_characters(
     if _is_dev_lodestone_mock_enabled():
         return _mock_search(name, server)
 
+    tomestone_provider = get_tomestone_provider(settings)
+    if server.strip() and tomestone_provider.enabled:
+        tomestone_result = await tomestone_provider.fetch_profile_by_name(server, name)
+        if tomestone_result.available and tomestone_result.raw is not None:
+            tomestone_payload = tomestone_profile_to_xivapi_payload(tomestone_result.raw)
+            if tomestone_payload:
+                character = tomestone_payload["Character"]
+                lodestone_id = _coerce_int(character.get("ID"))
+                if lodestone_id:
+                    return CharacterSearchResponse(
+                        results=[
+                            CharacterSearchResult(
+                                lodestone_id=lodestone_id,
+                                name=str(character.get("Name") or "Unknown"),
+                                server=str(character.get("Server") or "Unknown"),
+                                avatar=_sanitize_avatar_url(character.get("Avatar")),
+                            )
+                        ],
+                        total=1,
+                    )
+        elif tomestone_result.available and tomestone_result.error == "not_found":
+            return CharacterSearchResponse(results=[], total=0)
+
     data = await _fetch_xivapi_json(
         "/character/search",
         params={"name": name, **({"server": server} if server else {})},
         timeout=15.0,
         not_found_detail=None,
         service_label="Lodestone search",
+        log_context={"character_name": name, "server": server or None},
+        dev_error_codes=True,
     )
 
-    results_data = data.get("Results", [])
+    results_data = data.get("Results")
     if not isinstance(results_data, list):
-        raise HTTPException(status_code=502, detail="Invalid response from XIVAPI")
+        logger.warning(
+            "xivapi_live_search_malformed_payload",
+            reason="missing_results",
+            upstream_url=f"{XIVAPI_BASE}/character/search",
+            path="/character/search",
+            character_name=name,
+            server=server or None,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="upstream_bad_response" if settings.environment != "production" else "Invalid response from XIVAPI",
+        )
 
     results = []
     for char in results_data:
@@ -773,7 +1271,7 @@ async def search_characters(
                 lodestone_id=_coerce_int(char.get("ID")) or 0,
                 name=str(char.get("Name") or "Unknown"),
                 server=str(char.get("Server") or "Unknown"),
-                avatar=char.get("Avatar"),
+                avatar=_sanitize_avatar_url(char.get("Avatar")),
             )
         )
 
@@ -783,6 +1281,15 @@ async def search_characters(
         if isinstance(pagination, dict)
         else None
     )
+
+    if not results:
+        logger.info(
+            "xivapi_live_search_no_results",
+            upstream_url=f"{XIVAPI_BASE}/character/search",
+            path="/character/search",
+            character_name=name,
+            server=server or None,
+        )
 
     return CharacterSearchResponse(results=results, total=total or len(results))
 
@@ -815,8 +1322,9 @@ async def get_character_gear(
     if cached:
         return CharacterGearResponse(**cached)
 
-    data = await _fetch_character_payload(lodestone_id, require_usable_gear=False)
+    data = await _fetch_character_payload(lodestone_id, require_usable_gear=False, dev_error_codes=True)
     char = data["Character"]
+    source = str(data.get("__source") or "xivapi")
     gear_set = char.get("GearSet", {}) if isinstance(char.get("GearSet"), dict) else {}
     gear_items = gear_set.get("Gear", {}) if isinstance(gear_set.get("Gear"), dict) else {}
 
@@ -824,16 +1332,20 @@ async def get_character_gear(
 
     active_class = gear_set.get("Class", {}) if isinstance(gear_set, dict) else {}
     active_job = active_class.get("Abbreviation") if isinstance(active_class, dict) else None
+    gear_available = _payload_has_usable_gear(data) and bool(equipped_slots)
 
     result = CharacterGearResponse(
         lodestone_id=lodestone_id,
         name=str(char.get("Name") or "Unknown"),
         server=str(char.get("Server") or "Unknown"),
-        avatar=char.get("Avatar"),
-        portrait=char.get("Portrait"),
+        avatar=_sanitize_avatar_url(char.get("Avatar")),
+        portrait=_sanitize_avatar_url(char.get("Portrait")),
         active_job=active_job,
         active_job_level=_coerce_int(gear_set.get("Level")) if isinstance(gear_set, dict) else None,
-        gear=equipped_slots,
+        gear=equipped_slots if gear_available else [],
+        gear_available=gear_available,
+        identity_only=not gear_available,
+        source=source,
     )
 
     await xivapi_item_cache.set(cache_key, result.model_dump(), ttl=300)
@@ -874,7 +1386,11 @@ async def sync_player_gear(
     if not resolved_lodestone_id:
         raise HTTPException(status_code=400, detail="No Lodestone ID provided or linked")
 
-    data = await _fetch_character_payload(resolved_lodestone_id, require_usable_gear=True)
+    data = await _fetch_character_payload(
+        resolved_lodestone_id,
+        require_usable_gear=True,
+        dev_error_codes=True,
+    )
     character = data["Character"]
     gear_set = character.get("GearSet", {})
     gear_items = gear_set.get("Gear", {}) if isinstance(gear_set, dict) else {}
@@ -901,6 +1417,11 @@ async def sync_player_gear(
             gear_slot["currentSource"] = "unknown"
             gear_slot["hasItem"] = False
             gear_slot["isAugmented"] = False
+            # Clear any previously stored equipped item details.
+            gear_slot.pop("equippedItemId", None)
+            gear_slot.pop("equippedItemLevel", None)
+            gear_slot.pop("equippedItemName", None)
+            gear_slot.pop("equippedItemIcon", None)
         else:
             next_source = equipped.get("current_source", "unknown")
             if next_source == "unknown":
@@ -916,20 +1437,24 @@ async def sync_player_gear(
                 {**equipped, "current_source": next_source},
                 bool(gear_slot["hasItem"]),
             )
+            # Store currently equipped item details separately from BiS target fields.
+            # These are display-only — they do not affect BiS completion logic.
+            if equipped.get("has_equipped_item"):
+                gear_slot["equippedItemId"] = equipped.get("item_id")
+                gear_slot["equippedItemLevel"] = equipped.get("item_level")
+                gear_slot["equippedItemName"] = equipped.get("item_name")
+                gear_slot["equippedItemIcon"] = equipped.get("item_icon")
 
         if gear_slot != previous_state:
             updated_count += 1
 
+    bis_matched_count = sum(1 for s in current_gear if s.get("hasItem"))
     now = datetime.now(timezone.utc).isoformat()
     lodestone_name = str(character.get("Name") or "") or None
     lodestone_server = str(character.get("Server") or "") or None
     avatar_value = character.get("Avatar")
     existing_avatar_url = getattr(player, "lodestone_avatar_url", None)
-    lodestone_avatar_url = (
-        avatar_value.strip()
-        if isinstance(avatar_value, str) and avatar_value.strip()
-        else existing_avatar_url
-    )
+    lodestone_avatar_url = _sanitize_avatar_url(avatar_value) or existing_avatar_url
 
     player.gear = [dict(gear_slot) for gear_slot in current_gear]
     player.lodestone_id = str(resolved_lodestone_id)
@@ -956,10 +1481,81 @@ async def sync_player_gear(
 
     return SyncResult(
         updated_slots=updated_count,
+        bis_matched_count=bis_matched_count,
         lodestone_id=str(resolved_lodestone_id),
         last_sync=now,
         lodestone_name=lodestone_name,
         lodestone_server=lodestone_server,
         lodestone_avatar_url=lodestone_avatar_url,
         gear=current_gear,
+    )
+
+
+@router.post("/identity/{group_id}/{player_id}", response_model=IdentityLinkResult)
+@limiter.limit(RATE_LIMITS["external_api"])
+async def link_player_identity(
+    request: Request,
+    group_id: str,
+    player_id: str,
+    lodestone_id: int = Query(..., description="Numeric Lodestone character ID"),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Link Lodestone identity from the public profile page without syncing gear."""
+    membership = await require_membership(session, current_user.id, group_id)
+    if membership.role == "viewer":
+        raise HTTPException(status_code=403, detail="Viewers cannot link Lodestone identity")
+
+    result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot)
+        .where(
+            SnapshotPlayer.id == player_id,
+            TierSnapshot.static_group_id == group_id,
+        )
+    )
+    player = result.scalar_one_or_none()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    if membership.role == "member" and player.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Members can only link their own player")
+
+    identity = await _fetch_tomestone_identity(lodestone_id)
+    if identity is None:
+        identity = await _fetch_lodestone_identity(lodestone_id)
+    elif not identity.get("lodestone_avatar_url"):
+        try:
+            lodestone_identity = await _fetch_lodestone_identity(lodestone_id)
+            if lodestone_identity.get("lodestone_avatar_url"):
+                identity["lodestone_avatar_url"] = lodestone_identity["lodestone_avatar_url"]
+        except HTTPException:
+            pass
+    now = datetime.now(timezone.utc).isoformat()
+
+    player.lodestone_id = str(lodestone_id)
+    player.updated_at = now
+    # Intentionally do not touch gear or last_sync: this is not a gear sync.
+    if hasattr(player, "lodestone_name"):
+        player.lodestone_name = identity["lodestone_name"]
+    if hasattr(player, "lodestone_server"):
+        player.lodestone_server = identity["lodestone_server"]
+    if hasattr(player, "lodestone_avatar_url") and identity.get("lodestone_avatar_url"):
+        player.lodestone_avatar_url = identity["lodestone_avatar_url"]
+
+    await session.flush()
+    await session.commit()
+
+    logger.info(
+        "lodestone_identity_link_complete",
+        player_id=player_id,
+        lodestone_id=lodestone_id,
+    )
+
+    return IdentityLinkResult(
+        lodestone_id=str(lodestone_id),
+        lodestone_name=identity["lodestone_name"],
+        lodestone_server=identity["lodestone_server"],
+        lodestone_avatar_url=identity.get("lodestone_avatar_url"),
+        source=str(identity.get("source") or "lodestone_identity"),
     )

@@ -191,6 +191,11 @@ export interface GearSlotStatus {
   itemIcon?: string;
   itemStats?: ItemStats;
   materia?: MateriaSlot[];  // Melded materia from BiS import
+  // Currently equipped item from Tomestone sync — separate from BiS target fields
+  equippedItemId?: number;
+  equippedItemLevel?: number;
+  equippedItemName?: string;
+  equippedItemIcon?: string;
 }
 
 // Legacy priority calculation mode (for backward compatibility)

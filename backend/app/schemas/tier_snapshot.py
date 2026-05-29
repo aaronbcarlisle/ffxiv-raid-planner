@@ -69,6 +69,12 @@ class GearSlotStatus(CamelModel):
     item_icon: str | None = None
     item_stats: dict[str, int] | None = None
     materia: list[MateriaSlot] = []  # Melded materia from BiS import
+    # Currently equipped item from Tomestone sync — separate from BiS target fields.
+    # Absent when no sync has been performed or Lodestone didn't return data for this slot.
+    equipped_item_id: int | None = None
+    equipped_item_level: int | None = None
+    equipped_item_name: str | None = None
+    equipped_item_icon: str | None = None
 
 
 class TomeWeaponStatus(CamelModel):
