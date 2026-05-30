@@ -643,7 +643,11 @@ async def list_snapshot_players(
     session: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> list[SnapshotPlayerResponse]:
-    """List all players in a tier snapshot"""
+    """List all players in a tier snapshot.
+
+    tier_id can be either the UUID (id) or the tier slug (tier_id) — matches the
+    lookup style of the other tier endpoints (get_tier_snapshot, etc.).
+    """
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
@@ -651,7 +655,7 @@ async def list_snapshot_players(
         select(TierSnapshot)
         .where(
             TierSnapshot.static_group_id == group_id,
-            TierSnapshot.tier_id == tier_id,
+            (TierSnapshot.id == tier_id) | (TierSnapshot.tier_id == tier_id),
         )
         .options(selectinload(TierSnapshot.players).selectinload(SnapshotPlayer.user))
     )
