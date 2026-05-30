@@ -14,6 +14,7 @@ import {
   buildUserSlotSet,
   computeAvailabilityRecommendations,
   computeTemplateRecommendations,
+  DAY_FULL_LABELS,
   DAY_LABELS,
   DAYS_OF_WEEK,
   formatDateHeader,
