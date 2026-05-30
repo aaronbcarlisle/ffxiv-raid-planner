@@ -87,7 +87,10 @@ function SlotIcon({
   const hasItem = status.hasItem;
   const bisSource = status.bisSource;
   const isAugmented = status.isAugmented;
-  const hasItemData = status.itemName && status.itemLevel;
+  const hasItemData =
+    (status.itemName && status.itemLevel) ||
+    !!status.equippedItemName ||
+    (status.equippedItemLevel ?? 0) > 0;
 
   // Use actual item icon if available, otherwise use placeholder
   const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
@@ -150,14 +153,19 @@ function SlotIcon({
             canNavigate && navigationHint ? (
               <div>
                 <ItemHoverCard
-                  itemName={status.itemName!}
-                  itemLevel={status.itemLevel!}
+                  itemName={status.itemName}
+                  itemLevel={status.itemLevel}
+                  itemId={status.itemId}
                   itemIcon={status.itemIcon}
                   itemStats={status.itemStats}
                   bisSource={bisSource}
                   hasItem={hasItem}
                   isAugmented={isAugmented}
                   materia={status.materia}
+                  equippedItemId={status.equippedItemId}
+                  equippedItemName={status.equippedItemName}
+                  equippedItemLevel={status.equippedItemLevel}
+                  equippedItemIcon={status.equippedItemIcon}
                 />
                 <div className="mt-2 pt-2 border-t border-border-subtle text-xs text-text-muted">
                   <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Alt</kbd>+Click to jump to {navigationHint}
@@ -165,14 +173,19 @@ function SlotIcon({
               </div>
             ) : (
               <ItemHoverCard
-                itemName={status.itemName!}
-                itemLevel={status.itemLevel!}
+                itemName={status.itemName}
+                itemLevel={status.itemLevel}
+                itemId={status.itemId}
                 itemIcon={status.itemIcon}
                 itemStats={status.itemStats}
                 bisSource={bisSource}
                 hasItem={hasItem}
                 isAugmented={isAugmented}
                 materia={status.materia}
+                equippedItemId={status.equippedItemId}
+                equippedItemName={status.equippedItemName}
+                equippedItemLevel={status.equippedItemLevel}
+                equippedItemIcon={status.equippedItemIcon}
               />
             )
           }

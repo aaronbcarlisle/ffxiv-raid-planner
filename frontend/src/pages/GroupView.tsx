@@ -1033,6 +1033,9 @@ export function GroupView() {
           {pageMode === 'schedule' && currentGroup && (
             <ScheduleTab
               groupId={currentGroup.id}
+              staticName={currentGroup.name}
+              shareCode={currentGroup.shareCode}
+              members={currentGroup.members || []}
               userRole={userRole}
             />
           )}

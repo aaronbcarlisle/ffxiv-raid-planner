@@ -104,20 +104,28 @@ export function PlayerCardGear({
             // Use actual item icon if available, otherwise placeholder
             const iconUrl = slotData.itemIcon || GEAR_SLOT_ICONS[slotKey];
 
-            // Build tooltip content - use ItemHoverCard if we have item metadata, otherwise simple text
-            const hasItemData = slotData.itemName && slotData.itemLevel;
+            // Build tooltip content - use ItemHoverCard if we have item metadata or equipped sync data
+            const hasItemData =
+              (slotData.itemName && slotData.itemLevel) ||
+              !!slotData.equippedItemName ||
+              (slotData.equippedItemLevel ?? 0) > 0;
             const slotName = GEAR_SLOT_NAMES[slotKey] || slotKey;
 
             const tooltipContent = hasItemData ? (
               <ItemHoverCard
-                itemName={slotData.itemName!}
-                itemLevel={slotData.itemLevel!}
+                itemName={slotData.itemName}
+                itemLevel={slotData.itemLevel}
+                itemId={slotData.itemId}
                 itemIcon={slotData.itemIcon}
                 itemStats={slotData.itemStats}
                 bisSource={slotData.bisSource}
                 hasItem={slotData.hasItem}
                 isAugmented={slotData.isAugmented}
                 materia={slotData.materia}
+                equippedItemId={slotData.equippedItemId}
+                equippedItemName={slotData.equippedItemName}
+                equippedItemLevel={slotData.equippedItemLevel}
+                equippedItemIcon={slotData.equippedItemIcon}
               />
             ) : (
               // Fallback for items without metadata
@@ -130,7 +138,7 @@ export function PlayerCardGear({
                   <span className="text-text-muted ml-1">(missing)</span>
                 )}
                 {hasPartial && (
-                  <span className="text-text-muted ml-1">(needs augment)</span>
+                  <span className="text-text-muted ml-1">(unaugmented)</span>
                 )}
               </div>
             );

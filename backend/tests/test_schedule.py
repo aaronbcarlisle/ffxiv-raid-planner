@@ -1,12 +1,20 @@
 """Tests for schedule/session endpoints"""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, User
+from app.models import MemberRole, ScheduleRsvp, User
+from app.services.discord_webhook import (
+    _next_occurrence_iso,
+    _recurrence_rule_to_text,
+    compute_rsvp_hash,
+)
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -94,6 +102,151 @@ class TestScheduleCreate:
             headers=member_headers,
         )
         assert response.status_code == 403
+
+    async def test_create_session_with_available_initial_rsvp_seeds_current_members(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        viewer_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await create_membership(session, viewer_user, test_group, role=MemberRole.VIEWER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        rsvps = response.json()["rsvps"]
+        assert len(rsvps) == 2
+        assert {rsvp["status"] for rsvp in rsvps} == {"available"}
+        assert {rsvp["userId"] for rsvp in rsvps} == {test_group.owner_id, member_user.id}
+
+    async def test_create_session_with_tentative_initial_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "tentative"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"tentative"}
+
+    async def test_create_session_with_unavailable_initial_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "unavailable"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"unavailable"}
+
+    async def test_member_can_override_seeded_rsvp(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+        session_id = create_response.json()["id"]
+
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+            json={"status": "unavailable"},
+            headers=member_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "unavailable"
+
+        rsvp_result = await session.execute(
+            select(ScheduleRsvp).where(
+                ScheduleRsvp.session_id == session_id,
+                ScheduleRsvp.user_id == member_user.id,
+            )
+        )
+        member_rsvps = rsvp_result.scalars().all()
+        assert len(member_rsvps) == 1
+        assert member_rsvps[0].status == "unavailable"
+
+    async def test_update_session_does_not_overwrite_seeded_rsvps(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        session_data,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "available"},
+            headers=auth_headers,
+        )
+        session_id = create_response.json()["id"]
+
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={"title": "Updated Raid Night", "initialRsvpStatus": "unavailable"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["title"] == "Updated Raid Night"
+        assert {rsvp["status"] for rsvp in response.json()["rsvps"]} == {"available"}
+
+        rsvp_result = await session.execute(
+            select(ScheduleRsvp).where(ScheduleRsvp.session_id == session_id)
+        )
+        assert len(rsvp_result.scalars().all()) == 2
+
+    async def test_invalid_initial_rsvp_status_is_rejected(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={**session_data, "initialRsvpStatus": "maybe"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
 
 
 class TestScheduleList:
@@ -485,6 +638,122 @@ class TestAvailability:
 
         assert response.status_code == 422
 
+
+class TestScheduleIntegrations:
+    async def test_owner_can_save_reminder_settings_masked(
+        self, client: AsyncClient, test_group, auth_headers
+    ):
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={
+                "webhookUrl": "https://discord.com/api/webhooks/123/token-secret",
+                "reminderChannelLabel": "raid-reminders",
+                "enable24hReminder": True,
+                "enable1hReminder": True,
+                "enableMissingRsvpReminder": True,
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["webhookConfigured"] is True
+        assert payload["webhookUrlMasked"] != "https://discord.com/api/webhooks/123/token-secret"
+        assert payload["enable24hReminder"] is True
+        assert payload["enable1hReminder"] is True
+        assert payload["enableMissingRsvpReminder"] is True
+
+    async def test_member_cannot_edit_or_view_webhook_url(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={"webhookUrl": "https://discord.com/api/webhooks/123/token-secret"},
+            headers=auth_headers,
+        )
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+
+        get_response = await client.get(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            headers=member_headers,
+        )
+        update_response = await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={"enable24hReminder": False},
+            headers=member_headers,
+        )
+
+        assert get_response.status_code == 200
+        assert get_response.json()["webhookConfigured"] is True
+        assert get_response.json()["webhookUrlMasked"] is None
+        assert update_response.status_code == 403
+
+    async def test_calendar_token_feed_and_revoke(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json=session_data,
+            headers=auth_headers,
+        )
+        assert create_response.status_code == 201
+
+        token_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/regenerate",
+            headers=auth_headers,
+        )
+        assert token_response.status_code == 200
+        calendar_url = token_response.json()["calendarUrl"]
+        token = calendar_url.rsplit("/api/calendar/", 1)[1].removesuffix(".ics")
+
+        feed_response = await client.get(f"/api/calendar/{token}.ics")
+        assert feed_response.status_code == 200
+        assert "text/calendar" in feed_response.headers["content-type"]
+        assert "BEGIN:VCALENDAR" in feed_response.text
+        assert "Weekly Raid Night" in feed_response.text
+
+        revoke_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/revoke",
+            headers=auth_headers,
+        )
+        assert revoke_response.status_code == 200
+        assert revoke_response.json()["calendarEnabled"] is False
+
+        revoked_feed = await client.get(f"/api/calendar/{token}.ics")
+        assert revoked_feed.status_code == 404
+
+    async def test_calendar_feed_escapes_special_text(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                **session_data,
+                "title": "Reclear, prog; cozy\\night",
+                "description": "Bring food, pots; and\\vibes\nPhase 2",
+            },
+            headers=auth_headers,
+        )
+        assert create_response.status_code == 201
+
+        token_response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/calendar/regenerate",
+            headers=auth_headers,
+        )
+        token = token_response.json()["calendarUrl"].rsplit("/api/calendar/", 1)[1].removesuffix(".ics")
+
+        feed_response = await client.get(f"/api/calendar/{token}.ics")
+
+        assert feed_response.status_code == 200
+        assert "SUMMARY:Reclear\\, prog\\; cozy\\\\night" in feed_response.text
+        assert "DESCRIPTION:Bring food\\, pots\\; and\\\\vibes\\nPhase 2" in feed_response.text
+
     async def test_list_availability_rejects_oversized_range(
         self,
         client: AsyncClient,
@@ -518,3 +787,410 @@ class TestAvailability:
         )
 
         assert response.status_code == 422
+
+
+# ── Unit tests for discord_webhook helpers ───────────────────────────────────
+
+
+class TestRecurrenceRuleToText:
+    def test_weekly_single_day(self):
+        assert _recurrence_rule_to_text("FREQ=WEEKLY;BYDAY=SA") == "Repeats weekly on Saturday"
+
+    def test_weekly_two_days(self):
+        assert _recurrence_rule_to_text("FREQ=WEEKLY;BYDAY=SA,SU") == "Repeats weekly on Saturday, Sunday"
+
+    def test_weekly_no_byday(self):
+        assert _recurrence_rule_to_text("FREQ=WEEKLY") == "Repeats weekly"
+
+    def test_non_weekly_returns_none(self):
+        assert _recurrence_rule_to_text("FREQ=DAILY") is None
+
+    def test_none_returns_none(self):
+        assert _recurrence_rule_to_text(None) is None
+
+    def test_empty_string_returns_none(self):
+        assert _recurrence_rule_to_text("") is None
+
+    def test_case_insensitive(self):
+        result = _recurrence_rule_to_text("freq=weekly;byday=mo")
+        assert result == "Repeats weekly on Monday"
+
+
+class TestNextOccurrenceIso:
+    def test_future_date_unchanged(self):
+        future = "2099-12-25T18:00:00+00:00"
+        result = _next_occurrence_iso(future, "FREQ=WEEKLY;BYDAY=WE")
+        assert result == future
+
+    def test_past_date_advances_to_future(self):
+        past = "2020-01-04T18:00:00+00:00"
+        result = _next_occurrence_iso(past, "FREQ=WEEKLY;BYDAY=SA")
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(result.replace("Z", "+00:00"))
+        assert dt > datetime.now(timezone.utc)
+
+    def test_non_weekly_returns_unchanged(self):
+        past = "2020-01-01T00:00:00+00:00"
+        result = _next_occurrence_iso(past, "FREQ=DAILY")
+        assert result == past
+
+    def test_no_rule_returns_unchanged(self):
+        past = "2020-01-01T00:00:00+00:00"
+        assert _next_occurrence_iso(past, None) == past
+
+    def test_unparseable_iso_returns_unchanged(self):
+        bad = "not-a-date"
+        assert _next_occurrence_iso(bad, "FREQ=WEEKLY;BYDAY=SA") == bad
+
+
+class TestComputeRsvpHash:
+    def test_deterministic(self):
+        counts = {"available": 5, "tentative": 2, "unavailable": 1}
+        assert compute_rsvp_hash(counts) == compute_rsvp_hash(counts)
+
+    def test_order_independent(self):
+        a = compute_rsvp_hash({"available": 5, "unavailable": 1})
+        b = compute_rsvp_hash({"unavailable": 1, "available": 5})
+        assert a == b
+
+    def test_different_counts_give_different_hash(self):
+        a = compute_rsvp_hash({"available": 5})
+        b = compute_rsvp_hash({"available": 6})
+        assert a != b
+
+    def test_returns_16_char_hex(self):
+        h = compute_rsvp_hash({"available": 8})
+        assert len(h) == 16
+        assert all(c in "0123456789abcdef" for c in h)
+
+
+# ── Integration tests for webhook firing ─────────────────────────────────────
+
+
+def _mock_discord_post(status_code: int = 204):
+    """Return a mock httpx.AsyncClient that succeeds on POST."""
+    response = MagicMock()
+    response.status_code = status_code
+    client = AsyncMock()
+    client.post.return_value = response
+    client.__aenter__.return_value = client
+    client.__aexit__.return_value = None
+    return client
+
+
+class TestDiscordWebhook:
+    """Verify that schedule mutations fire Discord webhook messages."""
+
+    async def _setup_webhook(self, client, group_id: str, headers: dict) -> None:
+        await client.put(
+            f"/api/static-groups/{group_id}/scheduler/settings",
+            json={"webhookUrl": "https://discord.com/api/webhooks/1234/fake-token-for-tests"},
+            headers=headers,
+        )
+
+    async def test_create_session_fires_webhook_when_configured(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(204)
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Hook Test Session",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 201
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        payload = call_args.kwargs.get("json") or {}
+        assert "<t:" in str(payload)
+
+    async def test_create_session_no_webhook_no_http_call(
+        self, client, test_group, auth_headers
+    ):
+        mock_client = _mock_discord_post(204)
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "No Hook Session",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 201
+        mock_client.post.assert_not_called()
+
+    async def test_webhook_payload_has_rsvp_summary(
+        self, client, session, test_group, auth_headers, member_user, member_headers
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "RSVP Hook Test",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        captured_payloads = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture_post(url, *, json=None, **kwargs):
+            captured_payloads.append(json or {})
+            return mock_client.post.return_value
+
+        mock_client.post.side_effect = capture_post
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "available"},
+                headers=member_headers,
+            )
+
+        assert len(captured_payloads) == 1
+        fields = captured_payloads[0]["embeds"][0]["fields"]
+        assert any(f["name"] == "RSVP" for f in fields)
+
+    async def test_webhook_payload_includes_recurrence_for_recurring_session(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        captured_payloads = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture_post(url, *, json=None, **kwargs):
+            captured_payloads.append(json or {})
+            return mock_client.post.return_value
+
+        mock_client.post.side_effect = capture_post
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Weekly Session",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": True,
+                    "recurrenceRule": "FREQ=WEEKLY;BYDAY=SA",
+                },
+                headers=auth_headers,
+            )
+
+        assert len(captured_payloads) >= 1
+        fields = captured_payloads[0]["embeds"][0]["fields"]
+        recurrence_field = next((f for f in fields if f["name"] == "Recurrence"), None)
+        assert recurrence_field is not None
+        assert "Saturday" in recurrence_field["value"]
+
+    async def test_webhook_failure_does_not_break_session_create(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        import httpx as _httpx
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = _httpx.ConnectError("timeout")
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Resilience Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 201
+
+    async def test_webhook_failure_does_not_break_rsvp(
+        self, client, session, test_group, auth_headers, member_user, member_headers
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "RSVP Resilience",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        import httpx as _httpx
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = _httpx.ConnectError("timeout")
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "available"},
+                headers=member_headers,
+            )
+        assert response.status_code == 200
+
+    async def test_delete_session_fires_cancelled_webhook(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "To Be Cancelled",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        captured_payloads = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture_post(url, *, json=None, **kwargs):
+            captured_payloads.append(json or {})
+            return mock_client.post.return_value
+
+        mock_client.post.side_effect = capture_post
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            del_resp = await client.delete(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+                headers=auth_headers,
+            )
+        assert del_resp.status_code == 204
+        assert len(captured_payloads) == 1
+        fields = captured_payloads[0]["embeds"][0]["fields"]
+        status_field = next((f for f in fields if f["name"] == "Status"), None)
+        assert status_field is not None
+        assert "Cancelled" in status_field["value"]
+
+    async def test_post_session_preview_uses_real_session_data(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "Preview Target Session",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+
+        captured_payloads = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture_post(url, *, json=None, **kwargs):
+            captured_payloads.append(json or {})
+            return mock_client.post.return_value
+
+        mock_client.post.side_effect = capture_post
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/scheduler/settings/post-session-preview",
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+        assert len(captured_payloads) == 1
+        title = captured_payloads[0]["embeds"][0]["title"]
+        assert "Preview Target Session" in title
+
+    async def test_post_session_preview_fails_without_webhook(
+        self, client, test_group, auth_headers
+    ):
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/settings/post-session-preview",
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_post_session_preview_fails_with_no_upcoming_sessions(
+        self, client, test_group, auth_headers
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/scheduler/settings/post-session-preview",
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_webhook_url_not_in_payload_content(
+        self, client, test_group, auth_headers
+    ):
+        fake_token = "fake-token-for-tests"
+        await client.put(
+            f"/api/static-groups/{test_group.id}/scheduler/settings",
+            json={"webhookUrl": f"https://discord.com/api/webhooks/1234/{fake_token}"},
+            headers=auth_headers,
+        )
+
+        captured_payloads = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture_post(url, *, json=None, **kwargs):
+            captured_payloads.append(json or {})
+            return mock_client.post.return_value
+
+        mock_client.post.side_effect = capture_post
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Token Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+
+        assert len(captured_payloads) >= 1
+        payload_str = str(captured_payloads[0])
+        assert fake_token not in payload_str

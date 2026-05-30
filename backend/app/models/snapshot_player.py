@@ -45,6 +45,9 @@ class SnapshotPlayer(Base):
     position: Mapped[str | None] = mapped_column(String(5), nullable=True)  # T1, H2, M1, etc.
     tank_role: Mapped[str | None] = mapped_column(String(5), nullable=True)  # MT, OT
     template_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Expected role for slot
+    roster_title: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    roster_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    flex_roles: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of backup raid slots
     configured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_substitute: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -52,6 +55,9 @@ class SnapshotPlayer(Base):
     # External links
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     lodestone_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    lodestone_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lodestone_server: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lodestone_avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     bis_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     fflogs_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_sync: Mapped[str | None] = mapped_column(Text, nullable=True)

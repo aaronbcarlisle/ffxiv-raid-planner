@@ -1,13 +1,30 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
-import type { ScheduleSession, ScheduleSessionCreate, ScheduleSessionUpdate, RsvpStatus, ScheduleRsvp } from '../types';
+import type {
+  ScheduleSession,
+  ScheduleSessionCreate,
+  ScheduleSessionUpdate,
+  RsvpStatus,
+  ScheduleRsvp,
+  ScheduleSettings,
+  ScheduleSettingsUpdate,
+  CalendarTokenResponse,
+} from '../types';
 
 interface ScheduleState {
   sessions: ScheduleSession[];
+  settings: ScheduleSettings | null;
   isLoading: boolean;
+  isLoadingSettings: boolean;
   error: string | null;
 
   fetchSessions: (groupId: string) => Promise<void>;
+  fetchSettings: (groupId: string) => Promise<void>;
+  updateSettings: (groupId: string, data: ScheduleSettingsUpdate) => Promise<void>;
+  sendTestReminder: (groupId: string) => Promise<void>;
+  postSessionPreview: (groupId: string) => Promise<void>;
+  regenerateCalendar: (groupId: string) => Promise<void>;
+  revokeCalendar: (groupId: string) => Promise<void>;
   createSession: (groupId: string, data: ScheduleSessionCreate) => Promise<void>;
   updateSession: (groupId: string, sessionId: string, data: ScheduleSessionUpdate) => Promise<void>;
   deleteSession: (groupId: string, sessionId: string) => Promise<void>;
@@ -17,7 +34,9 @@ interface ScheduleState {
 
 export const useScheduleStore = create<ScheduleState>((set) => ({
   sessions: [],
+  settings: null,
   isLoading: false,
+  isLoadingSettings: false,
   error: null,
 
   fetchSessions: async (groupId: string) => {
@@ -32,6 +51,92 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     }
   },
 
+  fetchSettings: async (groupId: string) => {
+    set({ isLoadingSettings: true, error: null });
+    try {
+      const settings = await api.get<ScheduleSettings>(
+        `/api/static-groups/${groupId}/scheduler/settings`
+      );
+      set({ settings, isLoadingSettings: false });
+    } catch (err) {
+      set({ error: (err as Error).message, isLoadingSettings: false });
+    }
+  },
+
+  updateSettings: async (groupId: string, data: ScheduleSettingsUpdate) => {
+    set({ error: null });
+    try {
+      const settings = await api.put<ScheduleSettings>(
+        `/api/static-groups/${groupId}/scheduler/settings`,
+        data
+      );
+      set({ settings });
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
+  sendTestReminder: async (groupId: string) => {
+    set({ error: null });
+    try {
+      await api.post(`/api/static-groups/${groupId}/scheduler/settings/test-reminder`);
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
+  postSessionPreview: async (groupId: string) => {
+    set({ error: null });
+    try {
+      await api.post(`/api/static-groups/${groupId}/scheduler/settings/post-session-preview`);
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
+  regenerateCalendar: async (groupId: string) => {
+    set({ error: null });
+    try {
+      const response = await api.post<CalendarTokenResponse>(
+        `/api/static-groups/${groupId}/scheduler/calendar/regenerate`
+      );
+      set((state) => state.settings ? {
+        settings: {
+          ...state.settings,
+          calendarEnabled: response.calendarEnabled,
+          calendarUrl: response.calendarUrl,
+          calendarTokenCreatedAt: response.calendarTokenCreatedAt,
+        },
+      } : state);
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
+  revokeCalendar: async (groupId: string) => {
+    set({ error: null });
+    try {
+      const response = await api.post<CalendarTokenResponse>(
+        `/api/static-groups/${groupId}/scheduler/calendar/revoke`
+      );
+      set((state) => state.settings ? {
+        settings: {
+          ...state.settings,
+          calendarEnabled: response.calendarEnabled,
+          calendarUrl: response.calendarUrl,
+          calendarTokenCreatedAt: response.calendarTokenCreatedAt,
+        },
+      } : state);
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
+    }
+  },
+
   createSession: async (groupId: string, data: ScheduleSessionCreate) => {
     set({ error: null });
     try {
@@ -39,7 +144,9 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
         `/api/static-groups/${groupId}/schedule`,
         data
       );
-      set((state) => ({ sessions: [...state.sessions, session] }));
+      set((state) => ({
+        sessions: [...state.sessions, session].sort((left, right) => left.startTime.localeCompare(right.startTime)),
+      }));
     } catch (err) {
       set({ error: (err as Error).message });
       throw err;
@@ -54,7 +161,9 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
         data
       );
       set((state) => ({
-        sessions: state.sessions.map((s) => (s.id === sessionId ? updated : s)),
+        sessions: state.sessions
+          .map((s) => (s.id === sessionId ? updated : s))
+          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
       }));
     } catch (err) {
       set({ error: (err as Error).message });
@@ -98,5 +207,9 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     }
   },
 
-  clearSessions: () => set({ sessions: [], error: null }),
+  clearSessions: () => set({
+    sessions: [],
+    settings: null,
+    error: null,
+  }),
 }));

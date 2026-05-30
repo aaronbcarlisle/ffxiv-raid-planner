@@ -1,21 +1,35 @@
 """API router for schedule/session and availability operations"""
 
 import json
+import secrets
 import uuid
 from collections import defaultdict
 from datetime import date as date_type, datetime, timedelta, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..database import get_session
+from ..config import get_settings
+from ..logging_config import get_logger
 from ..dependencies import get_current_user
+from ..services.discord_webhook import (
+    SessionAnnouncementData,
+    build_cancelled_payload,
+    build_session_announcement_payload,
+    build_test_reminder_payload,
+    compute_rsvp_hash,
+    _next_occurrence_iso,
+    _recurrence_rule_to_text,
+)
 from ..exceptions import ValidationError
-from ..models import User
+from ..models import Membership, MemberRole, StaticGroup, User
 from ..models.availability import UserAvailability
-from ..models.schedule import ScheduleRsvp, ScheduleSession
+from ..models.schedule import ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -26,21 +40,229 @@ from ..permissions import (
 from ..schemas.schedule import (
     AvailabilityDateSummary,
     AvailabilitySubmit,
+    InitialRsvpStatusEnum,
     RsvpCreate,
     RsvpResponse,
     RsvpStatusEnum,
+    CalendarTokenResponse,
     ScheduleSessionCreate,
     ScheduleSessionResponse,
+    ScheduleSettingsResponse,
+    ScheduleSettingsUpdate,
     ScheduleSessionUpdate,
+    TestReminderResponse,
     UserAvailabilityResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["schedule"])
+settings = get_settings()
+logger = get_logger(__name__)
 
 # Upper bound on how many days of availability can be requested in one call.
 # The grid only renders a week at a time, so this leaves generous headroom
 # while preventing an unbounded date range from producing a huge response.
 MAX_AVAILABILITY_RANGE_DAYS = 62
+
+
+def _mask_webhook_url(webhook_url: str | None) -> str | None:
+    if not webhook_url:
+        return None
+    return f"{webhook_url[:32]}...{webhook_url[-8:]}" if len(webhook_url) > 48 else "Configured"
+
+
+async def _get_member_count(db: AsyncSession, group_id: str) -> int:
+    """Return the count of non-viewer members in a static group."""
+    result = await db.execute(
+        select(Membership.id).where(
+            Membership.static_group_id == group_id,
+            Membership.role != MemberRole.VIEWER.value,
+        )
+    )
+    return len(result.scalars().all())
+
+
+def _build_announcement_data(
+    sched_session: ScheduleSession,
+    static_group: StaticGroup,
+    member_count: int,
+    rsvps: list[ScheduleRsvp] | None = None,
+) -> SessionAnnouncementData:
+    """Assemble a SessionAnnouncementData from ORM objects.
+
+    Computes RSVP counts from the session's loaded rsvps relationship (or
+    the passed-in ``rsvps`` list when the relationship isn't loaded yet),
+    resolves the next upcoming occurrence for recurring sessions, and
+    converts the recurrence rule to human-readable text.
+    """
+    rsvp_list = rsvps if rsvps is not None else list(sched_session.rsvps)
+    rsvp_counts: dict[str, int] = {}
+    for rsvp in rsvp_list:
+        rsvp_counts[rsvp.status] = rsvp_counts.get(rsvp.status, 0) + 1
+
+    start_iso = _next_occurrence_iso(sched_session.start_time, sched_session.recurrence_rule)
+    # Adjust end to match the same offset as start for recurring sessions
+    try:
+        from datetime import datetime as _dt
+        orig_start = _dt.fromisoformat(sched_session.start_time.replace("Z", "+00:00"))
+        orig_end = _dt.fromisoformat(sched_session.end_time.replace("Z", "+00:00"))
+        resolved_start = _dt.fromisoformat(start_iso.replace("Z", "+00:00"))
+        end_iso = (orig_end + (resolved_start - orig_start)).isoformat()
+    except (ValueError, TypeError):
+        end_iso = sched_session.end_time
+
+    session_url = (
+        f"{settings.frontend_url}/group/{static_group.share_code}?tab=schedule"
+    )
+
+    return SessionAnnouncementData(
+        session_title=sched_session.title,
+        start_iso=start_iso,
+        end_iso=end_iso,
+        static_group_name=static_group.name,
+        session_url=session_url,
+        rsvp_counts=rsvp_counts,
+        total_member_count=member_count,
+        session_description=sched_session.description,
+        recurrence_summary=_recurrence_rule_to_text(sched_session.recurrence_rule),
+    )
+
+
+async def _try_fire_webhook(
+    webhook_url: str,
+    payload: dict,
+) -> None:
+    """POST a Discord webhook payload — fire-and-forget, never raises.
+
+    Errors are logged at WARNING level but never propagate. The webhook
+    URL is masked in all log messages so the token is never exposed.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(webhook_url, json=payload)
+        if resp.status_code >= 400:
+            logger.warning(
+                "discord_webhook_rejected",
+                status=resp.status_code,
+                webhook=_mask_webhook_url(webhook_url),
+            )
+    except Exception as exc:
+        logger.warning(
+            "discord_webhook_error",
+            error=str(exc),
+            webhook=_mask_webhook_url(webhook_url),
+        )
+
+
+def _calendar_url(token: str | None) -> str | None:
+    if not token:
+        return None
+    return f"{settings.backend_url}/api/calendar/{token}.ics"
+
+
+def _settings_response(
+    row: ScheduleSettings | None,
+    group_id: str,
+    can_manage: bool,
+) -> ScheduleSettingsResponse:
+    return ScheduleSettingsResponse(
+        id=row.id if row else None,
+        static_group_id=group_id,
+        webhook_configured=bool(row and row.webhook_url),
+        webhook_url_masked=_mask_webhook_url(row.webhook_url) if row and can_manage else None,
+        reminder_channel_label=row.reminder_channel_label if row and can_manage else None,
+        enable_24h_reminder=bool(row and row.enable_24h_reminder) if can_manage else False,
+        enable_1h_reminder=bool(row and row.enable_1h_reminder) if can_manage else False,
+        enable_missing_rsvp_reminder=bool(row and row.enable_missing_rsvp_reminder) if can_manage else False,
+        calendar_enabled=bool(row and row.calendar_enabled),
+        calendar_url=_calendar_url(row.calendar_token) if row and row.calendar_enabled else None,
+        calendar_token_created_at=row.calendar_token_created_at if row else None,
+        can_manage=can_manage,
+        created_at=row.created_at if row else None,
+        updated_at=row.updated_at if row else None,
+    )
+
+
+async def _get_schedule_settings(session: AsyncSession, group_id: str) -> ScheduleSettings | None:
+    try:
+        result = await session.execute(
+            select(ScheduleSettings).where(ScheduleSettings.static_group_id == group_id)
+        )
+        return result.scalar_one_or_none()
+    except SQLAlchemyError:
+        raise ValidationError(
+            "Scheduler integrations storage is not available. "
+            "Ask the site maintainer to apply the schedule_settings migration."
+        )
+
+
+async def _get_or_create_schedule_settings(session: AsyncSession, group_id: str) -> ScheduleSettings:
+    row = await _get_schedule_settings(session, group_id)
+    if row:
+        return row
+
+    now = datetime.now(timezone.utc).isoformat()
+    row = ScheduleSettings(
+        id=str(uuid.uuid4()),
+        static_group_id=group_id,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(row)
+    try:
+        await session.flush()
+    except SQLAlchemyError:
+        await session.rollback()
+        raise ValidationError(
+            "Scheduler integrations storage is not available. "
+            "Ask the site maintainer to apply the schedule_settings migration."
+        )
+    return row
+
+
+def _escape_ical_text(value: str | None) -> str:
+    if not value:
+        return ""
+    return (
+        value
+        .replace("\\", "\\\\")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\n", "\\n")
+        .replace(",", "\\,")
+        .replace(";", "\\;")
+    )
+
+
+async def _create_initial_rsvps(
+    session: AsyncSession,
+    schedule_session: ScheduleSession,
+    initial_status: InitialRsvpStatusEnum | None,
+    updated_at: str,
+) -> None:
+    """Seed RSVP rows for current non-viewer static members when requested."""
+    if initial_status is None or initial_status in {
+        InitialRsvpStatusEnum.NONE,
+        InitialRsvpStatusEnum.NO_RESPONSE,
+    }:
+        return
+
+    member_result = await session.execute(
+        select(Membership.user_id).where(
+            Membership.static_group_id == schedule_session.static_group_id,
+            Membership.role != MemberRole.VIEWER.value,
+        )
+    )
+    user_ids = sorted(set(member_result.scalars().all()))
+    for user_id in user_ids:
+        session.add(
+            ScheduleRsvp(
+                id=str(uuid.uuid4()),
+                session_id=schedule_session.id,
+                user_id=user_id,
+                status=initial_status.value,
+                updated_at=updated_at,
+            )
+        )
 
 
 def set_no_store_cache_headers(response: Response) -> None:
@@ -142,6 +364,8 @@ async def create_schedule_session(
     )
     session.add(schedule_session)
     await session.flush()
+    await _create_initial_rsvps(session, schedule_session, data.initial_rsvp_status, now)
+    await session.flush()
     await session.commit()
 
     result = await session.execute(
@@ -150,6 +374,17 @@ async def create_schedule_session(
         .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
     )
     created = result.scalar_one()
+
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(created, static_group, member_count)
+        await _try_fire_webhook(
+            sched_settings.webhook_url,
+            build_session_announcement_payload(ann_data),
+        )
 
     return session_to_response(created)
 
@@ -190,6 +425,17 @@ async def update_schedule_session(
     await session.flush()
     await session.commit()
 
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(schedule_session, static_group, member_count)
+        await _try_fire_webhook(
+            sched_settings.webhook_url,
+            build_session_announcement_payload(ann_data),
+        )
+
     return session_to_response(schedule_session)
 
 
@@ -218,9 +464,24 @@ async def delete_schedule_session(
     if not schedule_session:
         raise NotFound("Schedule session not found")
 
+    # Capture data before deletion for the webhook
+    sched_settings = await _get_schedule_settings(session, group_id)
+    webhook_payload = None
+    if sched_settings and sched_settings.webhook_url:
+        static_group = await get_static_group(session, group_id)
+        member_count = await _get_member_count(session, group_id)
+        ann_data = _build_announcement_data(
+            schedule_session, static_group, member_count, rsvps=[]
+        )
+        webhook_payload = build_cancelled_payload(ann_data)
+
     await session.delete(schedule_session)
     await session.flush()
     await session.commit()
+
+    # Fire Discord webhook after successful commit — non-blocking
+    if sched_settings and sched_settings.webhook_url and webhook_payload:
+        await _try_fire_webhook(sched_settings.webhook_url, webhook_payload)
 
 
 @router.post(
@@ -281,6 +542,25 @@ async def create_or_update_rsvp(
     await session.flush()
     await session.commit()
 
+    # Fire Discord webhook after successful commit — non-blocking
+    sched_settings = await _get_schedule_settings(session, group_id)
+    if sched_settings and sched_settings.webhook_url:
+        # Re-load the session with all RSVPs for an accurate count
+        rsvp_result = await session.execute(
+            select(ScheduleSession)
+            .where(ScheduleSession.id == session_id)
+            .options(selectinload(ScheduleSession.rsvps))
+        )
+        refreshed = rsvp_result.scalar_one_or_none()
+        if refreshed:
+            static_group = await get_static_group(session, group_id)
+            member_count = await _get_member_count(session, group_id)
+            ann_data = _build_announcement_data(refreshed, static_group, member_count)
+            await _try_fire_webhook(
+                sched_settings.webhook_url,
+                build_session_announcement_payload(ann_data),
+            )
+
     return RsvpResponse(
         id=rsvp.id,
         session_id=rsvp.session_id,
@@ -289,6 +569,270 @@ async def create_or_update_rsvp(
         status=RsvpStatusEnum(rsvp.status),
         note=rsvp.note,
         updated_at=rsvp.updated_at,
+    )
+
+
+# ==================== Scheduler Integrations ====================
+
+
+@router.get(
+    "/static-groups/{group_id}/scheduler/settings",
+    response_model=ScheduleSettingsResponse,
+)
+async def get_schedule_settings(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> ScheduleSettingsResponse:
+    """Read scheduler integration settings without exposing webhook secrets."""
+    await get_static_group(session, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
+    if membership.role == "viewer":
+        raise PermissionDenied("Viewers cannot access scheduler integrations")
+
+    row = await _get_schedule_settings(session, group_id)
+    can_manage = membership.role in {"owner", "lead"} or current_user.is_admin
+    return _settings_response(row, group_id, can_manage)
+
+
+@router.put(
+    "/static-groups/{group_id}/scheduler/settings",
+    response_model=ScheduleSettingsResponse,
+)
+async def update_schedule_settings(
+    group_id: str,
+    data: ScheduleSettingsUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> ScheduleSettingsResponse:
+    """Update Discord reminder settings (lead or owner only)."""
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_or_create_schedule_settings(session, group_id)
+    update_data = data.model_dump(exclude_unset=True, by_alias=False)
+
+    if "webhook_url" in update_data:
+        webhook_url = update_data["webhook_url"]
+        if webhook_url and not webhook_url.startswith("https://discord.com/api/webhooks/"):
+            raise ValidationError("Discord webhook URL must be a valid discord.com webhook URL")
+        row.webhook_url = webhook_url
+
+    for field in (
+        "reminder_channel_label",
+        "enable_24h_reminder",
+        "enable_1h_reminder",
+        "enable_missing_rsvp_reminder",
+    ):
+        if field in update_data:
+            setattr(row, field, update_data[field])
+
+    row.updated_at = datetime.now(timezone.utc).isoformat()
+    await session.flush()
+    await session.commit()
+
+    return _settings_response(row, group_id, True)
+
+
+@router.post(
+    "/static-groups/{group_id}/scheduler/settings/test-reminder",
+    response_model=TestReminderResponse,
+)
+async def test_schedule_reminder(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TestReminderResponse:
+    """Send a test Discord reminder (lead or owner only)."""
+    static_group = await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_schedule_settings(session, group_id)
+    if not row or not row.webhook_url:
+        raise ValidationError("Configure a Discord webhook URL before sending a test reminder")
+
+    payload = build_test_reminder_payload(
+        static_group_name=static_group.name,
+        planner_url=settings.frontend_url,
+        share_code=static_group.share_code,
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(row.webhook_url, json=payload)
+    except httpx.RequestError:
+        raise ValidationError("Discord webhook could not be reached")
+
+    if response.status_code >= 400:
+        raise ValidationError("Discord webhook rejected the test reminder")
+
+    return TestReminderResponse(ok=True, message="Test reminder sent")
+
+
+@router.post(
+    "/static-groups/{group_id}/scheduler/settings/post-session-preview",
+    response_model=TestReminderResponse,
+)
+async def post_session_preview(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> TestReminderResponse:
+    """Post the next upcoming session to Discord (lead or owner only).
+
+    If the group has no upcoming sessions this returns a validation error.
+    Unlike the test-reminder, this uses real session and RSVP data.
+    """
+    static_group = await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_schedule_settings(session, group_id)
+    if not row or not row.webhook_url:
+        raise ValidationError("Configure a Discord webhook URL before posting a session preview")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    result = await session.execute(
+        select(ScheduleSession)
+        .where(
+            ScheduleSession.static_group_id == group_id,
+            ScheduleSession.start_time >= now_iso,
+        )
+        .options(selectinload(ScheduleSession.rsvps))
+        .order_by(ScheduleSession.start_time.asc())
+        .limit(1)
+    )
+    upcoming = result.scalar_one_or_none()
+
+    if not upcoming:
+        raise ValidationError("No upcoming sessions found. Create a session first.")
+
+    member_count = await _get_member_count(session, group_id)
+    ann_data = _build_announcement_data(upcoming, static_group, member_count)
+    payload = build_session_announcement_payload(ann_data)
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(row.webhook_url, json=payload)
+    except httpx.RequestError:
+        raise ValidationError("Discord webhook could not be reached")
+
+    if response.status_code >= 400:
+        raise ValidationError("Discord webhook rejected the session preview")
+
+    return TestReminderResponse(ok=True, message="Session preview posted to Discord")
+
+
+@router.post(
+    "/static-groups/{group_id}/scheduler/calendar/regenerate",
+    response_model=CalendarTokenResponse,
+)
+async def regenerate_calendar_token(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> CalendarTokenResponse:
+    """Create or rotate the private calendar subscription token."""
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_or_create_schedule_settings(session, group_id)
+    now = datetime.now(timezone.utc).isoformat()
+    row.calendar_enabled = True
+    row.calendar_token = secrets.token_urlsafe(32)
+    row.calendar_token_created_at = now
+    row.updated_at = now
+    await session.flush()
+    await session.commit()
+
+    return CalendarTokenResponse(
+        calendar_enabled=True,
+        calendar_url=_calendar_url(row.calendar_token),
+        calendar_token_created_at=row.calendar_token_created_at,
+    )
+
+
+@router.post(
+    "/static-groups/{group_id}/scheduler/calendar/revoke",
+    response_model=CalendarTokenResponse,
+)
+async def revoke_calendar_token(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> CalendarTokenResponse:
+    """Revoke the private calendar subscription token."""
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    row = await _get_or_create_schedule_settings(session, group_id)
+    row.calendar_enabled = False
+    row.calendar_token = None
+    row.calendar_token_created_at = None
+    row.updated_at = datetime.now(timezone.utc).isoformat()
+    await session.flush()
+    await session.commit()
+
+    return CalendarTokenResponse(calendar_enabled=False)
+
+
+@router.get("/calendar/{token}.ics")
+async def get_calendar_feed(
+    token: str,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Public token-based iCalendar feed for scheduled sessions."""
+    try:
+        settings_result = await session.execute(
+            select(ScheduleSettings).where(
+                ScheduleSettings.calendar_token == token,
+                ScheduleSettings.calendar_enabled == True,  # noqa: E712
+            )
+        )
+    except SQLAlchemyError:
+        raise NotFound("Calendar feed not found")
+    row = settings_result.scalar_one_or_none()
+    if not row:
+        raise NotFound("Calendar feed not found")
+
+    static_group = await get_static_group(session, row.static_group_id)
+    sessions_result = await session.execute(
+        select(ScheduleSession)
+        .where(ScheduleSession.static_group_id == row.static_group_id)
+        .order_by(ScheduleSession.start_time.asc())
+    )
+    schedule_sessions = sessions_result.scalars().all()
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//FFXIV Raid Planner//Scheduler//EN",
+        "CALSCALE:GREGORIAN",
+        f"X-WR-CALNAME:{_escape_ical_text(static_group.name)} Raid Schedule",
+    ]
+    for schedule_session in schedule_sessions:
+        start_dt = datetime.fromisoformat(schedule_session.start_time.replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(schedule_session.end_time.replace("Z", "+00:00"))
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:{schedule_session.id}@ffxiv-raid-planner",
+                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTSTART:{start_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTEND:{end_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"SUMMARY:{_escape_ical_text(schedule_session.title)}",
+                f"DESCRIPTION:{_escape_ical_text(schedule_session.description)}\\n{settings.frontend_url}/group/{static_group.share_code}?tab=schedule",
+                f"URL:{_escape_ical_text(f'{settings.frontend_url}/group/{static_group.share_code}?tab=schedule')}",
+            ]
+        )
+        if schedule_session.is_recurring and schedule_session.recurrence_rule:
+            lines.append(f"RRULE:{schedule_session.recurrence_rule}")
+        lines.append("END:VEVENT")
+    lines.append("END:VCALENDAR")
+
+    return Response(
+        content="\r\n".join(lines) + "\r\n",
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'inline; filename="raid-schedule.ics"'},
     )
 
 

@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     # Dev auth mode - enables local auth bypass (NEVER enable in production)
     dev_auth_mode: bool = False
 
+    # Dev Lodestone mock mode - enables local Lodestone fixtures (NEVER enable in production)
+    dev_lodestone_mock: bool = False
+
+    # Optional Tomestone API token for experimental backend-only character provider
+    # Set via TOMESTONE_API_TOKEN env var. Never hardcode. Token is never sent to frontend.
+    tomestone_api_token: str = ""
+
     # Logging
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
@@ -94,6 +101,7 @@ class Settings(BaseSettings):
 
     # Frontend URL (for redirects)
     frontend_url: str = "http://localhost:5174"
+    backend_url: str = "http://localhost:8001"
 
     # Admin Discord IDs (comma-separated) - users with these Discord IDs
     # automatically get admin privileges on login. This is the only way to

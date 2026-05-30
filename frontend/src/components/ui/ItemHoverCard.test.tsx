@@ -78,13 +78,116 @@ describe('ItemHoverCard', () => {
     expect(screen.getByText('18')).toBeInTheDocument();
   });
 
-  it('renders missing indicator when hasItem is false', () => {
-    render(<ItemHoverCard {...baseProps} hasItem={false} />);
-    expect(screen.getByText('(missing)')).toBeInTheDocument();
+  // Comparison state tests
+
+  it('shows "Not currently detected" when BiS exists but no equipped data', () => {
+    render(<ItemHoverCard {...baseProps} itemId={44091} />);
+    expect(screen.getByText('Not currently detected')).toBeInTheDocument();
+    expect(screen.queryByText('BiS matched ✓')).not.toBeInTheDocument();
   });
 
-  it('renders needs augment indicator for tome items without augmentation', () => {
-    render(<ItemHoverCard {...baseProps} bisSource="tome" hasItem={true} isAugmented={false} />);
-    expect(screen.getByText('(needs augment)')).toBeInTheDocument();
+  it('shows "BiS matched ✓" when equippedItemId matches itemId', () => {
+    render(
+      <ItemHoverCard
+        {...baseProps}
+        itemId={44091}
+        equippedItemId={44091}
+        equippedItemName="Grand Champion Claymore"
+        equippedItemLevel={795}
+      />
+    );
+    expect(screen.getByText('BiS matched ✓')).toBeInTheDocument();
+    expect(screen.queryByText('Currently wearing')).not.toBeInTheDocument();
+  });
+
+  it('shows "Upgrade needed" and "Currently wearing" section when equipped differs from BiS', () => {
+    render(
+      <ItemHoverCard
+        {...baseProps}
+        itemId={44091}
+        equippedItemId={40001}
+        equippedItemName="Archfiend Blade"
+        equippedItemLevel={660}
+      />
+    );
+    expect(screen.getByText('Upgrade needed')).toBeInTheDocument();
+    expect(screen.getByText('Currently wearing')).toBeInTheDocument();
+    expect(screen.getAllByText('Archfiend Blade').length).toBeGreaterThan(0);
+    expect(screen.getByText(/iLv 660/)).toBeInTheDocument();
+  });
+
+  it('shows item level diff vs BiS when equipped has different iLv', () => {
+    render(
+      <ItemHoverCard
+        {...baseProps}
+        itemId={44091}
+        itemLevel={795}
+        equippedItemId={40001}
+        equippedItemName="Archfiend Blade"
+        equippedItemLevel={660}
+      />
+    );
+    // 795 - 660 = +135
+    expect(screen.getByText(/\+135 vs BiS/)).toBeInTheDocument();
+  });
+
+  it('shows "No BiS target configured" when equipped data exists but no BiS target', () => {
+    render(
+      <ItemHoverCard
+        bisSource={null}
+        equippedItemId={40001}
+        equippedItemName="Archfiend Blade"
+        equippedItemLevel={660}
+      />
+    );
+    expect(screen.getByText('No BiS target configured')).toBeInTheDocument();
+    expect(screen.getByText('Currently wearing')).toBeInTheDocument();
+    expect(screen.getByText('Archfiend Blade')).toBeInTheDocument();
+  });
+
+  it('shows "BiS target" label on BiS section when both BiS and equipped sections are present', () => {
+    render(
+      <ItemHoverCard
+        {...baseProps}
+        itemId={44091}
+        equippedItemId={40001}
+        equippedItemName="Archfiend Blade"
+        equippedItemLevel={660}
+      />
+    );
+    expect(screen.getByText('BiS target')).toBeInTheDocument();
+  });
+
+  it('does not show "BiS target" label when only BiS data present (no equipped)', () => {
+    render(<ItemHoverCard {...baseProps} itemId={44091} />);
+    expect(screen.queryByText('BiS target')).not.toBeInTheDocument();
+  });
+
+  it('source badge shows clean "Tome (Aug.)" label for unaugmented tome items', () => {
+    render(<ItemHoverCard {...baseProps} bisSource="tome" isAugmented={false} />);
+    expect(screen.getByText('Tome (Aug.)')).toBeInTheDocument();
+    // Augmentation state is surfaced via comparison badges, not inside the source badge
+    expect(screen.queryByText(/needs aug/i)).not.toBeInTheDocument();
+  });
+
+  it('source badge shows clean "Tome (Aug.)" label for augmented tome items', () => {
+    render(<ItemHoverCard {...baseProps} bisSource="tome" isAugmented={true} />);
+    expect(screen.getByText('Tome (Aug.)')).toBeInTheDocument();
+    expect(screen.queryByText(/needs aug/i)).not.toBeInTheDocument();
+  });
+
+  it('renders equipped item icon when provided', () => {
+    render(
+      <ItemHoverCard
+        {...baseProps}
+        itemId={44091}
+        equippedItemId={40001}
+        equippedItemName="Archfiend Blade"
+        equippedItemLevel={660}
+        equippedItemIcon="https://xivapi.com/i/040000/040001.png"
+      />
+    );
+    const equippedImg = screen.getByAltText('Archfiend Blade');
+    expect(equippedImg).toHaveAttribute('src', 'https://xivapi.com/i/040000/040001.png');
   });
 });
