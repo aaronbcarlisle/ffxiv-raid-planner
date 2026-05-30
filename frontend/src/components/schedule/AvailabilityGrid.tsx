@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3, MousePointer2, Users } from 'lucide-react';
+import { Clock3, MousePointer2, RefreshCw, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getBrowserTimezone, resolveNearestUpcomingDatetime } from '../../utils/timezone';
-import { Badge } from '../primitives';
+import { Badge, Button } from '../primitives';
 import { AvailabilityRecommendations } from './AvailabilityRecommendations';
+import { TemplateRecommendations } from './TemplateRecommendations';
 import {
   buildHeatMap,
+  buildTemplateHeatMap,
+  buildTemplateUserSlotSet,
   buildUserSlotSet,
   computeAvailabilityRecommendations,
+  computeTemplateRecommendations,
+  DAY_LABELS,
+  DAYS_OF_WEEK,
   formatDateHeader,
   formatHoveredSlotLabel,
   formatTimeLabel,
@@ -19,6 +25,8 @@ import {
   localSlotsToUtcMap,
   TIME_SLOTS,
 } from './availabilityUtils';
+
+type AvailabilityMode = 'this-week' | 'typical-week';
 
 interface AvailabilityGridProps {
   groupId: string;
@@ -55,7 +63,16 @@ export function AvailabilityGrid({
   onCreateSessionDraft,
 }: AvailabilityGridProps) {
   const { user } = useAuthStore();
-  const { data, error, fetchAvailability, submitAvailability } = useAvailabilityStore();
+  const {
+    data,
+    templateData,
+    error,
+    fetchAvailability,
+    submitAvailability,
+    fetchTemplates,
+    submitTemplate,
+  } = useAvailabilityStore();
+  const [mode, setMode] = useState<AvailabilityMode>('this-week');
   const [dates] = useState(() => getNextNDates(7));
   const [durationMinutes, setDurationMinutes] = useState(120);
   const localTimezone = getBrowserTimezone();
@@ -72,13 +89,26 @@ export function AvailabilityGrid({
 
   useEffect(() => {
     fetchAvailability(groupId, utcRange.startDate, utcRange.endDate);
-  }, [groupId, utcRange.startDate, utcRange.endDate, fetchAvailability]);
+    fetchTemplates(groupId);
+  }, [groupId, utcRange.startDate, utcRange.endDate, fetchAvailability, fetchTemplates]);
 
+  // Date-specific heat map + user slots
   const heatMap = useMemo(() => buildHeatMap(data), [data]);
   const userSlots = useMemo(
     () => (user ? buildUserSlotSet(data, user.id) : new Set<string>()),
     [data, user]
   );
+
+  // Template heat map + user slots
+  const templateHeatMap = useMemo(() => buildTemplateHeatMap(templateData), [templateData]);
+  const templateUserSlots = useMemo(
+    () => (user ? buildTemplateUserSlotSet(templateData, user.id) : new Set<string>()),
+    [templateData, user]
+  );
+
+  // Active heat map / user slots depend on current mode
+  const activeHeatMap = mode === 'typical-week' ? templateHeatMap : heatMap;
+  const activeUserSlots = mode === 'typical-week' ? templateUserSlots : userSlots;
 
   const trackedMembers = useMemo(
     () => members.filter((member) => member.role !== 'viewer'),
@@ -107,16 +137,16 @@ export function AvailabilityGrid({
     [recommendations]
   );
 
-  const stableRef = useRef({ userSlots, groupId, submitAvailability, user });
+  const stableRef = useRef({ userSlots, templateUserSlots, groupId, submitAvailability, submitTemplate, user, mode });
   useEffect(() => {
-    stableRef.current = { userSlots, groupId, submitAvailability, user };
-  }, [groupId, submitAvailability, user, userSlots]);
+    stableRef.current = { userSlots, templateUserSlots, groupId, submitAvailability, submitTemplate, user, mode };
+  }, [groupId, submitAvailability, submitTemplate, user, userSlots, templateUserSlots, mode]);
 
   const getEffectiveSelection = (key: string): boolean => {
     if (pendingCellsSnapshot.has(key)) {
       return selectMode === 'add';
     }
-    return userSlots.has(key);
+    return activeUserSlots.has(key);
   };
 
   const saveIdRef = useRef(0);
@@ -127,7 +157,7 @@ export function AvailabilityGrid({
     }
 
     const key = `${date}|${time}`;
-    const isSelected = userSlots.has(key);
+    const isSelected = activeUserSlots.has(key);
     const nextMode = isSelected ? 'remove' : 'add';
     selectModeRef.current = nextMode;
     setSelectMode(nextMode);
@@ -158,9 +188,12 @@ export function AvailabilityGrid({
       const mySaveId = saveIdRef.current;
       const {
         userSlots: currentSlots,
+        templateUserSlots: currentTemplateSlots,
         groupId: currentGroupId,
         submitAvailability: persistAvailability,
+        submitTemplate: persistTemplate,
         user: currentUser,
+        mode: currentMode,
       } = stableRef.current;
 
       if (!currentUser) {
@@ -170,49 +203,65 @@ export function AvailabilityGrid({
       }
 
       const pending = new Set(pendingCellsRef.current);
-      const mode = selectModeRef.current;
+      const paintMode = selectModeRef.current;
       if (pending.size === 0) {
         pendingCellsRef.current = new Set();
         setPendingCellsSnapshot(new Set());
         return;
       }
 
-      const nextUserSlots = new Set(currentSlots);
+      const activeSlots = currentMode === 'typical-week' ? currentTemplateSlots : currentSlots;
+      const nextUserSlots = new Set(activeSlots);
       for (const cell of pending) {
-        if (mode === 'add') {
+        if (paintMode === 'add') {
           nextUserSlots.add(cell);
         } else {
           nextUserSlots.delete(cell);
         }
       }
 
-      const utcMap = localSlotsToUtcMap(nextUserSlots);
-      const previousUtcMap = localSlotsToUtcMap(currentSlots);
-      const allDates = new Set([...utcMap.keys(), ...previousUtcMap.keys()]);
       let anyFailed = false;
 
-      for (const utcDate of allDates) {
-        const nextSlots = utcMap.get(utcDate) ?? [];
-        const previousSlots = new Set(previousUtcMap.get(utcDate) ?? []);
-
-        let changed = nextSlots.length !== previousSlots.size;
-        if (!changed) {
-          for (const slot of nextSlots) {
-            if (!previousSlots.has(slot)) {
-              changed = true;
-              break;
-            }
+      if (currentMode === 'typical-week') {
+        // Group updated slots by day-of-week and persist each day
+        const byDay = new Map<string, string[]>();
+        for (const key of nextUserSlots) {
+          const [day, time] = key.split('|');
+          if (!byDay.has(day)) byDay.set(day, []);
+          byDay.get(day)!.push(time);
+        }
+        // Also persist days where all slots were removed
+        const affectedDays = new Set([...pending].map((k) => k.split('|')[0]));
+        for (const day of affectedDays) {
+          if (!byDay.has(day)) byDay.set(day, []);
+        }
+        for (const [day, slots] of byDay.entries()) {
+          try {
+            await persistTemplate(currentGroupId, day, slots);
+          } catch {
+            anyFailed = true;
           }
         }
+      } else {
+        const utcMap = localSlotsToUtcMap(nextUserSlots);
+        const previousUtcMap = localSlotsToUtcMap(currentSlots);
+        const allDates = new Set([...utcMap.keys(), ...previousUtcMap.keys()]);
 
-        if (!changed) {
-          continue;
-        }
-
-        try {
-          await persistAvailability(currentGroupId, utcDate, nextSlots);
-        } catch {
-          anyFailed = true;
+        for (const utcDate of allDates) {
+          const nextSlots = utcMap.get(utcDate) ?? [];
+          const previousSlots = new Set(previousUtcMap.get(utcDate) ?? []);
+          let changed = nextSlots.length !== previousSlots.size;
+          if (!changed) {
+            for (const slot of nextSlots) {
+              if (!previousSlots.has(slot)) { changed = true; break; }
+            }
+          }
+          if (!changed) continue;
+          try {
+            await persistAvailability(currentGroupId, utcDate, nextSlots);
+          } catch {
+            anyFailed = true;
+          }
         }
       }
 
@@ -228,33 +277,43 @@ export function AvailabilityGrid({
     return () => window.removeEventListener('mouseup', onMouseUp);
   }, []);
 
-  const hoveredInfo = hoveredCell ? heatMap.get(hoveredCell) : null;
+  const columns = mode === 'typical-week' ? DAYS_OF_WEEK : dates;
+
+  const hoveredInfo = hoveredCell ? activeHeatMap.get(hoveredCell) : null;
+  const hoveredLabel = hoveredCell
+    ? mode === 'typical-week'
+      ? (() => {
+          const [day, time] = hoveredCell.split('|');
+          return `${DAY_FULL_LABELS[day as keyof typeof DAY_FULL_LABELS] ?? day} at ${formatTimeLabel(time)}`;
+        })()
+      : formatHoveredSlotLabel(hoveredCell)
+    : null;
   const selectedSlotCount = useMemo(() => {
     let total = 0;
-    for (const date of dates) {
+    for (const col of columns) {
       for (const time of TIME_SLOTS) {
-        const key = `${date}|${time}`;
+        const key = `${col}|${time}`;
         const isSelected = pendingCellsSnapshot.has(key)
           ? selectMode === 'add'
-          : userSlots.has(key);
+          : activeUserSlots.has(key);
         if (isSelected) {
           total += 1;
         }
       }
     }
     return total;
-  }, [dates, pendingCellsSnapshot, selectMode, userSlots]);
+  }, [columns, pendingCellsSnapshot, selectMode, activeUserSlots]);
 
   const sharedWindowCount = useMemo(() => {
     const threshold = Math.max(1, Math.ceil(totalMembers / 2));
     let total = 0;
-    for (const entry of heatMap.values()) {
+    for (const entry of activeHeatMap.values()) {
       if (entry.count >= threshold) {
         total += 1;
       }
     }
     return total;
-  }, [heatMap, totalMembers]);
+  }, [activeHeatMap, totalMembers]);
 
   const schedulePageUrl = useMemo(
     () => new URL(`/group/${shareCode}?tab=schedule`, window.location.origin).toString(),
@@ -262,16 +321,12 @@ export function AvailabilityGrid({
   );
 
   const handleCreateSessionDraft = (recommendation: (typeof recommendations)[number]) => {
-    // Advance past start times to the next upcoming occurrence of the same weekday
     const resolvedStart = resolveNearestUpcomingDatetime(recommendation.startIso);
     const durationMs = new Date(recommendation.endIso).getTime() - new Date(recommendation.startIso).getTime();
     const resolvedEnd = new Date(new Date(resolvedStart).getTime() + durationMs).toISOString();
-
-    // Map JS day-of-week (0=Sun … 6=Sat) to iCal BYDAY key
     const BYDAY_KEYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
     const dayIndex = new Date(resolvedStart).getUTCDay();
     const bydayKey = BYDAY_KEYS[dayIndex];
-
     onCreateSessionDraft({
       title: 'Recommended Raid Night',
       description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the best raid windows panel.`,
@@ -283,8 +338,45 @@ export function AvailabilityGrid({
     });
   };
 
+  const templateRecommendations = useMemo(
+    () => computeTemplateRecommendations(templateData, members, durationMinutes),
+    [templateData, members, durationMinutes]
+  );
+
+  const handleCreateFromTemplate = (rec: (typeof templateRecommendations)[number]) => {
+    // Find next upcoming occurrence of this weekday
+    const BYDAY_KEYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
+    const dayIndex = DAYS_OF_WEEK.indexOf(rec.dayOfWeek);
+    // dayIndex in DAYS_OF_WEEK is 0=MO … 6=SU; JS getDay() is 0=SU … 6=SA
+    const jsDay = dayIndex === 6 ? 0 : dayIndex + 1;
+    const now = new Date();
+    const daysUntil = (jsDay - now.getUTCDay() + 7) % 7 || 7;
+    const nextDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntil));
+    const dateStr = nextDate.toISOString().slice(0, 10);
+    const startIso = `${dateStr}T${rec.startTime}:00Z`;
+    const endIso = `${dateStr}T${rec.endTime}:00Z`;
+    onCreateSessionDraft({
+      title: 'Recommended Raid Night',
+      description: `${rec.availableCount}/${rec.totalMembers} available based on typical weekly schedule.`,
+      startTime: startIso,
+      endTime: endIso,
+      timezone: referenceTimezone,
+      isRecurring: true,
+      recurrenceRule: `FREQ=WEEKLY;BYDAY=${BYDAY_KEYS[jsDay]}`,
+    });
+  };
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-4" data-testid="availability-grid">
+      {mode === 'typical-week' ? (
+        <TemplateRecommendations
+          recommendations={templateRecommendations}
+          durationMinutes={durationMinutes}
+          onDurationChange={setDurationMinutes}
+          canCreateSession={canCreateSession}
+          onCreateSession={handleCreateFromTemplate}
+        />
+      ) : (
       <AvailabilityRecommendations
         recommendations={recommendations}
         durationMinutes={durationMinutes}
@@ -298,6 +390,7 @@ export function AvailabilityGrid({
         canCreateSession={canCreateSession}
         onCreateSession={handleCreateSessionDraft}
       />
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-border-default bg-linear-to-br from-surface-raised via-surface-card to-surface-raised shadow-lg shadow-black/20">
         <div className="border-b border-border-subtle bg-surface-raised/80 px-4 py-5 sm:px-6">
@@ -309,21 +402,44 @@ export function AvailabilityGrid({
               </div>
               <div className="space-y-1">
                 <h3 className="font-display text-xl text-text-primary">
-                  Find overlap windows
+                  {mode === 'typical-week' ? 'Typical weekly schedule' : 'Find overlap windows'}
                 </h3>
                 <p className="max-w-2xl text-sm text-text-secondary">
-                  {canSubmit
-                    ? 'Drag across the grid to mark when you are free. Your picks stay highlighted while the static heat map shows the best windows.'
-                    : 'Browse the static heat map to spot the best raid windows for the next seven days.'}
+                  {mode === 'typical-week'
+                    ? canSubmit
+                      ? 'Mark your usual free hours for each day of the week. This stays saved and helps the static find a permanent raid night.'
+                      : 'View the static\'s typical weekly availability. Sign in as a member to add yours.'
+                    : canSubmit
+                      ? 'Drag across the grid to mark when you are free. Your picks stay highlighted while the static heat map shows the best windows.'
+                      : 'Browse the static heat map to spot the best raid windows for the next seven days.'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-end">
+              <div className="flex items-center gap-1 rounded-lg border border-border-default bg-surface-elevated p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === 'this-week' ? 'accent-subtle' : 'ghost'}
+                  onClick={() => setMode('this-week')}
+                >
+                  This week
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === 'typical-week' ? 'accent-subtle' : 'ghost'}
+                  leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                  onClick={() => setMode('typical-week')}
+                >
+                  Typical week
+                </Button>
+              </div>
               <Badge variant={canSubmit ? 'success' : 'info'}>
                 {canEditAvailability ? 'Editable' : canSubmit ? 'Loading account' : 'View only'}
               </Badge>
-              <Badge variant="default">{dates.length} days</Badge>
+              <Badge variant="default">{mode === 'typical-week' ? '7 days' : `${dates.length} days`}</Badge>
               <Badge variant="default">{localTimezone}</Badge>
             </div>
           </div>
@@ -388,22 +504,24 @@ export function AvailabilityGrid({
                 <div
                   className="inline-grid gap-1 rounded-2xl bg-border-subtle p-1.5"
                   style={{
-                    gridTemplateColumns: `4.5rem repeat(${dates.length}, minmax(5.5rem, 1fr))`,
-                    minWidth: `${4.5 + dates.length * 5.5}rem`,
+                    gridTemplateColumns: `4.5rem repeat(${columns.length}, minmax(5.5rem, 1fr))`,
+                    minWidth: `${4.5 + columns.length * 5.5}rem`,
                   }}
                 >
                   <div className="rounded-xl bg-surface-card/90 p-1" />
-                  {dates.map((date) => {
-                    const { day, date: dateLabel } = formatDateHeader(date);
+                  {columns.map((col) => {
+                    const isTemplate = mode === 'typical-week';
+                    const label = isTemplate ? DAY_LABELS[col as keyof typeof DAY_LABELS] : formatDateHeader(col).day;
+                    const sublabel = isTemplate ? null : formatDateHeader(col).date;
                     return (
                       <div
-                        key={date}
+                        key={col}
                         className="rounded-xl border border-border-subtle bg-surface-card/90 px-2 py-2 text-center"
                       >
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                          {day}
+                          {label}
                         </div>
-                        <div className="mt-0.5 text-sm font-medium text-text-primary">{dateLabel}</div>
+                        {sublabel && <div className="mt-0.5 text-sm font-medium text-text-primary">{sublabel}</div>}
                       </div>
                     );
                   })}
@@ -423,10 +541,10 @@ export function AvailabilityGrid({
                           </span>
                         )}
                       </div>,
-                      ...dates.map((date) => {
-                        const key = `${date}|${time}`;
+                      ...columns.map((col) => {
+                        const key = `${col}|${time}`;
                         const isUserSelected = getEffectiveSelection(key);
-                        const heat = heatMap.get(key);
+                        const heat = activeHeatMap.get(key);
                         const count = heat?.count ?? 0;
                         const intensity = count / totalMembers;
                         const isHovered = hoveredCell === key;
@@ -466,7 +584,7 @@ export function AvailabilityGrid({
                         return (
                           <div
                             key={key}
-                            data-testid={`avail-cell-${date}-${time.replace(':', '')}`}
+                            data-testid={`avail-cell-${col}-${time.replace(':', '')}`}
                             data-selected={isUserSelected ? 'true' : undefined}
                             data-user-selected={isUserSelected ? 'true' : 'false'}
                             data-available-count={count}
@@ -474,8 +592,8 @@ export function AvailabilityGrid({
                             className={`h-7 rounded-lg border ${bgColor} ${borderColor} ${recommendationClass} transition-all duration-100 ${
                               isHovered ? 'scale-[1.02] ring-2 ring-inset ring-accent/50' : ''
                             } ${canEditAvailability ? 'cursor-pointer hover:border-accent/35' : ''}`}
-                            onMouseDown={() => handleCellMouseDown(date, time)}
-                            onMouseEnter={() => handleCellMouseEnter(date, time)}
+                            onMouseDown={() => handleCellMouseDown(col, time)}
+                            onMouseEnter={() => handleCellMouseEnter(col, time)}
                           >
                             {count > 0 && (
                               <div className="flex h-full w-full items-center justify-center">
@@ -498,7 +616,7 @@ export function AvailabilityGrid({
             {hoveredInfo && hoveredInfo.count > 0 ? (
               <div className="inline-flex max-w-3xl flex-wrap items-center justify-center gap-2 rounded-xl border border-border-default bg-surface-elevated px-4 py-2 text-sm text-text-secondary">
                 <span className="font-medium text-text-primary">
-                  {formatHoveredSlotLabel(hoveredCell!)}
+                  {hoveredLabel}
                 </span>
                 <span className="text-status-success">
                   {hoveredInfo.count} available

@@ -28,7 +28,7 @@ from ..services.discord_webhook import (
 )
 from ..exceptions import ValidationError
 from ..models import Membership, MemberRole, StaticGroup, User
-from ..models.availability import UserAvailability
+from ..models.availability import AvailabilityTemplate, UserAvailability
 from ..models.schedule import ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
     NotFound,
@@ -50,8 +50,12 @@ from ..schemas.schedule import (
     ScheduleSettingsResponse,
     ScheduleSettingsUpdate,
     ScheduleSessionUpdate,
+    AvailabilityTemplateDaySummary,
+    AvailabilityTemplateResponse,
+    AvailabilityTemplateSubmit,
     TestReminderResponse,
     UserAvailabilityResponse,
+    VALID_DAYS,
 )
 
 router = APIRouter(prefix="/api", tags=["schedule"])
@@ -966,5 +970,113 @@ async def submit_availability(
         user_id=row.user_id,
         username=current_user.discord_username,
         date=row.date,
+        slots=json.loads(row.slots),
+    )
+
+
+# ==================== Availability Template Endpoints ====================
+
+
+@router.get(
+    "/static-groups/{group_id}/availability/template",
+    response_model=list[AvailabilityTemplateDaySummary],
+)
+async def list_availability_templates(
+    group_id: str,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[AvailabilityTemplateDaySummary]:
+    """Return all members' recurring weekly availability templates for a static."""
+    set_no_store_cache_headers(response)
+    await get_static_group(session, group_id)
+    await require_membership(session, current_user.id, group_id)
+
+    result = await session.execute(
+        select(AvailabilityTemplate)
+        .where(AvailabilityTemplate.static_group_id == group_id)
+        .options(selectinload(AvailabilityTemplate.user))
+        .order_by(AvailabilityTemplate.day_of_week)
+    )
+    rows = result.scalars().all()
+
+    by_day: dict[str, list[AvailabilityTemplateResponse]] = defaultdict(list)
+    for row in rows:
+        slots = json.loads(row.slots) if isinstance(row.slots, str) else row.slots
+        by_day[row.day_of_week].append(
+            AvailabilityTemplateResponse(
+                id=row.id,
+                user_id=row.user_id,
+                username=row.user.discord_username if row.user else None,
+                day_of_week=row.day_of_week,
+                slots=slots,
+            )
+        )
+
+    day_order = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+    all_days = sorted(by_day.keys(), key=lambda d: day_order.index(d) if d in day_order else 99)
+    return [
+        AvailabilityTemplateDaySummary(day_of_week=day, responses=by_day[day])
+        for day in all_days
+    ]
+
+
+@router.put(
+    "/static-groups/{group_id}/availability/template",
+    response_model=AvailabilityTemplateResponse,
+)
+async def submit_availability_template(
+    group_id: str,
+    data: AvailabilityTemplateSubmit,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> AvailabilityTemplateResponse:
+    """Create or replace the current user's recurring availability for a weekday."""
+    set_no_store_cache_headers(response)
+    await get_static_group(session, group_id)
+    membership = await require_membership(session, current_user.id, group_id)
+
+    if membership.role == "viewer":
+        raise PermissionDenied("Viewers cannot submit availability")
+
+    if data.day_of_week not in VALID_DAYS:
+        raise ValidationError(f"day_of_week must be one of {sorted(VALID_DAYS)}")
+
+    result = await session.execute(
+        select(AvailabilityTemplate).where(
+            AvailabilityTemplate.static_group_id == group_id,
+            AvailabilityTemplate.user_id == current_user.id,
+            AvailabilityTemplate.day_of_week == data.day_of_week,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc).isoformat()
+    slots_json = json.dumps(sorted(data.slots))
+
+    if existing:
+        existing.slots = slots_json
+        existing.updated_at = now
+        row = existing
+    else:
+        row = AvailabilityTemplate(
+            id=str(uuid.uuid4()),
+            static_group_id=group_id,
+            user_id=current_user.id,
+            day_of_week=data.day_of_week,
+            slots=slots_json,
+            updated_at=now,
+        )
+        session.add(row)
+
+    await session.flush()
+    await session.commit()
+
+    return AvailabilityTemplateResponse(
+        id=row.id,
+        user_id=row.user_id,
+        username=current_user.discord_username,
+        day_of_week=row.day_of_week,
         slots=json.loads(row.slots),
     )

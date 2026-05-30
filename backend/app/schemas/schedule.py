@@ -103,6 +103,29 @@ class AvailabilityDateSummary(CamelModel):
     responses: list[UserAvailabilityResponse]
 
 
+# ==================== Availability Template Schemas ====================
+
+VALID_DAYS = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+
+
+class AvailabilityTemplateSubmit(CamelModel):
+    day_of_week: str  # MO TU WE TH FR SA SU
+    slots: list[str]
+
+
+class AvailabilityTemplateResponse(CamelModel):
+    id: str
+    user_id: str
+    username: str | None = None
+    day_of_week: str
+    slots: list[str]
+
+
+class AvailabilityTemplateDaySummary(CamelModel):
+    day_of_week: str
+    responses: list[AvailabilityTemplateResponse]
+
+
 class ScheduleSettingsUpdate(CamelModel):
     webhook_url: str | None = None
     reminder_channel_label: str | None = None

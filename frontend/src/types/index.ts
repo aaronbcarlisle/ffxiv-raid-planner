@@ -1126,3 +1126,21 @@ export interface AvailabilitySubmit {
   date: string;
   slots: string[];
 }
+
+export interface AvailabilityTemplateSlot {
+  id: string;
+  userId: string;
+  username: string | null;
+  dayOfWeek: string;
+  slots: string[];
+}
+
+export interface AvailabilityTemplateDaySummary {
+  dayOfWeek: string;
+  responses: AvailabilityTemplateSlot[];
+}
+
+export interface AvailabilityTemplateSubmit {
+  dayOfWeek: string;
+  slots: string[];
+}
