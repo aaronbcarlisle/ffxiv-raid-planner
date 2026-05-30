@@ -59,28 +59,28 @@ export const RELEASES: Release[] = [
         title: 'Scheduler reorganised into three tabs',
         description:
           'Sessions, Availability, and Integrations are now separate sub-tabs inside the Schedule view for a cleaner layout.',
-        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27' }],
+        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27T12:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Best-overlap recommendations moved to the top',
         description:
           'The top-3 raid window suggestions now appear at the top of the Availability tab so leads can act on them without scrolling past the heat map.',
-        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27' }],
+        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27T12:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Add Session modal resets on open',
         description:
           'Opening the modal normally starts with a blank form. When opened from a recommendation the fields are pre-filled with the suggested time — no stale data carried over from a previous modal use.',
-        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27' }],
+        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27T12:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Deterministic Playwright E2E coverage',
         description:
           'Session CRUD, availability submission, data persistence, and recommendation interactions are now covered by stable E2E tests. Supports E2E_API_URL and E2E_FRONTEND_URL for local port overrides.',
-        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27' }],
+        commits: [{ hash: 'c70c3f2', message: 'feat(schedule): polish availability UX and E2E coverage', date: '2026-05-27T12:00:00Z' }],
       },
     ],
   },
