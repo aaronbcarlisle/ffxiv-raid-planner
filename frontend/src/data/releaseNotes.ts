@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.1';
+export const CURRENT_VERSION = '1.19.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,35 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.19.2',
+    date: '2026-05-31T12:00:00Z',
+    title: 'Typical Week Availability',
+    highlights: ['Recurring schedule templates', 'Best permanent raid window finder'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Typical week availability grid',
+        description:
+          'Members can now mark their standing weekly schedule — "I\'m always free on Saturday evenings" — separate from specific-week availability. A "Typical week" toggle in the Availability tab switches the grid to weekday columns instead of dates.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Best recurring raid window recommendations',
+        description:
+          'In Typical week mode, the top panel shows the three best permanent raid windows based on the static\'s combined weekly templates. Clicking "Create recurring session" pre-fills a weekly-recurring session on the right weekday.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+      },
+      {
+        category: 'fix',
+        title: 'Availability grid shows full 24-hour range',
+        description:
+          'The grid was incorrectly capped at 12:00 PM, hiding all morning slots.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.19.1',
     date: '2026-05-31T12:00:00Z',

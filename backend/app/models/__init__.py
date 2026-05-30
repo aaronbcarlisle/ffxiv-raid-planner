@@ -7,7 +7,7 @@ from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
-from .availability import UserAvailability
+from .availability import AvailabilityTemplate, UserAvailability
 from .schedule import ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
@@ -31,6 +31,7 @@ __all__ = [
     "ScheduleReminderDelivery",
     "ScheduleSession",
     "ScheduleSettings",
+    "AvailabilityTemplate",
     "UserAvailability",
     "SnapshotPlayer",
     "StaticGroup",

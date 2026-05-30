@@ -1,4 +1,4 @@
-import type { AvailabilityDateSummary, Membership, ScheduleSession } from '../../types';
+import type { AvailabilityDateSummary, AvailabilityTemplateDaySummary, Membership, ScheduleSession } from '../../types';
 
 export interface HeatMapEntry {
   count: number;
@@ -270,3 +270,156 @@ export function computeAvailabilityRecommendations(
     .slice(0, 3);
 }
 
+
+
+// ==================== Recurring Template Helpers ====================
+
+export const DAYS_OF_WEEK = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const;
+export type DayOfWeek = typeof DAYS_OF_WEEK[number];
+
+export const DAY_LABELS: Record<DayOfWeek, string> = {
+  MO: 'Mon',
+  TU: 'Tue',
+  WE: 'Wed',
+  TH: 'Thu',
+  FR: 'Fri',
+  SA: 'Sat',
+  SU: 'Sun',
+};
+
+export const DAY_FULL_LABELS: Record<DayOfWeek, string> = {
+  MO: 'Monday',
+  TU: 'Tuesday',
+  WE: 'Wednesday',
+  TH: 'Thursday',
+  FR: 'Friday',
+  SA: 'Saturday',
+  SU: 'Sunday',
+};
+
+export function buildTemplateHeatMap(
+  templateData: AvailabilityTemplateDaySummary[]
+): Map<string, HeatMapEntry> {
+  const map = new Map<string, HeatMapEntry>();
+  for (const daySummary of templateData) {
+    for (const response of daySummary.responses) {
+      for (const time of response.slots) {
+        const key = `${daySummary.dayOfWeek}|${time}`;
+        const existing = map.get(key) ?? { count: 0, names: [] };
+        existing.count += 1;
+        if (response.username) existing.names.push(response.username);
+        map.set(key, existing);
+      }
+    }
+  }
+  return map;
+}
+
+export function buildTemplateUserSlotSet(
+  templateData: AvailabilityTemplateDaySummary[],
+  userId: string
+): Set<string> {
+  const set = new Set<string>();
+  for (const daySummary of templateData) {
+    for (const response of daySummary.responses) {
+      if (response.userId !== userId) continue;
+      for (const time of response.slots) {
+        set.add(`${daySummary.dayOfWeek}|${time}`);
+      }
+    }
+  }
+  return set;
+}
+
+export interface TemplateRecommendation {
+  id: string;
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  slotKeys: string[];
+  availableCount: number;
+  totalMembers: number;
+  availableNames: string[];
+  missingNames: string[];
+}
+
+export function computeTemplateRecommendations(
+  templateData: AvailabilityTemplateDaySummary[],
+  members: Membership[],
+  durationMinutes: number
+): TemplateRecommendation[] {
+  const slotsPerBlock = Math.max(1, Math.round(durationMinutes / SLOT_DURATION_MINUTES));
+  const { trackedMembers, trackedNamesById } = buildTrackedMemberIndex(members);
+
+  // Build per-member slot sets keyed by "DAY|HH:MM"
+  const memberSlots = new Map<string, Set<string>>();
+  for (const daySummary of templateData) {
+    for (const response of daySummary.responses) {
+      if (trackedNamesById.size > 0 && !trackedNamesById.has(response.userId)) continue;
+      let slotSet = memberSlots.get(response.userId);
+      if (!slotSet) {
+        slotSet = new Set<string>();
+        memberSlots.set(response.userId, slotSet);
+      }
+      for (const time of response.slots) {
+        slotSet.add(`${daySummary.dayOfWeek}|${time}`);
+      }
+    }
+  }
+
+  if (trackedNamesById.size === 0) {
+    for (const daySummary of templateData) {
+      for (const response of daySummary.responses) {
+        trackedNamesById.set(response.userId, response.username || 'Unknown');
+      }
+    }
+  }
+
+  const trackedIds = trackedMembers.length > 0
+    ? trackedMembers.map((m) => m.userId)
+    : [...trackedNamesById.keys()];
+  const totalMembers = trackedIds.length;
+
+  const recommendations: TemplateRecommendation[] = [];
+
+  for (const day of DAYS_OF_WEEK) {
+    for (let index = 0; index <= TIME_SLOTS.length - slotsPerBlock; index++) {
+      const slotKeys = TIME_SLOTS.slice(index, index + slotsPerBlock).map(
+        (slot) => `${day}|${slot}`
+      );
+      const availableIds = trackedIds.filter((userId) => {
+        const set = memberSlots.get(userId);
+        return set ? slotKeys.every((key) => set.has(key)) : false;
+      });
+      if (availableIds.length === 0) continue;
+
+      const availableNames = availableIds
+        .map((id) => trackedNamesById.get(id) ?? 'Unknown')
+        .sort();
+      const missingNames = trackedIds
+        .filter((id) => !availableIds.includes(id))
+        .map((id) => trackedNamesById.get(id) ?? 'Unknown')
+        .sort();
+
+      recommendations.push({
+        id: `${day}|${TIME_SLOTS[index]}|${durationMinutes}`,
+        dayOfWeek: day,
+        startTime: TIME_SLOTS[index],
+        endTime: TIME_SLOTS[Math.min(index + slotsPerBlock, TIME_SLOTS.length - 1)],
+        slotKeys,
+        availableCount: availableIds.length,
+        totalMembers,
+        availableNames,
+        missingNames,
+      });
+    }
+  }
+
+  return recommendations
+    .sort((a, b) => {
+      if (b.availableCount !== a.availableCount) return b.availableCount - a.availableCount;
+      return DAYS_OF_WEEK.indexOf(a.dayOfWeek) - DAYS_OF_WEEK.indexOf(b.dayOfWeek)
+        || a.startTime.localeCompare(b.startTime);
+    })
+    .slice(0, 3);
+}
