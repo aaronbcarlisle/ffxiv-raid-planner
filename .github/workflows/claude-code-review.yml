@@ -8,7 +8,14 @@ jobs:
   claude-review:
     # Skip bot-authored PRs (Railway, Dependabot, etc.): the action blocks
     # non-human actors, and automated PRs aren't worth an AI review.
-    if: github.event.pull_request.user.type != 'Bot'
+    #
+    # Also skip PRs from forks: GitHub does not grant OIDC id-tokens or repo
+    # secrets to fork PRs, so this job cannot authenticate and would fail. The
+    # job-level `if` makes it report as "skipped" (which does not block required
+    # checks) instead of failing on contributor fork PRs.
+    if: >-
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
