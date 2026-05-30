@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.20.0';
+export const CURRENT_VERSION = '1.19.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -49,7 +49,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '1.20.0',
+    version: '1.19.2',
     date: '2026-05-31T12:00:00Z',
     title: 'Typical Week Availability',
     highlights: ['Recurring schedule templates', 'Best permanent raid window finder'],
