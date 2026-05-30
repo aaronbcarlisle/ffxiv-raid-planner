@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.0';
+export const CURRENT_VERSION = '1.19.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.19.1',
+    date: '2026-05-31T12:00:00Z',
+    title: 'Availability Grid Fix',
+    highlights: ['Full 24-hour availability grid'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Availability grid now shows all hours',
+        description:
+          'The availability grid was incorrectly capped at 12:00 PM, hiding all morning slots. It now shows the full 24-hour range.',
+        commits: [{ hash: '9342852', message: 'fix(schedule): show full 24-hour range in availability grid', date: '2026-05-31T12:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.19.0',
     date: '2026-05-29T12:00:00Z',
