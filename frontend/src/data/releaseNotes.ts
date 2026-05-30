@@ -59,35 +59,35 @@ export const RELEASES: Release[] = [
         title: 'Tomestone sync — equipped gear display',
         description:
           'After a Lodestone sync, each gear slot tooltip now shows both the BiS target and what the player currently has equipped, pulled from the Tomestone API.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29' }],
+        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
       },
       {
         category: 'feature',
         title: 'BiS comparison badges on gear tooltips',
         description:
           'Hover any gear slot to instantly see one of four states: "BiS matched ✓", "Upgrade needed", "Not currently detected", or "No BiS target configured". Item level diff vs BiS is shown inline.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29' }],
+        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
       },
       {
         category: 'feature',
         title: 'Lodestone avatar on player cards',
         description:
           'Player cards now show the character\'s Lodestone avatar after a successful sync.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29' }],
+        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
       },
       {
         category: 'feature',
         title: 'Discord webhook announcements for raid sessions',
         description:
           'Creating, updating, or deleting a raid session — and every RSVP change — now fires a real Discord announcement when a webhook is configured. A "Post latest session" button lets leads push the next upcoming session manually.',
-        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30' }],
+        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30T12:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Recurring session creation from availability',
         description:
           'Clicking "Create session" from an availability recommendation now pre-fills the correct future date (not a past week) and automatically sets the session as weekly-recurring on the right weekday.',
-        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30' }],
+        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30T12:00:00Z' }],
       },
     ],
   },
