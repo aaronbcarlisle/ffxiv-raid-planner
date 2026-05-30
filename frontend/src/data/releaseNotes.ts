@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.18.0';
+export const CURRENT_VERSION = '1.19.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,35 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.19.0',
+    date: '2026-05-27T12:00:00Z',
+    title: 'Lodestone Sync Hardening',
+    highlights: ['Resilient Lodestone sync', 'Local mock testing flow'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Lodestone search, preview, and sync',
+        description:
+          'Players can now search Lodestone by character name, preview their gear, and sync it to their player card via a new context-menu flow.',
+        commits: [{ hash: 'e67d12c', message: 'feat(lodestone): add sync hardening and dev mock flow', date: '2026-05-27' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Hardened sync against upstream failures',
+        description:
+          'Sync operations no longer crash on malformed Lodestone data, missing gear sets, or failed item lookups — each slot fails gracefully and the rest of the sync proceeds.',
+        commits: [{ hash: 'e67d12c', message: 'feat(lodestone): add sync hardening and dev mock flow', date: '2026-05-27' }],
+      },
+      {
+        category: 'improvement',
+        title: 'DEV_LODESTONE_MOCK for local development',
+        description:
+          'Set DEV_LODESTONE_MOCK=true to run the full sync flow locally without making live calls to XIVAPI or Lodestone.',
+        commits: [{ hash: 'e67d12c', message: 'feat(lodestone): add sync hardening and dev mock flow', date: '2026-05-27' }],
+      },
+    ],
+  },
   {
     version: '1.18.0',
     date: '2026-05-27T12:00:00Z',
