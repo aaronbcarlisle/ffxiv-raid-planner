@@ -17,7 +17,7 @@ export interface AvailabilityRecommendation {
 }
 
 const SLOT_DURATION_MINUTES = 30;
-export const START_HOUR = 12;
+export const START_HOUR = 0;
 export const END_HOUR = 24;
 
 function resolveMemberName(member: Membership): string {
