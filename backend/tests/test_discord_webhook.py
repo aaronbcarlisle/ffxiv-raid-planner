@@ -10,12 +10,15 @@ from datetime import datetime, timezone
 import pytest
 
 from app.services.discord_webhook import (
+    PlayerDetail,
     SessionAnnouncementData,
     _format_duration,
     _format_rsvp_summary,
+    _format_subs_needed_detail,
     build_session_announcement_payload,
     build_test_reminder_payload,
     compute_subs_needed,
+    job_category,
 )
 
 
@@ -31,6 +34,8 @@ def _make_data(**overrides) -> SessionAnnouncementData:
         session_url="https://example.com/group/ABCD?tab=schedule",
         rsvp_counts={"available": 6, "tentative": 1, "unavailable": 1},
         total_member_count=8,
+        unavailable_players=[],
+        tentative_players=[],
     )
     defaults.update(overrides)
     return SessionAnnouncementData(**defaults)
@@ -288,3 +293,171 @@ def test_test_reminder_payload_does_not_contain_webhook_secrets():
     # should appear here.
     assert "Bearer" not in payload_str
     assert "discord.com/api/webhooks" not in payload_str
+
+
+# ── job_category ─────────────────────────────────────────────────────────────
+
+
+def test_job_category_tank():
+    assert job_category("PLD") == "Tank"
+    assert job_category("WAR") == "Tank"
+    assert job_category("DRK") == "Tank"
+    assert job_category("GNB") == "Tank"
+
+
+def test_job_category_healers():
+    assert job_category("WHM") == "Pure Healer"
+    assert job_category("AST") == "Pure Healer"
+    assert job_category("SCH") == "Shield Healer"
+    assert job_category("SGE") == "Shield Healer"
+
+
+def test_job_category_dps():
+    assert job_category("MNK") == "Melee"
+    assert job_category("DRG") == "Melee"
+    assert job_category("NIN") == "Melee"
+    assert job_category("SAM") == "Melee"
+    assert job_category("RPR") == "Melee"
+    assert job_category("VPR") == "Melee"
+    assert job_category("BRD") == "Physical Ranged"
+    assert job_category("MCH") == "Physical Ranged"
+    assert job_category("DNC") == "Physical Ranged"
+    assert job_category("BLM") == "Caster"
+    assert job_category("SMN") == "Caster"
+    assert job_category("RDM") == "Caster"
+    assert job_category("PCT") == "Caster"
+
+
+def test_job_category_unknown():
+    assert job_category("BLU") is None
+    assert job_category("") is None
+    assert job_category(None) is None
+
+
+def test_job_category_case_insensitive():
+    assert job_category("brd") == "Physical Ranged"
+    assert job_category("Whm") == "Pure Healer"
+
+
+# ── PlayerDetail.format_line ──────────────────────────────────────────────────
+
+
+def test_player_detail_full():
+    p = PlayerDetail(name="Color", position="R2", job="BRD")
+    assert p.format_line() == "• Color — R2 / BRD (Physical Ranged)"
+
+
+def test_player_detail_position_only():
+    p = PlayerDetail(name="Color", position="R2", job=None)
+    assert p.format_line() == "• Color — R2"
+
+
+def test_player_detail_job_only():
+    p = PlayerDetail(name="Color", position=None, job="BRD")
+    assert p.format_line() == "• Color — BRD (Physical Ranged)"
+
+
+def test_player_detail_name_only():
+    p = PlayerDetail(name="Color", position=None, job=None)
+    assert p.format_line() == "• Color"
+
+
+def test_player_detail_unknown_job():
+    p = PlayerDetail(name="Color", position="R2", job="BLU")
+    assert p.format_line() == "• Color — R2 / BLU"
+
+
+# ── _format_subs_needed_detail ────────────────────────────────────────────────
+
+
+def test_subs_detail_with_known_roles():
+    players = [
+        PlayerDetail(name="Color", position="R2", job="BRD"),
+        PlayerDetail(name="Aki", position="H1", job="WHM"),
+    ]
+    result = _format_subs_needed_detail(players, 2)
+    assert "R2 / Physical Ranged" in result
+    assert "H1 / Pure Healer" in result
+
+
+def test_subs_detail_position_only():
+    players = [PlayerDetail(name="X", position="M1", job=None)]
+    result = _format_subs_needed_detail(players, 1)
+    assert "M1" in result
+
+
+def test_subs_detail_no_players_falls_back_to_count():
+    result = _format_subs_needed_detail([], 3)
+    assert "3 slots short" == result
+
+
+def test_subs_detail_no_position_or_job_falls_back():
+    players = [PlayerDetail(name="X", position=None, job=None)]
+    result = _format_subs_needed_detail(players, 1)
+    assert "1 slot short" == result
+
+
+# ── Payload with player lists ────────────────────────────────────────────────
+
+
+def test_payload_includes_cannot_make_it_list():
+    data = _make_data(
+        rsvp_counts={"available": 6, "unavailable": 2},
+        total_member_count=8,
+        unavailable_players=[
+            PlayerDetail(name="Color", position="R2", job="BRD"),
+            PlayerDetail(name="Riri", position="H1", job="WHM"),
+        ],
+    )
+    payload = build_session_announcement_payload(data)
+    fields = payload["embeds"][0]["fields"]
+    field = next((f for f in fields if "Cannot make it" in f["name"]), None)
+    assert field is not None
+    assert "Color" in field["value"]
+    assert "R2" in field["value"]
+    assert "BRD" in field["value"]
+    assert "Physical Ranged" in field["value"]
+    assert "Riri" in field["value"]
+
+
+def test_payload_includes_tentative_list():
+    data = _make_data(
+        rsvp_counts={"available": 6, "tentative": 1, "unavailable": 1},
+        total_member_count=8,
+        tentative_players=[
+            PlayerDetail(name="Aki", position="M1", job="MNK"),
+        ],
+    )
+    payload = build_session_announcement_payload(data)
+    fields = payload["embeds"][0]["fields"]
+    field = next((f for f in fields if "Tentative" in f["name"]), None)
+    assert field is not None
+    assert "Aki" in field["value"]
+    assert "M1" in field["value"]
+    assert "MNK" in field["value"]
+
+
+def test_payload_no_cannot_make_it_when_empty():
+    data = _make_data(
+        rsvp_counts={"available": 8},
+        total_member_count=8,
+    )
+    payload = build_session_announcement_payload(data)
+    fields = payload["embeds"][0]["fields"]
+    assert not any("Cannot make it" in f["name"] for f in fields)
+
+
+def test_payload_subs_needed_shows_role_detail():
+    data = _make_data(
+        rsvp_counts={"available": 6, "unavailable": 2},
+        total_member_count=8,
+        unavailable_players=[
+            PlayerDetail(name="Color", position="R2", job="BRD"),
+            PlayerDetail(name="Riri", position="H1", job="WHM"),
+        ],
+    )
+    payload = build_session_announcement_payload(data)
+    fields = payload["embeds"][0]["fields"]
+    sub_field = next(f for f in fields if "Subs needed" in f["name"])
+    assert "R2 / Physical Ranged" in sub_field["value"]
+    assert "H1 / Pure Healer" in sub_field["value"]

@@ -18,6 +18,7 @@ from ..config import get_settings
 from ..logging_config import get_logger
 from ..dependencies import get_current_user
 from ..services.discord_webhook import (
+    PlayerDetail,
     SessionAnnouncementData,
     build_cancelled_payload,
     build_session_announcement_payload,
@@ -27,7 +28,7 @@ from ..services.discord_webhook import (
     _recurrence_rule_to_text,
 )
 from ..exceptions import ValidationError
-from ..models import Membership, MemberRole, StaticGroup, User
+from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from ..models.availability import AvailabilityTemplate, UserAvailability
 from ..models.schedule import ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
@@ -85,11 +86,36 @@ async def _get_member_count(db: AsyncSession, group_id: str) -> int:
     return len(result.scalars().all())
 
 
+async def _get_player_map(db: AsyncSession, group_id: str) -> dict[str, SnapshotPlayer]:
+    """Map user_id → SnapshotPlayer for the group's active tier.
+
+    Returns an empty dict if no active tier exists or no players are linked.
+    """
+    tier_result = await db.execute(
+        select(TierSnapshot.id).where(
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.is_active.is_(True),
+        )
+    )
+    tier_id = tier_result.scalar_one_or_none()
+    if not tier_id:
+        return {}
+
+    player_result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.tier_snapshot_id == tier_id,
+            SnapshotPlayer.user_id.isnot(None),
+        )
+    )
+    return {p.user_id: p for p in player_result.scalars().all()}
+
+
 def _build_announcement_data(
     sched_session: ScheduleSession,
     static_group: StaticGroup,
     member_count: int,
     rsvps: list[ScheduleRsvp] | None = None,
+    player_map: dict[str, SnapshotPlayer] | None = None,
 ) -> SessionAnnouncementData:
     """Assemble a SessionAnnouncementData from ORM objects.
 
@@ -97,14 +123,31 @@ def _build_announcement_data(
     the passed-in ``rsvps`` list when the relationship isn't loaded yet),
     resolves the next upcoming occurrence for recurring sessions, and
     converts the recurrence rule to human-readable text.
+
+    ``player_map`` maps user_id → SnapshotPlayer from the active tier,
+    used to populate cannot-make-it and tentative named lists.
     """
     rsvp_list = rsvps if rsvps is not None else list(sched_session.rsvps)
     rsvp_counts: dict[str, int] = {}
     for rsvp in rsvp_list:
         rsvp_counts[rsvp.status] = rsvp_counts.get(rsvp.status, 0) + 1
 
+    pm = player_map or {}
+    unavailable_players: list[PlayerDetail] = []
+    tentative_players: list[PlayerDetail] = []
+    for rsvp in rsvp_list:
+        sp = pm.get(rsvp.user_id)
+        detail = PlayerDetail(
+            name=sp.name if sp else (rsvp.user.discord_username if rsvp.user else "Unknown"),
+            position=sp.position if sp else None,
+            job=sp.job if sp and sp.job else None,
+        )
+        if rsvp.status == "unavailable":
+            unavailable_players.append(detail)
+        elif rsvp.status == "tentative":
+            tentative_players.append(detail)
+
     start_iso = _next_occurrence_iso(sched_session.start_time, sched_session.recurrence_rule)
-    # Adjust end to match the same offset as start for recurring sessions
     try:
         from datetime import datetime as _dt
         orig_start = _dt.fromisoformat(sched_session.start_time.replace("Z", "+00:00"))
@@ -128,6 +171,8 @@ def _build_announcement_data(
         total_member_count=member_count,
         session_description=sched_session.description,
         recurrence_summary=_recurrence_rule_to_text(sched_session.recurrence_rule),
+        unavailable_players=unavailable_players,
+        tentative_players=tentative_players,
     )
 
 
@@ -384,7 +429,8 @@ async def create_schedule_session(
     if sched_settings and sched_settings.webhook_url:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
-        ann_data = _build_announcement_data(created, static_group, member_count)
+        player_map = await _get_player_map(session, group_id)
+        ann_data = _build_announcement_data(created, static_group, member_count, player_map=player_map)
         await _try_fire_webhook(
             sched_settings.webhook_url,
             build_session_announcement_payload(ann_data),
@@ -434,7 +480,8 @@ async def update_schedule_session(
     if sched_settings and sched_settings.webhook_url:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
-        ann_data = _build_announcement_data(schedule_session, static_group, member_count)
+        player_map = await _get_player_map(session, group_id)
+        ann_data = _build_announcement_data(schedule_session, static_group, member_count, player_map=player_map)
         await _try_fire_webhook(
             sched_settings.webhook_url,
             build_session_announcement_payload(ann_data),
@@ -549,17 +596,17 @@ async def create_or_update_rsvp(
     # Fire Discord webhook after successful commit — non-blocking
     sched_settings = await _get_schedule_settings(session, group_id)
     if sched_settings and sched_settings.webhook_url:
-        # Re-load the session with all RSVPs for an accurate count
         rsvp_result = await session.execute(
             select(ScheduleSession)
             .where(ScheduleSession.id == session_id)
-            .options(selectinload(ScheduleSession.rsvps))
+            .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
         )
         refreshed = rsvp_result.scalar_one_or_none()
         if refreshed:
             static_group = await get_static_group(session, group_id)
             member_count = await _get_member_count(session, group_id)
-            ann_data = _build_announcement_data(refreshed, static_group, member_count)
+            player_map = await _get_player_map(session, group_id)
+            ann_data = _build_announcement_data(refreshed, static_group, member_count, player_map=player_map)
             await _try_fire_webhook(
                 sched_settings.webhook_url,
                 build_session_announcement_payload(ann_data),
@@ -701,7 +748,7 @@ async def post_session_preview(
             ScheduleSession.static_group_id == group_id,
             ScheduleSession.start_time >= now_iso,
         )
-        .options(selectinload(ScheduleSession.rsvps))
+        .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
         .order_by(ScheduleSession.start_time.asc())
         .limit(1)
     )
@@ -711,7 +758,8 @@ async def post_session_preview(
         raise ValidationError("No upcoming sessions found. Create a session first.")
 
     member_count = await _get_member_count(session, group_id)
-    ann_data = _build_announcement_data(upcoming, static_group, member_count)
+    player_map = await _get_player_map(session, group_id)
+    ann_data = _build_announcement_data(upcoming, static_group, member_count, player_map=player_map)
     payload = build_session_announcement_payload(ann_data)
 
     try:

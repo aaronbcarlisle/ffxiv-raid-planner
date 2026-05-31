@@ -1194,3 +1194,176 @@ class TestDiscordWebhook:
         assert len(captured_payloads) >= 1
         payload_str = str(captured_payloads[0])
         assert fake_token not in payload_str
+
+    async def test_webhook_payload_includes_cannot_make_it_with_role(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        """Unavailable BRD/R2 appears in Cannot make it as 'R2 / BRD (Physical Ranged)'."""
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        from tests.factories import create_tier_snapshot, create_snapshot_player
+        tier = await create_tier_snapshot(session, test_group)
+        await create_snapshot_player(
+            session, tier, name="Color", job="BRD", role="ranged",
+            position="R2", sort_order=0,
+        )
+        player = await create_snapshot_player(
+            session, tier, name="Aki", job="BRD", role="ranged",
+            position="R2", sort_order=1,
+        )
+        player.user_id = member_user.id
+        await session.flush()
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "Reclear",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        captured = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture(url, *, json=None, **kw):
+            captured.append(json or {})
+            return mock_client.post.return_value
+        mock_client.post.side_effect = capture
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+
+        assert len(captured) == 1
+        fields = captured[0]["embeds"][0]["fields"]
+        cant_field = next((f for f in fields if "Cannot make it" in f["name"]), None)
+        assert cant_field is not None
+        assert "Aki" in cant_field["value"]
+        assert "R2" in cant_field["value"]
+        assert "BRD" in cant_field["value"]
+        assert "Physical Ranged" in cant_field["value"]
+
+        sub_field = next((f for f in fields if "Subs needed" in f["name"]), None)
+        assert sub_field is not None
+        assert "R2 / Physical Ranged" in sub_field["value"]
+
+    async def test_webhook_payload_includes_tentative_with_role(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        """Tentative WHM/H1 appears in Tentative list."""
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        from tests.factories import create_tier_snapshot, create_snapshot_player
+        tier = await create_tier_snapshot(session, test_group)
+        player = await create_snapshot_player(
+            session, tier, name="Mochi", job="WHM", role="healer",
+            position="H1", sort_order=0,
+        )
+        player.user_id = member_user.id
+        await session.flush()
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "Prog Night",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        captured = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture(url, *, json=None, **kw):
+            captured.append(json or {})
+            return mock_client.post.return_value
+        mock_client.post.side_effect = capture
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "tentative"},
+                headers=member_headers,
+            )
+
+        assert len(captured) == 1
+        fields = captured[0]["embeds"][0]["fields"]
+        tent_field = next((f for f in fields if "Tentative" in f["name"]), None)
+        assert tent_field is not None
+        assert "Mochi" in tent_field["value"]
+        assert "H1" in tent_field["value"]
+        assert "WHM" in tent_field["value"]
+        assert "Pure Healer" in tent_field["value"]
+
+    async def test_webhook_unknown_role_falls_back_safely(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        """Player with no active tier entry still appears by Discord username."""
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                "title": "Fallback Test",
+                "startTime": "2099-07-05T12:00:00+00:00",
+                "endTime": "2099-07-05T15:00:00+00:00",
+                "timezone": "UTC",
+                "isRecurring": False,
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        captured = []
+        mock_client = _mock_discord_post(204)
+
+        async def capture(url, *, json=None, **kw):
+            captured.append(json or {})
+            return mock_client.post.return_value
+        mock_client.post.side_effect = capture
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+
+        assert len(captured) == 1
+        fields = captured[0]["embeds"][0]["fields"]
+        cant_field = next((f for f in fields if "Cannot make it" in f["name"]), None)
+        assert cant_field is not None
+        assert "member" in cant_field["value"]
