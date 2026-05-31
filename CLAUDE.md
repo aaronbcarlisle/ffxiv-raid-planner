@@ -348,6 +348,50 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 
 PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `build`. All must pass.
 
+### Release Notes Requirement
+
+Any PR that touches `frontend/src/` or `backend/app/` **must** add or update an entry in `frontend/src/data/releaseNotes.ts`.
+
+**Internal-only changes** (tests, refactors, CI fixes, backend plumbing, security hardening with no visible user change, workflow updates):
+```ts
+{ internal: true, ... }
+```
+This hides the entry from users but satisfies CI. Do **NOT** bump `CURRENT_VERSION` for internal-only entries.
+
+**User-facing changes** get a normal visible release note entry.
+
+Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `commits` array.
+
+### Fork PR Guard (GitHub Actions)
+
+Any GitHub Actions workflow (new or updated) that **writes to PRs** must include a fork guard:
+```yaml
+if: github.event.pull_request.head.repo.full_name == github.repository
+```
+
+Write operations that require this guard:
+- Adding/creating labels
+- Assigning reviewers or assignees
+- Creating/updating PR comments
+- Modifying PR metadata
+
+**Why:** Fork PRs receive a read-only `GITHUB_TOKEN`. Without the guard, write actions fail with `HttpError: Resource not accessible by integration`.
+
+Existing guarded workflows: `pr-automation`, `release-notes-reminder`.
+
+### Pre-PR Audit Checklist
+
+Before declaring a branch ready, run:
+```powershell
+git diff --name-only | Select-String "frontend/src|backend/app"
+git diff --name-only | Select-String "releaseNotes.ts"
+git diff --name-only | Select-String ".github/workflows"
+```
+
+1. If `frontend/src/` or `backend/app/` changed and `releaseNotes.ts` did **not** change → stop and add the release note entry.
+2. If `.github/workflows/` changed and the workflow writes to PRs → confirm the fork guard exists.
+3. Run `git diff --check` to catch whitespace errors.
+
 ---
 
 ## Claude Code Commands

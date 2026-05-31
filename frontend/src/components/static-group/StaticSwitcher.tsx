@@ -118,7 +118,7 @@ export function StaticSwitcher({
         </DropdownTrigger>
       </span>
 
-      <DropdownContent align="start" className="w-72 overflow-hidden">
+      <DropdownContent align="start" className="w-72 max-w-[calc(100vw-2rem)] overflow-hidden">
         {/* Static list */}
         <div className="max-h-64 overflow-y-auto overflow-x-hidden">
           {groups.length === 0 ? (

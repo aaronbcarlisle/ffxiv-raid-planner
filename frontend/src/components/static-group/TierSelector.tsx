@@ -106,7 +106,7 @@ export function TierSelector({
         </button>
       </DropdownTrigger>
 
-      <DropdownContent align="start" className="min-w-[220px]">
+      <DropdownContent align="start" className="min-w-[min(220px,calc(100vw-2rem))]">
         {/* Most recent tier - always shown at top */}
         {mostRecentTier && currentTierId !== mostRecentTier.tierId && (
           <>

@@ -254,7 +254,7 @@ export function HistoryView({
   };
 
   return (
-    <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 md:w-full md:mx-0">
+    <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-0">
       {/* Mobile-only: Week selector row (desktop shows in consolidated toolbar) */}
       <div className="flex-shrink-0 py-1 md:hidden">
         <div className="flex items-center justify-center gap-4 px-2">
