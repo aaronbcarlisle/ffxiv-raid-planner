@@ -348,6 +348,12 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 
 PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `build`. All must pass.
 
+### Fork PRs
+`pr-automation` and `release-notes-reminder` workflows require write permissions that fork PRs cannot grant. Both have `if: github.event.pull_request.head.repo.full_name == github.repository` guards so they skip on forks instead of failing. If adding new workflows that write to PRs (labels, comments, assignments), include this guard.
+
+### Release Notes Requirement
+PRs that change files under `frontend/src/` or `backend/app/` must update `frontend/src/data/releaseNotes.ts`. For internal/infra changes, add an entry with `internal: true` (hidden from users, satisfies CI). Do NOT bump `CURRENT_VERSION` for internal-only entries. Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `commits` array.
+
 ---
 
 ## Claude Code Commands
