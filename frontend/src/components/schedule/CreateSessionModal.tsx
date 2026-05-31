@@ -185,6 +185,14 @@ export function CreateSessionModal({
         </span>
       }
       size="lg"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!isValid || isSubmitting} data-testid="session-submit-btn">
+            {isSubmitting ? 'Saving...' : editSession ? 'Save Changes' : 'Create Session'}
+          </Button>
+        </div>
+      }
     >
       <div className="space-y-4">
         <div>
@@ -289,12 +297,6 @@ export function CreateSessionModal({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!isValid || isSubmitting} data-testid="session-submit-btn">
-            {isSubmitting ? 'Saving...' : editSession ? 'Save Changes' : 'Create Session'}
-          </Button>
-        </div>
       </div>
     </Modal>
   );

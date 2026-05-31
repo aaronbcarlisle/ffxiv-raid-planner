@@ -328,7 +328,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   {canManage ? (
                     <div className="mt-4 space-y-3">
                       {settings?.webhookConfigured && (
-                        <p className="rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">
+                        <p className="rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted break-all">
                           Current webhook: {settings.webhookUrlMasked || 'Configured'}
                         </p>
                       )}
