@@ -73,13 +73,13 @@ export const RELEASES: Release[] = [
         title: 'Release notes wrap correctly on mobile',
         description:
           'Long release titles, descriptions, badges, dates, and expanded commit details now wrap inside the card instead of overflowing on phone widths.',
-        commits: [{ hash: 'pending', message: 'fix(release-notes): prevent mobile overflow', date: '2026-05-31T18:00:00Z' }],
+        commits: [{ hash: '6b605d9', message: 'fix(release-notes): prevent mobile overflow', date: '2026-05-31T18:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Tighter availability grid on small screens',
         description:
-          'Reduced column minimums in the availability grid so fewer horizontal scroll is needed on phones.',
+          'Reduced column minimums in the availability grid so less horizontal scrolling is needed on phones.',
         commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
       },
       {
