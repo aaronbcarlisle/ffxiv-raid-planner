@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.2';
+export const CURRENT_VERSION = '1.19.3';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -51,31 +51,52 @@ export const RELEASES: Release[] = [
   {
     version: '1.19.3',
     date: '2026-05-31T18:00:00Z',
-    title: 'Mobile Responsiveness Fixes',
+    title: 'Mobile UI Polish and CI Reliability',
+    highlights: ['Mobile controls stay on-screen', 'Fork PR automation skips safely'],
     items: [
       {
         category: 'fix',
         title: 'Dropdown menus no longer overflow on mobile',
         description:
           'Job picker, static switcher, and tier selector dropdowns are now clamped to viewport width so they stay on-screen at 360–430px.',
-        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
       },
       {
         category: 'fix',
         title: 'Session modal buttons always reachable',
         description:
           'Create/Edit Session modal now uses a sticky footer so Save and Cancel buttons stay visible even when the form content is long.',
-        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+      },
+      {
+        category: 'fix',
+        title: 'Release notes wrap correctly on mobile',
+        description:
+          'Long release titles, descriptions, badges, dates, and expanded commit details now wrap inside the card instead of overflowing on phone widths.',
+        commits: [{ hash: 'pending', message: 'fix(release-notes): prevent mobile overflow', date: '2026-05-31T18:00:00Z' }],
       },
       {
         category: 'improvement',
         title: 'Tighter availability grid on small screens',
         description:
           'Reduced column minimums in the availability grid so fewer horizontal scroll is needed on phones.',
-        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Fork PR automation skips safely',
+        description:
+          'PR automation and release-note reminder workflows now document and enforce fork-safe guards so read-only fork tokens do not fail CI.',
+        commits: [{ hash: '4192132', message: 'fix(ci): skip fork-PR workflows, add v1.19.3 internal release note', date: '2026-05-31T18:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Contributor and agent checklist guidance',
+        description:
+          'AGENTS.md, CLAUDE.md, and the pull request template now call out release note requirements, fork PR guard checks, and pre-PR audit commands.',
+        commits: [{ hash: '43d89f2', message: 'docs: add contributor/agent PR rules and PR template', date: '2026-05-31T18:00:00Z' }],
       },
     ],
-    internal: true,
   },
   {
     version: '1.19.2',

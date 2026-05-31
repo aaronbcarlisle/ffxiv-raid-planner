@@ -359,9 +359,9 @@ function CategoryBadge({ category }: { category: ReleaseCategory }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border ${config.color}`}
+      className={`inline-flex shrink-0 items-center gap-1 self-start px-2 py-0.5 text-xs font-medium rounded border whitespace-nowrap ${config.color}`}
     >
-      <Icon className="w-3 h-3" />
+      <Icon className="w-3 h-3 shrink-0" />
       {config.label}
     </span>
   );
@@ -377,7 +377,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
       <Button
         variant="ghost"
         onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
-        className={`w-full text-left flex items-start gap-3 p-3 rounded-lg transition-colors h-auto justify-start ${
+        className={`w-full min-w-0 text-left flex flex-col sm:flex-row items-start gap-2 sm:gap-3 p-3 rounded-lg transition-colors h-auto justify-start whitespace-normal overflow-hidden ${
           hasExpandableContent
             ? 'hover:bg-surface-elevated cursor-pointer'
             : 'cursor-default'
@@ -385,26 +385,26 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
         disabled={!hasExpandableContent}
       >
         <CategoryBadge category={item.category} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-text-primary font-medium">{item.title}</p>
+        <div className="flex-1 min-w-0 max-w-full">
+          <div className="flex min-w-0 items-start gap-2">
+            <p className="min-w-0 text-text-primary font-medium whitespace-normal break-words">{item.title}</p>
             {hasExpandableContent && (
               <ChevronRight
-                className={`w-4 h-4 text-text-muted transition-transform ${
+                className={`w-4 h-4 shrink-0 text-text-muted transition-transform mt-0.5 ${
                   isExpanded ? 'rotate-90' : ''
                 }`}
               />
             )}
           </div>
           {item.description && (
-            <p className="text-sm text-text-muted mt-0.5 font-normal whitespace-normal">{item.description}</p>
+            <p className="text-sm text-text-muted mt-0.5 font-normal whitespace-normal break-words">{item.description}</p>
           )}
         </div>
       </Button>
 
       {/* Expanded Content */}
       {isExpanded && hasExpandableContent && (
-        <div className="ml-[88px] mr-3 mb-3 p-4 bg-surface-elevated rounded-lg border border-border-subtle">
+        <div className="ml-3 sm:ml-[88px] mr-3 mb-3 p-4 bg-surface-elevated rounded-lg border border-border-subtle overflow-hidden">
           {item.image && (
             <div className="mb-4 rounded-lg overflow-hidden border border-border-subtle">
               <img
@@ -416,7 +416,7 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
           )}
 
           {item.details && (
-            <p className="text-sm text-text-secondary mb-4">{item.details}</p>
+            <p className="text-sm text-text-secondary mb-4 whitespace-normal break-words">{item.details}</p>
           )}
 
           {item.link && (
@@ -441,17 +441,17 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                 {item.commits.map((commit) => (
                   <li
                     key={commit.hash}
-                    className="flex items-center gap-2 text-sm"
+                    className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm"
                   >
                     <a
                       href={`https://github.com/aaronbcarlisle/ffxiv-raid-planner/commit/${commit.hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline"
+                      className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
                     >
                       {commit.hash}
                     </a>
-                    <span className="text-text-secondary">{commit.message}</span>
+                    <span className="min-w-0 text-text-secondary whitespace-normal break-words">{commit.message}</span>
                   </li>
                 ))}
               </ul>
@@ -513,12 +513,12 @@ function ReleaseCard({
       <Button
         variant="ghost"
         onClick={handleToggle}
-        className="w-full text-left p-6 hover:bg-surface-elevated/50 transition-colors h-auto justify-start rounded-none"
+        className="w-full min-w-0 text-left p-4 sm:p-6 hover:bg-surface-elevated/50 transition-colors h-auto justify-start rounded-none whitespace-normal overflow-hidden"
       >
-        <header className="flex items-start justify-between gap-4 w-full">
-          <div className="flex items-center gap-4">
+        <header className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+              className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
                 isExpanded ? 'bg-accent/20 text-accent' : 'bg-accent/10 text-accent'
               }`}
             >
@@ -526,9 +526,9 @@ function ReleaseCard({
                 className={`w-5 h-5 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
               />
             </div>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-xl font-semibold text-text-primary">v{release.version}</h2>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3 mb-1">
+                <h2 className="text-xl font-semibold text-text-primary shrink-0">v{release.version}</h2>
                 <IconButton
                   icon={<Link2 className="w-4 h-4" />}
                   onClick={(e) => {
@@ -543,16 +543,16 @@ function ReleaseCard({
                   size="sm"
                 />
                 {isLatest && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-accent-contrast rounded">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-accent text-accent-contrast rounded whitespace-nowrap">
                     LATEST
                   </span>
                 )}
               </div>
               {/* font-normal and whitespace-normal override Button's inherited styles */}
-              {release.title && <p className="text-text-secondary font-normal whitespace-normal">{release.title}</p>}
+              {release.title && <p className="text-text-secondary font-normal whitespace-normal break-words">{release.title}</p>}
             </div>
           </div>
-          <div className="text-right shrink-0 font-normal">
+          <div className="text-left sm:text-right shrink-0 font-normal">
             <time dateTime={release.date} className="text-sm text-text-muted block">
               {new Date(release.date).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -576,9 +576,9 @@ function ReleaseCard({
 
             return (
               <div key={category} className="border-b border-border-subtle last:border-b-0">
-                <div className="px-6 py-3 bg-surface-elevated/30">
-                  <h3 className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                    <config.icon className="w-4 h-4" />
+                <div className="px-4 sm:px-6 py-3 bg-surface-elevated/30">
+                  <h3 className="text-sm font-medium text-text-secondary flex min-w-0 flex-wrap items-center gap-2">
+                    <config.icon className="w-4 h-4 shrink-0" />
                     {category === 'feature' && 'New Features'}
                     {category === 'improvement' && 'Improvements'}
                     {category === 'fix' && 'Bug Fixes'}
@@ -586,7 +586,7 @@ function ReleaseCard({
                     <span className="text-text-muted font-normal">({items.length})</span>
                   </h3>
                 </div>
-                <ul className="px-3 py-2">
+                <ul className="px-2 sm:px-3 py-2">
                   {items.map((item, idx) => (
                     <ReleaseItemRow key={idx} item={item} />
                   ))}
@@ -756,8 +756,8 @@ export default function ReleaseNotes() {
     <div className="min-h-screen bg-surface-base">
       {/* Header */}
       <header className="bg-surface-raised border-b border-border-default">
-        <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-8">
-          <div className="flex items-center gap-2 text-sm text-text-muted mb-4">
+        <div className="max-w-[120rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-text-muted mb-4">
             <Link to="/docs" className="hover:text-accent transition-colors">
               Documentation
             </Link>
@@ -765,14 +765,14 @@ export default function ReleaseNotes() {
             <span className="text-text-secondary">Release Notes</span>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-accent">Release Notes</h1>
+            <h1 className="text-3xl font-bold text-accent break-words">Release Notes</h1>
             <p className="text-text-secondary mt-1">What's new in FFXIV Raid Planner</p>
           </div>
         </div>
       </header>
 
       {/* Content with Sidebar */}
-      <div className="max-w-[120rem] mx-auto px-6 lg:px-8 py-12 flex gap-8">
+      <div className="max-w-[120rem] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex gap-8">
         <VersionNav
           activeVersion={activeVersion}
           onVersionClick={handleVersionClick}
