@@ -505,8 +505,8 @@ export function AvailabilityGrid({
                 <div
                   className="inline-grid gap-1 rounded-2xl bg-border-subtle p-1.5"
                   style={{
-                    gridTemplateColumns: `4.5rem repeat(${columns.length}, minmax(5.5rem, 1fr))`,
-                    minWidth: `${4.5 + columns.length * 5.5}rem`,
+                    gridTemplateColumns: `3.5rem repeat(${columns.length}, minmax(4rem, 1fr))`,
+                    minWidth: `${3.5 + columns.length * 4}rem`,
                   }}
                 >
                   <div className="rounded-xl bg-surface-card/90 p-1" />

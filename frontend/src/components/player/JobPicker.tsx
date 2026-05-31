@@ -343,7 +343,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
       {/* Expanded picker dropdown */}
       {showFullPicker && (
         <div className={templateRole ? 'relative' : ''}>
-          <div className={templateRole ? 'absolute z-[100] top-0 left-0 right-0 min-w-[280px] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
+          <div className={templateRole ? 'absolute z-[100] top-0 left-0 right-0 min-w-[min(280px,90vw)] bg-surface-raised border border-border-default rounded-lg shadow-lg' : 'w-80 max-w-[calc(100vw-2rem)] bg-surface-raised border border-border-default rounded-lg shadow-lg'}>
             {/* Search input - at top normally, at bottom when reversed */}
             {!reverseLayout && (
               <div className="p-2 border-b border-border-default">
