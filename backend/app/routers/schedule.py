@@ -18,18 +18,20 @@ from ..config import get_settings
 from ..logging_config import get_logger
 from ..dependencies import get_current_user
 from ..services.discord_webhook import (
+    PlayerDetail,
     SessionAnnouncementData,
     build_cancelled_payload,
     build_session_announcement_payload,
     build_test_reminder_payload,
+    compute_announcement_hash,
     compute_rsvp_hash,
     _next_occurrence_iso,
     _recurrence_rule_to_text,
 )
 from ..exceptions import ValidationError
-from ..models import Membership, MemberRole, StaticGroup, User
+from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from ..models.availability import AvailabilityTemplate, UserAvailability
-from ..models.schedule import ScheduleRsvp, ScheduleSession, ScheduleSettings
+from ..models.schedule import DiscordMessageMapping, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -85,11 +87,36 @@ async def _get_member_count(db: AsyncSession, group_id: str) -> int:
     return len(result.scalars().all())
 
 
+async def _get_player_map(db: AsyncSession, group_id: str) -> dict[str, SnapshotPlayer]:
+    """Map user_id → SnapshotPlayer for the group's active tier.
+
+    Returns an empty dict if no active tier exists or no players are linked.
+    """
+    tier_result = await db.execute(
+        select(TierSnapshot.id).where(
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.is_active.is_(True),
+        )
+    )
+    tier_id = tier_result.scalar_one_or_none()
+    if not tier_id:
+        return {}
+
+    player_result = await db.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.tier_snapshot_id == tier_id,
+            SnapshotPlayer.user_id.isnot(None),
+        )
+    )
+    return {p.user_id: p for p in player_result.scalars().all()}
+
+
 def _build_announcement_data(
     sched_session: ScheduleSession,
     static_group: StaticGroup,
     member_count: int,
     rsvps: list[ScheduleRsvp] | None = None,
+    player_map: dict[str, SnapshotPlayer] | None = None,
 ) -> SessionAnnouncementData:
     """Assemble a SessionAnnouncementData from ORM objects.
 
@@ -97,14 +124,31 @@ def _build_announcement_data(
     the passed-in ``rsvps`` list when the relationship isn't loaded yet),
     resolves the next upcoming occurrence for recurring sessions, and
     converts the recurrence rule to human-readable text.
+
+    ``player_map`` maps user_id → SnapshotPlayer from the active tier,
+    used to populate cannot-make-it and tentative named lists.
     """
     rsvp_list = rsvps if rsvps is not None else list(sched_session.rsvps)
     rsvp_counts: dict[str, int] = {}
     for rsvp in rsvp_list:
         rsvp_counts[rsvp.status] = rsvp_counts.get(rsvp.status, 0) + 1
 
+    pm = player_map or {}
+    unavailable_players: list[PlayerDetail] = []
+    tentative_players: list[PlayerDetail] = []
+    for rsvp in rsvp_list:
+        sp = pm.get(rsvp.user_id)
+        detail = PlayerDetail(
+            name=sp.name if sp else (rsvp.user.discord_username if rsvp.user else "Unknown"),
+            position=sp.position if sp else None,
+            job=sp.job if sp and sp.job else None,
+        )
+        if rsvp.status == "unavailable":
+            unavailable_players.append(detail)
+        elif rsvp.status == "tentative":
+            tentative_players.append(detail)
+
     start_iso = _next_occurrence_iso(sched_session.start_time, sched_session.recurrence_rule)
-    # Adjust end to match the same offset as start for recurring sessions
     try:
         from datetime import datetime as _dt
         orig_start = _dt.fromisoformat(sched_session.start_time.replace("Z", "+00:00"))
@@ -128,6 +172,8 @@ def _build_announcement_data(
         total_member_count=member_count,
         session_description=sched_session.description,
         recurrence_summary=_recurrence_rule_to_text(sched_session.recurrence_rule),
+        unavailable_players=unavailable_players,
+        tentative_players=tentative_players,
     )
 
 
@@ -149,6 +195,102 @@ async def _try_fire_webhook(
                 status=resp.status_code,
                 webhook=_mask_webhook_url(webhook_url),
             )
+    except Exception as exc:
+        logger.warning(
+            "discord_webhook_error",
+            error=str(exc),
+            webhook=_mask_webhook_url(webhook_url),
+        )
+
+
+async def _post_or_edit_webhook(
+    db: AsyncSession,
+    webhook_url: str,
+    payload: dict,
+    session_id: str,
+    group_id: str,
+    content_hash: str,
+) -> None:
+    """Post a new Discord message or edit the existing one for this session.
+
+    On first call (no mapping): POST with ?wait=true, store message ID.
+    On subsequent calls: skip if hash unchanged, else PATCH existing message.
+    On PATCH 404 (message deleted): POST replacement, update mapping.
+    Never raises — all errors are logged with masked webhook URL.
+    """
+    try:
+        result = await db.execute(
+            select(DiscordMessageMapping).where(
+                DiscordMessageMapping.session_id == session_id,
+                DiscordMessageMapping.occurrence_start_time.is_(None),
+            )
+        )
+        mapping = result.scalar_one_or_none()
+        now = datetime.now(timezone.utc).isoformat()
+
+        if mapping and mapping.last_rsvp_hash == content_hash:
+            return
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            if mapping:
+                edit_url = f"{webhook_url}/messages/{mapping.webhook_message_id}"
+                resp = await client.patch(edit_url, json=payload)
+
+                if resp.status_code == 404:
+                    resp = await client.post(f"{webhook_url}?wait=true", json=payload)
+                    if resp.status_code == 200:
+                        msg_data = resp.json()
+                        mapping.webhook_message_id = msg_data["id"]
+                        mapping.last_posted_at = now
+                        mapping.last_rsvp_hash = content_hash
+                        mapping.updated_at = now
+                        await db.flush()
+                        await db.commit()
+                    elif resp.status_code >= 400:
+                        logger.warning(
+                            "discord_webhook_replacement_rejected",
+                            status=resp.status_code,
+                            webhook=_mask_webhook_url(webhook_url),
+                        )
+                    return
+
+                if resp.status_code >= 400:
+                    logger.warning(
+                        "discord_webhook_edit_rejected",
+                        status=resp.status_code,
+                        webhook=_mask_webhook_url(webhook_url),
+                    )
+                    return
+
+                mapping.last_edited_at = now
+                mapping.last_rsvp_hash = content_hash
+                mapping.updated_at = now
+                await db.flush()
+                await db.commit()
+            else:
+                resp = await client.post(f"{webhook_url}?wait=true", json=payload)
+                if resp.status_code == 200:
+                    msg_data = resp.json()
+                    new_mapping = DiscordMessageMapping(
+                        id=str(uuid.uuid4()),
+                        session_id=session_id,
+                        static_group_id=group_id,
+                        occurrence_start_time=None,
+                        webhook_message_id=msg_data["id"],
+                        last_posted_at=now,
+                        last_rsvp_hash=content_hash,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                    db.add(new_mapping)
+                    await db.flush()
+                    await db.commit()
+                elif resp.status_code >= 400:
+                    logger.warning(
+                        "discord_webhook_rejected",
+                        status=resp.status_code,
+                        webhook=_mask_webhook_url(webhook_url),
+                    )
     except Exception as exc:
         logger.warning(
             "discord_webhook_error",
@@ -379,15 +521,18 @@ async def create_schedule_session(
     )
     created = result.scalar_one()
 
-    # Fire Discord webhook after successful commit — non-blocking
+    # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
     if sched_settings and sched_settings.webhook_url:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
-        ann_data = _build_announcement_data(created, static_group, member_count)
-        await _try_fire_webhook(
-            sched_settings.webhook_url,
-            build_session_announcement_payload(ann_data),
+        player_map = await _get_player_map(session, group_id)
+        ann_data = _build_announcement_data(created, static_group, member_count, player_map=player_map)
+        payload = build_session_announcement_payload(ann_data)
+        content_hash = compute_announcement_hash(ann_data)
+        await _post_or_edit_webhook(
+            session, sched_settings.webhook_url, payload,
+            created.id, group_id, content_hash,
         )
 
     return session_to_response(created)
@@ -429,15 +574,18 @@ async def update_schedule_session(
     await session.flush()
     await session.commit()
 
-    # Fire Discord webhook after successful commit — non-blocking
+    # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
     if sched_settings and sched_settings.webhook_url:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
-        ann_data = _build_announcement_data(schedule_session, static_group, member_count)
-        await _try_fire_webhook(
-            sched_settings.webhook_url,
-            build_session_announcement_payload(ann_data),
+        player_map = await _get_player_map(session, group_id)
+        ann_data = _build_announcement_data(schedule_session, static_group, member_count, player_map=player_map)
+        payload = build_session_announcement_payload(ann_data)
+        content_hash = compute_announcement_hash(ann_data)
+        await _post_or_edit_webhook(
+            session, sched_settings.webhook_url, payload,
+            session_id, group_id, content_hash,
         )
 
     return session_to_response(schedule_session)
@@ -468,10 +616,12 @@ async def delete_schedule_session(
     if not schedule_session:
         raise NotFound("Schedule session not found")
 
-    # Capture data before deletion for the webhook
     sched_settings = await _get_schedule_settings(session, group_id)
+    webhook_url = sched_settings.webhook_url if sched_settings else None
     webhook_payload = None
-    if sched_settings and sched_settings.webhook_url:
+    mapping_msg_id = None
+
+    if webhook_url:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         ann_data = _build_announcement_data(
@@ -479,13 +629,36 @@ async def delete_schedule_session(
         )
         webhook_payload = build_cancelled_payload(ann_data)
 
+        map_result = await session.execute(
+            select(DiscordMessageMapping).where(
+                DiscordMessageMapping.session_id == session_id,
+                DiscordMessageMapping.occurrence_start_time.is_(None),
+            )
+        )
+        mapping = map_result.scalar_one_or_none()
+        if mapping:
+            mapping_msg_id = mapping.webhook_message_id
+
     await session.delete(schedule_session)
     await session.flush()
     await session.commit()
 
-    # Fire Discord webhook after successful commit — non-blocking
-    if sched_settings and sched_settings.webhook_url and webhook_payload:
-        await _try_fire_webhook(sched_settings.webhook_url, webhook_payload)
+    if webhook_url and webhook_payload:
+        if mapping_msg_id:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    await client.patch(
+                        f"{webhook_url}/messages/{mapping_msg_id}",
+                        json=webhook_payload,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "discord_webhook_error",
+                    error=str(exc),
+                    webhook=_mask_webhook_url(webhook_url),
+                )
+        else:
+            await _try_fire_webhook(webhook_url, webhook_payload)
 
 
 @router.post(
@@ -546,23 +719,25 @@ async def create_or_update_rsvp(
     await session.flush()
     await session.commit()
 
-    # Fire Discord webhook after successful commit — non-blocking
+    # Edit existing Discord announcement (or skip if nothing changed)
     sched_settings = await _get_schedule_settings(session, group_id)
     if sched_settings and sched_settings.webhook_url:
-        # Re-load the session with all RSVPs for an accurate count
         rsvp_result = await session.execute(
             select(ScheduleSession)
             .where(ScheduleSession.id == session_id)
-            .options(selectinload(ScheduleSession.rsvps))
+            .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
         )
         refreshed = rsvp_result.scalar_one_or_none()
         if refreshed:
             static_group = await get_static_group(session, group_id)
             member_count = await _get_member_count(session, group_id)
-            ann_data = _build_announcement_data(refreshed, static_group, member_count)
-            await _try_fire_webhook(
-                sched_settings.webhook_url,
-                build_session_announcement_payload(ann_data),
+            player_map = await _get_player_map(session, group_id)
+            ann_data = _build_announcement_data(refreshed, static_group, member_count, player_map=player_map)
+            payload = build_session_announcement_payload(ann_data)
+            content_hash = compute_announcement_hash(ann_data)
+            await _post_or_edit_webhook(
+                session, sched_settings.webhook_url, payload,
+                session_id, group_id, content_hash,
             )
 
     return RsvpResponse(
@@ -701,7 +876,7 @@ async def post_session_preview(
             ScheduleSession.static_group_id == group_id,
             ScheduleSession.start_time >= now_iso,
         )
-        .options(selectinload(ScheduleSession.rsvps))
+        .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
         .order_by(ScheduleSession.start_time.asc())
         .limit(1)
     )
@@ -711,7 +886,8 @@ async def post_session_preview(
         raise ValidationError("No upcoming sessions found. Create a session first.")
 
     member_count = await _get_member_count(session, group_id)
-    ann_data = _build_announcement_data(upcoming, static_group, member_count)
+    player_map = await _get_player_map(session, group_id)
+    ann_data = _build_announcement_data(upcoming, static_group, member_count, player_map=player_map)
     payload = build_session_announcement_payload(ann_data)
 
     try:

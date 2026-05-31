@@ -110,6 +110,42 @@ class ScheduleSettings(Base):
     static_group: Mapped["StaticGroup"] = relationship("StaticGroup")
 
 
+class DiscordMessageMapping(Base):
+    """Maps a schedule session to its Discord webhook message for edit-in-place."""
+
+    __tablename__ = "schedule_discord_messages"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "occurrence_start_time",
+            name="uq_discord_msg_session_occurrence",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("schedule_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    static_group_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("static_groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    occurrence_start_time: Mapped[str | None] = mapped_column(Text, nullable=True)
+    webhook_message_id: Mapped[str] = mapped_column(Text, nullable=False)
+    webhook_thread_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_posted_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_edited_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_rsvp_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    session: Mapped["ScheduleSession"] = relationship("ScheduleSession")
+
+
 class ScheduleReminderDelivery(Base):
     """Delivery log used to dedupe scheduled reminder sends."""
 

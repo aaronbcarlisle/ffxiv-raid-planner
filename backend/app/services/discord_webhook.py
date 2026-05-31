@@ -14,23 +14,16 @@ Webhook limitations vs. a full Discord bot:
     integration and is explicitly out of scope for PR3.
 
 Message editing:
-  Editing a previously-posted message requires storing the webhook message ID
-  (returned by Discord on POST).  No ``schedule_discord_messages`` table
-  exists yet (needs a migration).  The payload builders below are ready; only
-  the persistence layer is missing.  Proposed future schema::
+  Session create POSTs with ``?wait=true`` to capture the Discord message ID,
+  which is stored in ``schedule_discord_messages``.  Subsequent RSVP or session
+  changes PATCH that message instead of posting a new one.  A content hash
+  (``last_rsvp_hash``) skips the edit when nothing visible changed.
 
-      schedule_discord_messages (
-        id                 UUID PK,
-        session_id         FK → schedule_sessions UNIQUE,
-        static_group_id    FK → static_groups,
-        webhook_message_id TEXT NOT NULL,
-        webhook_thread_id  TEXT NULL,
-        last_posted_at     TEXT,
-        last_edited_at     TEXT,
-        last_rsvp_hash     TEXT,   -- hash of RSVP state to detect changes
-        created_at         TEXT,
-        updated_at         TEXT,
-      )
+  If the original message was deleted (Discord returns 404 on PATCH), one
+  replacement message is POSTed and the mapping is updated.
+
+  Recurring sessions use a single summary message (``occurrence_start_time``
+  is NULL) because occurrence-specific RSVP is not yet supported.
 """
 
 from __future__ import annotations
@@ -72,6 +65,43 @@ _RSVP_LABELS: dict[str, tuple[str, str]] = {
     "no_response": ("⬜", "No response"),
 }
 
+_JOB_CATEGORY: dict[str, str] = {
+    "PLD": "Tank", "WAR": "Tank", "DRK": "Tank", "GNB": "Tank",
+    "WHM": "Pure Healer", "AST": "Pure Healer",
+    "SCH": "Shield Healer", "SGE": "Shield Healer",
+    "MNK": "Melee", "DRG": "Melee", "NIN": "Melee",
+    "SAM": "Melee", "RPR": "Melee", "VPR": "Melee",
+    "BRD": "Physical Ranged", "MCH": "Physical Ranged", "DNC": "Physical Ranged",
+    "BLM": "Caster", "SMN": "Caster", "RDM": "Caster", "PCT": "Caster",
+}
+
+
+def job_category(job: str | None) -> str | None:
+    if not job:
+        return None
+    return _JOB_CATEGORY.get(job.upper())
+
+
+@dataclass
+class PlayerDetail:
+    """Lightweight player info for webhook payloads — no internal IDs."""
+
+    name: str
+    position: str | None = None
+    job: str | None = None
+
+    def format_line(self) -> str:
+        parts = []
+        if self.position:
+            parts.append(self.position)
+        if self.job:
+            cat = job_category(self.job)
+            parts.append(f"{self.job}" + (f" ({cat})" if cat else ""))
+        label = " / ".join(parts) if parts else None
+        if label:
+            return f"• {self.name} — {label}"
+        return f"• {self.name}"
+
 
 @dataclass
 class SessionAnnouncementData:
@@ -93,6 +123,8 @@ class SessionAnnouncementData:
     total_member_count: int = 8
     session_description: str | None = None
     recurrence_summary: str | None = None
+    unavailable_players: list[PlayerDetail] = field(default_factory=list)
+    tentative_players: list[PlayerDetail] = field(default_factory=list)
 
 
 def _recurrence_rule_to_text(rule: str | None) -> str | None:
@@ -152,6 +184,26 @@ def compute_rsvp_hash(rsvp_counts: dict[str, int]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
+def compute_announcement_hash(data: SessionAnnouncementData) -> str:
+    """Hash the full announcement content for change detection.
+
+    Covers RSVP counts, player lists, title, description, and times so
+    that any visible change triggers a Discord edit.
+    """
+    parts = {
+        "title": data.session_title,
+        "start": data.start_iso,
+        "end": data.end_iso,
+        "desc": data.session_description or "",
+        "rsvp": data.rsvp_counts,
+        "total": data.total_member_count,
+        "unavail": [(p.name, p.position, p.job) for p in data.unavailable_players],
+        "tent": [(p.name, p.position, p.job) for p in data.tentative_players],
+    }
+    canonical = json.dumps(parts, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canonical.encode()).hexdigest()[:16]
+
+
 def _parse_dt(iso: str) -> datetime | None:
     """Parse an ISO timestamp, tolerating Z suffix."""
     try:
@@ -195,6 +247,32 @@ def compute_subs_needed(rsvp_counts: dict[str, int], total_member_count: int) ->
     if total_member_count <= 0:
         return 0
     return max(0, total_member_count - rsvp_counts.get("available", 0))
+
+
+def _format_subs_needed_detail(unavailable_players: list[PlayerDetail], subs_count: int) -> str:
+    """Build a subs-needed field value with role/job detail when available."""
+    if not unavailable_players:
+        slot_word = "slot" if subs_count == 1 else "slots"
+        return f"{subs_count} {slot_word} short"
+
+    lines = []
+    for p in unavailable_players:
+        parts = []
+        if p.position:
+            parts.append(p.position)
+        cat = job_category(p.job)
+        if cat:
+            parts.append(cat)
+        elif p.position:
+            pass
+        if parts:
+            lines.append("• " + " / ".join(parts))
+
+    if lines:
+        return "\n".join(lines)
+
+    slot_word = "slot" if subs_count == 1 else "slots"
+    return f"{subs_count} {slot_word} short"
 
 
 def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[str, Any]:
@@ -241,13 +319,28 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
             "inline": True,
         })
 
+    if data.unavailable_players:
+        lines = "\n".join(p.format_line() for p in data.unavailable_players)
+        fields.append({
+            "name": "❌ Cannot make it",
+            "value": lines[:1024],
+            "inline": False,
+        })
+
+    if data.tentative_players:
+        lines = "\n".join(p.format_line() for p in data.tentative_players)
+        fields.append({
+            "name": "❔ Tentative",
+            "value": lines[:1024],
+            "inline": False,
+        })
+
     subs_needed = compute_subs_needed(data.rsvp_counts, data.total_member_count)
     if subs_needed > 0:
-        slot_word = "slot" if subs_needed == 1 else "slots"
         fields.append({
             "name": "⚠️ Subs needed",
-            "value": f"{subs_needed} {slot_word} short",
-            "inline": True,
+            "value": _format_subs_needed_detail(data.unavailable_players, subs_needed),
+            "inline": False,
         })
 
     embed: dict[str, Any] = {
