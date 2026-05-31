@@ -49,6 +49,35 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.19.3',
+    date: '2026-05-31T18:00:00Z',
+    title: 'Mobile Responsiveness Fixes',
+    items: [
+      {
+        category: 'fix',
+        title: 'Dropdown menus no longer overflow on mobile',
+        description:
+          'Job picker, static switcher, and tier selector dropdowns are now clamped to viewport width so they stay on-screen at 360–430px.',
+        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+      },
+      {
+        category: 'fix',
+        title: 'Session modal buttons always reachable',
+        description:
+          'Create/Edit Session modal now uses a sticky footer so Save and Cancel buttons stay visible even when the form content is long.',
+        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Tighter availability grid on small screens',
+        description:
+          'Reduced column minimums in the availability grid so fewer horizontal scroll is needed on phones.',
+        commits: [{ hash: 'e17e93d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.19.2',
     date: '2026-05-31T12:00:00Z',
     title: 'Typical Week Availability',
