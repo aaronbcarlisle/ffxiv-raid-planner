@@ -867,12 +867,22 @@ class TestComputeRsvpHash:
 # ── Integration tests for webhook firing ─────────────────────────────────────
 
 
-def _mock_discord_post(status_code: int = 204):
-    """Return a mock httpx.AsyncClient that succeeds on POST."""
-    response = MagicMock()
-    response.status_code = status_code
+def _mock_discord_post(status_code: int = 200, message_id: str = "discord_msg_001"):
+    """Return a mock httpx.AsyncClient that succeeds on POST/PATCH.
+
+    POST with ?wait=true returns 200 + {"id": message_id}.
+    PATCH returns 200 by default.
+    """
+    post_response = MagicMock()
+    post_response.status_code = status_code
+    post_response.json.return_value = {"id": message_id}
+
+    patch_response = MagicMock()
+    patch_response.status_code = 200
+
     client = AsyncMock()
-    client.post.return_value = response
+    client.post.return_value = post_response
+    client.patch.return_value = patch_response
     client.__aenter__.return_value = client
     client.__aexit__.return_value = None
     return client
@@ -1234,13 +1244,20 @@ class TestDiscordWebhook:
         )
         session_id = create_resp.json()["id"]
 
-        captured = []
-        mock_client = _mock_discord_post(204)
+        captured_posts = []
+        captured_patches = []
+        mock_client = _mock_discord_post(200)
 
-        async def capture(url, *, json=None, **kw):
-            captured.append(json or {})
+        async def capture_post(url, *, json=None, **kw):
+            captured_posts.append({"url": url, "json": json or {}})
             return mock_client.post.return_value
-        mock_client.post.side_effect = capture
+
+        async def capture_patch(url, *, json=None, **kw):
+            captured_patches.append({"url": url, "json": json or {}})
+            return mock_client.patch.return_value
+
+        mock_client.post.side_effect = capture_post
+        mock_client.patch.side_effect = capture_patch
 
         with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
             await client.post(
@@ -1249,8 +1266,9 @@ class TestDiscordWebhook:
                 headers=member_headers,
             )
 
-        assert len(captured) == 1
-        fields = captured[0]["embeds"][0]["fields"]
+        # RSVP should POST (no prior mapping from session create outside mock)
+        assert len(captured_posts) == 1
+        fields = captured_posts[0]["json"]["embeds"][0]["fields"]
         cant_field = next((f for f in fields if "Cannot make it" in f["name"]), None)
         assert cant_field is not None
         assert "Aki" in cant_field["value"]
@@ -1297,13 +1315,13 @@ class TestDiscordWebhook:
         )
         session_id = create_resp.json()["id"]
 
-        captured = []
-        mock_client = _mock_discord_post(204)
+        captured_posts = []
+        mock_client = _mock_discord_post(200)
 
-        async def capture(url, *, json=None, **kw):
-            captured.append(json or {})
+        async def capture_post(url, *, json=None, **kw):
+            captured_posts.append(json or {})
             return mock_client.post.return_value
-        mock_client.post.side_effect = capture
+        mock_client.post.side_effect = capture_post
 
         with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
             await client.post(
@@ -1312,8 +1330,8 @@ class TestDiscordWebhook:
                 headers=member_headers,
             )
 
-        assert len(captured) == 1
-        fields = captured[0]["embeds"][0]["fields"]
+        assert len(captured_posts) == 1
+        fields = captured_posts[0]["embeds"][0]["fields"]
         tent_field = next((f for f in fields if "Tentative" in f["name"]), None)
         assert tent_field is not None
         assert "Mochi" in tent_field["value"]
@@ -1347,13 +1365,13 @@ class TestDiscordWebhook:
         )
         session_id = create_resp.json()["id"]
 
-        captured = []
-        mock_client = _mock_discord_post(204)
+        captured_posts = []
+        mock_client = _mock_discord_post(200)
 
-        async def capture(url, *, json=None, **kw):
-            captured.append(json or {})
+        async def capture_post(url, *, json=None, **kw):
+            captured_posts.append(json or {})
             return mock_client.post.return_value
-        mock_client.post.side_effect = capture
+        mock_client.post.side_effect = capture_post
 
         with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
             await client.post(
@@ -1362,8 +1380,260 @@ class TestDiscordWebhook:
                 headers=member_headers,
             )
 
-        assert len(captured) == 1
-        fields = captured[0]["embeds"][0]["fields"]
+        assert len(captured_posts) == 1
+        fields = captured_posts[0]["embeds"][0]["fields"]
         cant_field = next((f for f in fields if "Cannot make it" in f["name"]), None)
         assert cant_field is not None
         assert "member" in cant_field["value"]
+
+
+class TestWebhookMessagePersistence:
+    """Verify that webhook messages are created/edited instead of spammed."""
+
+    async def _setup_webhook(self, client, group_id: str, headers: dict) -> None:
+        await client.put(
+            f"/api/static-groups/{group_id}/scheduler/settings",
+            json={"webhookUrl": "https://discord.com/api/webhooks/1234/fake-token-for-tests"},
+            headers=headers,
+        )
+
+    async def test_session_create_posts_once_and_stores_message_id(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(200, message_id="msg_create_001")
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            response = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Post Once Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 201
+        mock_client.post.assert_called_once()
+        assert "wait=true" in mock_client.post.call_args[0][0]
+
+        from app.models.schedule import DiscordMessageMapping
+        result = await session.execute(
+            select(DiscordMessageMapping).where(
+                DiscordMessageMapping.session_id == response.json()["id"],
+            )
+        )
+        mapping = result.scalar_one_or_none()
+        assert mapping is not None
+        assert mapping.webhook_message_id == "msg_create_001"
+
+    async def test_rsvp_change_edits_existing_message(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(200, message_id="msg_edit_001")
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            create_resp = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Edit Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+            session_id = create_resp.json()["id"]
+
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+
+        assert mock_client.post.call_count == 1
+        assert mock_client.patch.call_count == 1
+        patch_url = mock_client.patch.call_args[0][0]
+        assert "msg_edit_001" in patch_url
+
+    async def test_repeated_same_rsvp_does_not_edit_again(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(200, message_id="msg_hash_001")
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            create_resp = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Hash Skip Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+            session_id = create_resp.json()["id"]
+
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+            first_patch_count = mock_client.patch.call_count
+
+            # Same RSVP again — hash unchanged
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+
+        assert mock_client.patch.call_count == first_patch_count
+
+    async def test_session_update_edits_existing_message(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(200, message_id="msg_update_001")
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            create_resp = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Before Update",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+            session_id = create_resp.json()["id"]
+
+            await client.put(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+                json={"title": "After Update"},
+                headers=auth_headers,
+            )
+
+        assert mock_client.post.call_count == 1
+        assert mock_client.patch.call_count == 1
+
+    async def test_deleted_discord_message_posts_replacement(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+        mock_client = _mock_discord_post(200, message_id="msg_original")
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            create_resp = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "404 Recovery Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+            session_id = create_resp.json()["id"]
+
+            # Simulate Discord returning 404 on PATCH (message was deleted)
+            patch_404 = MagicMock()
+            patch_404.status_code = 404
+            mock_client.patch.return_value = patch_404
+
+            replacement_resp = MagicMock()
+            replacement_resp.status_code = 200
+            replacement_resp.json.return_value = {"id": "msg_replacement"}
+            mock_client.post.return_value = replacement_resp
+
+            await client.post(
+                f"/api/static-groups/{test_group.id}/schedule/{session_id}/rsvp",
+                json={"status": "unavailable"},
+                headers=member_headers,
+            )
+
+        # Should have tried PATCH (got 404), then POST replacement
+        assert mock_client.patch.call_count == 1
+        assert mock_client.post.call_count >= 2
+
+        from app.models.schedule import DiscordMessageMapping
+        result = await session.execute(
+            select(DiscordMessageMapping).where(
+                DiscordMessageMapping.session_id == session_id,
+            )
+        )
+        mapping = result.scalar_one()
+        assert mapping.webhook_message_id == "msg_replacement"
+
+    async def test_webhook_failure_does_not_break_rsvp_save(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+        member_user,
+        member_headers,
+    ):
+        await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        await self._setup_webhook(client, test_group.id, auth_headers)
+
+        import httpx as _httpx
+        mock_client = AsyncMock()
+        mock_client.post.side_effect = _httpx.ConnectError("timeout")
+        mock_client.patch.side_effect = _httpx.ConnectError("timeout")
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            create_resp = await client.post(
+                f"/api/static-groups/{test_group.id}/schedule",
+                json={
+                    "title": "Resilience Test",
+                    "startTime": "2099-07-05T12:00:00+00:00",
+                    "endTime": "2099-07-05T15:00:00+00:00",
+                    "timezone": "UTC",
+                    "isRecurring": False,
+                },
+                headers=auth_headers,
+            )
+
+        assert create_resp.status_code == 201

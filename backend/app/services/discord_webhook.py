@@ -14,25 +14,16 @@ Webhook limitations vs. a full Discord bot:
     integration and is explicitly out of scope for PR3.
 
 Message editing:
-  Editing a previously-posted message requires storing the webhook message ID
-  (returned by Discord on POST).  No ``schedule_discord_messages`` table
-  exists yet (needs a migration).  The payload builders below are ready; only
-  the persistence layer is missing.  Proposed future schema::
+  Session create POSTs with ``?wait=true`` to capture the Discord message ID,
+  which is stored in ``schedule_discord_messages``.  Subsequent RSVP or session
+  changes PATCH that message instead of posting a new one.  A content hash
+  (``last_rsvp_hash``) skips the edit when nothing visible changed.
 
-      schedule_discord_messages (
-        id                      UUID PK,
-        session_id              FK → schedule_sessions,
-        static_group_id         FK → static_groups,
-        occurrence_start_time   TEXT NULL,   -- NULL for one-shot sessions
-        webhook_message_id      TEXT NOT NULL,
-        webhook_thread_id       TEXT NULL,
-        last_posted_at          TEXT,
-        last_edited_at          TEXT,
-        last_rsvp_hash          TEXT,   -- hash of RSVP state to detect changes
-        created_at              TEXT,
-        updated_at              TEXT,
-        UNIQUE(session_id, occurrence_start_time),
-      )
+  If the original message was deleted (Discord returns 404 on PATCH), one
+  replacement message is POSTed and the mapping is updated.
+
+  Recurring sessions use a single summary message (``occurrence_start_time``
+  is NULL) because occurrence-specific RSVP is not yet supported.
 """
 
 from __future__ import annotations
@@ -190,6 +181,26 @@ def compute_rsvp_hash(rsvp_counts: dict[str, int]) -> str:
     so that unchanged states can skip a Discord EDIT call.
     """
     canonical = json.dumps(rsvp_counts, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()[:16]
+
+
+def compute_announcement_hash(data: SessionAnnouncementData) -> str:
+    """Hash the full announcement content for change detection.
+
+    Covers RSVP counts, player lists, title, description, and times so
+    that any visible change triggers a Discord edit.
+    """
+    parts = {
+        "title": data.session_title,
+        "start": data.start_iso,
+        "end": data.end_iso,
+        "desc": data.session_description or "",
+        "rsvp": data.rsvp_counts,
+        "total": data.total_member_count,
+        "unavail": [(p.name, p.position, p.job) for p in data.unavailable_players],
+        "tent": [(p.name, p.position, p.job) for p in data.tentative_players],
+    }
+    canonical = json.dumps(parts, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 

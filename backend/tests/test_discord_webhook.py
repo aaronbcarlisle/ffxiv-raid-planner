@@ -17,6 +17,7 @@ from app.services.discord_webhook import (
     _format_subs_needed_detail,
     build_session_announcement_payload,
     build_test_reminder_payload,
+    compute_announcement_hash,
     compute_subs_needed,
     job_category,
 )
@@ -461,3 +462,29 @@ def test_payload_subs_needed_shows_role_detail():
     sub_field = next(f for f in fields if "Subs needed" in f["name"])
     assert "R2 / Physical Ranged" in sub_field["value"]
     assert "H1 / Pure Healer" in sub_field["value"]
+
+
+# ── compute_announcement_hash ────────────────────────────────────────────────
+
+
+def test_announcement_hash_deterministic():
+    data = _make_data()
+    assert compute_announcement_hash(data) == compute_announcement_hash(data)
+
+
+def test_announcement_hash_changes_on_rsvp_change():
+    data_a = _make_data(rsvp_counts={"available": 6})
+    data_b = _make_data(rsvp_counts={"available": 7})
+    assert compute_announcement_hash(data_a) != compute_announcement_hash(data_b)
+
+
+def test_announcement_hash_changes_on_title_change():
+    data_a = _make_data(session_title="Reclear")
+    data_b = _make_data(session_title="Prog Night")
+    assert compute_announcement_hash(data_a) != compute_announcement_hash(data_b)
+
+
+def test_announcement_hash_changes_on_player_list_change():
+    data_a = _make_data(unavailable_players=[PlayerDetail(name="A", position="R2", job="BRD")])
+    data_b = _make_data(unavailable_players=[PlayerDetail(name="B", position="H1", job="WHM")])
+    assert compute_announcement_hash(data_a) != compute_announcement_hash(data_b)
