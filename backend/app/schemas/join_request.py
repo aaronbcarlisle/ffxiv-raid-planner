@@ -35,6 +35,7 @@ class JoinRequestCreate(CamelModel):
     role_interest: list[str] | None = Field(default=None)
     job_interest: list[str] | None = Field(default=None)
     availability_note: str | None = Field(default=None, max_length=300)
+    share_discord: bool = Field(default=True)
 
     @field_validator("role_interest")
     @classmethod
@@ -82,6 +83,7 @@ class JoinRequestResponse(CamelModel):
     role_interest: list[str] | None = None
     job_interest: list[str] | None = None
     availability_note: str | None = None
+    share_discord: bool = True
     created_at: str
     updated_at: str
     resolved_at: str | None = None

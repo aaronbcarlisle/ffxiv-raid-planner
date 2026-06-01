@@ -45,6 +45,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const [message, setMessage] = useState('');
   const [availabilityNote, setAvailabilityNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shareDiscord, setShareDiscord] = useState(true);
 
   const { createRequest } = useJoinRequestStore();
   const discordUsername = useAuthStore((s) => s.user?.discordUsername);
@@ -58,7 +59,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const payload: JoinRequestCreatePayload = {};
+      const payload: JoinRequestCreatePayload = { shareDiscord };
       if (selectedRoles.length > 0) payload.roleInterest = selectedRoles;
       if (selectedJobs.length > 0) payload.jobInterest = selectedJobs;
       if (message.trim()) payload.message = message.trim();
@@ -79,6 +80,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
     setSelectedJobs([]);
     setMessage('');
     setAvailabilityNote('');
+    setShareDiscord(true);
     onClose();
   };
 
@@ -110,15 +112,26 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
           roles you can play and when you&apos;re usually available.
         </p>
 
-        {/* Discord notice */}
-        <div className="flex items-start gap-2 rounded-md bg-accent/5 border border-accent/20 px-3 py-2">
-          <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-          <p className="text-xs text-text-secondary">
-            Your Discord username{' '}
-            <span className="font-semibold text-text-primary">{discordUsername || 'unknown'}</span>{' '}
-            will be shared with the static lead so they can reach you.
-          </p>
+        {/* Discord sharing opt-in */}
+        <div className="flex items-start gap-2 rounded-md bg-surface-elevated border border-border-default px-3 py-2.5">
+          <Checkbox
+            checked={shareDiscord}
+            onChange={() => setShareDiscord(!shareDiscord)}
+            label={
+              <>
+                Share my Discord{' '}
+                <span className="font-semibold text-text-primary">{discordUsername || ''}</span>{' '}
+                with the static lead
+              </>
+            }
+          />
         </div>
+        {!shareDiscord && (
+          <p className="text-xs text-text-muted flex items-start gap-1.5 -mt-2">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            The lead won&apos;t see your Discord — use the message field to arrange how to connect.
+          </p>
+        )}
 
         {/* Role interest - checkboxes */}
         <div>

@@ -33,6 +33,7 @@ def upgrade() -> None:
         sa.Column('role_interest', sa.JSON, nullable=True),
         sa.Column('job_interest', sa.JSON, nullable=True),
         sa.Column('availability_note', sa.Text, nullable=True),
+        sa.Column('share_discord', sa.Boolean, nullable=False, server_default='1'),
         sa.Column('resolved_at', sa.Text, nullable=True),
         sa.Column('resolved_by_user_id', sa.String(36),
                   sa.ForeignKey('users.id'), nullable=True),

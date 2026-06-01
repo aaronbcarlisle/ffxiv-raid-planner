@@ -34,6 +34,7 @@ class JoinRequest(Base):
     role_interest: Mapped[list | None] = mapped_column(JSON, nullable=True)
     job_interest: Mapped[list | None] = mapped_column(JSON, nullable=True)
     availability_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    share_discord: Mapped[bool] = mapped_column(default=True)
 
     resolved_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by_user_id: Mapped[str | None] = mapped_column(

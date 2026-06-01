@@ -51,12 +51,15 @@ def _request_to_response(
 ) -> JoinRequestResponse:
     requester_info = None
     if include_requester and req.requester:
+        share = getattr(req, "share_discord", True)
         requester_info = RequesterInfo(
             id=req.requester.id,
-            discord_username=req.requester.discord_username,
+            discord_username=req.requester.discord_username if share else None,
             discord_avatar=req.requester.discord_avatar,
             avatar_url=req.requester.avatar_url,
-            display_name=req.requester.display_name,
+            display_name=req.requester.display_name or (
+                req.requester.discord_username if not share else None
+            ),
         )
 
     return JoinRequestResponse(
@@ -70,6 +73,7 @@ def _request_to_response(
         role_interest=req.role_interest,
         job_interest=req.job_interest,
         availability_note=req.availability_note,
+        share_discord=getattr(req, "share_discord", True),
         created_at=req.created_at,
         updated_at=req.updated_at,
         resolved_at=req.resolved_at,
@@ -129,6 +133,7 @@ async def create_join_request(
         role_interest=data.role_interest,
         job_interest=data.job_interest,
         availability_note=data.availability_note,
+        share_discord=data.share_discord,
         created_at=now,
         updated_at=now,
     )

@@ -791,6 +791,7 @@ export interface JoinRequest {
   roleInterest?: string[];
   jobInterest?: string[];
   availabilityNote?: string;
+  shareDiscord: boolean;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -807,6 +808,7 @@ export interface JoinRequestCreatePayload {
   roleInterest?: string[];
   jobInterest?: string[];
   availabilityNote?: string;
+  shareDiscord?: boolean;
 }
 
 // ==================== Admin Types ====================

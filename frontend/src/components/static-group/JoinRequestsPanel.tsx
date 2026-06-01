@@ -68,7 +68,7 @@ function RequestCard({
             <p className="text-sm font-medium text-text-primary truncate">
               {requester?.displayName || discordTag || 'Unknown User'}
             </p>
-            {discordTag && (
+            {request.shareDiscord && discordTag && (
               /* design-system-ignore: compact inline copy button for Discord tag */
               <button
                 type="button"
