@@ -50,6 +50,21 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.19.3',
+    date: '2026-06-01T12:00:00Z',
+    title: 'Static Discovery Backend API',
+    items: [
+      {
+        category: 'feature',
+        title: 'Backend: static discovery search endpoint',
+        description:
+          'Added GET /api/discovery/statics — a public, read-only API for browsing statics that have opted in to discovery. Supports filters for role, job, schedule, timezone, language, intensity, data center, server, and recruitment status. No private data is exposed.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): add public static discovery API', date: '2026-06-01T12:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.19.3',
     date: '2026-05-31T18:00:00Z',
     title: 'Mobile UI Polish and CI Reliability',
     highlights: ['Mobile controls stay on-screen', 'Fork PR automation skips safely'],

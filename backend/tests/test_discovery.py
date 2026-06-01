@@ -1,0 +1,425 @@
+"""Tests for static discovery API"""
+
+import pytest
+from httpx import AsyncClient
+
+from app.models import User
+from tests.factories import create_static_group, create_user, create_membership
+
+
+def _discovery_settings(
+    *,
+    enabled: bool = True,
+    recruitment_status: str = "open",
+    description: str | None = "We raid on weekends",
+    intensity: str | None = "midcore",
+    languages: list[str] | None = None,
+    data_center: str | None = "Aether",
+    server: str | None = "Jenova",
+    timezone: str | None = "America/New_York",
+    needed_roles: list[str] | None = None,
+    needed_jobs: list[str] | None = None,
+    schedule_days: list[str] | None = None,
+    schedule_start_time: str | None = "20:00",
+    schedule_end_time: str | None = "23:00",
+) -> dict:
+    return {
+        "discovery": {
+            "enabled": enabled,
+            "recruitmentStatus": recruitment_status,
+            "description": description,
+            "intensity": intensity,
+            "languages": languages or ["en"],
+            "dataCenter": data_center,
+            "server": server,
+            "timezone": timezone,
+            "neededRoles": needed_roles or ["tank", "healer"],
+            "neededJobs": needed_jobs or ["WAR", "WHM"],
+            "scheduleDays": schedule_days or ["Saturday", "Sunday"],
+            "scheduleStartTime": schedule_start_time,
+            "scheduleEndTime": schedule_end_time,
+        }
+    }
+
+
+ENDPOINT = "/api/discovery/statics"
+
+
+# --- Visibility / opt-in tests ---
+
+
+@pytest.mark.asyncio
+async def test_private_static_excluded(client: AsyncClient, session, test_user: User):
+    """Private statics never appear even with discovery enabled."""
+    await create_static_group(
+        session, test_user, is_public=False, settings=_discovery_settings(enabled=True)
+    )
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_public_without_discovery_excluded(client: AsyncClient, session, test_user: User):
+    """Public static without discovery opt-in is excluded."""
+    await create_static_group(session, test_user, is_public=True)
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_public_with_discovery_disabled_excluded(client: AsyncClient, session, test_user: User):
+    """Public static with discovery.enabled=false is excluded."""
+    await create_static_group(
+        session, test_user, is_public=True, settings=_discovery_settings(enabled=False)
+    )
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_public_opted_in_included(client: AsyncClient, session, test_user: User):
+    """Public static with discovery.enabled=true appears."""
+    await create_static_group(
+        session, test_user, name="Discoverable Static",
+        is_public=True, settings=_discovery_settings(enabled=True),
+    )
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Discoverable Static"
+
+
+@pytest.mark.asyncio
+async def test_no_auth_required(client: AsyncClient, session, test_user: User):
+    """Discovery endpoint works without auth headers."""
+    await create_static_group(
+        session, test_user, is_public=True, settings=_discovery_settings(),
+    )
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 1
+
+
+# --- Filter tests ---
+
+
+@pytest.mark.asyncio
+async def test_filter_by_role(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Needs Tank", is_public=True,
+        settings=_discovery_settings(needed_roles=["tank"]),
+    )
+    await create_static_group(
+        session, test_user, name="Needs Healer", is_public=True,
+        settings=_discovery_settings(needed_roles=["healer"]),
+    )
+
+    resp = await client.get(ENDPOINT, params={"role": "tank"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Needs Tank"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_job(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Needs WAR", is_public=True,
+        settings=_discovery_settings(needed_jobs=["WAR", "DRG"]),
+    )
+    await create_static_group(
+        session, test_user, name="Needs WHM", is_public=True,
+        settings=_discovery_settings(needed_jobs=["WHM"]),
+    )
+
+    resp = await client.get(ENDPOINT, params={"job": "DRG"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Needs WAR"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_day(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Weekend", is_public=True,
+        settings=_discovery_settings(schedule_days=["Saturday", "Sunday"]),
+    )
+    await create_static_group(
+        session, test_user, name="Weekday", is_public=True,
+        settings=_discovery_settings(schedule_days=["Tuesday", "Thursday"]),
+    )
+
+    resp = await client.get(ENDPOINT, params={"day": "Saturday"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Weekend"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_timezone(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="EST", is_public=True,
+        settings=_discovery_settings(timezone="America/New_York"),
+    )
+    await create_static_group(
+        session, test_user, name="JST", is_public=True,
+        settings=_discovery_settings(timezone="Asia/Tokyo"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"timezone": "Asia/Tokyo"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "JST"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_language(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="English", is_public=True,
+        settings=_discovery_settings(languages=["en"]),
+    )
+    await create_static_group(
+        session, test_user, name="Japanese", is_public=True,
+        settings=_discovery_settings(languages=["ja"]),
+    )
+
+    resp = await client.get(ENDPOINT, params={"language": "ja"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Japanese"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_intensity(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Casual", is_public=True,
+        settings=_discovery_settings(intensity="casual"),
+    )
+    await create_static_group(
+        session, test_user, name="Hardcore", is_public=True,
+        settings=_discovery_settings(intensity="hardcore"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"intensity": "hardcore"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Hardcore"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_recruitment_status(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Open", is_public=True,
+        settings=_discovery_settings(recruitment_status="open"),
+    )
+    await create_static_group(
+        session, test_user, name="Closed", is_public=True,
+        settings=_discovery_settings(recruitment_status="closed"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"recruitmentStatus": "open"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Open"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_data_center(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Aether", is_public=True,
+        settings=_discovery_settings(data_center="Aether"),
+    )
+    await create_static_group(
+        session, test_user, name="Primal", is_public=True,
+        settings=_discovery_settings(data_center="Primal"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"dataCenter": "Primal"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Primal"
+
+
+@pytest.mark.asyncio
+async def test_filter_by_server(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Jenova", is_public=True,
+        settings=_discovery_settings(server="Jenova"),
+    )
+    await create_static_group(
+        session, test_user, name="Gilgamesh", is_public=True,
+        settings=_discovery_settings(server="Gilgamesh"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"server": "Gilgamesh"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Gilgamesh"
+
+
+# --- Response privacy tests ---
+
+
+@pytest.mark.asyncio
+async def test_response_excludes_private_fields(client: AsyncClient, session, test_user: User):
+    """Discovery response must not leak internal IDs or private data."""
+    await create_static_group(
+        session, test_user, name="Public Static", is_public=True,
+        settings=_discovery_settings(),
+    )
+
+    resp = await client.get(ENDPOINT)
+    data = resp.json()
+    assert data["total"] == 1
+    item = data["items"][0]
+
+    assert "id" not in item
+    assert "ownerId" not in item
+    assert "owner_id" not in item
+    assert "members" not in item
+    assert "memberships" not in item
+    assert "discordId" not in item
+    assert "discord_id" not in item
+    assert "notes" not in item
+    assert "rsvp" not in item
+    assert "gear" not in item
+    assert "settings" not in item
+
+    assert "name" in item
+    assert "shareCode" in item
+    assert "recruitmentStatus" in item
+
+
+@pytest.mark.asyncio
+async def test_response_dto_shape(client: AsyncClient, session, test_user: User):
+    """Verify the exact shape of a discovery result item."""
+    await create_static_group(
+        session, test_user, name="Full Static", is_public=True,
+        settings=_discovery_settings(
+            description="Weekend raiders",
+            needed_roles=["tank"],
+            needed_jobs=["WAR"],
+            schedule_days=["Saturday"],
+            schedule_start_time="20:00",
+            schedule_end_time="23:00",
+            timezone="America/New_York",
+            languages=["en"],
+            intensity="midcore",
+            data_center="Aether",
+            server="Jenova",
+        ),
+    )
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+
+    assert item["name"] == "Full Static"
+    assert isinstance(item["shareCode"], str)
+    assert item["recruitmentStatus"] == "open"
+    assert item["description"] == "Weekend raiders"
+    assert item["neededRoles"] == ["tank"]
+    assert item["neededJobs"] == ["WAR"]
+    assert item["scheduleDays"] == ["Saturday"]
+    assert item["scheduleStartTime"] == "20:00"
+    assert item["scheduleEndTime"] == "23:00"
+    assert item["timezone"] == "America/New_York"
+    assert item["languages"] == ["en"]
+    assert item["intensity"] == "midcore"
+    assert item["dataCenter"] == "Aether"
+    assert item["server"] == "Jenova"
+    assert isinstance(item["memberCount"], int)
+    assert "lastUpdated" in item
+
+
+# --- Member count test ---
+
+
+@pytest.mark.asyncio
+async def test_member_count_included(client: AsyncClient, session, test_user: User):
+    """Member count reflects actual memberships."""
+    group = await create_static_group(
+        session, test_user, name="Team", is_public=True,
+        settings=_discovery_settings(),
+    )
+    user2 = await create_user(session, discord_id="222", discord_username="user2")
+    await create_membership(session, user2, group)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["memberCount"] == 2  # owner + user2
+
+
+# --- Malformed settings tests ---
+
+
+@pytest.mark.asyncio
+async def test_malformed_settings_no_crash(client: AsyncClient, session, test_user: User):
+    """Groups with malformed settings are silently skipped."""
+    await create_static_group(
+        session, test_user, is_public=True, settings={"discovery": "not_a_dict"},
+    )
+    await create_static_group(
+        session, test_user, is_public=True, settings={"discovery": {"enabled": "yes"}},
+    )
+    await create_static_group(
+        session, test_user, is_public=True, settings={"unrelated": True},
+    )
+    await create_static_group(
+        session, test_user, is_public=True, settings=None,
+    )
+
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_empty_result(client: AsyncClient):
+    """Empty database returns empty result."""
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["items"] == []
+    assert data["total"] == 0
+
+
+# --- Pagination tests ---
+
+
+@pytest.mark.asyncio
+async def test_pagination(client: AsyncClient, session, test_user: User):
+    for i in range(5):
+        await create_static_group(
+            session, test_user, name=f"Static {i}", is_public=True,
+            settings=_discovery_settings(),
+        )
+
+    resp = await client.get(ENDPOINT, params={"limit": 2, "offset": 0})
+    data = resp.json()
+    assert data["total"] == 5
+    assert len(data["items"]) == 2
+
+    resp2 = await client.get(ENDPOINT, params={"limit": 2, "offset": 4})
+    data2 = resp2.json()
+    assert data2["total"] == 5
+    assert len(data2["items"]) == 1
+
+
+# --- Case insensitive filter test ---
+
+
+@pytest.mark.asyncio
+async def test_filter_case_insensitive(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Test", is_public=True,
+        settings=_discovery_settings(needed_roles=["Tank"], intensity="Midcore"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"role": "tank"})
+    assert resp.json()["total"] == 1
+
+    resp2 = await client.get(ENDPOINT, params={"intensity": "midcore"})
+    assert resp2.json()["total"] == 1
