@@ -52,7 +52,7 @@ export const RELEASES: Release[] = [
     version: '1.20.0',
     date: '2026-06-01T12:00:00Z',
     title: 'Find a Static',
-    highlights: ['Static Finder recruitment board', 'Listing setup with live preview'],
+    highlights: ['Static Finder recruitment board', 'Request to join & applicant inbox'],
     items: [
       {
         category: 'feature',
@@ -102,6 +102,20 @@ export const RELEASES: Release[] = [
         description:
           'Member count is now hidden by default — owners opt in with a toggle. Contact URLs are validated (https only). Description and contact fields have a clear "this is public" warning. Unsafe URL protocols (javascript:, data:) are blocked.',
         commits: [{ hash: 'pending', message: 'feat(discovery): privacy hardening', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Request to join from Static Finder',
+        description:
+          'Players browsing the recruitment board can send a join request directly from discovery cards or when viewing a discoverable static. Includes role/job interest, a short message, and availability note.',
+        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Join request inbox for leads',
+        description:
+          'Owners and leads can review incoming applications in the new Requests tab under static settings. Accept to add as member, or decline. A pending count badge shows unread requests.',
+        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
       },
     ],
   },

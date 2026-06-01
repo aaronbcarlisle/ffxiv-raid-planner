@@ -12,12 +12,47 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Discover } from './Discover';
 
+// ── Mock matchMedia (required by Modal → useDevice) ──────────
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // ── Mock API ──────────────────────────────────────────────────
 
 const mockAuthRequest = vi.fn();
 
 vi.mock('../services/api', () => ({
   authRequest: (...args: unknown[]) => mockAuthRequest(...args),
+  api: { get: vi.fn().mockResolvedValue([]), post: vi.fn() },
+}));
+
+vi.mock('../stores/authStore', () => ({
+  useAuthStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = { user: null, login: vi.fn() };
+    return selector ? selector(state) : state;
+  },
+}));
+
+vi.mock('../stores/joinRequestStore', () => ({
+  useJoinRequestStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = {
+      myRequests: [],
+      fetchMyRequests: vi.fn(),
+      cancelRequest: vi.fn(),
+    };
+    return selector ? selector(state) : state;
+  },
 }));
 
 // ── Helpers ───────────────────────────────────────────────────

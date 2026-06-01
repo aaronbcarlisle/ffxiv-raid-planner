@@ -27,6 +27,13 @@ from .invitation import (
     InvitationPreview,
     InvitationResponse,
 )
+from .join_request import (
+    JoinRequestCreate,
+    JoinRequestListResponse,
+    JoinRequestResponse,
+    JoinRequestStatusEnum,
+    RequesterInfo,
+)
 from .schedule import (
     AvailabilityDateSummary,
     AvailabilitySubmit,
@@ -148,6 +155,12 @@ __all__ = [
     "InvitationCreate",
     "InvitationPreview",
     "InvitationResponse",
+    # Join Request
+    "JoinRequestCreate",
+    "JoinRequestListResponse",
+    "JoinRequestResponse",
+    "JoinRequestStatusEnum",
+    "RequesterInfo",
     # Schedule & Availability
     "AvailabilityDateSummary",
     "AvailabilitySubmit",
