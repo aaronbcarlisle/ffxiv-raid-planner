@@ -209,6 +209,12 @@ class StaticSettingsSchema(CamelModel):
         description="New priority system configuration. When set, overrides legacy priority fields.",
     )
 
+    # Discovery settings (public listing opt-in)
+    discovery: dict | None = Field(
+        default=None,
+        description="Discovery/recruitment settings for public static listing.",
+    )
+
     @field_validator("job_priority_modifiers")
     @classmethod
     def validate_job_priority_modifiers(cls, v: dict[str, int] | None) -> dict[str, int] | None:

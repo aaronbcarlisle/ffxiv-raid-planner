@@ -423,3 +423,85 @@ async def test_filter_case_insensitive(client: AsyncClient, session, test_user: 
 
     resp2 = await client.get(ENDPOINT, params={"intensity": "midcore"})
     assert resp2.json()["total"] == 1
+
+
+# --- Settings update via static group API tests ---
+
+
+@pytest.mark.asyncio
+async def test_owner_can_update_discovery_settings(
+    client: AsyncClient, auth_headers: dict, test_group, session
+):
+    """Owner can set discovery settings through the group update endpoint."""
+    # First make the group public
+    resp = await client.put(
+        f"/api/static-groups/{test_group.id}",
+        json={"isPublic": True},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+
+    # Set discovery settings
+    discovery = {
+        "enabled": True,
+        "recruitmentStatus": "open",
+        "description": "Looking for a tank!",
+        "neededRoles": ["tank"],
+    }
+    resp = await client.put(
+        f"/api/static-groups/{test_group.id}",
+        json={"settings": {"discovery": discovery}},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+
+    # Verify it appears in discovery
+    resp = await client.get(ENDPOINT)
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["description"] == "Looking for a tank!"
+    assert data["items"][0]["neededRoles"] == ["tank"]
+
+
+@pytest.mark.asyncio
+async def test_member_cannot_update_discovery_settings(
+    client: AsyncClient, auth_headers_user2: dict, test_group, session, test_user_2
+):
+    """Member role cannot update group settings (including discovery)."""
+    await create_membership(session, test_user_2, test_group)
+
+    resp = await client.put(
+        f"/api/static-groups/{test_group.id}",
+        json={"settings": {"discovery": {"enabled": True, "recruitmentStatus": "open"}}},
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_non_member_cannot_update_discovery_settings(
+    client: AsyncClient, auth_headers_user2: dict, test_group
+):
+    """Non-member cannot update group settings."""
+    resp = await client.put(
+        f"/api/static-groups/{test_group.id}",
+        json={"settings": {"discovery": {"enabled": True, "recruitmentStatus": "open"}}},
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_private_static_not_in_discovery_even_with_settings(
+    client: AsyncClient, auth_headers: dict, test_group
+):
+    """Private static with discovery enabled still excluded from discovery."""
+    resp = await client.put(
+        f"/api/static-groups/{test_group.id}",
+        json={"settings": {"discovery": {"enabled": True, "recruitmentStatus": "open"}}},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+
+    resp = await client.get(ENDPOINT)
+    assert resp.json()["total"] == 0

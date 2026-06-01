@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2 } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
@@ -324,6 +324,15 @@ export function Header() {
           {!isHomePage && (
             <>
               <div className="flex items-center gap-1">
+                <Tooltip content="Discover statics looking for members">
+                  <Link
+                    to="/discover"
+                    aria-label="Discover statics"
+                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
+                  >
+                    <Globe className="w-5 h-5" />
+                  </Link>
+                </Tooltip>
                 <Tooltip content="Join our Discord community">
                   <a
                     href={DISCORD_INVITE_URL}

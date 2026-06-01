@@ -17,6 +17,7 @@ const AdminOverview = lazy(() => import('./pages/admin/AdminOverview').then(m =>
 const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => ({ default: m.AdminStatics })));
 const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
 const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
+const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.Discover })));
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
@@ -83,6 +84,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="discover" element={<Discover />} />
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<AdminOverview />} />

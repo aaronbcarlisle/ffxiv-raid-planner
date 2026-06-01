@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.3';
+export const CURRENT_VERSION = '1.20.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -49,19 +49,33 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '1.19.3',
+    version: '1.20.0',
     date: '2026-06-01T12:00:00Z',
-    title: 'Static Discovery Backend API',
+    title: 'Static Discovery',
+    highlights: ['Browse statics recruiting members', 'Discovery settings for owners/leads'],
     items: [
       {
         category: 'feature',
-        title: 'Backend: static discovery search endpoint',
+        title: 'Discover statics looking for members',
         description:
-          'Added GET /api/discovery/statics — a public, read-only API for browsing statics that have opted in to discovery. Supports filters for role, job, schedule, timezone, language, intensity, data center, server, and recruitment status. No private data is exposed.',
+          'A new /discover page lets players browse public statics that have opted in to discovery. Filter by role, job, data center, server, intensity, schedule, timezone, language, and recruitment status.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): add static discovery page with filters', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Discovery settings for owners and leads',
+        description:
+          'A new Discovery tab in static settings lets owners and leads configure how their static appears in discovery — recruitment status, description, needed roles/jobs, schedule, intensity, and more. Discovery listing is opt-in only.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): add discovery settings tab', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'View static from discovery',
+        description:
+          'Each discovery result links to the static\'s public page via share code. Include contact info in your discovery description so interested players can reach you. Request-to-join flow is coming in a future update.',
         commits: [{ hash: 'pending', message: 'feat(discovery): add public static discovery API', date: '2026-06-01T12:00:00Z' }],
       },
     ],
-    internal: true,
   },
   {
     version: '1.19.3',

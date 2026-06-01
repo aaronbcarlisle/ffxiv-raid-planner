@@ -520,6 +520,23 @@ export interface OwnerInfo {
   displayName?: string;
 }
 
+// Discovery settings for public static listing
+export interface DiscoverySettings {
+  enabled: boolean;
+  recruitmentStatus: 'open' | 'limited' | 'closed';
+  description?: string;
+  intensity?: 'casual' | 'midcore' | 'hardcore';
+  languages?: string[];
+  dataCenter?: string;
+  server?: string;
+  timezone?: string;
+  neededRoles?: string[];
+  neededJobs?: string[];
+  scheduleDays?: string[];
+  scheduleStartTime?: string;
+  scheduleEndTime?: string;
+}
+
 // Static group settings (loot priority, etc.)
 // All fields optional to support partial updates
 export interface StaticGroupSettings {
@@ -533,6 +550,7 @@ export interface StaticGroupSettings {
   enableEnhancedScoring?: boolean;
   // New priority system (overrides legacy fields when set)
   prioritySettings?: StaticPrioritySettings;
+  discovery?: DiscoverySettings;
 }
 
 // Static group (persistent team identity)
