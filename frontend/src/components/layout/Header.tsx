@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
@@ -47,6 +48,7 @@ export function Header() {
   // Show loading state until store is hydrated from localStorage
   const authLoading = !isHydrated || isLoading;
   const { invitations, fetchInvitations } = useInvitationStore();
+  const pendingJoinRequests = useJoinRequestStore((s) => s.pendingCount);
 
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
@@ -86,6 +88,14 @@ export function Header() {
     // Only refetch when the group ID changes, not the entire object
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGroupRoute, currentGroup?.id, canManageInvitations, fetchInvitations]);
+
+  // Fetch pending join request count for badge on settings gear
+  useEffect(() => {
+    if (isGroupRoute && currentGroup && canManageInvitations) {
+      useJoinRequestStore.getState().fetchGroupRequests(currentGroup.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGroupRoute, currentGroup?.id, canManageInvitations]);
 
   // Get first active invitation for quick copy
   const activeInvitation = invitations.find(inv => inv.isValid);
@@ -286,6 +296,7 @@ export function Header() {
                       <div className="font-medium">Static Settings</div>
                       <div className="text-text-secondary text-xs mt-0.5">
                         Manage settings, members, and invitations
+                        {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
                       </div>
                       <div className="text-text-muted text-xs mt-1 flex gap-1">
                         <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
@@ -296,12 +307,22 @@ export function Header() {
                     </div>
                   }
                 >
-                  <IconButton
-                    icon={<Settings className="w-5 h-5" />}
-                    onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS)}
-                    variant="ghost"
-                    aria-label="Static settings"
-                  />
+                  <span className="relative">
+                    <IconButton
+                      icon={<Settings className="w-5 h-5" />}
+                      onClick={() => dispatchHeaderEvent(
+                        HEADER_EVENTS.SETTINGS,
+                        pendingJoinRequests > 0 ? { tab: 'requests' } : undefined,
+                      )}
+                      variant="ghost"
+                      aria-label="Static settings"
+                    />
+                    {pendingJoinRequests > 0 && (
+                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
+                        {pendingJoinRequests}
+                      </span>
+                    )}
+                  </span>
                 </Tooltip>
               )}
             </>
