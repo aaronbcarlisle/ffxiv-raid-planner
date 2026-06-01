@@ -166,13 +166,31 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       const rect = menuRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
+      const padding = 8; // Keep some distance from viewport edges
 
-      if (rect.right > viewportWidth) {
-        menuRef.current.style.left = `${x - rect.width}px`;
+      let adjustedX = x;
+      let adjustedY = y;
+
+      // Horizontal: shift left if overflowing right edge
+      if (rect.right > viewportWidth - padding) {
+        adjustedX = Math.max(padding, x - rect.width);
       }
-      if (rect.bottom > viewportHeight) {
-        menuRef.current.style.top = `${y - rect.height}px`;
+
+      // Vertical: prefer downward, only flip up if more space above
+      if (rect.bottom > viewportHeight - padding) {
+        const spaceAbove = y;
+        const spaceBelow = viewportHeight - y;
+        if (spaceAbove > spaceBelow && spaceAbove > rect.height) {
+          // Flip above the click point
+          adjustedY = y - rect.height;
+        } else {
+          // Clamp to bottom of viewport (don't flip, just shift up enough to fit)
+          adjustedY = Math.max(padding, viewportHeight - rect.height - padding);
+        }
       }
+
+      menuRef.current.style.left = `${adjustedX}px`;
+      menuRef.current.style.top = `${adjustedY}px`;
     }
   }, [x, y]);
 
