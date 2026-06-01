@@ -8,9 +8,9 @@
 import { useState, useCallback } from 'react';
 import {
   Globe, AlertTriangle, Sparkles, Info,
-  CheckCircle2, XCircle, Clock, MapPin, Swords, Users, Eye,
+  CheckCircle2, XCircle, Clock, MapPin, Swords, Users, Eye, MessageCircle,
 } from 'lucide-react';
-import { Label, Select, Toggle, TextArea } from '../ui';
+import { Label, Select, Toggle, TextArea, Input } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -26,7 +26,7 @@ import {
   TIME_SLOTS,
   type Role,
 } from '../../gamedata';
-import type { StaticGroup, DiscoverySettings } from '../../types';
+import type { StaticGroup, DiscoverySettings, ContactMethod } from '../../types';
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -51,10 +51,25 @@ const INTENSITY_OPTIONS = [
 ];
 
 const RECRUITMENT_OPTIONS = [
-  { value: 'open', label: 'Open' },
-  { value: 'limited', label: 'Limited' },
-  { value: 'closed', label: 'Closed' },
+  { value: 'open', label: 'Open — actively recruiting' },
+  { value: 'limited', label: 'Limited — specific roles only' },
+  { value: 'closed', label: 'Closed — not recruiting' },
 ];
+
+const CONTACT_METHOD_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: 'discord', label: 'Discord tag' },
+  { value: 'discord_server', label: 'Discord server invite' },
+  { value: 'url', label: 'Link (Lodestone, website, etc.)' },
+  { value: 'text', label: 'Other / instructions' },
+];
+
+const CONTACT_PLACEHOLDERS: Record<string, string> = {
+  discord: 'e.g. username#1234 or @username',
+  discord_server: 'e.g. https://discord.gg/abcdef',
+  url: 'e.g. https://na.finalfantasyxiv.com/lodestone/...',
+  text: 'e.g. DM me on Twitter @handle',
+};
 
 const EMPTY_DISCOVERY: DiscoverySettings = {
   enabled: false,
@@ -71,6 +86,16 @@ const JOB_GROUPS: { label: string; role: Role }[] = [
 
 function getDiscovery(group: StaticGroup): DiscoverySettings {
   return group.settings?.discovery ?? EMPTY_DISCOVERY;
+}
+
+// ─── Section heading ────────────────────────────────────────
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider pt-2 first:pt-0">
+      {children}
+    </p>
+  );
 }
 
 // ─── Chip component ──────────────────────────────────────────
@@ -126,9 +151,9 @@ function ListingStatus({ group, enabled }: { group: StaticGroup; enabled: boolea
       <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-medium text-status-warning">Not listed: static is private</p>
+          <p className="font-medium text-status-warning">Not listed — static is private</p>
           <p className="text-text-secondary mt-0.5 text-xs">
-            Enable &quot;Public Static&quot; in the General tab to publish this listing.
+            Turn on &quot;Public Static&quot; in the General tab to go live.
           </p>
         </div>
       </div>
@@ -140,8 +165,8 @@ function ListingStatus({ group, enabled }: { group: StaticGroup; enabled: boolea
       <div className="p-3 bg-surface-elevated border border-border-default rounded-lg flex items-start gap-2">
         <XCircle className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-medium text-text-secondary">Not listed: listing is disabled</p>
-          <p className="text-text-muted mt-0.5 text-xs">Enable the toggle below to appear in Static Finder.</p>
+          <p className="font-medium text-text-secondary">Not listed — listing is off</p>
+          <p className="text-text-muted mt-0.5 text-xs">Flip the toggle below to appear in Static Finder.</p>
         </div>
       </div>
     );
@@ -152,7 +177,7 @@ function ListingStatus({ group, enabled }: { group: StaticGroup; enabled: boolea
       <XCircle className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" />
       <div className="text-sm">
         <p className="font-medium text-text-secondary">Not listed</p>
-        <p className="text-text-muted mt-0.5 text-xs">Enable &quot;Public Static&quot; in General, then turn on the listing toggle here.</p>
+        <p className="text-text-muted mt-0.5 text-xs">Turn on &quot;Public Static&quot; in General, then enable the listing toggle here.</p>
       </div>
     </div>
   );
@@ -164,7 +189,7 @@ function ListingPreview({
   name, recruitmentStatus, description, intensity,
   dataCenter, server, timezone, neededRoles, neededJobs,
   scheduleDays, scheduleStartTime, scheduleEndTime,
-  selectedLangs, memberCount,
+  selectedLangs, memberCount, contactMethod, contactValue,
 }: {
   name: string;
   recruitmentStatus: string;
@@ -180,6 +205,8 @@ function ListingPreview({
   scheduleEndTime: string;
   selectedLangs: string[];
   memberCount: number;
+  contactMethod: string;
+  contactValue: string;
 }) {
   const STATUS_COLORS: Record<string, string> = {
     open: 'bg-status-success/20 text-status-success border-status-success/30',
@@ -199,7 +226,7 @@ function ListingPreview({
       <div className="p-3 space-y-2">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <span className="font-display font-semibold text-sm text-text-primary break-words">{name}</span>
+          <span className="font-display font-semibold text-sm text-text-primary break-words min-w-0">{name}</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 capitalize ${statusClass}`}>
             {recruitmentStatus}
           </span>
@@ -272,11 +299,21 @@ function ListingPreview({
           <p className="text-text-muted text-xs italic">No description — add one above</p>
         )}
 
+        {/* Contact */}
+        {contactMethod && contactValue && (
+          <div className="flex items-center gap-1 text-xs text-accent min-w-0">
+            <MessageCircle className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate">{contactValue}</span>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex items-center gap-1 text-text-muted text-[10px] pt-1 border-t border-border-default">
-          <Users className="w-3 h-3" />
-          <span>{memberCount} members</span>
-        </div>
+        {memberCount > 0 && (
+          <div className="flex items-center gap-1 text-text-muted text-[10px] pt-1 border-t border-border-default">
+            <Users className="w-3 h-3" />
+            <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -291,6 +328,8 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const [enabled, setEnabled] = useState(existing.enabled);
   const [recruitmentStatus, setRecruitmentStatus] = useState(existing.recruitmentStatus);
   const [description, setDescription] = useState(existing.description ?? '');
+  const [contactMethod, setContactMethod] = useState<ContactMethod | ''>(existing.contactMethod ?? '');
+  const [contactValue, setContactValue] = useState(existing.contactValue ?? '');
   const [intensity, setIntensity] = useState(existing.intensity ?? '');
   const [dataCenter, setDataCenter] = useState(existing.dataCenter ?? '');
   const [server, setServer] = useState(existing.server ?? '');
@@ -301,6 +340,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const [scheduleDays, setScheduleDays] = useState<string[]>(existing.scheduleDays ?? []);
   const [scheduleStartTime, setScheduleStartTime] = useState(existing.scheduleStartTime ?? '');
   const [scheduleEndTime, setScheduleEndTime] = useState(existing.scheduleEndTime ?? '');
+  const [showMemberCount, setShowMemberCount] = useState(existing.showMemberCount ?? false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -375,6 +415,8 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
       enabled,
       recruitmentStatus: recruitmentStatus as DiscoverySettings['recruitmentStatus'],
       description: description || undefined,
+      contactMethod: (contactMethod || undefined) as DiscoverySettings['contactMethod'],
+      contactValue: contactMethod && contactValue ? contactValue.trim().slice(0, 200) : undefined,
       intensity: (intensity || undefined) as DiscoverySettings['intensity'],
       dataCenter: dataCenter || undefined,
       server: server || undefined,
@@ -385,6 +427,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
       scheduleDays: scheduleDays.length > 0 ? scheduleDays : undefined,
       scheduleStartTime: scheduleStartTime || undefined,
       scheduleEndTime: scheduleEndTime || undefined,
+      showMemberCount,
     };
 
     try {
@@ -395,9 +438,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
       if (enabled && group.isPublic) {
         toast.success('Saved! Your listing is live in Static Finder.');
       } else if (enabled && !group.isPublic) {
-        toast.success('Saved! It will appear once Public Static is enabled.');
+        toast.success('Saved! It will go live once Public Static is enabled.');
       } else {
-        toast.success('Discovery settings saved.');
+        toast.success('Listing settings saved.');
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save';
@@ -429,9 +472,8 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
         <div className="p-3 bg-surface-elevated border border-border-default rounded-lg flex items-start gap-2">
           <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
           <div className="text-xs text-text-secondary leading-relaxed">
-            <strong className="text-text-primary">Public Static</strong> = anyone with the share link can view.{' '}
-            <strong className="text-text-primary">Recruitment Listing</strong> = appears in Static Finder.
-            Both are required. Listings never expose private notes, RSVP details, gear data, or member Discord IDs.
+            Your listing only shows the public details you choose here.
+            Private notes, RSVP details, gear data, and member Discord IDs stay hidden.
           </div>
         </div>
 
@@ -451,9 +493,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="secondary" size="sm" onClick={handleSuggest} loading={isSuggesting}>
                   <Sparkles className="w-4 h-4 mr-1.5" />
-                  Suggest from static
+                  Fill from schedule &amp; roster
                 </Button>
-                <span className="text-text-muted text-xs">Fills empty fields from schedule &amp; roster</span>
+                <span className="text-text-muted text-xs">Only fills empty fields — won&apos;t overwrite your edits</span>
               </div>
             )}
 
@@ -469,14 +511,23 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               />
             </div>
 
-            {/* ─── Description ─── */}
+            {/* ─── About your static ─── */}
+            <SectionHeading>About Your Static</SectionHeading>
+
+            <div className="p-2.5 bg-status-warning/5 border border-status-warning/20 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-status-warning flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-text-secondary">
+                Description and contact info below are <strong className="text-text-primary">public</strong> — visible to anyone browsing Static Finder. Do not include anything you want to keep private.
+              </p>
+            </div>
+
             <div>
-              <Label htmlFor="discoveryDesc">Description &amp; Contact Info</Label>
+              <Label htmlFor="discoveryDesc">Description</Label>
               <TextArea
                 id="discoveryDesc"
                 value={description}
                 onChange={setDescription}
-                placeholder="Tell recruits about your static — goals, vibe, loot rules. Include a Discord tag or invite so applicants can reach you."
+                placeholder="Tell recruits about your static — goals, vibe, loot rules, raid history."
                 rows={3}
                 maxLength={500}
                 disabled={!canEdit}
@@ -484,13 +535,45 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               <p className="text-text-muted text-xs mt-1">{description.length}/500</p>
             </div>
 
-            {/* ─── Intensity ─── */}
             <div>
-              <Label htmlFor="intensity">Intensity</Label>
+              <Label htmlFor="intensity">Vibe</Label>
               <Select id="intensity" value={intensity} onChange={setIntensity} options={INTENSITY_OPTIONS} disabled={!canEdit} />
             </div>
 
-            {/* ─── DC / Server ─── */}
+            {/* ─── Contact info ─── */}
+            <SectionHeading>Contact Info</SectionHeading>
+
+            <div>
+              <p className="text-text-muted text-xs mb-2">
+                How should interested players reach you? Add a Discord tag, server invite, community link, or instructions.
+              </p>
+              <Select
+                id="contactMethod"
+                value={contactMethod}
+                onChange={(v) => {
+                  setContactMethod(v as ContactMethod | '');
+                  if (!v) setContactValue('');
+                }}
+                options={CONTACT_METHOD_OPTIONS}
+                disabled={!canEdit}
+              />
+              {contactMethod && (
+                <div className="mt-2">
+                  <Input
+                    value={contactValue}
+                    onChange={setContactValue}
+                    placeholder={CONTACT_PLACEHOLDERS[contactMethod] ?? ''}
+                    maxLength={200}
+                    disabled={!canEdit}
+                  />
+                  <p className="text-text-muted text-xs mt-1">{contactValue.length}/200</p>
+                </div>
+              )}
+            </div>
+
+            {/* ─── Location ─── */}
+            <SectionHeading>Location</SectionHeading>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="dataCenter">Data Center</Label>
@@ -502,13 +585,11 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
             </div>
 
-            {/* ─── Timezone ─── */}
             <div>
               <Label htmlFor="timezone">Timezone</Label>
               <Select id="timezone" value={timezone} onChange={setTimezone} options={tzOptions} disabled={!canEdit} />
             </div>
 
-            {/* ─── Languages ─── */}
             <div>
               <Label>Languages</Label>
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -518,7 +599,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
             </div>
 
-            {/* ─── Roles ─── */}
+            {/* ─── Who you're looking for ─── */}
+            <SectionHeading>Who You&apos;re Looking For</SectionHeading>
+
             <div>
               <Label>Roles Recruiting</Label>
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -528,7 +611,6 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
             </div>
 
-            {/* ─── Jobs ─── */}
             <div>
               <Label>Jobs Recruiting</Label>
               <div className="space-y-2 mt-1">
@@ -545,7 +627,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
             </div>
 
-            {/* ─── Raid Days ─── */}
+            {/* ─── Raid schedule ─── */}
+            <SectionHeading>Raid Schedule</SectionHeading>
+
             <div>
               <Label>Raid Days</Label>
               <div className="flex flex-wrap gap-1.5 mt-1">
@@ -555,7 +639,6 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
             </div>
 
-            {/* ─── Time Window ─── */}
             <div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -574,27 +657,40 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               )}
             </div>
 
+            {/* ─── Visibility ─── */}
+            <SectionHeading>Visibility</SectionHeading>
+
+            <Toggle
+              checked={showMemberCount}
+              onChange={setShowMemberCount}
+              disabled={!canEdit}
+              label="Show member count on listing"
+              hint="Optional. Helps applicants see how full your group is."
+            />
+
             {/* ─── Listing Preview ─── */}
+            <SectionHeading>Public Preview</SectionHeading>
+
             <div>
-              <Label>Preview</Label>
-              <div className="mt-1">
-                <ListingPreview
-                  name={group.name}
-                  recruitmentStatus={recruitmentStatus}
-                  description={description}
-                  intensity={intensity}
-                  dataCenter={dataCenter}
-                  server={server}
-                  timezone={timezone}
-                  neededRoles={neededRoles}
-                  neededJobs={neededJobs}
-                  scheduleDays={scheduleDays}
-                  scheduleStartTime={scheduleStartTime}
-                  scheduleEndTime={scheduleEndTime}
-                  selectedLangs={selectedLangs}
-                  memberCount={group.memberCount}
-                />
-              </div>
+              <p className="text-text-muted text-xs mb-2">This is exactly what players will see in Static Finder.</p>
+              <ListingPreview
+                name={group.name}
+                recruitmentStatus={recruitmentStatus}
+                description={description}
+                intensity={intensity}
+                dataCenter={dataCenter}
+                server={server}
+                timezone={timezone}
+                neededRoles={neededRoles}
+                neededJobs={neededJobs}
+                scheduleDays={scheduleDays}
+                scheduleStartTime={scheduleStartTime}
+                scheduleEndTime={scheduleEndTime}
+                selectedLangs={selectedLangs}
+                memberCount={showMemberCount ? group.memberCount : 0}
+                contactMethod={contactMethod}
+                contactValue={contactValue}
+              />
             </div>
           </>
         )}

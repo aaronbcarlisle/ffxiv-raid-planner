@@ -521,10 +521,14 @@ export interface OwnerInfo {
 }
 
 // Discovery settings for public static listing
+export type ContactMethod = 'discord' | 'discord_server' | 'url' | 'text';
+
 export interface DiscoverySettings {
   enabled: boolean;
   recruitmentStatus: 'open' | 'limited' | 'closed';
   description?: string;
+  contactMethod?: ContactMethod;
+  contactValue?: string;
   intensity?: 'casual' | 'midcore' | 'hardcore';
   languages?: string[];
   dataCenter?: string;
@@ -535,6 +539,7 @@ export interface DiscoverySettings {
   scheduleDays?: string[];
   scheduleStartTime?: string;
   scheduleEndTime?: string;
+  showMemberCount?: boolean;
 }
 
 // Static group settings (loot priority, etc.)

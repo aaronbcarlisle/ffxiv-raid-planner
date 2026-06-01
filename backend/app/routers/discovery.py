@@ -57,12 +57,36 @@ def _matches_text_query(query: str, group_name: str, description: str | None) ->
     return False
 
 
+def _sanitize_contact(method: str | None, value: str | None) -> tuple[str | None, str | None]:
+    """Only return contact fields when both method and value are set and valid."""
+    VALID_METHODS = {"discord", "discord_server", "url", "text"}
+    if not method or not value or method not in VALID_METHODS:
+        return None, None
+    # Trim whitespace and truncate to 200 chars
+    clean = value.strip()[:200]
+    if not clean:
+        return None, None
+    # Reject unsafe URL protocols
+    if method == "url":
+        lower = clean.lower()
+        if not (lower.startswith("https://") or lower.startswith("http://")):
+            return None, None
+    return method, clean
+
+
 def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> DiscoveryListItem:
+    contact_method, contact_value = _sanitize_contact(
+        discovery.get("contactMethod"), discovery.get("contactValue")
+    )
+    # Only expose member count when owner explicitly opted in
+    show_count = discovery.get("showMemberCount") is True
     return DiscoveryListItem(
         name=group.name,
         share_code=group.share_code,
         recruitment_status=discovery.get("recruitmentStatus", "closed"),
         description=discovery.get("description"),
+        contact_method=contact_method,
+        contact_value=contact_value,
         needed_roles=discovery.get("neededRoles"),
         needed_jobs=discovery.get("neededJobs"),
         schedule_days=discovery.get("scheduleDays"),
@@ -73,7 +97,7 @@ def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> Dis
         intensity=discovery.get("intensity"),
         data_center=discovery.get("dataCenter"),
         server=discovery.get("server"),
-        member_count=member_count,
+        member_count=member_count if show_count else 0,
         last_updated=group.updated_at,
     )
 

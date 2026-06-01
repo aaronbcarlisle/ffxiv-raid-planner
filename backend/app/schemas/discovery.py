@@ -19,6 +19,10 @@ class DiscoverySettings(CamelModel):
     enabled: bool = False
     recruitment_status: str = Field(default="closed", description="open | limited | closed")
     description: str | None = None
+    contact_method: str | None = Field(
+        default=None, description="discord | discord_server | url | text"
+    )
+    contact_value: str | None = Field(default=None, max_length=200)
     intensity: str | None = Field(default=None, description="casual | midcore | hardcore")
     languages: list[str] | None = None
     data_center: str | None = None
@@ -29,6 +33,7 @@ class DiscoverySettings(CamelModel):
     schedule_days: list[str] | None = None
     schedule_start_time: str | None = None
     schedule_end_time: str | None = None
+    show_member_count: bool = False
 
 
 class DiscoveryListItem(CamelModel):
@@ -38,6 +43,8 @@ class DiscoveryListItem(CamelModel):
     share_code: str
     recruitment_status: str
     description: str | None = None
+    contact_method: str | None = None
+    contact_value: str | None = None
     needed_roles: list[str] | None = None
     needed_jobs: list[str] | None = None
     schedule_days: list[str] | None = None

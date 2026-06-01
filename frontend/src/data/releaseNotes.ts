@@ -82,6 +82,27 @@ export const RELEASES: Release[] = [
           'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Long descriptions expand inline. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
         commits: [{ hash: 'pending', message: 'feat(discovery): polished listing cards', date: '2026-06-01T12:00:00Z' }],
       },
+      {
+        category: 'improvement',
+        title: 'Structured contact info for listings',
+        description:
+          'Owners can now add a Discord tag, server invite link, Lodestone/community URL, or freeform contact instructions to their listing. Contact info shows prominently on listing cards so recruits know exactly how to reach you.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): structured contact fields', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Cozier listing cards and clearer setup',
+        description:
+          'Listing cards now have clear sections for Raid Nights, Looking For, and About. The settings form is organized into labeled sections with warmer copy. Filters are split into two rows so dropdowns no longer overlap. Privacy reassurance is more prominent throughout.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): cozy polish pass', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Privacy-safe listings',
+        description:
+          'Member count is now hidden by default — owners opt in with a toggle. Contact URLs are validated (https only). Description and contact fields have a clear "this is public" warning. Unsafe URL protocols (javascript:, data:) are blocked.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): privacy hardening', date: '2026-06-01T12:00:00Z' }],
+      },
     ],
   },
   {

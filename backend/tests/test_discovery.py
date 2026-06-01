@@ -22,6 +22,7 @@ def _discovery_settings(
     schedule_days: list[str] | None = None,
     schedule_start_time: str | None = "20:00",
     schedule_end_time: str | None = "23:00",
+    show_member_count: bool = False,
 ) -> dict:
     return {
         "discovery": {
@@ -38,6 +39,7 @@ def _discovery_settings(
             "scheduleDays": schedule_days or ["Saturday", "Sunday"],
             "scheduleStartTime": schedule_start_time,
             "scheduleEndTime": schedule_end_time,
+            "showMemberCount": show_member_count,
         }
     }
 
@@ -338,11 +340,26 @@ async def test_response_dto_shape(client: AsyncClient, session, test_user: User)
 
 
 @pytest.mark.asyncio
-async def test_member_count_included(client: AsyncClient, session, test_user: User):
-    """Member count reflects actual memberships."""
+async def test_member_count_hidden_by_default(client: AsyncClient, session, test_user: User):
+    """Member count is 0 when showMemberCount is not enabled."""
     group = await create_static_group(
         session, test_user, name="Team", is_public=True,
-        settings=_discovery_settings(),
+        settings=_discovery_settings(),  # showMemberCount defaults to False
+    )
+    user2 = await create_user(session, discord_id="222", discord_username="user2")
+    await create_membership(session, user2, group)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["memberCount"] == 0  # Hidden by default
+
+
+@pytest.mark.asyncio
+async def test_member_count_shown_when_opted_in(client: AsyncClient, session, test_user: User):
+    """Member count reflects actual memberships when opted in."""
+    group = await create_static_group(
+        session, test_user, name="Team", is_public=True,
+        settings=_discovery_settings(show_member_count=True),
     )
     user2 = await create_user(session, discord_id="222", discord_username="user2")
     await create_membership(session, user2, group)
@@ -350,6 +367,78 @@ async def test_member_count_included(client: AsyncClient, session, test_user: Us
     resp = await client.get(ENDPOINT)
     item = resp.json()["items"][0]
     assert item["memberCount"] == 2  # owner + user2
+
+
+# --- Contact sanitization tests ---
+
+
+@pytest.mark.asyncio
+async def test_contact_url_rejects_javascript(client: AsyncClient, session, test_user: User):
+    """javascript: URLs are stripped from contact info."""
+    settings = _discovery_settings()
+    settings["discovery"]["contactMethod"] = "url"
+    settings["discovery"]["contactValue"] = "javascript:alert(1)"
+    await create_static_group(session, test_user, is_public=True, settings=settings)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["contactMethod"] is None
+    assert item["contactValue"] is None
+
+
+@pytest.mark.asyncio
+async def test_contact_url_rejects_data(client: AsyncClient, session, test_user: User):
+    """data: URLs are stripped from contact info."""
+    settings = _discovery_settings()
+    settings["discovery"]["contactMethod"] = "url"
+    settings["discovery"]["contactValue"] = "data:text/html,<script>alert(1)</script>"
+    await create_static_group(session, test_user, is_public=True, settings=settings)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["contactMethod"] is None
+    assert item["contactValue"] is None
+
+
+@pytest.mark.asyncio
+async def test_contact_url_allows_https(client: AsyncClient, session, test_user: User):
+    """https: URLs are allowed through."""
+    settings = _discovery_settings()
+    settings["discovery"]["contactMethod"] = "url"
+    settings["discovery"]["contactValue"] = "https://discord.gg/example"
+    await create_static_group(session, test_user, is_public=True, settings=settings)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["contactMethod"] == "url"
+    assert item["contactValue"] == "https://discord.gg/example"
+
+
+@pytest.mark.asyncio
+async def test_contact_value_trimmed(client: AsyncClient, session, test_user: User):
+    """Contact value is trimmed of whitespace."""
+    settings = _discovery_settings()
+    settings["discovery"]["contactMethod"] = "discord"
+    settings["discovery"]["contactValue"] = "  user#1234  "
+    await create_static_group(session, test_user, is_public=True, settings=settings)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["contactValue"] == "user#1234"
+
+
+@pytest.mark.asyncio
+async def test_contact_empty_after_trim_is_null(client: AsyncClient, session, test_user: User):
+    """Contact value that is only whitespace is treated as null."""
+    settings = _discovery_settings()
+    settings["discovery"]["contactMethod"] = "discord"
+    settings["discovery"]["contactValue"] = "   "
+    await create_static_group(session, test_user, is_public=True, settings=settings)
+
+    resp = await client.get(ENDPOINT)
+    item = resp.json()["items"][0]
+    assert item["contactMethod"] is None
+    assert item["contactValue"] is None
 
 
 # --- Malformed settings tests ---
