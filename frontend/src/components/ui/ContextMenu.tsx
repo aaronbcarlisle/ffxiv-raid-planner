@@ -160,38 +160,37 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Adjust position if menu would go off screen
+  // Adjust position to stay within viewport
   useEffect(() => {
-    if (menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      const padding = 8; // Keep some distance from viewport edges
+    if (!menuRef.current) return;
 
-      let adjustedX = x;
-      let adjustedY = y;
+    const menu = menuRef.current;
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
 
-      // Horizontal: shift left if overflowing right edge
-      if (rect.right > viewportWidth - padding) {
-        adjustedX = Math.max(padding, x - rect.width);
-      }
-
-      // Vertical: prefer downward, only flip up if more space above
-      if (rect.bottom > viewportHeight - padding) {
-        const spaceAbove = y;
-        const spaceBelow = viewportHeight - y;
-        if (spaceAbove > spaceBelow && spaceAbove > rect.height) {
-          // Flip above the click point
-          adjustedY = y - rect.height;
-        } else {
-          // Clamp to bottom of viewport (don't flip, just shift up enough to fit)
-          adjustedY = Math.max(padding, viewportHeight - rect.height - padding);
-        }
-      }
-
-      menuRef.current.style.left = `${adjustedX}px`;
-      menuRef.current.style.top = `${adjustedY}px`;
+    // Horizontal: prefer right of click, flip left if needed, clamp to viewport
+    let left = x;
+    if (left + menuW > vw - pad) {
+      left = x - menuW; // try left of click point
     }
+    left = Math.max(pad, Math.min(left, vw - menuW - pad));
+
+    // Vertical: prefer below click, flip above if more room, clamp to viewport
+    let top = y;
+    if (top + menuH > vh - pad) {
+      const spaceAbove = y;
+      const spaceBelow = vh - y;
+      if (spaceAbove > spaceBelow) {
+        top = y - menuH; // flip above
+      }
+    }
+    top = Math.max(pad, Math.min(top, vh - menuH - pad));
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
   }, [x, y]);
 
   return createPortal(
