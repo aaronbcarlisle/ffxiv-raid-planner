@@ -1,5 +1,7 @@
 """Public static discovery API - read-only, no auth required"""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,8 @@ from ..models import Membership, StaticGroup
 from ..schemas.discovery import DiscoveryListItem, DiscoveryListResponse
 
 router = APIRouter(prefix="/api/discovery", tags=["discovery"])
+
+SortOption = Literal["recent", "members", "name"]
 
 
 def _get_discovery(settings: dict | None) -> dict | None:
@@ -42,6 +46,16 @@ def _matches_string_filter(filter_val: str, field_val: str | None) -> bool:
     return filter_val.lower() == field_val.lower()
 
 
+def _matches_text_query(query: str, group_name: str, description: str | None) -> bool:
+    """Case-insensitive substring search over name and description."""
+    q = query.lower()
+    if q in group_name.lower():
+        return True
+    if description and q in description.lower():
+        return True
+    return False
+
+
 def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> DiscoveryListItem:
     return DiscoveryListItem(
         name=group.name,
@@ -63,8 +77,18 @@ def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> Dis
     )
 
 
+def _sort_items(items: list[DiscoveryListItem], sort: SortOption) -> list[DiscoveryListItem]:
+    if sort == "members":
+        return sorted(items, key=lambda i: i.member_count, reverse=True)
+    if sort == "name":
+        return sorted(items, key=lambda i: i.name.lower())
+    # Default: recent (by last_updated desc)
+    return sorted(items, key=lambda i: i.last_updated or "", reverse=True)
+
+
 @router.get("/statics", response_model=DiscoveryListResponse)
 async def list_discoverable_statics(
+    q: str | None = Query(None, max_length=100, description="Text search over name and description"),
     role: str | None = Query(None, description="Filter by needed role"),
     job: str | None = Query(None, description="Filter by needed job"),
     day: str | None = Query(None, description="Filter by schedule day"),
@@ -74,6 +98,7 @@ async def list_discoverable_statics(
     recruitment_status: str | None = Query(None, alias="recruitmentStatus", description="Filter by recruitment status"),
     data_center: str | None = Query(None, alias="dataCenter", description="Filter by data center"),
     server: str | None = Query(None, description="Filter by server"),
+    sort: SortOption = Query("recent", description="Sort order: recent, members, name"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     session: AsyncSession = Depends(get_session),
@@ -96,6 +121,10 @@ async def list_discoverable_statics(
         discovery = _get_discovery(group.settings)
         assert discovery is not None
 
+        # Text search
+        if q and not _matches_text_query(q, group.name, discovery.get("description")):
+            continue
+
         if role and not _matches_list_filter(role, discovery.get("neededRoles")):
             continue
         if job and not _matches_list_filter(job, discovery.get("neededJobs")):
@@ -116,6 +145,9 @@ async def list_discoverable_statics(
             continue
 
         items.append(_to_list_item(group, discovery, member_count))
+
+    # Sort
+    items = _sort_items(items, sort)
 
     total = len(items)
     items = items[offset : offset + limit]

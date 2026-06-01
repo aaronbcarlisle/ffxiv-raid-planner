@@ -23,7 +23,7 @@ const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'members',
 const TAB_ITEMS = [
   { id: 'general' as const, label: 'General', icon: Settings },
   { id: 'priority' as const, label: 'Priority', icon: ListOrdered },
-  { id: 'discovery' as const, label: 'Discovery', icon: Globe },
+  { id: 'discovery' as const, label: 'Listing', icon: Globe },
   { id: 'members' as const, label: 'Members', icon: Users },
   { id: 'invitations' as const, label: 'Invitations', icon: Mail },
 ];

@@ -51,36 +51,36 @@ export const RELEASES: Release[] = [
   {
     version: '1.20.0',
     date: '2026-06-01T12:00:00Z',
-    title: 'Static Discovery',
-    highlights: ['Browse statics recruiting members', 'Assisted discovery setup from roster & schedule'],
+    title: 'Find a Static',
+    highlights: ['Static Finder recruitment board', 'Listing setup with live preview'],
     items: [
       {
         category: 'feature',
-        title: 'Discover statics looking for members',
+        title: 'Find a Static — recruitment board',
         description:
-          'A new /discover page lets players browse public statics that have opted in to discovery. Filter by role, job, data center, server, intensity, recruitment status, timezone, and language — all with polished dropdown controls.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): add static discovery page with filters', date: '2026-06-01T12:00:00Z' }],
+          'A new /discover page lets players search and browse statics recruiting for current and upcoming tiers. Search by name or description, filter by role, job, data center, server, intensity, status, timezone, and language. Sort by recently updated, most members, or name. Filters sync to the URL for shareable links.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): static finder recruitment board', date: '2026-06-01T12:00:00Z' }],
       },
       {
         category: 'feature',
-        title: 'Discovery settings for owners and leads',
+        title: 'Listing setup with live preview',
         description:
-          'A new Discovery tab in static settings lets owners and leads configure how their static appears in discovery. Data center, server, timezone, languages, roles, and jobs all use dropdowns and chips instead of free text. Raid days use compact toggle chips.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): add discovery settings tab', date: '2026-06-01T12:00:00Z' }],
+          'Owners and leads can configure their recruitment listing from the new Listing tab in static settings. A status banner shows whether the listing is live, and a preview card at the bottom shows exactly what players will see. All fields use dropdowns and chips.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): listing status + preview', date: '2026-06-01T12:00:00Z' }],
       },
       {
         category: 'feature',
         title: '"Suggest from static" assisted setup',
         description:
-          'Click "Suggest from static" to auto-fill empty discovery fields from your schedule sessions, availability templates, and roster data. Only empty fields are filled — your existing values are never overwritten.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): add roster/schedule-aware suggestions', date: '2026-06-01T12:00:00Z' }],
+          'Click "Suggest from static" to auto-fill empty listing fields from your schedule sessions, availability templates, and roster data. Only empty fields are filled — existing values are never overwritten.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): roster/schedule-aware suggestions', date: '2026-06-01T12:00:00Z' }],
       },
       {
-        category: 'feature',
-        title: 'View static from discovery',
+        category: 'improvement',
+        title: 'Listing cards with copy link',
         description:
-          'Each discovery result links to the static\'s public page via share code. Include contact info in your discovery description so interested players can reach you. Request-to-join flow is coming in a future update.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): add public static discovery API', date: '2026-06-01T12:00:00Z' }],
+          'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): polished listing cards', date: '2026-06-01T12:00:00Z' }],
       },
     ],
   },

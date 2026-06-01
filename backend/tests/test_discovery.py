@@ -629,3 +629,81 @@ async def test_suggestions_with_lodestone_server(
 
     # Majority is Jenova
     assert data.get("server") == "Jenova"
+
+
+# --- Text search tests ---
+
+
+@pytest.mark.asyncio
+async def test_text_search_by_name(client: AsyncClient, session, test_user: User):
+    """Text query matches static name."""
+    await create_static_group(
+        session, test_user, name="Weekend Warriors", is_public=True,
+        settings=_discovery_settings(description="Casual group"),
+    )
+    await create_static_group(
+        session, test_user, name="Monday Misfits", is_public=True,
+        settings=_discovery_settings(description="Midcore group"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"q": "warriors"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Weekend Warriors"
+
+
+@pytest.mark.asyncio
+async def test_text_search_by_description(client: AsyncClient, session, test_user: User):
+    """Text query matches description."""
+    await create_static_group(
+        session, test_user, name="Group A", is_public=True,
+        settings=_discovery_settings(description="Looking for a dragoon main"),
+    )
+    await create_static_group(
+        session, test_user, name="Group B", is_public=True,
+        settings=_discovery_settings(description="Need healers"),
+    )
+
+    resp = await client.get(ENDPOINT, params={"q": "dragoon"})
+    data = resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Group A"
+
+
+@pytest.mark.asyncio
+async def test_text_search_only_public_opted_in(client: AsyncClient, session, test_user: User):
+    """Text search only returns public + opted-in statics."""
+    # Private static with matching name
+    await create_static_group(
+        session, test_user, name="Secret Searchable", is_public=False,
+        settings=_discovery_settings(enabled=True),
+    )
+    # Public but not opted in
+    await create_static_group(
+        session, test_user, name="Public Searchable", is_public=True,
+        settings=_discovery_settings(enabled=False),
+    )
+
+    resp = await client.get(ENDPOINT, params={"q": "Searchable"})
+    assert resp.json()["total"] == 0
+
+
+# --- Sort tests ---
+
+
+@pytest.mark.asyncio
+async def test_sort_by_name(client: AsyncClient, session, test_user: User):
+    await create_static_group(
+        session, test_user, name="Zeta Squad", is_public=True,
+        settings=_discovery_settings(),
+    )
+    await create_static_group(
+        session, test_user, name="Alpha Team", is_public=True,
+        settings=_discovery_settings(),
+    )
+
+    resp = await client.get(ENDPOINT, params={"sort": "name"})
+    data = resp.json()
+    assert data["total"] == 2
+    assert data["items"][0]["name"] == "Alpha Team"
+    assert data["items"][1]["name"] == "Zeta Squad"

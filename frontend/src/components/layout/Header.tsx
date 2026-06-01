@@ -324,10 +324,10 @@ export function Header() {
           {!isHomePage && (
             <>
               <div className="flex items-center gap-1">
-                <Tooltip content="Discover statics looking for members">
+                <Tooltip content="Find a static">
                   <Link
                     to="/discover"
-                    aria-label="Discover statics"
+                    aria-label="Find a static"
                     className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
                     <Globe className="w-5 h-5" />
