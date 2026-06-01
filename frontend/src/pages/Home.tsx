@@ -7,7 +7,7 @@ import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
 import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
-import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers } from 'lucide-react';
+import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers, Globe } from 'lucide-react';
 import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
 import type { MemberRole } from '../types';
 
@@ -174,23 +174,34 @@ export function Home() {
         <div className="flex-1 border-t border-border-default" />
       </div>
 
-      {/* Share code input */}
-      <form onSubmit={handleViewStatic} className="flex items-center gap-2 justify-center mb-16">
-        <Input
-          value={shareCode}
-          onChange={(val) => setShareCode(val.toUpperCase())}
-          placeholder="Enter share code..."
-          maxLength={8}
-          className="w-48 text-center font-mono uppercase"
-        />
-        <Button
-          type="submit"
-          variant="secondary"
-          disabled={!shareCode.trim()}
-        >
-          View
-        </Button>
-      </form>
+      {/* Share code input + Find a Static */}
+      <div className="mb-16 space-y-4">
+        <form onSubmit={handleViewStatic} className="flex items-center gap-2 justify-center">
+          <Input
+            value={shareCode}
+            onChange={(val) => setShareCode(val.toUpperCase())}
+            placeholder="Enter share code..."
+            maxLength={8}
+            className="w-48 text-center font-mono uppercase"
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={!shareCode.trim()}
+          >
+            View
+          </Button>
+        </form>
+        <div className="text-center">
+          <Link
+            to="/discover"
+            className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-accent transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            <span>or browse the <span className="text-accent font-medium">Static Finder</span></span>
+          </Link>
+        </div>
+      </div>
 
       {/* Content section - different for logged in vs logged out users */}
       {user && recentStatics.length > 0 ? (
