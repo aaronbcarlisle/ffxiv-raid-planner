@@ -28,7 +28,7 @@ import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinn
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
-import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector } from '../components/static-group';
+import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { SettingsPanel, type SettingsTab } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -792,6 +792,19 @@ export function GroupView() {
           }
         }}
       />
+
+      {/* Join request banner for non-members viewing a discoverable static */}
+      {currentGroup && (
+        <div className="mb-3">
+          <JoinRequestBanner
+            shareCode={currentGroup.shareCode}
+            staticName={currentGroup.name}
+            groupId={currentGroup.id}
+            settings={currentGroup.settings}
+            userRole={userRole}
+          />
+        </div>
+      )}
 
       {/* Content when tier exists */}
       {currentTier && (

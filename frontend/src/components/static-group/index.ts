@@ -4,3 +4,6 @@ export { DeleteTierModal } from './DeleteTierModal';
 export { TierSelector } from './TierSelector';
 export { StaticSwitcher } from './StaticSwitcher';
 export { MembersPanel } from './MembersPanel';
+export { JoinRequestBanner } from './JoinRequestBanner';
+export { JoinRequestModal } from './JoinRequestModal';
+export { JoinRequestsPanel } from './JoinRequestsPanel';

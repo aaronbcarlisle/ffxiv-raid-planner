@@ -6,6 +6,7 @@ from .auth import router as auth_router
 from .bis import router as bis_router
 from .discovery import router as discovery_router
 from .invitations import router as invitations_router
+from .join_requests import router as join_requests_router
 from .lodestone import router as lodestone_router
 from .loot_tracking import router as loot_tracking_router
 from .schedule import router as schedule_router
@@ -19,6 +20,7 @@ __all__ = [
     "bis_router",
     "discovery_router",
     "invitations_router",
+    "join_requests_router",
     "lodestone_router",
     "loot_tracking_router",
     "schedule_router",

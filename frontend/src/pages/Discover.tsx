@@ -11,11 +11,16 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search, Users, Clock, MapPin, Swords, Globe,
   Filter, X, ChevronDown, ChevronUp, Copy, Check, Info, MessageCircle, ExternalLink,
+  Send, LogIn,
 } from 'lucide-react';
 import { Input, Select, Spinner, EmptyState, Label } from '../components/ui';
 import { Button } from '../components/primitives';
 import { authRequest } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAuthStore } from '../stores/authStore';
+import { useJoinRequestStore } from '../stores/joinRequestStore';
+import { JoinRequestModal } from '../components/static-group/JoinRequestModal';
+import { useModal } from '../hooks/useModal';
 import {
   RAID_JOBS,
   DC_NAMES,
@@ -166,6 +171,13 @@ export function Discover() {
   });
 
   const debouncedSearch = useDebounce(searchText, 350);
+
+  const user = useAuthStore((s) => s.user);
+  const { myRequests, fetchMyRequests } = useJoinRequestStore();
+
+  useEffect(() => {
+    if (user) fetchMyRequests();
+  }, [user, fetchMyRequests]);
 
   // Server options depend on DC
   const serverOptions = useMemo(() =>
@@ -389,7 +401,12 @@ export function Discover() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {items.map((item) => (
-            <ListingCard key={item.shareCode} item={item} />
+            <ListingCard
+              key={item.shareCode}
+              item={item}
+              existingRequest={myRequests.find(r => r.staticGroupName === item.name && (r.status === 'pending' || r.status === 'accepted' || r.status === 'declined'))}
+              isLoggedIn={!!user}
+            />
           ))}
         </div>
       )}
@@ -399,9 +416,23 @@ export function Discover() {
 
 // ─── Listing Card ────────────────────────────────────────────
 
-function ListingCard({ item }: { item: DiscoveryItem }) {
+function ListingCard({ item, existingRequest, isLoggedIn }: {
+  item: DiscoveryItem;
+  existingRequest?: import('../types').JoinRequest;
+  isLoggedIn: boolean;
+}) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const joinModal = useModal();
+  const login = useAuthStore((s) => s.login);
+  const { cancelRequest } = useJoinRequestStore();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelRequest = async () => {
+    if (!existingRequest) return;
+    setIsCancelling(true);
+    try { await cancelRequest(existingRequest.id); } finally { setIsCancelling(false); }
+  };
   const statusClass = STATUS_COLORS[item.recruitmentStatus] ?? STATUS_COLORS.closed;
   const longDescription = (item.description?.length ?? 0) > 120;
 
@@ -574,6 +605,27 @@ function ListingCard({ item }: { item: DiscoveryItem }) {
               ? <Check className="w-4 h-4 text-status-success" />
               : <Copy className="w-4 h-4" />}
           </button>
+          {/* Join request actions */}
+          {existingRequest?.status === 'pending' ? (
+            <Button variant="ghost" size="sm" onClick={handleCancelRequest} loading={isCancelling}>
+              <Clock className="w-3.5 h-3.5 text-status-warning" />
+              <span className="text-status-warning">Pending</span>
+            </Button>
+          ) : existingRequest?.status === 'accepted' ? (
+            <span className="flex items-center gap-1 text-xs text-status-success px-2">
+              <Check className="w-3.5 h-3.5" /> Accepted
+            </span>
+          ) : existingRequest?.status === 'declined' ? (
+            <span className="flex items-center gap-1 text-xs text-status-error px-2">Declined</span>
+          ) : isLoggedIn ? (
+            <Button variant="primary" size="sm" leftIcon={<Send className="w-3.5 h-3.5" />} onClick={joinModal.open}>
+              Request to Join
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" leftIcon={<LogIn className="w-3.5 h-3.5" />} onClick={() => login()}>
+              Log in to join
+            </Button>
+          )}
           <Link
             to={`/group/${item.shareCode}`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 rounded-lg text-accent text-sm font-medium transition-colors"
@@ -582,6 +634,13 @@ function ListingCard({ item }: { item: DiscoveryItem }) {
           </Link>
         </div>
       </div>
+
+      <JoinRequestModal
+        isOpen={joinModal.isOpen}
+        onClose={joinModal.close}
+        shareCode={item.shareCode}
+        staticName={item.name}
+      />
     </div>
   );
 }

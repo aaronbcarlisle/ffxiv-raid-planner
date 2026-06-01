@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { Settings, ListOrdered, Users, Mail, Globe } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Globe, UserPlus } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { GeneralTab } from './GeneralTab';
@@ -14,18 +14,28 @@ import { PriorityTab } from './PriorityTab';
 import { DiscoveryTab } from './DiscoveryTab';
 import { MembersPanel } from '../static-group/MembersPanel';
 import { InvitationsPanel } from '../static-group/InvitationsPanel';
+import { JoinRequestsPanel } from '../static-group/JoinRequestsPanel';
+import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import type { StaticGroup, SnapshotPlayer } from '../../types';
 
-export type SettingsTab = 'general' | 'priority' | 'discovery' | 'members' | 'invitations';
+export type SettingsTab = 'general' | 'priority' | 'discovery' | 'members' | 'invitations' | 'requests';
 
-const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'members', 'invitations'];
+const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'members', 'invitations', 'requests'];
 
-const TAB_ITEMS = [
-  { id: 'general' as const, label: 'General', icon: Settings },
-  { id: 'priority' as const, label: 'Priority', icon: ListOrdered },
-  { id: 'discovery' as const, label: 'Listing', icon: Globe },
-  { id: 'members' as const, label: 'Members', icon: Users },
-  { id: 'invitations' as const, label: 'Invitations', icon: Mail },
+interface TabItem {
+  id: SettingsTab;
+  label: string;
+  icon: typeof Settings;
+  requiresManage?: boolean;
+}
+
+const TAB_ITEMS: TabItem[] = [
+  { id: 'general', label: 'General', icon: Settings },
+  { id: 'priority', label: 'Priority', icon: ListOrdered },
+  { id: 'discovery', label: 'Listing', icon: Globe },
+  { id: 'members', label: 'Members', icon: Users },
+  { id: 'invitations', label: 'Invitations', icon: Mail },
+  { id: 'requests', label: 'Requests', icon: UserPlus, requiresManage: true },
 ];
 
 interface SettingsPanelProps {
@@ -58,7 +68,14 @@ export function SettingsPanel({
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  const canManageInvitations = group.userRole === 'owner' || group.userRole === 'lead';
+  const canManage = group.userRole === 'owner' || group.userRole === 'lead';
+  const pendingCount = useJoinRequestStore((s) => s.pendingCount);
+
+  useEffect(() => {
+    if (isOpen && canManage) {
+      useJoinRequestStore.getState().fetchGroupRequests(group.id);
+    }
+  }, [isOpen, canManage, group.id]);
 
   // Navigate to next/previous tab
   const navigateTab = useCallback((direction: 'next' | 'prev') => {
@@ -93,6 +110,7 @@ export function SettingsPanel({
         {/* Tabs - scrollable on mobile */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
           {TAB_ITEMS.map((tab) => {
+            if (tab.requiresManage && !canManage) return null;
             const Icon = tab.icon;
             return (
               /* design-system-ignore: Tab selector with border-bottom active indicator */
@@ -107,6 +125,11 @@ export function SettingsPanel({
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
+                {tab.id === 'requests' && pendingCount > 0 && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-accent text-accent-contrast">
+                    {pendingCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -148,9 +171,13 @@ export function SettingsPanel({
           {activeTab === 'invitations' && (
             <InvitationsPanel
               groupId={group.id}
-              canManage={canManageInvitations}
+              canManage={canManage}
               highlightCreateButton={highlightCreateInvite}
             />
+          )}
+
+          {activeTab === 'requests' && canManage && (
+            <JoinRequestsPanel groupId={group.id} />
           )}
         </div>
       </div>

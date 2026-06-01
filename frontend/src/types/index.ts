@@ -768,6 +768,47 @@ export interface InvitationAcceptResponse {
   role?: MemberRole;
 }
 
+// ==================== Join Request Types ====================
+
+export type JoinRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+
+export interface RequesterInfo {
+  id: string;
+  discordUsername: string;
+  discordAvatar?: string;
+  avatarUrl?: string;
+  displayName?: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  staticGroupId: string;
+  staticGroupName?: string;
+  requesterUserId: string;
+  requester?: RequesterInfo;
+  status: JoinRequestStatus;
+  message?: string;
+  roleInterest?: string;
+  jobInterest?: string;
+  availabilityNote?: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  resolvedByUserId?: string;
+}
+
+export interface JoinRequestListResponse {
+  items: JoinRequest[];
+  pendingCount: number;
+}
+
+export interface JoinRequestCreatePayload {
+  message?: string;
+  roleInterest?: string;
+  jobInterest?: string;
+  availabilityNote?: string;
+}
+
 // ==================== Admin Types ====================
 
 // Admin static group list item (includes owner info)

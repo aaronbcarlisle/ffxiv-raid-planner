@@ -224,8 +224,8 @@ export function PlayerCardHeader({
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-3 min-w-0 flex-1">
         {/* Clickable identity mark with dropdown */}
         <div className="relative shrink-0">
           <Tooltip
@@ -296,7 +296,7 @@ export function PlayerCardHeader({
 
         {/* Name and position */}
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             {isEditingName ? (
               <input
                 ref={nameInputRef}
@@ -314,7 +314,7 @@ export function PlayerCardHeader({
                   content={editPermission.allowed ? 'Double-click to edit name' : editPermission.reason}
                 >
                   <span
-                    className={`font-medium text-text-primary ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
+                    className={`font-medium text-text-primary text-sm sm:text-base break-words ${editPermission.allowed ? 'cursor-pointer hover:text-accent' : 'cursor-not-allowed'}`}
                     onClick={(e) => e.stopPropagation()}
                     onDoubleClick={handleNameDoubleClick}
                   >
@@ -404,8 +404,8 @@ export function PlayerCardHeader({
       </div>
 
       {/* Progress ring, iLv, + menu button */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Progress ring */}
           <ProgressRing
             value={completedSlots}

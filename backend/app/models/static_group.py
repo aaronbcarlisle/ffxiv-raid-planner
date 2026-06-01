@@ -11,6 +11,7 @@ from ..database import Base
 
 if TYPE_CHECKING:
     from .invitation import Invitation
+    from .join_request import JoinRequest
     from .membership import Membership
     from .schedule import ScheduleSession
     from .tier_snapshot import TierSnapshot
@@ -79,6 +80,12 @@ class StaticGroup(Base):
         back_populates="static_group",
         cascade="all, delete-orphan",
         order_by="ScheduleSession.start_time.asc()",
+    )
+    join_requests: Mapped[list["JoinRequest"]] = relationship(
+        "JoinRequest",
+        back_populates="static_group",
+        cascade="all, delete-orphan",
+        order_by="JoinRequest.created_at.desc()",
     )
 
     @property
