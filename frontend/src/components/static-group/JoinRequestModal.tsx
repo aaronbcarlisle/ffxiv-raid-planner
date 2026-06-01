@@ -45,7 +45,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const [message, setMessage] = useState('');
   const [availabilityNote, setAvailabilityNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shareDiscord, setShareDiscord] = useState(true);
+  const [shareDiscord, setShareDiscord] = useState(false);
 
   const { createRequest } = useJoinRequestStore();
   const discordUsername = useAuthStore((s) => s.user?.discordUsername);
