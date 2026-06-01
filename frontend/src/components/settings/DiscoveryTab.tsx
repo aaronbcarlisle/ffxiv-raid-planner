@@ -19,6 +19,7 @@ import {
   getJobsByRole,
   DC_NAMES,
   getWorldsForDC,
+  getDCForWorld,
   TIMEZONES,
   LANGUAGES,
   RAID_DAYS,
@@ -336,7 +337,19 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
       );
       let filled = 0;
       if (!timezone && suggestions.timezone) { setTimezone(suggestions.timezone as string); filled++; }
-      if (!server && suggestions.server) { setServer(suggestions.server as string); filled++; }
+      if (!server && suggestions.server) {
+        const suggestedServer = suggestions.server as string;
+        setServer(suggestedServer);
+        filled++;
+        // Auto-detect DC from server if DC is empty
+        if (!dataCenter) {
+          const detectedDC = getDCForWorld(suggestedServer);
+          if (detectedDC) {
+            setDataCenter(detectedDC);
+            filled++;
+          }
+        }
+      }
       if (scheduleDays.length === 0 && Array.isArray(suggestions.scheduleDays)) { setScheduleDays(suggestions.scheduleDays as string[]); filled++; }
       if (!scheduleStartTime && suggestions.scheduleStartTime) { setScheduleStartTime(suggestions.scheduleStartTime as string); filled++; }
       if (!scheduleEndTime && suggestions.scheduleEndTime) { setScheduleEndTime(suggestions.scheduleEndTime as string); filled++; }

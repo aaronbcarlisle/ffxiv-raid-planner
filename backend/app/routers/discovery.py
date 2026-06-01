@@ -2,12 +2,13 @@
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import Membership, StaticGroup
+from ..rate_limit import limiter
 from ..schemas.discovery import DiscoveryListItem, DiscoveryListResponse
 
 router = APIRouter(prefix="/api/discovery", tags=["discovery"])
@@ -87,7 +88,9 @@ def _sort_items(items: list[DiscoveryListItem], sort: SortOption) -> list[Discov
 
 
 @router.get("/statics", response_model=DiscoveryListResponse)
+@limiter.limit("60/minute")
 async def list_discoverable_statics(
+    request: Request,
     q: str | None = Query(None, max_length=100, description="Text search over name and description"),
     role: str | None = Query(None, description="Filter by needed role"),
     job: str | None = Query(None, description="Filter by needed job"),

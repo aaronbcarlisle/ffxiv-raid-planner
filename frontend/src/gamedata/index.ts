@@ -61,6 +61,7 @@ export {
   DATA_CENTERS,
   DC_NAMES,
   getWorldsForDC,
+  getDCForWorld,
   TIMEZONES,
   LANGUAGES,
   RAID_DAYS,

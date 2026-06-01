@@ -377,7 +377,9 @@ export function Discover() {
 
 function ListingCard({ item }: { item: DiscoveryItem }) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const statusClass = STATUS_COLORS[item.recruitmentStatus] ?? STATUS_COLORS.closed;
+  const longDescription = (item.description?.length ?? 0) > 120;
 
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -475,7 +477,21 @@ function ListingCard({ item }: { item: DiscoveryItem }) {
 
         {/* Description / contact */}
         {item.description ? (
-          <p className="text-text-secondary text-sm mb-3 line-clamp-3 break-words whitespace-pre-line">{item.description}</p>
+          <div className="mb-3">
+            <p className={`text-text-secondary text-sm break-words whitespace-pre-line ${!expanded && longDescription ? 'line-clamp-3' : ''}`}>
+              {item.description}
+            </p>
+            {longDescription && (
+              /* design-system-ignore: inline show more/less toggle for card content */
+              <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                className="text-accent text-xs mt-1 hover:underline"
+              >
+                {expanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
+          </div>
         ) : (
           <p className="text-text-muted text-xs mb-3 italic">
             No contact info provided yet. View the static page for more details.

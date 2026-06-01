@@ -38,6 +38,17 @@ export function getWorldsForDC(dcName: string): string[] {
   return dc?.worlds ?? [];
 }
 
+/** Reverse lookup: find the data center for a given world/server name */
+export function getDCForWorld(worldName: string): string | null {
+  const lower = worldName.toLowerCase();
+  for (const dc of DATA_CENTERS) {
+    if (dc.worlds.some(w => w.toLowerCase() === lower)) {
+      return dc.name;
+    }
+  }
+  return null;
+}
+
 /** Common timezones for FFXIV players */
 export const TIMEZONES = [
   { value: 'Asia/Tokyo', label: 'JST (Tokyo)' },

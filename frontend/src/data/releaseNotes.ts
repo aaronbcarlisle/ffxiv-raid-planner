@@ -77,9 +77,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
-        title: 'Listing cards with copy link',
+        title: 'Listing cards with copy link and expandable details',
         description:
-          'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
+          'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Long descriptions expand inline. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
         commits: [{ hash: 'pending', message: 'feat(discovery): polished listing cards', date: '2026-06-01T12:00:00Z' }],
       },
     ],
