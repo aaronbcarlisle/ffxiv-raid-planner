@@ -2,15 +2,26 @@
  * Discovery Tab - Static discovery/recruitment settings
  *
  * Lets owners/leads configure how their static appears in public discovery.
+ * Uses dropdowns, chips, and "Suggest from static" for assisted setup.
  */
 
 import { useState, useCallback } from 'react';
-import { Globe, AlertTriangle } from 'lucide-react';
-import { Label, Input, Select, Toggle, TextArea, Checkbox } from '../ui';
+import { Globe, AlertTriangle, Sparkles, Info } from 'lucide-react';
+import { Label, Select, Toggle, TextArea } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
-import { RAID_JOBS, type Role } from '../../gamedata';
+import { authRequest } from '../../services/api';
+import {
+  getJobsByRole,
+  DC_NAMES,
+  getWorldsForDC,
+  TIMEZONES,
+  LANGUAGES,
+  RAID_DAYS,
+  TIME_SLOTS,
+  type Role,
+} from '../../gamedata';
 import type { StaticGroup, DiscoverySettings } from '../../types';
 
 interface DiscoveryTabProps {
@@ -22,11 +33,9 @@ const ROLES: { value: Role; label: string }[] = [
   { value: 'tank', label: 'Tank' },
   { value: 'healer', label: 'Healer' },
   { value: 'melee', label: 'Melee' },
-  { value: 'ranged', label: 'Ranged' },
+  { value: 'ranged', label: 'Physical Ranged' },
   { value: 'caster', label: 'Caster' },
 ];
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const INTENSITY_OPTIONS = [
   { value: '', label: 'Not specified' },
@@ -46,8 +55,48 @@ const EMPTY_DISCOVERY: DiscoverySettings = {
   recruitmentStatus: 'closed',
 };
 
+// Job groups for organized chip display
+const JOB_GROUPS: { label: string; role: Role }[] = [
+  { label: 'Tank', role: 'tank' },
+  { label: 'Healer', role: 'healer' },
+  { label: 'Melee', role: 'melee' },
+  { label: 'Phys. Ranged', role: 'ranged' },
+  { label: 'Caster', role: 'caster' },
+];
+
 function getDiscovery(group: StaticGroup): DiscoverySettings {
   return group.settings?.discovery ?? EMPTY_DISCOVERY;
+}
+
+/** Toggle chip component for compact multi-select */
+function Chip({
+  label,
+  active,
+  onClick,
+  disabled,
+  className = '',
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    /* design-system-ignore: toggle chip for multi-select, not a standalone button */
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+        active
+          ? 'bg-accent/20 text-accent border-accent/40'
+          : 'bg-surface-elevated text-text-secondary border-border-default hover:border-border-subtle'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+    >
+      {label}
+    </button>
+  );
 }
 
 export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
@@ -61,7 +110,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const [dataCenter, setDataCenter] = useState(existing.dataCenter ?? '');
   const [server, setServer] = useState(existing.server ?? '');
   const [timezone, setTimezone] = useState(existing.timezone ?? '');
-  const [languages, setLanguages] = useState(existing.languages?.join(', ') ?? '');
+  const [selectedLangs, setSelectedLangs] = useState<string[]>(existing.languages ?? []);
   const [neededRoles, setNeededRoles] = useState<string[]>(existing.neededRoles ?? []);
   const [neededJobs, setNeededJobs] = useState<string[]>(existing.neededJobs ?? []);
   const [scheduleDays, setScheduleDays] = useState<string[]>(existing.scheduleDays ?? []);
@@ -69,6 +118,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const [scheduleEndTime, setScheduleEndTime] = useState(existing.scheduleEndTime ?? '');
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
@@ -77,11 +127,79 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
     setter(list.includes(item) ? list.filter(x => x !== item) : [...list, item]);
   }, []);
 
+  // Server options depend on selected DC
+  const serverOptions = dataCenter
+    ? [{ value: '', label: 'Any server' }, ...getWorldsForDC(dataCenter).map(w => ({ value: w, label: w }))]
+    : [{ value: '', label: 'Select a data center first' }];
+
+  // Timezone options for Select
+  const tzOptions = [
+    { value: '', label: 'Not specified' },
+    ...TIMEZONES.map(tz => ({ value: tz.value, label: tz.label })),
+  ];
+
+  // Time slot options for Select
+  const timeOptions = [
+    { value: '', label: 'Not set' },
+    ...TIME_SLOTS.map(t => ({ value: t, label: t })),
+  ];
+
+  // DC options grouped by region
+  const dcOptions = [
+    { value: '', label: 'Not specified' },
+    ...DC_NAMES.map(dc => ({ value: dc, label: dc })),
+  ];
+
+  const handleSuggest = async () => {
+    setIsSuggesting(true);
+    try {
+      const suggestions = await authRequest<Record<string, unknown>>(
+        `/api/static-groups/${group.id}/discovery/suggestions`
+      );
+
+      let filled = 0;
+
+      // Only fill empty fields
+      if (!timezone && suggestions.timezone) {
+        setTimezone(suggestions.timezone as string);
+        filled++;
+      }
+      if (!server && suggestions.server) {
+        setServer(suggestions.server as string);
+        filled++;
+      }
+      if (scheduleDays.length === 0 && Array.isArray(suggestions.scheduleDays)) {
+        setScheduleDays(suggestions.scheduleDays as string[]);
+        filled++;
+      }
+      if (!scheduleStartTime && suggestions.scheduleStartTime) {
+        setScheduleStartTime(suggestions.scheduleStartTime as string);
+        filled++;
+      }
+      if (!scheduleEndTime && suggestions.scheduleEndTime) {
+        setScheduleEndTime(suggestions.scheduleEndTime as string);
+        filled++;
+      }
+      if (neededRoles.length === 0 && Array.isArray(suggestions.neededRoles)) {
+        setNeededRoles(suggestions.neededRoles as string[]);
+        filled++;
+      }
+
+      if (filled > 0) {
+        toast.success(`Filled ${filled} field${filled > 1 ? 's' : ''} from your static data`);
+      } else {
+        toast.info('All fields already have values, or no suggestions available');
+      }
+    } catch {
+      toast.error('Could not load suggestions');
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
-
-    const langList = languages.split(',').map(l => l.trim()).filter(Boolean);
 
     const discovery: DiscoverySettings = {
       enabled,
@@ -91,7 +209,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
       dataCenter: dataCenter || undefined,
       server: server || undefined,
       timezone: timezone || undefined,
-      languages: langList.length > 0 ? langList : undefined,
+      languages: selectedLangs.length > 0 ? selectedLangs : undefined,
       neededRoles: neededRoles.length > 0 ? neededRoles : undefined,
       neededJobs: neededJobs.length > 0 ? neededJobs : undefined,
       scheduleDays: scheduleDays.length > 0 ? scheduleDays : undefined,
@@ -113,14 +231,32 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
     }
   };
 
+  // Reset server when DC changes
+  const handleDCChange = (dc: string) => {
+    setDataCenter(dc);
+    if (dc !== dataCenter) {
+      setServer('');
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto space-y-6 min-h-0 ml-[3px]" style={{ scrollbarGutter: 'stable' }}>
+      <div className="flex-1 overflow-y-auto space-y-5 min-h-0 ml-[3px]" style={{ scrollbarGutter: 'stable' }}>
         {error && (
           <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg text-status-error text-sm">
             {error}
           </div>
         )}
+
+        {/* Privacy info */}
+        <div className="p-3 bg-surface-elevated border border-border-default rounded-lg flex items-start gap-2">
+          <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-text-secondary">
+            <p><strong className="text-text-primary">Public Static</strong> = anyone with the share link can view your static (read-only).</p>
+            <p className="mt-1"><strong className="text-text-primary">Discovery Listing</strong> = your static appears in the public browse directory. Both must be enabled.</p>
+            <p className="mt-1">Discovery never exposes private notes, RSVP details, gear data, or member Discord IDs.</p>
+          </div>
+        </div>
 
         {/* Warning if group is not public */}
         {!group.isPublic && (
@@ -129,7 +265,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
             <div className="text-sm">
               <p className="font-medium text-status-warning">Static is private</p>
               <p className="text-text-secondary mt-0.5">
-                Discovery listing only works for public statics. Enable &quot;Public Static&quot; in the General tab first.
+                Enable &quot;Public Static&quot; in the General tab first. Discovery only works for public statics.
               </p>
             </div>
           </div>
@@ -141,11 +277,29 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
           onChange={setEnabled}
           disabled={!canEdit}
           label="List in discovery"
-          hint="When enabled, this static appears in the public discovery page for players looking for groups"
+          hint="Your static appears in the public browse page for players looking for groups"
         />
 
         {enabled && (
           <>
+            {/* Suggest from static */}
+            {canEdit && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSuggest}
+                  loading={isSuggesting}
+                >
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  Suggest from static
+                </Button>
+                <span className="text-text-muted text-xs">
+                  Fills empty fields from your schedule and roster
+                </span>
+              </div>
+            )}
+
             {/* Recruitment status */}
             <div>
               <Label htmlFor="recruitmentStatus">Recruitment Status</Label>
@@ -160,7 +314,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
             {/* Description */}
             <div>
-              <Label htmlFor="discoveryDesc">Description</Label>
+              <Label htmlFor="discoveryDesc">Description &amp; Contact Info</Label>
               <TextArea
                 id="discoveryDesc"
                 value={description}
@@ -170,7 +324,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                 maxLength={500}
                 disabled={!canEdit}
               />
-              <p className="text-text-muted text-xs mt-1">{description.length}/500 — include a way to contact you (Discord tag, etc.)</p>
+              <p className="text-text-muted text-xs mt-1">{description.length}/500</p>
             </div>
 
             {/* Intensity */}
@@ -185,125 +339,142 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               />
             </div>
 
-            {/* Data Center / Server */}
+            {/* Data Center / Server dropdowns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="dataCenter">Data Center</Label>
-                <Input
+                <Select
                   id="dataCenter"
                   value={dataCenter}
-                  onChange={setDataCenter}
-                  placeholder="e.g. Aether"
+                  onChange={handleDCChange}
+                  options={dcOptions}
                   disabled={!canEdit}
                 />
               </div>
               <div>
                 <Label htmlFor="server">Server</Label>
-                <Input
+                <Select
                   id="server"
                   value={server}
                   onChange={setServer}
-                  placeholder="e.g. Jenova"
-                  disabled={!canEdit}
+                  options={serverOptions}
+                  disabled={!canEdit || !dataCenter}
                 />
               </div>
             </div>
 
-            {/* Timezone */}
+            {/* Timezone dropdown */}
             <div>
               <Label htmlFor="timezone">Timezone</Label>
-              <Input
+              <Select
                 id="timezone"
                 value={timezone}
                 onChange={setTimezone}
-                placeholder="e.g. America/New_York or EST"
+                options={tzOptions}
                 disabled={!canEdit}
               />
             </div>
 
-            {/* Languages */}
+            {/* Languages — chips */}
             <div>
-              <Label htmlFor="languages">Languages</Label>
-              <Input
-                id="languages"
-                value={languages}
-                onChange={setLanguages}
-                placeholder="e.g. en, ja, fr"
-                disabled={!canEdit}
-              />
-              <p className="text-text-muted text-xs mt-1">Comma-separated language codes</p>
+              <Label>Languages</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {LANGUAGES.map(l => (
+                  <Chip
+                    key={l.code}
+                    label={l.label}
+                    active={selectedLangs.includes(l.code)}
+                    onClick={() => toggleInList(selectedLangs, l.code, setSelectedLangs)}
+                    disabled={!canEdit}
+                  />
+                ))}
+              </div>
             </div>
 
-            {/* Needed Roles */}
+            {/* Needed Roles — chips */}
             <div>
               <Label>Roles Recruiting</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
+              <div className="flex flex-wrap gap-1.5 mt-1">
                 {ROLES.map(r => (
-                  <Checkbox
+                  <Chip
                     key={r.value}
-                    checked={neededRoles.includes(r.value)}
-                    onChange={() => toggleInList(neededRoles, r.value, setNeededRoles)}
                     label={r.label}
+                    active={neededRoles.includes(r.value)}
+                    onClick={() => toggleInList(neededRoles, r.value, setNeededRoles)}
                     disabled={!canEdit}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Needed Jobs */}
+            {/* Needed Jobs — grouped chips */}
             <div>
               <Label>Jobs Recruiting</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {RAID_JOBS.map(j => (
-                  <Checkbox
-                    key={j.abbreviation}
-                    checked={neededJobs.includes(j.abbreviation)}
-                    onChange={() => toggleInList(neededJobs, j.abbreviation, setNeededJobs)}
-                    label={j.abbreviation}
-                    disabled={!canEdit}
-                  />
+              <div className="space-y-2 mt-1">
+                {JOB_GROUPS.map(g => (
+                  <div key={g.role}>
+                    <p className="text-text-muted text-xs mb-1">{g.label}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {getJobsByRole(g.role).map(j => (
+                        <Chip
+                          key={j.abbreviation}
+                          label={j.abbreviation}
+                          active={neededJobs.includes(j.abbreviation)}
+                          onClick={() => toggleInList(neededJobs, j.abbreviation, setNeededJobs)}
+                          disabled={!canEdit}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Schedule Days */}
+            {/* Schedule Days — chips */}
             <div>
               <Label>Raid Days</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {DAYS.map(d => (
-                  <Checkbox
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {RAID_DAYS.map(d => (
+                  <Chip
                     key={d}
-                    checked={scheduleDays.includes(d)}
-                    onChange={() => toggleInList(scheduleDays, d, setScheduleDays)}
-                    label={d}
+                    label={d.slice(0, 3)}
+                    active={scheduleDays.includes(d)}
+                    onClick={() => toggleInList(scheduleDays, d, setScheduleDays)}
                     disabled={!canEdit}
                   />
                 ))}
               </div>
             </div>
 
-            {/* Schedule Time Window */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
-                  id="startTime"
-                  value={scheduleStartTime}
-                  onChange={setScheduleStartTime}
-                  placeholder="e.g. 20:00"
-                  disabled={!canEdit}
-                />
+            {/* Schedule Time Window — dropdowns */}
+            <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <Select
+                    id="startTime"
+                    value={scheduleStartTime}
+                    onChange={setScheduleStartTime}
+                    options={timeOptions}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endTime">End Time</Label>
+                  <Select
+                    id="endTime"
+                    value={scheduleEndTime}
+                    onChange={setScheduleEndTime}
+                    options={timeOptions}
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  value={scheduleEndTime}
-                  onChange={setScheduleEndTime}
-                  placeholder="e.g. 23:00"
-                  disabled={!canEdit}
-                />
-              </div>
+              {timezone && (
+                <p className="text-text-muted text-xs mt-1">
+                  Times are in {TIMEZONES.find(t => t.value === timezone)?.label ?? timezone}
+                </p>
+              )}
             </div>
           </>
         )}

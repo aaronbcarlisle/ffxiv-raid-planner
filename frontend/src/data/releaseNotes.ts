@@ -52,21 +52,28 @@ export const RELEASES: Release[] = [
     version: '1.20.0',
     date: '2026-06-01T12:00:00Z',
     title: 'Static Discovery',
-    highlights: ['Browse statics recruiting members', 'Discovery settings for owners/leads'],
+    highlights: ['Browse statics recruiting members', 'Assisted discovery setup from roster & schedule'],
     items: [
       {
         category: 'feature',
         title: 'Discover statics looking for members',
         description:
-          'A new /discover page lets players browse public statics that have opted in to discovery. Filter by role, job, data center, server, intensity, schedule, timezone, language, and recruitment status.',
+          'A new /discover page lets players browse public statics that have opted in to discovery. Filter by role, job, data center, server, intensity, recruitment status, timezone, and language — all with polished dropdown controls.',
         commits: [{ hash: 'pending', message: 'feat(discovery): add static discovery page with filters', date: '2026-06-01T12:00:00Z' }],
       },
       {
         category: 'feature',
         title: 'Discovery settings for owners and leads',
         description:
-          'A new Discovery tab in static settings lets owners and leads configure how their static appears in discovery — recruitment status, description, needed roles/jobs, schedule, intensity, and more. Discovery listing is opt-in only.',
+          'A new Discovery tab in static settings lets owners and leads configure how their static appears in discovery. Data center, server, timezone, languages, roles, and jobs all use dropdowns and chips instead of free text. Raid days use compact toggle chips.',
         commits: [{ hash: 'pending', message: 'feat(discovery): add discovery settings tab', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: '"Suggest from static" assisted setup',
+        description:
+          'Click "Suggest from static" to auto-fill empty discovery fields from your schedule sessions, availability templates, and roster data. Only empty fields are filled — your existing values are never overwritten.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): add roster/schedule-aware suggestions', date: '2026-06-01T12:00:00Z' }],
       },
       {
         category: 'feature',

@@ -505,3 +505,127 @@ async def test_private_static_not_in_discovery_even_with_settings(
 
     resp = await client.get(ENDPOINT)
     assert resp.json()["total"] == 0
+
+
+# --- Discovery suggestions endpoint tests ---
+
+SUGGESTIONS_URL = "/api/static-groups/{}/discovery/suggestions"
+
+
+@pytest.mark.asyncio
+async def test_owner_can_fetch_suggestions(
+    client: AsyncClient, auth_headers: dict, test_group
+):
+    """Owner can fetch discovery suggestions."""
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+
+
+@pytest.mark.asyncio
+async def test_member_cannot_fetch_suggestions(
+    client: AsyncClient, auth_headers_user2: dict, test_group, session, test_user_2
+):
+    """Regular member cannot fetch suggestions."""
+    await create_membership(session, test_user_2, test_group)
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_non_member_cannot_fetch_suggestions(
+    client: AsyncClient, auth_headers_user2: dict, test_group
+):
+    """Non-member cannot fetch suggestions."""
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_suggestions_no_private_fields(
+    client: AsyncClient, auth_headers: dict, test_group
+):
+    """Suggestions response must not leak private/member data."""
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # Must not contain any private fields
+    for key in ["members", "memberships", "discordId", "discord_id",
+                "notes", "rsvp", "gear", "ownerId", "owner_id",
+                "userId", "user_id", "availability"]:
+        assert key not in data, f"Suggestions leaked private field: {key}"
+
+
+@pytest.mark.asyncio
+async def test_suggestions_with_roster_gaps(
+    client: AsyncClient, auth_headers: dict, test_group, session
+):
+    """Suggestions should infer needed roles from unconfigured roster slots."""
+    from tests.factories import create_tier_snapshot, create_snapshot_player
+
+    tier = await create_tier_snapshot(session, test_group)
+    # Fill some positions, leave T2 and H2 empty
+    await create_snapshot_player(session, tier, name="Tank1", job="WAR", role="tank", position="T1")
+    await create_snapshot_player(session, tier, name="Healer1", job="WHM", role="healer", position="H1")
+    await create_snapshot_player(session, tier, name="Melee1", job="DRG", role="melee", position="M1")
+    await create_snapshot_player(session, tier, name="Melee2", job="NIN", role="melee", position="M2")
+    await create_snapshot_player(session, tier, name="Ranged1", job="BRD", role="ranged", position="R1")
+    await create_snapshot_player(session, tier, name="Ranged2", job="MCH", role="ranged", position="R2")
+
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # T2 and H2 are missing, so tank and healer should be suggested
+    assert "neededRoles" in data
+    assert "tank" in data["neededRoles"]
+    assert "healer" in data["neededRoles"]
+    # melee/ranged should NOT be suggested since they're filled
+    assert "melee" not in data["neededRoles"]
+    assert "ranged" not in data["neededRoles"]
+
+
+@pytest.mark.asyncio
+async def test_suggestions_with_lodestone_server(
+    client: AsyncClient, auth_headers: dict, test_group, session
+):
+    """Suggestions should infer server from lodestone-linked players."""
+    from tests.factories import create_tier_snapshot, create_snapshot_player
+
+    tier = await create_tier_snapshot(session, test_group)
+    p1 = await create_snapshot_player(session, tier, name="P1", position="T1")
+    p2 = await create_snapshot_player(session, tier, name="P2", position="H1")
+    p3 = await create_snapshot_player(session, tier, name="P3", position="M1")
+
+    # Set lodestone servers directly
+    p1.lodestone_server = "Jenova"
+    p2.lodestone_server = "Jenova"
+    p3.lodestone_server = "Gilgamesh"
+    await session.flush()
+
+    resp = await client.get(
+        SUGGESTIONS_URL.format(test_group.id),
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # Majority is Jenova
+    assert data.get("server") == "Jenova"
