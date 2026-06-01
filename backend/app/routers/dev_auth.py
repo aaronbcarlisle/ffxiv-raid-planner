@@ -384,7 +384,7 @@ def _set_auth_cookies(response: Response, user_id: str) -> dict:
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 
-@router.post("/login/{user_index}")
+@router.api_route("/login/{user_index}", methods=["GET", "POST"])
 async def dev_login(
     user_index: int,
     response: Response,
