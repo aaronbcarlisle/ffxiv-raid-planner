@@ -170,10 +170,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-4 py-2 flex items-center justify-between gap-3 sm:gap-4">
+      <div className="max-w-[160rem] mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:gap-4 sm:flex-nowrap">
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
-        {/* On mobile, flex-1 allows static selector to fill available space (Invite/Share buttons hidden on mobile) */}
-        <div className={`flex items-center gap-2 sm:gap-3 min-w-0 ${isGroupRoute && currentGroup ? 'flex-1 sm:flex-initial' : ''}`}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Logo */}
           <Tooltip
             content={
@@ -200,10 +199,9 @@ export function Header() {
             </Link>
           </Tooltip>
 
-          {/* Group context (only on group pages) */}
+          {/* Group context - desktop only (inline with logo) */}
           {isGroupRoute && currentGroup && (
             <>
-              {/* Static Switcher - with left border divider on desktop */}
               <div className="hidden sm:block border-l border-border-subtle pl-3">
                 <StaticSwitcher
                   currentGroup={currentGroup}
@@ -211,17 +209,6 @@ export function Header() {
                   onFetchGroups={fetchGroups}
                   isMember={isMember}
                   userRole={userRole ?? undefined}
-                />
-              </div>
-              {/* Static Switcher - full width on mobile (no border) */}
-              <div className="sm:hidden flex-1">
-                <StaticSwitcher
-                  currentGroup={currentGroup}
-                  groups={groups}
-                  onFetchGroups={fetchGroups}
-                  isMember={isMember}
-                  userRole={userRole ?? undefined}
-                  fullWidthMobile
                 />
               </div>
 
@@ -366,6 +353,20 @@ export function Header() {
             )}
           </div>
         </div>
+
+        {/* Mobile second row: Static Switcher gets full width */}
+        {isGroupRoute && currentGroup && (
+          <div className="sm:hidden w-full">
+            <StaticSwitcher
+              currentGroup={currentGroup}
+              groups={groups}
+              onFetchGroups={fetchGroups}
+              isMember={isMember}
+              userRole={userRole ?? undefined}
+              fullWidthMobile
+            />
+          </div>
+        )}
       </div>
     </header>
   );
