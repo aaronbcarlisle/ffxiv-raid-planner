@@ -45,10 +45,9 @@ function RequestCard({
   const requester = request.requester;
   const [copied, setCopied] = useState(false);
 
-  const discordTag = requester?.discordUsername;
   const handleCopyDiscord = async () => {
-    if (!discordTag) return;
-    await navigator.clipboard.writeText(discordTag);
+    if (!request.contactDiscord) return;
+    await navigator.clipboard.writeText(request.contactDiscord);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -66,17 +65,17 @@ function RequestCard({
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">
-              {requester?.displayName || discordTag || 'Unknown User'}
+              {requester?.displayName || 'Unknown User'}
             </p>
-            {request.shareDiscord && discordTag && (
-              /* design-system-ignore: compact inline copy button for Discord tag */
+            {request.contactDiscord && (
+              /* design-system-ignore: compact inline copy button for Discord handle */
               <button
                 type="button"
                 onClick={handleCopyDiscord}
                 className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover transition-colors group"
-                title={copied ? 'Copied!' : `Copy Discord: ${discordTag}`}
+                title={copied ? 'Copied!' : `Copy Discord: ${request.contactDiscord}`}
               >
-                <span className="truncate">{discordTag}</span>
+                <span className="truncate">{request.contactDiscord}</span>
                 {copied
                   ? <Check className="w-3 h-3 text-status-success shrink-0" />
                   : <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}

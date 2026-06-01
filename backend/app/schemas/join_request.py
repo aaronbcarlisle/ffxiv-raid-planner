@@ -35,7 +35,7 @@ class JoinRequestCreate(CamelModel):
     role_interest: list[str] | None = Field(default=None)
     job_interest: list[str] | None = Field(default=None)
     availability_note: str | None = Field(default=None, max_length=300)
-    share_discord: bool = Field(default=False)
+    contact_discord: str | None = Field(default=None, max_length=100)
 
     @field_validator("role_interest")
     @classmethod
@@ -66,10 +66,8 @@ class JoinRequestCreate(CamelModel):
 
 class RequesterInfo(CamelModel):
     id: str
-    discord_username: str | None = None
-    discord_avatar: str | None = None
-    avatar_url: str | None = None
     display_name: str | None = None
+    avatar_url: str | None = None
 
 
 class JoinRequestResponse(CamelModel):
@@ -83,7 +81,7 @@ class JoinRequestResponse(CamelModel):
     role_interest: list[str] | None = None
     job_interest: list[str] | None = None
     availability_note: str | None = None
-    share_discord: bool = True
+    contact_discord: str | None = None
     created_at: str
     updated_at: str
     resolved_at: str | None = None

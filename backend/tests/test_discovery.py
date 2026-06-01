@@ -796,3 +796,20 @@ async def test_sort_by_name(client: AsyncClient, session, test_user: User):
     assert data["total"] == 2
     assert data["items"][0]["name"] == "Alpha Team"
     assert data["items"][1]["name"] == "Zeta Squad"
+
+
+@pytest.mark.asyncio
+async def test_discovery_never_exposes_join_request_data(client: AsyncClient, session, test_user: User):
+    """Discovery endpoint must never expose join request data or requester info."""
+    await create_static_group(
+        session, test_user, name="Listed Static", is_public=True,
+        settings=_discovery_settings(),
+    )
+
+    resp = await client.get(ENDPOINT)
+    assert resp.status_code == 200
+    item = resp.json()["items"][0]
+
+    for field in ["joinRequests", "join_requests", "pendingCount", "pending_count",
+                  "applicants", "requester", "requestCount", "request_count"]:
+        assert field not in item, f"Discovery leaked join request field: {field}"

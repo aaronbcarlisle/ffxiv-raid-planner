@@ -227,10 +227,10 @@ async def test_owner_can_list_requests(
     data = response.json()
     assert data["pendingCount"] == 1
     assert len(data["items"]) == 1
-    # Discord not shared by default — display name falls back to username
     assert data["items"][0]["requester"]["displayName"] == "applicant"
-    assert data["items"][0]["requester"]["discordUsername"] is None
-    assert data["items"][0]["shareDiscord"] is False
+    assert "discordUsername" not in data["items"][0]["requester"]
+    assert "discordAvatar" not in data["items"][0]["requester"]
+    assert "shareDiscord" not in data["items"][0]
 
 
 @pytest.mark.asyncio
@@ -315,11 +315,17 @@ async def test_response_does_not_leak_private_fields(
         headers=applicant_headers,
     )
     data = create_resp.json()
-    # Should not contain discord_id, gear, RSVP, or internal fields
     assert "discordId" not in data
+    assert "discordUsername" not in data
+    assert "discordAvatar" not in data
+    assert "discordDiscriminator" not in data
+    assert "avatarUrl" not in data
+    assert "shareDiscord" not in data
     assert "gear" not in data
     assert "rsvp" not in data
     assert "settings" not in data
+    assert "email" not in data
+    assert "token" not in data
 
 
 @pytest.mark.asyncio
@@ -338,3 +344,160 @@ async def test_list_my_requests(
     data = response.json()
     assert len(data) == 1
     assert data[0]["staticGroupName"] == "Open Static"
+
+
+# --- Privacy tests ---
+
+
+@pytest.mark.asyncio
+async def test_owner_inbox_shows_only_display_name(
+    client: AsyncClient, auth_headers: dict, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Owner inbox must only expose requester display name, not Discord identifiers."""
+    await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Hi"},
+        headers=applicant_headers,
+    )
+
+    response = await client.get(
+        f"/api/static-groups/{public_discoverable_group.id}/join-requests",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    requester = item["requester"]
+
+    assert "displayName" in requester
+    assert requester["displayName"] is not None
+
+    for field in ["discordUsername", "discordAvatar", "discordDiscriminator",
+                  "discordId", "email", "token"]:
+        assert field not in requester, f"Requester leaked private field: {field}"
+
+
+@pytest.mark.asyncio
+async def test_cancel_redacts_personal_data(
+    client: AsyncClient, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Cancelling a request should redact message, availability, and contact Discord."""
+    create_resp = await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Personal info", "availabilityNote": "My schedule", "contactDiscord": "myhandle"},
+        headers=applicant_headers,
+    )
+    request_id = create_resp.json()["id"]
+
+    response = await client.post(
+        f"/api/join-requests/{request_id}/cancel",
+        headers=applicant_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "cancelled"
+    assert data["message"] is None
+    assert data["availabilityNote"] is None
+    assert data["contactDiscord"] is None
+
+
+@pytest.mark.asyncio
+async def test_accept_redacts_personal_data(
+    client: AsyncClient, auth_headers: dict, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Accepting a request should redact message, availability, and contact Discord."""
+    create_resp = await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Hi", "availabilityNote": "Evenings", "contactDiscord": "myhandle"},
+        headers=applicant_headers,
+    )
+    request_id = create_resp.json()["id"]
+
+    response = await client.post(
+        f"/api/join-requests/{request_id}/accept",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "accepted"
+    assert data["message"] is None
+    assert data["availabilityNote"] is None
+    assert data["contactDiscord"] is None
+
+
+@pytest.mark.asyncio
+async def test_decline_redacts_personal_data(
+    client: AsyncClient, auth_headers: dict, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Declining a request should redact message, availability, and contact Discord."""
+    create_resp = await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Personal info", "availabilityNote": "My schedule", "contactDiscord": "myhandle"},
+        headers=applicant_headers,
+    )
+    request_id = create_resp.json()["id"]
+
+    response = await client.post(
+        f"/api/join-requests/{request_id}/decline",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "declined"
+    assert data["message"] is None
+    assert data["availabilityNote"] is None
+    assert data["contactDiscord"] is None
+
+
+@pytest.mark.asyncio
+async def test_contact_discord_visible_while_pending(
+    client: AsyncClient, auth_headers: dict, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Contact Discord handle should be visible to leads while request is pending."""
+    await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Hi", "contactDiscord": "myhandle"},
+        headers=applicant_headers,
+    )
+
+    response = await client.get(
+        f"/api/static-groups/{public_discoverable_group.id}/join-requests",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["contactDiscord"] == "myhandle"
+
+
+@pytest.mark.asyncio
+async def test_contact_discord_optional(
+    client: AsyncClient, applicant_headers: dict,
+    public_discoverable_group: StaticGroup,
+):
+    """Contact Discord is optional — requests without it should work fine."""
+    response = await client.post(
+        f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
+        json={"message": "Hi"},
+        headers=applicant_headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["contactDiscord"] is None
+
+
+@pytest.mark.asyncio
+async def test_join_request_model_has_no_discord_columns(session):
+    """The static_join_requests table must not have Discord-specific columns."""
+    from sqlalchemy import inspect as sa_inspect
+    from app.models import JoinRequest
+
+    mapper = sa_inspect(JoinRequest)
+    column_names = {col.key for col in mapper.columns}
+
+    for forbidden in ["discord_id", "discord_username", "discord_discriminator",
+                      "discord_avatar", "avatar_url", "email", "token",
+                      "access_token", "refresh_token"]:
+        assert forbidden not in column_names, f"Join request model has forbidden column: {forbidden}"

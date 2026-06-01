@@ -51,15 +51,11 @@ def _request_to_response(
 ) -> JoinRequestResponse:
     requester_info = None
     if include_requester and req.requester:
-        share = getattr(req, "share_discord", False)
-        # Always provide a visible name; fall back to discord username
         name = req.requester.display_name or req.requester.discord_username
         requester_info = RequesterInfo(
             id=req.requester.id,
-            discord_username=req.requester.discord_username if share else None,
-            discord_avatar=req.requester.discord_avatar,
-            avatar_url=req.requester.avatar_url,
             display_name=name,
+            avatar_url=req.requester.avatar_url,
         )
 
     return JoinRequestResponse(
@@ -73,7 +69,7 @@ def _request_to_response(
         role_interest=req.role_interest,
         job_interest=req.job_interest,
         availability_note=req.availability_note,
-        share_discord=getattr(req, "share_discord", True),
+        contact_discord=req.contact_discord,
         created_at=req.created_at,
         updated_at=req.updated_at,
         resolved_at=req.resolved_at,
@@ -133,7 +129,7 @@ async def create_join_request(
         role_interest=data.role_interest,
         job_interest=data.job_interest,
         availability_note=data.availability_note,
-        share_discord=data.share_discord,
+        contact_discord=data.contact_discord.strip() if data.contact_discord and data.contact_discord.strip() else None,
         created_at=now,
         updated_at=now,
     )
@@ -188,6 +184,9 @@ async def cancel_join_request(
 
     now = datetime.now(timezone.utc).isoformat()
     join_request.status = "cancelled"
+    join_request.message = None
+    join_request.availability_note = None
+    join_request.contact_discord = None
     join_request.resolved_at = now
     join_request.updated_at = now
 
@@ -266,6 +265,9 @@ async def accept_join_request(
 
     now = datetime.now(timezone.utc).isoformat()
     join_request.status = "accepted"
+    join_request.message = None
+    join_request.availability_note = None
+    join_request.contact_discord = None
     join_request.resolved_at = now
     join_request.resolved_by_user_id = current_user.id
     join_request.updated_at = now
@@ -309,6 +311,9 @@ async def decline_join_request(
 
     now = datetime.now(timezone.utc).isoformat()
     join_request.status = "declined"
+    join_request.message = None
+    join_request.availability_note = None
+    join_request.contact_discord = None
     join_request.resolved_at = now
     join_request.resolved_by_user_id = current_user.id
     join_request.updated_at = now

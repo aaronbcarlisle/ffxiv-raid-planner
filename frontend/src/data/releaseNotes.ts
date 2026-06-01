@@ -117,6 +117,13 @@ export const RELEASES: Release[] = [
           'Owners and leads can review incoming applications in the new Requests tab under static settings. Accept to add as member, or decline. A pending count badge shows unread requests.',
         commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
       },
+      {
+        category: 'improvement',
+        title: 'Privacy-safe applicant handling',
+        description:
+          'Applicants can now provide a temporary Discord handle so the lead can reach them. The handle — along with the message and availability note — is automatically deleted once the request is accepted, declined, or cancelled. No Discord account data from login is ever shared with leads.',
+        commits: [{ hash: 'pending', message: 'fix(privacy): harden join request data exposure', date: '2026-06-02T12:00:00Z' }],
+      },
     ],
   },
   {

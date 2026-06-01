@@ -774,10 +774,8 @@ export type JoinRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled
 
 export interface RequesterInfo {
   id: string;
-  discordUsername: string;
-  discordAvatar?: string;
-  avatarUrl?: string;
   displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface JoinRequest {
@@ -791,7 +789,7 @@ export interface JoinRequest {
   roleInterest?: string[];
   jobInterest?: string[];
   availabilityNote?: string;
-  shareDiscord: boolean;
+  contactDiscord?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -808,7 +806,7 @@ export interface JoinRequestCreatePayload {
   roleInterest?: string[];
   jobInterest?: string[];
   availabilityNote?: string;
-  shareDiscord?: boolean;
+  contactDiscord?: string;
 }
 
 // ==================== Admin Types ====================

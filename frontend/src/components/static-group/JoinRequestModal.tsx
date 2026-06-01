@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Info, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Checkbox } from '../ui/Checkbox';
+import { Input } from '../ui/Input';
 import { TextArea } from '../ui/TextArea';
 import { Label } from '../ui/Label';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
-import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import type { JoinRequestCreatePayload } from '../../types';
 
@@ -44,11 +44,10 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [availabilityNote, setAvailabilityNote] = useState('');
+  const [contactDiscord, setContactDiscord] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shareDiscord, setShareDiscord] = useState(false);
 
   const { createRequest } = useJoinRequestStore();
-  const discordUsername = useAuthStore((s) => s.user?.discordUsername);
 
   const toggleRole = (role: string) =>
     setSelectedRoles((prev) => prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]);
@@ -59,11 +58,12 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const payload: JoinRequestCreatePayload = { shareDiscord };
+      const payload: JoinRequestCreatePayload = {};
       if (selectedRoles.length > 0) payload.roleInterest = selectedRoles;
       if (selectedJobs.length > 0) payload.jobInterest = selectedJobs;
       if (message.trim()) payload.message = message.trim();
       if (availabilityNote.trim()) payload.availabilityNote = availabilityNote.trim();
+      if (contactDiscord.trim()) payload.contactDiscord = contactDiscord.trim();
 
       await createRequest(shareCode, payload);
       toast.success('Request sent! The static lead will review your application.');
@@ -80,7 +80,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
     setSelectedJobs([]);
     setMessage('');
     setAvailabilityNote('');
-    setShareDiscord(true);
+    setContactDiscord('');
     onClose();
   };
 
@@ -112,26 +112,21 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
           roles you can play and when you&apos;re usually available.
         </p>
 
-        {/* Discord sharing opt-in */}
-        <div className="flex items-start gap-2 rounded-md bg-surface-elevated border border-border-default px-3 py-2.5">
-          <Checkbox
-            checked={shareDiscord}
-            onChange={() => setShareDiscord(!shareDiscord)}
-            label={
-              <>
-                Share my Discord{' '}
-                <span className="font-semibold text-text-primary">{discordUsername || ''}</span>{' '}
-                with the static lead
-              </>
-            }
+        <div>
+          <Label htmlFor="join-discord" description="So the lead can reach you. Removed after they respond.">
+            Discord handle
+          </Label>
+          <Input
+            id="join-discord"
+            value={contactDiscord}
+            onChange={setContactDiscord}
+            placeholder="e.g. username"
+            maxLength={100}
           />
-        </div>
-        {!shareDiscord && (
-          <p className="text-xs text-text-muted flex items-start gap-1.5 -mt-2">
-            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            The lead won&apos;t see your Discord — use the message field to arrange how to connect.
+          <p className="text-xs text-text-muted mt-1">
+            Your handle is only visible while the request is pending and is automatically deleted once accepted, declined, or cancelled.
           </p>
-        )}
+        </div>
 
         {/* Role interest - checkboxes */}
         <div>
