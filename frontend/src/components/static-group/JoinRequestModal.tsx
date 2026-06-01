@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Send } from 'lucide-react';
+import { Info, Send } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Checkbox } from '../ui/Checkbox';
 import { TextArea } from '../ui/TextArea';
 import { Label } from '../ui/Label';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
+import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import type { JoinRequestCreatePayload } from '../../types';
 
@@ -46,6 +47,7 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { createRequest } = useJoinRequestStore();
+  const discordUsername = useAuthStore((s) => s.user?.discordUsername);
 
   const toggleRole = (role: string) =>
     setSelectedRoles((prev) => prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]);
@@ -107,6 +109,16 @@ export function JoinRequestModal({ isOpen, onClose, shareCode, staticName }: Joi
           Tell the lead of <span className="font-semibold text-text-primary">{staticName}</span> what
           roles you can play and when you&apos;re usually available.
         </p>
+
+        {/* Discord notice */}
+        <div className="flex items-start gap-2 rounded-md bg-accent/5 border border-accent/20 px-3 py-2">
+          <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+          <p className="text-xs text-text-secondary">
+            Your Discord username{' '}
+            <span className="font-semibold text-text-primary">{discordUsername || 'unknown'}</span>{' '}
+            will be shared with the static lead so they can reach you.
+          </p>
+        </div>
 
         {/* Role interest - checkboxes */}
         <div>

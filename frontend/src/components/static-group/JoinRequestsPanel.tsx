@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock, Inbox, UserPlus, X } from 'lucide-react';
+import { Check, Clock, Copy, Inbox, UserPlus, X } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Toggle } from '../ui/Toggle';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -43,6 +43,15 @@ function RequestCard({
 }) {
   const isPending = request.status === 'pending';
   const requester = request.requester;
+  const [copied, setCopied] = useState(false);
+
+  const discordTag = requester?.discordUsername;
+  const handleCopyDiscord = async () => {
+    if (!discordTag) return;
+    await navigator.clipboard.writeText(discordTag);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-elevated p-4 space-y-3">
@@ -57,8 +66,22 @@ function RequestCard({
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">
-              {requester?.displayName || requester?.discordUsername || 'Unknown User'}
+              {requester?.displayName || discordTag || 'Unknown User'}
             </p>
+            {discordTag && (
+              /* design-system-ignore: compact inline copy button for Discord tag */
+              <button
+                type="button"
+                onClick={handleCopyDiscord}
+                className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover transition-colors group"
+                title={copied ? 'Copied!' : `Copy Discord: ${discordTag}`}
+              >
+                <span className="truncate">{discordTag}</span>
+                {copied
+                  ? <Check className="w-3 h-3 text-status-success shrink-0" />
+                  : <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+              </button>
+            )}
             <p className="text-xs text-text-muted">{formatDate(request.createdAt)}</p>
           </div>
         </div>
