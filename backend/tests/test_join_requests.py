@@ -227,7 +227,10 @@ async def test_owner_can_list_requests(
     data = response.json()
     assert data["pendingCount"] == 1
     assert len(data["items"]) == 1
-    assert data["items"][0]["requester"]["discordUsername"] == "applicant"
+    # Discord not shared by default — display name falls back to username
+    assert data["items"][0]["requester"]["displayName"] == "applicant"
+    assert data["items"][0]["requester"]["discordUsername"] is None
+    assert data["items"][0]["shareDiscord"] is False
 
 
 @pytest.mark.asyncio

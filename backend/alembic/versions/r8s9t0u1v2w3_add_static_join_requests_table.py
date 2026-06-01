@@ -39,10 +39,6 @@ def upgrade() -> None:
                   sa.ForeignKey('users.id'), nullable=True),
         sa.Column('created_at', sa.Text, nullable=False),
         sa.Column('updated_at', sa.Text, nullable=False),
-        sa.UniqueConstraint(
-            'static_group_id', 'requester_user_id',
-            name='uq_one_pending_per_user_per_static',
-        ),
     )
     op.create_index('ix_join_requests_status', 'static_join_requests', ['status'])
 

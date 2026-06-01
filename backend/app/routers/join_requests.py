@@ -51,15 +51,15 @@ def _request_to_response(
 ) -> JoinRequestResponse:
     requester_info = None
     if include_requester and req.requester:
-        share = getattr(req, "share_discord", True)
+        share = getattr(req, "share_discord", False)
+        # Always provide a visible name; fall back to discord username
+        name = req.requester.display_name or req.requester.discord_username
         requester_info = RequesterInfo(
             id=req.requester.id,
             discord_username=req.requester.discord_username if share else None,
             discord_avatar=req.requester.discord_avatar,
             avatar_url=req.requester.avatar_url,
-            display_name=req.requester.display_name or (
-                req.requester.discord_username if not share else None
-            ),
+            display_name=name,
         )
 
     return JoinRequestResponse(

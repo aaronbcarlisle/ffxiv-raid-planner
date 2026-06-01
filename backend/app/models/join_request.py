@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, Index
+from sqlalchemy import ForeignKey, String, Text, Index
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,11 +53,9 @@ class JoinRequest(Base):
     requester: Mapped["User"] = relationship("User", foreign_keys=[requester_user_id])
     resolved_by: Mapped["User | None"] = relationship("User", foreign_keys=[resolved_by_user_id])
 
+    # No DB-level unique constraint — a user may have multiple rows (cancelled,
+    # declined, then a new pending). The router enforces one-pending-at-a-time.
     __table_args__ = (
-        UniqueConstraint(
-            "static_group_id", "requester_user_id",
-            name="uq_one_pending_per_user_per_static",
-        ),
         Index("ix_join_requests_status", "status"),
     )
 

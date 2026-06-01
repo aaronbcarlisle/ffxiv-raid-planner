@@ -66,7 +66,7 @@ class JoinRequestCreate(CamelModel):
 
 class RequesterInfo(CamelModel):
     id: str
-    discord_username: str
+    discord_username: str | None = None
     discord_avatar: str | None = None
     avatar_url: str | None = None
     display_name: str | None = None
