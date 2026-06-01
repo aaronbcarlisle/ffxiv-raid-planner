@@ -788,8 +788,8 @@ export interface JoinRequest {
   requester?: RequesterInfo;
   status: JoinRequestStatus;
   message?: string;
-  roleInterest?: string;
-  jobInterest?: string;
+  roleInterest?: string[];
+  jobInterest?: string[];
   availabilityNote?: string;
   createdAt: string;
   updatedAt: string;
@@ -804,8 +804,8 @@ export interface JoinRequestListResponse {
 
 export interface JoinRequestCreatePayload {
   message?: string;
-  roleInterest?: string;
-  jobInterest?: string;
+  roleInterest?: string[];
+  jobInterest?: string[];
   availabilityNote?: string;
 }
 

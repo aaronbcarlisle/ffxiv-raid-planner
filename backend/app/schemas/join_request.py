@@ -32,23 +32,35 @@ VALID_ROLE_INTERESTS = frozenset({"tank", "healer", "melee", "ranged", "caster"}
 
 class JoinRequestCreate(CamelModel):
     message: str | None = Field(default=None, max_length=500)
-    role_interest: str | None = Field(default=None)
-    job_interest: str | None = Field(default=None)
+    role_interest: list[str] | None = Field(default=None)
+    job_interest: list[str] | None = Field(default=None)
     availability_note: str | None = Field(default=None, max_length=300)
 
     @field_validator("role_interest")
     @classmethod
-    def validate_role_interest(cls, v: str | None) -> str | None:
-        if v is not None and v.lower() not in VALID_ROLE_INTERESTS:
-            raise ValueError(f"Invalid role: {v}. Must be one of: {', '.join(sorted(VALID_ROLE_INTERESTS))}")
-        return v.lower() if v else None
+    def validate_role_interest(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        cleaned = []
+        for role in v:
+            lower = role.lower()
+            if lower not in VALID_ROLE_INTERESTS:
+                raise ValueError(f"Invalid role: {role}. Must be one of: {', '.join(sorted(VALID_ROLE_INTERESTS))}")
+            cleaned.append(lower)
+        return cleaned if cleaned else None
 
     @field_validator("job_interest")
     @classmethod
-    def validate_job_interest(cls, v: str | None) -> str | None:
-        if v is not None and v.lower() not in VALID_JOBS:
-            raise ValueError(f"Invalid job: {v}")
-        return v.lower() if v else None
+    def validate_job_interest(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        cleaned = []
+        for job in v:
+            lower = job.lower()
+            if lower not in VALID_JOBS:
+                raise ValueError(f"Invalid job: {job}")
+            cleaned.append(lower)
+        return cleaned if cleaned else None
 
 
 class RequesterInfo(CamelModel):
@@ -67,8 +79,8 @@ class JoinRequestResponse(CamelModel):
     requester: RequesterInfo | None = None
     status: JoinRequestStatusEnum
     message: str | None = None
-    role_interest: str | None = None
-    job_interest: str | None = None
+    role_interest: list[str] | None = None
+    job_interest: list[str] | None = None
     availability_note: str | None = None
     created_at: str
     updated_at: str

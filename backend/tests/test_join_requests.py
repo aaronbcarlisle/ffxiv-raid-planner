@@ -82,15 +82,15 @@ async def test_create_join_request(
 ):
     response = await client.post(
         f"/api/static-groups/{public_discoverable_group.share_code}/join-requests",
-        json={"message": "I'd like to join!", "roleInterest": "tank", "jobInterest": "war"},
+        json={"message": "I'd like to join!", "roleInterest": ["tank", "healer"], "jobInterest": ["war", "whm"]},
         headers=applicant_headers,
     )
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "pending"
     assert data["message"] == "I'd like to join!"
-    assert data["roleInterest"] == "tank"
-    assert data["jobInterest"] == "war"
+    assert data["roleInterest"] == ["tank", "healer"]
+    assert data["jobInterest"] == ["war", "whm"]
     assert data["staticGroupId"] == public_discoverable_group.id
 
 

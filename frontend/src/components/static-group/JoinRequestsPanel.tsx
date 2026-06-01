@@ -67,20 +67,20 @@ function RequestCard({
         </span>
       </div>
 
-      {(request.roleInterest || request.jobInterest) && (
-        <div className="flex gap-2 flex-wrap">
-          {request.roleInterest && (
-            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-accent/10 text-accent border border-accent/20">
-              {request.roleInterest}
+      {(request.roleInterest?.length || request.jobInterest?.length) ? (
+        <div className="flex gap-1.5 flex-wrap">
+          {request.roleInterest?.map((role) => (
+            <span key={role} className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-accent/10 text-accent border border-accent/20 capitalize">
+              {role}
             </span>
-          )}
-          {request.jobInterest && (
-            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-surface-interactive text-text-secondary border border-border-default">
-              {request.jobInterest.toUpperCase()}
+          ))}
+          {request.jobInterest?.map((job) => (
+            <span key={job} className="inline-flex items-center px-1.5 py-0.5 text-xs rounded-full bg-surface-interactive text-text-secondary border border-border-default font-mono">
+              {job.toUpperCase()}
             </span>
-          )}
+          ))}
         </div>
-      )}
+      ) : null}
 
       {request.message && (
         <p className="text-sm text-text-secondary whitespace-pre-wrap break-words">

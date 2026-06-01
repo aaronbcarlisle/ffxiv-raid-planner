@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text, UniqueConstraint, Index
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -30,8 +31,8 @@ class JoinRequest(Base):
     )
 
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    role_interest: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    job_interest: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    role_interest: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    job_interest: Mapped[list | None] = mapped_column(JSON, nullable=True)
     availability_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     resolved_at: Mapped[str | None] = mapped_column(Text, nullable=True)
