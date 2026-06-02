@@ -396,31 +396,55 @@ function parseReleaseNotes() {
 
   const releasesContent = releasesMatch[1];
 
-  // Find the first release header - match version, date, title, highlights, then parse items separately
+  // Find the first release object — version and date are required; title and
+  // highlights are optional (internal releases often omit them).
   const firstReleaseMatch = releasesContent.match(
-    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]*)?['"]?,?\s*highlights:\s*\[([\s\S]*?)\],\s*items:\s*\[/
+    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"]/
   );
 
   if (!firstReleaseMatch) {
     console.error('Could not parse first release object from RELEASES array');
-    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", title: "Title", highlights: [...], items: [...] }');
+    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", ... }');
     return { currentVersion, latestRelease: null };
   }
 
   const version = firstReleaseMatch[1];
   const date = firstReleaseMatch[2];
-  const title = firstReleaseMatch[3] || '';
 
-  // Parse highlights array
-  const highlightsStr = firstReleaseMatch[4];
+  // Extract the full object text (from the opening { to the matching })
+  const objStartIndex = firstReleaseMatch.index;
+  let objDepth = 0;
+  let objEndIndex = objStartIndex;
+  for (let i = objStartIndex; i < releasesContent.length; i++) {
+    if (releasesContent[i] === '{') objDepth++;
+    else if (releasesContent[i] === '}') {
+      objDepth--;
+      if (objDepth === 0) { objEndIndex = i; break; }
+    }
+  }
+  const objText = releasesContent.substring(objStartIndex, objEndIndex + 1);
+
+  // Parse optional title
+  const titleMatch = objText.match(/title:\s*['"]([^'"]*)['"]/);
+  const title = titleMatch ? titleMatch[1] : '';
+
+  // Parse optional highlights array
   const highlights = [];
-  const highlightMatches = highlightsStr.matchAll(/['"]([^'"]+)['"]/g);
-  for (const match of highlightMatches) {
-    highlights.push(match[1]);
+  const highlightsMatch = objText.match(/highlights:\s*\[/);
+  if (highlightsMatch) {
+    const hlStr = extractArrayContent(objText, highlightsMatch.index + highlightsMatch[0].length - 1);
+    for (const m of hlStr.matchAll(/['"]([^'"]+)['"]/g)) {
+      highlights.push(m[1]);
+    }
   }
 
-  // Extract the items array content by counting brackets
-  const itemsStartIndex = firstReleaseMatch.index + firstReleaseMatch[0].length - 1;
+  // Find items array within this object
+  const itemsMatch = objText.match(/items:\s*\[/);
+  if (!itemsMatch) {
+    console.error('Could not find items array in first release object');
+    return { currentVersion, latestRelease: null };
+  }
+  const itemsStartIndex = objStartIndex + itemsMatch.index + itemsMatch[0].length - 1;
   const itemsStr = extractArrayContent(releasesContent, itemsStartIndex);
   const items = parseReleaseItems(itemsStr);
 
@@ -450,30 +474,55 @@ function parseReleaseNotes() {
 }
 
 /**
- * Check if the release notes file was modified in this commit.
- * Any modification to releaseNotes.ts triggers a release announcement.
- *
- * Trade-off: This approach trades precision for simplicity. We treat any change
- * as a potential new release instead of parsing CURRENT_VERSION, avoiding the
- * previous bug-prone grep logic. Since all changes to main require code review,
- * non-release edits (typo fixes in old notes) can be batched with version bumps
- * or the duplicate announcement is acceptable.
+ * Check if CURRENT_VERSION actually changed between this commit and the
+ * previous one. Only a real version bump should trigger a release announcement;
+ * other edits to the file (adding items, fixing typos) should not.
  */
 function didVersionChange() {
   try {
-    // Get the git root directory to ensure path works from any working directory
     const gitRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
-    const releaseNotesPath = `${gitRoot}/frontend/src/data/releaseNotes.ts`;
+    const releaseNotesRelPath = 'frontend/src/data/releaseNotes.ts';
+    const releaseNotesPath = `${gitRoot}/${releaseNotesRelPath}`;
 
+    // Check if the file changed at all (quick exit)
     const diffOutput = execSync(
       `git diff HEAD~1 --name-only -- "${releaseNotesPath}"`,
       { encoding: 'utf-8' }
     ).trim();
 
-    console.log(`Release notes file changed: ${diffOutput ? 'yes' : 'no'}`);
-    return diffOutput.length > 0;
+    if (!diffOutput) {
+      console.log('Release notes file not changed');
+      return false;
+    }
+
+    // Extract CURRENT_VERSION from HEAD~1
+    let prevVersion = null;
+    try {
+      const prevContent = execSync(
+        `git show HEAD~1:${releaseNotesRelPath}`,
+        { encoding: 'utf-8' }
+      );
+      const match = prevContent.match(/export const CURRENT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+      prevVersion = match ? match[1] : null;
+    } catch {
+      // File didn't exist in previous commit — treat as new version
+      console.log('Release notes file is new in this commit');
+      return true;
+    }
+
+    // Extract CURRENT_VERSION from HEAD
+    const currentContent = execSync(
+      `git show HEAD:${releaseNotesRelPath}`,
+      { encoding: 'utf-8' }
+    );
+    const currentMatch = currentContent.match(/export const CURRENT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    const currentVersion = currentMatch ? currentMatch[1] : null;
+
+    const changed = prevVersion !== currentVersion;
+    console.log(`Version check: ${prevVersion} → ${currentVersion} (changed: ${changed})`);
+    return changed;
   } catch (error) {
-    console.error('Error checking for release notes changes:', error.message);
+    console.error('Error checking for version change:', error.message);
     return false;
   }
 }
