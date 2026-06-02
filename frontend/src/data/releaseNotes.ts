@@ -49,7 +49,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: '1.19.4',
+    version: '1.19.5',
     date: '2026-06-02T12:00:00Z',
     items: [
       {
