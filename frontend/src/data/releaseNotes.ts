@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Sync diagnostics panel',
         description:
-          'The Lodestone sync modal now shows which provider sourced the data (Tomestone or direct), the job the synced gear belongs to, and whether the latest payload actually changed anything. This makes it much easier to tell if a sync is stale or pulling the wrong job\'s gear.',
+          'The Lodestone sync modal now shows which provider sourced the data (Tomestone or direct), the job the synced gear belongs to, and whether the latest payload actually changed anything. This makes it much easier to tell if a sync is stale or pulling gear for the wrong job.',
         commits: [{ hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' }],
       },
       {
@@ -82,7 +82,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Force refresh bypasses sync cache',
         description:
-          'A new "Force refresh" button in the sync modal bypasses the 5-minute preview cache and triggers a fresh Tomestone re-crawl, so you get up-to-date gear data without waiting for the cache to expire.',
+          'A new Force Refresh button in the sync modal bypasses the 5-minute preview cache and triggers a fresh Tomestone re-crawl, so you get up-to-date gear data without waiting for the cache to expire.',
         commits: [
           { hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' },
           { hash: '212350d', message: 'fix(lodestone): trigger Tomestone re-crawl before sync', date: '2026-06-02T13:00:00Z' },
