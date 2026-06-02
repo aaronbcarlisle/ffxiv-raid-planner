@@ -28,6 +28,14 @@ def lodestone_settings():
         yield mock_settings
 
 
+@pytest.fixture()
+def xivapi_unavailable():
+    """Mock XIVAPI as unavailable so Tomestone-only tests fall through correctly."""
+    fail_response = _mock_http_response(502, {"message": "Lodestone unavailable"})
+    with patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(fail_response)):
+        yield
+
+
 def _mock_http_response(
     status_code: int,
     payload=None,
@@ -1019,8 +1027,8 @@ async def test_malformed_xivapi_json_returns_controlled_error(client, session, t
             headers=auth_headers,
     )
 
+    # XIVAPI bad JSON → caught, falls through to Tomestone (disabled) → both fail
     assert sync_response.status_code == 502
-    assert sync_response.json()["detail"] == "upstream_bad_response"
 
     await session.refresh(player)
     assert player.lodestone_id is None

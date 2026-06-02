@@ -997,6 +997,7 @@ async def _fetch_character_payload(
             raise HTTPException(status_code=404, detail="Character not found on Lodestone")
         data = {**data, "__source": "dev_mock"}
     else:
+        # Try Tomestone first (when token configured), fall back to XIVAPI.
         tomestone_data = await _fetch_tomestone_character_payload(lodestone_id, no_cache=no_cache)
         if tomestone_data and (_payload_has_usable_gear(tomestone_data) or not require_usable_gear):
             data = tomestone_data

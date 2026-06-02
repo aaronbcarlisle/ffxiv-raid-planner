@@ -93,11 +93,29 @@ class TomestoneProvider:
             headers["Cache-Control"] = "no-cache"
         return headers
 
+    async def refresh_profile(self, lodestone_id: int) -> bool:
+        """Ask Tomestone to re-crawl a character. Returns True if accepted."""
+        if not self.enabled:
+            return False
+        try:
+            async with httpx.AsyncClient(follow_redirects=False) as client:
+                response = await client.get(
+                    f"{TOMESTONE_BASE_URL}/api/character/profile/{lodestone_id}/refresh",
+                    headers=self._headers(),
+                    timeout=10.0,
+                )
+            return response.status_code == 200
+        except Exception:
+            return False
+
     async def fetch_profile_by_id(
         self, lodestone_id: int, *, no_cache: bool = False,
     ) -> TomestoneProbeResult:
         if not self.enabled:
             return TomestoneProbeResult(provider="tomestone", available=False, error="disabled")
+
+        if no_cache:
+            await self.refresh_profile(lodestone_id)
 
         return await self._fetch_json(
             f"/api/character/profile/{lodestone_id}",
