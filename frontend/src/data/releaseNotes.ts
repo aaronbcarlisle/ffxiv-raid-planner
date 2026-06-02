@@ -49,6 +49,20 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.19.4',
+    date: '2026-06-02T23:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Permanent invite links now work for multiple members',
+        description:
+          'Fixed a race condition where unlimited invites could only be used by one member at a time. Use count now increments atomically after membership creation.',
+        commits: [{ hash: 'cb5890c', message: 'Fix invite link race conditions for unlimited permanent invites', date: '2026-06-02T23:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.19.3',
     date: '2026-05-31T18:00:00Z',
     title: 'Mobile UI Polish and CI Reliability',

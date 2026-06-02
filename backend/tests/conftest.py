@@ -139,6 +139,18 @@ async def test_user_2(session: AsyncSession) -> User:
     )
 
 
+@pytest_asyncio.fixture
+async def test_user_3(session: AsyncSession) -> User:
+    """Create a third test user in the database."""
+    from tests.factories import create_user
+
+    return await create_user(
+        session,
+        discord_id="111111111111111111",
+        discord_username="testuser3",
+    )
+
+
 @pytest.fixture
 def auth_headers(test_user: User) -> dict[str, str]:
     """Get authorization headers for the test user."""
@@ -150,6 +162,13 @@ def auth_headers(test_user: User) -> dict[str, str]:
 def auth_headers_user2(test_user_2: User) -> dict[str, str]:
     """Get authorization headers for the second test user."""
     token = create_access_token(test_user_2.id)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers_user3(test_user_3: User) -> dict[str, str]:
+    """Get authorization headers for the third test user."""
+    token = create_access_token(test_user_3.id)
     return {"Authorization": f"Bearer {token}"}
 
 

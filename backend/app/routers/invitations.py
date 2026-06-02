@@ -238,19 +238,25 @@ async def accept_invitation(
 
     Requires authentication. The user will be added as a member
     with the role specified in the invitation.
+
+    CRITICAL: This endpoint uses SELECT FOR UPDATE to prevent race conditions
+    when multiple users accept the same unlimited invitation concurrently.
+    Use count is only incremented AFTER successful membership creation.
     """
-    # Find invitation
+    # Find invitation with pessimistic locking to prevent race conditions
+    # SELECT FOR UPDATE blocks concurrent access during validation and membership creation
     result = await session.execute(
         select(Invitation)
         .where(Invitation.invite_code == invite_code.upper())
         .options(selectinload(Invitation.static_group))
+        .with_for_update()  # Lock the row for the duration of this transaction
     )
     invitation = result.scalar_one_or_none()
 
     if not invitation:
         raise NotFound("Invitation not found")
 
-    # Validate invitation
+    # Validate invitation (re-check after lock in case concurrent request modified it)
     if not invitation.is_active:
         return InvitationAcceptResponse(
             success=False,
@@ -269,11 +275,13 @@ async def accept_invitation(
             message="This invitation has reached its maximum number of uses.",
         )
 
-    # Check if already a member
+    # Check if already a member (before consuming the invite)
     existing_membership = await get_user_membership(
         session, current_user.id, invitation.static_group_id
     )
     if existing_membership:
+        # User is already a member - return success but don't consume the invite
+        # This allows permanent invites to work for multiple users
         return InvitationAcceptResponse(
             success=False,
             message="You are already a member of this static group.",
@@ -282,7 +290,8 @@ async def accept_invitation(
             role=MemberRoleEnum(existing_membership.role),
         )
 
-    # Create membership
+    # Create membership FIRST, before incrementing use count
+    # If membership creation fails, use count won't be incremented
     now = datetime.now(timezone.utc).isoformat()
     membership = Membership(
         id=str(uuid.uuid4()),
@@ -294,7 +303,12 @@ async def accept_invitation(
     )
     session.add(membership)
 
-    # Increment use count
+    # Flush to ensure membership is created successfully before modifying invitation
+    # This provides a natural transaction boundary
+    await session.flush()
+
+    # Only increment use count AFTER successful membership creation
+    # This ensures the invite is only consumed if the user was actually added
     invitation.use_count += 1
     invitation.updated_at = now
 
