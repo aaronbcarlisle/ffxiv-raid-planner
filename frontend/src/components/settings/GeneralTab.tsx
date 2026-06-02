@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
-import { Label, Input, ErrorBox, Toggle } from '../ui';
+import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -26,6 +26,8 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   const [isPublic, setIsPublic] = useState(group.isPublic);
   const [hideSetupBanners, setHideSetupBanners] = useState(group.settings?.hideSetupBanners ?? false);
   const [hideBisBanners, setHideBisBanners] = useState(group.settings?.hideBisBanners ?? false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(group.settings?.autoSyncEnabled ?? false);
+  const [autoSyncIntervalHours, setAutoSyncIntervalHours] = useState(group.settings?.autoSyncIntervalHours ?? 8);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -40,7 +42,9 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   // Check if settings have changed
   const ownerFieldsChanged = name !== group.name || isPublic !== group.isPublic;
   const leadFieldsChanged = hideSetupBanners !== (group.settings?.hideSetupBanners ?? false) ||
-    hideBisBanners !== (group.settings?.hideBisBanners ?? false);
+    hideBisBanners !== (group.settings?.hideBisBanners ?? false) ||
+    autoSyncEnabled !== (group.settings?.autoSyncEnabled ?? false) ||
+    autoSyncIntervalHours !== (group.settings?.autoSyncIntervalHours ?? 8);
   const hasChanges = ownerFieldsChanged || leadFieldsChanged;
   const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
 
@@ -73,6 +77,8 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
           ...group.settings,
           hideSetupBanners,
           hideBisBanners,
+          autoSyncEnabled,
+          autoSyncIntervalHours,
         };
       }
 
@@ -204,6 +210,39 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         label="Hide BiS banners"
         hint="Hide 'No BiS configured' prompts on player cards"
       />
+
+      {/* Auto-Sync Section */}
+      <div className="border-t border-border-default pt-4">
+        <p className="text-sm font-medium text-text-primary mb-3">Lodestone Auto-Sync</p>
+        <Toggle
+          checked={autoSyncEnabled}
+          onChange={setAutoSyncEnabled}
+          disabled={!canEdit}
+          label="Auto-sync gear"
+          hint="Periodically re-sync Lodestone gear for all linked players in this static"
+        />
+        {autoSyncEnabled && (
+          <div className="mt-3">
+            <Label htmlFor="syncInterval">Sync interval</Label>
+            <Select
+              id="syncInterval"
+              value={String(autoSyncIntervalHours)}
+              onChange={(val) => setAutoSyncIntervalHours(Number(val))}
+              disabled={!canEdit}
+              options={[
+                { value: '4', label: 'Every 4 hours' },
+                { value: '6', label: 'Every 6 hours' },
+                { value: '8', label: 'Every 8 hours (recommended)' },
+                { value: '12', label: 'Every 12 hours' },
+                { value: '24', label: 'Once per day' },
+              ]}
+            />
+            <p className="mt-1 text-xs text-text-muted">
+              Only players with a linked Lodestone character will be synced. Gear is fetched from Lodestone/Tomestone.
+            </p>
+          </div>
+        )}
+      </div>
 
         {/* Share Code */}
         <div>
