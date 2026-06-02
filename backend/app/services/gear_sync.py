@@ -68,6 +68,7 @@ async def sync_player_gear_from_provider(
         lodestone_id,
         require_usable_gear=True,
         dev_error_codes=False,
+        no_cache=True,
     )
     character = data["Character"]
     raw_source = str(data.get("__source") or "xivapi")

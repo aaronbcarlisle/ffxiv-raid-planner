@@ -758,12 +758,14 @@ def _payload_has_usable_gear(data: dict[str, Any]) -> bool:
     )
 
 
-async def _fetch_tomestone_character_payload(lodestone_id: int) -> dict[str, Any] | None:
+async def _fetch_tomestone_character_payload(
+    lodestone_id: int, *, no_cache: bool = False,
+) -> dict[str, Any] | None:
     provider = get_tomestone_provider(settings)
     if not provider.enabled:
         return None
 
-    result = await provider.fetch_profile_by_id(lodestone_id)
+    result = await provider.fetch_profile_by_id(lodestone_id, no_cache=no_cache)
     if not result.available or result.raw is None:
         return None
 
@@ -987,6 +989,7 @@ async def _fetch_character_payload(
     *,
     require_usable_gear: bool,
     dev_error_codes: bool = False,
+    no_cache: bool = False,
 ) -> dict[str, Any]:
     if _is_dev_lodestone_mock_enabled():
         data = MOCK_CHARACTER_PAYLOADS.get(lodestone_id)
@@ -994,7 +997,7 @@ async def _fetch_character_payload(
             raise HTTPException(status_code=404, detail="Character not found on Lodestone")
         data = {**data, "__source": "dev_mock"}
     else:
-        tomestone_data = await _fetch_tomestone_character_payload(lodestone_id)
+        tomestone_data = await _fetch_tomestone_character_payload(lodestone_id, no_cache=no_cache)
         if tomestone_data and (_payload_has_usable_gear(tomestone_data) or not require_usable_gear):
             data = tomestone_data
         else:
@@ -1328,7 +1331,7 @@ async def get_character_gear(
         if cached:
             return CharacterGearResponse(**cached)
 
-    data = await _fetch_character_payload(lodestone_id, require_usable_gear=False, dev_error_codes=True)
+    data = await _fetch_character_payload(lodestone_id, require_usable_gear=False, dev_error_codes=True, no_cache=force_refresh)
     char = data["Character"]
     source = str(data.get("__source") or "xivapi")
     gear_set = char.get("GearSet", {}) if isinstance(char.get("GearSet"), dict) else {}
@@ -1404,6 +1407,7 @@ async def sync_player_gear(
         resolved_lodestone_id,
         require_usable_gear=True,
         dev_error_codes=True,
+        no_cache=True,
     )
     character = data["Character"]
     sync_source = str(data.get("__source") or "xivapi")

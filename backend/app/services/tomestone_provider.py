@@ -84,19 +84,25 @@ class TomestoneProvider:
     def enabled(self) -> bool:
         return bool(self._token)
 
-    def _headers(self) -> dict[str, str]:
-        return {
+    def _headers(self, *, no_cache: bool = False) -> dict[str, str]:
+        headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {self._token}",
         }
+        if no_cache:
+            headers["Cache-Control"] = "no-cache"
+        return headers
 
-    async def fetch_profile_by_id(self, lodestone_id: int) -> TomestoneProbeResult:
+    async def fetch_profile_by_id(
+        self, lodestone_id: int, *, no_cache: bool = False,
+    ) -> TomestoneProbeResult:
         if not self.enabled:
             return TomestoneProbeResult(provider="tomestone", available=False, error="disabled")
 
         return await self._fetch_json(
             f"/api/character/profile/{lodestone_id}",
             log_context={"lookup": "id", "lodestone_id": lodestone_id},
+            no_cache=no_cache,
         )
 
     async def fetch_profile_by_name(self, server: str, name: str) -> TomestoneProbeResult:
@@ -110,11 +116,13 @@ class TomestoneProvider:
             log_context={"lookup": "name", "server": server, "character_name": name},
         )
 
-    async def _fetch_json(self, path: str, *, log_context: dict[str, Any]) -> TomestoneProbeResult:
+    async def _fetch_json(
+        self, path: str, *, log_context: dict[str, Any], no_cache: bool = False,
+    ) -> TomestoneProbeResult:
         url = f"{TOMESTONE_BASE_URL}{path}"
         try:
             async with httpx.AsyncClient(follow_redirects=False) as client:
-                response = await client.get(url, headers=self._headers(), timeout=15.0)
+                response = await client.get(url, headers=self._headers(no_cache=no_cache), timeout=15.0)
         except httpx.TimeoutException:
             logger.warning("tomestone_provider_failed", reason="timeout", path=path, **log_context)
             return TomestoneProbeResult(provider="tomestone", available=False, error="timeout")
