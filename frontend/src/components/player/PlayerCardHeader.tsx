@@ -62,7 +62,7 @@ function getSlotItemLevel(
   return getItemLevelForCategory(tierId, effectiveSource, isWeapon);
 }
 
-function formatLastSync(lastSync?: string): string {
+function formatLastSync(lastSync?: string, syncSource?: string, syncedJob?: string): string {
   if (!lastSync) return 'Lodestone identity linked';
 
   const timestamp = new Date(lastSync).getTime();
@@ -70,14 +70,19 @@ function formatLastSync(lastSync?: string): string {
 
   const diffMs = Date.now() - timestamp;
   const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
-  if (diffMinutes < 1) return 'Synced just now';
-  if (diffMinutes < 60) return `Last synced ${diffMinutes}m ago`;
+  let timeStr: string;
+  if (diffMinutes < 1) timeStr = 'Synced just now';
+  else if (diffMinutes < 60) timeStr = `Last synced ${diffMinutes}m ago`;
+  else {
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) timeStr = `Last synced ${diffHours}h ago`;
+    else timeStr = `Last synced ${Math.floor(diffHours / 24)}d ago`;
+  }
 
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `Last synced ${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  return `Last synced ${diffDays}d ago`;
+  const parts = [timeStr];
+  if (syncSource && syncSource !== 'xivapi') parts.push(`via ${syncSource}`);
+  if (syncedJob) parts.push(`as ${syncedJob}`);
+  return parts.join(' ');
 }
 
 interface PlayerCardHeaderProps {
@@ -369,8 +374,13 @@ export function PlayerCardHeader({
               </p>
               <p className="flex items-center gap-1 text-[11px] text-accent/80" data-testid="lodestone-sync-status">
                 <CheckCircle2 className="h-3 w-3" />
-                {formatLastSync(player.lastSync)}
+                {formatLastSync(player.lastSync, player.lastSyncSource, player.lastSyncedJob)}
               </p>
+              {player.lastSyncedJob && player.job && player.lastSyncedJob.toUpperCase() !== player.job.toUpperCase() && (
+                <p className="text-[11px] text-status-warning" data-testid="lodestone-job-mismatch-warning">
+                  Synced as {player.lastSyncedJob}, player set as {player.job}. Provider may be showing old gear.
+                </p>
+              )}
             </div>
           )}
           {hasRosterPersonalization && (

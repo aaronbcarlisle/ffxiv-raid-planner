@@ -49,6 +49,20 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.19.4',
+    date: '2026-06-02T12:00:00Z',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Gear sync diagnostics and job mismatch warnings',
+        description:
+          'Lodestone sync now shows the provider source, synced job, and warns when synced gear appears to be for a different job than the player slot. A "Force refresh" button bypasses the 5-minute preview cache. Unchanged payloads are flagged so stale upstream data is visible.',
+        commits: [{ hash: 'pending', message: 'feat(lodestone): sync diagnostics and job mismatch warnings', date: '2026-06-02T12:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.19.3',
     date: '2026-05-31T18:00:00Z',
     title: 'Mobile UI Polish and CI Reliability',

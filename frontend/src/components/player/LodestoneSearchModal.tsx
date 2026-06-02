@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Globe, RefreshCw, Search, UserCheck } from 'lucide-react';
+import { AlertTriangle, Globe, RefreshCw, Search, UserCheck } from 'lucide-react';
 import {
   useLodestoneStore,
   type EquippedGearSlot,
   type LodestoneCharacter,
+  type SyncResult,
 } from '../../stores/lodestoneStore';
 import { useTierPlayers, useTierStore } from '../../stores/tierStore';
 import { GEAR_SLOT_NAMES, type GearSlot, type GearSlotStatus } from '../../types';
@@ -92,6 +93,7 @@ function LodestoneSearchModalBody({
   const [manualInputError, setManualInputError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<LodestoneCharacter | null>(null);
+  const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null);
 
   const {
     searchResults,
@@ -233,7 +235,7 @@ function LodestoneSearchModalBody({
     await fetchCharacterGear(parsedId);
   }, [clearErrors, fetchCharacterGear, manualCharacterInput]);
 
-  const handlePreviewLinkedCharacter = useCallback(async () => {
+  const handlePreviewLinkedCharacter = useCallback(async (forceRefresh?: boolean) => {
     if (!linkedLodestoneId) {
       return;
     }
@@ -246,7 +248,7 @@ function LodestoneSearchModalBody({
     });
     setManualInputError(null);
     clearErrors();
-    await fetchCharacterGear(linkedLodestoneId);
+    await fetchCharacterGear(linkedLodestoneId, forceRefresh);
   }, [clearErrors, fetchCharacterGear, linkedLodestoneId, playerName]);
 
   const handleSync = useCallback(async () => {
@@ -256,11 +258,14 @@ function LodestoneSearchModalBody({
 
     try {
       clearErrors();
-      await syncPlayerGear(groupId, playerId, previewTargetId);
+      const result = await syncPlayerGear(groupId, playerId, previewTargetId);
+      setLastSyncResult(result);
       if (tierId) {
         await fetchTier(groupId, tierId);
       }
-      onRequestClose();
+      if (!result.jobMismatchWarning && result.payloadChanged) {
+        onRequestClose();
+      }
     } catch {
       // Store state surfaces the error for the modal.
     }
@@ -404,15 +409,26 @@ function LodestoneSearchModalBody({
                 Lodestone ID: {currentLodestoneId}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void handlePreviewLinkedCharacter()}
-              disabled={isLoadingGear || isSyncing}
-              leftIcon={<RefreshCw className={`h-4 w-4 ${isLoadingGear ? 'animate-spin' : ''}`} />}
-            >
-              Preview linked character
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handlePreviewLinkedCharacter()}
+                disabled={isLoadingGear || isSyncing}
+                leftIcon={<RefreshCw className={`h-4 w-4 ${isLoadingGear ? 'animate-spin' : ''}`} />}
+              >
+                Preview
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handlePreviewLinkedCharacter(true)}
+                disabled={isLoadingGear || isSyncing}
+                data-testid="lodestone-force-refresh-button"
+              >
+                Force refresh
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -710,6 +726,49 @@ function LodestoneSearchModalBody({
                   </Button>
                 </div>
 
+                {lastSyncResult?.jobMismatchWarning && (
+                  <div className="rounded-lg border border-status-warning/30 bg-status-warning/10 p-3" data-testid="lodestone-job-mismatch-warning">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning" />
+                      <div>
+                        <p className="text-sm font-medium text-status-warning">Job mismatch detected</p>
+                        <p className="mt-1 text-xs text-text-secondary">{lastSyncResult.jobMismatchWarning}</p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="mt-2"
+                      onClick={onRequestClose}
+                    >
+                      Close anyway
+                    </Button>
+                  </div>
+                )}
+                {lastSyncResult && !lastSyncResult.payloadChanged && !lastSyncResult.jobMismatchWarning && (
+                  <div className="rounded-lg border border-status-info/30 bg-status-info/10 p-3" data-testid="lodestone-stale-data-notice">
+                    <p className="text-xs text-status-info">
+                      Provider returned the same gear as last sync. Lodestone may still be showing old data.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="mt-2"
+                      onClick={onRequestClose}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                )}
+                {lastSyncResult && (
+                  <p className="text-xs text-text-muted" data-testid="lodestone-sync-metadata">
+                    Source: {lastSyncResult.syncSource}
+                    {lastSyncResult.syncedJob ? ` | Job: ${lastSyncResult.syncedJob}` : ''}
+                    {` | ${lastSyncResult.updatedSlots} slot${lastSyncResult.updatedSlots === 1 ? '' : 's'} updated`}
+                  </p>
+                )}
                 {(syncError || gearError) && previewTargetName && (
                   <p className="text-xs text-text-muted">
                     Preview target: {previewTargetName}

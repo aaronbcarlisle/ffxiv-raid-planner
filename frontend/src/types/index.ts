@@ -663,6 +663,9 @@ export interface SnapshotPlayer {
   bisLink?: string;
   fflogsId?: number;
   lastSync?: string;
+  lastSyncSource?: string;
+  lastSyncedJob?: string;
+  jobMismatchWarning?: string | null;
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
   weaponPriorities: WeaponPriority[];

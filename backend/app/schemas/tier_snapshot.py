@@ -266,6 +266,8 @@ class SnapshotPlayerResponse(CamelModel):
     bis_link: str | None = None
     fflogs_id: int | None = None
     last_sync: str | None = None
+    last_sync_source: str | None = None
+    last_synced_job: str | None = None
     gear: list[GearSlotStatus] = Field(default_factory=list)
     tome_weapon: TomeWeaponStatus = Field(default_factory=TomeWeaponStatus)
     weapon_priorities: list[WeaponPriority] = Field(default_factory=list)
