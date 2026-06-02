@@ -30,6 +30,9 @@ INTER_PLAYER_DELAY_SECONDS = 3.0
 # Maximum players to sync in a single poll cycle (safety cap).
 MAX_PLAYERS_PER_CYCLE = 200
 
+# Skip statics not updated in this many days (no roster/gear/loot activity).
+STALE_GROUP_DAYS = 30
+
 
 def _parse_settings(raw: Any) -> dict[str, Any]:
     """Safely parse the group settings JSON."""
@@ -63,12 +66,20 @@ async def run_auto_sync_cycle() -> None:
         result = await session.execute(select(StaticGroup))
         all_groups = result.scalars().all()
 
+        stale_cutoff = (
+            datetime.now(timezone.utc) - timedelta(days=STALE_GROUP_DAYS)
+        ).isoformat()
+
         opted_in: list[tuple[StaticGroup, int]] = []
         for group in all_groups:
             settings = _parse_settings(group.settings)
-            if settings.get("autoSyncEnabled"):
-                interval = int(settings.get("autoSyncIntervalHours", 8))
-                opted_in.append((group, interval))
+            if not settings.get("autoSyncEnabled"):
+                continue
+            # Skip statics with no activity in STALE_GROUP_DAYS.
+            if group.updated_at and group.updated_at < stale_cutoff:
+                continue
+            interval = int(settings.get("autoSyncIntervalHours", 8))
+            opted_in.append((group, interval))
 
         if not opted_in:
             return
