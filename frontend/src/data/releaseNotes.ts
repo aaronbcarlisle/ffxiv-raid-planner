@@ -49,6 +49,20 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.19.6',
+    date: '2026-06-03T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Discord changelog no longer posts duplicate release announcements',
+        description:
+          'Version detection now compares CURRENT_VERSION between commits instead of triggering on any file edit. The release parser also handles entries that omit title/highlights (internal releases).',
+        commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.19.5',
     date: '2026-06-02T12:00:00Z',
     items: [
