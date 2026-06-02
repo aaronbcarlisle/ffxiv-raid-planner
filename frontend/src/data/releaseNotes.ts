@@ -58,7 +58,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'Automatic Lodestone gear re-sync',
         description:
-          'Owners and leads can enable periodic auto-sync in static settings. Once turned on, every linked player in the static is automatically re-synced on a configurable interval (4–48 hours). The task runs in-process with per-request rate limiting, skips statics that have been inactive for 30+ days, and backs off gracefully on upstream failures.',
+          'Owners and leads can enable periodic auto-sync in static settings. Once turned on, every linked player in the static is automatically re-synced on a configurable interval (4–48 hours). This feature is very experimental — expect bugs! Feedback and bug reports are greatly appreciated.',
         commits: [
           { hash: '57211da', message: 'feat(lodestone): periodic auto-sync background task', date: '2026-06-02T14:00:00Z' },
           { hash: 'bff346b', message: 'fix(auto-sync): skip stale statics inactive for 30+ days', date: '2026-06-02T15:00:00Z' },
