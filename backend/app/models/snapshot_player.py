@@ -61,6 +61,8 @@ class SnapshotPlayer(Base):
     bis_link: Mapped[str | None] = mapped_column(Text, nullable=True)
     fflogs_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     last_sync: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_sync_source: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    last_synced_job: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Gear tracking (JSON arrays/objects)
     gear: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

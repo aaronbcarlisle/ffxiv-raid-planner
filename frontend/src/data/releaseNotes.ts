@@ -49,6 +49,27 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.19.5',
+    date: '2026-06-02T12:00:00Z',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Gear sync diagnostics and job mismatch warnings',
+        description:
+          'Lodestone sync now shows the provider source, synced job, and warns when synced gear appears to be for a different job than the player slot. A "Force refresh" button bypasses the 5-minute preview cache. Unchanged payloads are flagged so stale upstream data is visible.',
+        commits: [{ hash: 'pending', message: 'feat(lodestone): sync diagnostics and job mismatch warnings', date: '2026-06-02T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Automatic Lodestone gear re-sync',
+        description:
+          'Owners and leads can enable periodic auto-sync in static settings. Linked players are automatically re-synced on a configurable interval (4-48 hours). Runs in-process with rate limiting and failure safety.',
+        commits: [{ hash: 'pending', message: 'feat(lodestone): periodic auto-sync background task', date: '2026-06-02T14:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.19.4',
     date: '2026-06-02T23:00:00Z',
     items: [

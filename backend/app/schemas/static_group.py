@@ -203,6 +203,18 @@ class StaticSettingsSchema(CamelModel):
         description="Legacy: enable drought bonus and balance penalty",
     )
 
+    # Auto-sync settings
+    auto_sync_enabled: bool = Field(
+        default=False,
+        description="Periodically re-sync Lodestone gear for linked players",
+    )
+    auto_sync_interval_hours: int = Field(
+        default=8,
+        ge=4,
+        le=48,
+        description="Hours between automatic Lodestone re-syncs (4-48)",
+    )
+
     # New priority system (Phase 2)
     priority_settings: StaticPrioritySettings | None = Field(
         default=None,

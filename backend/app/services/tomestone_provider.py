@@ -84,19 +84,61 @@ class TomestoneProvider:
     def enabled(self) -> bool:
         return bool(self._token)
 
-    def _headers(self) -> dict[str, str]:
-        return {
+    def _headers(self, *, no_cache: bool = False) -> dict[str, str]:
+        headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {self._token}",
         }
+        if no_cache:
+            headers["Cache-Control"] = "no-cache"
+        return headers
 
-    async def fetch_profile_by_id(self, lodestone_id: int) -> TomestoneProbeResult:
+    async def refresh_profile(self, lodestone_id: int, character_name: str | None = None) -> bool:
+        """Ask Tomestone to re-crawl a character. Returns True if accepted."""
+        if not self.enabled:
+            return False
+
+        # Tomestone's refresh lives at the website path, not the API.
+        # It needs the character slug: /character/{id}/{name-slug}/refresh
+        if not character_name:
+            # Fetch the name first so we can build the slug.
+            result = await self.fetch_profile_by_id(lodestone_id)
+            character_name = result.character.get("name") if result.character else None
+        if not character_name:
+            return False
+
+        slug = character_name.strip().lower().replace(" ", "-")
+        try:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                response = await client.get(
+                    f"{TOMESTONE_BASE_URL}/character/{lodestone_id}/{slug}/refresh",
+                    headers=self._headers(),
+                    timeout=15.0,
+                )
+            accepted = response.status_code == 200
+            if accepted:
+                logger.info("tomestone_refresh_triggered", lodestone_id=lodestone_id, slug=slug)
+            return accepted
+        except Exception:
+            return False
+
+    async def fetch_profile_by_id(
+        self, lodestone_id: int, *, no_cache: bool = False,
+    ) -> TomestoneProbeResult:
         if not self.enabled:
             return TomestoneProbeResult(provider="tomestone", available=False, error="disabled")
+
+        if no_cache:
+            refreshed = await self.refresh_profile(lodestone_id)
+            if refreshed:
+                # Give Tomestone a moment to re-crawl before fetching.
+                import asyncio
+                await asyncio.sleep(2)
 
         return await self._fetch_json(
             f"/api/character/profile/{lodestone_id}",
             log_context={"lookup": "id", "lodestone_id": lodestone_id},
+            no_cache=no_cache,
         )
 
     async def fetch_profile_by_name(self, server: str, name: str) -> TomestoneProbeResult:
@@ -110,11 +152,13 @@ class TomestoneProvider:
             log_context={"lookup": "name", "server": server, "character_name": name},
         )
 
-    async def _fetch_json(self, path: str, *, log_context: dict[str, Any]) -> TomestoneProbeResult:
+    async def _fetch_json(
+        self, path: str, *, log_context: dict[str, Any], no_cache: bool = False,
+    ) -> TomestoneProbeResult:
         url = f"{TOMESTONE_BASE_URL}{path}"
         try:
             async with httpx.AsyncClient(follow_redirects=False) as client:
-                response = await client.get(url, headers=self._headers(), timeout=15.0)
+                response = await client.get(url, headers=self._headers(no_cache=no_cache), timeout=15.0)
         except httpx.TimeoutException:
             logger.warning("tomestone_provider_failed", reason="timeout", path=path, **log_context)
             return TomestoneProbeResult(provider="tomestone", available=False, error="timeout")

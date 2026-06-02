@@ -324,6 +324,8 @@ export interface StaticSettings {
   syncFrequency: 'daily' | 'weekly';
   hideSetupBanners?: boolean; // Hide "Unclaimed" banners on player cards
   hideBisBanners?: boolean; // Hide "No BiS configured" banners on player cards
+  autoSyncEnabled?: boolean; // Periodically re-sync Lodestone gear
+  autoSyncIntervalHours?: number; // Hours between auto-syncs (4-48)
   // Legacy priority settings (for backward compatibility)
   priorityMode?: PriorityMode; // Default: 'automatic'
   jobPriorityModifiers?: Record<string, number>; // e.g., { "PCT": +20, "WAR": -10 }
@@ -526,6 +528,8 @@ export interface StaticGroupSettings {
   lootPriority?: string[];
   hideSetupBanners?: boolean;
   hideBisBanners?: boolean;
+  autoSyncEnabled?: boolean;
+  autoSyncIntervalHours?: number;
   // Legacy priority settings (for backward compatibility)
   priorityMode?: PriorityMode;
   jobPriorityModifiers?: Record<string, number>;
@@ -663,6 +667,9 @@ export interface SnapshotPlayer {
   bisLink?: string;
   fflogsId?: number;
   lastSync?: string;
+  lastSyncSource?: string;
+  lastSyncedJob?: string;
+  jobMismatchWarning?: string | null;
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
   weaponPriorities: WeaponPriority[];
