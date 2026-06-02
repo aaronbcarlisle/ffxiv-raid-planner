@@ -63,6 +63,8 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         settings?: {
           hideSetupBanners: boolean;
           hideBisBanners: boolean;
+          autoSyncEnabled: boolean;
+          autoSyncIntervalHours: number;
         };
       } = {};
 
