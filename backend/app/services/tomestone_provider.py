@@ -93,18 +93,32 @@ class TomestoneProvider:
             headers["Cache-Control"] = "no-cache"
         return headers
 
-    async def refresh_profile(self, lodestone_id: int) -> bool:
+    async def refresh_profile(self, lodestone_id: int, character_name: str | None = None) -> bool:
         """Ask Tomestone to re-crawl a character. Returns True if accepted."""
         if not self.enabled:
             return False
+
+        # Tomestone's refresh lives at the website path, not the API.
+        # It needs the character slug: /character/{id}/{name-slug}/refresh
+        if not character_name:
+            # Fetch the name first so we can build the slug.
+            result = await self.fetch_profile_by_id(lodestone_id)
+            character_name = result.character.get("name") if result.character else None
+        if not character_name:
+            return False
+
+        slug = character_name.strip().lower().replace(" ", "-")
         try:
-            async with httpx.AsyncClient(follow_redirects=False) as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(
-                    f"{TOMESTONE_BASE_URL}/api/character/profile/{lodestone_id}/refresh",
+                    f"{TOMESTONE_BASE_URL}/character/{lodestone_id}/{slug}/refresh",
                     headers=self._headers(),
-                    timeout=10.0,
+                    timeout=15.0,
                 )
-            return response.status_code == 200
+            accepted = response.status_code == 200
+            if accepted:
+                logger.info("tomestone_refresh_triggered", lodestone_id=lodestone_id, slug=slug)
+            return accepted
         except Exception:
             return False
 
@@ -115,7 +129,11 @@ class TomestoneProvider:
             return TomestoneProbeResult(provider="tomestone", available=False, error="disabled")
 
         if no_cache:
-            await self.refresh_profile(lodestone_id)
+            refreshed = await self.refresh_profile(lodestone_id)
+            if refreshed:
+                # Give Tomestone a moment to re-crawl before fetching.
+                import asyncio
+                await asyncio.sleep(2)
 
         return await self._fetch_json(
             f"/api/character/profile/{lodestone_id}",
