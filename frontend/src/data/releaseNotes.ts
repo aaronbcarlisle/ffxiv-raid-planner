@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.19.3';
+export const CURRENT_VERSION = '1.19.6';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -51,42 +51,23 @@ export const RELEASES: Release[] = [
   {
     version: '1.19.6',
     date: '2026-06-03T00:00:00Z',
+    title: 'Sync Diagnostics, Invite Fix & Changelog Cleanup',
+    highlights: ['Lodestone sync diagnostics & auto-sync', 'Invite links fixed for permanent use'],
     items: [
-      {
-        category: 'fix',
-        title: 'Discord changelog no longer posts duplicate release announcements',
-        description:
-          'Version detection now compares CURRENT_VERSION between commits instead of triggering on any file edit. The release parser also handles entries that omit title/highlights (internal releases).',
-        commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
-      },
-    ],
-    internal: true,
-  },
-  {
-    version: '1.19.5',
-    date: '2026-06-02T12:00:00Z',
-    items: [
-      {
-        category: 'improvement',
-        title: 'Gear sync diagnostics and job mismatch warnings',
-        description:
-          'Lodestone sync now shows the provider source, synced job, and warns when synced gear appears to be for a different job than the player slot. A "Force refresh" button bypasses the 5-minute preview cache. Unchanged payloads are flagged so stale upstream data is visible.',
-        commits: [{ hash: 'pending', message: 'feat(lodestone): sync diagnostics and job mismatch warnings', date: '2026-06-02T12:00:00Z' }],
-      },
       {
         category: 'feature',
         title: 'Automatic Lodestone gear re-sync',
         description:
-          'Owners and leads can enable periodic auto-sync in static settings. Linked players are automatically re-synced on a configurable interval (4-48 hours). Runs in-process with rate limiting and failure safety.',
-        commits: [{ hash: 'pending', message: 'feat(lodestone): periodic auto-sync background task', date: '2026-06-02T14:00:00Z' }],
+          'Owners and leads can enable periodic auto-sync in static settings. Linked players are automatically re-synced on a configurable interval (4–48 hours). Runs in-process with rate limiting and failure safety.',
+        commits: [{ hash: '57211da', message: 'feat(lodestone): periodic auto-sync background task', date: '2026-06-02T14:00:00Z' }],
       },
-    ],
-    internal: true,
-  },
-  {
-    version: '1.19.4',
-    date: '2026-06-02T23:00:00Z',
-    items: [
+      {
+        category: 'improvement',
+        title: 'Gear sync diagnostics and job mismatch warnings',
+        description:
+          'Lodestone sync now shows the provider source, synced job, and warns when synced gear appears to be for a different job than the player slot. A "Force refresh" button bypasses the 5-minute preview cache.',
+        commits: [{ hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' }],
+      },
       {
         category: 'fix',
         title: 'Permanent invite links now work for multiple members',
@@ -94,8 +75,14 @@ export const RELEASES: Release[] = [
           'Fixed a race condition where unlimited invites could only be used by one member at a time. Use count now increments atomically after membership creation.',
         commits: [{ hash: 'cb5890c', message: 'Fix invite link race conditions for unlimited permanent invites', date: '2026-06-02T23:00:00Z' }],
       },
+      {
+        category: 'fix',
+        title: 'Discord changelog no longer posts duplicate release announcements',
+        description:
+          'Sorry about that! v1.19.3 posted three times because the bot treated any file edit as a new release. Version detection now properly compares the actual version string between commits.',
+        commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
+      },
     ],
-    internal: true,
   },
   {
     version: '1.19.3',
