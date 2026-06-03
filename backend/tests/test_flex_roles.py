@@ -214,3 +214,30 @@ async def test_flex_roles_persist_after_refresh(
     assert refreshed["rosterTitle"] == "Alt job enjoyer"
     assert refreshed["rosterNote"] == "Happy to flex."
     assert refreshed["flexRoles"] == ["R1", "H2"]
+
+
+@pytest.mark.asyncio
+async def test_list_snapshot_players_accepts_uuid_in_tier_path(
+    client: AsyncClient,
+    session: AsyncSession,
+):
+    """Regression: the plugin auto-detect stores the snapshot UUID, not the slug.
+
+    Both `tier.id` (UUID) and `tier.tier_id` (slug) must resolve to the same
+    snapshot. The other tier endpoints already accept both; this guards against
+    the list-players endpoint regressing back to slug-only lookup.
+    """
+    data = await _setup_static(session)
+
+    by_slug = await client.get(
+        f"/api/static-groups/{data['group'].id}/tiers/{data['tier'].tier_id}/players",
+        headers=_headers(data["member"].id),
+    )
+    by_uuid = await client.get(
+        f"/api/static-groups/{data['group'].id}/tiers/{data['tier'].id}/players",
+        headers=_headers(data["member"].id),
+    )
+
+    assert by_slug.status_code == 200
+    assert by_uuid.status_code == 200
+    assert by_slug.json() == by_uuid.json()

@@ -5,20 +5,30 @@ Endpoints for creating, listing, and revoking API keys.
 All endpoints require Discord-authenticated user (existing cookie/JWT auth).
 """
 
+import base64
 import hashlib
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 import structlog
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.dependencies import get_current_user_jwt_only
-from app.models import ApiKey, User
-from app.schemas.api_key import ApiKeyCreate, ApiKeyCreateResponse, ApiKeyResponse
+from app.models import ApiKey, PluginAuthCode, User
+from app.schemas.api_key import (
+    ApiKeyCreate,
+    ApiKeyCreateResponse,
+    ApiKeyResponse,
+    PluginAuthAuthorizeRequest,
+    PluginAuthAuthorizeResponse,
+    PluginAuthExchangeRequest,
+    PluginAuthExchangeResponse,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -164,3 +174,193 @@ async def revoke_api_key(
         key_id=key_id,
         user_id=current_user.id,
     )
+
+
+# ============================================================================
+# Plugin browser sign-in (loopback OAuth + PKCE)
+# ============================================================================
+
+# Authorization codes live for 5 minutes — long enough for a slow user, short
+# enough that a leaked code window is bounded.
+PLUGIN_AUTH_CODE_TTL = timedelta(minutes=5)
+
+# Loopback hosts the redirect_uri is allowed to use. Plugin always picks an
+# ephemeral 127.0.0.1 port; "localhost" is permitted in case a future client
+# resolves differently.
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost"}
+
+
+def _is_loopback_redirect_uri(redirect_uri: str) -> bool:
+    """Return True iff redirect_uri targets http://127.0.0.1[:port]/... or localhost.
+
+    Python's urlparse (RFC 3986) and browsers (WHATWG URL Standard) disagree on a
+    few edge cases an attacker can exploit to make the backend approve a URI the
+    browser then resolves to a different host. We pre-reject those cases:
+
+    - Backslash: browsers normalize ``\\`` to ``/``; ``urlparse`` does not. A URI
+      like ``http://evil.com\\@127.0.0.1/`` would pass our hostname check but
+      navigate to evil.com.
+    - Userinfo (``http://user@127.0.0.1/``): the auth section is ignored on
+      navigation and can disguise the intended target in copy/paste contexts.
+    - Control characters: silently stripped by some browsers.
+    """
+    if "\\" in redirect_uri:
+        return False
+    if any(ord(c) < 0x20 or ord(c) == 0x7F for c in redirect_uri):
+        return False
+    try:
+        parsed = urlparse(redirect_uri)
+    except ValueError:
+        return False
+    if parsed.scheme != "http":
+        return False
+    if parsed.hostname not in _LOOPBACK_HOSTS:
+        return False
+    if parsed.username is not None or parsed.password is not None:
+        return False
+    return True
+
+
+def _base64url_no_pad(data: bytes) -> str:
+    """Base64URL encode without trailing '=' padding (per RFC 7636)."""
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _verify_pkce(code_verifier: str, code_challenge: str) -> bool:
+    """Constant-time check that SHA256(code_verifier) base64url == code_challenge."""
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    expected = _base64url_no_pad(digest)
+    return secrets.compare_digest(expected, code_challenge)
+
+
+@router.post(
+    "/api-keys/plugin-auth/authorize",
+    response_model=PluginAuthAuthorizeResponse,
+    status_code=201,
+)
+async def plugin_auth_authorize(
+    data: PluginAuthAuthorizeRequest,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user_jwt_only),
+):
+    """Mint a one-time code the frontend can hand back to the plugin's loopback URI."""
+    if data.code_challenge_method != "S256":
+        raise HTTPException(status_code=400, detail="code_challenge_method must be S256")
+
+    if not _is_loopback_redirect_uri(data.redirect_uri):
+        raise HTTPException(
+            status_code=400,
+            detail="redirect_uri must be an http://127.0.0.1 or http://localhost URL",
+        )
+
+    raw_code = secrets.token_urlsafe(32)
+    code_hash = hashlib.sha256(raw_code.encode("ascii")).hexdigest()
+    now = datetime.now(timezone.utc)
+    expires_at = (now + PLUGIN_AUTH_CODE_TTL).isoformat()
+
+    record = PluginAuthCode(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        code_hash=code_hash,
+        code_challenge=data.code_challenge,
+        redirect_uri=data.redirect_uri,
+        expires_at=expires_at,
+        used=False,
+        created_at=now.isoformat(),
+    )
+    db.add(record)
+    await db.commit()
+
+    logger.info(
+        "plugin_auth_code_issued",
+        user_id=current_user.id,
+        code_id=record.id,
+        redirect_host=urlparse(data.redirect_uri).hostname,
+    )
+
+    return PluginAuthAuthorizeResponse(code=raw_code)
+
+
+@router.post(
+    "/api-keys/plugin-auth/exchange",
+    response_model=PluginAuthExchangeResponse,
+)
+async def plugin_auth_exchange(
+    data: PluginAuthExchangeRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    """Trade a valid code + PKCE verifier for a newly minted xrp_ API key.
+
+    Unauthenticated by design — possession of the PKCE secret is the proof.
+    """
+    code_hash = hashlib.sha256(data.code.encode("ascii")).hexdigest()
+
+    result = await db.execute(
+        select(PluginAuthCode).where(PluginAuthCode.code_hash == code_hash)
+    )
+    record = result.scalar_one_or_none()
+    if record is None:
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    now = datetime.now(timezone.utc)
+    if record.used:
+        raise HTTPException(status_code=400, detail="Code already used")
+
+    expires_at = datetime.fromisoformat(record.expires_at)
+    if expires_at < now:
+        raise HTTPException(status_code=400, detail="Code expired")
+
+    if not _verify_pkce(data.code_verifier, record.code_challenge):
+        raise HTTPException(status_code=400, detail="PKCE verifier mismatch")
+
+    # Atomic conditional update: only flips used=False → used=True.
+    # Concurrent calls will see rowcount=0 and lose the race gracefully.
+    mark_used = await db.execute(
+        update(PluginAuthCode)
+        .where(PluginAuthCode.id == record.id, PluginAuthCode.used.is_(False))
+        .values(used=True)
+    )
+    if mark_used.rowcount == 0:
+        # Lost the race — another request already marked this code used.
+        raise HTTPException(status_code=400, detail="Code already used")
+
+    # Enforce per-user key limit (same as create_api_key).
+    count_result = await db.execute(
+        select(func.count()).select_from(ApiKey).where(
+            ApiKey.user_id == record.user_id,
+            ApiKey.is_active.is_(True),
+        )
+    )
+    if (count_result.scalar() or 0) >= MAX_KEYS_PER_USER:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum of {MAX_KEYS_PER_USER} active API keys per user",
+        )
+
+    raw_key = _generate_api_key()
+    key_hash = _hash_key(raw_key)
+    key_prefix = raw_key[:12]
+
+    key_id = str(uuid.uuid4())
+    now_iso = now.isoformat()
+    api_key = ApiKey(
+        id=key_id,
+        user_id=record.user_id,
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        name="Plugin browser sign-in",
+        scopes=ALL_SCOPES,
+        is_active=True,
+        created_at=now_iso,
+    )
+    db.add(api_key)
+    await db.commit()
+
+    logger.info(
+        "plugin_auth_code_exchanged",
+        user_id=record.user_id,
+        code_id=record.id,
+        api_key_id=key_id,
+    )
+
+    return PluginAuthExchangeResponse(api_key=raw_key)

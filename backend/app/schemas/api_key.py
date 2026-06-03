@@ -48,3 +48,48 @@ class ApiKeyResponse(CamelModel):
     expires_at: str | None
     is_active: bool
     created_at: str
+
+
+class PluginAuthAuthorizeRequest(CamelModel):
+    """Authenticated request to mint an authorization code for the plugin's loopback flow."""
+
+    redirect_uri: str = Field(..., min_length=1, max_length=2048)
+    state: str = Field(..., min_length=1, max_length=256)
+    code_challenge: str = Field(..., min_length=43, max_length=128)
+    code_challenge_method: str = Field(default="S256", min_length=1, max_length=8)
+
+    @field_validator("code_challenge")
+    @classmethod
+    def must_be_ascii(cls, v: str) -> str:
+        if not v.isascii():
+            raise ValueError("must contain only ASCII characters")
+        return v
+
+
+class PluginAuthAuthorizeResponse(CamelModel):
+    """Returns the one-time code the frontend should append to the loopback redirect."""
+
+    code: str
+
+
+class PluginAuthExchangeRequest(CamelModel):
+    """Unauthenticated request from the plugin's loopback listener.
+
+    Possession of a valid `code` plus the matching PKCE verifier mints an API key.
+    """
+
+    code: str = Field(..., min_length=1, max_length=128)
+    code_verifier: str = Field(..., min_length=43, max_length=128)
+
+    @field_validator("code", "code_verifier")
+    @classmethod
+    def must_be_ascii(cls, v: str) -> str:
+        if not v.isascii():
+            raise ValueError("must contain only ASCII characters")
+        return v
+
+
+class PluginAuthExchangeResponse(CamelModel):
+    """Returns the minted xrp_ API key. Shown ONLY here — never again."""
+
+    api_key: str
