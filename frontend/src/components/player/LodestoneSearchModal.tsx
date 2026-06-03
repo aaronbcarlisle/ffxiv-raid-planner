@@ -467,8 +467,17 @@ function LodestoneSearchModalBody({
           {characterGear?.refreshAttempted && characterGear.refreshStatus && characterGear.refreshStatus !== 'refresh_queued' && (
             <p className="mt-2 text-xs text-status-warning" data-testid="lodestone-refresh-status">
               {characterGear.refreshStatus === 'not_supported'
-                ? 'Automatic Tomestone refresh is not available. Visit the character page on tomestone.gg and click Refresh there.'
-                : 'Tomestone refresh failed. You may need to refresh the character on tomestone.gg directly.'}
+                ? 'Automatic Tomestone refresh is not available. '
+                : 'Tomestone refresh failed. '}
+              <a
+                href={`https://tomestone.gg/character/${currentLodestoneId}/${(characterGear.name || playerName).toLowerCase().replace(/\s+/g, '-')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-accent hover:text-accent/80"
+              >
+                Open on Tomestone
+              </a>
+              {' and click Refresh there.'}
             </p>
           )}
         </div>
