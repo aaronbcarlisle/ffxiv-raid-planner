@@ -186,10 +186,18 @@ export function parseFirstParentLog(stdout) {
  */
 function getReleasePostCommits() {
   try {
+    // RELEASE_NOTES_PATH is repo-root-relative, but this script runs from the
+    // scripts/ working directory, so resolve it against the git root — a bare
+    // relative pathspec would match nothing and silently return zero commits.
+    const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      encoding: 'utf-8',
+    }).trim();
+    const absPath = `${gitRoot}/${RELEASE_NOTES_PATH}`;
+
     // execFileSync (no shell) so the "|" in the format isn't a shell pipe.
     const stdout = execFileSync(
       'git',
-      ['log', '--first-parent', '--format=%H|%cI', '--', RELEASE_NOTES_PATH],
+      ['log', '--first-parent', '--format=%H|%cI', '--', absPath],
       { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
     return parseFirstParentLog(stdout);
