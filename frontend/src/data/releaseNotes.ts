@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.20.0';
+export const CURRENT_VERSION = '1.20.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -49,6 +49,35 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.20.1',
+    date: '2026-06-03T16:00:00Z',
+    title: 'Gear Sync Safety & Tomestone Refresh',
+    highlights: ['Auto-sync safety gates', 'Manual sync overwrite confirmation'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Safer automatic gear sync',
+        description:
+          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, when the provider identity doesn\'t match the linked character, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Manual sync overwrite confirmation',
+        description:
+          'Manually syncing gear now shows a warning and requires confirmation before applying when risky conditions are detected — wrong job, lower item level, incomplete gear, or server/name mismatch. Safe syncs proceed without interruption.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): manual sync destructive overwrite confirmation', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Force refresh & Tomestone link',
+        description:
+          'Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone\'s upstream refresh requires a browser visit, so if data looks stale the app links you directly to the character\'s Tomestone page to click Refresh there. Full Tomestone API integration for automatic refresh is in progress.',
+        commits: [{ hash: 'pending', message: 'fix(tomestone): detect bot gate, link to Tomestone page', date: '2026-06-03T16:00:00Z' }],
+      },
+    ],
+  },
+  {
     version: '1.20.0',
     date: '2026-06-03T12:00:00Z',
     title: 'Plugin browser sign-in',
@@ -60,76 +89,6 @@ export const RELEASES: Release[] = [
         description:
           'The XIV Raid Planner Dalamud plugin can now authenticate via a one-click browser flow. Click "Sign in with browser" in the plugin\'s config window, approve on the web app, and the plugin receives an API key automatically — no more copying and pasting xrp_ tokens. Manual key entry remains available under Advanced for custom or self-hosted servers.',
         commits: [{ hash: 'pending', message: 'feat: add plugin browser sign-in (loopback OAuth + PKCE)' }],
-      },
-    ],
-  },
-  {
-    version: '1.19.6',
-    date: '2026-06-03T00:00:00Z',
-    title: 'Sync Diagnostics, Invite Fix & Changelog Cleanup',
-    highlights: ['Automatic Lodestone gear re-sync', 'Invite links fixed for permanent use'],
-    items: [
-      {
-        category: 'feature',
-        title: 'Automatic Lodestone gear re-sync',
-        description:
-          'Owners and leads can enable periodic auto-sync in static settings. Once turned on, every linked player in the static is automatically re-synced on a configurable interval (4–48 hours). This feature is very experimental — expect bugs! Feedback and bug reports are greatly appreciated.',
-        commits: [
-          { hash: '57211da', message: 'feat(lodestone): periodic auto-sync background task', date: '2026-06-02T14:00:00Z' },
-          { hash: 'bff346b', message: 'fix(auto-sync): skip stale statics inactive for 30+ days', date: '2026-06-02T15:00:00Z' },
-        ],
-      },
-      {
-        category: 'improvement',
-        title: 'Sync diagnostics panel',
-        description:
-          'The Lodestone sync modal now shows which provider sourced the data (Tomestone or direct), the job the synced gear belongs to, and whether the latest payload actually changed anything. This makes it much easier to tell if a sync is stale or pulling gear for the wrong job.',
-        commits: [{ hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' }],
-      },
-      {
-        category: 'improvement',
-        title: 'Job mismatch warnings on gear sync',
-        description:
-          'If Lodestone returns gear that appears to belong to a different job than the player slot (e.g. syncing WAR gear into a WHM slot), a warning badge now appears on the sync preview so you can catch it before confirming.',
-        commits: [{ hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' }],
-      },
-      {
-        category: 'improvement',
-        title: 'Force refresh bypasses sync cache',
-        description:
-          'A new Force Refresh button in the sync modal bypasses the 5-minute preview cache and triggers a fresh Tomestone re-crawl, so you get up-to-date gear data without waiting for the cache to expire.',
-        commits: [
-          { hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' },
-          { hash: '212350d', message: 'fix(lodestone): trigger Tomestone re-crawl before sync', date: '2026-06-02T13:00:00Z' },
-        ],
-      },
-      {
-        category: 'fix',
-        title: 'Permanent invite links now work for multiple members',
-        description:
-          'Fixed a race condition where two people clicking the same unlimited invite at roughly the same time could collide — only one would get in, the other would see an error. The use count now increments atomically after membership creation, so permanent links work reliably no matter how many people join at once.',
-        commits: [{ hash: 'cb5890c', message: 'Fix invite link race conditions for unlimited permanent invites', date: '2026-06-02T23:00:00Z' }],
-      },
-      {
-        category: 'fix',
-        title: 'Discord changelog no longer posts duplicate release announcements',
-        description:
-          'Sorry about that! v1.19.3 posted three times because the changelog bot treated any edit to the release notes file as a brand-new release. Version detection now extracts and compares the actual CURRENT_VERSION string between commits, so only real version bumps trigger an announcement.',
-        commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
-      },
-      {
-        category: 'improvement',
-        title: 'Safer automatic gear sync',
-        description:
-          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
-        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
-      },
-      {
-        category: 'improvement',
-        title: 'Force refresh triggers Tomestone re-crawl',
-        description:
-          'The Force Refresh button now calls the same upstream refresh endpoint that Tomestone\'s own refresh button uses, ensuring you get the freshest possible gear data. If the refresh fails, a helpful message tells you to refresh on Tomestone directly.',
-        commits: [{ hash: 'pending', message: 'fix(tomestone): use correct refresh endpoint', date: '2026-06-03T12:00:00Z' }],
       },
     ],
   },

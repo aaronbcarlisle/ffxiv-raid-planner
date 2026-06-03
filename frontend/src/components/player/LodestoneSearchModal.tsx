@@ -458,7 +458,7 @@ function LodestoneSearchModalBody({
                 onClick={() => void handlePreviewLinkedCharacter(true)}
                 disabled={isLoadingGear || isSyncing}
                 data-testid="lodestone-force-refresh-button"
-                title="Force refresh asks Tomestone to refresh its cached profile, then fetches gear again."
+                title="Bypasses the preview cache and fetches fresh data from Tomestone. If Tomestone's data is stale, you may need to refresh the character on tomestone.gg directly."
               >
                 Force refresh
               </Button>
@@ -466,7 +466,18 @@ function LodestoneSearchModalBody({
           </div>
           {characterGear?.refreshAttempted && characterGear.refreshStatus && characterGear.refreshStatus !== 'refresh_queued' && (
             <p className="mt-2 text-xs text-status-warning" data-testid="lodestone-refresh-status">
-              Tomestone refresh failed or is unavailable. You may need to refresh the character on Tomestone directly.
+              {characterGear.refreshStatus === 'not_supported'
+                ? 'Automatic Tomestone refresh is not available. '
+                : 'Tomestone refresh failed. '}
+              <a
+                href={`https://tomestone.gg/character/${currentLodestoneId}/${(characterGear.name || playerName).toLowerCase().replace(/\s+/g, '-')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-accent hover:text-accent/80"
+              >
+                Open on Tomestone
+              </a>
+              {' and click Refresh there.'}
             </p>
           )}
         </div>
