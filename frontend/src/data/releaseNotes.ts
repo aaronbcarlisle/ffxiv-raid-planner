@@ -102,6 +102,20 @@ export const RELEASES: Release[] = [
           'Sorry about that! v1.19.3 posted three times because the changelog bot treated any edit to the release notes file as a brand-new release. Version detection now extracts and compares the actual CURRENT_VERSION string between commits, so only real version bumps trigger an announcement.',
         commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
       },
+      {
+        category: 'improvement',
+        title: 'Safer automatic gear sync',
+        description:
+          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Force refresh triggers Tomestone re-crawl',
+        description:
+          'The Force Refresh button now calls the same upstream refresh endpoint that Tomestone\'s own refresh button uses, ensuring you get the freshest possible gear data. If the refresh fails, a helpful message tells you to refresh on Tomestone directly.',
+        commits: [{ hash: 'pending', message: 'fix(tomestone): use correct refresh endpoint', date: '2026-06-03T12:00:00Z' }],
+      },
     ],
   },
   {

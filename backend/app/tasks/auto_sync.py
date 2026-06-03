@@ -121,11 +121,22 @@ async def run_auto_sync_cycle() -> None:
                     continue
 
                 try:
-                    await sync_player_gear_from_provider(
+                    result = await sync_player_gear_from_provider(
                         player,
                         lodestone_id,
                         source_prefix="auto_",
+                        is_auto=True,
                     )
+                    if result.skipped:
+                        logger.info(
+                            "auto_sync_player_skipped",
+                            player_id=player.id,
+                            lodestone_id=lodestone_id,
+                            reason=result.skip_reason,
+                            group_id=group.id,
+                        )
+                        skipped += 1
+                        continue
                     await session.flush()
                     synced += 1
                 except Exception as exc:
