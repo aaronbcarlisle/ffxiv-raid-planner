@@ -29,17 +29,22 @@ VERSIONS_DIR = Path(__file__).resolve().parent.parent / "alembic" / "versions"
 #   down_revision = None             and   down_revision: Union[str, None] = "abc"
 _REV_RE = re.compile(r"^revision[^=\n]*=\s*['\"]([^'\"]+)['\"]", re.M)
 _DOWN_RE = re.compile(r"^down_revision[^=\n]*=\s*(None|['\"][^'\"]+['\"])", re.M)
+# Presence of *any* down_revision assignment, so we can tell an explicit
+# `down_revision = None` (a legitimate root) apart from a file that omits the
+# assignment entirely (a mistake we must flag, not silently treat as a root).
+_DOWN_PRESENT_RE = re.compile(r"^down_revision\b\s*[:=]", re.M)
 
 
-def _parse(text: str) -> tuple[str | None, str | None]:
+def _parse(text: str) -> tuple[str | None, str | None, bool]:
     rev = _REV_RE.search(text)
     down = _DOWN_RE.search(text)
     rev_val = rev.group(1) if rev else None
+    down_present = _DOWN_PRESENT_RE.search(text) is not None
     if down is None or down.group(1) == "None":
         down_val = None
     else:
         down_val = down.group(1).strip("'\"")
-    return rev_val, down_val
+    return rev_val, down_val, down_present
 
 
 def main() -> int:
@@ -53,9 +58,16 @@ def main() -> int:
     errors: list[str] = []
 
     for path in files:
-        rev, down = _parse(path.read_text(encoding="utf-8"))
+        rev, down, down_present = _parse(path.read_text(encoding="utf-8"))
         if rev is None:
             errors.append(f"{path.name}: could not parse a `revision` id")
+            continue
+        if not down_present:
+            errors.append(
+                f"{path.name}: no `down_revision` assignment found - every "
+                f"migration needs one (use `down_revision = None` only for the "
+                f"initial migration)"
+            )
             continue
         if rev in revisions:
             errors.append(
@@ -91,8 +103,9 @@ def main() -> int:
             "expected exactly one head, found "
             f"{len(heads)}: {[revisions[h] for h in heads]}. "
             "Two migrations likely share a down_revision - re-parent one so the "
-            "chain is linear (see backend/alembic/README or run "
-            "`alembic heads`)."
+            "chain is linear. Run `alembic heads` (or `alembic history`) from "
+            "backend/ to see the fork, then point one head's down_revision at "
+            "the other so they form a single line."
         )
 
     if errors:
