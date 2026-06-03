@@ -126,9 +126,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
-        title: 'Force refresh triggers Tomestone re-crawl',
+        title: 'Force refresh bypasses preview cache',
         description:
-          'The Force Refresh button now calls the same upstream refresh endpoint that Tomestone\'s own refresh button uses, ensuring you get the freshest possible gear data. If the refresh fails, a helpful message tells you to refresh on Tomestone directly.',
+          'Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone\'s upstream refresh requires a browser visit, so if data looks stale the app now clearly tells you to refresh the character on tomestone.gg directly.',
         commits: [{ hash: 'pending', message: 'fix(tomestone): use correct refresh endpoint', date: '2026-06-03T12:00:00Z' }],
       },
     ],

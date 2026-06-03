@@ -512,6 +512,37 @@ async def test_refresh_does_not_send_api_auth_headers():
     assert "application/json" not in headers.get("Accept", "")
 
 
+@pytest.mark.asyncio
+async def test_refresh_detects_bot_gate_and_returns_not_supported():
+    """When Tomestone returns its human-verification page, report not_supported."""
+    provider = TomestoneProvider(_TomestoneSettings("test-token"))
+    bot_page = (
+        '<html><body><div>Please confirm that you are a human and not a bot</div>'
+        '<button id="cookie-consent-accept">I am a human</button></body></html>'
+    )
+    response = _mock_http_response(200, text=bot_page)
+    client = _mock_http_client(response)
+
+    with patch("app.services.tomestone_provider.httpx.AsyncClient", return_value=client):
+        status = await provider.refresh_character(14112966)
+
+    assert status == "not_supported"
+
+
+@pytest.mark.asyncio
+async def test_refresh_returns_queued_on_real_200():
+    """A real 200 without bot gate content should return refresh_queued."""
+    provider = TomestoneProvider(_TomestoneSettings("test-token"))
+    real_page = '<html><body><p>Character update queued</p></body></html>'
+    response = _mock_http_response(200, text=real_page)
+    client = _mock_http_client(response)
+
+    with patch("app.services.tomestone_provider.httpx.AsyncClient", return_value=client):
+        status = await provider.refresh_character(14112966)
+
+    assert status == "refresh_queued"
+
+
 # ---------------------------------------------------------------------------
 # Auto-sync: Identity mismatch (stale provider data)
 # ---------------------------------------------------------------------------

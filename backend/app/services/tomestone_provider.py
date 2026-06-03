@@ -128,6 +128,18 @@ class TomestoneProvider:
             return "upstream_unavailable"
 
         if response.status_code == 200:
+            # Tomestone gates the update endpoint behind a human-verification
+            # cookie ("tomestone_human_verified").  When that cookie is absent
+            # the server still returns 200 but with a bot-check page instead
+            # of actually queuing a refresh.  Detect this so callers don't
+            # mistakenly believe a refresh was triggered.
+            body = response.text.lower()
+            if "human" in body and "bot" in body and "cookie" in body:
+                logger.info(
+                    "tomestone_refresh_blocked_bot_gate",
+                    lodestone_id=lodestone_id,
+                )
+                return "not_supported"
             logger.info("tomestone_refresh_triggered", lodestone_id=lodestone_id)
             return "refresh_queued"
         if response.status_code == 429:
