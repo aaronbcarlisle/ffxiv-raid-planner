@@ -29,6 +29,7 @@
  */
 
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import { execFileSync } from 'child_process';
 import { fetchCommitAuthor, buildEmbedAuthor } from './discord-changelog.js';
 
 const DEFAULT_SINCE_SHA = '45760f6'; // "Add schedule availability... (#83)" — first contributor merge
@@ -149,36 +150,55 @@ async function fetchCommitDate(sha, repository, headers) {
 }
 
 /**
- * Fetch the main-branch commits that touched releaseNotes.ts (newest first),
- * each as { sha, timestampMs }. These are the commits that posted release
- * embeds, used to time-match a release embed back to its triggering commit.
- * Returns [] on failure so release embeds are simply left unchanged.
+ * Parse `git log` output of "<sha>|<iso-date>" lines into { sha, timestampMs },
+ * dropping blank or malformed lines. Pure — unit-tested without git.
  */
-async function fetchReleaseNotesCommits(repository, headers) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS);
+export function parseFirstParentLog(stdout) {
+  if (!stdout) return [];
+  const out = [];
+  for (const line of stdout.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const sep = trimmed.indexOf('|');
+    if (sep === -1) continue;
+    const sha = trimmed.slice(0, sep).trim();
+    const ms = Date.parse(trimmed.slice(sep + 1).trim());
+    if (!sha || Number.isNaN(ms)) continue;
+    out.push({ sha, timestampMs: ms });
+  }
+  return out;
+}
+
+/**
+ * The commits that actually triggered release-embed posts: main's FIRST-PARENT
+ * commits whose own push diff changed releaseNotes.ts. These are the github.sha
+ * values the changelog workflow posted under — the same author the going-forward
+ * code now attributes to.
+ *
+ * Crucially this is NOT `GET /commits?path=releaseNotes.ts` (the GitHub API
+ * can't filter to first parent): that also returns feature-branch commits that
+ * edited the file inside a PR, which would mis-attribute a release to whoever
+ * wrote an intermediate commit rather than to the merge that was pushed to main.
+ *
+ * Uses local git (the workflow checks out full history), mirroring the
+ * git-based detection already in discord-changelog.js. Returns [] on failure so
+ * release embeds are left unchanged.
+ */
+function getReleasePostCommits() {
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${repository}/commits?path=${encodeURIComponent(RELEASE_NOTES_PATH)}&per_page=100`,
-      { headers, signal: controller.signal }
+    // execFileSync (no shell) so the "|" in the format isn't a shell pipe.
+    const stdout = execFileSync(
+      'git',
+      ['log', '--first-parent', '--format=%H|%cI', '--', RELEASE_NOTES_PATH],
+      { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
-    if (!res.ok) {
-      console.warn(`Could not list release-notes commits (HTTP ${res.status}); release embeds will be left unchanged`);
-      return [];
-    }
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data
-      .map((entry) => {
-        const date = entry?.commit?.committer?.date || entry?.commit?.author?.date;
-        return date ? { sha: entry.sha, timestampMs: new Date(date).getTime() } : null;
-      })
-      .filter(Boolean);
+    return parseFirstParentLog(stdout);
   } catch (error) {
-    console.warn(`Could not list release-notes commits: ${error.message}; release embeds will be left unchanged`);
+    console.warn(
+      `Could not list first-parent release commits via git: ${error.message}; ` +
+      `release embeds will be left unchanged (is the checkout shallow? need fetch-depth: 0)`
+    );
     return [];
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -267,10 +287,10 @@ async function main() {
   const sinceTimestamp = sinceDate ? new Date(sinceDate).getTime() - SINCE_BOUND_SKEW_MS : null;
   console.log(`Date bound: ${sinceDate ? `>= ${sinceDate} (−${SINCE_BOUND_SKEW_MS / 60000}m skew)` : 'none (scanning up to the message cap)'}`);
 
-  // Release embeds carry no SHA; we time-match them to the releaseNotes.ts
-  // commit that triggered each post to find the right author.
-  const releaseCommits = await fetchReleaseNotesCommits(repository, githubHeaders);
-  console.log(`Loaded ${releaseCommits.length} releaseNotes.ts commit(s) for matching release embeds.`);
+  // Release embeds carry no SHA; we time-match them to the first-parent commit
+  // (the pushed github.sha) that triggered each post to find the right author.
+  const releaseCommits = getReleasePostCommits();
+  console.log(`Loaded ${releaseCommits.length} first-parent release commit(s) for matching release embeds.`);
 
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
