@@ -96,6 +96,11 @@ class TomestoneProvider:
     async def refresh_character(self, lodestone_id: int) -> str:
         """Ask Tomestone to re-crawl a character.
 
+        The /character/update/{id} endpoint is a website action (not an API
+        endpoint). It must be called with browser-like headers — sending the
+        API Bearer token or Accept: application/json causes it to fail or
+        return the wrong response.
+
         Returns a status string: refreshed, refresh_queued, not_supported,
         upstream_unavailable, rate_limited, forbidden, bad_response.
         """
@@ -103,11 +108,16 @@ class TomestoneProvider:
             return "not_supported"
 
         url = f"{TOMESTONE_BASE_URL}/character/update/{lodestone_id}"
+        # Browser-like headers — this is a website endpoint, not the API.
+        refresh_headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "User-Agent": "ffxiv-raid-planner/gear-sync",
+        }
         try:
             async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(
                     url,
-                    headers=self._headers(),
+                    headers=refresh_headers,
                     timeout=15.0,
                 )
         except httpx.TimeoutException:

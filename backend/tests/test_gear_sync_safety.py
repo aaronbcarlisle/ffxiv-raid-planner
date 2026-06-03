@@ -496,6 +496,22 @@ async def test_refresh_uses_correct_url():
     assert call_args[0][0] == "https://tomestone.gg/character/update/14112966"
 
 
+@pytest.mark.asyncio
+async def test_refresh_does_not_send_api_auth_headers():
+    """The refresh endpoint is a website action, not API — must not send Bearer token."""
+    provider = TomestoneProvider(_TomestoneSettings("test-token"))
+    response = _mock_http_response(200)
+    client = _mock_http_client(response)
+
+    with patch("app.services.tomestone_provider.httpx.AsyncClient", return_value=client):
+        await provider.refresh_character(14112966)
+
+    _, kwargs = client.get.call_args
+    headers = kwargs.get("headers", {})
+    assert "Authorization" not in headers
+    assert "application/json" not in headers.get("Accept", "")
+
+
 # ---------------------------------------------------------------------------
 # Auto-sync: Identity mismatch (stale provider data)
 # ---------------------------------------------------------------------------
