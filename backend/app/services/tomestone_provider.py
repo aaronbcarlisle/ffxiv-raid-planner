@@ -93,45 +93,52 @@ class TomestoneProvider:
             headers["Cache-Control"] = "no-cache"
         return headers
 
-    async def refresh_profile(self, lodestone_id: int, character_name: str | None = None) -> bool:
-        """Ask Tomestone to re-crawl a character. Returns True if accepted."""
+    async def refresh_character(self, lodestone_id: int) -> str:
+        """Ask Tomestone to re-crawl a character.
+
+        Returns a status string: refreshed, refresh_queued, not_supported,
+        upstream_unavailable, rate_limited, forbidden, bad_response.
+        """
         if not self.enabled:
-            return False
+            return "not_supported"
 
-        # Tomestone's refresh lives at the website path, not the API.
-        # It needs the character slug: /character/{id}/{name-slug}/refresh
-        if not character_name:
-            # Fetch the name first so we can build the slug.
-            result = await self.fetch_profile_by_id(lodestone_id)
-            character_name = result.character.get("name") if result.character else None
-        if not character_name:
-            return False
-
-        slug = character_name.strip().lower().replace(" ", "-")
+        url = f"{TOMESTONE_BASE_URL}/character/update/{lodestone_id}"
         try:
             async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(
-                    f"{TOMESTONE_BASE_URL}/character/{lodestone_id}/{slug}/refresh",
+                    url,
                     headers=self._headers(),
                     timeout=15.0,
                 )
-            accepted = response.status_code == 200
-            if accepted:
-                logger.info("tomestone_refresh_triggered", lodestone_id=lodestone_id, slug=slug)
-            return accepted
-        except Exception:
-            return False
+        except httpx.TimeoutException:
+            logger.warning("tomestone_refresh_failed", lodestone_id=lodestone_id, reason="timeout")
+            return "upstream_unavailable"
+        except httpx.RequestError as exc:
+            logger.warning("tomestone_refresh_failed", lodestone_id=lodestone_id, reason=exc.__class__.__name__)
+            return "upstream_unavailable"
+
+        if response.status_code == 200:
+            logger.info("tomestone_refresh_triggered", lodestone_id=lodestone_id)
+            return "refresh_queued"
+        if response.status_code == 429:
+            logger.warning("tomestone_refresh_failed", lodestone_id=lodestone_id, reason="rate_limited", status_code=429)
+            return "rate_limited"
+        if response.status_code in {401, 403}:
+            logger.warning("tomestone_refresh_failed", lodestone_id=lodestone_id, reason="forbidden", status_code=response.status_code)
+            return "forbidden"
+
+        logger.warning("tomestone_refresh_failed", lodestone_id=lodestone_id, reason="bad_response", status_code=response.status_code)
+        return "bad_response"
 
     async def fetch_profile_by_id(
-        self, lodestone_id: int, *, no_cache: bool = False,
+        self, lodestone_id: int, *, no_cache: bool = False, skip_refresh: bool = False,
     ) -> TomestoneProbeResult:
         if not self.enabled:
             return TomestoneProbeResult(provider="tomestone", available=False, error="disabled")
 
-        if no_cache:
-            refreshed = await self.refresh_profile(lodestone_id)
-            if refreshed:
-                # Give Tomestone a moment to re-crawl before fetching.
+        if no_cache and not skip_refresh:
+            refresh_status = await self.refresh_character(lodestone_id)
+            if refresh_status == "refresh_queued":
                 import asyncio
                 await asyncio.sleep(2)
 

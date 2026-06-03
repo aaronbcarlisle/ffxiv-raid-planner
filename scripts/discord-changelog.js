@@ -323,18 +323,71 @@ function summarizeBody(body, maxLength) {
  * Parse release items from a release block
  * Extracts category, title, and description from each item
  */
+/**
+ * Extract a quoted string starting at position `start` in `text`.
+ * Handles escaped quotes (e.g. \' inside '...') and mixed quote types
+ * (e.g. "Force refresh" inside '...' doesn't terminate the string).
+ * Returns { value, end } where end is the index after the closing quote,
+ * or null if no quoted string starts at `start`.
+ */
+function extractQuotedString(text, start) {
+  // Skip whitespace/newlines to find the opening quote
+  let i = start;
+  while (i < text.length && /\s/.test(text[i])) i++;
+  const quote = text[i];
+  if (quote !== "'" && quote !== '"') return null;
+  i++; // skip opening quote
+
+  let value = '';
+  while (i < text.length) {
+    if (text[i] === '\\' && i + 1 < text.length) {
+      // Escaped character — include the unescaped version
+      value += text[i + 1];
+      i += 2;
+    } else if (text[i] === quote) {
+      // Matching closing quote found
+      return { value, end: i + 1 };
+    } else {
+      value += text[i];
+      i++;
+    }
+  }
+  return null; // unterminated string
+}
+
 function parseReleaseItems(itemsContent) {
   const items = [];
 
-  // Match each item object - look for category, title, and optional description
-  // Pattern captures category, title, and optionally description
-  const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"](?:,\s*description:\s*['"]([^'"]*?)['"])?/g;
-  let match;
-  while ((match = itemPattern.exec(itemsContent)) !== null) {
+  // Find each item by matching `{ category:` then extracting fields with
+  // quote-aware parsing. This handles escaped quotes (\') and mixed quote
+  // types ("text" inside '...') that a single regex cannot.
+  const categoryStart = /\{\s*category:\s*/g;
+  let catMatch;
+  while ((catMatch = categoryStart.exec(itemsContent)) !== null) {
+    const catStr = extractQuotedString(itemsContent, catMatch.index + catMatch[0].length);
+    if (!catStr) continue;
+
+    // Look for title: after category value
+    const afterCat = itemsContent.substring(catStr.end);
+    const titleKey = afterCat.match(/^,\s*title:\s*/);
+    if (!titleKey) continue;
+    const titleStr = extractQuotedString(afterCat, titleKey[0].length);
+    if (!titleStr) continue;
+
+    // Look for optional description: after title value
+    // titleStr.end is absolute in afterCat (not relative to start param)
+    let description = null;
+    const afterTitle = afterCat.substring(titleStr.end);
+    const descKey = afterTitle.match(/^,\s*description:\s*/);
+    if (descKey) {
+      const descStr = extractQuotedString(afterTitle, descKey[0].length);
+      if (descStr) description = descStr.value;
+    }
+
     items.push({
-      category: match[1],
-      title: match[2],
-      description: match[3] || null,
+      category: catStr.value,
+      title: titleStr.value,
+      description,
     });
   }
 

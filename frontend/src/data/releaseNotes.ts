@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Sync diagnostics panel',
         description:
-          'The Lodestone sync modal now shows which provider sourced the data (Tomestone or direct), the job the synced gear belongs to, and whether the latest payload actually changed anything. This makes it much easier to tell if a sync is stale or pulling the wrong job\'s gear.',
+          'The Lodestone sync modal now shows which provider sourced the data (Tomestone or direct), the job the synced gear belongs to, and whether the latest payload actually changed anything. This makes it much easier to tell if a sync is stale or pulling gear for the wrong job.',
         commits: [{ hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' }],
       },
       {
@@ -82,7 +82,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Force refresh bypasses sync cache',
         description:
-          'A new "Force refresh" button in the sync modal bypasses the 5-minute preview cache and triggers a fresh Tomestone re-crawl, so you get up-to-date gear data without waiting for the cache to expire.',
+          'A new Force Refresh button in the sync modal bypasses the 5-minute preview cache and triggers a fresh Tomestone re-crawl, so you get up-to-date gear data without waiting for the cache to expire.',
         commits: [
           { hash: '90ef461', message: 'feat(lodestone): sync diagnostics, job mismatch warnings, force refresh', date: '2026-06-02T12:00:00Z' },
           { hash: '212350d', message: 'fix(lodestone): trigger Tomestone re-crawl before sync', date: '2026-06-02T13:00:00Z' },
@@ -101,6 +101,20 @@ export const RELEASES: Release[] = [
         description:
           'Sorry about that! v1.19.3 posted three times because the changelog bot treated any edit to the release notes file as a brand-new release. Version detection now extracts and compares the actual CURRENT_VERSION string between commits, so only real version bumps trigger an announcement.',
         commits: [{ hash: 'pending', message: 'fix(discord): compare CURRENT_VERSION to prevent duplicate release posts', date: '2026-06-03T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Safer automatic gear sync',
+        description:
+          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Force refresh triggers Tomestone re-crawl',
+        description:
+          'The Force Refresh button now calls the same upstream refresh endpoint that Tomestone\'s own refresh button uses, ensuring you get the freshest possible gear data. If the refresh fails, a helpful message tells you to refresh on Tomestone directly.',
+        commits: [{ hash: 'pending', message: 'fix(tomestone): use correct refresh endpoint', date: '2026-06-03T12:00:00Z' }],
       },
     ],
   },

@@ -34,6 +34,8 @@ export interface CharacterGear {
   gearAvailable: boolean;
   identityOnly: boolean;
   source: string;
+  refreshAttempted?: boolean;
+  refreshStatus?: string | null;
 }
 
 export interface SyncResult {
@@ -49,6 +51,9 @@ export interface SyncResult {
   syncedJob: string | null;
   payloadChanged: boolean;
   jobMismatchWarning: string | null;
+  refreshAttempted?: boolean;
+  refreshStatus?: string | null;
+  warnings?: string[];
 }
 
 export interface IdentityLinkResult {
