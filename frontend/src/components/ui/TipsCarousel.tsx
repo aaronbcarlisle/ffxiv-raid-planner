@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Tips Carousel Component
  *

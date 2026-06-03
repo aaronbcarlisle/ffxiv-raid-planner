@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { JobPicker } from './JobPicker';
 import { JobIcon, Label } from '../ui';

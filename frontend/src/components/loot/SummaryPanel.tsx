@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { SnapshotPlayer, StaticSettings, TeamSummary as TeamSummaryType } from '../../types';

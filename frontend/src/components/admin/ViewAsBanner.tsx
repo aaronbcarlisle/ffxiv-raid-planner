@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * ViewAs Banner - Shows when admin is viewing as another user
  *

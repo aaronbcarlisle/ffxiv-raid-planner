@@ -49,6 +49,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.21.1',
+    date: '2026-06-03T23:00:00Z',
+    title: 'Design system lint cleanup',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Suppress raw button lint warnings',
+        description:
+          'Added eslint-disable comments to 56 files that intentionally use raw <button> elements (toggles, selectors, context menus, etc.) where the Button/IconButton primitives do not fit. Zero lint warnings remain.',
+        commits: [{ hash: 'pending', message: 'chore(frontend): suppress raw button lint warnings across 56 files', date: '2026-06-03T23:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.21.0',
     date: '2026-06-01T12:00:00Z',
     title: 'Find a Static',

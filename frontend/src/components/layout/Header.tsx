@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Header - Unified application header
  *

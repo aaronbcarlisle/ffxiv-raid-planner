@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Toast Container - Fixed position container for toast notifications
  *

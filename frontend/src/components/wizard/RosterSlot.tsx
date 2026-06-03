@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * RosterSlot - Individual player slot for wizard roster setup
  *

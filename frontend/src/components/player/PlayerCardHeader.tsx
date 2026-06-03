@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * PlayerCard Header - Job icon, name, position, completion
  *

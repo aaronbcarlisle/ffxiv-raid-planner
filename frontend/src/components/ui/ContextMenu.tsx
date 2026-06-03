@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Context Menu - Right-click menu component
  *

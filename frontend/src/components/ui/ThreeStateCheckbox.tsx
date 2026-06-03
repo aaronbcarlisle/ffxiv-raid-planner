@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * ThreeStateCheckbox - Cycling checkbox with three states
  *

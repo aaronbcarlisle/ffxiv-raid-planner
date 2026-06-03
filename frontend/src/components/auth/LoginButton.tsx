@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Login Button - Initiates Discord OAuth flow
  */

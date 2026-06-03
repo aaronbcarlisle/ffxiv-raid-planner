@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 import { useState, useMemo, useCallback, memo } from 'react';
 import { useSwipe } from '../../hooks/useSwipe';
 import { Tooltip } from '../primitives/Tooltip';

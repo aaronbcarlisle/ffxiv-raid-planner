@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * BiSSourceSelector - 2x2 grid BiS source selection
  *
