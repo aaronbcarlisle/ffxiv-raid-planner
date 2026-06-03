@@ -52,6 +52,26 @@ jobs:
       - name: Build
         run: pnpm build
 
+  migrations:
+    name: Migration Graph Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Fails the PR if the Alembic chain has multiple heads, a dangling
+      # down_revision, or duplicate ids - the recurring cause of Railway
+      # deploy failures ("Multiple head revisions are present"). Pure stdlib,
+      # no database or dependencies required.
+      - name: Check single migration head
+        run: python backend/scripts/check_migration_heads.py
+
   scripts:
     name: Scripts Tests
     runs-on: ubuntu-latest
