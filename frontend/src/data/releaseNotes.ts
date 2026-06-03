@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.21.0';
+export const CURRENT_VERSION = '1.21.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,35 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.21.2',
+    date: '2026-06-04T00:00:00Z',
+    title: 'Availability timetable redesign',
+    highlights: ['Time range presets', 'Sticky headers & section dividers'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Time range presets',
+        description:
+          'The availability grid now offers three preset views: Prime Raid Time (6 PM – 2 AM), Evening (4 PM – midnight), and Full Day (all 24 hours). Prime raid time is the default — no more scrolling past morning hours to mark your evening availability.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): time range preset chips for availability grid', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Sticky headers & section dividers',
+        description:
+          'Weekday/date column headers stick to the top while scrolling through the full-day view. Time-of-day section dividers (Morning, Afternoon, Evening, Late Night) provide visual anchoring. The prime preset shows an "After Midnight (+1 day)" divider at the midnight crossing.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): sticky headers and time-of-day section dividers', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Hidden slots indicator',
+        description:
+          'When using a filtered preset, a warning badge shows how many of your selected slots are in hidden hours — one click to expand to full day.',
+        commits: [{ hash: 'pending', message: 'feat(schedule): hidden hours indicator badge', date: '2026-06-04T00:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.21.1',
     date: '2026-06-03T23:00:00Z',
