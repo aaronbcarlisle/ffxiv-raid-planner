@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3, MousePointer2, RefreshCw, Users } from 'lucide-react';
+import { Clock3, Eye, Moon, MousePointer2, RefreshCw, Sun, Sunrise, Sunset, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -17,14 +17,18 @@ import {
   DAY_FULL_LABELS,
   DAY_LABELS,
   DAYS_OF_WEEK,
+  filterSlotsByPreset,
   formatDateHeader,
   formatHoveredSlotLabel,
   formatTimeLabel,
   getNextNDates,
   getScheduleReferenceTimezone,
   getUtcDateRange,
+  isSlotInPreset,
   localSlotsToUtcMap,
+  TIME_PRESETS,
   TIME_SLOTS,
+  type TimePreset,
 } from './availabilityUtils';
 
 type AvailabilityMode = 'this-week' | 'typical-week';
@@ -78,6 +82,18 @@ export function AvailabilityGrid({
   const [durationMinutes, setDurationMinutes] = useState(120);
   const localTimezone = getBrowserTimezone();
   const canEditAvailability = canSubmit && !!user;
+
+  const PRESET_STORAGE_KEY = 'schedule-time-preset';
+  const [timePreset, setTimePreset] = useState<TimePreset>(() => {
+    const saved = localStorage.getItem(PRESET_STORAGE_KEY);
+    if (saved === 'prime' || saved === 'evening' || saved === 'full') return saved;
+    return 'prime';
+  });
+  const primeStartRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+
+  const filteredTimeSlots = useMemo(() => filterSlotsByPreset(timePreset), [timePreset]);
 
   const isSelectingRef = useRef(false);
   const selectModeRef = useRef<'add' | 'remove'>('add');
@@ -280,6 +296,29 @@ export function AvailabilityGrid({
 
   const columns = mode === 'typical-week' ? DAYS_OF_WEEK : dates;
 
+  const hiddenSlotCount = useMemo(() => {
+    if (timePreset === 'full') return 0;
+    let count = 0;
+    for (const col of columns) {
+      for (const time of TIME_SLOTS) {
+        if (!isSlotInPreset(time, timePreset) && activeUserSlots.has(`${col}|${time}`)) count++;
+      }
+    }
+    return count;
+  }, [timePreset, columns, activeUserSlots]);
+
+  const handlePresetChange = (next: TimePreset) => {
+    setTimePreset(next);
+    localStorage.setItem(PRESET_STORAGE_KEY, next);
+    if (next === 'full') {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          primeStartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+    }
+  };
+
   const hoveredInfo = hoveredCell ? activeHeatMap.get(hoveredCell) : null;
   const hoveredLabel = hoveredCell
     ? mode === 'typical-week'
@@ -393,7 +432,7 @@ export function AvailabilityGrid({
       />
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border-default bg-linear-to-br from-surface-raised via-surface-card to-surface-raised shadow-lg shadow-black/20">
+      <div className="overflow-clip rounded-2xl border border-border-default bg-linear-to-br from-surface-raised via-surface-card to-surface-raised shadow-lg shadow-black/20">
         <div className="border-b border-border-subtle bg-surface-raised/80 px-4 py-5 sm:px-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-3 text-center lg:text-left">
@@ -485,130 +524,243 @@ export function AvailabilityGrid({
         </div>
 
         <div className="space-y-4 px-3 py-4 sm:px-4 sm:py-5 lg:px-6">
-          <div className="flex flex-wrap items-center justify-center gap-2 text-center lg:justify-between lg:text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
-              <MousePointer2 className="h-3.5 w-3.5 text-accent" />
-              {canEditAvailability ? 'Drag to paint your availability' : 'Hover any slot to inspect overlap'}
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
-              <Clock3 className="h-3.5 w-3.5 text-accent" />
-              Times shown in your timezone ({localTimezone})
-            </div>
-          </div>
-
-          <div
-            className="rounded-2xl border border-border-default bg-surface-base/90 p-3 shadow-sm sm:p-4"
-            onMouseLeave={() => setHoveredCell(null)}
-          >
-            <div className="overflow-x-auto select-none">
-              <div className="flex min-w-max justify-center">
-                <div
-                  className="inline-grid gap-1 rounded-2xl bg-border-subtle p-1.5"
-                  style={{
-                    gridTemplateColumns: `3.5rem repeat(${columns.length}, minmax(4rem, 1fr))`,
-                    minWidth: `${3.5 + columns.length * 4}rem`,
-                  }}
-                >
-                  <div className="rounded-xl bg-surface-card/90 p-1" />
-                  {columns.map((col) => {
-                    const isTemplate = mode === 'typical-week';
-                    const label = isTemplate ? DAY_LABELS[col as keyof typeof DAY_LABELS] : formatDateHeader(col).day;
-                    const sublabel = isTemplate ? null : formatDateHeader(col).date;
+          {/* Toolbar: preset chips + hints */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-center lg:justify-between lg:text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
+                  <MousePointer2 className="h-3.5 w-3.5 text-accent" />
+                  {canEditAvailability ? 'Drag to paint availability' : 'Hover to inspect overlap'}
+                </div>
+                {hiddenSlotCount > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    leftIcon={<Eye className="h-3.5 w-3.5" />}
+                    onClick={() => handlePresetChange('full')}
+                    className="rounded-full border border-status-warning/40 bg-status-warning/10 text-xs font-medium text-status-warning hover:bg-status-warning/20"
+                  >
+                    {hiddenSlotCount} slot{hiddenSlotCount !== 1 ? 's' : ''} in hidden hours — show all
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border-default bg-surface-elevated p-0.5">
+                  {(['prime', 'evening', 'full'] as const).map((preset) => {
+                    const icons = { prime: Sunset, evening: Moon, full: Clock3 };
+                    const Icon = icons[preset];
                     return (
-                      <div
-                        key={col}
-                        className="rounded-xl border border-border-subtle bg-surface-card/90 px-2 py-2 text-center"
+                      <Button
+                        key={preset}
+                        type="button"
+                        size="sm"
+                        variant={timePreset === preset ? 'accent-subtle' : 'ghost'}
+                        leftIcon={<Icon className="h-3.5 w-3.5" />}
+                        onClick={() => handlePresetChange(preset)}
                       >
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
-                          {label}
-                        </div>
-                        {sublabel && <div className="mt-0.5 text-sm font-medium text-text-primary">{sublabel}</div>}
-                      </div>
+                        {TIME_PRESETS[preset].label}
+                      </Button>
                     );
                   })}
-
-                  {TIME_SLOTS.map((time) => {
-                    const isHourBoundary = time.endsWith(':00');
-                    return [
-                      <div
-                        key={`label-${time}`}
-                        className={`flex items-center justify-end rounded-xl bg-surface-card/90 px-2 py-1 text-right ${
-                          isHourBoundary ? 'border border-border-subtle' : 'border border-transparent'
-                        }`}
-                      >
-                        {isHourBoundary && (
-                          <span className="text-[11px] font-medium text-text-secondary">
-                            {formatTimeLabel(time)}
-                          </span>
-                        )}
-                      </div>,
-                      ...columns.map((col) => {
-                        const key = `${col}|${time}`;
-                        const isUserSelected = getEffectiveSelection(key);
-                        const heat = activeHeatMap.get(key);
-                        const count = heat?.count ?? 0;
-                        const intensity = count / totalMembers;
-                        const isHovered = hoveredCell === key;
-                        const recommendationRank = recommendationSlotRanks.get(key);
-
-                        let bgColor = 'bg-surface-elevated';
-                        let borderColor = 'border-border-subtle/70';
-                        let textColor = 'text-text-muted';
-
-                        if (isUserSelected && count > 0) {
-                          if (intensity >= 0.75) bgColor = 'bg-status-success/45';
-                          else if (intensity >= 0.5) bgColor = 'bg-status-success/35';
-                          else if (intensity >= 0.25) bgColor = 'bg-status-success/25';
-                          else bgColor = 'bg-status-success/20';
-                          borderColor = 'border-status-success/40';
-                          textColor = 'text-text-primary';
-                        } else if (isUserSelected) {
-                          bgColor = 'bg-accent/25';
-                          borderColor = 'border-accent/40';
-                          textColor = 'text-accent';
-                        } else if (count > 0) {
-                          if (intensity >= 0.75) bgColor = 'bg-status-success/30';
-                          else if (intensity >= 0.5) bgColor = 'bg-status-success/20';
-                          else bgColor = 'bg-status-success/10';
-                          borderColor = 'border-status-success/20';
-                          textColor = 'text-status-success';
-                        }
-
-                        const recommendationClass = recommendationRank === 0
-                          ? 'shadow-[0_0_0_1px_rgba(245,158,11,0.7)]'
-                          : recommendationRank === 1
-                            ? 'shadow-[0_0_0_1px_rgba(34,197,94,0.55)]'
-                            : recommendationRank === 2
-                              ? 'shadow-[0_0_0_1px_rgba(14,165,233,0.55)]'
-                              : '';
-
-                        return (
-                          <div
-                            key={key}
-                            data-testid={`avail-cell-${col}-${time.replace(':', '')}`}
-                            data-selected={isUserSelected ? 'true' : undefined}
-                            data-user-selected={isUserSelected ? 'true' : 'false'}
-                            data-available-count={count}
-                            data-recommended={recommendationRank !== undefined ? 'true' : 'false'}
-                            className={`h-7 rounded-lg border ${bgColor} ${borderColor} ${recommendationClass} transition-all duration-100 ${
-                              isHovered ? 'scale-[1.02] ring-2 ring-inset ring-accent/50' : ''
-                            } ${canEditAvailability ? 'cursor-pointer hover:border-accent/35' : ''}`}
-                            onMouseDown={() => handleCellMouseDown(col, time)}
-                            onMouseEnter={() => handleCellMouseEnter(col, time)}
-                          >
-                            {count > 0 && (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <span className={`text-[10px] font-semibold ${textColor}`}>
-                                  {count}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }),
-                    ];
-                  }).flat()}
                 </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
+                  <Clock3 className="h-3.5 w-3.5 text-accent" />
+                  {localTimezone}
+                </div>
+              </div>
+            </div>
+            {timePreset === 'prime' && (
+              <p className="text-center text-xs text-text-muted lg:text-left">
+                Showing 6 PM – 2 AM. Slots after midnight are the next calendar day.
+              </p>
+            )}
+          </div>
+
+          {/* Grid: sticky header (outside overflow-x) + scrollable body */}
+          <div
+            className="rounded-2xl border border-border-default bg-surface-base/90 select-none shadow-sm"
+            onMouseLeave={() => setHoveredCell(null)}
+          >
+            {/* Sticky header — no overflow-x so sticky binds to <main> scroll */}
+            <div
+              ref={headerScrollRef}
+              className="sticky top-0 z-20 overflow-hidden rounded-t-2xl border-b border-border-subtle bg-surface-card/95 backdrop-blur-sm"
+            >
+              <div
+                className="grid gap-x-0.5 gap-y-0.5 px-1.5 py-1.5 sm:gap-x-1"
+                style={{
+                  gridTemplateColumns: `2.75rem repeat(${columns.length}, minmax(2.5rem, 1fr))`,
+                  minWidth: `${2.75 + columns.length * 2.5}rem`,
+                }}
+              >
+                <div className="sticky left-0 z-[1] rounded-xl bg-surface-card/90 p-1" />
+                {columns.map((col) => {
+                  const isTemplate = mode === 'typical-week';
+                  const label = isTemplate ? DAY_LABELS[col as keyof typeof DAY_LABELS] : formatDateHeader(col).day;
+                  const sublabel = isTemplate ? null : formatDateHeader(col).date;
+                  return (
+                    <div
+                      key={col}
+                      className="rounded-lg border border-border-subtle bg-surface-elevated px-1 py-1.5 text-center sm:px-2 sm:py-2"
+                    >
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted sm:text-xs sm:tracking-[0.14em]">
+                        {label}
+                      </div>
+                      {sublabel && <div className="mt-0.5 text-xs font-medium text-text-primary sm:text-sm">{sublabel}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Grid body — overflow-x-auto for horizontal scroll on mobile */}
+            <div
+              ref={bodyScrollRef}
+              className="overflow-x-auto"
+              onScroll={(e) => {
+                if (headerScrollRef.current) {
+                  headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                }
+              }}
+            >
+              <div
+                className="grid gap-x-0.5 gap-y-0.5 rounded-b-2xl bg-border-subtle px-1.5 pb-1.5 sm:gap-x-1"
+                style={{
+                  gridTemplateColumns: `2.75rem repeat(${columns.length}, minmax(2.5rem, 1fr))`,
+                  minWidth: `${2.75 + columns.length * 2.5}rem`,
+                }}
+              >
+
+              {filteredTimeSlots.map((time, slotIndex) => {
+                const hour = Number(time.split(':')[0]);
+                const isHourBoundary = time.endsWith(':00');
+                const prevHour = slotIndex > 0 ? Number(filteredTimeSlots[slotIndex - 1].split(':')[0]) : -1;
+                const isPrimeStart = time === '18:00';
+
+                // Section dividers: 6-hour blocks in full mode, midnight crossing in prime mode
+                let sectionDivider: React.ReactNode = null;
+                if (timePreset === 'full' && isHourBoundary && hour % 6 === 0) {
+                  const sections: Record<number, { label: string; Icon: typeof Sun }> = {
+                    0: { label: 'Late Night', Icon: Moon },
+                    6: { label: 'Morning', Icon: Sunrise },
+                    12: { label: 'Afternoon', Icon: Sun },
+                    18: { label: 'Evening', Icon: Sunset },
+                  };
+                  const section = sections[hour];
+                  if (section) {
+                    const { label: sectionLabel, Icon } = section;
+                    sectionDivider = (
+                      <div
+                        key={`section-${hour}`}
+                        className="col-span-full flex items-center gap-2 rounded-lg bg-surface-elevated/60 px-2 py-1"
+                      >
+                        <Icon className="h-3.5 w-3.5 text-text-muted" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                          {sectionLabel}
+                        </span>
+                        <div className="h-px flex-1 bg-border-subtle" />
+                      </div>
+                    );
+                  }
+                } else if (timePreset === 'prime' && hour < prevHour) {
+                  // Midnight crossing in prime mode
+                  sectionDivider = (
+                    <div
+                      key="section-midnight"
+                      className="col-span-full flex items-center gap-2 rounded-lg bg-surface-elevated/60 px-2 py-1"
+                    >
+                      <Moon className="h-3.5 w-3.5 text-text-muted" />
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                        After Midnight (+1 day)
+                      </span>
+                      <div className="h-px flex-1 bg-border-subtle" />
+                    </div>
+                  );
+                }
+
+                const row = [
+                  <div
+                    key={`label-${time}`}
+                    ref={isPrimeStart ? primeStartRef : undefined}
+                    className={`sticky left-0 z-[1] flex h-6 items-center justify-end rounded-lg bg-surface-card/90 px-1.5 text-right ${
+                      isHourBoundary ? 'border border-border-subtle' : 'border border-transparent'
+                    }`}
+                  >
+                    {isHourBoundary && (
+                      <span className="text-[10px] font-medium leading-tight text-text-secondary">
+                        {formatTimeLabel(time)}
+                      </span>
+                    )}
+                  </div>,
+                  ...columns.map((col) => {
+                    const key = `${col}|${time}`;
+                    const isUserSelected = getEffectiveSelection(key);
+                    const heat = activeHeatMap.get(key);
+                    const count = heat?.count ?? 0;
+                    const intensity = count / totalMembers;
+                    const isHovered = hoveredCell === key;
+                    const recommendationRank = recommendationSlotRanks.get(key);
+
+                    let bgColor = 'bg-surface-card';
+                    let borderColor = 'border-border-default/50';
+                    let textColor = 'text-text-muted';
+
+                    if (isUserSelected && count > 0) {
+                      if (intensity >= 0.75) bgColor = 'bg-status-success/45';
+                      else if (intensity >= 0.5) bgColor = 'bg-status-success/35';
+                      else if (intensity >= 0.25) bgColor = 'bg-status-success/25';
+                      else bgColor = 'bg-status-success/20';
+                      borderColor = 'border-status-success/40';
+                      textColor = 'text-text-primary';
+                    } else if (isUserSelected) {
+                      bgColor = 'bg-accent/25';
+                      borderColor = 'border-accent/40';
+                      textColor = 'text-accent';
+                    } else if (count > 0) {
+                      if (intensity >= 0.75) bgColor = 'bg-status-success/30';
+                      else if (intensity >= 0.5) bgColor = 'bg-status-success/20';
+                      else bgColor = 'bg-status-success/10';
+                      borderColor = 'border-status-success/20';
+                      textColor = 'text-status-success';
+                    }
+
+                    const recommendationClass = recommendationRank === 0
+                      ? 'shadow-[0_0_0_1px_rgba(245,158,11,0.7)]'
+                      : recommendationRank === 1
+                        ? 'shadow-[0_0_0_1px_rgba(34,197,94,0.55)]'
+                        : recommendationRank === 2
+                          ? 'shadow-[0_0_0_1px_rgba(14,165,233,0.55)]'
+                          : '';
+
+                    return (
+                      <div
+                        key={key}
+                        data-testid={`avail-cell-${col}-${time.replace(':', '')}`}
+                        data-selected={isUserSelected ? 'true' : undefined}
+                        data-user-selected={isUserSelected ? 'true' : 'false'}
+                        data-available-count={count}
+                        data-recommended={recommendationRank !== undefined ? 'true' : 'false'}
+                        className={`h-6 rounded-md border ${bgColor} ${borderColor} ${recommendationClass} transition-all duration-100 ${
+                          isHovered ? 'scale-[1.02] ring-2 ring-inset ring-accent/50' : ''
+                        } ${canEditAvailability ? 'cursor-pointer hover:border-accent/35' : ''}`}
+                        onMouseDown={() => handleCellMouseDown(col, time)}
+                        onMouseEnter={() => handleCellMouseEnter(col, time)}
+                      >
+                        {count > 0 && (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <span className={`text-[10px] font-semibold ${textColor}`}>
+                              {count}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }),
+                ];
+
+                return sectionDivider ? [sectionDivider, ...row] : row;
+              }).flat()}
               </div>
             </div>
           </div>

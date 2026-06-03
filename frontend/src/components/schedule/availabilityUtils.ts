@@ -19,6 +19,39 @@ export interface AvailabilityRecommendation {
 const SLOT_DURATION_MINUTES = 30;
 export const START_HOUR = 0;
 export const END_HOUR = 24;
+export const RAID_HOURS_START = 16;
+export const RAID_HOURS_END = 2; // wraps past midnight
+
+export type TimePreset = 'prime' | 'evening' | 'full';
+export const TIME_PRESETS: Record<TimePreset, { label: string; start: number; end: number; crossesMidnight: boolean }> = {
+  prime: { label: 'Prime raid time', start: 18, end: 2, crossesMidnight: true },
+  evening: { label: 'Evening', start: 16, end: 24, crossesMidnight: false },
+  full: { label: 'Full day', start: 0, end: 24, crossesMidnight: false },
+};
+
+export function filterSlotsByPreset(preset: TimePreset): string[] {
+  const { start, end, crossesMidnight } = TIME_PRESETS[preset];
+  if (preset === 'full') return TIME_SLOTS;
+  const filtered = TIME_SLOTS.filter((slot) => {
+    const hour = Number(slot.split(':')[0]);
+    if (crossesMidnight) return hour >= start || hour < end;
+    return hour >= start && hour < end;
+  });
+  if (crossesMidnight) {
+    const eveningSlots = filtered.filter((s) => Number(s.split(':')[0]) >= start);
+    const lateNightSlots = filtered.filter((s) => Number(s.split(':')[0]) < start);
+    return [...eveningSlots, ...lateNightSlots];
+  }
+  return filtered;
+}
+
+export function isSlotInPreset(slot: string, preset: TimePreset): boolean {
+  if (preset === 'full') return true;
+  const { start, end, crossesMidnight } = TIME_PRESETS[preset];
+  const hour = Number(slot.split(':')[0]);
+  if (crossesMidnight) return hour >= start || hour < end;
+  return hour >= start && hour < end;
+}
 
 function resolveMemberName(member: Membership): string {
   return member.user?.displayName || member.user?.discordUsername || 'Unknown';
