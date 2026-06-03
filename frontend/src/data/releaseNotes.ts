@@ -49,6 +49,7 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+<<<<<<< HEAD
     version: '1.21.0',
     date: '2026-06-01T12:00:00Z',
     title: 'Find a Static',
@@ -123,6 +124,50 @@ export const RELEASES: Release[] = [
         description:
           'Applicants can now provide a temporary Discord handle so the lead can reach them. The handle — along with the message and availability note — is automatically deleted once the request is accepted, declined, or cancelled. No Discord account data from login is ever shared with leads.',
         commits: [{ hash: 'pending', message: 'fix(privacy): harden join request data exposure', date: '2026-06-02T12:00:00Z' }],
+      },
+    ],
+  },
+  {
+    version: '1.20.1',
+    date: '2026-06-03T16:00:00Z',
+    title: 'Gear Sync Safety & Tomestone Refresh',
+    highlights: ['Auto-sync safety gates', 'Manual sync overwrite confirmation'],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Safer automatic gear sync',
+        description:
+          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, when the provider identity doesn\'t match the linked character, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Manual sync overwrite confirmation',
+        description:
+          'Manually syncing gear now shows a warning and requires confirmation before applying when risky conditions are detected — wrong job, lower item level, incomplete gear, or server/name mismatch. Safe syncs proceed without interruption.',
+        commits: [{ hash: 'pending', message: 'fix(gear-sync): manual sync destructive overwrite confirmation', date: '2026-06-03T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Force refresh & Tomestone link',
+        description:
+          'Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone\'s upstream refresh requires a browser visit, so if data looks stale the app links you directly to the character\'s Tomestone page to click Refresh there. Full Tomestone API integration for automatic refresh is in progress.',
+        commits: [{ hash: 'pending', message: 'fix(tomestone): detect bot gate, link to Tomestone page', date: '2026-06-03T16:00:00Z' }],
+      },
+    ],
+  },
+  {
+    version: '1.20.0',
+    date: '2026-06-03T12:00:00Z',
+    title: 'Plugin browser sign-in',
+    highlights: ['One-click plugin authentication', 'No more API key copy/paste'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Sign in to the Dalamud plugin from your browser',
+        description:
+          'The XIV Raid Planner Dalamud plugin can now authenticate via a one-click browser flow. Click "Sign in with browser" in the plugin\'s config window, approve on the web app, and the plugin receives an API key automatically — no more copying and pasting xrp_ tokens. Manual key entry remains available under Advanced for custom or self-hosted servers.',
+        commits: [{ hash: 'pending', message: 'feat: add plugin browser sign-in (loopback OAuth + PKCE)' }],
       },
     ],
   },

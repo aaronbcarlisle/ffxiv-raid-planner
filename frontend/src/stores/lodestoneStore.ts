@@ -34,6 +34,8 @@ export interface CharacterGear {
   gearAvailable: boolean;
   identityOnly: boolean;
   source: string;
+  refreshAttempted?: boolean;
+  refreshStatus?: string | null;
 }
 
 export interface SyncResult {
@@ -45,6 +47,13 @@ export interface SyncResult {
   lodestoneServer: string | null;
   lodestoneAvatarUrl: string | null;
   gear: unknown[];
+  syncSource: string;
+  syncedJob: string | null;
+  payloadChanged: boolean;
+  jobMismatchWarning: string | null;
+  refreshAttempted?: boolean;
+  refreshStatus?: string | null;
+  warnings?: string[];
 }
 
 export interface IdentityLinkResult {
@@ -93,7 +102,7 @@ interface LodestoneState {
   requestVersion: number;
   fetchDevStatus: () => Promise<void>;
   searchCharacters: (name: string, server?: string) => Promise<void>;
-  fetchCharacterGear: (lodestoneId: number) => Promise<void>;
+  fetchCharacterGear: (lodestoneId: number, forceRefresh?: boolean) => Promise<void>;
   syncPlayerGear: (groupId: string, playerId: string, lodestoneId?: number) => Promise<SyncResult>;
   linkIdentityOnly: (groupId: string, playerId: string, lodestoneId: number) => Promise<IdentityLinkResult>;
   clearSearch: () => void;
@@ -167,7 +176,7 @@ export const useLodestoneStore = create<LodestoneState>((set, get) => ({
     }
   },
 
-  fetchCharacterGear: async (lodestoneId: number) => {
+  fetchCharacterGear: async (lodestoneId: number, forceRefresh?: boolean) => {
     const requestVersion = get().requestVersion;
     set({
       characterGear: null,
@@ -177,7 +186,8 @@ export const useLodestoneStore = create<LodestoneState>((set, get) => ({
     });
 
     try {
-      const data = await api.get<CharacterGear>(`/api/lodestone/character/${lodestoneId}`);
+      const params = forceRefresh ? '?force_refresh=true' : '';
+      const data = await api.get<CharacterGear>(`/api/lodestone/character/${lodestoneId}${params}`);
 
       if (get().requestVersion !== requestVersion) {
         return;

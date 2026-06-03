@@ -23,6 +23,11 @@ CSRF_EXEMPT_PATHS: Set[str] = {
     "/docs",
     "/openapi.json",
     "/redoc",
+    # Plugin loopback exchange is called by the Dalamud plugin, not a browser.
+    # It has no Discord cookie and no CSRF token; PKCE proof-of-possession replaces
+    # the CSRF contract here.  The authorize endpoint (/plugin-auth/authorize) remains
+    # CSRF-protected because it IS called from a logged-in browser session.
+    "/api/auth/api-keys/plugin-auth/exchange",
 }
 
 # Paths where we should always generate a fresh CSRF token

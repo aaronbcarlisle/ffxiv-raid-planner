@@ -22,6 +22,7 @@ from .middleware import (
 )
 from .rate_limit import limiter
 from .tasks.analytics_retention import retention_loop
+from .tasks.auto_sync import auto_sync_loop
 from .routers import (
     analytics_router,
     api_keys_router,
@@ -59,17 +60,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("database_setup", mode="migrations")
 
-    # Start background retention task
+    # Start background tasks
     retention_task = asyncio.create_task(retention_loop())
+    sync_task = asyncio.create_task(auto_sync_loop())
 
     yield
 
     # Shutdown
+    sync_task.cancel()
     retention_task.cancel()
-    try:
-        await retention_task
-    except asyncio.CancelledError:
-        pass
+    for task in (sync_task, retention_task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
     await close_cache()
     logger.info("app_shutdown")
 

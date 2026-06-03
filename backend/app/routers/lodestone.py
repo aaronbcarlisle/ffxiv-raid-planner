@@ -303,6 +303,8 @@ class CharacterGearResponse(CamelModel):
     gear_available: bool = True
     identity_only: bool = False
     source: str = "xivapi"
+    refresh_attempted: bool = False
+    refresh_status: str | None = None
 
 
 class SyncResult(CamelModel):
@@ -318,6 +320,13 @@ class SyncResult(CamelModel):
     lodestone_server: str | None = None
     lodestone_avatar_url: str | None = None
     gear: list[dict[str, Any]]
+    sync_source: str = "xivapi"
+    synced_job: str | None = None
+    payload_changed: bool = True
+    job_mismatch_warning: str | None = None
+    refresh_attempted: bool = False
+    refresh_status: str | None = None
+    warnings: list[str] = []
 
 
 class IdentityLinkResult(CamelModel):
@@ -754,12 +763,14 @@ def _payload_has_usable_gear(data: dict[str, Any]) -> bool:
     )
 
 
-async def _fetch_tomestone_character_payload(lodestone_id: int) -> dict[str, Any] | None:
+async def _fetch_tomestone_character_payload(
+    lodestone_id: int, *, no_cache: bool = False, skip_refresh: bool = False,
+) -> dict[str, Any] | None:
     provider = get_tomestone_provider(settings)
     if not provider.enabled:
         return None
 
-    result = await provider.fetch_profile_by_id(lodestone_id)
+    result = await provider.fetch_profile_by_id(lodestone_id, no_cache=no_cache, skip_refresh=skip_refresh)
     if not result.available or result.raw is None:
         return None
 
@@ -983,6 +994,8 @@ async def _fetch_character_payload(
     *,
     require_usable_gear: bool,
     dev_error_codes: bool = False,
+    no_cache: bool = False,
+    skip_refresh: bool = False,
 ) -> dict[str, Any]:
     if _is_dev_lodestone_mock_enabled():
         data = MOCK_CHARACTER_PAYLOADS.get(lodestone_id)
@@ -990,7 +1003,8 @@ async def _fetch_character_payload(
             raise HTTPException(status_code=404, detail="Character not found on Lodestone")
         data = {**data, "__source": "dev_mock"}
     else:
-        tomestone_data = await _fetch_tomestone_character_payload(lodestone_id)
+        # Try Tomestone first (when token configured), fall back to XIVAPI.
+        tomestone_data = await _fetch_tomestone_character_payload(lodestone_id, no_cache=no_cache, skip_refresh=skip_refresh)
         if tomestone_data and (_payload_has_usable_gear(tomestone_data) or not require_usable_gear):
             data = tomestone_data
         else:
@@ -1314,15 +1328,34 @@ async def get_lodestone_dev_status(
 async def get_character_gear(
     request: Request,
     lodestone_id: int,
+    force_refresh: bool = Query(False, description="Bypass local cache and fetch fresh data"),
     current_user: User = Depends(get_current_user),
 ):
     """Fetch a character's currently equipped gear from Lodestone via XIVAPI."""
     cache_key = f"lodestone_char_{lodestone_id}"
-    cached = await xivapi_item_cache.get(cache_key)
-    if cached:
-        return CharacterGearResponse(**cached)
+    if not force_refresh:
+        cached = await xivapi_item_cache.get(cache_key)
+        if cached:
+            return CharacterGearResponse(**cached)
 
-    data = await _fetch_character_payload(lodestone_id, require_usable_gear=False, dev_error_codes=True)
+    refresh_attempted = False
+    refresh_status = None
+    if force_refresh:
+        provider = get_tomestone_provider(settings)
+        if provider.enabled:
+            refresh_status = await provider.refresh_character(lodestone_id)
+            refresh_attempted = True
+            if refresh_status == "refresh_queued":
+                import asyncio as _asyncio
+                await _asyncio.sleep(2)
+
+    data = await _fetch_character_payload(
+        lodestone_id,
+        require_usable_gear=False,
+        dev_error_codes=True,
+        no_cache=force_refresh,
+        skip_refresh=refresh_attempted,
+    )
     char = data["Character"]
     source = str(data.get("__source") or "xivapi")
     gear_set = char.get("GearSet", {}) if isinstance(char.get("GearSet"), dict) else {}
@@ -1346,6 +1379,8 @@ async def get_character_gear(
         gear_available=gear_available,
         identity_only=not gear_available,
         source=source,
+        refresh_attempted=refresh_attempted,
+        refresh_status=refresh_status,
     )
 
     await xivapi_item_cache.set(cache_key, result.model_dump(), ttl=300)
@@ -1386,17 +1421,31 @@ async def sync_player_gear(
     if not resolved_lodestone_id:
         raise HTTPException(status_code=400, detail="No Lodestone ID provided or linked")
 
+    previous_gear = [dict(gear_slot) for gear_slot in _normalize_player_gear(player.gear)]
+    previous_avg_ilvl = 0
+    prev_ilvl_slots = [g for g in previous_gear if (g.get("equippedItemLevel") or 0) > 0]
+    if prev_ilvl_slots:
+        previous_avg_ilvl = round(
+            sum(g["equippedItemLevel"] for g in prev_ilvl_slots) / len(prev_ilvl_slots)
+        )
+
     data = await _fetch_character_payload(
         resolved_lodestone_id,
         require_usable_gear=True,
         dev_error_codes=True,
+        no_cache=True,
     )
     character = data["Character"]
+    sync_source = str(data.get("__source") or "xivapi")
     gear_set = character.get("GearSet", {})
     gear_items = gear_set.get("Gear", {}) if isinstance(gear_set, dict) else {}
+
+    active_class = gear_set.get("Class", {}) if isinstance(gear_set, dict) else {}
+    synced_job = active_class.get("Abbreviation") if isinstance(active_class, dict) else None
+
     _, equipped_by_slot = await _build_equipped_slots(gear_items)
 
-    current_gear = [dict(gear_slot) for gear_slot in _normalize_player_gear(player.gear)]
+    current_gear = [dict(gear_slot) for gear_slot in previous_gear]
     updated_count = 0
 
     for gear_slot in current_gear:
@@ -1449,12 +1498,54 @@ async def sync_player_gear(
             updated_count += 1
 
     bis_matched_count = sum(1 for s in current_gear if s.get("hasItem"))
+    payload_changed = updated_count > 0
     now = datetime.now(timezone.utc).isoformat()
     lodestone_name = str(character.get("Name") or "") or None
     lodestone_server = str(character.get("Server") or "") or None
     avatar_value = character.get("Avatar")
     existing_avatar_url = getattr(player, "lodestone_avatar_url", None)
     lodestone_avatar_url = _sanitize_avatar_url(avatar_value) or existing_avatar_url
+
+    new_avg_ilvl = 0
+    new_ilvl_slots = [
+        g for g in current_gear if (g.get("equippedItemLevel") or 0) > 0
+    ]
+    if new_ilvl_slots:
+        new_avg_ilvl = round(
+            sum(g["equippedItemLevel"] for g in new_ilvl_slots) / len(new_ilvl_slots)
+        )
+
+    job_mismatch_warning = None
+    player_job = player.job
+    if synced_job and player_job and synced_job.upper() != player_job.upper():
+        job_mismatch_warning = (
+            f"Synced gear appears to be for {synced_job}, but this player is set as "
+            f"{player_job}. Lodestone may still be showing a previous gearset."
+        )
+
+    sync_warnings: list[str] = []
+    if job_mismatch_warning:
+        sync_warnings.append(f"job_mismatch: {synced_job} vs {player_job}")
+    if previous_avg_ilvl > 0 and new_avg_ilvl > 0 and new_avg_ilvl < previous_avg_ilvl:
+        sync_warnings.append(
+            f"lower_avg_ilvl: upstream {new_avg_ilvl} vs stored {previous_avg_ilvl}"
+        )
+    missing_slots = sum(
+        1 for g in current_gear
+        if g.get("slot") and not equipped_by_slot.get(g["slot"])
+    )
+    if missing_slots:
+        sync_warnings.append(f"missing_upstream_slots: {missing_slots}")
+    stored_name = getattr(player, "lodestone_name", None)
+    stored_server = getattr(player, "lodestone_server", None)
+    if stored_server and lodestone_server and stored_server.lower().strip() != lodestone_server.lower().strip():
+        sync_warnings.append(
+            f"upstream_identity_mismatch: expected server {stored_server}, got {lodestone_server}"
+        )
+    if stored_name and lodestone_name and stored_name.lower().strip() != lodestone_name.lower().strip():
+        sync_warnings.append(
+            f"upstream_identity_mismatch: expected name {stored_name}, got {lodestone_name}"
+        )
 
     player.gear = [dict(gear_slot) for gear_slot in current_gear]
     player.lodestone_id = str(resolved_lodestone_id)
@@ -1468,6 +1559,10 @@ async def sync_player_gear(
         player.lodestone_server = lodestone_server
     if hasattr(player, "lodestone_avatar_url"):
         player.lodestone_avatar_url = lodestone_avatar_url
+    if hasattr(player, "last_sync_source"):
+        player.last_sync_source = sync_source
+    if hasattr(player, "last_synced_job"):
+        player.last_synced_job = synced_job
 
     await session.flush()
     await session.commit()
@@ -1476,7 +1571,17 @@ async def sync_player_gear(
         "lodestone_sync_complete",
         player_id=player_id,
         lodestone_id=resolved_lodestone_id,
+        lodestone_name=lodestone_name,
+        lodestone_server=lodestone_server,
+        sync_source=sync_source,
+        synced_job=synced_job,
+        player_job=player_job,
+        previous_avg_ilvl=previous_avg_ilvl,
+        new_avg_ilvl=new_avg_ilvl,
         updated_slots=updated_count,
+        payload_changed=payload_changed,
+        job_mismatch=bool(job_mismatch_warning),
+        sync_timestamp=now,
     )
 
     return SyncResult(
@@ -1488,6 +1593,11 @@ async def sync_player_gear(
         lodestone_server=lodestone_server,
         lodestone_avatar_url=lodestone_avatar_url,
         gear=current_gear,
+        sync_source=sync_source,
+        synced_job=synced_job,
+        payload_changed=payload_changed,
+        job_mismatch_warning=job_mismatch_warning,
+        warnings=sync_warnings,
     )
 
 

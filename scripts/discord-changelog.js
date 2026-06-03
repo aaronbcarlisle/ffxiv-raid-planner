@@ -30,9 +30,21 @@ const RELEASE_NOTES_PATH = join(__dirname, '../frontend/src/data/releaseNotes.ts
 const APP_BASE_URL = 'https://www.xivraidplanner.app';
 const RELEASE_NOTES_URL = `${APP_BASE_URL}/docs/release-notes`;
 const APP_THUMBNAIL_URL = `${APP_BASE_URL}/og-image.png`;
-// Hardcoded per CLAUDE.md: "NEVER add AI attribution to commits or PRs"
+// Fallback author for the embed when the real commit author can't be resolved
+// (GitHub API unavailable) or must not be shown (AI/bot accounts, per the
+// CLAUDE.md "NEVER add AI attribution" policy). The real human author of each
+// commit is resolved at runtime via the GitHub API — see fetchCommitAuthor().
 const COMMIT_AUTHOR = 'Aaron Carlisle';
 const COMMIT_AUTHOR_GITHUB = 'aaronbcarlisle';
+
+// Timeout for the GitHub commit lookup used to attribute the embed author.
+const GITHUB_API_TIMEOUT_MS = 10000;
+
+// Logins we must never attribute. Covers the AI assistants named in CLAUDE.md
+// plus automation accounts (anything ending in "[bot]", dependabot, the Actions
+// runner). Matched against the GitHub login, which is bot-suffixed for apps.
+const AI_BOT_LOGIN_PATTERN =
+  /\[bot\]$|^(?:claude|copilot|cursor|openai|chatgpt|devin|dependabot|github-actions|web-flow)$/i;
 
 // Discord embed limits (https://discord.com/developers/docs/resources/channel#embed-limits)
 const DISCORD_TITLE_LIMIT = 256;
@@ -311,18 +323,71 @@ function summarizeBody(body, maxLength) {
  * Parse release items from a release block
  * Extracts category, title, and description from each item
  */
+/**
+ * Extract a quoted string starting at position `start` in `text`.
+ * Handles escaped quotes (e.g. \' inside '...') and mixed quote types
+ * (e.g. "Force refresh" inside '...' doesn't terminate the string).
+ * Returns { value, end } where end is the index after the closing quote,
+ * or null if no quoted string starts at `start`.
+ */
+function extractQuotedString(text, start) {
+  // Skip whitespace/newlines to find the opening quote
+  let i = start;
+  while (i < text.length && /\s/.test(text[i])) i++;
+  const quote = text[i];
+  if (quote !== "'" && quote !== '"') return null;
+  i++; // skip opening quote
+
+  let value = '';
+  while (i < text.length) {
+    if (text[i] === '\\' && i + 1 < text.length) {
+      // Escaped character — include the unescaped version
+      value += text[i + 1];
+      i += 2;
+    } else if (text[i] === quote) {
+      // Matching closing quote found
+      return { value, end: i + 1 };
+    } else {
+      value += text[i];
+      i++;
+    }
+  }
+  return null; // unterminated string
+}
+
 function parseReleaseItems(itemsContent) {
   const items = [];
 
-  // Match each item object - look for category, title, and optional description
-  // Pattern captures category, title, and optionally description
-  const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"](?:,\s*description:\s*['"]([^'"]*?)['"])?/g;
-  let match;
-  while ((match = itemPattern.exec(itemsContent)) !== null) {
+  // Find each item by matching `{ category:` then extracting fields with
+  // quote-aware parsing. This handles escaped quotes (\') and mixed quote
+  // types ("text" inside '...') that a single regex cannot.
+  const categoryStart = /\{\s*category:\s*/g;
+  let catMatch;
+  while ((catMatch = categoryStart.exec(itemsContent)) !== null) {
+    const catStr = extractQuotedString(itemsContent, catMatch.index + catMatch[0].length);
+    if (!catStr) continue;
+
+    // Look for title: after category value
+    const afterCat = itemsContent.substring(catStr.end);
+    const titleKey = afterCat.match(/^,\s*title:\s*/);
+    if (!titleKey) continue;
+    const titleStr = extractQuotedString(afterCat, titleKey[0].length);
+    if (!titleStr) continue;
+
+    // Look for optional description: after title value
+    // titleStr.end is absolute in afterCat (not relative to start param)
+    let description = null;
+    const afterTitle = afterCat.substring(titleStr.end);
+    const descKey = afterTitle.match(/^,\s*description:\s*/);
+    if (descKey) {
+      const descStr = extractQuotedString(afterTitle, descKey[0].length);
+      if (descStr) description = descStr.value;
+    }
+
     items.push({
-      category: match[1],
-      title: match[2],
-      description: match[3] || null,
+      category: catStr.value,
+      title: titleStr.value,
+      description,
     });
   }
 
@@ -396,31 +461,55 @@ function parseReleaseNotes() {
 
   const releasesContent = releasesMatch[1];
 
-  // Find the first release header - match version, date, title, highlights, then parse items separately
+  // Find the first release object — version and date are required; title and
+  // highlights are optional (internal releases often omit them).
   const firstReleaseMatch = releasesContent.match(
-    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]*)?['"]?,?\s*highlights:\s*\[([\s\S]*?)\],\s*items:\s*\[/
+    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"]/
   );
 
   if (!firstReleaseMatch) {
     console.error('Could not parse first release object from RELEASES array');
-    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", title: "Title", highlights: [...], items: [...] }');
+    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", ... }');
     return { currentVersion, latestRelease: null };
   }
 
   const version = firstReleaseMatch[1];
   const date = firstReleaseMatch[2];
-  const title = firstReleaseMatch[3] || '';
 
-  // Parse highlights array
-  const highlightsStr = firstReleaseMatch[4];
+  // Extract the full object text (from the opening { to the matching })
+  const objStartIndex = firstReleaseMatch.index;
+  let objDepth = 0;
+  let objEndIndex = objStartIndex;
+  for (let i = objStartIndex; i < releasesContent.length; i++) {
+    if (releasesContent[i] === '{') objDepth++;
+    else if (releasesContent[i] === '}') {
+      objDepth--;
+      if (objDepth === 0) { objEndIndex = i; break; }
+    }
+  }
+  const objText = releasesContent.substring(objStartIndex, objEndIndex + 1);
+
+  // Parse optional title
+  const titleMatch = objText.match(/title:\s*['"]([^'"]*)['"]/);
+  const title = titleMatch ? titleMatch[1] : '';
+
+  // Parse optional highlights array
   const highlights = [];
-  const highlightMatches = highlightsStr.matchAll(/['"]([^'"]+)['"]/g);
-  for (const match of highlightMatches) {
-    highlights.push(match[1]);
+  const highlightsMatch = objText.match(/highlights:\s*\[/);
+  if (highlightsMatch) {
+    const hlStr = extractArrayContent(objText, highlightsMatch.index + highlightsMatch[0].length - 1);
+    for (const m of hlStr.matchAll(/['"]([^'"]+)['"]/g)) {
+      highlights.push(m[1]);
+    }
   }
 
-  // Extract the items array content by counting brackets
-  const itemsStartIndex = firstReleaseMatch.index + firstReleaseMatch[0].length - 1;
+  // Find items array within this object
+  const itemsMatch = objText.match(/items:\s*\[/);
+  if (!itemsMatch) {
+    console.error('Could not find items array in first release object');
+    return { currentVersion, latestRelease: null };
+  }
+  const itemsStartIndex = objStartIndex + itemsMatch.index + itemsMatch[0].length - 1;
   const itemsStr = extractArrayContent(releasesContent, itemsStartIndex);
   const items = parseReleaseItems(itemsStr);
 
@@ -450,30 +539,55 @@ function parseReleaseNotes() {
 }
 
 /**
- * Check if the release notes file was modified in this commit.
- * Any modification to releaseNotes.ts triggers a release announcement.
- *
- * Trade-off: This approach trades precision for simplicity. We treat any change
- * as a potential new release instead of parsing CURRENT_VERSION, avoiding the
- * previous bug-prone grep logic. Since all changes to main require code review,
- * non-release edits (typo fixes in old notes) can be batched with version bumps
- * or the duplicate announcement is acceptable.
+ * Check if CURRENT_VERSION actually changed between this commit and the
+ * previous one. Only a real version bump should trigger a release announcement;
+ * other edits to the file (adding items, fixing typos) should not.
  */
 function didVersionChange() {
   try {
-    // Get the git root directory to ensure path works from any working directory
     const gitRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
-    const releaseNotesPath = `${gitRoot}/frontend/src/data/releaseNotes.ts`;
+    const releaseNotesRelPath = 'frontend/src/data/releaseNotes.ts';
+    const releaseNotesPath = `${gitRoot}/${releaseNotesRelPath}`;
 
+    // Check if the file changed at all (quick exit)
     const diffOutput = execSync(
       `git diff HEAD~1 --name-only -- "${releaseNotesPath}"`,
       { encoding: 'utf-8' }
     ).trim();
 
-    console.log(`Release notes file changed: ${diffOutput ? 'yes' : 'no'}`);
-    return diffOutput.length > 0;
+    if (!diffOutput) {
+      console.log('Release notes file not changed');
+      return false;
+    }
+
+    // Extract CURRENT_VERSION from HEAD~1
+    let prevVersion = null;
+    try {
+      const prevContent = execSync(
+        `git show HEAD~1:${releaseNotesRelPath}`,
+        { encoding: 'utf-8' }
+      );
+      const match = prevContent.match(/export const CURRENT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+      prevVersion = match ? match[1] : null;
+    } catch {
+      // File didn't exist in previous commit — treat as new version
+      console.log('Release notes file is new in this commit');
+      return true;
+    }
+
+    // Extract CURRENT_VERSION from HEAD
+    const currentContent = execSync(
+      `git show HEAD:${releaseNotesRelPath}`,
+      { encoding: 'utf-8' }
+    );
+    const currentMatch = currentContent.match(/export const CURRENT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    const currentVersion = currentMatch ? currentMatch[1] : null;
+
+    const changed = prevVersion !== currentVersion;
+    console.log(`Version check: ${prevVersion} → ${currentVersion} (changed: ${changed})`);
+    return changed;
   } catch (error) {
-    console.error('Error checking for release notes changes:', error.message);
+    console.error('Error checking for version change:', error.message);
     return false;
   }
 }
@@ -578,7 +692,7 @@ function getDominantCategoryColor(items) {
  * Uses H3 headers for category names and plain bullets for items
  * Returns an array with a single embed for consistency with API
  */
-function buildReleaseEmbeds(release) {
+function buildReleaseEmbeds(release, author = null) {
   const isInternal = !!release.internal;
   const versionAnchor = `${RELEASE_NOTES_URL}#v${release.version}`;
 
@@ -597,11 +711,7 @@ function buildReleaseEmbeds(release) {
   const embed = new EmbedBuilder()
     .setColor(embedColor)
     .setTitle(title)
-    .setAuthor({
-      name: COMMIT_AUTHOR,
-      url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
-      iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
-    });
+    .setAuthor(buildEmbedAuthor(author));
 
   // Internal notes have no public release-notes anchor, so don't link the title.
   if (!isInternal) {
@@ -703,16 +813,151 @@ function buildReleaseEmbeds(release) {
  * Build a single release embed (legacy format for backward compatibility)
  * @deprecated Use buildReleaseEmbeds which returns an array for consistent API
  */
-function buildReleaseEmbed(release) {
+function buildReleaseEmbed(release, author = null) {
   // Return the first (and only) embed for backward compatibility with tests
-  return buildReleaseEmbeds(release)[0];
+  return buildReleaseEmbeds(release, author)[0];
+}
+
+/**
+ * Resolve the embed author from a GitHub "get a commit" API response.
+ * (https://docs.github.com/rest/commits/commits#get-a-commit)
+ *
+ * Returns { name, login, avatarUrl } for the human author, or null when:
+ * - there is no usable name at all, or
+ * - the commit is authored by an AI/bot account (per CLAUDE.md policy).
+ * A null return tells the caller to use the repo-owner fallback.
+ *
+ * `profileName` is the GitHub profile display name (from /users/{login}); when
+ * present it's preferred over the git author name because it's the friendlier,
+ * canonical name shown on GitHub (e.g. "Aaron Carlisle" vs the login).
+ *
+ * Pure function (no I/O) so it can be unit-tested without hitting the network.
+ */
+function resolveAuthorFromCommitData(data, profileName = null) {
+  if (!data) return null;
+
+  const login = data.author?.login || null; // GitHub account; null if email unlinked
+  const gitName = data.commit?.author?.name || null;
+  const name = profileName || gitName || login;
+  if (!name) return null;
+
+  // Never attribute AI/automation accounts — fall back to the repo owner.
+  if (login && AI_BOT_LOGIN_PATTERN.test(login)) return null;
+
+  return {
+    name,
+    login,
+    avatarUrl: data.author?.avatar_url || (login ? `https://github.com/${login}.png` : null),
+  };
+}
+
+/**
+ * Fetch the real author of a commit from the GitHub API.
+ * Returns { name, login, avatarUrl } or null on any failure/timeout so the
+ * caller can fall back to the repo-owner default without breaking the post.
+ */
+async function fetchCommitAuthor(sha, repository) {
+  if (!sha || !repository || repository === 'unknown/unknown') {
+    return null;
+  }
+
+  const token = process.env.GITHUB_TOKEN;
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'xrp-discord-changelog',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS);
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repository}/commits/${sha}`,
+      { headers, signal: controller.signal }
+    );
+    if (!res.ok) {
+      console.warn(`GitHub API returned ${res.status} fetching commit author; using fallback author`);
+      return null;
+    }
+    const data = await res.json();
+
+    // Prefer the GitHub profile display name over the raw git author name.
+    // Skip the extra call for bot logins (resolve will drop them anyway).
+    const login = data.author?.login || null;
+    let profileName = null;
+    if (login && !AI_BOT_LOGIN_PATTERN.test(login)) {
+      profileName = await fetchProfileName(login, headers);
+    }
+
+    return resolveAuthorFromCommitData(data, profileName);
+  } catch (error) {
+    console.warn(`Failed to fetch commit author: ${error.message}; using fallback author`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fetch a GitHub user's profile display name (the "name" field on /users/{login}).
+ * Returns null on any failure or when the user hasn't set a display name — the
+ * caller then falls back to the git author name or login.
+ *
+ * Uses its own timeout (not the commit lookup's) so a slow commit fetch can't
+ * starve this call's budget, and an abort here only drops the nicer display
+ * name — it never discards the already-resolved commit author.
+ */
+async function fetchProfileName(login, headers) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://api.github.com/users/${login}`, {
+      headers,
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.name || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Build the discord.js embed author field from a resolved author.
+ * Falls back to the repo-owner default when no author is available (API
+ * failure or AI/bot commit). An author with a name but no GitHub login (an
+ * unlinked email) gets a plain name with no profile link or avatar.
+ */
+function buildEmbedAuthor(author) {
+  if (author && author.name) {
+    const field = { name: author.name };
+    if (author.login) {
+      field.url = `https://github.com/${author.login}`;
+      field.iconURL = author.avatarUrl || `https://github.com/${author.login}.png`;
+    } else if (author.avatarUrl) {
+      field.iconURL = author.avatarUrl;
+    }
+    return field;
+  }
+
+  return {
+    name: COMMIT_AUTHOR,
+    url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
+    iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
+  };
 }
 
 /**
  * Build the commit info embed with compact, visually appealing format
  * Uses AI to generate a concise summary of the commit message
  */
-async function buildCommitEmbed(sha, message, repository) {
+async function buildCommitEmbed(sha, message, repository, author = null) {
   const shortSha = sha.substring(0, 7);
   const commitUrl = `https://github.com/${repository}/commit/${sha}`;
 
@@ -745,11 +990,7 @@ async function buildCommitEmbed(sha, message, repository) {
     .setColor(color)
     .setTitle(title)
     .setURL(commitUrl)
-    .setAuthor({
-      name: COMMIT_AUTHOR,
-      url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
-      iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
-    })
+    .setAuthor(buildEmbedAuthor(author))
     .setTimestamp();
 
   // Add AI-summarized body as description if present
@@ -806,6 +1047,12 @@ async function main() {
     process.exit(0);
   }
 
+  // Resolve the real commit author (name + GitHub avatar) so the embed is
+  // attributed correctly. Falls back to the repo owner if the lookup fails.
+  console.log('Resolving commit author...');
+  const author = await fetchCommitAuthor(commitSha, repository);
+  console.log(`Commit author: ${author ? `${author.name}${author.login ? ` (@${author.login})` : ''}` : 'using fallback'}`);
+
   console.log('Parsing release notes...');
   const releaseInfo = parseReleaseNotes();
 
@@ -840,13 +1087,13 @@ async function main() {
     // Add release embed if new version (skip commit embed for releases)
     if (isNewRelease && releaseInfo.latestRelease) {
       console.log(`New release detected: v${releaseInfo.latestRelease.version}`);
-      const releaseEmbeds = buildReleaseEmbeds(releaseInfo.latestRelease);
+      const releaseEmbeds = buildReleaseEmbeds(releaseInfo.latestRelease, author);
       embeds.push(...releaseEmbeds);
       console.log(`Generated ${releaseEmbeds.length} release embeds`);
     } else {
       // Only add commit embed for non-release commits
       console.log('Generating commit summary...');
-      embeds.push(await buildCommitEmbed(commitSha, commitMessage, repository));
+      embeds.push(await buildCommitEmbed(commitSha, commitMessage, repository, author));
     }
 
     // Send the message (Discord allows up to 10 embeds per message)
@@ -890,6 +1137,10 @@ export {
   isAIOnlyCommit,
   stripAIAttributions,
   sanitizeAITerminology,
+  resolveAuthorFromCommitData,
+  fetchCommitAuthor,
+  buildEmbedAuthor,
+  COMMIT_AUTHOR,
   COMMIT_TYPE_COLORS,
   DISCORD_TITLE_LIMIT,
   DISCORD_DESCRIPTION_LIMIT,

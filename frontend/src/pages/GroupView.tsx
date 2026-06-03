@@ -268,12 +268,15 @@ export function GroupView() {
     }
   }, [currentGroup?.id, searchParams, setGroupViewState]);
 
-  // Handle player deep link - scroll to and highlight player
+  // Handle player deep link - switch to Roster tab, scroll to + highlight the card.
+  // The Roster switch matters when the link arrives from outside (plugin Ctrl+Click,
+  // shared URL) and the user's last-viewed tab was something else.
   useEffect(() => {
     const playerParam = searchParams.get('player');
     if (!playerParam || !currentTier?.players) return;
     const player = currentTier.players.find(p => p.id === playerParam);
     if (!player) return;
+    setPageMode('players');
     setHighlightedPlayerId(playerParam);
     setHighlightedSlot(null); // Clear any stale slot highlight from prior navigation
     setTimeout(() => {
@@ -291,7 +294,7 @@ export function GroupView() {
       }, { replace: true });
     }, 2500);
     return () => clearTimeout(timer);
-  }, [searchParams, currentTier?.players, setSearchParams, setHighlightedPlayerId]);
+  }, [searchParams, currentTier?.players, setSearchParams, setHighlightedPlayerId, setHighlightedSlot, setPageMode]);
 
   // Fetch tiers and load tier (from URL, localStorage, or active) sequentially
   useEffect(() => {

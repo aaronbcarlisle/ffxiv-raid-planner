@@ -21,6 +21,7 @@ const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.D
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
+const PluginAuth = lazy(() => import('./pages/PluginAuth').then(m => ({ default: m.PluginAuth })));
 
 // Documentation pages
 const DocsIndex = lazy(() => import('./pages/DocsIndex').then(m => ({ default: m.DocsIndex })));
@@ -119,6 +120,8 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           {/* Invite accept route (outside Layout for focused experience) */}
           <Route path="/invite/:inviteCode" element={<InviteAccept />} />
+          {/* Dalamud plugin browser sign-in (loopback OAuth/PKCE consent page) */}
+          <Route path="/plugin-auth" element={<PluginAuth />} />
         </Routes>
         <ToastContainer />
       </Suspense>

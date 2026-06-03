@@ -28,6 +28,14 @@ def lodestone_settings():
         yield mock_settings
 
 
+@pytest.fixture()
+def xivapi_unavailable():
+    """Mock XIVAPI as unavailable so Tomestone-only tests fall through correctly."""
+    fail_response = _mock_http_response(502, {"message": "Lodestone unavailable"})
+    with patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(fail_response)):
+        yield
+
+
 def _mock_http_response(
     status_code: int,
     payload=None,
@@ -1019,8 +1027,8 @@ async def test_malformed_xivapi_json_returns_controlled_error(client, session, t
             headers=auth_headers,
     )
 
+    # XIVAPI bad JSON → caught, falls through to Tomestone (disabled) → both fail
     assert sync_response.status_code == 502
-    assert sync_response.json()["detail"] == "upstream_bad_response"
 
     await session.refresh(player)
     assert player.lodestone_id is None
@@ -2021,3 +2029,284 @@ async def test_tomestone_sync_equipped_fields_via_tier_api(
     assert weapon["equippedItemId"] == 44091, f"tier API returned null equippedItemId: {weapon}"
     assert weapon["equippedItemName"] == "Warg Sword of Fending"
     assert weapon["equippedItemLevel"] == 730
+
+
+# ---------------------------------------------------------------------------
+# Sync diagnostics — payload_changed, job mismatch, sync metadata
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unchanged_payload_reports_no_change(client, session, test_user, auth_headers):
+    """When synced gear matches what's already stored, payloadChanged is False."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        gear=[
+            {
+                "slot": "weapon",
+                "bisSource": "raid",
+                "itemId": 1001,
+                "itemLevel": 795,
+                "itemName": "Cruiserweight Champion's Spear",
+                "itemIcon": None,
+                "currentSource": "savage",
+                "hasItem": True,
+                "isAugmented": False,
+                "equippedItemId": 1001,
+                "equippedItemLevel": 795,
+                "equippedItemName": "Cruiserweight Champion's Spear",
+                "equippedItemIcon": "weapon.png",
+            }
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Same Gear Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Class": {"Abbreviation": "DRG"},
+                    "Gear": {"MainHand": {"ID": 1001}},
+                },
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch(
+            "app.routers.lodestone.fetch_item_from_garland",
+            new=AsyncMock(return_value={"id": 1001, "name": "Cruiserweight Champion's Spear", "level": 795, "icon": "weapon.png"}),
+        ),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=990020",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    payload = sync_response.json()
+    assert payload["payloadChanged"] is False
+    assert payload["updatedSlots"] == 0
+    assert payload["syncSource"] == "xivapi"
+    assert payload["syncedJob"] == "DRG"
+
+
+@pytest.mark.asyncio
+async def test_provider_failure_does_not_wipe_gear(client, session, test_user, auth_headers):
+    """When provider returns a 502, existing gear remains untouched."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        gear=[
+            _gear_slot(
+                slot="weapon",
+                bis_source="raid",
+                item_id=1001,
+                item_level=795,
+                item_name="Cruiserweight Champion's Spear",
+                current_source="savage",
+                has_item=True,
+            )
+        ],
+    )
+
+    response = _mock_http_response(502, {"message": "Bad Gateway"})
+
+    with patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=990021",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 502
+
+    await session.refresh(player)
+    assert player.gear[0]["hasItem"] is True
+    assert player.gear[0]["currentSource"] == "savage"
+    assert player.last_sync is None
+
+
+@pytest.mark.asyncio
+async def test_job_mismatch_warning_when_synced_job_differs(client, session, test_user, auth_headers):
+    """When synced gear job differs from player's assigned job, a warning is returned."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="DRG",
+        gear=[
+            _gear_slot(
+                slot="weapon",
+                bis_source="raid",
+                item_id=1001,
+                item_level=795,
+                item_name="Cruiserweight Champion's Spear",
+            )
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Job Swap Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Class": {"Abbreviation": "BRD"},
+                    "Gear": {"MainHand": {"ID": 9999}},
+                },
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch(
+            "app.routers.lodestone.fetch_item_from_garland",
+            new=AsyncMock(return_value={"id": 9999, "name": "Some Bow", "level": 770, "icon": "bow.png"}),
+        ),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=990022",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    payload = sync_response.json()
+    assert payload["syncedJob"] == "BRD"
+    assert payload["jobMismatchWarning"] is not None
+    assert "BRD" in payload["jobMismatchWarning"]
+    assert "DRG" in payload["jobMismatchWarning"]
+
+    await session.refresh(player)
+    assert player.last_synced_job == "BRD"
+    assert player.last_sync_source == "xivapi"
+
+
+@pytest.mark.asyncio
+async def test_successful_sync_stores_metadata(client, session, test_user, auth_headers):
+    """Successful sync persists syncSource and syncedJob on the player."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="DRG",
+        gear=[
+            _gear_slot(
+                slot="weapon",
+                bis_source="raid",
+                item_id=1001,
+                item_level=795,
+                item_name="Cruiserweight Champion's Spear",
+            )
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Metadata Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Class": {"Abbreviation": "DRG"},
+                    "Gear": {"MainHand": {"ID": 1001}},
+                },
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch(
+            "app.routers.lodestone.fetch_item_from_garland",
+            new=AsyncMock(return_value={"id": 1001, "name": "Cruiserweight Champion's Spear", "level": 795, "icon": "weapon.png"}),
+        ),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=990023",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    payload = sync_response.json()
+    assert payload["syncSource"] == "xivapi"
+    assert payload["syncedJob"] == "DRG"
+    assert payload["lastSync"] is not None
+    assert payload["jobMismatchWarning"] is None
+    assert payload["payloadChanged"] is True
+
+    await session.refresh(player)
+    assert player.last_sync is not None
+    assert player.last_sync_source == "xivapi"
+    assert player.last_synced_job == "DRG"
+
+
+@pytest.mark.asyncio
+async def test_force_refresh_bypasses_character_cache(client, auth_headers):
+    """force_refresh=true on character endpoint bypasses the 5-minute cache."""
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Fresh Data Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Class": {"Abbreviation": "WAR"},
+                    "Gear": {"MainHand": {"ID": 1001}},
+                },
+            }
+        },
+    )
+
+    garland_mock = AsyncMock(
+        return_value={"id": 1001, "name": "Cruiserweight Champion's Spear", "level": 795, "icon": "weapon.png"}
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=garland_mock),
+    ):
+        # First call — populates cache
+        resp1 = await client.get("/api/lodestone/character/990024", headers=auth_headers)
+        assert resp1.status_code == 200
+        assert resp1.json()["name"] == "Fresh Data Raider"
+
+    # Change the upstream response
+    response2 = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Updated Data Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Class": {"Abbreviation": "WAR"},
+                    "Gear": {"MainHand": {"ID": 1001}},
+                },
+            }
+        },
+    )
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response2)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=garland_mock),
+    ):
+        # Without force_refresh — returns cached "Fresh Data Raider"
+        resp2 = await client.get("/api/lodestone/character/990024", headers=auth_headers)
+        assert resp2.status_code == 200
+        assert resp2.json()["name"] == "Fresh Data Raider"
+
+        # With force_refresh — bypasses cache, gets "Updated Data Raider"
+        resp3 = await client.get("/api/lodestone/character/990024?force_refresh=true", headers=auth_headers)
+        assert resp3.status_code == 200
+        assert resp3.json()["name"] == "Updated Data Raider"
