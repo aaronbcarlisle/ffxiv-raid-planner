@@ -160,20 +160,37 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Adjust position if menu would go off screen
+  // Adjust position to stay within viewport
   useEffect(() => {
-    if (menuRef.current) {
-      const rect = menuRef.current.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+    if (!menuRef.current) return;
 
-      if (rect.right > viewportWidth) {
-        menuRef.current.style.left = `${x - rect.width}px`;
-      }
-      if (rect.bottom > viewportHeight) {
-        menuRef.current.style.top = `${y - rect.height}px`;
+    const menu = menuRef.current;
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+
+    // Horizontal: prefer right of click, flip left if needed, clamp to viewport
+    let left = x;
+    if (left + menuW > vw - pad) {
+      left = x - menuW; // try left of click point
+    }
+    left = Math.max(pad, Math.min(left, vw - menuW - pad));
+
+    // Vertical: prefer below click, flip above if more room, clamp to viewport
+    let top = y;
+    if (top + menuH > vh - pad) {
+      const spaceAbove = y;
+      const spaceBelow = vh - y;
+      if (spaceAbove > spaceBelow) {
+        top = y - menuH; // flip above
       }
     }
+    top = Math.max(pad, Math.min(top, vh - menuH - pad));
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
   }, [x, y]);
 
   return createPortal(

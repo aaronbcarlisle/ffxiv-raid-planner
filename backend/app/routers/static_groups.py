@@ -14,7 +14,16 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
-from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from ..models import (
+    AvailabilityTemplate,
+    Membership,
+    MemberRole,
+    ScheduleSession,
+    SnapshotPlayer,
+    StaticGroup,
+    TierSnapshot,
+    User,
+)
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -1215,3 +1224,159 @@ async def transfer_ownership(
     await session.commit()
 
     return group_to_response(group, MemberRole.LEAD)
+
+
+# iCal BYDAY keys to human-readable day names
+_ICAL_DAY_MAP = {
+    "MO": "Monday",
+    "TU": "Tuesday",
+    "WE": "Wednesday",
+    "TH": "Thursday",
+    "FR": "Friday",
+    "SA": "Saturday",
+    "SU": "Sunday",
+}
+
+# Expected roster positions and their roles
+_POSITION_ROLES = {
+    "T1": "tank", "T2": "tank",
+    "H1": "healer", "H2": "healer",
+    "M1": "melee", "M2": "melee",
+    "R1": "ranged", "R2": "ranged",
+}
+
+
+@router.get("/{group_id}/discovery/suggestions")
+async def get_discovery_suggestions(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Return safe aggregate suggestions for discovery settings.
+
+    Owner/Lead only. Derives suggestions from:
+    - Scheduler sessions (timezone, days, times)
+    - Availability templates (days)
+    - Roster data (empty slots → needed roles/jobs, lodestone servers → DC/server)
+
+    Never returns private member details.
+    """
+    await require_can_manage_members(session, current_user.id, group_id)
+    group = await get_static_group(session, group_id)
+
+    suggestions: dict[str, Any] = {}
+
+    # --- Timezone from most recent session ---
+    sessions_stmt = (
+        select(ScheduleSession)
+        .where(ScheduleSession.static_group_id == group_id)
+        .order_by(ScheduleSession.created_at.desc())
+        .limit(10)
+    )
+    sessions_result = await session.execute(sessions_stmt)
+    schedule_sessions = sessions_result.scalars().all()
+
+    if schedule_sessions:
+        # Most common timezone from sessions
+        tz_counts: dict[str, int] = {}
+        for s in schedule_sessions:
+            tz_counts[s.timezone] = tz_counts.get(s.timezone, 0) + 1
+        suggestions["timezone"] = max(tz_counts, key=tz_counts.get)  # type: ignore[arg-type]
+
+        # Days and time windows from recurring sessions
+        recurring = [s for s in schedule_sessions if s.is_recurring]
+        if recurring:
+            days: set[str] = set()
+            start_times: list[str] = []
+            end_times: list[str] = []
+            for s in recurring:
+                # Parse ISO datetime to extract day of week and time
+                try:
+                    from datetime import datetime as dt
+                    start_dt = dt.fromisoformat(s.start_time.replace("Z", "+00:00"))
+                    end_dt = dt.fromisoformat(s.end_time.replace("Z", "+00:00"))
+                    day_name = start_dt.strftime("%A")
+                    days.add(day_name)
+                    start_times.append(start_dt.strftime("%H:%M"))
+                    end_times.append(end_dt.strftime("%H:%M"))
+                except (ValueError, AttributeError):
+                    pass
+
+            if days:
+                suggestions["scheduleDays"] = sorted(days)
+            if start_times:
+                suggestions["scheduleStartTime"] = min(start_times)
+            if end_times:
+                suggestions["scheduleEndTime"] = max(end_times)
+
+    # --- Days from availability templates (aggregated, not per-user) ---
+    if "scheduleDays" not in suggestions:
+        templates_stmt = (
+            select(AvailabilityTemplate.day_of_week)
+            .where(AvailabilityTemplate.static_group_id == group_id)
+            .distinct()
+        )
+        templates_result = await session.execute(templates_stmt)
+        template_days = [row[0] for row in templates_result.all()]
+        if template_days:
+            day_names = [_ICAL_DAY_MAP.get(d, d) for d in template_days]
+            suggestions["scheduleDays"] = sorted(set(day_names))
+
+    # --- Roster: needed roles/jobs from empty slots, server from lodestone ---
+    active_tier_stmt = (
+        select(TierSnapshot)
+        .where(TierSnapshot.static_group_id == group_id, TierSnapshot.is_active.is_(True))
+        .limit(1)
+    )
+    active_tier_result = await session.execute(active_tier_stmt)
+    active_tier = active_tier_result.scalar_one_or_none()
+
+    if active_tier:
+        players_stmt = (
+            select(SnapshotPlayer)
+            .where(
+                SnapshotPlayer.tier_snapshot_id == active_tier.id,
+                SnapshotPlayer.is_substitute.is_(False),
+            )
+        )
+        players_result = await session.execute(players_stmt)
+        players = players_result.scalars().all()
+
+        # Find empty/unconfigured slots → needed roles/jobs
+        filled_positions: set[str] = set()
+        needed_roles: set[str] = set()
+        servers: list[str] = []
+
+        for p in players:
+            if p.position:
+                filled_positions.add(p.position)
+            if p.lodestone_server:
+                servers.append(p.lodestone_server)
+
+        # Check which standard positions are unfilled or have unconfigured players
+        for p in players:
+            if p.position and (not p.job or not p.configured):
+                role = _POSITION_ROLES.get(p.position)
+                if role:
+                    needed_roles.add(role)
+
+        # Also check for completely missing positions
+        all_positions = {"T1", "T2", "H1", "H2", "M1", "M2", "R1", "R2"}
+        missing_positions = all_positions - filled_positions
+        for pos in missing_positions:
+            role = _POSITION_ROLES.get(pos)
+            if role:
+                needed_roles.add(role)
+
+        if needed_roles:
+            suggestions["neededRoles"] = sorted(needed_roles)
+
+        # Server/DC from lodestone-linked players (majority vote)
+        if servers:
+            server_counts: dict[str, int] = {}
+            for sv in servers:
+                server_counts[sv] = server_counts.get(sv, 0) + 1
+            suggestions["server"] = max(server_counts, key=server_counts.get)  # type: ignore[arg-type]
+
+    return suggestions

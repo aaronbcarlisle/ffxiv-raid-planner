@@ -46,6 +46,11 @@ DEV_USERS = [
         "discord_username": "DevMember",
         "display_name": "Dev Member",
     },
+    {
+        "discord_id": "dev_applicant_003",
+        "discord_username": "DevApplicant",
+        "display_name": "Dev Applicant",
+    },
 ]
 
 DEV_STATIC_NAME = "Dev Test Static"
@@ -379,7 +384,7 @@ def _set_auth_cookies(response: Response, user_id: str) -> dict:
     return {"access_token": access_token, "refresh_token": refresh_token}
 
 
-@router.post("/login/{user_index}")
+@router.api_route("/login/{user_index}", methods=["GET", "POST"])
 async def dev_login(
     user_index: int,
     response: Response,
@@ -403,22 +408,40 @@ async def dev_login(
 
     if user_index == 0:
         user = owner
+    elif user_index == 2:
+        # Applicant: create user but NO membership (for testing join requests)
+        user = await _get_or_create_user(session, DEV_USERS[user_index])
     else:
         user = await _get_or_create_user(session, DEV_USERS[user_index])
         await _ensure_membership(session, user, group, MemberRole.MEMBER)
 
+    # Make the dev static public + discoverable so join requests can be tested
+    if not group.is_public or not group.settings or not group.settings.get("discovery", {}).get("enabled"):
+        group.is_public = True
+        group.settings = {
+            **(group.settings or {}),
+            "discovery": {
+                **(group.settings or {}).get("discovery", {}),
+                "enabled": True,
+                "recruitmentStatus": "open",
+                "description": "Dev test static — discoverable for join request testing",
+            },
+        }
+
     await session.commit()
 
+    role_label = {0: "owner", 1: "member", 2: "applicant (no membership)"}.get(user_index, "member")
     tokens = _set_auth_cookies(response, user.id)
 
     return {
         "message": f"Logged in as {DEV_USERS[user_index]['discord_username']}",
         "user_id": user.id,
         "username": DEV_USERS[user_index]["discord_username"],
-        "role": "owner" if user_index == 0 else "member",
+        "role": role_label,
         "static_group_id": group.id,
         "share_code": DEV_SHARE_CODE,
         "frontend_url": f"{settings.frontend_url}/group/{DEV_SHARE_CODE}",
+        "discover_url": f"{settings.frontend_url}/discover",
         "access_token": tokens["access_token"],
     }
 
@@ -430,7 +453,7 @@ async def dev_auth_status() -> dict:
     return {
         "dev_auth_mode": True,
         "users": [
-            {"index": i, "username": u["discord_username"], "role": "owner" if i == 0 else "member"}
+            {"index": i, "username": u["discord_username"], "role": {0: "owner", 1: "member", 2: "applicant"}.get(i, "member")}
             for i, u in enumerate(DEV_USERS)
         ],
         "static_share_code": DEV_SHARE_CODE,

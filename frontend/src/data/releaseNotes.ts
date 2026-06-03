@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.20.1';
+export const CURRENT_VERSION = '1.21.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,84 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.21.0',
+    date: '2026-06-01T12:00:00Z',
+    title: 'Find a Static',
+    highlights: ['Static Finder recruitment board', 'Request to join & applicant inbox'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Find a Static — recruitment board',
+        description:
+          'A new /discover page lets players search and browse statics recruiting for current and upcoming tiers. Search by name or description, filter by role, job, data center, server, intensity, status, timezone, and language. Sort by recently updated, most members, or name. Filters sync to the URL for shareable links.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): static finder recruitment board', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Listing setup with live preview',
+        description:
+          'Owners and leads can configure their recruitment listing from the new Listing tab in static settings. A status banner shows whether the listing is live, and a preview card at the bottom shows exactly what players will see. All fields use dropdowns and chips.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): listing status + preview', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: '"Suggest from static" assisted setup',
+        description:
+          'Click "Suggest from static" to auto-fill empty listing fields from your schedule sessions, availability templates, and roster data. Only empty fields are filled — existing values are never overwritten.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): roster/schedule-aware suggestions', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Listing cards with copy link and expandable details',
+        description:
+          'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Long descriptions expand inline. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): polished listing cards', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Structured contact info for listings',
+        description:
+          'Owners can now add a Discord tag, server invite link, Lodestone/community URL, or freeform contact instructions to their listing. Contact info shows prominently on listing cards so recruits know exactly how to reach you.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): structured contact fields', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Cozier listing cards and clearer setup',
+        description:
+          'Listing cards now have clear sections for Raid Nights, Looking For, and About. The settings form is organized into labeled sections with warmer copy. Filters are split into two rows so dropdowns no longer overlap. Privacy reassurance is more prominent throughout.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): cozy polish pass', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Privacy-safe listings',
+        description:
+          'Member count is now hidden by default — owners opt in with a toggle. Contact URLs are validated (https only). Description and contact fields have a clear "this is public" warning. Unsafe URL protocols (javascript:, data:) are blocked.',
+        commits: [{ hash: 'pending', message: 'feat(discovery): privacy hardening', date: '2026-06-01T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Request to join from Static Finder',
+        description:
+          'Players browsing the recruitment board can send a join request directly from discovery cards or when viewing a discoverable static. Includes role/job interest, a short message, and availability note.',
+        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Join request inbox for leads',
+        description:
+          'Owners and leads can review incoming applications in the new Requests tab under static settings. Accept to add as member, or decline. A pending count badge shows unread requests.',
+        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Privacy-safe applicant handling',
+        description:
+          'Applicants can now provide a temporary Discord handle so the lead can reach them. The handle — along with the message and availability note — is automatically deleted once the request is accepted, declined, or cancelled. No Discord account data from login is ever shared with leads.',
+        commits: [{ hash: 'pending', message: 'fix(privacy): harden join request data exposure', date: '2026-06-02T12:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.20.1',
     date: '2026-06-03T16:00:00Z',

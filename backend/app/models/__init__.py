@@ -3,6 +3,7 @@
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
 from .api_key import ApiKey
 from .invitation import Invitation
+from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
@@ -21,6 +22,7 @@ __all__ = [
     "AnalyticsEvent",
     "ApiKey",
     "Invitation",
+    "JoinRequest",
     "LootLogEntry",
     "MaterialLogEntry",
     "ErrorReport",

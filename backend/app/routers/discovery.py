@@ -1,0 +1,182 @@
+"""Public static discovery API - read-only, no auth required"""
+
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..database import get_session
+from ..models import Membership, StaticGroup
+from ..rate_limit import limiter
+from ..schemas.discovery import DiscoveryListItem, DiscoveryListResponse
+
+router = APIRouter(prefix="/api/discovery", tags=["discovery"])
+
+SortOption = Literal["recent", "members", "name"]
+
+
+def _get_discovery(settings: dict | None) -> dict | None:
+    if not settings or not isinstance(settings, dict):
+        return None
+    discovery = settings.get("discovery")
+    if not discovery or not isinstance(discovery, dict):
+        return None
+    return discovery
+
+
+def _is_discoverable(group: StaticGroup) -> bool:
+    if not group.is_public:
+        return False
+    discovery = _get_discovery(group.settings)
+    if not discovery:
+        return False
+    return discovery.get("enabled") is True
+
+
+def _matches_list_filter(value: str | None, candidates: list[str] | None) -> bool:
+    """Check if value appears in the candidate list (case-insensitive)."""
+    if not candidates:
+        return False
+    return value.lower() in [c.lower() for c in candidates]
+
+
+def _matches_string_filter(filter_val: str, field_val: str | None) -> bool:
+    if not field_val:
+        return False
+    return filter_val.lower() == field_val.lower()
+
+
+def _matches_text_query(query: str, group_name: str, description: str | None) -> bool:
+    """Case-insensitive substring search over name and description."""
+    q = query.lower()
+    if q in group_name.lower():
+        return True
+    if description and q in description.lower():
+        return True
+    return False
+
+
+def _sanitize_contact(method: str | None, value: str | None) -> tuple[str | None, str | None]:
+    """Only return contact fields when both method and value are set and valid."""
+    VALID_METHODS = {"discord", "discord_server", "url", "text"}
+    if not method or not value or method not in VALID_METHODS:
+        return None, None
+    # Trim whitespace and truncate to 200 chars
+    clean = value.strip()[:200]
+    if not clean:
+        return None, None
+    # Reject unsafe URL protocols
+    if method == "url":
+        lower = clean.lower()
+        if not (lower.startswith("https://") or lower.startswith("http://")):
+            return None, None
+    return method, clean
+
+
+def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> DiscoveryListItem:
+    contact_method, contact_value = _sanitize_contact(
+        discovery.get("contactMethod"), discovery.get("contactValue")
+    )
+    # Only expose member count when owner explicitly opted in
+    show_count = discovery.get("showMemberCount") is True
+    return DiscoveryListItem(
+        name=group.name,
+        share_code=group.share_code,
+        recruitment_status=discovery.get("recruitmentStatus", "closed"),
+        description=discovery.get("description"),
+        contact_method=contact_method,
+        contact_value=contact_value,
+        needed_roles=discovery.get("neededRoles"),
+        needed_jobs=discovery.get("neededJobs"),
+        schedule_days=discovery.get("scheduleDays"),
+        schedule_start_time=discovery.get("scheduleStartTime"),
+        schedule_end_time=discovery.get("scheduleEndTime"),
+        timezone=discovery.get("timezone"),
+        languages=discovery.get("languages"),
+        intensity=discovery.get("intensity"),
+        data_center=discovery.get("dataCenter"),
+        server=discovery.get("server"),
+        member_count=member_count if show_count else 0,
+        last_updated=group.updated_at,
+    )
+
+
+def _sort_items(items: list[DiscoveryListItem], sort: SortOption) -> list[DiscoveryListItem]:
+    if sort == "members":
+        return sorted(items, key=lambda i: i.member_count, reverse=True)
+    if sort == "name":
+        return sorted(items, key=lambda i: i.name.lower())
+    # Default: recent (by last_updated desc)
+    return sorted(items, key=lambda i: i.last_updated or "", reverse=True)
+
+
+@router.get("/statics", response_model=DiscoveryListResponse)
+@limiter.limit("60/minute")
+async def list_discoverable_statics(
+    request: Request,
+    q: str | None = Query(None, max_length=100, description="Text search over name and description"),
+    role: str | None = Query(None, description="Filter by needed role"),
+    job: str | None = Query(None, description="Filter by needed job"),
+    day: str | None = Query(None, description="Filter by schedule day"),
+    timezone: str | None = Query(None, description="Filter by timezone"),
+    language: str | None = Query(None, description="Filter by language"),
+    intensity: str | None = Query(None, description="Filter by intensity"),
+    recruitment_status: str | None = Query(None, alias="recruitmentStatus", description="Filter by recruitment status"),
+    data_center: str | None = Query(None, alias="dataCenter", description="Filter by data center"),
+    server: str | None = Query(None, description="Filter by server"),
+    sort: SortOption = Query("recent", description="Sort order: recent, members, name"),
+    limit: int = Query(50, ge=1, le=100, description="Max results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    session: AsyncSession = Depends(get_session),
+) -> DiscoveryListResponse:
+    stmt = (
+        select(StaticGroup, func.count(Membership.id).label("member_count"))
+        .outerjoin(Membership, Membership.static_group_id == StaticGroup.id)
+        .where(StaticGroup.is_public.is_(True))
+        .group_by(StaticGroup.id)
+    )
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    items: list[DiscoveryListItem] = []
+    for group, member_count in rows:
+        if not _is_discoverable(group):
+            continue
+
+        discovery = _get_discovery(group.settings)
+        assert discovery is not None
+
+        # Text search
+        if q and not _matches_text_query(q, group.name, discovery.get("description")):
+            continue
+
+        if role and not _matches_list_filter(role, discovery.get("neededRoles")):
+            continue
+        if job and not _matches_list_filter(job, discovery.get("neededJobs")):
+            continue
+        if day and not _matches_list_filter(day, discovery.get("scheduleDays")):
+            continue
+        if language and not _matches_list_filter(language, discovery.get("languages")):
+            continue
+        if timezone and not _matches_string_filter(timezone, discovery.get("timezone")):
+            continue
+        if intensity and not _matches_string_filter(intensity, discovery.get("intensity")):
+            continue
+        if recruitment_status and not _matches_string_filter(recruitment_status, discovery.get("recruitmentStatus")):
+            continue
+        if data_center and not _matches_string_filter(data_center, discovery.get("dataCenter")):
+            continue
+        if server and not _matches_string_filter(server, discovery.get("server")):
+            continue
+
+        items.append(_to_list_item(group, discovery, member_count))
+
+    # Sort
+    items = _sort_items(items, sort)
+
+    total = len(items)
+    items = items[offset : offset + limit]
+
+    return DiscoveryListResponse(items=items, total=total)

@@ -522,6 +522,28 @@ export interface OwnerInfo {
   displayName?: string;
 }
 
+// Discovery settings for public static listing
+export type ContactMethod = 'discord' | 'discord_server' | 'url' | 'text';
+
+export interface DiscoverySettings {
+  enabled: boolean;
+  recruitmentStatus: 'open' | 'limited' | 'closed';
+  description?: string;
+  contactMethod?: ContactMethod;
+  contactValue?: string;
+  intensity?: 'casual' | 'midcore' | 'hardcore';
+  languages?: string[];
+  dataCenter?: string;
+  server?: string;
+  timezone?: string;
+  neededRoles?: string[];
+  neededJobs?: string[];
+  scheduleDays?: string[];
+  scheduleStartTime?: string;
+  scheduleEndTime?: string;
+  showMemberCount?: boolean;
+}
+
 // Static group settings (loot priority, etc.)
 // All fields optional to support partial updates
 export interface StaticGroupSettings {
@@ -537,6 +559,7 @@ export interface StaticGroupSettings {
   enableEnhancedScoring?: boolean;
   // New priority system (overrides legacy fields when set)
   prioritySettings?: StaticPrioritySettings;
+  discovery?: DiscoverySettings;
 }
 
 // Static group (persistent team identity)
@@ -750,6 +773,47 @@ export interface InvitationAcceptResponse {
   staticGroupId?: string;
   shareCode?: string;
   role?: MemberRole;
+}
+
+// ==================== Join Request Types ====================
+
+export type JoinRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+
+export interface RequesterInfo {
+  id: string;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  staticGroupId: string;
+  staticGroupName?: string;
+  requesterUserId: string;
+  requester?: RequesterInfo;
+  status: JoinRequestStatus;
+  message?: string;
+  roleInterest?: string[];
+  jobInterest?: string[];
+  availabilityNote?: string;
+  contactDiscord?: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+  resolvedByUserId?: string;
+}
+
+export interface JoinRequestListResponse {
+  items: JoinRequest[];
+  pendingCount: number;
+}
+
+export interface JoinRequestCreatePayload {
+  message?: string;
+  roleInterest?: string[];
+  jobInterest?: string[];
+  availabilityNote?: string;
+  contactDiscord?: string;
 }
 
 // ==================== Admin Types ====================

@@ -28,7 +28,9 @@ from .routers import (
     api_keys_router,
     auth_router,
     bis_router,
+    discovery_router,
     invitations_router,
+    join_requests_router,
     lodestone_router,
     loot_tracking_router,
     schedule_router,
@@ -150,7 +152,9 @@ app.include_router(analytics_router)
 app.include_router(api_keys_router)
 app.include_router(auth_router)
 app.include_router(bis_router)
+app.include_router(discovery_router)
 app.include_router(invitations_router)
+app.include_router(join_requests_router)
 app.include_router(lodestone_router)
 app.include_router(loot_tracking_router)
 app.include_router(schedule_router)

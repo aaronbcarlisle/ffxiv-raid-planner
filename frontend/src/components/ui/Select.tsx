@@ -18,7 +18,36 @@
 
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown, Check } from 'lucide-react';
-import { forwardRef, useState, useEffect, type ReactNode } from 'react';
+import { forwardRef, useState, useEffect, useRef, type ReactNode } from 'react';
+
+// ── Singleton coordination ──────────────────────────────────
+// Only one Select dropdown should be open at a time.
+// Without Portal, Radix can't auto-dismiss siblings, so we
+// use a lightweight custom-event bus on the document.
+let _selectCounter = 0;
+const SELECT_OPEN_EVENT = 'app:select-open';
+
+function useCloseOnSiblingOpen(
+  instanceId: React.MutableRefObject<number>,
+  setOpen: (v: boolean) => void,
+) {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const openedId = (e as CustomEvent<number>).detail;
+      if (openedId !== instanceId.current) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener(SELECT_OPEN_EVENT, handler);
+    return () => document.removeEventListener(SELECT_OPEN_EVENT, handler);
+  }, [instanceId, setOpen]);
+}
+
+function broadcastSelectOpen(instanceId: number) {
+  document.dispatchEvent(
+    new CustomEvent(SELECT_OPEN_EVENT, { detail: instanceId }),
+  );
+}
 
 // Counteract Radix's scroll-lock which breaks sticky positioning
 function usePreventScrollLock(isOpen: boolean) {
@@ -89,8 +118,15 @@ export function Select({
   onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
+  const instanceId = useRef(++_selectCounter);
+
+  // Close this dropdown when a sibling opens
+  useCloseOnSiblingOpen(instanceId, setOpen);
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      broadcastSelectOpen(instanceId.current);
+    }
     setOpen(isOpen);
     onOpenChange?.(isOpen);
   };
@@ -109,6 +145,7 @@ export function Select({
 
   return (
     <SelectPrimitive.Root
+      open={open}
       value={value}
       onValueChange={onChange}
       disabled={disabled}

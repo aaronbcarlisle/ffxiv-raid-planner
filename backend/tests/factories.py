@@ -37,6 +37,7 @@ async def create_static_group(
     name: str = "Test Static",
     share_code: str | None = None,
     is_public: bool = False,
+    settings: dict | None = None,
 ) -> StaticGroup:
     """Create a test static group with owner membership."""
     group = StaticGroup(
@@ -45,6 +46,7 @@ async def create_static_group(
         owner_id=owner.id,
         share_code=share_code or _generate_share_code(),
         is_public=is_public,
+        settings=settings,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
