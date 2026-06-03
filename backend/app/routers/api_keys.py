@@ -191,7 +191,23 @@ _LOOPBACK_HOSTS = {"127.0.0.1", "localhost"}
 
 
 def _is_loopback_redirect_uri(redirect_uri: str) -> bool:
-    """Return True iff redirect_uri targets http://127.0.0.1[:port]/... or localhost."""
+    """Return True iff redirect_uri targets http://127.0.0.1[:port]/... or localhost.
+
+    Python's urlparse (RFC 3986) and browsers (WHATWG URL Standard) disagree on a
+    few edge cases an attacker can exploit to make the backend approve a URI the
+    browser then resolves to a different host. We pre-reject those cases:
+
+    - Backslash: browsers normalize ``\\`` to ``/``; ``urlparse`` does not. A URI
+      like ``http://evil.com\\@127.0.0.1/`` would pass our hostname check but
+      navigate to evil.com.
+    - Userinfo (``http://user@127.0.0.1/``): the auth section is ignored on
+      navigation and can disguise the intended target in copy/paste contexts.
+    - Control characters: silently stripped by some browsers.
+    """
+    if "\\" in redirect_uri:
+        return False
+    if any(ord(c) < 0x20 or ord(c) == 0x7F for c in redirect_uri):
+        return False
     try:
         parsed = urlparse(redirect_uri)
     except ValueError:
@@ -199,6 +215,8 @@ def _is_loopback_redirect_uri(redirect_uri: str) -> bool:
     if parsed.scheme != "http":
         return False
     if parsed.hostname not in _LOOPBACK_HOSTS:
+        return False
+    if parsed.username is not None or parsed.password is not None:
         return False
     return True
 

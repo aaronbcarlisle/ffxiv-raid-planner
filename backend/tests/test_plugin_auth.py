@@ -6,10 +6,12 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_session
+from app.main import app
 from app.models import ApiKey, PluginAuthCode, User
 
 pytestmark = pytest.mark.asyncio
@@ -106,6 +108,29 @@ class TestPluginAuthAuthorize:
         response = await client.post(
             "/api/auth/api-keys/plugin-auth/authorize",
             json=_authorize_body(method="plain"),
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.parametrize(
+        "redirect_uri",
+        [
+            # WHATWG normalizes backslash to '/', so this would navigate to evil.com.
+            "http://evil.example.com\\@127.0.0.1:51234/callback/",
+            # Userinfo masks the real host in copy/paste contexts.
+            "http://attacker@127.0.0.1:51234/callback/",
+            "http://user:pw@127.0.0.1:51234/callback/",
+            # Embedded control character is silently stripped by some browsers.
+            "http://127.0.0.1\x00.example.com:51234/callback/",
+        ],
+    )
+    async def test_authorize_rejects_parser_divergent_redirect_uris(
+        self, client: AsyncClient, auth_headers: dict, redirect_uri: str
+    ):
+        """The backend must reject URIs that urlparse and the browser disagree on."""
+        response = await client.post(
+            "/api/auth/api-keys/plugin-auth/authorize",
+            json=_authorize_body(redirect_uri=redirect_uri),
             headers=auth_headers,
         )
         assert response.status_code == 400
@@ -277,6 +302,38 @@ class TestPluginAuthExchange:
             json={"code": "café-invalid", "codeVerifier": "a" * 43},
         )
         assert response.status_code == 422
+
+    async def test_exchange_works_without_csrf_cookie_or_header(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession
+    ):
+        """Regression: the exchange endpoint must remain CSRF-exempt.
+
+        The plugin's loopback listener has no browser cookies and cannot supply
+        a CSRF token. The shared client fixture auto-injects one, so this test
+        uses a fresh AsyncClient (no cookie, no header) to prove the exemption.
+        """
+        # Issue a code via the authenticated path.
+        code, verifier = await self._issue_code(client, auth_headers)
+
+        # Override get_session on the running app so the bare client hits the same DB.
+        async def _override():
+            yield session
+
+        app.dependency_overrides[get_session] = _override
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test",
+            ) as plain_client:
+                response = await plain_client.post(
+                    "/api/auth/api-keys/plugin-auth/exchange",
+                    json={"code": code, "codeVerifier": verifier},
+                )
+        finally:
+            app.dependency_overrides.pop(get_session, None)
+
+        assert response.status_code == 200, response.text
+        assert response.json()["apiKey"].startswith("xrp_")
 
 
 class TestPluginAuthAuthorizePrivilegeEscalation:
