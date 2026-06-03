@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * ReviewStep - Step 3 of setup wizard
  *

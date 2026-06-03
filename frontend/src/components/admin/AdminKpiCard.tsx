@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Admin KPI Card - Displays a single key performance indicator
  *

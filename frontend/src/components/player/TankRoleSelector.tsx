@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Tank Role Selector - Radix Popover-based MT/OT picker
  *

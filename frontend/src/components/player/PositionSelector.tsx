@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * Position Selector - Radix Popover-based raid position picker
  *

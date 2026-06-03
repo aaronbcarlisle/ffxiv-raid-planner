@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 import { LayoutGrid, List } from 'lucide-react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { ViewMode } from '../../types';

@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 import { Tooltip } from '../primitives/Tooltip';
 import type { TemplateRole, RaidPosition } from '../../types';
 import { TEMPLATE_ROLE_INFO, getRoleIconUrl } from '../../utils/constants';

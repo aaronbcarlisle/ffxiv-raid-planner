@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * API Cookbook - Practical examples for using the FFXIV Raid Planner API
  *

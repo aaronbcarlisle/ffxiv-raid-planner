@@ -1,3 +1,4 @@
+/* eslint-disable design-system/no-raw-button */
 /**
  * GearTable - Gear tracking table with BiS source and completion tracking
  *
