@@ -43,6 +43,12 @@ const RELEASE_NOTES_PATH = 'frontend/src/data/releaseNotes.ts';
 const RELEASE_MATCH_SKEW_MS = 5 * 60 * 1000; // 5 min
 const RELEASE_MATCH_WINDOW_MS = 6 * 60 * 60 * 1000; // 6 h
 
+// The SINCE commit's committer date is set at merge time; its own changelog
+// message is posted a little later, but pull the lower bound back by this much
+// so the boundary message (the one triggered by SINCE_SHA itself) is never
+// dropped to a few seconds of clock skew.
+const SINCE_BOUND_SKEW_MS = 10 * 60 * 1000; // 10 min
+
 // Matches the commit URL discord-changelog.js puts on commit embeds:
 //   https://github.com/<owner>/<repo>/commit/<sha>
 const COMMIT_URL_RE = /github\.com\/[^/]+\/[^/]+\/commit\/([0-9a-f]{7,40})/i;
@@ -185,8 +191,9 @@ async function fetchReleaseNotesCommits(repository, headers) {
 async function collectMessages(channel, botUserId, sinceTimestamp, maxMessages) {
   const collected = [];
   let before;
+  let hitCap = false;
 
-  while (collected.length < maxMessages) {
+  outer: while (true) {
     const batch = await channel.messages.fetch({ limit: DISCORD_FETCH_PAGE, before });
     if (batch.size === 0) break;
 
@@ -200,10 +207,21 @@ async function collectMessages(channel, botUserId, sinceTimestamp, maxMessages) 
       if (message.author?.id !== botUserId) continue;
       if (!message.embeds || message.embeds.length === 0) continue;
       collected.push(message);
+      if (collected.length >= maxMessages) {
+        hitCap = true;
+        break outer;
+      }
     }
 
     if (reachedBound) break; // everything older than the bound from here on
     if (batch.size < DISCORD_FETCH_PAGE) break; // last page
+  }
+
+  if (hitCap) {
+    console.warn(
+      `WARNING: hit the ${maxMessages}-message cap before reaching the date bound — ` +
+      `older in-range messages were NOT scanned. Raise MAX_MESSAGES to cover them.`
+    );
   }
 
   return collected.reverse(); // oldest first
@@ -244,8 +262,10 @@ async function main() {
   }
 
   const sinceDate = await fetchCommitDate(sinceSha, repository, githubHeaders);
-  const sinceTimestamp = sinceDate ? new Date(sinceDate).getTime() : null;
-  console.log(`Date bound: ${sinceDate ? `>= ${sinceDate}` : 'none (scanning up to the message cap)'}`);
+  // Pull the bound back by a skew margin so a message posted right at the SINCE
+  // commit's time isn't dropped (the message lands just after the commit).
+  const sinceTimestamp = sinceDate ? new Date(sinceDate).getTime() - SINCE_BOUND_SKEW_MS : null;
+  console.log(`Date bound: ${sinceDate ? `>= ${sinceDate} (−${SINCE_BOUND_SKEW_MS / 60000}m skew)` : 'none (scanning up to the message cap)'}`);
 
   // Release embeds carry no SHA; we time-match them to the releaseNotes.ts
   // commit that triggered each post to find the right author.
@@ -258,6 +278,7 @@ async function main() {
   let updated = 0;
   let skipped = 0;
   let unresolved = 0;
+  let failed = 0;
 
   try {
     await client.login(token);
@@ -315,16 +336,28 @@ async function main() {
       );
 
       if (!dryRun) {
-        const newEmbed = EmbedBuilder.from(embed).setAuthor(desired);
-        await message.edit({ embeds: [newEmbed] });
+        // Isolate edit failures so one bad message (rate limit, lost perms,
+        // deleted message) doesn't abort the whole backfill. The run is
+        // idempotent, so a later re-run retries anything that failed here.
+        try {
+          const newEmbed = EmbedBuilder.from(embed).setAuthor(desired);
+          await message.edit({ embeds: [newEmbed] });
+        } catch (editError) {
+          failed++;
+          console.warn(`  ! ${label} — edit failed: ${editError.message}; continuing`);
+          continue;
+        }
       }
       updated++;
     }
 
     console.log(
       `\nDone. ${dryRun ? 'Would update' : 'Updated'} ${updated}, already-correct/skipped ${skipped}, ` +
-      `unresolved ${unresolved} (of ${scanned} changelog embeds).`
+      `unresolved ${unresolved}, failed ${failed} (of ${scanned} changelog embeds).`
     );
+    if (failed > 0) {
+      console.log(`${failed} edit(s) failed — re-run to retry them (already-fixed messages are skipped).`);
+    }
     if (dryRun && updated > 0) {
       console.log('Re-run with DRY_RUN=false to apply these edits.');
     }

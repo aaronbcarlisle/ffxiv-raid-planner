@@ -836,7 +836,7 @@ async function fetchCommitAuthor(sha, repository) {
     const login = data.author?.login || null;
     let profileName = null;
     if (login && !AI_BOT_LOGIN_PATTERN.test(login)) {
-      profileName = await fetchProfileName(login, headers, controller.signal);
+      profileName = await fetchProfileName(login, headers);
     }
 
     return resolveAuthorFromCommitData(data, profileName);
@@ -852,15 +852,26 @@ async function fetchCommitAuthor(sha, repository) {
  * Fetch a GitHub user's profile display name (the "name" field on /users/{login}).
  * Returns null on any failure or when the user hasn't set a display name — the
  * caller then falls back to the git author name or login.
+ *
+ * Uses its own timeout (not the commit lookup's) so a slow commit fetch can't
+ * starve this call's budget, and an abort here only drops the nicer display
+ * name — it never discards the already-resolved commit author.
  */
-async function fetchProfileName(login, headers, signal) {
+async function fetchProfileName(login, headers) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GITHUB_API_TIMEOUT_MS);
   try {
-    const res = await fetch(`https://api.github.com/users/${login}`, { headers, signal });
+    const res = await fetch(`https://api.github.com/users/${login}`, {
+      headers,
+      signal: controller.signal,
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return data?.name || null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
