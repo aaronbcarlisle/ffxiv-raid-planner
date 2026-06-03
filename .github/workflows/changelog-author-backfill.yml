@@ -1,0 +1,46 @@
+name: Changelog Author Backfill
+
+# One-off / on-demand maintenance: re-attributes existing Discord changelog
+# embeds to their real commit authors (editing the bot's own messages in place).
+# Run a dry run first, review the logs, then run again with dry_run = false.
+on:
+  workflow_dispatch:
+    inputs:
+      since_sha:
+        description: 'Only edit embeds for commits at/after this commit''s date'
+        required: false
+        default: '45760f6'
+      dry_run:
+        description: 'Log intended edits without applying them'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  backfill:
+    name: Backfill embed authors
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Backfill Discord changelog authors
+        working-directory: scripts
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_CHANGELOG_CHANNEL_ID: ${{ secrets.DISCORD_CHANGELOG_CHANNEL_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SINCE_SHA: ${{ inputs.since_sha }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: node rewrite-changelog-authors.js
