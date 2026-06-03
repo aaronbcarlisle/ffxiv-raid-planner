@@ -1,7 +1,7 @@
 """add_sync_diagnostics_columns
 
 Revision ID: t0u1v2w3x4y5
-Revises: s9t0u1v2w3x4
+Revises: q7r8s9t0u1v2
 Create Date: 2026-06-02
 
 Adds last_sync_source and last_synced_job columns to snapshot_players
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = "t0u1v2w3x4y5"
-down_revision: Union[str, None] = "s9t0u1v2w3x4"
+down_revision: Union[str, None] = "q7r8s9t0u1v2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
