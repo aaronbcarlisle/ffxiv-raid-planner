@@ -4,6 +4,7 @@ import {
   authorNeedsUpdate,
   isReleaseEmbed,
   matchReleaseCommitSha,
+  parseFirstParentLog,
 } from './rewrite-changelog-authors.js';
 
 describe('rewrite-changelog-authors', () => {
@@ -118,6 +119,38 @@ describe('rewrite-changelog-authors', () => {
     it('returns null for empty inputs', () => {
       expect(matchReleaseCommitSha(Date.now(), [])).toBeNull();
       expect(matchReleaseCommitSha(Date.now(), null)).toBeNull();
+    });
+  });
+
+  describe('parseFirstParentLog', () => {
+    it('parses sha|iso lines into {sha, timestampMs}', () => {
+      const stdout =
+        '45760f6|2026-05-27T11:35:36-04:00\n' +
+        'b9010c1|2026-05-27T22:35:04-04:00\n';
+      expect(parseFirstParentLog(stdout)).toEqual([
+        { sha: '45760f6', timestampMs: Date.parse('2026-05-27T11:35:36-04:00') },
+        { sha: 'b9010c1', timestampMs: Date.parse('2026-05-27T22:35:04-04:00') },
+      ]);
+    });
+
+    it('ignores blank lines and trailing whitespace', () => {
+      const stdout = '\n45760f6|2026-05-27T11:35:36-04:00\n\n';
+      const parsed = parseFirstParentLog(stdout);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].sha).toBe('45760f6');
+    });
+
+    it('skips malformed lines (missing date or unparseable timestamp)', () => {
+      const stdout = 'deadbeef|not-a-date\nbadline\n45760f6|2026-05-27T11:35:36-04:00\n';
+      const parsed = parseFirstParentLog(stdout);
+      expect(parsed).toEqual([
+        { sha: '45760f6', timestampMs: Date.parse('2026-05-27T11:35:36-04:00') },
+      ]);
+    });
+
+    it('returns [] for empty or nullish input', () => {
+      expect(parseFirstParentLog('')).toEqual([]);
+      expect(parseFirstParentLog(null)).toEqual([]);
     });
   });
 });
