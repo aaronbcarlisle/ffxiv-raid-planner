@@ -18,8 +18,11 @@ import {
   DISCORD_DESCRIPTION_LIMIT,
   TRUNCATION_MESSAGE_RESERVE,
   RELEASE_NOTES_PATH,
+  COMMIT_AUTHOR,
   COMMIT_AUTHOR_GITHUB,
   CATEGORY_COLORS,
+  resolveAuthorFromCommitData,
+  buildEmbedAuthor,
 } from './discord-changelog.js';
 
 describe('discord-changelog', () => {
@@ -439,6 +442,121 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
 
       expect(data.title).toBe('feat: compact changelog with smart summarization');
     });
+
+    it('uses the provided commit author over the hardcoded default', async () => {
+      const author = {
+        name: 'RiririFRin',
+        login: 'RiririFRin',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/12345?v=4',
+      };
+      const embed = await buildCommitEmbed('abc1234567890', 'feat: test', 'user/repo', author);
+      const data = embed.toJSON();
+
+      expect(data.author.name).toBe('RiririFRin');
+      expect(data.author.url).toBe('https://github.com/RiririFRin');
+      expect(data.author.icon_url).toBe('https://avatars.githubusercontent.com/u/12345?v=4');
+    });
+  });
+
+  describe('resolveAuthorFromCommitData', () => {
+    it('extracts login, name, and avatar from a GitHub commit API response', () => {
+      const data = {
+        author: { login: 'RiririFRin', avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4' },
+        commit: { author: { name: 'RiririFRin' } },
+      };
+      expect(resolveAuthorFromCommitData(data)).toEqual({
+        name: 'RiririFRin',
+        login: 'RiririFRin',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+      });
+    });
+
+    it('prefers the git author name for the display name', () => {
+      const data = {
+        author: { login: 'ririri-acct', avatar_url: 'https://avatars.githubusercontent.com/u/2?v=4' },
+        commit: { author: { name: 'Ririri Frin' } },
+      };
+      expect(resolveAuthorFromCommitData(data).name).toBe('Ririri Frin');
+    });
+
+    it('prefers the GitHub profile display name when one is supplied', () => {
+      // git author name is the lowercase login, but the profile name is nicer
+      const data = {
+        author: { login: 'aaronbcarlisle', avatar_url: 'https://avatars.githubusercontent.com/u/3?v=4' },
+        commit: { author: { name: 'aaronbcarlisle' } },
+      };
+      expect(resolveAuthorFromCommitData(data, 'Aaron Carlisle').name).toBe('Aaron Carlisle');
+    });
+
+    it('falls back to the login when neither profile name nor git name exist', () => {
+      const data = { author: { login: 'RiririFRin' }, commit: { author: {} } };
+      // profile name null (RiririFRin has no display name set) → login
+      expect(resolveAuthorFromCommitData(data, null).name).toBe('RiririFRin');
+    });
+
+    it('falls back to a constructed avatar URL when the API omits one', () => {
+      const data = {
+        author: { login: 'someone' },
+        commit: { author: { name: 'Some One' } },
+      };
+      expect(resolveAuthorFromCommitData(data).avatarUrl).toBe('https://github.com/someone.png');
+    });
+
+    it('returns null when the commit cannot be linked to a GitHub account and has no name', () => {
+      const data = { author: null, commit: { author: {} } };
+      expect(resolveAuthorFromCommitData(data)).toBeNull();
+    });
+
+    it('still resolves a name when the email is not linked to a GitHub account', () => {
+      // author is null (unlinked email) but git metadata still carries the name
+      const data = { author: null, commit: { author: { name: 'Unlinked Human' } } };
+      expect(resolveAuthorFromCommitData(data)).toEqual({
+        name: 'Unlinked Human',
+        login: null,
+        avatarUrl: null,
+      });
+    });
+
+    it('refuses to attribute AI/bot accounts (per CLAUDE.md no-AI-attribution policy)', () => {
+      for (const login of ['claude[bot]', 'copilot', 'cursor[bot]', 'github-actions[bot]', 'dependabot[bot]']) {
+        const data = { author: { login }, commit: { author: { name: login } } };
+        expect(resolveAuthorFromCommitData(data)).toBeNull();
+      }
+    });
+
+    it('returns null for null/empty input', () => {
+      expect(resolveAuthorFromCommitData(null)).toBeNull();
+      expect(resolveAuthorFromCommitData({})).toBeNull();
+    });
+  });
+
+  describe('buildEmbedAuthor', () => {
+    it('falls back to the repo owner default when author is null', () => {
+      expect(buildEmbedAuthor(null)).toEqual({
+        name: COMMIT_AUTHOR,
+        url: `https://github.com/${COMMIT_AUTHOR_GITHUB}`,
+        iconURL: `https://github.com/${COMMIT_AUTHOR_GITHUB}.png`,
+      });
+    });
+
+    it('uses the resolved author when provided', () => {
+      const author = { name: 'RiririFRin', login: 'RiririFRin', avatarUrl: 'https://example.com/a.png' };
+      expect(buildEmbedAuthor(author)).toEqual({
+        name: 'RiririFRin',
+        url: 'https://github.com/RiririFRin',
+        iconURL: 'https://example.com/a.png',
+      });
+    });
+
+    it('constructs an avatar URL from the login when none is supplied', () => {
+      const author = { name: 'No Avatar', login: 'noavatar', avatarUrl: null };
+      expect(buildEmbedAuthor(author).iconURL).toBe('https://github.com/noavatar.png');
+    });
+
+    it('omits url/icon for an author with a name but no GitHub login', () => {
+      const author = { name: 'Unlinked Human', login: null, avatarUrl: null };
+      expect(buildEmbedAuthor(author)).toEqual({ name: 'Unlinked Human' });
+    });
   });
 
   describe('getDominantCategoryColor', () => {
@@ -738,6 +856,22 @@ Co-Authored-By: Claude <noreply@anthropic.com>`;
       const data = embed.toJSON();
 
       expect(data.footer).toBeUndefined();
+    });
+
+    it('defaults the author to the repo owner', () => {
+      const release = { version: '1.0.0', date: '2026-01-20T00:00:00Z', title: 'Test', highlights: [] };
+      const data = buildReleaseEmbed(release).toJSON();
+      expect(data.author.name).toBe(COMMIT_AUTHOR);
+      expect(data.author.url).toBe(`https://github.com/${COMMIT_AUTHOR_GITHUB}`);
+    });
+
+    it('uses the provided author when the release was cut by a contributor', () => {
+      const release = { version: '1.0.0', date: '2026-01-20T00:00:00Z', title: 'Test', highlights: [] };
+      const author = { name: 'RiririFRin', login: 'RiririFRin', avatarUrl: 'https://example.com/a.png' };
+      const data = buildReleaseEmbeds(release, author)[0].toJSON();
+      expect(data.author.name).toBe('RiririFRin');
+      expect(data.author.url).toBe('https://github.com/RiririFRin');
+      expect(data.author.icon_url).toBe('https://example.com/a.png');
     });
   });
 
