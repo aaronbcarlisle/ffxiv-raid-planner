@@ -1,7 +1,7 @@
 """Add static_join_requests table for discovery join flow
 
 Revision ID: r8s9t0u1v2w3
-Revises: q7r8s9t0u1v2
+Revises: p7q8r9s0t1u2
 Create Date: 2026-06-01
 
 Players who find a public static via discovery can send a join request.
@@ -13,7 +13,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = 'r8s9t0u1v2w3'
-down_revision = 'q7r8s9t0u1v2'
+down_revision = 'p7q8r9s0t1u2'
 branch_labels = None
 depends_on = None
 
