@@ -49,7 +49,6 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-<<<<<<< HEAD
     version: '1.21.0',
     date: '2026-06-01T12:00:00Z',
     title: 'Find a Static',
