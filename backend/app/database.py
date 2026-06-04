@@ -32,7 +32,13 @@ async_session_maker = async_sessionmaker(
 
 
 async def create_tables() -> None:
-    """Create all database tables"""
+    """Create all database tables.
+
+    Also adds missing columns to existing tables (dev only). SQLAlchemy's
+    create_all does not ALTER existing tables, so new model columns won't
+    appear until the table is recreated or an Alembic migration runs. This
+    helper bridges the gap for local development with SQLite.
+    """
     # Ensure data directory exists for SQLite
     if "sqlite" in settings.async_database_url:
         db_path = settings.database_url.split("///")[-1]
@@ -42,6 +48,30 @@ async def create_tables() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add missing columns to existing tables (SQLite dev only)
+        if "sqlite" in settings.async_database_url:
+            await conn.run_sync(_add_missing_columns)
+
+
+def _add_missing_columns(conn: object) -> None:
+    """Check every model table for columns missing from SQLite and ALTER to add them."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conn)
+    for table in Base.metadata.sorted_tables:
+        if not inspector.has_table(table.name):
+            continue
+        existing = {col["name"] for col in inspector.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in existing:
+                continue
+            col_type = col.type.compile(dialect=conn.dialect)
+            nullable = "NULL" if col.nullable else "NOT NULL"
+            default = ""
+            if col.server_default is not None:
+                default = f" DEFAULT {col.server_default.arg}"
+            ddl = f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type} {nullable}{default}"
+            conn.execute(text(ddl))
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
