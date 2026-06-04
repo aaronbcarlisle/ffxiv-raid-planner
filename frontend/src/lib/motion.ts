@@ -85,6 +85,25 @@ export const toastSlideInMobile: Variants = {
   exit: { opacity: 0, y: -40, scale: 0.95, transition: { duration: DURATION_FAST, ease } },
 };
 
+// --- Spreadable motion props (use with {...fadeInProps}) ---
+// These bundle variants + initial + animate so the spread pattern works.
+
+export const fadeInProps = {
+  variants: fadeIn,
+  initial: 'hidden' as const,
+  animate: 'visible' as const,
+};
+
+export const staggerContainerProps = {
+  variants: staggerContainer,
+  initial: 'hidden' as const,
+  animate: 'visible' as const,
+};
+
+export const staggerItemProps = {
+  variants: staggerItem,
+};
+
 // --- Shared transition configs ---
 
 export const springTransition: Transition = {

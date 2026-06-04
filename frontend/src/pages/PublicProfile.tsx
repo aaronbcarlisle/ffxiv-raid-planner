@@ -10,7 +10,7 @@ import { ReadinessBadge } from '../components/profile/ReadinessBadge';
 import type { PublicPlayerProfile } from '../stores/playerProfileStore';
 import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import { getJobDisplayName } from '../gamedata/jobs';
-import { fadeIn, staggerContainer, staggerItem } from '../lib/motion';
+import { fadeInProps, staggerContainerProps, staggerItemProps } from '../lib/motion';
 
 export default function PublicProfile() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -79,14 +79,14 @@ export default function PublicProfile() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header badge */}
-      <motion.div {...fadeIn} className="flex items-center gap-2 mb-4">
+      <motion.div {...fadeInProps} className="flex items-center gap-2 mb-4">
         <Badge variant="info" size="sm">XIV Raid Planner</Badge>
         <span className="text-xs text-text-tertiary">Shared Player Profile</span>
       </motion.div>
 
-      <motion.div {...staggerContainer} className="space-y-4">
+      <motion.div {...staggerContainerProps} className="space-y-4">
         {/* Character hero */}
-        <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-6">
+        <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-6">
           {mainCharacter ? (
             <div className="flex items-center gap-5">
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface-elevated flex-shrink-0 border border-border-default">
@@ -122,7 +122,7 @@ export default function PublicProfile() {
 
         {/* Jobs section */}
         {altJobs.length > 0 && (
-          <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-5">
+          <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5">
             <h2 className="text-xs text-text-tertiary uppercase tracking-wider mb-3">Other Jobs</h2>
             <div className="space-y-2.5">
               {altJobs.map((jp) => (
@@ -139,13 +139,13 @@ export default function PublicProfile() {
 
         {/* No jobs at all */}
         {jobProfiles.length === 0 && (
-          <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-5 text-center">
+          <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5 text-center">
             <p className="text-text-tertiary text-sm">This player has not configured any job profiles yet.</p>
           </motion.div>
         )}
 
         {/* Footer */}
-        <motion.div {...staggerItem} className="text-center pt-2">
+        <motion.div {...staggerItemProps} className="text-center pt-2">
           <p className="text-xs text-text-tertiary">
             Profile shared via XIV Raid Planner
           </p>

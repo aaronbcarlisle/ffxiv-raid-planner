@@ -7,7 +7,7 @@ import { GoalModal } from './GoalModal';
 import { useModal } from '../../hooks/useModal';
 import type { PlayerGoal } from '../../stores/playerProfileStore';
 import { COLLECTION_GOAL_TYPES } from '../../stores/playerProfileStore';
-import { staggerContainer, staggerItem } from '../../lib/motion';
+import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -57,9 +57,9 @@ export function CollectionsTab({ goals }: CollectionsTabProps) {
             </Button>
           </div>
 
-          <motion.div {...staggerContainer} className="space-y-3">
+          <motion.div {...staggerContainerProps} className="space-y-3">
             {filteredGoals.map((goal) => (
-              <motion.div key={goal.id} {...staggerItem}>
+              <motion.div key={goal.id} {...staggerItemProps}>
                 <GoalCard goal={goal} onEdit={setEditingGoal} />
               </motion.div>
             ))}

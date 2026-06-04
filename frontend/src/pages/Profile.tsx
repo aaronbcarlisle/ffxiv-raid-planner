@@ -17,7 +17,7 @@ import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import type { PlayerJobProfile } from '../stores/playerProfileStore';
 import { useAuthStore } from '../stores/authStore';
 import { useModal } from '../hooks/useModal';
-import { fadeIn, staggerContainer, staggerItem } from '../lib/motion';
+import { fadeInProps, staggerContainerProps, staggerItemProps } from '../lib/motion';
 
 type ProfileTab = 'overview' | 'characters' | 'gear' | 'jobs' | 'collections' | 'goals' | 'preview';
 
@@ -85,7 +85,7 @@ export default function Profile() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Header */}
-      <motion.div {...fadeIn} className="mb-8">
+      <motion.div {...fadeInProps} className="mb-8">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {/* User avatar */}
@@ -172,9 +172,9 @@ export default function Profile() {
       )}
 
       {activeTab === 'characters' && (
-        <motion.div {...staggerContainer} className="space-y-4">
+        <motion.div {...staggerContainerProps} className="space-y-4">
           {characters.length === 0 ? (
-            <motion.div {...staggerItem} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
+            <motion.div {...staggerItemProps} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
               <div className="text-4xl mb-3">&#9876;</div>
               <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
                 No characters linked
@@ -187,7 +187,7 @@ export default function Profile() {
           ) : (
             <>
               {characters.map((char) => (
-                <motion.div key={char.id} {...staggerItem}>
+                <motion.div key={char.id} {...staggerItemProps}>
                   <CharacterCard character={char} />
                 </motion.div>
               ))}
@@ -232,9 +232,9 @@ export default function Profile() {
       )}
 
       {activeTab === 'jobs' && (
-        <motion.div {...staggerContainer} className="space-y-4">
+        <motion.div {...staggerContainerProps} className="space-y-4">
           {jobProfiles.length === 0 ? (
-            <motion.div {...staggerItem} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
+            <motion.div {...staggerItemProps} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
               <div className="text-4xl mb-3">&#127919;</div>
               <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
                 No jobs configured
@@ -254,7 +254,7 @@ export default function Profile() {
             const others = sorted.filter((j) => !['main', 'preferred_alt'].includes(j.priority));
 
             const renderGroup = (label: string, jobs: typeof sorted) => jobs.length > 0 && (
-              <motion.div {...staggerItem} className="space-y-2">
+              <motion.div {...staggerItemProps} className="space-y-2">
                 <h3 className="text-xs text-text-tertiary uppercase tracking-wider font-medium">{label}</h3>
                 {jobs.map((jp) => (
                   <JobProfileCard key={jp.id} jobProfile={jp} onEdit={setEditingJob} />
@@ -268,7 +268,7 @@ export default function Profile() {
                 {renderGroup('Preferred Alts', preferredAlts)}
                 {renderGroup('Flex / Emergency / Casual', others)}
                 {!mainJobs.length && (
-                  <motion.div {...staggerItem} className="text-sm text-status-warning bg-status-warning/10 rounded-lg px-4 py-3 border border-status-warning/20">
+                  <motion.div {...staggerItemProps} className="text-sm text-status-warning bg-status-warning/10 rounded-lg px-4 py-3 border border-status-warning/20">
                     No main job selected. Add one or promote an existing job to Main.
                   </motion.div>
                 )}

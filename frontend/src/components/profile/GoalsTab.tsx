@@ -7,7 +7,8 @@ import { GoalModal } from './GoalModal';
 import { useModal } from '../../hooks/useModal';
 import type { PlayerGoal } from '../../stores/playerProfileStore';
 import { PERSONAL_GOAL_TYPES } from '../../stores/playerProfileStore';
-import { staggerContainer, staggerItem } from '../../lib/motion';
+import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
+import { GameIcon } from '../ui/GameIcon';
 
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -34,7 +35,7 @@ export function GoalsTab({ goals }: GoalsTabProps) {
     <div>
       {personalGoals.length === 0 ? (
         <div className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
-          <div className="text-4xl mb-3">&#9776;</div>
+          <div className="mb-3 text-accent"><GameIcon name="checklist" size="xl" /></div>
           <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
             No personal goals yet
           </h3>
@@ -57,9 +58,9 @@ export function GoalsTab({ goals }: GoalsTabProps) {
             </Button>
           </div>
 
-          <motion.div {...staggerContainer} className="space-y-3">
+          <motion.div {...staggerContainerProps} className="space-y-3">
             {filteredGoals.map((goal) => (
-              <motion.div key={goal.id} {...staggerItem}>
+              <motion.div key={goal.id} {...staggerItemProps}>
                 <GoalCard goal={goal} onEdit={setEditingGoal} />
               </motion.div>
             ))}

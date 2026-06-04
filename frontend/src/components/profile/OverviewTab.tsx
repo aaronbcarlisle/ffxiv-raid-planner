@@ -9,7 +9,7 @@ import { formatSyncAge, getFreshness, freshnessColor, formatSource } from './fre
 import type { PlayerProfile, PlayerGoal, GearSnapshot } from '../../stores/playerProfileStore';
 import { COLLECTION_GOAL_TYPES, PERSONAL_GOAL_TYPES } from '../../stores/playerProfileStore';
 import { getJobDisplayName } from '../../gamedata/jobs';
-import { staggerContainer, staggerItem } from '../../lib/motion';
+import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 
 interface OverviewTabProps {
   profile: PlayerProfile;
@@ -84,9 +84,9 @@ export function OverviewTab({ profile, goals, gearSnapshots, onNavigate, onOpenL
   const setupComplete = hasCharacter && hasMainJob && hasAnyGear && hasReadyJob;
 
   return (
-    <motion.div {...staggerContainer} className="space-y-5">
+    <motion.div {...staggerContainerProps} className="space-y-5">
       {/* Hero card */}
-      <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-5">
+      <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0 border-2 border-accent/30">
             {mainCharacter?.avatarUrl ? (
@@ -147,7 +147,7 @@ export function OverviewTab({ profile, goals, gearSnapshots, onNavigate, onOpenL
 
       {/* Guided setup — shown until core setup is complete */}
       {!setupComplete && (
-        <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-accent/20 p-4">
+        <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-accent/20 p-4">
           <h3 className="font-display font-semibold text-text-primary text-sm mb-1">Get Started</h3>
           <p className="text-xs text-text-tertiary mb-3">Complete these steps to build your raider profile.</p>
           <div className="divide-y divide-border-default">
@@ -191,7 +191,7 @@ export function OverviewTab({ profile, goals, gearSnapshots, onNavigate, onOpenL
       )}
 
       {/* Summary grid */}
-      <motion.div {...staggerItem} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div {...staggerItemProps} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Gear */}
         <SummaryCard title="Latest Gear">
           {latestSnapshot ? (
@@ -251,7 +251,7 @@ export function OverviewTab({ profile, goals, gearSnapshots, onNavigate, onOpenL
       </motion.div>
 
       {/* Readiness checklist */}
-      <motion.div {...staggerItem}>
+      <motion.div {...staggerItemProps}>
         <ReadinessChecklist profile={profile} hasGearSnapshots={hasAnyGear} />
       </motion.div>
     </motion.div>

@@ -12,7 +12,7 @@ import type { PlayerProfile, GearSnapshot } from '../../stores/playerProfileStor
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { getJobDisplayName } from '../../gamedata/jobs';
 import { toast } from '../../stores/toastStore';
-import { staggerContainer, staggerItem } from '../../lib/motion';
+import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 
 const VISIBILITY_OPTIONS = [
   { value: 'private', label: 'Private — only you can see' },
@@ -99,9 +99,9 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
   };
 
   return (
-    <motion.div {...staggerContainer} className="space-y-6">
+    <motion.div {...staggerContainerProps} className="space-y-6">
       {/* Share controls */}
-      <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-5">
+      <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5">
         <h3 className="font-display font-semibold text-text-primary mb-1">Profile Sharing</h3>
         <p className="text-sm text-text-tertiary mb-4">
           Control who can see your profile. Private means only you. Shareable lets anyone with the link view a read-only summary.
@@ -152,7 +152,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
       </motion.div>
 
       {/* Application preview */}
-      <motion.div {...staggerItem}>
+      <motion.div {...staggerItemProps}>
         <div className="flex items-center gap-2 mb-1">
           <h3 className="font-display font-semibold text-text-primary">Application Preview</h3>
           <Badge variant="info" size="sm">Preview</Badge>
@@ -163,14 +163,14 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
       </motion.div>
 
       {!hasMinimumSetup ? (
-        <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-border-default p-6 text-center">
+        <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-6 text-center">
           <div className="text-2xl mb-2 text-text-tertiary">&#128221;</div>
           <p className="text-text-secondary text-sm">
             Complete your character and job setup to see a preview of your application profile.
           </p>
         </motion.div>
       ) : (
-        <motion.div {...staggerItem} className="bg-surface-raised rounded-lg border border-accent/20 p-5 space-y-5">
+        <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-accent/20 p-5 space-y-5">
           {/* Character */}
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-lg overflow-hidden bg-surface-elevated flex-shrink-0">
