@@ -17,6 +17,10 @@ from ..config import get_settings
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
+from ..models.player_character import PlayerCharacter
+from ..models.player_gear_snapshot import PlayerGearSnapshot
+from ..models.player_job_profile import PlayerJobProfile
+from ..models.player_profile import PlayerProfile
 from ..models.snapshot_player import SnapshotPlayer
 from ..models.tier_snapshot import TierSnapshot
 from ..models.user import User
@@ -1387,6 +1391,104 @@ async def get_character_gear(
     return result
 
 
+async def _bridge_player_gear_snapshot(
+    session: AsyncSession,
+    user_id: str,
+    lodestone_id_str: str,
+    synced_job: str | None,
+    gear: list[dict],
+    avg_ilvl: int,
+    source: str,
+    now: str,
+) -> None:
+    """Bridge: when static roster gear syncs, also update the user's
+    player-level gear snapshot if they have a linked character matching
+    the same Lodestone ID. Fails silently on any error."""
+    if not synced_job:
+        return
+
+    import uuid
+
+    result = await session.execute(
+        select(PlayerCharacter)
+        .join(PlayerProfile)
+        .where(
+            PlayerProfile.user_id == user_id,
+            PlayerCharacter.lodestone_id == lodestone_id_str,
+        )
+    )
+    character = result.scalar_one_or_none()
+    if not character:
+        return
+
+    job_upper = synced_job.upper()
+    solo_gear = []
+    for slot in gear:
+        solo_gear.append({
+            "slot": slot.get("slot"),
+            "currentSource": slot.get("currentSource", "unknown"),
+            "hasItem": False,
+            "isAugmented": False,
+            "equippedItemId": slot.get("equippedItemId"),
+            "equippedItemName": slot.get("equippedItemName"),
+            "equippedItemLevel": slot.get("equippedItemLevel", 0),
+            "equippedItemIcon": slot.get("equippedItemIcon"),
+            "itemLevel": slot.get("equippedItemLevel", 0),
+        })
+
+    snap_result = await session.execute(
+        select(PlayerGearSnapshot).where(
+            PlayerGearSnapshot.character_id == character.id,
+            PlayerGearSnapshot.job == job_upper,
+        )
+    )
+    snapshot = snap_result.scalar_one_or_none()
+
+    bridge_source = "roster_sync"
+
+    if snapshot:
+        snapshot.gear = solo_gear
+        snapshot.avg_item_level = avg_ilvl
+        snapshot.source = bridge_source
+        snapshot.synced_at = now
+        snapshot.updated_at = now
+    else:
+        snapshot = PlayerGearSnapshot(
+            id=str(uuid.uuid4()),
+            character_id=character.id,
+            job=job_upper,
+            gear=solo_gear,
+            avg_item_level=avg_ilvl,
+            source=bridge_source,
+            synced_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(snapshot)
+
+    await session.flush()
+
+    # Auto-link to matching job profile
+    jp_result = await session.execute(
+        select(PlayerJobProfile).where(
+            PlayerJobProfile.profile_id == character.profile_id,
+            PlayerJobProfile.job == job_upper,
+        )
+    )
+    job_profile = jp_result.scalar_one_or_none()
+    if job_profile:
+        job_profile.gear_snapshot_id = snapshot.id
+        job_profile.updated_at = now
+
+    logger.info(
+        "player_gear_bridge_synced",
+        user_id=user_id,
+        character_id=character.id,
+        job=job_upper,
+        avg_ilvl=avg_ilvl,
+    )
+
+
 @router.post("/sync/{group_id}/{player_id}", response_model=SyncResult)
 @limiter.limit(RATE_LIMITS["external_api"])
 async def sync_player_gear(
@@ -1565,6 +1667,22 @@ async def sync_player_gear(
         player.last_synced_job = synced_job
 
     await session.flush()
+
+    # --- Auto-sync bridge: update player-level gear snapshot if user has
+    # a matching linked character in their solo profile. ---
+    if player.user_id:
+        try:
+            await _bridge_player_gear_snapshot(
+                session, player.user_id, str(resolved_lodestone_id),
+                synced_job, current_gear, new_avg_ilvl, sync_source, now,
+            )
+        except Exception:
+            logger.warning(
+                "player_gear_bridge_failed",
+                user_id=player.user_id,
+                lodestone_id=resolved_lodestone_id,
+            )
+
     await session.commit()
 
     logger.info(

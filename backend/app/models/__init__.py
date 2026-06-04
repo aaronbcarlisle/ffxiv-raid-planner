@@ -7,8 +7,13 @@ from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .mount_farm_progress import MountFarmProgress
+from .player_goal import PlayerGoal
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
+from .player_character import PlayerCharacter
+from .player_gear_snapshot import PlayerGearSnapshot
+from .player_job_profile import PlayerJobProfile
+from .player_profile import PlayerProfile
 from .plugin_auth_code import PluginAuthCode
 from .availability import AvailabilityTemplate, UserAvailability
 from .schedule import DiscordMessageMapping, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
@@ -31,6 +36,11 @@ __all__ = [
     "Membership",
     "MemberRole",
     "PageLedgerEntry",
+    "PlayerGoal",
+    "PlayerCharacter",
+    "PlayerGearSnapshot",
+    "PlayerJobProfile",
+    "PlayerProfile",
     "PluginAuthCode",
     "ROLE_HIERARCHY",
     "DiscordMessageMapping",

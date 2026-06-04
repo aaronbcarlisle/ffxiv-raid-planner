@@ -333,6 +333,17 @@ export function Header() {
           {!isHomePage && (
             <>
               <div className="flex items-center gap-1">
+                {user && (
+                  <Tooltip content="My Profile">
+                    <Link
+                      to="/profile"
+                      aria-label="My Profile"
+                      className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
+                    >
+                      <span className="text-base">⚔</span>
+                    </Link>
+                  </Tooltip>
+                )}
                 <Tooltip content="Find a static">
                   <Link
                     to="/discover"

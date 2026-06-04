@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.2';
+export const CURRENT_VERSION = '1.23.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,35 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.23.0',
+    date: '2026-06-08T00:00:00Z',
+    title: 'Solo Player Hub & Join Requests',
+    highlights: ['Player Hub for solo raiders — no static required', 'Request to Join with profile-connected applications'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Player Hub source-of-truth dashboard',
+        description:
+          'Player Hub is organized around connected profile systems: Overview, Sync, Gear, Jobs, Collections, Availability, Goals, and Share. Keep your raider profile current in one place so applications, schedules, roster snapshots, farm recommendations, and future matching features can consume safe profile snapshots.',
+        commits: [{ hash: 'pending', message: 'feat: solo player hub foundation', date: '2026-06-08T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Application snapshots from Player Hub',
+        description:
+          'Request to Join captures an immutable Player Hub snapshot when applying, including safe character, job, readiness, gear, availability summary, sharing state, and selected alt/flex job details. Private notes, goals, and exact personal availability stay private.',
+        commits: [{ hash: 'pending', message: 'feat: profile-connected join requests', date: '2026-06-08T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Personal availability and schedule quick fill',
+        description:
+          'Set your usual weekly availability once in Player Hub, then reuse it in static scheduling tools. Static-specific week edits stay local, and existing custom days are preserved.',
+        commits: [{ hash: 'pending', message: 'feat: personal typical availability in player hub', date: '2026-06-08T00:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.22.2',
     date: '2026-06-07T00:00:00Z',
