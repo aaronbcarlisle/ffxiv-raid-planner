@@ -180,8 +180,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-display text-sm font-semibold text-text-primary">Automate mount tracking</p>
-                {/* design-system-ignore: Dismiss button requires specific styling */}
-                <button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss">
+                <button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -203,8 +202,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                   Run <code className="px-1 py-0.5 bg-surface-card rounded text-text-secondary">/xrp sync</code> in-game
                 </span>
                 <span className="text-text-tertiary text-xs">·</span>
-                {/* design-system-ignore: Inline text action requires specific styling */}
-                <button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                <button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"> {/* design-system-ignore: Inline text action */}
                   Track manually instead
                 </button>
               </div>
