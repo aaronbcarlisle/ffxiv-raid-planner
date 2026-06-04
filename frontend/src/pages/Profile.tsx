@@ -57,13 +57,20 @@ export default function Profile() {
   const mainJob = jobProfiles.find((j) => j.priority === 'main');
   const hasGear = Object.values(gearSnapshots).some((s) => s.length > 0);
 
+  const hasReadyJob = jobProfiles.some((j) => j.readiness !== 'unknown');
+  const shareReady = profile?.shareEnabled && profile?.visibility !== 'private';
+
   const nextStep = !characters.length
     ? { label: 'Link Character', action: () => linkModal.open() }
     : !mainJob
       ? { label: 'Set Main Job', action: () => addJobModal.open() }
       : !hasGear
         ? { label: 'Sync Gear', action: () => setActiveTab('characters') }
-        : null;
+        : !hasReadyJob
+          ? { label: 'Set Readiness', action: () => setActiveTab('jobs') }
+          : !shareReady
+            ? { label: 'Preview / Share', action: () => setActiveTab('preview') }
+            : null;
 
   const tabs: { id: ProfileTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
