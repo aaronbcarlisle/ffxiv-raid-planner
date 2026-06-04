@@ -438,6 +438,7 @@ export const TAB_ICONS = {
   stats: '/icons/stats-transparent-bg.png',
   history: '/icons/history-transparent-bg.png',
   schedule: '/icons/schedule-transparent-bg.png',
+  mountFarms: '/icons/mount-farms-transparent-bg.svg',
 };
 
 // ==================== User/Auth Types ====================

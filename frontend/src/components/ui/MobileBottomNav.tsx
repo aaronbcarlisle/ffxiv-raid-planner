@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { Mountain, Settings2, SlidersHorizontal } from 'lucide-react';
+import { Settings2, SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -20,13 +20,13 @@ interface MobileBottomNavProps {
   showPriorityTab?: boolean;
 }
 
-// Tabs that use custom icon images
 const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
   history: 'history',
   schedule: 'schedule',
+  'mount-farms': 'mountFarms',
 };
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
@@ -109,8 +109,6 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showP
             >
               {tab.id === 'priority' ? (
                 <Settings2 className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
-              ) : tab.id === 'mount-farms' ? (
-                <Mountain className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
               ) : (
                 <img
                   src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}

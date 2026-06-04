@@ -1,4 +1,3 @@
-import { Mountain } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
@@ -9,13 +8,13 @@ interface TabNavigationProps {
   onTabChange: (tab: PageMode) => void;
 }
 
-// Tabs that use custom icon images
 const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
   history: 'history',
   schedule: 'schedule',
+  'mount-farms': 'mountFarms',
 };
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
@@ -62,17 +61,13 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               }
             `}
           >
-            {PAGE_TO_ICON[tab.id] ? (
-              <img
-                src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
-                alt=""
-                width={20}
-                height={20}
-                className="rounded-sm"
-              />
-            ) : (
-              <Mountain className="w-5 h-5" />
-            )}
+            <img
+              src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
+              alt=""
+              width={20}
+              height={20}
+              className="rounded-sm"
+            />
             <span>{tab.label}</span>
           </button>
         </Tooltip>

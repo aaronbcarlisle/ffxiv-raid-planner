@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
 import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById } from '../../gamedata';
@@ -79,6 +79,16 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
     (data?.trials ?? []).map(t => [t.trialId, t])
   ), [data?.trials]);
 
+  // Plugin CTA dismiss state
+  const ctaDismissKey = `mount-farm-plugin-cta-dismissed-${groupId}`;
+  const [ctaDismissed, setCtaDismissed] = useState(() => {
+    try { return localStorage.getItem(ctaDismissKey) === '1'; } catch { return false; }
+  });
+  const dismissCta = useCallback(() => {
+    setCtaDismissed(true);
+    try { localStorage.setItem(ctaDismissKey, '1'); } catch { /* ignore */ }
+  }, [ctaDismissKey]);
+
   // Sync status for current user
   const syncStatus = useMemo(() => {
     if (!data?.currentUserId || !data.trials.length) return null;
@@ -86,6 +96,9 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
     let lastPluginSync: string | null = null;
     let hasPluginData = false;
     let hasManualData = false;
+    let mountsDetected = 0;
+    const totemTrialIds = new Set<string>();
+    let manualOverrides = 0;
 
     for (const trial of data.trials) {
       for (const mp of trial.memberProgress) {
@@ -95,14 +108,17 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
           if (mp.lastPluginSyncAt && (!lastPluginSync || mp.lastPluginSyncAt > lastPluginSync)) {
             lastPluginSync = mp.lastPluginSyncAt;
           }
+          if (mp.ownershipSource === 'plugin' && mp.hasMount) mountsDetected++;
+          if (mp.totemSource === 'plugin' && mp.totemCount > 0) totemTrialIds.add(mp.trialId);
         }
         if (mp.ownershipSource === 'manual' || mp.totemSource === 'manual') {
           hasManualData = true;
         }
+        if (mp.lastManualOverrideAt) manualOverrides++;
       }
     }
 
-    return { lastPluginSync, hasPluginData, hasManualData };
+    return { lastPluginSync, hasPluginData, hasManualData, mountsDetected, totemTypesFound: totemTrialIds.size, manualOverrides };
   }, [data]);
 
   // My progress stats
@@ -154,37 +170,87 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
   return (
     <div className="space-y-5">
-      {/* Plugin sync status */}
-      {syncStatus && !isLoading && (
-        <div className={`rounded-lg p-3 flex items-center gap-3 text-xs ${
-          syncStatus.hasPluginData
-            ? 'bg-blue-500/10 border border-blue-500/20'
-            : 'bg-surface-elevated border border-border-default'
-        }`}>
-          {syncStatus.hasPluginData ? (
+      {/* Plugin onboarding CTA — shown when no plugin data and not dismissed */}
+      {syncStatus && !syncStatus.hasPluginData && !ctaDismissed && !isLoading && (
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-2 text-blue-400 flex-shrink-0">
+              <Plug className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-display text-sm font-semibold text-text-primary">Automate mount tracking</p>
+                {/* design-system-ignore: Dismiss button requires specific styling */}
+                <button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Use the XIV Raid Planner plugin and run <code className="px-1 py-0.5 bg-surface-card rounded text-text-primary">/xrp sync</code> to import owned mounts and totem counts automatically.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <a
+                  href="https://github.com/aaronbcarlisle/XIVRaidPlannerPlugin#readme"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  How to set up plugin
+                </a>
+                <span className="text-text-tertiary text-xs">·</span>
+                <span className="text-xs text-text-tertiary">
+                  Run <code className="px-1 py-0.5 bg-surface-card rounded text-text-secondary">/xrp sync</code> in-game
+                </span>
+                <span className="text-text-tertiary text-xs">·</span>
+                {/* design-system-ignore: Inline text action requires specific styling */}
+                <button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                  Track manually instead
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compact plugin sync status — shown when plugin data exists */}
+      {syncStatus?.hasPluginData && !isLoading && (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 flex items-center gap-2 text-xs flex-wrap">
+          <Plug className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+          <span className="text-text-secondary">
+            Plugin synced {syncStatus.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : ''}
+          </span>
+          {syncStatus.mountsDetected > 0 && (
             <>
-              <Plug className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              <span className="text-text-secondary">
-                Plugin synced{syncStatus.lastPluginSync && (
-                  <> &middot; {new Date(syncStatus.lastPluginSync).toLocaleString()}</>
-                )}
-              </span>
-              {syncStatus.hasManualData && (
-                <Tooltip content="Some values were manually corrected and won't be overwritten by plugin sync">
-                  <span className="text-text-tertiary">
-                    <Info className="w-3.5 h-3.5" />
-                  </span>
-                </Tooltip>
-              )}
-            </>
-          ) : (
-            <>
-              <Info className="w-4 h-4 text-text-tertiary flex-shrink-0" />
-              <span className="text-text-tertiary">
-                Use <code className="px-1 py-0.5 bg-surface-card rounded text-text-secondary">/xrp mountsync</code> in-game to auto-import mounts and totems, or track manually below
-              </span>
+              <span className="text-text-tertiary">&middot;</span>
+              <span className="text-text-secondary">{syncStatus.mountsDetected} mount{syncStatus.mountsDetected !== 1 ? 's' : ''} detected</span>
             </>
           )}
+          {syncStatus.totemTypesFound > 0 && (
+            <>
+              <span className="text-text-tertiary">&middot;</span>
+              <span className="text-text-secondary">{syncStatus.totemTypesFound} totem type{syncStatus.totemTypesFound !== 1 ? 's' : ''} found</span>
+            </>
+          )}
+          {syncStatus.manualOverrides > 0 && (
+            <>
+              <span className="text-text-tertiary">&middot;</span>
+              <Tooltip content="Some values were manually corrected and won't be overwritten by plugin sync">
+                <span className="inline-flex items-center gap-1 text-text-tertiary">
+                  <Info className="w-3 h-3" />
+                  {syncStatus.manualOverrides} manual override{syncStatus.manualOverrides !== 1 ? 's' : ''}
+                </span>
+              </Tooltip>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Fallback when no sync and CTA dismissed */}
+      {syncStatus && !syncStatus.hasPluginData && ctaDismissed && !isLoading && (
+        <div className="rounded-lg bg-surface-elevated border border-border-default px-3 py-2 flex items-center gap-2 text-xs">
+          <Info className="w-3.5 h-3.5 text-text-tertiary flex-shrink-0" />
+          <span className="text-text-tertiary">Plugin sync unavailable. You can still track manually.</span>
         </div>
       )}
 
