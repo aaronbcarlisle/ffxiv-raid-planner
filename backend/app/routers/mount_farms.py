@@ -12,6 +12,8 @@ from ..dependencies import get_current_user
 from ..logging_config import get_logger
 from ..models import Membership, MemberRole, User
 from ..models.mount_farm_progress import MountFarmProgress
+from ..models.player_goal import PlayerGoal
+from ..models.player_profile import PlayerProfile
 from ..permissions import (
     require_membership,
     get_static_group,
@@ -550,6 +552,104 @@ async def get_mount_farm_catalog(
     return MountFarmCatalogResponse(entries=entries)
 
 
+async def _bridge_mount_farm_goals(
+    db: AsyncSession, user: User, data: "PluginMountFarmSync", now: str,
+) -> None:
+    """Bridge: upsert PlayerGoal entries for mount/totem data from plugin sync.
+
+    For each mount/totem the plugin reports, create or update a
+    corresponding PlayerGoal with goal_type="mount_farm" or "totem_farm".
+    Fails silently — group sync always succeeds regardless.
+    """
+    profile_result = await db.execute(
+        select(PlayerProfile).where(PlayerProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if not profile:
+        return
+
+    for mount_item in data.mounts:
+        catalog_entry = None
+        if mount_item.trial_id:
+            catalog_entry = _CATALOG_BY_TRIAL_ID.get(mount_item.trial_id)
+        if not catalog_entry:
+            catalog_entry = _CATALOG_BY_MOUNT_ID.get(mount_item.mount_id)
+        if not catalog_entry:
+            continue
+
+        trial_id = catalog_entry["trial_id"]
+        goal_result = await db.execute(
+            select(PlayerGoal).where(
+                PlayerGoal.profile_id == profile.id,
+                PlayerGoal.goal_type == "mount_farm",
+                PlayerGoal.source_content == trial_id,
+            )
+        )
+        goal = goal_result.scalar_one_or_none()
+
+        if goal:
+            if mount_item.owned and goal.status != "completed":
+                goal.status = "completed"
+                goal.updated_at = now
+        else:
+            if mount_item.owned:
+                db.add(PlayerGoal(
+                    id=str(uuid.uuid4()),
+                    profile_id=profile.id,
+                    title=f"{catalog_entry['mount_name']} Mount",
+                    goal_type="mount_farm",
+                    status="completed",
+                    source_content=trial_id,
+                    source_item=catalog_entry["mount_name"],
+                    target_count=catalog_entry.get("totem_target", 99),
+                    current_count=catalog_entry.get("totem_target", 99),
+                    created_at=now,
+                    updated_at=now,
+                ))
+
+    for totem_item in data.totems:
+        catalog_entry = None
+        if totem_item.trial_id:
+            catalog_entry = _CATALOG_BY_TRIAL_ID.get(totem_item.trial_id)
+        if not catalog_entry:
+            catalog_entry = _CATALOG_BY_TOTEM_ITEM_ID.get(totem_item.item_id)
+        if not catalog_entry:
+            continue
+
+        trial_id = catalog_entry["trial_id"]
+        goal_result = await db.execute(
+            select(PlayerGoal).where(
+                PlayerGoal.profile_id == profile.id,
+                PlayerGoal.goal_type == "mount_farm",
+                PlayerGoal.source_content == trial_id,
+            )
+        )
+        goal = goal_result.scalar_one_or_none()
+
+        if goal:
+            if totem_item.count > goal.current_count:
+                goal.current_count = totem_item.count
+                goal.updated_at = now
+                if goal.target_count and totem_item.count >= goal.target_count:
+                    goal.status = "completed"
+        elif totem_item.count > 0:
+            db.add(PlayerGoal(
+                id=str(uuid.uuid4()),
+                profile_id=profile.id,
+                title=f"{catalog_entry['mount_name']} Mount",
+                goal_type="mount_farm",
+                status="active",
+                source_content=trial_id,
+                source_item=catalog_entry["totem_name"],
+                target_count=catalog_entry.get("totem_target", 99),
+                current_count=totem_item.count,
+                created_at=now,
+                updated_at=now,
+            ))
+
+    await db.flush()
+
+
 @router.post(
     "/plugin/mount-farms/sync",
     response_model=PluginSyncResult,
@@ -727,6 +827,12 @@ async def plugin_sync_mount_farms(
                 else:
                     progress.last_plugin_sync_at = now
                     totems_unchanged += 1
+
+    # --- Bridge: also upsert PlayerGoal entries for solo profile ---
+    try:
+        await _bridge_mount_farm_goals(db, user, data, now)
+    except Exception:
+        logger.warning("mount_farm_goal_bridge_failed", user_id=user.id)
 
     await db.commit()
 

@@ -339,6 +339,35 @@ async def get_public_profile(
 
 
 # ---------------------------------------------------------------------------
+# Mount farm catalog (reuses existing catalog from mount_farms router)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/mount-farm-catalog")
+@limiter.limit(RATE_LIMITS["general"])
+async def get_player_mount_farm_catalog(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Return the mount farm catalog for solo collection goal quick-add."""
+    from .mount_farms import MOUNT_FARM_CATALOG
+
+    return {
+        "entries": [
+            {
+                "trialId": e["trial_id"],
+                "expansion": e["expansion"],
+                "dutyName": e["duty_name"],
+                "mountName": e["mount_name"],
+                "totemName": e.get("totem_name"),
+                "totemTarget": e.get("totem_target", 99),
+            }
+            for e in MOUNT_FARM_CATALOG
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
 # Character endpoints
 # ---------------------------------------------------------------------------
 
