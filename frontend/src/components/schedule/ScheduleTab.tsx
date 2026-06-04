@@ -131,7 +131,10 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   const handleUpdate = async (data: ScheduleSessionCreate) => {
     if (!editSession) return;
-    await updateSession(groupId, editSession.id, data);
+    await updateSession(groupId, editSession.id, {
+      ...data,
+      recurrenceRule: data.recurrenceRule ?? undefined,
+    });
     setEditSession(null);
   };
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Check, ShoppingCart, X, Plug, PenLine, HelpCircle } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
 import type { TrialSummary, MemberProgress, DataSource } from '../../stores/mountFarmStore';
@@ -158,16 +158,7 @@ function MemberRow({
   member, trial, canEdit, isCurrentUser, canBuyMount, hasTotemTracking, isSaving,
   onToggleMount, onToggleWants, onTotemChange,
 }: MemberRowProps) {
-  const [localTotem, setLocalTotem] = useState<number | null>(null);
-
-  const handleTotemBlur = useCallback(() => {
-    if (localTotem !== null && localTotem !== member.totemCount) {
-      onTotemChange(member, localTotem);
-    }
-    setLocalTotem(null);
-  }, [localTotem, member, onTotemChange]);
-
-  const displayTotem = localTotem !== null ? localTotem : member.totemCount;
+  const displayTotem = member.totemCount;
   const totemPercent = trial.totemTarget > 0 ? Math.min((displayTotem / trial.totemTarget) * 100, 100) : 0;
 
   // Determine the "effective source" to show one badge
@@ -217,7 +208,7 @@ function MemberRow({
         ) : hasTotemTracking ? (
           <div className="flex items-center gap-2">
             <div className="w-14">
-              <NumberInput value={displayTotem} onChange={(val) => setLocalTotem(val ?? 0)} onBlur={handleTotemBlur} min={0} max={999} disabled={!canEdit || isSaving} size="sm" aria-label={`${member.displayName} totem count`} />
+              <NumberInput value={displayTotem} onChange={(val) => onTotemChange(member, val ?? 0)} min={0} max={999} disabled={!canEdit || isSaving} size="sm" aria-label={`${member.displayName} totem count`} />
             </div>
             <div className="flex-1 min-w-[50px]">
               <div className="h-1.5 bg-surface-elevated rounded-full overflow-hidden">

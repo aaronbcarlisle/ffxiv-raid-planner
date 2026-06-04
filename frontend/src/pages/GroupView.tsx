@@ -1064,7 +1064,7 @@ export function GroupView() {
           {pageMode === 'mount-farms' && currentGroup && (
             <MountFarmTab
               groupId={currentGroup.id}
-              userRole={userRole}
+              userRole={userRole ?? null}
               onScheduleFarm={(trialName) => {
                 // Look up member counts from current data for the description
                 const mountFarmData = useMountFarmStore.getState().data;
