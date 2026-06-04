@@ -447,6 +447,9 @@ def session_to_response(session: ScheduleSession) -> ScheduleSessionResponse:
         timezone=session.timezone,
         is_recurring=session.is_recurring,
         recurrence_rule=session.recurrence_rule,
+        category=getattr(session, 'category', None),
+        content_id=getattr(session, 'content_id', None),
+        content_name=getattr(session, 'content_name', None),
         created_at=session.created_at,
         updated_at=session.updated_at,
         rsvps=rsvps,
@@ -505,6 +508,9 @@ async def create_schedule_session(
         timezone=data.timezone,
         is_recurring=data.is_recurring,
         recurrence_rule=data.recurrence_rule,
+        category=data.category.value if data.category else None,
+        content_id=data.content_id,
+        content_name=data.content_name,
         created_at=now,
         updated_at=now,
     )
@@ -568,6 +574,9 @@ async def update_schedule_session(
 
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
+        # Convert enum values to their string form for DB storage
+        if hasattr(value, 'value'):
+            value = value.value
         setattr(schedule_session, field, value)
     schedule_session.updated_at = datetime.now(timezone.utc).isoformat()
 

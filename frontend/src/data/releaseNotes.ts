@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.21.2';
+export const CURRENT_VERSION = '1.22.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,63 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.22.0',
+    date: '2026-06-04T00:00:00Z',
+    title: 'Mount Farm Tracker',
+    highlights: ['Track mount farm progress for your static', 'Totem counting and farm recommendations'],
+    items: [
+      {
+        category: 'feature',
+        title: 'Mount Farm Tracker',
+        description:
+          'New "Mount Farms" tab in the static view. Track which Extreme trial mounts each member has, who wants which mount, and how many totems everyone has collected. Covers all expansions from ARR through Dawntrail.',
+        commits: [{ hash: 'pending', message: 'feat: mount farm tracker MVP', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Plugin automation',
+        description:
+          'Mount ownership and totem counts can be automatically synced from the Dalamud plugin. The plugin reads your unlocked mounts and inventory totem counts, then pushes them to the tracker. Manual corrections always remain available and are respected.',
+        commits: [{ hash: 'pending', message: 'feat: plugin mount farm sync endpoint and source tracking', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Farm recommendations',
+        description:
+          'A smart recommendation banner suggests the best mount to farm next based on how many members still need it, want it, or are close to buying it with totems.',
+        commits: [{ hash: 'pending', message: 'feat: mount farm recommendation scoring', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Completion tracking',
+        description:
+          'Progress bars per expansion show how many trials your static has fully completed. Members who have enough totems to buy a mount are highlighted with a "can buy" badge. Source indicators show whether data came from plugin sync or manual entry.',
+        commits: [{ hash: 'pending', message: 'feat: mount farm completion tracking and ready-to-buy badges', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'feature',
+        title: 'Event categories and content linking',
+        description:
+          'Schedule sessions now support event categories (Raid, Farm, Reclear, Prog, Social) with color-coded badges on session cards. The "Schedule Farm" action from Mount Farms now pre-fills the category and duty name automatically.',
+        commits: [{ hash: 'pending', message: 'feat: event category and content fields for schedule sessions', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Session tile view and share button',
+        description:
+          'The Schedule tab now offers a tile/grid layout for viewing sessions on desktop, showing more events at a glance. Each session card has a share button that copies a formatted summary or uses Web Share API.',
+        commits: [{ hash: 'pending', message: 'feat: session tile view toggle and share button', date: '2026-06-04T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Bundled plugin sync',
+        description:
+          'The `/xrp sync` command now syncs both gear and mount farms in one step. Use `/xrp gearsync` or `/xrp mountsync` for targeted syncs.',
+        commits: [{ hash: 'pending', message: 'feat: bundle mount sync into /xrp sync command', date: '2026-06-04T00:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.21.2',
     date: '2026-06-04T00:00:00Z',

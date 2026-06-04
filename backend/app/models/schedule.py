@@ -38,6 +38,13 @@ class ScheduleSession(Base):
     is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     recurrence_rule: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Event categorization (optional, backwards-compatible)
+    # category: raid / farm / reclear / prog / social / other
+    category: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Link to specific game content (e.g., mount farm trial_id or raid tier floor)
+    content_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    content_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )

@@ -45,6 +45,20 @@ from .schedule import (
     ScheduleSessionUpdate,
     UserAvailabilityResponse,
 )
+from .mount_farms import (
+    FarmScoreResponse,
+    MemberProgressResponse,
+    MountFarmCatalogEntry,
+    MountFarmCatalogResponse,
+    MountFarmProgressBulkUpdate,
+    MountFarmProgressUpdate,
+    MountFarmResponse,
+    MountSyncItem,
+    PluginMountFarmSync,
+    PluginSyncResult,
+    TotemSyncItem,
+    TrialSummaryResponse,
+)
 from .loot_tracking import (
     LootLogEntryCreate,
     LootLogEntryResponse,
@@ -171,6 +185,19 @@ __all__ = [
     "ScheduleSessionResponse",
     "ScheduleSessionUpdate",
     "UserAvailabilityResponse",
+    # Mount Farms
+    "FarmScoreResponse",
+    "MemberProgressResponse",
+    "MountFarmCatalogEntry",
+    "MountFarmCatalogResponse",
+    "MountFarmProgressBulkUpdate",
+    "MountFarmProgressUpdate",
+    "MountFarmResponse",
+    "MountSyncItem",
+    "PluginMountFarmSync",
+    "PluginSyncResult",
+    "TotemSyncItem",
+    "TrialSummaryResponse",
     # Loot Tracking
     "LootLogEntryCreate",
     "LootLogEntryResponse",

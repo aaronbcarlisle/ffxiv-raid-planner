@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** May 27, 2026
-**Current Version:** v1.18.0
+**Last Updated:** June 4, 2026
+**Current Version:** v1.22.0
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -11,6 +11,17 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-06-04:** v1.22.0 — Mount Farm Tracker:
+  - Mount farm tracking tab in GroupView with expansion selector, progress bars, ready-to-buy badges
+  - Manual + automated progress: `has_mount`, `wants_mount`, `totem_count` per member per trial
+  - Plugin sync: `POST /api/plugin/mount-farms/sync` endpoint for Dalamud plugin mount/totem import
+  - Source tracking: `ownership_source`, `totem_source` (manual/plugin/tomestone) with manual override protection
+  - Smart farm recommendations: scoring endpoint ranks trials by how many members still need/want each mount
+  - Schedule integration: "Schedule Farm" button pre-fills CreateSessionModal with trial duty name
+  - Plugin: `MountFarmService` reads mount ownership (`PlayerState.IsMountUnlocked`) and totem inventory counts
+  - Backend catalog with FFXIV game IDs (`mount_id`, `totem_item_id`) served at `GET /api/plugin/mount-farms/catalog`
+  - 27 backend tests covering CRUD, permissions, plugin sync, manual override preservation, bulk updates
+  - 37 trials across 6 expansions (ARR through Dawntrail)
 - **2026-05-27:** v1.18.0 — Raid Schedule & Availability (PR #83):
   - Schedule tab (`components/schedule/`) for one-off/recurring raid sessions with RSVPs (available/tentative/unavailable)
   - When2Meet-style availability heat map; times stored in static timezone, auto-converted to local
@@ -210,6 +221,16 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - Notifications for loot drops
 - Commands for priority lookup
 - Integration with static group channels
+
+### Mount Farm Tracker Enhancements
+- **Game ID verification (P1):** `mount_id` and `totem_item_id` in backend catalog are approximate. Verify against Mount.exd and Item.exd from actual game data before production. Plugin sync with wrong IDs will silently produce wrong data.
+- **Character-owned progress model (P2):** Current model stores progress per `(user, static_group, trial)`. Mount ownership and totems are character-specific, not group-specific. Better long-term model: automated data per `(user, character, trial)` with group views reading from it. Avoids duplicating sync results across groups. Needs schema migration and data backfill strategy.
+- **Plugin runtime testing (P2):** Plugin builds clean (`dotnet build` + `dotnet test` pass, `dotnet format` clean). Needs in-game testing with actual Dalamud runtime to verify mount ID correctness and inventory reads.
+- **FFXIV Collect API:** Investigate `ffxivcollect.com` for mount ownership import as alternative for players without the Dalamud plugin
+- **Activity feed:** Change log for mount farm progress (who changed what, when). Model fields exist (`updated_by_id`, `updated_at`) but no UI timeline.
+- **Priority levels:** Extend binary `wants_mount` to multi-level priority (high/medium/low/skip) for better farm scheduling
+- **Auto-suggest farm events:** Use recommendation scores to periodically prompt leads about scheduling
+- **Discord notifications:** Notify members when a farm event is created for a mount they need
 
 ### Alt Job Tracking (Deferred)
 - Track multiple jobs per player

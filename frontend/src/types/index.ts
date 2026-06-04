@@ -99,7 +99,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 };
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule';
+export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule' | 'mount-farms';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -1110,6 +1110,8 @@ export interface ScheduleRsvp {
   updatedAt: string;
 }
 
+export type EventCategory = 'raid' | 'farm' | 'reclear' | 'prog' | 'social' | 'other';
+
 export interface ScheduleSession {
   id: string;
   staticGroupId: string;
@@ -1121,6 +1123,9 @@ export interface ScheduleSession {
   timezone: string;
   isRecurring: boolean;
   recurrenceRule: string | null;
+  category: EventCategory | null;
+  contentId: string | null;
+  contentName: string | null;
   createdAt: string;
   updatedAt: string;
   rsvps: ScheduleRsvp[];
@@ -1164,8 +1169,11 @@ export interface ScheduleSessionCreate {
   endTime: string;
   timezone: string;
   isRecurring?: boolean;
-  recurrenceRule?: string;
+  recurrenceRule?: string | null;
   initialRsvpStatus?: InitialRsvpStatus;
+  category?: EventCategory | null;
+  contentId?: string | null;
+  contentName?: string | null;
 }
 
 export interface ScheduleSessionUpdate {
@@ -1176,6 +1184,9 @@ export interface ScheduleSessionUpdate {
   timezone?: string;
   isRecurring?: boolean;
   recurrenceRule?: string;
+  category?: EventCategory | null;
+  contentId?: string | null;
+  contentName?: string | null;
 }
 
 // ==================== Availability Types ====================

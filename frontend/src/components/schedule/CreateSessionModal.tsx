@@ -6,7 +6,8 @@ import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
 import { Button } from '../primitives';
 import { Calendar } from 'lucide-react';
-import type { InitialRsvpStatus, ScheduleSession, ScheduleSessionCreate } from '../../types';
+import type { EventCategory, InitialRsvpStatus, ScheduleSession, ScheduleSessionCreate } from '../../types';
+import { RAID_TIERS, MOUNT_FARM_TRIALS } from '../../gamedata';
 import {
   addDurationInTimeZone,
   fromZonedDatetimeLocalValue,
@@ -67,17 +68,29 @@ function buildRecurrenceRule(days: Set<string>): string {
   return `FREQ=WEEKLY;BYDAY=${ordered.join(',')}`;
 }
 
+const EVENT_CATEGORIES: { value: EventCategory; label: string }[] = [
+  { value: 'raid', label: 'Raid' },
+  { value: 'farm', label: 'Mount Farm' },
+  { value: 'reclear', label: 'Reclear' },
+  { value: 'prog', label: 'Progression' },
+  { value: 'social', label: 'Social' },
+  { value: 'other', label: 'Other' },
+];
+
 function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?: ScheduleSessionCreate | null) {
   const source = editSession ?? initialDraft ?? null;
   const timezone = source?.timezone ?? getBrowserTimezone();
   return {
     title: source?.title ?? '',
     description: source?.description ?? '',
-    startTime: source ? toZonedDatetimeLocalValue(source.startTime, timezone) : '',
-    endTime: source ? toZonedDatetimeLocalValue(source.endTime, timezone) : '',
+    startTime: source?.startTime ? toZonedDatetimeLocalValue(source.startTime, timezone) : '',
+    endTime: source?.endTime ? toZonedDatetimeLocalValue(source.endTime, timezone) : '',
     timezone,
     isRecurring: source?.isRecurring ?? false,
     selectedDays: parseDaysFromRule(source?.recurrenceRule),
+    category: (source && 'category' in source ? source.category : null) as EventCategory | null,
+    contentName: (source && 'contentName' in source ? source.contentName : null) as string | null,
+    contentId: (source && 'contentId' in source ? source.contentId : null) as string | null,
   };
 }
 
@@ -97,6 +110,9 @@ export function CreateSessionModal({
   const [isRecurring, setIsRecurring] = useState(initialState.isRecurring);
   const [selectedDays, setSelectedDays] = useState<Set<string>>(initialState.selectedDays);
   const [initialRsvpStatus, setInitialRsvpStatus] = useState<InitialRsvpStatus>('no_response');
+  const [category, setCategory] = useState<EventCategory | null>(initialState.category);
+  const [contentName, setContentName] = useState<string | null>(initialState.contentName);
+  const [contentId, setContentId] = useState<string | null>(initialState.contentId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -112,6 +128,9 @@ export function CreateSessionModal({
     setIsRecurring(nextState.isRecurring);
     setSelectedDays(nextState.selectedDays);
     setInitialRsvpStatus('no_response');
+    setCategory(nextState.category);
+    setContentName(nextState.contentName);
+    setContentId(nextState.contentId);
   }, [editSession, initialDraft, isOpen]);
 
   const toggleDay = (day: string) => {
@@ -154,6 +173,9 @@ export function CreateSessionModal({
         isRecurring,
         recurrenceRule: isRecurring ? buildRecurrenceRule(selectedDays) : undefined,
         ...(!editSession ? { initialRsvpStatus } : {}),
+        ...(category ? { category } : {}),
+        ...(contentId ? { contentId } : {}),
+        ...(contentName ? { contentName } : {}),
       });
       onClose();
     } finally {
@@ -213,6 +235,48 @@ export function CreateSessionModal({
             placeholder="e.g. M4S prog from adds phase"
           />
         </div>
+
+        <div>
+          <Label size="sm">Category (optional)</Label>
+          <Select
+            value={category ?? ''}
+            onChange={(val) => setCategory((val || null) as EventCategory | null)}
+            options={[
+              { value: '', label: 'No category' },
+              ...EVENT_CATEGORIES.map(c => ({ value: c.value, label: c.label })),
+            ]}
+          />
+        </div>
+
+        {(category === 'farm' || category === 'raid' || category === 'reclear' || category === 'prog') && (
+          <div>
+            <Label size="sm">Content / Duty (optional)</Label>
+            <Select
+              value={contentId ?? ''}
+              onChange={(val) => {
+                if (!val) {
+                  setContentId(null);
+                  setContentName(null);
+                  return;
+                }
+                setContentId(val);
+                // Look up the display name
+                const trial = MOUNT_FARM_TRIALS.find(t => t.id === val);
+                if (trial) { setContentName(trial.dutyName); return; }
+                const tier = RAID_TIERS.find(t => t.id === val);
+                if (tier) { setContentName(tier.name); return; }
+                setContentName(val);
+              }}
+              options={[
+                { value: '', label: 'No specific duty' },
+                ...(category === 'farm'
+                  ? MOUNT_FARM_TRIALS.map(t => ({ value: t.id, label: `[${t.expansion}] ${t.dutyName}` }))
+                  : RAID_TIERS.map(t => ({ value: t.id, label: `${t.name} (${t.shortName})` }))
+                ),
+              ]}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>

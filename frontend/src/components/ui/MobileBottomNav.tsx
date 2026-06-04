@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { Settings2, SlidersHorizontal } from 'lucide-react';
+import { Mountain, Settings2, SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -20,8 +20,8 @@ interface MobileBottomNavProps {
   showPriorityTab?: boolean;
 }
 
-// Map PageMode to TAB_ICONS keys (priority uses Lucide icon instead)
-const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS> = {
+// Tabs that use custom icon images
+const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
@@ -35,6 +35,7 @@ const BASE_TABS: { id: PageMode; label: string }[] = [
   { id: 'history', label: 'Loot Log' },
   { id: 'stats', label: 'Summary' },
   { id: 'schedule', label: 'Schedule' },
+  { id: 'mount-farms', label: 'Mounts' },
 ];
 
 const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Weapon' };
@@ -108,9 +109,11 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showP
             >
               {tab.id === 'priority' ? (
                 <Settings2 className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
+              ) : tab.id === 'mount-farms' ? (
+                <Mountain className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
               ) : (
                 <img
-                  src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
+                  src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
                   alt=""
                   className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
                 />
