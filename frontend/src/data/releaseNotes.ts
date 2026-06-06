@@ -62,6 +62,13 @@ export const RELEASES: Release[] = [
         commits: [{ hash: 'pending', message: 'feat: mount farm tracker MVP', date: '2026-06-04T00:00:00Z' }],
       },
       {
+        category: 'fix',
+        title: 'Mount Farms loading reliability',
+        description:
+          'Added route-registration checks and clearer retryable error messaging for Mount Farms so deployment route mismatches are caught before release and easier to diagnose if they occur.',
+        commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
+      },
+      {
         category: 'feature',
         title: 'Plugin automation',
         description:

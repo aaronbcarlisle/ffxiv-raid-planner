@@ -6,6 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
+from app.main import app
 from app.models import MemberRole, User
 from tests.factories import create_membership, create_static_group, create_user
 
@@ -36,6 +37,17 @@ def viewer_headers(viewer_user: User) -> dict[str, str]:
 
 TRIAL_ID = "dt-valigarmanda"
 TRIAL_ID_2 = "ew-zodiark"
+
+
+class TestMountFarmRouteRegistration:
+    async def test_mount_farm_routes_are_registered_in_openapi(self):
+        paths = set(app.openapi()["paths"])
+        assert "/api/static-groups/{group_id}/mount-farms" in paths
+        assert "/api/static-groups/{group_id}/mount-farms/progress" in paths
+        assert "/api/static-groups/{group_id}/mount-farms/progress/bulk" in paths
+        assert "/api/static-groups/{group_id}/mount-farms/recommendations" in paths
+        assert "/api/plugin/mount-farms/catalog" in paths
+        assert "/api/plugin/mount-farms/sync" in paths
 
 
 class TestGetMountFarmProgress:
