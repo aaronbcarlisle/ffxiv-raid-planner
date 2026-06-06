@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../services/api';
+import { ApiError, api } from '../services/api';
 
 export type DataSource = 'manual' | 'plugin' | 'tomestone' | 'unknown';
 
@@ -66,6 +66,28 @@ interface MountFarmState {
   clearData: () => void;
 }
 
+function logMountFarmApiFailure(endpoint: string, error: unknown): void {
+  if (!import.meta.env.DEV) return;
+
+  const status = error instanceof ApiError ? error.status : undefined;
+  const message = error instanceof Error ? error.message : String(error);
+  console.error('Mount Farms API request failed', { endpoint, status, message });
+}
+
+function getMountFarmLoadError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 404) {
+    return 'Could not load mount farm progress. Static not found or you do not have access. The Mount Farm API route may also be unavailable in this deployment.';
+  }
+
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  return `Could not load mount farm progress. ${message}`;
+}
+
+function getMountFarmSaveError(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  return `Could not save mount farm progress. ${message}`;
+}
+
 export const useMountFarmStore = create<MountFarmState>((set, get) => ({
   data: null,
   recommendations: [],
@@ -76,14 +98,17 @@ export const useMountFarmStore = create<MountFarmState>((set, get) => ({
 
   fetchProgress: async (groupId: string, trialIds?: string[]) => {
     set({ isLoading: true, error: null });
+    const params = trialIds?.length
+      ? `?trial_ids=${trialIds.map(encodeURIComponent).join(',')}`
+      : '';
+    const endpoint = `/api/static-groups/${groupId}/mount-farms${params}`;
+
     try {
-      const params = trialIds?.length ? `?trial_ids=${trialIds.join(',')}` : '';
-      const data = await api.get<MountFarmData>(
-        `/api/static-groups/${groupId}/mount-farms${params}`
-      );
+      const data = await api.get<MountFarmData>(endpoint);
       set({ data, isLoading: false });
     } catch (err) {
-      set({ error: (err as Error).message, isLoading: false });
+      logMountFarmApiFailure(endpoint, err);
+      set({ error: getMountFarmLoadError(err), isLoading: false });
     }
   },
 
@@ -102,9 +127,11 @@ export const useMountFarmStore = create<MountFarmState>((set, get) => ({
 
   updateProgress: async (groupId: string, update) => {
     set({ isSaving: true, error: null });
+    const endpoint = `/api/static-groups/${groupId}/mount-farms/progress`;
+
     try {
       const response = await api.patch<MemberProgress>(
-        `/api/static-groups/${groupId}/mount-farms/progress`,
+        endpoint,
         update
       );
 
@@ -160,7 +187,8 @@ export const useMountFarmStore = create<MountFarmState>((set, get) => ({
         set({ isSaving: false });
       }
     } catch (err) {
-      set({ error: (err as Error).message, isSaving: false });
+      logMountFarmApiFailure(endpoint, err);
+      set({ error: getMountFarmSaveError(err), isSaving: false });
       throw err;
     }
   },
