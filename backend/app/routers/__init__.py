@@ -9,6 +9,7 @@ from .invitations import router as invitations_router
 from .join_requests import router as join_requests_router
 from .lodestone import router as lodestone_router
 from .loot_tracking import router as loot_tracking_router
+from .mount_farms import router as mount_farms_router
 from .schedule import router as schedule_router
 from .static_groups import router as static_groups_router
 from .tiers import router as tiers_router
@@ -23,6 +24,7 @@ __all__ = [
     "join_requests_router",
     "lodestone_router",
     "loot_tracking_router",
+    "mount_farms_router",
     "schedule_router",
     "static_groups_router",
     "tiers_router",

@@ -33,6 +33,7 @@ from .routers import (
     join_requests_router,
     lodestone_router,
     loot_tracking_router,
+    mount_farms_router,
     schedule_router,
     static_groups_router,
     tiers_router,
@@ -157,6 +158,7 @@ app.include_router(invitations_router)
 app.include_router(join_requests_router)
 app.include_router(lodestone_router)
 app.include_router(loot_tracking_router)
+app.include_router(mount_farms_router)
 app.include_router(schedule_router)
 app.include_router(static_groups_router)
 

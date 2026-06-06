@@ -25,6 +25,9 @@ import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
+import { MountFarmTab } from '../components/mount-farms';
+import { useMountFarmStore } from '../stores/mountFarmStore';
+import { getTrialById } from '../gamedata';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
@@ -37,7 +40,7 @@ import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { useEventBus, Events } from '../lib/eventBus';
+import { eventBus, useEventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
@@ -1054,6 +1057,35 @@ export function GroupView() {
               shareCode={currentGroup.shareCode}
               members={currentGroup.members || []}
               userRole={userRole}
+            />
+          )}
+
+          {/* Mount Farms Tab */}
+          {pageMode === 'mount-farms' && currentGroup && (
+            <MountFarmTab
+              groupId={currentGroup.id}
+              userRole={userRole ?? null}
+              onScheduleFarm={(trialName) => {
+                // Look up member counts from current data for the description
+                const mountFarmData = useMountFarmStore.getState().data;
+                const trialData = mountFarmData?.trials.find(t => {
+                  const trial = getTrialById(t.trialId);
+                  return trial?.dutyName === trialName;
+                });
+                const missing = trialData?.membersMissing ?? 0;
+                const canBuy = trialData?.membersCanBuy ?? 0;
+                const wanting = trialData?.membersWanting ?? 0;
+
+                setPageMode('schedule');
+                setTimeout(() => {
+                  eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
+                    trialName,
+                    missing,
+                    canBuy,
+                    wanting,
+                  });
+                }, 100);
+              }}
             />
           )}
 

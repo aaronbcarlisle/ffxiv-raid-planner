@@ -8,13 +8,13 @@ interface TabNavigationProps {
   onTabChange: (tab: PageMode) => void;
 }
 
-// Map PageMode to TAB_ICONS keys
-const PAGE_TO_ICON: Record<Exclude<PageMode, 'priority'>, keyof typeof TAB_ICONS> = {
+const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
   players: 'party',
   loot: 'loot',
   stats: 'stats',
   history: 'history',
   schedule: 'schedule',
+  'mount-farms': 'mountFarms',
 };
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
@@ -23,6 +23,7 @@ const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: str
   { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
   { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
   { id: 'schedule', label: 'Schedule', hotkey: '5', description: 'Raid schedule and RSVP across time zones' },
+  { id: 'mount-farms', label: 'Mount Farms', hotkey: '6', description: 'Track mount farm progress and totems' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
@@ -61,7 +62,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
             `}
           >
             <img
-              src={TAB_ICONS[PAGE_TO_ICON[tab.id as Exclude<PageMode, 'priority'>]]}
+              src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
               alt=""
               width={20}
               height={20}

@@ -30,6 +30,15 @@ class InitialRsvpStatusEnum(str, Enum):
     TENTATIVE = "tentative"
 
 
+class EventCategoryEnum(str, Enum):
+    RAID = "raid"
+    FARM = "farm"
+    RECLEAR = "reclear"
+    PROG = "prog"
+    SOCIAL = "social"
+    OTHER = "other"
+
+
 class ScheduleSessionCreate(CamelModel):
     title: str
     description: str | None = None
@@ -39,6 +48,9 @@ class ScheduleSessionCreate(CamelModel):
     is_recurring: bool = False
     recurrence_rule: str | None = None
     initial_rsvp_status: InitialRsvpStatusEnum | None = None
+    category: EventCategoryEnum | None = None
+    content_id: str | None = None
+    content_name: str | None = None
 
 
 class ScheduleSessionUpdate(CamelModel):
@@ -49,6 +61,9 @@ class ScheduleSessionUpdate(CamelModel):
     timezone: str | None = None
     is_recurring: bool | None = None
     recurrence_rule: str | None = None
+    category: EventCategoryEnum | None = None
+    content_id: str | None = None
+    content_name: str | None = None
 
 
 class RsvpCreate(CamelModel):
@@ -77,6 +92,9 @@ class ScheduleSessionResponse(CamelModel):
     timezone: str
     is_recurring: bool
     recurrence_rule: str | None = None
+    category: str | None = None
+    content_id: str | None = None
+    content_name: str | None = None
     created_at: str
     updated_at: str
     rsvps: list[RsvpResponse] = []

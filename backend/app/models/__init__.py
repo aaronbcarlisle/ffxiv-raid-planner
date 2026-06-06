@@ -6,6 +6,7 @@ from .invitation import Invitation
 from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
+from .mount_farm_progress import MountFarmProgress
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .plugin_auth_code import PluginAuthCode
@@ -25,6 +26,7 @@ __all__ = [
     "JoinRequest",
     "LootLogEntry",
     "MaterialLogEntry",
+    "MountFarmProgress",
     "ErrorReport",
     "Membership",
     "MemberRole",

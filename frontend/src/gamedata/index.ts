@@ -69,6 +69,17 @@ export {
   TIME_SLOTS,
 } from './worlds';
 
+// Mount Farms
+export {
+  type Expansion,
+  type MountFarmTrial,
+  EXPANSIONS,
+  MOUNT_FARM_TRIALS,
+  getTrialsByExpansion,
+  getTrialById,
+  getAllTrialIds,
+} from './mount-farms';
+
 // Costs
 export {
   BOOK_COSTS,

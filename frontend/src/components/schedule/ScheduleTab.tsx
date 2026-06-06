@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Calendar, CalendarClock, Copy, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { Bell, Calendar, CalendarClock, Copy, LayoutGrid, List, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
 import { useModal } from '../../hooks/useModal';
+import { useEventBus, Events } from '../../lib/eventBus';
 import { Button } from '../primitives';
 import { Checkbox, Input, Spinner } from '../ui';
 import { SessionCard } from './SessionCard';
@@ -51,12 +52,42 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const [enable1h, setEnable1h] = useState(false);
   const [enableMissingRsvp, setEnableMissingRsvp] = useState(false);
   const [integrationMessage, setIntegrationMessage] = useState<string | null>(null);
+  const [sessionViewMode, setSessionViewMode] = useState<'list' | 'tiles'>(() => {
+    const saved = localStorage.getItem('schedule-session-view');
+    return saved === 'tiles' ? 'tiles' : 'list';
+  });
   const [activeSubTab, setActiveSubTab] = useState<SchedulerSubTab>(() => {
     const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
     return saved === 'availability' || saved === 'integrations' || saved === 'sessions'
       ? saved
       : 'sessions';
   });
+
+  // Listen for mount farm schedule requests
+  useEventBus<{ trialName: string; missing?: number; canBuy?: number; wanting?: number }>(
+    Events.MOUNT_FARM_SCHEDULE,
+    ({ trialName, missing, canBuy, wanting }) => {
+      const lines = [`Mount farm for ${trialName}.`];
+      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this mount.`);
+      if (canBuy) lines.push(`${canBuy} can buy with totems.`);
+      if (wanting && wanting !== missing) lines.push(`${wanting} marked as wanted.`);
+      lines.push('Check Availability tab for best time slots.');
+
+      setCreateDraft({
+        title: `Mount Farm: ${trialName}`,
+        description: lines.join('\n'),
+        startTime: '',
+        endTime: '',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isRecurring: false,
+        recurrenceRule: null,
+        category: 'farm',
+        contentName: trialName,
+      });
+      setActiveSubTab('sessions');
+      createModal.open();
+    }
+  );
 
   useEffect(() => {
     void fetchSessions(groupId).catch(() => undefined);
@@ -100,7 +131,10 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   const handleUpdate = async (data: ScheduleSessionCreate) => {
     if (!editSession) return;
-    await updateSession(groupId, editSession.id, data);
+    await updateSession(groupId, editSession.id, {
+      ...data,
+      recurrenceRule: data.recurrenceRule ?? undefined,
+    });
     setEditSession(null);
   };
 
@@ -261,20 +295,50 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  currentUserId={user?.id}
-                  canManage={canManage}
-                  canRsvp={canRsvp}
-                  onRsvp={handleRsvp}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
+            <>
+              {/* View toggle — tiles or list */}
+              <div className="hidden sm:flex justify-end">
+                <div className="flex bg-surface-raised rounded-lg p-0.5 gap-0.5">
+                  {/* design-system-ignore: View toggle requires specific styling */}
+                  <button
+                    onClick={() => { setSessionViewMode('tiles'); localStorage.setItem('schedule-session-view', 'tiles'); }}
+                    className={`p-1.5 rounded-md transition-colors ${sessionViewMode === 'tiles' ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                    aria-label="Tile view"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  {/* design-system-ignore: View toggle requires specific styling */}
+                  <button
+                    onClick={() => { setSessionViewMode('list'); localStorage.setItem('schedule-session-view', 'list'); }}
+                    className={`p-1.5 rounded-md transition-colors ${sessionViewMode === 'list' ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                    aria-label="List view"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className={sessionViewMode === 'tiles'
+                ? 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3'
+                : 'space-y-3'
+              }>
+                {sessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    currentUserId={user?.id}
+                    shareCode={shareCode}
+                    staticName={staticName}
+                    canManage={canManage}
+                    canRsvp={canRsvp}
+                    compact={sessionViewMode === 'tiles'}
+                    onRsvp={handleRsvp}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

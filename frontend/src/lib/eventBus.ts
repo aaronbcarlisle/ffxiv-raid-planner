@@ -139,6 +139,9 @@ export const Events = {
 
   // Membership events
   MEMBER_ROLE_CHANGED: 'membership:role-changed',
+
+  // Mount farm events
+  MOUNT_FARM_SCHEDULE: 'mount-farm:schedule',
 } as const;
 
 // Type for event names
