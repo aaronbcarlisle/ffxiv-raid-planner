@@ -69,6 +69,13 @@ export const RELEASES: Release[] = [
         commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
       },
       {
+        category: 'improvement',
+        title: 'Mount Farms tab icon',
+        description:
+          'The Mount Farms tab now uses its in-game mount icon for a clearer, more recognizable look in the tab bar.',
+        commits: [{ hash: 'pending', message: 'chore: use xivapi mount icon for Mount Farms tab', date: '2026-06-06T00:00:00Z' }],
+      },
+      {
         category: 'feature',
         title: 'Plugin automation',
         description:
