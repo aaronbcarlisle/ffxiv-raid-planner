@@ -147,7 +147,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
   );
 
   if (error) {
-    return <ErrorMessage message={error} />;
+    return <ErrorMessage message={error} onRetry={handleRefresh} retrying={isLoading} />;
   }
 
   const topRec = recommendations[0];
