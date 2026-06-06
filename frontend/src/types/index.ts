@@ -438,7 +438,7 @@ export const TAB_ICONS = {
   stats: '/icons/stats-transparent-bg.png',
   history: '/icons/history-transparent-bg.png',
   schedule: '/icons/schedule-transparent-bg.png',
-  mountFarms: '/icons/mount-farms-transparent-bg.svg',
+  mountFarms: 'https://xivapi.com/i/019000/019609_hr1.png',
 };
 
 // ==================== User/Auth Types ====================
