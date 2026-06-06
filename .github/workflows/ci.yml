@@ -93,3 +93,62 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  backend:
+    name: Backend Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # The `migrations` job above statically validates the migration *graph*
+    # (single head, no dangling parents). This job validates migration
+    # *execution*: production runs PostgreSQL, but dev/tests run SQLite and the
+    # app builds its dev schema via Base.metadata.create_all - so migration
+    # files are only ever executed against Postgres on deploy. That hides a
+    # whole class of dialect bugs (e.g. `BOOLEAN DEFAULT 0`, which SQLite
+    # accepts and Postgres rejects). Running the real chain against Postgres
+    # here surfaces them at PR time instead of in a failed Railway deploy.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: raidplanner
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      # The load-bearing guard: run the full migration chain against a real
+      # PostgreSQL engine, exactly as production does on deploy.
+      - name: Run migrations against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/raidplanner
+        run: alembic upgrade head
+
+      # Backend unit tests (in-memory SQLite per tests/conftest.py).
+      - name: Run backend tests
+        run: pytest -q
