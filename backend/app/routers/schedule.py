@@ -21,6 +21,7 @@ from ..services.discord_webhook import (
     PlayerDetail,
     SessionAnnouncementData,
     build_cancelled_payload,
+    build_schedule_session_url,
     build_session_announcement_payload,
     build_test_reminder_payload,
     compute_announcement_hash,
@@ -117,6 +118,8 @@ def _build_announcement_data(
     member_count: int,
     rsvps: list[ScheduleRsvp] | None = None,
     player_map: dict[str, SnapshotPlayer] | None = None,
+    mention_target: str = "none",
+    mention_role_id: str | None = None,
 ) -> SessionAnnouncementData:
     """Assemble a SessionAnnouncementData from ORM objects.
 
@@ -158,8 +161,10 @@ def _build_announcement_data(
     except (ValueError, TypeError):
         end_iso = sched_session.end_time
 
-    session_url = (
-        f"{settings.frontend_url}/group/{static_group.share_code}?tab=schedule"
+    session_url = build_schedule_session_url(
+        settings.public_app_base_url,
+        static_group.share_code,
+        sched_session.id,
     )
 
     return SessionAnnouncementData(
@@ -174,6 +179,8 @@ def _build_announcement_data(
         recurrence_summary=_recurrence_rule_to_text(sched_session.recurrence_rule),
         unavailable_players=unavailable_players,
         tentative_players=tentative_players,
+        mention_target=mention_target,
+        mention_role_id=mention_role_id,
     )
 
 
@@ -316,6 +323,8 @@ def _settings_response(
         webhook_configured=bool(row and row.webhook_url),
         webhook_url_masked=_mask_webhook_url(row.webhook_url) if row and can_manage else None,
         reminder_channel_label=row.reminder_channel_label if row and can_manage else None,
+        mention_target=row.mention_target if row and can_manage else "none",
+        mention_role_id=row.mention_role_id if row and can_manage and row.mention_target == "role" else None,
         enable_24h_reminder=bool(row and row.enable_24h_reminder) if can_manage else False,
         enable_1h_reminder=bool(row and row.enable_1h_reminder) if can_manage else False,
         enable_missing_rsvp_reminder=bool(row and row.enable_missing_rsvp_reminder) if can_manage else False,
@@ -533,7 +542,14 @@ async def create_schedule_session(
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         player_map = await _get_player_map(session, group_id)
-        ann_data = _build_announcement_data(created, static_group, member_count, player_map=player_map)
+        ann_data = _build_announcement_data(
+            created,
+            static_group,
+            member_count,
+            player_map=player_map,
+            mention_target=sched_settings.mention_target,
+            mention_role_id=sched_settings.mention_role_id,
+        )
         payload = build_session_announcement_payload(ann_data)
         content_hash = compute_announcement_hash(ann_data)
         await _post_or_edit_webhook(
@@ -589,7 +605,14 @@ async def update_schedule_session(
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         player_map = await _get_player_map(session, group_id)
-        ann_data = _build_announcement_data(schedule_session, static_group, member_count, player_map=player_map)
+        ann_data = _build_announcement_data(
+            schedule_session,
+            static_group,
+            member_count,
+            player_map=player_map,
+            mention_target=sched_settings.mention_target,
+            mention_role_id=sched_settings.mention_role_id,
+        )
         payload = build_session_announcement_payload(ann_data)
         content_hash = compute_announcement_hash(ann_data)
         await _post_or_edit_webhook(
@@ -634,7 +657,12 @@ async def delete_schedule_session(
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         ann_data = _build_announcement_data(
-            schedule_session, static_group, member_count, rsvps=[]
+            schedule_session,
+            static_group,
+            member_count,
+            rsvps=[],
+            mention_target=sched_settings.mention_target if sched_settings else "none",
+            mention_role_id=sched_settings.mention_role_id if sched_settings else None,
         )
         webhook_payload = build_cancelled_payload(ann_data)
 
@@ -741,7 +769,14 @@ async def create_or_update_rsvp(
             static_group = await get_static_group(session, group_id)
             member_count = await _get_member_count(session, group_id)
             player_map = await _get_player_map(session, group_id)
-            ann_data = _build_announcement_data(refreshed, static_group, member_count, player_map=player_map)
+            ann_data = _build_announcement_data(
+                refreshed,
+                static_group,
+                member_count,
+                player_map=player_map,
+                mention_target=sched_settings.mention_target,
+                mention_role_id=sched_settings.mention_role_id,
+            )
             payload = build_session_announcement_payload(ann_data)
             content_hash = compute_announcement_hash(ann_data)
             await _post_or_edit_webhook(
@@ -808,12 +843,16 @@ async def update_schedule_settings(
 
     for field in (
         "reminder_channel_label",
+        "mention_target",
+        "mention_role_id",
         "enable_24h_reminder",
         "enable_1h_reminder",
         "enable_missing_rsvp_reminder",
     ):
         if field in update_data:
             setattr(row, field, update_data[field])
+    if row.mention_target != "role":
+        row.mention_role_id = None
 
     row.updated_at = datetime.now(timezone.utc).isoformat()
     await session.flush()
@@ -841,8 +880,10 @@ async def test_schedule_reminder(
 
     payload = build_test_reminder_payload(
         static_group_name=static_group.name,
-        planner_url=settings.frontend_url,
+        planner_url=settings.public_app_base_url,
         share_code=static_group.share_code,
+        mention_target=row.mention_target,
+        mention_role_id=row.mention_role_id,
     )
 
     try:
@@ -896,7 +937,14 @@ async def post_session_preview(
 
     member_count = await _get_member_count(session, group_id)
     player_map = await _get_player_map(session, group_id)
-    ann_data = _build_announcement_data(upcoming, static_group, member_count, player_map=player_map)
+    ann_data = _build_announcement_data(
+        upcoming,
+        static_group,
+        member_count,
+        player_map=player_map,
+        mention_target=row.mention_target,
+        mention_role_id=row.mention_role_id,
+    )
     payload = build_session_announcement_payload(ann_data)
 
     try:
@@ -1009,8 +1057,8 @@ async def get_calendar_feed(
                 f"DTSTART:{start_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
                 f"DTEND:{end_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
                 f"SUMMARY:{_escape_ical_text(schedule_session.title)}",
-                f"DESCRIPTION:{_escape_ical_text(schedule_session.description)}\\n{settings.frontend_url}/group/{static_group.share_code}?tab=schedule",
-                f"URL:{_escape_ical_text(f'{settings.frontend_url}/group/{static_group.share_code}?tab=schedule')}",
+                f"DESCRIPTION:{_escape_ical_text(schedule_session.description)}\\n{settings.public_app_base_url}/group/{static_group.share_code}?tab=schedule",
+                f"URL:{_escape_ical_text(f'{settings.public_app_base_url}/group/{static_group.share_code}?tab=schedule')}",
             ]
         )
         if schedule_session.is_recurring and schedule_session.recurrence_rule:

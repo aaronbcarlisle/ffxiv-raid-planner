@@ -16,6 +16,7 @@ from app.services.discord_webhook import (
     _format_rsvp_summary,
     _format_subs_needed_detail,
     build_session_announcement_payload,
+    build_schedule_session_url,
     build_test_reminder_payload,
     compute_announcement_hash,
     compute_subs_needed,
@@ -220,6 +221,42 @@ def test_payload_planner_link_in_content():
     assert url in payload["content"]
 
 
+def test_payload_defaults_to_no_allowed_mentions():
+    data = _make_data(
+        session_title="@everyone Raid Night",
+        session_description="<@&123456789012345678> should not ping",
+    )
+    payload = build_session_announcement_payload(data)
+    assert payload["allowed_mentions"] == {"parse": []}
+
+
+def test_payload_here_ping_allows_only_everyone_parse():
+    data = _make_data(mention_target="here")
+    payload = build_session_announcement_payload(data)
+    assert payload["content"].startswith("@here\n")
+    assert payload["allowed_mentions"] == {"parse": ["everyone"]}
+
+
+def test_payload_role_ping_allows_only_configured_role():
+    data = _make_data(mention_target="role", mention_role_id="123456789012345678")
+    payload = build_session_announcement_payload(data)
+    assert payload["content"].startswith("<@&123456789012345678>\n")
+    assert payload["allowed_mentions"] == {
+        "parse": [],
+        "roles": ["123456789012345678"],
+    }
+
+
+def test_schedule_session_url_uses_public_base_and_session_id():
+    url = build_schedule_session_url(
+        "https://www.xivraidplanner.app/",
+        "E1FPZK",
+        "session-123",
+    )
+    assert url == "https://www.xivraidplanner.app/group/E1FPZK?tab=schedule&sessionId=session-123"
+    assert "localhost" not in url
+
+
 def test_payload_description_included_and_truncated():
     long_desc = "A" * 2000
     data = _make_data(session_description=long_desc)
@@ -275,6 +312,21 @@ def test_test_reminder_payload_session_url_contains_share_code():
         share_code="XYZ99",
     )
     assert "XYZ99" in payload["content"]
+
+
+def test_test_reminder_payload_can_ping_role_safely():
+    payload = build_test_reminder_payload(
+        static_group_name="Test Static",
+        planner_url="https://planner.example.com",
+        share_code="XYZ99",
+        mention_target="role",
+        mention_role_id="123456789012345678",
+    )
+    assert payload["content"].startswith("<@&123456789012345678>\n")
+    assert payload["allowed_mentions"] == {
+        "parse": [],
+        "roles": ["123456789012345678"],
+    }
 
 
 def test_test_reminder_payload_does_not_contain_webhook_secrets():
