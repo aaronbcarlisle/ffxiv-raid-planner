@@ -69,6 +69,13 @@ export const RELEASES: Release[] = [
         commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
       },
       {
+        category: 'fix',
+        title: 'Curated farm catalog foundation',
+        description:
+          'Removed invalid Dawntrail entries, added reviewed farm metadata for mounts and special cases, and introduced safe Ultimate weapon farm foundations without publishing unverified token data.',
+        commits: [{ hash: 'pending', message: 'fix: curate farm catalog and support rare reward farms', date: '2026-06-07T00:00:00Z' }],
+      },
+      {
         category: 'feature',
         title: 'Plugin automation',
         description:

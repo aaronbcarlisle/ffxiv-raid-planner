@@ -34,25 +34,27 @@ logger = get_logger(__name__)
 
 TOTEM_CLOSE_THRESHOLD = 0.75
 
-# Mount farm catalog with FFXIV game IDs for plugin mapping.
-# This is the SINGLE SOURCE OF TRUTH for mount/totem game IDs.
+# Curated mount farm catalog with optional FFXIV game IDs for plugin mapping.
+# This is the SINGLE SOURCE OF TRUTH for backend mount farm content.
 # The plugin fetches this catalog at runtime via GET /api/plugin/mount-farms/catalog.
-# The frontend has a copy for display purposes but the plugin never reads it.
+# The frontend has a curated display copy and should stay in sync with this list.
 #
 # mount_id = game mount ID from Mount.exd (used by PlayerState.IsMountUnlocked)
-# totem_item_id = game item ID from Item.exd (used by InventoryManager item lookup)
+# totem_item_id = game item/currency ID from Item.exd (used by InventoryManager item lookup)
 #
-# WARNING: These IDs are APPROXIMATE and must be verified against actual FFXIV game data
-# (Mount.exd and Item.exd via Lumina/SaintCoinach) before production use.
-# Incorrect IDs will cause silent data mismatches (wrong mount marked owned, wrong totem counted).
-# TODO: Verify all mount_id and totem_item_id values against game data before production deployment.
-MOUNT_FARM_CATALOG: list[dict] = [
+# Do not populate this from broad XIVAPI text/duty searches. Add new entries only
+# from reviewed mount farm data. Leave game IDs null until verified against
+# Mount.exd and Item.exd via Lumina/SaintCoinach.
+_FARM_CATALOG_SEEDS: list[dict] = [
     # Dawntrail
-    {"trial_id": "dt-valigarmanda", "expansion": "DT", "duty_name": "Worqor Lar Dor (Extreme)", "mount_name": "Valigarmanda", "mount_id": 330, "totem_name": "Valigarmanda Totem", "totem_item_id": 44123, "totem_target": 99},
-    {"trial_id": "dt-zoraal-ja", "expansion": "DT", "duty_name": "Everkeep (Extreme)", "mount_name": "Lynx of Imperious Wind", "mount_id": 331, "totem_name": "Zoraal Ja Totem", "totem_item_id": 44124, "totem_target": 99},
-    {"trial_id": "dt-sphene", "expansion": "DT", "duty_name": "The Interphos (Extreme)", "mount_name": "Sphene", "mount_id": 345, "totem_name": "Sphene Totem", "totem_item_id": 44350, "totem_target": 99},
-    {"trial_id": "dt-senary", "expansion": "DT", "duty_name": "Senary Unaspected Aetherial Node (Extreme)", "mount_name": "Senary Node", "mount_id": 350, "totem_name": "Senary Totem", "totem_item_id": 44600, "totem_target": 99},
-    {"trial_id": "dt-perfected-brute-bomber", "expansion": "DT", "duty_name": "Blasting Zone (Extreme)", "mount_name": "Brute Bomber", "mount_id": 355, "totem_name": "Brute Bomber Totem", "totem_item_id": 44800, "totem_target": 99},
+    {"trial_id": "dt-valigarmanda", "expansion": "DT", "duty_name": "Worqor Lar Dor (Extreme)", "source_content": "Worqor Lar Dor (Extreme)", "mount_name": "Wings of Ruin", "mount_id": None, "totem_name": "Skyruin Totem", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 1, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine"},
+    {"trial_id": "dt-zoraal-ja", "expansion": "DT", "duty_name": "Everkeep (Extreme)", "source_content": "Everkeep (Extreme)", "mount_name": "Wings of Resolve", "mount_id": None, "totem_name": "Resilient Totem", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 1, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine"},
+    {"trial_id": "dt-sphene", "expansion": "DT", "duty_name": "The Minstrel's Ballad: Sphene's Burden", "source_content": "The Minstrel's Ballad: Sphene's Burden", "mount_name": "Wings of Eternity", "mount_id": None, "totem_name": "Totem Eternal", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 2, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine"},
+    {"trial_id": "dt-recollection", "expansion": "DT", "duty_name": "Recollection (Extreme)", "source_content": "Recollection (Extreme)", "mount_name": "Wings of the Knighthood", "mount_id": None, "totem_name": "Knight Totem", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 1, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine"},
+    {"trial_id": "dt-necron-embrace", "expansion": "DT", "duty_name": "The Minstrel's Ballad: Necron's Embrace", "source_content": "The Minstrel's Ballad: Necron's Embrace", "mount_name": "Wings of Death", "mount_id": None, "totem_name": "Grave Totem", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 2, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine"},
+    {"trial_id": "dt-windward-wilds", "expansion": "DT", "duty_name": "The Windward Wilds (Extreme)", "source_content": "The Windward Wilds (Extreme)", "mount_name": "Felyne Support Team Cart Horn", "mount_id": None, "totem_name": "Guardian Arkveld Certificate", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 2, "exchange_cost": 99, "exchange_npc": "Smithy", "exchange_location": "Tuliyollal", "content_type": "collaboration", "category": "collaboration"},
+    {"trial_id": "dt-hell-on-rails", "expansion": "DT", "duty_name": "Hell on Rails (Extreme)", "source_content": "Hell on Rails (Extreme)", "mount_name": "Wings of Mist", "mount_id": None, "totem_name": "Runaway Totem", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 2, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine", "exchange_status": "not_yet_available"},
+    {"trial_id": "dt-unmaking", "expansion": "DT", "duty_name": "The Unmaking (Extreme)", "source_content": "The Unmaking (Extreme)", "mount_name": "Wings of Nihility", "mount_id": None, "totem_name": "Totem of Naught", "totem_item_id": None, "totem_target": 99, "currency_per_clear": 2, "exchange_cost": 99, "exchange_npc": "Uah'shepya", "exchange_location": "Solution Nine", "exchange_status": "not_yet_available"},
     # Endwalker
     {"trial_id": "ew-zodiark", "expansion": "EW", "duty_name": "The Dark Inside (Extreme)", "mount_name": "Lynx of Fallen Shadow", "mount_id": 282, "totem_name": "Zodiark Totem", "totem_item_id": 36810, "totem_target": 99},
     {"trial_id": "ew-hydaelyn", "expansion": "EW", "duty_name": "The Mothercrystal (Extreme)", "mount_name": "Lynx of Divine Light", "mount_id": 283, "totem_name": "Hydaelyn Totem", "totem_item_id": 36811, "totem_target": 99},
@@ -91,12 +93,55 @@ MOUNT_FARM_CATALOG: list[dict] = [
     {"trial_id": "arr-leviathan", "expansion": "ARR", "duty_name": "The Whorleater (Extreme)", "mount_name": "Enbarr", "mount_id": 33, "totem_name": "Leviathan Totem", "totem_item_id": 8543, "totem_target": 99},
     {"trial_id": "arr-ramuh", "expansion": "ARR", "duty_name": "The Striking Tree (Extreme)", "mount_name": "Markab", "mount_id": 38, "totem_name": "Ramuh Totem", "totem_item_id": 9383, "totem_target": 99},
     {"trial_id": "arr-shiva", "expansion": "ARR", "duty_name": "Akh Afah Amphitheatre (Extreme)", "mount_name": "Boreas", "mount_id": 46, "totem_name": "Shiva Totem", "totem_item_id": 10125, "totem_target": 99},
+    # Ultimate weapon/token farms. Token item names are intentionally not guessed;
+    # add currency metadata only after Item.exd-backed review.
+    {"trial_id": "ult-ucob", "expansion": "SB", "duty_name": "The Unending Coil of Bahamut (Ultimate)", "source_content": "The Unending Coil of Bahamut (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+    {"trial_id": "ult-uwu", "expansion": "SB", "duty_name": "The Weapon's Refrain (Ultimate)", "source_content": "The Weapon's Refrain (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+    {"trial_id": "ult-tea", "expansion": "ShB", "duty_name": "The Epic of Alexander (Ultimate)", "source_content": "The Epic of Alexander (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+    {"trial_id": "ult-dsr", "expansion": "EW", "duty_name": "Dragonsong's Reprise (Ultimate)", "source_content": "Dragonsong's Reprise (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+    {"trial_id": "ult-top", "expansion": "EW", "duty_name": "The Omega Protocol (Ultimate)", "source_content": "The Omega Protocol (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+    {"trial_id": "ult-fru", "expansion": "DT", "duty_name": "Futures Rewritten (Ultimate)", "source_content": "Futures Rewritten (Ultimate)", "mount_name": "Ultimate weapon coffer / weapon exchange", "totem_name": None, "totem_target": 0, "reward_type": "weapon", "content_type": "ultimate", "category": "ultimate", "exchange_status": "unknown", "notes": "Token item metadata pending curated Item.exd verification."},
+]
+
+
+def _normalize_farm_catalog_entry(entry: dict) -> dict:
+    normalized = dict(entry)
+    normalized.setdefault("source_content", normalized["duty_name"])
+    normalized.setdefault("reward_type", "mount")
+    normalized.setdefault("content_type", "extreme_trial")
+    normalized.setdefault("category", "normal")
+    normalized.setdefault("reward_name", normalized["mount_name"])
+    normalized.setdefault("reward_item_name", normalized["mount_name"])
+    normalized.setdefault("currency_item_name", normalized.get("totem_name"))
+    normalized.setdefault("currency_per_clear", 1 if normalized.get("totem_name") else None)
+    normalized.setdefault(
+        "exchange_cost",
+        normalized["totem_target"] if normalized.get("totem_target", 0) > 0 else None,
+    )
+    normalized.setdefault(
+        "exchange_status",
+        "available" if normalized.get("exchange_cost") else "unknown",
+    )
+    return normalized
+
+
+MOUNT_FARM_CATALOG: list[dict] = [
+    _normalize_farm_catalog_entry(entry) for entry in _FARM_CATALOG_SEEDS
 ]
 
 # Lookup maps for plugin sync
 _CATALOG_BY_TRIAL_ID = {e["trial_id"]: e for e in MOUNT_FARM_CATALOG}
 _CATALOG_BY_MOUNT_ID = {e["mount_id"]: e for e in MOUNT_FARM_CATALOG if e.get("mount_id")}
 _CATALOG_BY_TOTEM_ITEM_ID = {e["totem_item_id"]: e for e in MOUNT_FARM_CATALOG if e.get("totem_item_id")}
+
+
+def _is_plugin_catalog_entry(entry: dict) -> bool:
+    return (
+        entry.get("reward_type") == "mount"
+        and entry.get("content_type") == "extreme_trial"
+        and isinstance(entry.get("mount_id"), int)
+        and isinstance(entry.get("totem_item_id"), int)
+    )
 
 
 async def _get_group_members(
@@ -189,6 +234,8 @@ async def get_mount_farm_progress(
 
     trials: list[TrialSummaryResponse] = []
     for trial_id in sorted(seen_trials):
+        catalog_entry = _CATALOG_BY_TRIAL_ID.get(trial_id, {})
+        exchange_cost = catalog_entry.get("exchange_cost") or catalog_entry.get("totem_target", 0)
         member_progress_list: list[MemberProgressResponse] = []
         members_complete = 0
         members_missing = 0
@@ -206,7 +253,7 @@ async def get_mount_farm_progress(
                 members_missing += 1
                 if mp.wants_mount:
                     members_wanting += 1
-                if mp.totem_count >= 99:
+                if exchange_cost > 0 and mp.totem_count >= exchange_cost:
                     members_can_buy += 1
 
         trials.append(
@@ -415,6 +462,8 @@ async def get_farm_recommendations(
         if expansion:
             if not trial_id.startswith(expansion.lower() + "-"):
                 continue
+        catalog_entry = _CATALOG_BY_TRIAL_ID.get(trial_id, {})
+        exchange_cost = catalog_entry.get("exchange_cost") or catalog_entry.get("totem_target", 0)
 
         user_progress_map = {p.user_id: p for p in progress_list}
         members_missing = 0
@@ -430,9 +479,9 @@ async def get_farm_recommendations(
             if p:
                 if p.wants_mount:
                     members_wanting += 1
-                if p.totem_count >= 99:
+                if exchange_cost > 0 and p.totem_count >= exchange_cost:
                     members_can_buy += 1
-                elif p.totem_count >= 99 * TOTEM_CLOSE_THRESHOLD:
+                elif exchange_cost > 0 and p.totem_count >= exchange_cost * TOTEM_CLOSE_THRESHOLD:
                     members_close += 1
             else:
                 members_wanting += 1
@@ -470,19 +519,33 @@ async def get_farm_recommendations(
 async def get_mount_farm_catalog(
     user: User = Depends(get_current_user),
 ) -> MountFarmCatalogResponse:
-    """Return the mount farm catalog with game IDs for plugin mapping."""
+    """Return plugin-scannable mount farms with verified game IDs."""
     entries = [
         MountFarmCatalogEntry(
             trial_id=e["trial_id"],
             expansion=e["expansion"],
             duty_name=e["duty_name"],
+            source_content=e.get("source_content", e["duty_name"]),
+            reward_type=e.get("reward_type", "mount"),
+            content_type=e.get("content_type", "extreme_trial"),
             mount_name=e["mount_name"],
             mount_id=e.get("mount_id"),
             totem_name=e.get("totem_name"),
             totem_item_id=e.get("totem_item_id"),
             totem_target=e.get("totem_target", 99),
+            reward_name=e.get("reward_name", e["mount_name"]),
+            reward_item_name=e.get("reward_item_name"),
+            currency_item_name=e.get("currency_item_name", e.get("totem_name")),
+            currency_per_clear=e.get("currency_per_clear"),
+            exchange_cost=e.get("exchange_cost"),
+            exchange_npc=e.get("exchange_npc"),
+            exchange_location=e.get("exchange_location"),
+            exchange_status=e.get("exchange_status", "available"),
+            category=e.get("category", "normal"),
+            notes=e.get("notes"),
         )
         for e in MOUNT_FARM_CATALOG
+        if _is_plugin_catalog_entry(e)
     ]
     return MountFarmCatalogResponse(entries=entries)
 

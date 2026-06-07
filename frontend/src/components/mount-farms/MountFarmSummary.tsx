@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight, Calendar, ShoppingCart, Check } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
+import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { TrialSummary } from '../../stores/mountFarmStore';
 import { MountFarmDetail } from './MountFarmDetail';
 
@@ -81,17 +82,24 @@ export function MountFarmSummary({
                   {allComplete && <Check className="w-4 h-4 text-status-success flex-shrink-0" />}
                 </div>
                 <div className="text-xs text-text-secondary flex items-center gap-2 mt-0.5">
-                  <span>{trial.mountName}</span>
+                  <span>{getRewardLabel(trial)}</span>
                   {myProgress ? (
                     <span className={myProgress.hasMount ? 'text-status-success' : 'text-text-tertiary'}>
-                      &middot; {myProgress.hasMount ? 'Owned' : `${myProgress.totemCount}/${trial.totemTarget} totems`}
+                      &middot; {myProgress.hasMount ? 'Obtained' : hasCurrencyTracking(trial) ? `${myProgress.totemCount}/${trial.exchangeCost ?? trial.totemTarget} ${getCurrencyLabelPlural(trial)}` : getExchangeSummary(trial)}
                     </span>
-                  ) : trial.totemName ? (
+                  ) : (
                     <>
                       <span className="text-text-tertiary">&middot;</span>
-                      <span>{trial.totemName}</span>
+                      <span>{getExchangeSummary(trial)}</span>
+                      {trial.category !== 'normal' && (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          trial.category === 'ultimate' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'
+                        }`}>
+                          {trial.category === 'ultimate' ? 'Ultimate' : 'Special'}
+                        </span>
+                      )}
                     </>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -100,7 +108,7 @@ export function MountFarmSummary({
                 {canBuy > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
                     <ShoppingCart className="w-3 h-3" />
-                    {canBuy} can buy
+                    {canBuy} ready
                   </span>
                 )}
                 {totalMembers > 0 && (
@@ -131,6 +139,7 @@ export function MountFarmSummary({
                   }}
                   className="flex-shrink-0 text-text-tertiary hover:text-accent transition-colors p-1"
                   title="Schedule farm event"
+                  aria-label={`Schedule ${getRewardNoun(trial)} farm`}
                 >
                   <Calendar className="w-4 h-4" />
                 </span>

@@ -63,18 +63,18 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       : 'sessions';
   });
 
-  // Listen for mount farm schedule requests
+  // Listen for farm schedule requests
   useEventBus<{ trialName: string; missing?: number; canBuy?: number; wanting?: number }>(
     Events.MOUNT_FARM_SCHEDULE,
     ({ trialName, missing, canBuy, wanting }) => {
-      const lines = [`Mount farm for ${trialName}.`];
-      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this mount.`);
-      if (canBuy) lines.push(`${canBuy} can buy with totems.`);
+      const lines = [`Farm progress for ${trialName}.`];
+      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this reward.`);
+      if (canBuy) lines.push(`${canBuy} can buy with the exchange currency.`);
       if (wanting && wanting !== missing) lines.push(`${wanting} marked as wanted.`);
       lines.push('Check Availability tab for best time slots.');
 
       setCreateDraft({
-        title: `Mount Farm: ${trialName}`,
+        title: `Farm: ${trialName}`,
         description: lines.join('\n'),
         startTime: '',
         endTime: '',
