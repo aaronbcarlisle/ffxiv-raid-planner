@@ -185,7 +185,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                 <p className="font-display text-sm font-semibold text-text-primary">Automate farm tracking</p>
                 <Button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
               <p className="text-xs text-text-secondary mt-1">
                 Use the XIV Raid Planner plugin and run <code className="px-1 py-0.5 bg-surface-card rounded text-text-primary">/xrp sync</code> to import supported owned rewards and currency counts automatically.
