@@ -207,7 +207,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                 <span className="text-text-tertiary text-xs">·</span>
                 <Button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"> {/* design-system-ignore: Inline text action */}
                   Track manually instead
-                </button>
+                </Button>
               </div>
             </div>
           </div>
