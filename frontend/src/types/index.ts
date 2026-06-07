@@ -1138,6 +1138,8 @@ export interface ScheduleSettings {
   webhookConfigured: boolean;
   webhookUrlMasked?: string | null;
   reminderChannelLabel?: string | null;
+  mentionTarget: 'none' | 'here' | 'role';
+  mentionRoleId?: string | null;
   enable24hReminder: boolean;
   enable1hReminder: boolean;
   enableMissingRsvpReminder: boolean;
@@ -1152,6 +1154,8 @@ export interface ScheduleSettings {
 export interface ScheduleSettingsUpdate {
   webhookUrl?: string | null;
   reminderChannelLabel?: string | null;
+  mentionTarget?: 'none' | 'here' | 'role';
+  mentionRoleId?: string | null;
   enable24hReminder?: boolean;
   enable1hReminder?: boolean;
   enableMissingRsvpReminder?: boolean;

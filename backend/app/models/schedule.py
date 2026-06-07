@@ -101,6 +101,8 @@ class ScheduleSettings(Base):
     )
     webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     reminder_channel_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mention_target: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
+    mention_role_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     enable_24h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     enable_1h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     enable_missing_rsvp_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

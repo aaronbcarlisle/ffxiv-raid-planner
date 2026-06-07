@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.1';
+export const CURRENT_VERSION = '1.22.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,28 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.22.2',
+    date: '2026-06-07T00:00:00Z',
+    title: 'Discord Schedule Links',
+    highlights: ['Production Discord planner links', 'Schedule reminder mention controls'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Discord planner links',
+        description:
+          'Schedule announcements and reminders now link to the deployed planner instead of localhost, with session deep links so raid members land directly on the relevant Schedule entry.',
+        commits: [{ hash: 'pending', message: 'fix: harden Discord schedule links and mentions', date: '2026-06-07T00:00:00Z' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Webhook mention targeting',
+        description:
+          'Schedule webhook settings now support no ping, @here, or a specific Discord role, with safer mention restrictions so reminders only notify the intended target.',
+        commits: [{ hash: 'pending', message: 'fix: harden Discord schedule links and mentions', date: '2026-06-07T00:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.22.1',
     date: '2026-06-06T00:00:00Z',

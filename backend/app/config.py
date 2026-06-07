@@ -2,6 +2,7 @@
 
 import re
 import secrets
+import warnings
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -101,6 +102,7 @@ class Settings(BaseSettings):
 
     # Frontend URL (for redirects)
     frontend_url: str = "http://localhost:5174"
+    public_app_url: str = ""
     backend_url: str = "http://localhost:8001"
 
     # Admin Discord IDs (comma-separated) - users with these Discord IDs
@@ -189,14 +191,31 @@ class Settings(BaseSettings):
 
             # Warn (but don't fail) if CORS production origins not set
             if not self.cors_origins_production:
-                import warnings
                 warnings.warn(
                     "CORS_ORIGINS_PRODUCTION is not set - using development CORS origins. "
                     "This may be a security risk in production.",
                     UserWarning,
                 )
 
+            configured_public_url = (self.public_app_url or self.frontend_url or "").strip()
+            if not configured_public_url or "localhost" in configured_public_url or "127.0.0.1" in configured_public_url:
+                warnings.warn(
+                    "PUBLIC_APP_URL is not set to a production URL. "
+                    "Discord schedule links will use https://www.xivraidplanner.app.",
+                    UserWarning,
+                )
+
         return self
+
+    @property
+    def public_app_base_url(self) -> str:
+        """Public web app base URL for user-facing links."""
+        configured = (self.public_app_url or self.frontend_url or "").strip().rstrip("/")
+        if self.environment == "production" and (
+            not configured or "localhost" in configured or "127.0.0.1" in configured
+        ):
+            return "https://www.xivraidplanner.app"
+        return configured or "http://localhost:5174"
 
     @property
     def cors_origins_list(self) -> list[str]:
