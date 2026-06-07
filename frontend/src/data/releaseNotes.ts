@@ -52,7 +52,7 @@ export const RELEASES: Release[] = [
     version: '1.22.1',
     date: '2026-06-06T00:00:00Z',
     title: 'Mount Farms Reliability Patch',
-    highlights: ['Clearer Mount Farms errors', 'Deployment route checks', 'Curated farm catalog guardrails'],
+    highlights: ['Clearer Mount Farms errors', 'Curated farm catalog guardrails'],
     items: [
       {
         category: 'fix',
