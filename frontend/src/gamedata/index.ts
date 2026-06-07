@@ -78,6 +78,12 @@ export {
   getTrialsByExpansion,
   getTrialById,
   getAllTrialIds,
+  getCurrencyLabel,
+  getCurrencyLabelPlural,
+  getRewardLabel,
+  getRewardNoun,
+  hasCurrencyTracking,
+  getExchangeSummary,
 } from './mount-farms';
 
 // Costs

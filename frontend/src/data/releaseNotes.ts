@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.0';
+export const CURRENT_VERSION = '1.22.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -49,6 +49,35 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.22.1',
+    date: '2026-06-06T00:00:00Z',
+    title: 'Mount Farms Reliability Patch',
+    highlights: ['Clearer Mount Farms errors', 'Curated farm catalog guardrails'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Mount Farms loading reliability',
+        description:
+          'Improved Mount Farms error handling so deployment route mismatches no longer appear as a bare "Not Found" message. The tab now shows clearer guidance, includes a retry action, and logs safer diagnostics in development.',
+        commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
+      },
+      {
+        category: 'fix',
+        title: 'Mount Farms route guardrails',
+        description:
+          'Added backend route-registration coverage for Mount Farms static-group and plugin endpoints, plus frontend store tests for the exact static-group Mount Farms endpoint. This helps catch missing backend route artifacts before release.',
+        commits: [{ hash: 'pending', message: 'test: cover mount farms route registration', date: '2026-06-06T00:00:00Z' }],
+      },
+      {
+        category: 'fix',
+        title: 'Curated farm catalog guardrails',
+        description:
+          'Cleaned up invalid Dawntrail farm entries, added validation so bogus duties cannot reappear, and preserved the new rare reward / Ultimate weapon farm foundation without exposing unverified token data.',
+        commits: [{ hash: 'pending', message: 'fix: curate farm catalog and support rare reward farms', date: '2026-06-06T00:00:00Z' }],
+      },
+    ],
+  },
+  {
     version: '1.22.0',
     date: '2026-06-04T00:00:00Z',
     title: 'Mount Farm Tracker',
@@ -60,20 +89,6 @@ export const RELEASES: Release[] = [
         description:
           'New "Mount Farms" tab in the static view. Track which Extreme trial mounts each member has, who wants which mount, and how many totems everyone has collected. Covers all expansions from ARR through Dawntrail.',
         commits: [{ hash: 'pending', message: 'feat: mount farm tracker MVP', date: '2026-06-04T00:00:00Z' }],
-      },
-      {
-        category: 'fix',
-        title: 'Mount Farms loading reliability',
-        description:
-          'Added route-registration checks and clearer retryable error messaging for Mount Farms so deployment route mismatches are caught before release and easier to diagnose if they occur.',
-        commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
-      },
-      {
-        category: 'improvement',
-        title: 'Mount Farms tab icon',
-        description:
-          'The Mount Farms tab now uses its in-game mount icon for a clearer, more recognizable look in the tab bar.',
-        commits: [{ hash: 'pending', message: 'chore: use xivapi mount icon for Mount Farms tab', date: '2026-06-06T00:00:00Z' }],
       },
       {
         category: 'feature',

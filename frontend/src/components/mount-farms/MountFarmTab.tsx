@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
-import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById } from '../../gamedata';
+import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { Expansion, MountFarmTrial } from '../../gamedata';
 import { MountFarmSummary } from './MountFarmSummary';
 import { Skeleton } from '../ui/Skeleton';
@@ -34,9 +34,10 @@ function filterTrials(
 
     if (viewMode === 'my-progress' && currentUserId) {
       const myProgress = summary.memberProgress.find(mp => mp.userId === currentUserId);
+      const exchangeCost = trial.exchangeCost ?? trial.totemTarget;
       switch (filter) {
         case 'needs-mount': return !myProgress?.hasMount;
-        case 'can-buy': return !myProgress?.hasMount && (myProgress?.totemCount ?? 0) >= trial.totemTarget;
+        case 'can-buy': return !myProgress?.hasMount && exchangeCost > 0 && (myProgress?.totemCount ?? 0) >= exchangeCost;
         case 'wanted': return !myProgress?.hasMount && (myProgress?.wantsMount ?? true);
         case 'complete': return myProgress?.hasMount === true;
         default: return true;
@@ -133,7 +134,9 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         if (mp.hasMount) owned++;
         else {
           if (mp.wantsMount) wanted++;
-          if (mp.totemCount >= 99) canBuy++;
+          const trialInfo = getTrialById(mp.trialId);
+          const exchangeCost = trialInfo ? (trialInfo.exchangeCost ?? trialInfo.totemTarget) : 0;
+          if (exchangeCost > 0 && mp.totemCount >= exchangeCost) canBuy++;
         }
       }
     }
@@ -162,7 +165,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
   const FILTERS: { id: FilterMode; label: string; count?: number }[] = [
     { id: 'all', label: 'All' },
-    { id: 'needs-mount', label: 'Needs mount' },
+    { id: 'needs-mount', label: 'Needs reward' },
     { id: 'wanted', label: 'Wanted' },
     { id: 'can-buy', label: 'Can buy' },
     { id: 'complete', label: 'Complete' },
@@ -179,13 +182,13 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-display text-sm font-semibold text-text-primary">Automate mount tracking</p>
-                <button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
+                <p className="font-display text-sm font-semibold text-text-primary">Automate farm tracking</p>
+                <Button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
               <p className="text-xs text-text-secondary mt-1">
-                Use the XIV Raid Planner plugin and run <code className="px-1 py-0.5 bg-surface-card rounded text-text-primary">/xrp sync</code> to import owned mounts and totem counts automatically.
+                Use the XIV Raid Planner plugin and run <code className="px-1 py-0.5 bg-surface-card rounded text-text-primary">/xrp sync</code> to import supported owned rewards and currency counts automatically.
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <a
@@ -202,9 +205,9 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                   Run <code className="px-1 py-0.5 bg-surface-card rounded text-text-secondary">/xrp sync</code> in-game
                 </span>
                 <span className="text-text-tertiary text-xs">·</span>
-                <button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"> {/* design-system-ignore: Inline text action */}
+                <Button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"> {/* design-system-ignore: Inline text action */}
                   Track manually instead
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -263,14 +266,14 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                   Best next farm: {topRecTrial.dutyName}
                 </p>
                 <p className="text-xs text-text-secondary mt-1">
-                  {topRec.membersWanting > 0 && <>{topRec.membersWanting} member{topRec.membersWanting > 1 ? 's' : ''} want{topRec.membersWanting === 1 ? 's' : ''} this mount</>}
+                  {topRec.membersWanting > 0 && <>{topRec.membersWanting} member{topRec.membersWanting > 1 ? 's' : ''} want{topRec.membersWanting === 1 ? 's' : ''} this {getRewardNoun(topRecTrial)}</>}
                   {topRec.membersWanting > 0 && topRec.membersCanBuy > 0 && ' · '}
-                  {topRec.membersCanBuy > 0 && <>{topRec.membersCanBuy} can buy with totems</>}
+                  {topRec.membersCanBuy > 0 && <>{topRec.membersCanBuy} can buy with {getCurrencyLabelPlural(topRecTrial)}</>}
                   {(topRec.membersWanting > 0 || topRec.membersCanBuy > 0) && topRec.membersCloseToTarget > 0 && ' · '}
-                  {topRec.membersCloseToTarget > 0 && <>{topRec.membersCloseToTarget} close to {topRecTrial.totemTarget} totems</>}
+                  {topRec.membersCloseToTarget > 0 && hasCurrencyTracking(topRecTrial) && <>{topRec.membersCloseToTarget} close to {topRecTrial.exchangeCost ?? topRecTrial.totemTarget} {getCurrencyLabelPlural(topRecTrial)}</>}
                 </p>
                 <p className="text-[11px] text-text-tertiary mt-0.5">
-                  {topRec.membersMissing} of {(topRec.membersMissing + (trialSummaryMap.get(topRec.trialId)?.membersComplete ?? 0))} members still need {topRecTrial.mountName}
+                  {topRec.membersMissing} of {(topRec.membersMissing + (trialSummaryMap.get(topRec.trialId)?.membersComplete ?? 0))} members still need {getRewardLabel(topRecTrial)}
                 </p>
               </div>
             </div>
@@ -350,9 +353,9 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
       {/* My Progress summary cards */}
       {viewMode === 'my-progress' && myStats && !isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Mounts Owned" value={myStats.owned} total={myStats.total} color="text-status-success" />
+          <StatCard label="Rewards Obtained" value={myStats.owned} total={myStats.total} color="text-status-success" />
           <StatCard label="Wanted" value={myStats.wanted} color="text-accent" />
-          <StatCard label="Ready to Buy" value={myStats.canBuy} color="text-amber-400" />
+          <StatCard label="Ready" value={myStats.canBuy} color="text-amber-400" />
           <StatCard label="Last Sync" value={syncStatus?.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : 'Never'} isText color="text-text-secondary" />
         </div>
       )}
@@ -382,7 +385,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="flex-1">
           <div className="flex justify-between text-xs text-text-secondary mb-1">
             <span>{EXPANSIONS.find(e => e.id === selectedExpansion)?.name} Completion</span>
-            <span>{expansionComplete}/{allTrials.length} trials complete</span>
+            <span>{expansionComplete}/{allTrials.length} farms complete</span>
           </div>
           <div className="h-2 bg-surface-elevated rounded-full overflow-hidden">
             <div
@@ -487,7 +490,7 @@ function NeedsAttention({ data, trialSummaryMap }: { data: MountFarmData; trialS
       totalCanBuy += trial.membersCanBuy;
     }
     if (totalCanBuy > 0) {
-      items.push({ label: `${totalCanBuy} mount${totalCanBuy > 1 ? 's' : ''} ready to buy with totems`, color: 'text-amber-400' });
+      items.push({ label: `${totalCanBuy} reward${totalCanBuy > 1 ? 's' : ''} ready with exchange currency`, color: 'text-amber-400' });
     }
 
     // Count trials where the current user has no data yet
@@ -532,9 +535,9 @@ function RecentActivity({ data }: { data: MountFarmData }) {
 
         let action = '';
         if (mp.hasMount) {
-          action = `completed ${trialLabel}`;
+          action = `obtained ${trialInfo ? getRewardLabel(trialInfo) : trialLabel}`;
         } else if (mp.totemCount > 0) {
-          action = `updated ${trialLabel} totems to ${mp.totemCount}`;
+          action = `updated ${trialLabel} currency to ${mp.totemCount}`;
         } else if (!mp.wantsMount) {
           action = `skipped ${trialLabel}`;
         } else {
