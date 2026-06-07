@@ -120,11 +120,24 @@ class MountFarmCatalogEntry(CamelModel):
     trial_id: str
     expansion: str
     duty_name: str
+    source_content: str
+    reward_type: str = "mount"
+    content_type: str = "extreme_trial"
     mount_name: str
     mount_id: int | None = None
     totem_name: str | None = None
     totem_item_id: int | None = None
     totem_target: int = 99
+    reward_name: str
+    reward_item_name: str | None = None
+    currency_item_name: str | None = None
+    currency_per_clear: int | None = 1
+    exchange_cost: int | None = 99
+    exchange_npc: str | None = None
+    exchange_location: str | None = None
+    exchange_status: str = "available"
+    category: str = "normal"
+    notes: str | None = None
 
 
 class MountFarmCatalogResponse(CamelModel):

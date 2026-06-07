@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth_utils import create_access_token
 from app.main import app
 from app.models import MemberRole, User
+from app.routers.mount_farms import MOUNT_FARM_CATALOG
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -37,6 +38,29 @@ def viewer_headers(viewer_user: User) -> dict[str, str]:
 
 TRIAL_ID = "dt-valigarmanda"
 TRIAL_ID_2 = "ew-zodiark"
+CURATED_DAWNTRAIL_DUTIES = [
+    "Worqor Lar Dor (Extreme)",
+    "Everkeep (Extreme)",
+    "The Minstrel's Ballad: Sphene's Burden",
+    "Recollection (Extreme)",
+    "The Minstrel's Ballad: Necron's Embrace",
+    "The Windward Wilds (Extreme)",
+    "Hell on Rails (Extreme)",
+    "The Unmaking (Extreme)",
+]
+BOGUS_DAWNTRAIL_DUTIES = [
+    "Senary Unaspected Aetherial Node (Extreme)",
+    "Senary Unexpected Aetherial Node (Extreme)",
+    "Blasting Zone (Extreme)",
+]
+CURATED_ULTIMATE_DUTIES = [
+    "The Unending Coil of Bahamut (Ultimate)",
+    "The Weapon's Refrain (Ultimate)",
+    "The Epic of Alexander (Ultimate)",
+    "Dragonsong's Reprise (Ultimate)",
+    "The Omega Protocol (Ultimate)",
+    "Futures Rewritten (Ultimate)",
+]
 
 
 class TestMountFarmRouteRegistration:
@@ -48,6 +72,73 @@ class TestMountFarmRouteRegistration:
         assert "/api/static-groups/{group_id}/mount-farms/recommendations" in paths
         assert "/api/plugin/mount-farms/catalog" in paths
         assert "/api/plugin/mount-farms/sync" in paths
+
+
+class TestMountFarmCatalogValidation:
+    async def test_dawntrail_catalog_uses_curated_allowlist(self):
+        dawntrail_entries = [
+            entry
+            for entry in MOUNT_FARM_CATALOG
+            if entry["expansion"] == "DT" and entry["content_type"] != "ultimate"
+        ]
+        assert [entry["duty_name"] for entry in dawntrail_entries] == CURATED_DAWNTRAIL_DUTIES
+
+    async def test_bogus_generated_duties_are_not_in_catalog(self):
+        duty_names = {entry["duty_name"] for entry in MOUNT_FARM_CATALOG}
+        mount_names = {entry["mount_name"] for entry in MOUNT_FARM_CATALOG}
+        for bogus in BOGUS_DAWNTRAIL_DUTIES:
+            assert bogus not in duty_names
+            assert bogus not in mount_names
+
+    async def test_catalog_entries_have_curated_content_and_reward_fields(self):
+        for entry in MOUNT_FARM_CATALOG:
+            assert entry.get("trial_id")
+            assert entry.get("source_content") == entry.get("duty_name")
+            assert entry.get("duty_name")
+            assert entry.get("mount_name")
+            assert entry.get("reward_type") in {"mount", "weapon", "currency", "title", "misc"}
+            assert entry.get("content_type") in {
+                "extreme_trial",
+                "ultimate",
+                "collaboration",
+                "raid",
+                "other",
+            }
+            assert entry.get("category") in {"normal", "collaboration", "ultimate", "special"}
+            assert entry.get("reward_name")
+            if entry["reward_type"] == "mount":
+                assert entry.get("totem_name")
+                assert entry.get("totem_target") == 99
+
+    async def test_dawntrail_special_exchange_metadata(self):
+        by_id = {entry["trial_id"]: entry for entry in MOUNT_FARM_CATALOG}
+        windward = by_id["dt-windward-wilds"]
+        assert windward["category"] == "collaboration"
+        assert windward["content_type"] == "collaboration"
+        assert windward["totem_name"] == "Guardian Arkveld Certificate"
+        assert windward["currency_item_name"] == "Guardian Arkveld Certificate"
+        assert windward["currency_per_clear"] == 2
+        assert windward["exchange_npc"] == "Smithy"
+        assert windward["exchange_location"] == "Tuliyollal"
+
+        assert by_id["dt-hell-on-rails"]["exchange_status"] == "not_yet_available"
+        assert by_id["dt-unmaking"]["exchange_status"] == "not_yet_available"
+
+    async def test_ultimate_entries_are_weapon_farms_not_mounts(self):
+        ultimate_entries = [
+            entry for entry in MOUNT_FARM_CATALOG if entry["content_type"] == "ultimate"
+        ]
+        assert [entry["duty_name"] for entry in ultimate_entries] == CURATED_ULTIMATE_DUTIES
+        for entry in ultimate_entries:
+            assert entry["reward_type"] == "weapon"
+            assert entry["category"] == "ultimate"
+            assert entry["reward_name"] == "Ultimate weapon coffer / weapon exchange"
+            assert entry["totem_name"] is None
+            assert entry["currency_item_name"] is None
+            assert entry["totem_target"] == 0
+            assert entry["exchange_cost"] is None
+            assert entry["exchange_status"] == "unknown"
+            assert "Token item metadata pending" in entry["notes"]
 
 
 class TestGetMountFarmProgress:
@@ -290,6 +381,30 @@ class TestPluginCatalog:
         assert "mountId" in entry
         assert "totemItemId" in entry
         assert "expansion" in entry
+        assert "rewardType" in entry
+        assert "contentType" in entry
+        assert "rewardName" in entry
+        assert "currencyItemName" in entry
+
+    async def test_plugin_catalog_only_includes_verified_game_ids(
+        self, client: AsyncClient, auth_headers
+    ):
+        response = await client.get(
+            "/api/plugin/mount-farms/catalog",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        entries = response.json()["entries"]
+
+        assert entries
+        assert all(isinstance(entry["mountId"], int) for entry in entries)
+        assert all(isinstance(entry["totemItemId"], int) for entry in entries)
+        assert all(entry["rewardType"] == "mount" for entry in entries)
+        assert all(entry["contentType"] == "extreme_trial" for entry in entries)
+
+        trial_ids = {entry["trialId"] for entry in entries}
+        assert "dt-valigarmanda" not in trial_ids
+        assert "ult-ucob" not in trial_ids
 
     async def test_catalog_requires_auth(self, client: AsyncClient):
         response = await client.get("/api/plugin/mount-farms/catalog")
