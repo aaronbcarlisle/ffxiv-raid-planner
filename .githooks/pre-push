@@ -22,7 +22,8 @@ for cand in python python3 py; do
   if command -v "$cand" >/dev/null 2>&1; then PY="$cand"; break; fi
 done
 if [ -z "$PY" ]; then
-  echo "pre-push: no Python interpreter found on PATH; skipping migration checks" >&2
+  echo "pre-push: no Python interpreter on PATH; skipping LOCAL migration checks." >&2
+  echo "pre-push: the authoritative check still runs in CI (Migration Execution job)." >&2
   exit 0
 fi
 
