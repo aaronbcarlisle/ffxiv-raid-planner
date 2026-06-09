@@ -2,7 +2,7 @@
 
 > **⚠️ Staleness warning (May 27, 2026):** This guide was last verified against **Patch 7.2 (AAC Cruiserweight)**. The current tier is **7.4 AAC Heavyweight (M9S–M12S)**, so the item-level tables, material names, and example numbers below are from older tiers. For tier-accurate, code-backed numbers use **[GEARING_REFERENCE.md](./GEARING_REFERENCE.md)** and the gamedata in `frontend/src/gamedata/` (`raid-tiers.ts`, `costs.ts`, `loot-tables.ts`).
 >
-> **Known conflicts with the app's actual data** (`frontend/src/gamedata/costs.ts`): the **solvent** weapon-upgrade material is **drop-only**, not book-purchasable; **glaze** costs **4** books (floor 2), not 3; and `SLOT_VALUE_WEIGHTS` uses **weapon 3.0 / body·legs 1.5**, not the 1.5/1.2 weights cited below. The general systems/theory in this guide remain useful, but trust the code for exact figures.
+> **Known conflicts with the app's actual data** (`frontend/src/gamedata/costs.ts`): the book-cost tables below have been reconciled with the code — the **solvent** weapon-upgrade material is **drop-only**, not book-purchasable, and **glaze** costs **4** books (floor 2). Note that the app's priority `SLOT_VALUE_WEIGHTS` uses **weapon 3.0 / body·legs 1.5 / armor 1.0 / accessories 0.8**, which differs from the illustrative stat-budget weights (weapon 1.5 / body·legs 1.2) used in the GearScore example below — those are a general DPS reference, not the app's priority weights. The general systems/theory in this guide remain useful, but trust the code (`costs.ts`, `loot-tables.ts`, `raid-tiers.ts`) for exact figures.
 
 A comprehensive reference for understanding and planning savage raid gear distribution within a static. This document covers the underlying systems, mathematical formulas, and strategic frameworks for optimal gear progression.
 
@@ -102,7 +102,7 @@ In Dawntrail's Arcadion raids, each floor awards **1 book (AAC Illustrated)** pe
 | Head | 4 | 4 |
 | Hands | 4 | 4 |
 | Feet | 4 | 4 |
-| Glaze (accessory upgrade) | 3 | 3 |
+| Glaze (accessory upgrade) | 4 | 4 |
 
 #### Edition III Books (M3S/M7S - Major Armor + Upgrades)
 
@@ -111,7 +111,7 @@ In Dawntrail's Arcadion raids, each floor awards **1 book (AAC Illustrated)** pe
 | Body | 6 | 6 |
 | Legs | 6 | 6 |
 | Twine (armor upgrade) | 4 | 4 |
-| Solvent/Ester (weapon upgrade) | 4 | 4 |
+| Solvent/Ester (weapon upgrade) | — | drop-only (not book-purchasable) |
 
 #### Edition IV Books (M4S/M8S - Weapon)
 
@@ -226,14 +226,14 @@ Capped tomestone gear (Heliometry → Quetzalli, Mnemonics → Historia) starts 
 |----------|----------|--------|----------------------|
 | **Surgelight Twine** | Left-side armor | M3S chests, Edition III books | IL 720 → 730 |
 | **Surgelight Glaze** | Right-side accessories | M2S chests, Edition II books | IL 720 → 730 |
-| **Surgelight Solvent** | Weapon | M3S chests, Edition III books | IL 720 → 730 |
+| **Surgelight Solvent** | Weapon | M3S chests (drop-only, not book-purchasable) | IL 720 → 730 |
 
 #### Cruiserweight Tier (7.2)
 | Material | Upgrades | Source | Tome Gear → Augmented |
 |----------|----------|--------|----------------------|
 | **Evercharged Twine** | Left-side armor | M7S chests, Edition III books | IL 750 → 760 |
 | **Evercharged Glaze** | Right-side accessories | M6S chests, Edition II books | IL 750 → 760 |
-| **Evercharged Ester** | Weapon | M7S chests, Edition III books | IL 750 → 760 |
+| **Evercharged Ester** | Weapon | M7S chests (drop-only, not book-purchasable) | IL 750 → 760 |
 
 *Source: [FFXIV Console Games Wiki](https://ffxiv.consolegameswiki.com/wiki/AAC_Cruiserweight_Tier_(Savage))*
 
@@ -257,9 +257,9 @@ From chest drops (assuming 8/8 eligible, full drops):
 - M3S/M7S: ~1 Twine + ~1 Solvent/Ester per clear
 
 From book purchases:
-- Glaze: 3 Edition II books each
+- Glaze: 4 Edition II books each
 - Twine: 4 Edition III books each
-- Solvent/Ester: 4 Edition III books each
+- Solvent/Ester: not book-purchasable (drops only from floor 3)
 
 **Weekly upgrade material income (per static):**
 ```
@@ -659,10 +659,10 @@ interface Drop {
 |-----------|---------|-----------|-------------|
 | Accessory | I | 3 | 3 |
 | Minor Armor (Head/Hands/Feet) | II | 4 | 4 |
-| Glaze (accessory upgrade) | II | 3 | 3 |
+| Glaze (accessory upgrade) | II | 4 | 4 |
 | Major Armor (Body/Legs) | III | 6 | 6 |
 | Twine (armor upgrade) | III | 4 | 4 |
-| Solvent/Ester (weapon upgrade) | III | 4 | 4 |
+| Solvent/Ester (weapon upgrade) | — | drop-only | drop-only |
 | Weapon | IV | 8 | 8 |
 | Gladiator's Arm (PLD) | IV | 5 | 5 |
 | Shield (PLD) | IV | 3 | 3 |

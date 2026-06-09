@@ -19,7 +19,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'import-bis', label: 'Import BiS' },
       { id: 'track-gear', label: 'Track gear' },
-      { id: 'checkboxes', label: 'Checkbox states' },
+      { id: 'gear-status', label: 'Gear status' },
     ],
   },
   {
@@ -312,13 +312,17 @@ export default function HowToDocs() {
               Don't have a custom set? Use a preset from The Balance.
             </p>
 
-            <Step number={1} title="Open import and switch to Presets tab">
-              <p>In the import modal, click the Presets tab instead of URL.</p>
+            <Step number={1} title="Open the import modal">
+              <p>
+                Open the import modal from your player card menu. It shows a "Select a preset"
+                dropdown above the link field.
+              </p>
             </Step>
 
             <Step number={2} title="Choose a preset">
               <p>
-                Select from available presets for your job. Each shows GCD speed to help you pick.
+                Pick from available presets for your job in the dropdown. Each shows GCD speed to
+                help you pick.
               </p>
             </Step>
 
@@ -342,13 +346,13 @@ export default function HowToDocs() {
             <Step number={2} title="Check the box when you get the item">
               <p>
                 Click the checkbox to mark it complete. For tome pieces, you'll see intermediate
-                states (see Checkbox States below).
+                states (see Gear status below).
               </p>
             </Step>
 
             <Step number={3} title="Watch your progress update">
               <p>
-                Your iLv and completion percentage update automatically. The Loot Priority tab also
+                Your iLv and completion percentage update automatically. The Priority tab also
                 reflects your new gear state.
               </p>
             </Step>
@@ -422,7 +426,7 @@ export default function HowToDocs() {
               Recording drops keeps history accurate and updates priority calculations.
             </p>
 
-            <Step number={1} title="Go to the Loot Priority tab">
+            <Step number={1} title="Go to the Priority tab">
               <p>This shows priority lists for each item from each floor.</p>
             </Step>
 
@@ -495,7 +499,7 @@ export default function HowToDocs() {
               <p>Right-click or click the ⋮ menu on your card.</p>
             </Step>
 
-            <Step number={2} title="Select Weapon Priority">
+            <Step number={2} title="Select Weapon Priorities">
               <p>Opens the weapon priority editor.</p>
             </Step>
 
@@ -629,7 +633,7 @@ export default function HowToDocs() {
                   <strong>Role</strong>: Member (can edit own card) or Lead (can edit all)
                 </li>
                 <li>
-                  <strong>Expiration</strong>: 1 hour to 7 days, or never
+                  <strong>Expiration</strong>: 1, 7, 14, or 30 days, or never
                 </li>
                 <li>
                   <strong>Max uses</strong>: Limit how many people can use it
@@ -658,14 +662,14 @@ export default function HowToDocs() {
 
             <Step number={1} title="Find your share code">
               <p>
-                It's displayed in the static header—an 8-character code like "ABC12345". Click to
+                It's displayed in the static header—a 6-character code like "ABC123". Click to
                 copy.
               </p>
             </Step>
 
             <Step number={2} title="Share the link">
               <p>
-                The URL format is <code className="text-accent">xiv-planner.com/group/ABC12345</code>
+                The URL format is <code className="text-accent">xivraidplanner.app/group/ABC123</code>
                 . Anyone with this link can view your static.
               </p>
             </Step>

@@ -816,9 +816,9 @@ Console.WriteLine($"Tier: {tierId}");`}
             <Subsection title="Available Tier IDs">
               <div className="bg-surface-card border border-border-subtle rounded-lg p-4 mb-4">
                 <ul className="space-y-1 text-text-secondary text-sm font-mono">
-                  <li><code className="text-accent">aac-heavyweight</code> - AAC Light-heavyweight (M1S-M4S)</li>
+                  <li><code className="text-accent">aac-heavyweight</code> - AAC Heavyweight (M9S-M12S)</li>
                   <li><code className="text-accent">aac-cruiserweight</code> - AAC Cruiserweight (M5S-M8S)</li>
-                  <li><code className="text-accent">aac-welterweight</code> - AAC Welterweight (M9S-M12S)</li>
+                  <li><code className="text-accent">aac-light-heavyweight</code> - AAC Light-heavyweight (M1S-M4S)</li>
                 </ul>
               </div>
             </Subsection>
@@ -1623,8 +1623,8 @@ while True:
             </Subsection>
 
             <InfoBox type="info" title="Rate Limits">
-              Be mindful of rate limits when polling. The API has a limit of 60 requests
-              per minute per user. Polling every 30 seconds is a safe default.
+              Be mindful of rate limits when polling. The API has a default limit of 100 requests
+              per minute. Polling every 30 seconds is a safe default.
             </InfoBox>
           </Section>
 

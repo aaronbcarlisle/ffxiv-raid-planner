@@ -81,6 +81,8 @@ function DataTable() {
     { field: 'Email Address', collected: false, purpose: 'Not collected (removed in v1.11.1)' },
     { field: 'Game Data (BiS, gear)', collected: true, purpose: 'Core app functionality' },
     { field: 'Static Group Data', collected: true, purpose: 'Core app functionality' },
+    { field: 'Usage Analytics', collected: true, purpose: 'Anonymous-leaning feature usage (added v1.16.0)' },
+    { field: 'Error Reports', collected: true, purpose: 'Automatic crash/error diagnostics (added v1.16.0)' },
   ];
 
   return (

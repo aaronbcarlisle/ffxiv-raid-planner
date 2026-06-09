@@ -49,6 +49,21 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.22.3',
+    date: '2026-06-08T00:00:00Z',
+    title: 'Documentation accuracy pass',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Documentation refresh',
+        description:
+          'Audited the in-app guides (Quick Start, How-To, Gear Math, Privacy, Roadmap, API) and the developer docs against the current code. Reconciled the roadmap and status to reflect shipped features (scheduling, Lodestone sync, mount farms, plugin sign-in, static discovery), and corrected stale labels, the share-code length, priority-formula details, and gearing material costs.',
+        commits: [{ hash: 'pending', message: 'docs: comprehensive documentation audit and accuracy pass', date: '2026-06-08T00:00:00Z' }],
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '1.22.2',
     date: '2026-06-07T00:00:00Z',
     title: 'Discord Schedule Links',
