@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Check, ShoppingCart, X, Plug, PenLine, HelpCircle } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
+import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { TrialSummary, MemberProgress, DataSource } from '../../stores/mountFarmStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { Checkbox } from '../ui/Checkbox';
@@ -65,7 +66,7 @@ export function MountFarmDetail({
     const canEdit = canManage || member.userId === currentUserId;
     if (!canEdit) return;
     try { await updateProgress(groupId, { trialId: trial.id, userId: member.userId, hasMount: !member.hasMount }); }
-    catch { toast.error('Failed to update mount status'); }
+    catch { toast.error('Failed to update reward status'); }
   }, [canManage, currentUserId, groupId, trial.id, updateProgress]);
 
   const handleToggleWants = useCallback(async (member: MemberProgress) => {
@@ -90,7 +91,7 @@ export function MountFarmDetail({
     );
   }
 
-  const hasTotemTracking = trial.totemTarget > 0 && trial.totemName;
+  const hasTotemTracking = hasCurrencyTracking(trial);
 
   return (
     <div className="border-t border-border-default">
@@ -99,12 +100,12 @@ export function MountFarmDetail({
           <thead>
             <tr className="text-xs text-text-tertiary border-b border-border-default">
               <th className="text-left px-4 py-2 font-medium">Member</th>
-              <th className="text-center px-2 py-2 font-medium w-16">Mount</th>
+              <th className="text-center px-2 py-2 font-medium w-16">Reward</th>
               <th className="text-center px-2 py-2 font-medium w-16">Wants</th>
               <th className="text-center px-2 py-2 font-medium w-32">
-                <Tooltip content={hasTotemTracking ? `${trial.totemName} — ${trial.totemTarget} needed to buy mount` : 'No totem currency for this trial'}>
+                <Tooltip content={hasTotemTracking ? getExchangeSummary(trial) : 'No currency exchange for this trial'}>
                   <span className="inline-flex items-center gap-1">
-                    {trial.totemName ?? 'Totems'}
+                    {trial.currencyItemName ?? trial.totemName ?? 'Currency'}
                     {!hasTotemTracking && <HelpCircle className="w-3 h-3" />}
                   </span>
                 </Tooltip>
@@ -116,7 +117,8 @@ export function MountFarmDetail({
             {members.map(member => {
               const canEdit = canManage || member.userId === currentUserId;
               const isCurrentUser = member.userId === currentUserId;
-              const canBuyMount = !member.hasMount && trial.totemTarget > 0 && member.totemCount >= trial.totemTarget;
+              const exchangeCost = trial.exchangeCost ?? trial.totemTarget;
+              const canBuyMount = !member.hasMount && exchangeCost > 0 && member.totemCount >= exchangeCost;
 
               return (
                 <MemberRow
@@ -159,7 +161,9 @@ function MemberRow({
   onToggleMount, onToggleWants, onTotemChange,
 }: MemberRowProps) {
   const displayTotem = member.totemCount;
-  const totemPercent = trial.totemTarget > 0 ? Math.min((displayTotem / trial.totemTarget) * 100, 100) : 0;
+  const exchangeCost = trial.exchangeCost ?? trial.totemTarget;
+  const totemPercent = exchangeCost > 0 ? Math.min((displayTotem / exchangeCost) * 100, 100) : 0;
+  const rewardNoun = getRewardNoun(trial);
 
   // Determine the "effective source" to show one badge
   const effectiveSource = member.ownershipSource !== 'unknown' ? member.ownershipSource : member.totemSource;
@@ -183,43 +187,43 @@ function MemberRow({
         </div>
       </td>
 
-      {/* Has mount */}
+      {/* Has reward */}
       <td className="text-center px-2 py-2">
         <div className="flex justify-center">
-          <Checkbox checked={member.hasMount} onChange={() => onToggleMount(member)} disabled={!canEdit || isSaving} aria-label={`${member.displayName} has mount`} color="teal" />
+          <Checkbox checked={member.hasMount} onChange={() => onToggleMount(member)} disabled={!canEdit || isSaving} aria-label={`${member.displayName} has ${rewardNoun}`} color="teal" />
         </div>
       </td>
 
-      {/* Wants mount */}
+      {/* Wants reward */}
       <td className="text-center px-2 py-2">
         {member.hasMount ? (
           <span className="text-text-tertiary">&mdash;</span>
         ) : (
           <div className="flex justify-center">
-            <Checkbox checked={member.wantsMount} onChange={() => onToggleWants(member)} disabled={!canEdit || isSaving} aria-label={`${member.displayName} wants mount`} color="teal" />
+            <Checkbox checked={member.wantsMount} onChange={() => onToggleWants(member)} disabled={!canEdit || isSaving} aria-label={`${member.displayName} wants ${rewardNoun}`} color="teal" />
           </div>
         )}
       </td>
 
-      {/* Totem count */}
+      {/* Currency count */}
       <td className="px-2 py-2">
         {member.hasMount ? (
           <div className="text-center text-text-tertiary">&mdash;</div>
         ) : hasTotemTracking ? (
           <div className="flex items-center gap-2">
             <div className="w-14">
-              <NumberInput value={displayTotem} onChange={(val) => onTotemChange(member, val ?? 0)} min={0} max={999} disabled={!canEdit || isSaving} size="sm" aria-label={`${member.displayName} totem count`} />
+              <NumberInput value={displayTotem} onChange={(val) => onTotemChange(member, val ?? 0)} min={0} max={999} disabled={!canEdit || isSaving} size="sm" aria-label={`${member.displayName} currency count`} />
             </div>
             <div className="flex-1 min-w-[50px]">
               <div className="h-1.5 bg-surface-elevated rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all duration-300 ${totemPercent >= 100 ? 'bg-amber-400' : 'bg-accent/60'}`} style={{ width: `${totemPercent}%` }} />
               </div>
-              <div className="text-[10px] text-text-tertiary mt-0.5 text-center">{displayTotem}/{trial.totemTarget}</div>
+              <div className="text-[10px] text-text-tertiary mt-0.5 text-center">{displayTotem}/{exchangeCost} {getCurrencyLabelPlural(trial)}</div>
             </div>
           </div>
         ) : (
-          <Tooltip content="This trial does not use a standard totem exchange system">
-            <div className="text-center text-text-tertiary text-xs">No totem</div>
+          <Tooltip content={getExchangeSummary(trial)}>
+            <div className="text-center text-text-tertiary text-xs">No currency</div>
           </Tooltip>
         )}
       </td>
@@ -228,12 +232,18 @@ function MemberRow({
       <td className="text-center px-2 py-2">
         {member.hasMount ? (
           <span className="inline-flex items-center gap-1 text-status-success">
-            <Check className="w-3.5 h-3.5" /><span className="text-xs">Done</span>
+            <Check className="w-3.5 h-3.5" /><span className="text-xs">Obtained</span>
           </span>
+        ) : canBuyMount && trial.exchangeStatus === 'not_yet_available' ? (
+          <Tooltip content={getExchangeSummary(trial)}>
+            <span className="inline-flex items-center gap-1 text-text-tertiary">
+              <ShoppingCart className="w-3.5 h-3.5" /><span className="text-xs">Pending</span>
+            </span>
+          </Tooltip>
         ) : canBuyMount ? (
-          <Tooltip content={`Has ${member.totemCount} totems — enough to buy ${trial.mountName}`}>
+          <Tooltip content={`Has ${member.totemCount} ${getCurrencyLabelPlural(trial)} — enough for ${getRewardLabel(trial)}`}>
             <span className="inline-flex items-center gap-1 text-amber-400">
-              <ShoppingCart className="w-3.5 h-3.5" /><span className="text-xs">Buy</span>
+              <ShoppingCart className="w-3.5 h-3.5" /><span className="text-xs">Ready</span>
             </span>
           </Tooltip>
         ) : member.wantsMount ? (

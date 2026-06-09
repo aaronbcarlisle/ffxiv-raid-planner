@@ -1,8 +1,9 @@
 """Pydantic schemas for schedule/session endpoints"""
 
 from enum import Enum
+import re
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -37,6 +38,27 @@ class EventCategoryEnum(str, Enum):
     PROG = "prog"
     SOCIAL = "social"
     OTHER = "other"
+
+
+class WebhookMentionTargetEnum(str, Enum):
+    NONE = "none"
+    HERE = "here"
+    ROLE = "role"
+
+
+_DISCORD_ROLE_ID_RE = re.compile(r"^(?:<@&)?(\d{17,20})>?$")
+
+
+def normalize_discord_role_id(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    match = _DISCORD_ROLE_ID_RE.fullmatch(value)
+    if not match:
+        raise ValueError("Discord role ID must be a 17-20 digit role ID or <@&ROLE_ID> mention")
+    return match.group(1)
 
 
 class ScheduleSessionCreate(CamelModel):
@@ -144,12 +166,48 @@ class AvailabilityTemplateDaySummary(CamelModel):
     responses: list[AvailabilityTemplateResponse]
 
 
+# ==================== Personal Availability Template Schemas ====================
+
+
+class PersonalAvailabilityTemplateSubmit(CamelModel):
+    day_of_week: str  # MO TU WE TH FR SA SU
+    slots: list[str]
+    timezone: str = "UTC"
+
+
+class PersonalAvailabilityTemplateResponse(CamelModel):
+    id: str
+    user_id: str
+    day_of_week: str
+    slots: list[str]
+    timezone: str
+
+
+class PersonalAvailabilityTemplateDaySummary(CamelModel):
+    day_of_week: str
+    slots: list[str]
+    timezone: str
+
+
 class ScheduleSettingsUpdate(CamelModel):
     webhook_url: str | None = None
     reminder_channel_label: str | None = None
+    mention_target: WebhookMentionTargetEnum | None = None
+    mention_role_id: str | None = None
     enable_24h_reminder: bool | None = Field(default=None, alias="enable24hReminder")
     enable_1h_reminder: bool | None = Field(default=None, alias="enable1hReminder")
     enable_missing_rsvp_reminder: bool | None = None
+
+    @field_validator("mention_role_id")
+    @classmethod
+    def validate_mention_role_id(cls, value: str | None) -> str | None:
+        return normalize_discord_role_id(value)
+
+    @model_validator(mode="after")
+    def validate_role_target(self) -> "ScheduleSettingsUpdate":
+        if self.mention_target == WebhookMentionTargetEnum.ROLE and not self.mention_role_id:
+            raise ValueError("mentionRoleId is required when mentionTarget is role")
+        return self
 
 
 class ScheduleSettingsResponse(CamelModel):
@@ -158,6 +216,8 @@ class ScheduleSettingsResponse(CamelModel):
     webhook_configured: bool = False
     webhook_url_masked: str | None = None
     reminder_channel_label: str | None = None
+    mention_target: WebhookMentionTargetEnum = WebhookMentionTargetEnum.NONE
+    mention_role_id: str | None = None
     enable_24h_reminder: bool = Field(default=False, alias="enable24hReminder")
     enable_1h_reminder: bool = Field(default=False, alias="enable1hReminder")
     enable_missing_rsvp_reminder: bool = False

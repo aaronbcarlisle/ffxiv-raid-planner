@@ -438,7 +438,7 @@ export const TAB_ICONS = {
   stats: '/icons/stats-transparent-bg.png',
   history: '/icons/history-transparent-bg.png',
   schedule: '/icons/schedule-transparent-bg.png',
-  mountFarms: '/icons/mount-farms-transparent-bg.svg',
+  mountFarms: '/icons/mount-farms-transparent-bg.png',
 };
 
 // ==================== User/Auth Types ====================
@@ -1138,6 +1138,8 @@ export interface ScheduleSettings {
   webhookConfigured: boolean;
   webhookUrlMasked?: string | null;
   reminderChannelLabel?: string | null;
+  mentionTarget: 'none' | 'here' | 'role';
+  mentionRoleId?: string | null;
   enable24hReminder: boolean;
   enable1hReminder: boolean;
   enableMissingRsvpReminder: boolean;
@@ -1152,6 +1154,8 @@ export interface ScheduleSettings {
 export interface ScheduleSettingsUpdate {
   webhookUrl?: string | null;
   reminderChannelLabel?: string | null;
+  mentionTarget?: 'none' | 'here' | 'role';
+  mentionRoleId?: string | null;
   enable24hReminder?: boolean;
   enable1hReminder?: boolean;
   enableMissingRsvpReminder?: boolean;

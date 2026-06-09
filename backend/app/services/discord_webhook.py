@@ -125,6 +125,24 @@ class SessionAnnouncementData:
     recurrence_summary: str | None = None
     unavailable_players: list[PlayerDetail] = field(default_factory=list)
     tentative_players: list[PlayerDetail] = field(default_factory=list)
+    mention_target: str = "none"
+    mention_role_id: str | None = None
+
+
+def build_schedule_session_url(base_url: str, share_code: str, session_id: str | None = None) -> str:
+    """Build a public schedule URL, optionally deep-linking a session."""
+    url = f"{base_url.rstrip('/')}/group/{share_code}?tab=schedule"
+    if session_id:
+        url = f"{url}&sessionId={session_id}"
+    return url
+
+
+def _mention_payload(mention_target: str = "none", mention_role_id: str | None = None) -> tuple[str, dict[str, Any]]:
+    if mention_target == "here":
+        return "@here", {"parse": ["everyone"]}
+    if mention_target == "role" and mention_role_id:
+        return f"<@&{mention_role_id}>", {"parse": [], "roles": [mention_role_id]}
+    return "", {"parse": []}
 
 
 def _recurrence_rule_to_text(rule: str | None) -> str | None:
@@ -354,9 +372,15 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
     if data.session_description:
         embed["description"] = data.session_description[:1024]
 
+    mention, allowed_mentions = _mention_payload(data.mention_target, data.mention_role_id)
+    content = f"[View in planner]({data.session_url})"
+    if mention:
+        content = f"{mention}\n{content}"
+
     return {
         "embeds": [embed],
-        "content": f"[View in planner]({data.session_url})",
+        "content": content,
+        "allowed_mentions": allowed_mentions,
     }
 
 
@@ -374,9 +398,15 @@ def build_cancelled_payload(data: SessionAnnouncementData) -> dict[str, Any]:
         "fields": [{"name": "Status", "value": "❌ Cancelled", "inline": True}],
         "footer": {"text": data.static_group_name},
     }
+    mention, allowed_mentions = _mention_payload(data.mention_target, data.mention_role_id)
+    content = f"~~[View in planner]({data.session_url})~~"
+    if mention:
+        content = f"{mention}\n{content}"
+
     return {
         "embeds": [embed],
-        "content": f"~~[View in planner]({data.session_url})~~",
+        "content": content,
+        "allowed_mentions": allowed_mentions,
     }
 
 
@@ -384,6 +414,8 @@ def build_test_reminder_payload(
     static_group_name: str,
     planner_url: str,
     share_code: str,
+    mention_target: str = "none",
+    mention_role_id: str | None = None,
 ) -> dict[str, Any]:
     """Build a sample payload for the test-reminder button.
 
@@ -391,7 +423,7 @@ def build_test_reminder_payload(
     Does not use real session data.
     """
     now = datetime.now(timezone.utc)
-    session_url = f"{planner_url}/group/{share_code}?tab=schedule"
+    session_url = build_schedule_session_url(planner_url, share_code)
     sample = SessionAnnouncementData(
         session_title=f"{static_group_name} — Raid Night (Test)",
         start_iso=now.isoformat(),
@@ -404,6 +436,8 @@ def build_test_reminder_payload(
             "This is a test reminder — your Discord webhook is connected. "
             "Real reminders will include actual session and RSVP data."
         ),
+        mention_target=mention_target,
+        mention_role_id=mention_role_id,
     )
     return build_session_announcement_payload(sample)
 

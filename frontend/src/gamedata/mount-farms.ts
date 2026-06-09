@@ -1,19 +1,27 @@
 /**
- * Mount Farm Content Catalog
+ * Curated Farm Content Catalog
  *
- * Static catalog of Extreme trials grouped by expansion.
- * Each entry includes the trial, mount reward, totem currency, and totem target.
+ * Static curated catalog of farmable rewards grouped by expansion.
+ * Entries may be Extreme trial mounts, collaboration rewards, Ultimate weapon farms,
+ * or other rare reward farms. Do not populate from broad XIVAPI text searches.
  *
- * UPDATE THIS FILE when new Extreme trials are added (typically each odd patch).
+ * UPDATE THIS FILE when reviewed farm entries are added.
  */
 
 export type Expansion = 'DT' | 'EW' | 'ShB' | 'SB' | 'HW' | 'ARR';
+export type RewardType = 'mount' | 'weapon' | 'currency' | 'title' | 'misc';
+export type ContentType = 'extreme_trial' | 'ultimate' | 'collaboration' | 'raid' | 'other';
+export type FarmCategory = 'normal' | 'collaboration' | 'ultimate' | 'special';
+export type ExchangeStatus = 'available' | 'not_yet_available' | 'drop_only' | 'unknown';
 
 export interface MountFarmTrial {
   id: string;
   expansion: Expansion;
   patch: string;
   dutyName: string;
+  sourceContent?: string;
+  rewardType?: RewardType;
+  contentType?: ContentType;
   mountName: string;
   /** FFXIV Mount.exd row ID — used by plugin PlayerState.IsMountUnlocked(). Approximate; verify against game data. */
   mountId: number | null;
@@ -21,8 +29,20 @@ export interface MountFarmTrial {
   /** FFXIV Item.exd row ID for the totem item — used by plugin inventory scan. Approximate; verify against game data. */
   totemItemId: number | null;
   totemTarget: number;
+  rewardName?: string;
+  rewardItemName?: string | null;
+  currencyItemName?: string | null;
+  currencyPerClear?: number;
+  exchangeCost?: number;
+  exchangeNpc?: string;
+  exchangeLocation?: string;
+  exchangeStatus?: ExchangeStatus;
+  category?: FarmCategory;
+  notes?: string;
   sortOrder: number;
 }
+
+type MountFarmSeed = MountFarmTrial;
 
 export const EXPANSIONS: { id: Expansion; name: string; shortName: string }[] = [
   { id: 'DT', name: 'Dawntrail', shortName: 'DT' },
@@ -33,15 +53,18 @@ export const EXPANSIONS: { id: Expansion; name: string; shortName: string }[] = 
   { id: 'ARR', name: 'A Realm Reborn', shortName: 'ARR' },
 ];
 
-export const MOUNT_FARM_TRIALS: MountFarmTrial[] = [
+const FARM_CATALOG_SEEDS: MountFarmSeed[] = [
   // ==========================================
   // DAWNTRAIL (7.x)
   // ==========================================
-  { id: 'dt-valigarmanda', expansion: 'DT', patch: '7.0', dutyName: 'Worqor Lar Dor (Extreme)', mountName: 'Valigarmanda', mountId: 330, totemName: 'Valigarmanda Totem', totemItemId: 44123, totemTarget: 99, sortOrder: 1 },
-  { id: 'dt-zoraal-ja', expansion: 'DT', patch: '7.0', dutyName: 'Everkeep (Extreme)', mountName: 'Lynx of Imperious Wind', mountId: 331, totemName: 'Zoraal Ja Totem', totemItemId: 44124, totemTarget: 99, sortOrder: 2 },
-  { id: 'dt-sphene', expansion: 'DT', patch: '7.1', dutyName: 'The Interphos (Extreme)', mountName: 'Sphene', mountId: 345, totemName: 'Sphene Totem', totemItemId: 44350, totemTarget: 99, sortOrder: 3 },
-  { id: 'dt-senary', expansion: 'DT', patch: '7.2', dutyName: 'Senary Unaspected Aetherial Node (Extreme)', mountName: 'Senary Node', mountId: 350, totemName: 'Senary Totem', totemItemId: 44600, totemTarget: 99, sortOrder: 4 },
-  { id: 'dt-perfected-brute-bomber', expansion: 'DT', patch: '7.3', dutyName: 'Blasting Zone (Extreme)', mountName: 'Brute Bomber', mountId: 355, totemName: 'Brute Bomber Totem', totemItemId: 44800, totemTarget: 99, sortOrder: 5 },
+  { id: 'dt-valigarmanda', expansion: 'DT', patch: '7.0', dutyName: 'Worqor Lar Dor (Extreme)', sourceContent: 'Worqor Lar Dor (Extreme)', mountName: 'Wings of Ruin', mountId: null, totemName: 'Skyruin Totem', totemItemId: null, totemTarget: 99, currencyPerClear: 1, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'available', category: 'normal', sortOrder: 1 },
+  { id: 'dt-zoraal-ja', expansion: 'DT', patch: '7.0', dutyName: 'Everkeep (Extreme)', sourceContent: 'Everkeep (Extreme)', mountName: 'Wings of Resolve', mountId: null, totemName: 'Resilient Totem', totemItemId: null, totemTarget: 99, currencyPerClear: 1, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'available', category: 'normal', sortOrder: 2 },
+  { id: 'dt-sphene', expansion: 'DT', patch: '7.1', dutyName: 'The Minstrel\'s Ballad: Sphene\'s Burden', sourceContent: 'The Minstrel\'s Ballad: Sphene\'s Burden', mountName: 'Wings of Eternity', mountId: null, totemName: 'Totem Eternal', totemItemId: null, totemTarget: 99, currencyPerClear: 2, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'available', category: 'normal', sortOrder: 3 },
+  { id: 'dt-recollection', expansion: 'DT', patch: '7.2', dutyName: 'Recollection (Extreme)', sourceContent: 'Recollection (Extreme)', mountName: 'Wings of the Knighthood', mountId: null, totemName: 'Knight Totem', totemItemId: null, totemTarget: 99, currencyPerClear: 1, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'available', category: 'normal', sortOrder: 4 },
+  { id: 'dt-necron-embrace', expansion: 'DT', patch: '7.2', dutyName: 'The Minstrel\'s Ballad: Necron\'s Embrace', sourceContent: 'The Minstrel\'s Ballad: Necron\'s Embrace', mountName: 'Wings of Death', mountId: null, totemName: 'Grave Totem', totemItemId: null, totemTarget: 99, currencyPerClear: 2, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'available', category: 'normal', sortOrder: 5 },
+  { id: 'dt-windward-wilds', expansion: 'DT', patch: '7.2', dutyName: 'The Windward Wilds (Extreme)', sourceContent: 'The Windward Wilds (Extreme)', mountName: 'Felyne Support Team Cart Horn', mountId: null, totemName: 'Guardian Arkveld Certificate', totemItemId: null, totemTarget: 99, currencyPerClear: 2, exchangeCost: 99, exchangeNpc: 'Smithy', exchangeLocation: 'Tuliyollal', exchangeStatus: 'available', category: 'collaboration', sortOrder: 6 },
+  { id: 'dt-hell-on-rails', expansion: 'DT', patch: '7.3', dutyName: 'Hell on Rails (Extreme)', sourceContent: 'Hell on Rails (Extreme)', mountName: 'Wings of Mist', mountId: null, totemName: 'Runaway Totem', totemItemId: null, totemTarget: 99, currencyPerClear: 2, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'not_yet_available', category: 'normal', sortOrder: 7 },
+  { id: 'dt-unmaking', expansion: 'DT', patch: '7.3', dutyName: 'The Unmaking (Extreme)', sourceContent: 'The Unmaking (Extreme)', mountName: 'Wings of Nihility', mountId: null, totemName: 'Totem of Naught', totemItemId: null, totemTarget: 99, currencyPerClear: 2, exchangeCost: 99, exchangeNpc: 'Uah\'shepya', exchangeLocation: 'Solution Nine', exchangeStatus: 'not_yet_available', category: 'normal', sortOrder: 8 },
 
   // ==========================================
   // ENDWALKER (6.x)
@@ -95,7 +118,36 @@ export const MOUNT_FARM_TRIALS: MountFarmTrial[] = [
   { id: 'arr-leviathan', expansion: 'ARR', patch: '2.2', dutyName: 'The Whorleater (Extreme)', mountName: 'Enbarr', mountId: 33, totemName: 'Leviathan Totem', totemItemId: 8543, totemTarget: 99, sortOrder: 4 },
   { id: 'arr-ramuh', expansion: 'ARR', patch: '2.3', dutyName: 'The Striking Tree (Extreme)', mountName: 'Markab', mountId: 38, totemName: 'Ramuh Totem', totemItemId: 9383, totemTarget: 99, sortOrder: 5 },
   { id: 'arr-shiva', expansion: 'ARR', patch: '2.4', dutyName: 'Akh Afah Amphitheatre (Extreme)', mountName: 'Boreas', mountId: 46, totemName: 'Shiva Totem', totemItemId: 10125, totemTarget: 99, sortOrder: 6 },
+
+  // ==========================================
+  // ULTIMATE WEAPON FARMS
+  // ==========================================
+  { id: 'ult-ucob', expansion: 'SB', patch: '4.1', dutyName: 'The Unending Coil of Bahamut (Ultimate)', sourceContent: 'The Unending Coil of Bahamut (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 90 },
+  { id: 'ult-uwu', expansion: 'SB', patch: '4.3', dutyName: 'The Weapon\'s Refrain (Ultimate)', sourceContent: 'The Weapon\'s Refrain (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 91 },
+  { id: 'ult-tea', expansion: 'ShB', patch: '5.1', dutyName: 'The Epic of Alexander (Ultimate)', sourceContent: 'The Epic of Alexander (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 90 },
+  { id: 'ult-dsr', expansion: 'EW', patch: '6.1', dutyName: 'Dragonsong\'s Reprise (Ultimate)', sourceContent: 'Dragonsong\'s Reprise (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 90 },
+  { id: 'ult-top', expansion: 'EW', patch: '6.3', dutyName: 'The Omega Protocol (Ultimate)', sourceContent: 'The Omega Protocol (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 91 },
+  { id: 'ult-fru', expansion: 'DT', patch: '7.1', dutyName: 'Futures Rewritten (Ultimate)', sourceContent: 'Futures Rewritten (Ultimate)', mountName: 'Ultimate weapon coffer / weapon exchange', mountId: null, totemName: null, totemItemId: null, totemTarget: 0, rewardType: 'weapon', contentType: 'ultimate', category: 'ultimate', exchangeStatus: 'unknown', notes: 'Token item metadata pending curated Item.exd verification.', sortOrder: 90 },
 ];
+
+function normalizeFarmTrial(trial: MountFarmSeed): MountFarmTrial {
+  const exchangeCost = trial.exchangeCost ?? (trial.totemTarget > 0 ? trial.totemTarget : undefined);
+  return {
+    ...trial,
+    sourceContent: trial.sourceContent ?? trial.dutyName,
+    rewardType: trial.rewardType ?? 'mount',
+    contentType: trial.contentType ?? (trial.category === 'collaboration' ? 'collaboration' : 'extreme_trial'),
+    category: trial.category ?? 'normal',
+    rewardName: trial.rewardName ?? trial.mountName,
+    rewardItemName: trial.rewardItemName ?? trial.mountName,
+    currencyItemName: trial.currencyItemName ?? trial.totemName,
+    currencyPerClear: trial.currencyPerClear ?? (trial.totemName ? 1 : undefined),
+    exchangeCost,
+    exchangeStatus: trial.exchangeStatus ?? (exchangeCost ? 'available' : 'unknown'),
+  };
+}
+
+export const MOUNT_FARM_TRIALS: MountFarmTrial[] = FARM_CATALOG_SEEDS.map(normalizeFarmTrial);
 
 export function getTrialsByExpansion(expansion: Expansion): MountFarmTrial[] {
   return MOUNT_FARM_TRIALS
@@ -109,4 +161,64 @@ export function getTrialById(id: string): MountFarmTrial | undefined {
 
 export function getAllTrialIds(): string[] {
   return MOUNT_FARM_TRIALS.map(t => t.id);
+}
+
+export function getCurrencyLabel(trial: MountFarmTrial): string {
+  return trial.currencyItemName ?? trial.totemName ?? 'currency';
+}
+
+export function getCurrencyLabelPlural(trial: MountFarmTrial): string {
+  const label = getCurrencyLabel(trial);
+  if (label === 'Totem of Naught') return 'Totems of Naught';
+  if (label.endsWith('y')) return `${label.slice(0, -1)}ies`;
+  if (label.endsWith('s')) return label;
+  return `${label}s`;
+}
+
+export function getRewardLabel(trial: MountFarmTrial): string {
+  return trial.rewardName ?? trial.mountName;
+}
+
+export function getRewardNoun(trial: MountFarmTrial): string {
+  switch (trial.rewardType) {
+    case 'weapon':
+      return 'weapon';
+    case 'currency':
+      return 'currency';
+    case 'title':
+      return 'title';
+    case 'misc':
+      return 'reward';
+    case 'mount':
+    default:
+      return 'mount';
+  }
+}
+
+export function hasCurrencyTracking(trial: MountFarmTrial): boolean {
+  return Boolean((trial.exchangeCost ?? trial.totemTarget) > 0 && getCurrencyLabel(trial) !== 'currency');
+}
+
+export function getExchangeSummary(trial: MountFarmTrial): string {
+  if (trial.exchangeStatus === 'not_yet_available') {
+    return 'Exchange not available yet';
+  }
+
+  if (trial.contentType === 'ultimate') {
+    return 'Weapon/token farm';
+  }
+
+  if (trial.exchangeStatus === 'drop_only' || trial.exchangeStatus === 'unknown') {
+    return 'Drop or exchange details unavailable';
+  }
+
+  const cost = trial.exchangeCost ?? trial.totemTarget;
+  const currency = cost === 1 ? getCurrencyLabel(trial) : getCurrencyLabelPlural(trial);
+  const base = `${cost} ${currency} for ${getRewardLabel(trial)}`;
+
+  if (trial.exchangeNpc && trial.exchangeLocation) {
+    return `${base} at ${trial.exchangeNpc} in ${trial.exchangeLocation}`;
+  }
+
+  return base;
 }

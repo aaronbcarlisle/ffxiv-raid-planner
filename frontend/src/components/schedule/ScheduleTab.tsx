@@ -6,13 +6,21 @@ import { canManageRoster } from '../../utils/permissions';
 import { useModal } from '../../hooks/useModal';
 import { useEventBus, Events } from '../../lib/eventBus';
 import { Button } from '../primitives';
-import { Checkbox, Input, Spinner } from '../ui';
+import { Checkbox, Input, Label, Spinner } from '../ui';
 import { SessionCard } from './SessionCard';
 import { CreateSessionModal } from './CreateSessionModal';
 import { AvailabilityGrid } from './AvailabilityGrid';
 import type { ScheduleSession, ScheduleSessionCreate, RsvpStatus, MemberRole, Membership } from '../../types';
 
 type SchedulerSubTab = 'sessions' | 'availability' | 'integrations';
+type WebhookMentionTarget = 'none' | 'here' | 'role';
+
+const DISCORD_ROLE_ID_PATTERN = /^(?:<@&)?(\d{17,20})>?$/;
+
+function normalizeDiscordRoleId(value: string): string {
+  const match = value.trim().match(DISCORD_ROLE_ID_PATTERN);
+  return match?.[1] ?? '';
+}
 
 interface ScheduleTabProps {
   groupId: string;
@@ -51,6 +59,10 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const [enable24h, setEnable24h] = useState(false);
   const [enable1h, setEnable1h] = useState(false);
   const [enableMissingRsvp, setEnableMissingRsvp] = useState(false);
+  const [mentionTarget, setMentionTarget] = useState<WebhookMentionTarget>('none');
+  const [mentionRoleId, setMentionRoleId] = useState('');
+  const [mentionError, setMentionError] = useState<string | null>(null);
+  const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
   const [integrationMessage, setIntegrationMessage] = useState<string | null>(null);
   const [sessionViewMode, setSessionViewMode] = useState<'list' | 'tiles'>(() => {
     const saved = localStorage.getItem('schedule-session-view');
@@ -63,18 +75,18 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       : 'sessions';
   });
 
-  // Listen for mount farm schedule requests
+  // Listen for farm schedule requests
   useEventBus<{ trialName: string; missing?: number; canBuy?: number; wanting?: number }>(
     Events.MOUNT_FARM_SCHEDULE,
     ({ trialName, missing, canBuy, wanting }) => {
-      const lines = [`Mount farm for ${trialName}.`];
-      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this mount.`);
-      if (canBuy) lines.push(`${canBuy} can buy with totems.`);
+      const lines = [`Farm progress for ${trialName}.`];
+      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this reward.`);
+      if (canBuy) lines.push(`${canBuy} can buy with the exchange currency.`);
       if (wanting && wanting !== missing) lines.push(`${wanting} marked as wanted.`);
       lines.push('Check Availability tab for best time slots.');
 
       setCreateDraft({
-        title: `Mount Farm: ${trialName}`,
+        title: `Farm: ${trialName}`,
         description: lines.join('\n'),
         startTime: '',
         endTime: '',
@@ -104,6 +116,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     setEnable24h(settings.enable24hReminder);
     setEnable1h(settings.enable1hReminder);
     setEnableMissingRsvp(settings.enableMissingRsvpReminder);
+    setMentionTarget(settings.mentionTarget || 'none');
+    setMentionRoleId(settings.mentionRoleId || '');
+    setMentionError(null);
   }, [settings]);
 
   useEffect(() => {
@@ -114,6 +129,23 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       setActiveSubTab('sessions');
     }
   }, [groupId]);
+
+  useEffect(() => {
+    const sessionId = new URLSearchParams(window.location.search).get('sessionId');
+    if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
+
+    setActiveSubTab('sessions');
+    setHighlightedSessionId(sessionId);
+    window.setTimeout(() => {
+      document.getElementById(`schedule-session-${sessionId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 50);
+
+    const clearHighlight = window.setTimeout(() => setHighlightedSessionId(null), 5000);
+    return () => window.clearTimeout(clearHighlight);
+  }, [sessions]);
 
   const hasAuthenticatedUser = !!user;
   const canManage = hasAuthenticatedUser && canManageRoster(userRole, user?.isAdmin).allowed;
@@ -161,9 +193,18 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   };
 
   const handleSaveIntegrations = async () => {
+    const normalizedRoleId = normalizeDiscordRoleId(mentionRoleId);
+    if (mentionTarget === 'role' && !normalizedRoleId) {
+      setMentionError('Enter a valid Discord role ID or <@&ROLE_ID> mention.');
+      return;
+    }
+    setMentionError(null);
+
     await updateSettings(groupId, {
       webhookUrl: webhookUrl || undefined,
       reminderChannelLabel: channelLabel || null,
+      mentionTarget,
+      mentionRoleId: mentionTarget === 'role' ? normalizedRoleId : null,
       enable24hReminder: enable24h,
       enable1hReminder: enable1h,
       enableMissingRsvpReminder: enableMissingRsvp,
@@ -323,19 +364,24 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 : 'space-y-3'
               }>
                 {sessions.map((session) => (
-                  <SessionCard
+                  <div
                     key={session.id}
-                    session={session}
-                    currentUserId={user?.id}
-                    shareCode={shareCode}
-                    staticName={staticName}
-                    canManage={canManage}
-                    canRsvp={canRsvp}
-                    compact={sessionViewMode === 'tiles'}
-                    onRsvp={handleRsvp}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
+                    id={`schedule-session-${session.id}`}
+                    className={highlightedSessionId === session.id ? 'rounded-xl ring-2 ring-accent/70 ring-offset-2 ring-offset-background' : undefined}
+                  >
+                    <SessionCard
+                      session={session}
+                      currentUserId={user?.id}
+                      shareCode={shareCode}
+                      staticName={staticName}
+                      canManage={canManage}
+                      canRsvp={canRsvp}
+                      compact={sessionViewMode === 'tiles'}
+                      onRsvp={handleRsvp}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 ))}
               </div>
             </>
@@ -410,6 +456,54 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         placeholder="Channel label, e.g. raid-reminders"
                         fullWidth
                       />
+                      <div className="space-y-2">
+                        <Label className="block text-xs font-medium uppercase tracking-[0.14em] text-text-muted">
+                          Mention target
+                        </Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {([
+                            ['none', 'No ping'],
+                            ['here', '@here'],
+                            ['role', 'Role'],
+                          ] as const).map(([value, label]) => (
+                            <Button
+                              key={value}
+                              type="button"
+                              size="sm"
+                              variant={mentionTarget === value ? 'accent-subtle' : 'secondary'}
+                              onClick={() => {
+                                setMentionTarget(value);
+                                setMentionError(null);
+                              }}
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                        {mentionTarget === 'role' && (
+                          <div className="space-y-2">
+                            <Input
+                              value={mentionRoleId}
+                              onChange={(value) => {
+                                setMentionRoleId(value);
+                                setMentionError(null);
+                              }}
+                              placeholder="Discord role ID or <@&ROLE_ID>"
+                              fullWidth
+                              data-testid="schedule-webhook-role-id-input"
+                            />
+                            {normalizeDiscordRoleId(mentionRoleId) && (
+                              <p className="text-xs text-text-secondary">
+                                Preview: <code className="rounded bg-surface-sunken px-1.5 py-0.5">{`<@&${normalizeDiscordRoleId(mentionRoleId)}>`}</code>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {mentionError && <p className="text-xs text-status-error">{mentionError}</p>}
+                        <p className="text-xs text-text-muted">
+                          Use this to notify the raid channel when sessions are posted or reminders fire. Only enable pings for channels where your static expects them.
+                        </p>
+                      </div>
                       <div className="space-y-2">
                         <Checkbox checked={enable24h} onChange={setEnable24h} label="24 hour reminder" />
                         <Checkbox checked={enable1h} onChange={setEnable1h} label="1 hour reminder" />

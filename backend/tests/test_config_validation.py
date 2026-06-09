@@ -212,6 +212,49 @@ class TestProductionConfigValidation:
         assert "http://localhost:5173" in origins
         assert "http://localhost:5174" in origins
 
+    def test_public_app_base_url_development_defaults_to_localhost(self):
+        from app.config import Settings
+        import secrets
+
+        settings = Settings(
+            environment="development",
+            jwt_secret_key=secrets.token_urlsafe(32),
+            debug=True,
+            database_url="sqlite:///./data/app.db",
+        )
+
+        assert settings.public_app_base_url == "http://localhost:5174"
+
+    def test_public_app_base_url_uses_configured_production_url(self):
+        from app.config import Settings
+        import secrets
+
+        settings = Settings(
+            environment="production",
+            jwt_secret_key=secrets.token_urlsafe(32),
+            debug=False,
+            database_url="postgresql://localhost/db",
+            cors_origins_production="https://www.xivraidplanner.app",
+            public_app_url="https://www.xivraidplanner.app/",
+        )
+
+        assert settings.public_app_base_url == "https://www.xivraidplanner.app"
+
+    def test_public_app_base_url_never_uses_localhost_in_production(self):
+        from app.config import Settings
+        import secrets
+
+        settings = Settings(
+            environment="production",
+            jwt_secret_key=secrets.token_urlsafe(32),
+            debug=False,
+            database_url="postgresql://localhost/db",
+            cors_origins_production="https://www.xivraidplanner.app",
+            frontend_url="http://localhost:5174",
+        )
+
+        assert settings.public_app_base_url == "https://www.xivraidplanner.app"
+
     def test_async_database_url_postgres_conversion(self):
         """PostgreSQL URLs should be converted to asyncpg format."""
         from app.config import Settings
