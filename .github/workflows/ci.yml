@@ -111,7 +111,9 @@ jobs:
     # here surfaces them at PR time instead of in a failed Railway deploy.
     services:
       postgres:
-        image: postgres:16
+        # Pinned to match the Railway production Postgres major version (17),
+        # so version-specific dialect behavior is exercised the same way.
+        image: postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -148,6 +150,16 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/raidplanner
         run: alembic upgrade head
+
+      # Migrations must be reversible. Walk the whole chain back down to base
+      # then re-apply, so a broken downgrade() is caught here rather than when
+      # someone needs to roll back a production deploy.
+      - name: Verify migration downgrade/upgrade round-trip
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/raidplanner
+        run: |
+          alembic downgrade base
+          alembic upgrade head
 
       # NOTE: backend pytest is intentionally NOT run here yet. Several tests
       # (test_security SSRF, test_httponly_cookies) are not clean in a sandboxed
