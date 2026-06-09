@@ -1,5 +1,6 @@
 """Pytest fixtures for the test suite"""
 
+import logging
 import secrets
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -13,6 +14,12 @@ from app.auth_utils import create_access_token
 from app.database import Base, get_session
 from app.main import app
 from app.models import User
+
+# Importing app.main runs configure_logging(), which sets the sqlalchemy.engine
+# logger to INFO when settings.debug is True (the test default) - flooding test
+# output with every SQL statement. Tests don't need the echo; quiet it back to
+# WARNING. configure_logging() runs once at import, so this stays in effect.
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
