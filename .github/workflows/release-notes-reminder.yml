@@ -111,31 +111,39 @@ jobs:
                   return;
                 }
 
-                // Find items without commits in the first release block
-                // Match the first release object (up to the next version declaration or end)
-                const firstReleaseMatch = releasesMatch[1].match(/\{\s*version:\s*['"][^'"]+['"][\s\S]*?items:\s*\[([\s\S]*?)\],?\s*\}/);
+                // Slice the latest release block: from its `version:` declaration
+                // up to the next release's `version:` (or the end). Using the next
+                // version as the boundary avoids a fragile bracket-match that an
+                // item's own `commits: [...]` array would truncate — which would
+                // hide later items from validation. NOTE: the authoritative check
+                // lives in frontend/src/data/releaseNotes.test.ts, which evaluates
+                // the real data; this regex pass is a best-effort PR-comment aid.
+                const body = releasesMatch[1];
+                const firstVersionIdx = body.search(/version:\s*['"]/);
 
-                if (firstReleaseMatch) {
-                  const itemsContent = firstReleaseMatch[1];
+                if (firstVersionIdx !== -1) {
+                  const afterFirst = body.slice(firstVersionIdx + 1);
+                  const nextVersionIdx = afterFirst.search(/version:\s*['"]/);
+                  const releaseBlock = nextVersionIdx === -1
+                    ? body.slice(firstVersionIdx)
+                    : body.slice(firstVersionIdx, firstVersionIdx + 1 + nextVersionIdx);
 
-                  // Find items - look for category/title pairs
-                  const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"]/g;
-                  // An item is "referenced" if it links to a PR (pr: N) or carries
-                  // a commits array. PR links are the preferred convention because
-                  // the number is known at open-time and survives squash-merge.
-                  const refPattern = /(?:pr:\s*\d+|commits:\s*\[)/g;
+                  // Restrict to items (from the first item's `category:`), so the
+                  // release-level `title:` is excluded from the counts.
+                  const firstCatIdx = releaseBlock.search(/^\s*category:/m);
+                  const itemsContent = firstCatIdx === -1 ? '' : releaseBlock.slice(firstCatIdx);
 
-                  // Count items and PR/commit references
-                  const items = [...itemsContent.matchAll(itemPattern)];
-                  const commits = [...itemsContent.matchAll(refPattern)];
+                  // Patterns anchored to line starts so a quoted string *value*
+                  // (e.g. a description containing "pr:" or "description:") can't
+                  // inflate the counts.
+                  const items = [...itemsContent.matchAll(/^\s*category:\s*['"]/gm)];
+                  const itemTitles = [...itemsContent.matchAll(/^\s*title:\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
+                  const refs = [...itemsContent.matchAll(/^\s*(?:pr:\s*\d+|commits:\s*\[)/gm)];
+                  const descriptions = [...itemsContent.matchAll(/^\s*description:/gm)];
 
-                  console.log(`Found ${items.length} items and ${commits.length} PR/commit references in latest release`);
+                  console.log(`Latest release: ${items.length} items, ${refs.length} PR/commit refs, ${descriptions.length} descriptions`);
 
-                  if (items.length > 0 && commits.length < items.length) {
-                    // Extract item titles for error reporting
-                    const itemTitles = items.map(m => m[2]);
-
-                    // Post a comment about missing commits
+                  if (items.length > 0 && refs.length < items.length) {
                     const { data: comments } = await github.rest.issues.listComments({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
@@ -153,7 +161,7 @@ jobs:
                         '<!-- release-notes-commits-check -->',
                         '**Release notes items missing a PR/commit reference**',
                         '',
-                        `Found ${items.length} items but only ${commits.length} have a PR or commit reference.`,
+                        `Found ${items.length} items but only ${refs.length} have a PR or commit reference.`,
                         '',
                         '**Items in latest release:**',
                         ...itemTitles.map(title => `- ${title}`),
@@ -165,6 +173,7 @@ jobs:
                         "  title: 'My feature',",
                         "  description: 'What it does',",
                         '  pr: 123,',
+                        "  prTitle: 'feat(scope): the PR title',",
                         '}',
                         '```',
                         '',
@@ -180,18 +189,13 @@ jobs:
                       });
                     }
 
-                    core.setFailed(`Release notes items missing a PR/commit reference: ${items.length} items but only ${commits.length} have a PR or commit reference. Items: ${itemTitles.join(', ')}`);
+                    core.setFailed(`Release notes items missing a PR/commit reference: ${items.length} items but only ${refs.length} have a PR or commit reference. Items: ${itemTitles.join(', ')}`);
                     return;
                   }
 
                   // Every item in the latest release must have a description so
                   // the entry reads as more than a bare title on the page.
-                  const descPattern = /description:\s*['"]/g;
-                  const descriptions = [...itemsContent.matchAll(descPattern)];
-                  console.log(`Found ${items.length} items and ${descriptions.length} descriptions in latest release`);
-
                   if (items.length > 0 && descriptions.length < items.length) {
-                    const itemTitles = items.map(m => m[2]);
                     core.setFailed(`Release notes items missing a description: ${items.length} items but only ${descriptions.length} have a description. Every item needs a 'description'. Items: ${itemTitles.join(', ')}`);
                     return;
                   }

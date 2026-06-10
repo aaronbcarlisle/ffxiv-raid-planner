@@ -258,3 +258,38 @@ describe('Release dates', () => {
     });
   });
 });
+
+// Authoritative gate for the authoring convention (mirrors, and supersedes, the
+// best-effort regex check in .github/workflows/release-notes-reminder.yml).
+// Evaluating the real data avoids the regex pitfalls of parsing TS source.
+describe('latest release authoring requirements', () => {
+  const COMMIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
+  const latest = RELEASES[0];
+
+  it('exists and has at least one item', () => {
+    expect(latest).toBeDefined();
+    expect(latest.items.length).toBeGreaterThan(0);
+  });
+
+  it('every item has a non-empty description', () => {
+    for (const item of latest.items) {
+      expect(item.description?.trim(), `item "${item.title}" needs a description`).toBeTruthy();
+    }
+  });
+
+  it('every item references a PR or a real commit SHA', () => {
+    for (const item of latest.items) {
+      const hasPr = typeof item.pr === 'number' && item.pr > 0;
+      const hasRealCommit = (item.commits ?? []).some((c) => COMMIT_SHA_RE.test(c.hash));
+      expect(hasPr || hasRealCommit, `item "${item.title}" needs a pr or a real commit SHA`).toBe(true);
+    }
+  });
+
+  it('a pr link always carries a prTitle for display', () => {
+    for (const item of latest.items) {
+      if (typeof item.pr === 'number') {
+        expect(item.prTitle?.trim(), `item "${item.title}" has a pr but no prTitle`).toBeTruthy();
+      }
+    }
+  });
+});
