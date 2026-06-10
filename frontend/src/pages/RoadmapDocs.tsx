@@ -134,6 +134,9 @@ const PHASES: Phase[] = [
       { title: 'Loot priority calculations' },
       { title: 'Weapon priority system' },
       { title: 'Weekly loot history and books tracking' },
+      { title: 'Raid scheduling with availability grid and Discord notifications' },
+      { title: 'Mount farm tracker' },
+      { title: 'Static discovery (public static finder)' },
       { title: 'Static duplication' },
       { title: 'Dark theme polish' },
     ],
@@ -148,6 +151,7 @@ const PHASES: Phase[] = [
       { title: 'Comprehensive test coverage' },
       { title: 'Admin dashboard and impersonation' },
       { title: 'Share codes for read-only access' },
+      { title: 'API keys and Dalamud plugin browser sign-in' },
       { title: 'Documentation and release notes' },
       { title: 'Performance optimization' },
     ],
@@ -156,12 +160,12 @@ const PHASES: Phase[] = [
     id: 'phase-7',
     number: '7',
     title: 'Lodestone Sync',
-    status: 'planned',
+    status: 'complete',
     icon: Globe,
     items: [
       { title: 'Character lookup by name/server' },
       { title: 'Auto-import equipped gear from Lodestone' },
-      { title: 'Periodic refresh of gear data' },
+      { title: 'Refresh gear data on demand' },
       { title: 'Detect gear changes automatically' },
     ],
   },
@@ -490,8 +494,8 @@ export default function RoadmapDocs() {
             <div className="bg-surface-card border border-accent/30 rounded-xl p-6">
               <p className="text-text-secondary mb-4">
                 FFXIV Raid Planner is fully functional for managing static raid groups. Core features
-                including gear tracking, loot priority, BiS import, and multi-user support are complete
-                and in active use.
+                including gear tracking, loot priority, BiS import, scheduling, Lodestone sync, the mount
+                farm tracker, the Dalamud plugin, and multi-user support are complete and in active use.
               </p>
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="bg-surface-elevated rounded-lg p-4">

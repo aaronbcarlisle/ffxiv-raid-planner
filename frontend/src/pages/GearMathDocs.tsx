@@ -363,14 +363,18 @@ export default function GearMathDocs() {
           <Section id="base-priority" title="Base priority score">
             <p className="text-text-secondary mb-4">
               The base priority score determines loot distribution order. Higher scores receive loot
-              first. The formula combines role priority, gear need, and optional loot adjustment.
+              first. The formula combines role priority, gear need, and optional loot adjustment. The
+              multipliers shown (25, 10, 15) are the default values from{' '}
+              <code className="text-accent">DEFAULT_ADVANCED_OPTIONS</code> and can be customized per
+              static via advanced priority settings. This is the role-based mode; job-based and
+              player-based modes use group configurations instead.
             </p>
 
             <FormulaDisplay>
               <FormulaLine>
                 <Variable>Priority</Variable> <Operator>=</Operator> <Variable>rolePriority</Variable>{' '}
                 <Operator>+</Operator> <Operator>(</Operator><Variable>weightedNeed</Variable>{' '}
-                <Operator>×</Operator> <Num>10</Num><Operator>)</Operator> <Operator>-</Operator>{' '}
+                <Operator>×</Operator> <Num>10</Num><Operator>)</Operator> <Operator>+</Operator>{' '}
                 <Operator>(</Operator><Variable>lootAdjustment</Variable> <Operator>×</Operator>{' '}
                 <Num>15</Num><Operator>)</Operator>
               </FormulaLine>
@@ -391,7 +395,7 @@ export default function GearMathDocs() {
               </FormulaLine>
               <FormulaLine>
                 <Variable>lootAdjustment</Variable> <Operator>=</Operator>{' '}
-                <span className="text-text-secondary">manual adjustment for mid-tier roster changes</span>
+                <span className="text-text-secondary">manual adjustment for mid-tier roster changes (positive = priority boost)</span>
               </FormulaLine>
             </FormulaDisplay>
 
@@ -412,12 +416,12 @@ export default function GearMathDocs() {
                       <td className="py-2 text-right text-accent font-mono">(5-0) × 25 = 125</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-role-ranged font-medium">Ranged</td>
+                      <td className="py-2 text-role-caster font-medium">Caster</td>
                       <td className="py-2 text-center text-text-secondary">1</td>
                       <td className="py-2 text-right text-accent font-mono">(5-1) × 25 = 100</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-role-caster font-medium">Caster</td>
+                      <td className="py-2 text-role-ranged font-medium">Ranged</td>
                       <td className="py-2 text-center text-text-secondary">2</td>
                       <td className="py-2 text-right text-accent font-mono">(5-2) × 25 = 75</td>
                     </tr>
@@ -439,24 +443,32 @@ export default function GearMathDocs() {
             <Subsection title="Implementation">
               <CodeBlock
                 language="typescript"
-                title="utils/priority.ts:48-70"
+                title="utils/priority.ts (role-based mode, default multipliers)"
                 code={`export function calculatePriorityScore(
   player: SnapshotPlayer,
   settings: StaticSettings,
-  options?: PriorityScoreOptions
+  _options?: PriorityScoreOptions
 ): number {
-  const roleIndex = settings.lootPriority.indexOf(player.role);
-  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25;
+  // (mode branching omitted: 'disabled'/'manual-planning' return 0,
+  //  'job-based' and 'player-based' use group configs. Below is the
+  //  default 'role-based' path with DEFAULT_ADVANCED_OPTIONS multipliers.)
+  const roleOrder = settings.prioritySettings?.roleBasedConfig?.roleOrder || settings.lootPriority;
+  const roleIndex = roleOrder.indexOf(player.role);
+  const rolePriority = roleIndex === -1 ? 0 : (5 - roleIndex) * 25; // rolePriorityMultiplier
 
   const weightedNeed = player.gear
     .filter((g) => !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
-  let score = Math.round(rolePriority + weightedNeed * 10);
+  const jobModifier = settings.jobPriorityModifiers?.[player.job.toUpperCase()] ?? 0;
+  const playerModifier = player.priorityModifier ?? 0;
+
+  let score = Math.round(rolePriority + weightedNeed * 10 + jobModifier + playerModifier); // gearNeededMultiplier = 10
 
   // Apply loot adjustment for mid-tier roster changes
-  if (options?.includeLootAdjustment && player.lootAdjustment) {
-    score -= player.lootAdjustment * 15;
+  // Positive adjustment = increase priority (player needs to catch up)
+  if (player.lootAdjustment && advancedOptions.useLootAdjustments) {
+    score += player.lootAdjustment * 15; // lootReceivedPenalty
   }
 
   return score;
@@ -481,6 +493,8 @@ export default function GearMathDocs() {
   weightedNeed: number;       // Sum of slot weights for incomplete slots
   weightedNeedBonus: number;  // weightedNeed * 10
   lootAdjustmentBonus: number; // lootAdjustment * multiplier (positive = boost)
+  jobModifier: number;        // Job-level adjustment from settings.jobPriorityModifiers
+  playerModifier: number;     // Player-level adjustment from player.priorityModifier
 }`}
             />
 
@@ -537,18 +551,21 @@ export default function GearMathDocs() {
 
             <CodeBlock
               language="typescript"
-              title="utils/lootCoordination.ts:414-427"
+              title="utils/lootCoordination.ts (default multipliers shown)"
               code={`export function calculateEnhancedPriorityScore(
   baseScore: number,
   stats: PlayerLootStats,
-  averageDrops: number
+  averageDrops: number,
+  settings?: StaticSettings  // configurable multipliers; defaults below
 ): number {
+  // Multipliers/caps come from advancedOptions (defaults: 10, cap 5 weeks; 15, cap 3 drops)
+
   // Drought bonus: reward players who haven't received loot recently
   const droughtBonus = Math.min(stats.weeksSinceLastDrop * 10, 50);
 
   // Balance penalty: penalize players who are ahead of the curve
-  const excessDrops = stats.totalDrops - averageDrops;
-  const balancePenalty = excessDrops > 0 ? Math.min(excessDrops * 15, 45) : 0;
+  const excessDrops = Math.max(0, stats.totalDrops - averageDrops);
+  const balancePenalty = Math.min(excessDrops, 3) * 15;
 
   return Math.round(baseScore + droughtBonus - balancePenalty);
 }`}
@@ -916,8 +933,8 @@ function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boole
                   </tr>
                   <tr>
                     <td className="py-2 text-accent font-mono">tome</td>
-                    <td className="py-2 text-text-secondary">Unaugmented tomestone</td>
-                    <td className="py-2 text-right font-mono">750 / 755 (weapon)</td>
+                    <td className="py-2 text-text-secondary">Unaugmented tomestone (no weapon bonus)</td>
+                    <td className="py-2 text-right font-mono">750</td>
                   </tr>
                   <tr>
                     <td className="py-2 text-accent font-mono">relic</td>

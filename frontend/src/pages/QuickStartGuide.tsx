@@ -332,7 +332,8 @@ export default function QuickStartGuide() {
                   <strong>Tier</strong>: Select your current raid tier
                 </li>
                 <li>
-                  <strong>Content type</strong>: Choose Savage or Ultimate
+                  <strong>Visibility</strong>: Optionally make the static public so it can be
+                  discovered with the share link
                 </li>
               </ul>
             </Step>
