@@ -75,3 +75,40 @@ describe('ReleaseItemRow commit links', () => {
     expect(screen.getByText('pending change')).toBeInTheDocument();
   });
 });
+
+describe('ReleaseItemRow pull-request link', () => {
+  it('links the PR number to the GitHub pull request', () => {
+    renderExpanded({
+      category: 'fix',
+      title: 'PR item',
+      pr: 127,
+    });
+
+    const link = screen.getByRole('link', { name: '#127' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/aaronbcarlisle/ffxiv-raid-planner/pull/127'
+    );
+  });
+
+  it('makes a PR-only item expandable', () => {
+    // pr alone must count as expandable content, or the toggle is disabled and
+    // the link can never be revealed.
+    render(
+      <ul>
+        <ReleaseItemRow item={{ category: 'fix', title: 'PR only', pr: 99 }} />
+      </ul>
+    );
+    expect(screen.getByRole('button')).not.toBeDisabled();
+  });
+
+  it('renders no PR link when pr is absent', () => {
+    renderExpanded({
+      category: 'fix',
+      title: 'No PR',
+      details: 'some detail to make it expandable',
+    });
+
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+});

@@ -378,7 +378,9 @@ This hides the entry from users but satisfies CI. Do **NOT** bump `CURRENT_VERSI
 
 **User-facing changes** get a normal visible release note entry.
 
-Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `commits` array.
+Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
+
+**Reference the change with `pr`, not `commits`.** Add `pr: <number>` to the item (links to `/pull/{n}` on the release-notes page). The PR number is known as soon as you open the PR, is stable, and survives squash-merge — unlike a commit SHA, which doesn't exist until merge. The old pattern of `commits: [{ hash: 'pending', ... }]` left dead `/commit/pending` links because the placeholder was never backfilled; the page now refuses to link a non-SHA hash, but new entries should just use `pr`. Only use `commits` when you have a **real** short SHA (e.g. backfilling a historical release via `scripts/identify-release-commits.js`).
 
 ### Fork PR Guard (GitHub Actions)
 

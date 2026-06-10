@@ -24,7 +24,15 @@ export interface ReleaseItem {
   title: string;
   description?: string;
   details?: string; // Extended description shown when expanded
-  commits?: CommitInfo[]; // Related commits
+  /**
+   * Preferred way to reference the change: the GitHub PR number. Unlike a
+   * commit SHA, the PR number is known the moment the PR is opened, is stable,
+   * and survives squash-merge — so it never needs the post-merge backfill that
+   * left `commits` entries stuck on a placeholder 'pending' hash. The page
+   * links it to `/pull/{pr}`. Prefer this over `commits` for new entries.
+   */
+  pr?: number;
+  commits?: CommitInfo[]; // Related commits (real short SHAs only; prefer `pr`)
   image?: string; // Path to image/gif shown when expanded
   link?: { href: string; label: string }; // Link to related page
 }
@@ -57,7 +65,8 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Fixed broken "pending" commit links on this page',
         description:
-          'Some release entries showed a "pending" commit link that led to a 404 — a placeholder used while a change is still in review. Those now render as plain text until a real commit is available, so there are no more dead links.',
+          'Some release entries showed a "pending" commit link that led to a 404 — a placeholder used while a change is still in review. Those now render as plain text until a real reference is available, so there are no more dead links. New entries link to their pull request instead.',
+        pr: 127,
       },
     ],
   },

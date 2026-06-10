@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   GitCommit,
+  GitPullRequest,
   Link2,
 } from 'lucide-react';
 import { toast } from '../stores/toastStore';
@@ -380,7 +381,9 @@ function CategoryBadge({ category }: { category: ReleaseCategory }) {
 
 export function ReleaseItemRow({ item }: { item: ReleaseItem }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0) || item.image || item.link;
+  const hasPr = typeof item.pr === 'number' && item.pr > 0;
+  const hasExpandableContent =
+    item.details || hasPr || (item.commits && item.commits.length > 0) || item.image || item.link;
 
   return (
     <li className="group">
@@ -439,6 +442,23 @@ export function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                 {item.link.label}
                 <ChevronRight className="w-4 h-4" />
               </Link>
+            </div>
+          )}
+
+          {hasPr && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <GitPullRequest className="w-3 h-3" />
+                Pull Request
+              </h4>
+              <a
+                href={`${GITHUB_REPO_URL}/pull/${item.pr}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
+              >
+                #{item.pr}
+              </a>
             </div>
           )}
 
