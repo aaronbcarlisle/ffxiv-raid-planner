@@ -165,7 +165,7 @@ See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for prioritized remaining 
 
 ```
 backend/app/
-├── models/        # 17 models: User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer, schedule (ScheduleSession/Rsvp/Settings/etc.), availability, invitation, join_request, loot_log_entry, material_log_entry, page_ledger_entry, mount_farm_progress, weekly_assignment, api_key, plugin_auth_code, analytics
+├── models/        # 17 model files (~23 model classes): User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer, schedule (ScheduleSession/Rsvp/Settings/DiscordMessageMapping/ReminderDelivery), availability (x2), invitation, join_request, loot_log_entry, material_log_entry, page_ledger_entry, mount_farm_progress, weekly_assignment, api_key, plugin_auth_code, analytics (x3)
 ├── schemas/       # Pydantic request/response
 ├── routers/       # 14 modules: auth, static_groups, tiers, loot_tracking, bis, invitations, join_requests, discovery, schedule, lodestone, mount_farms, api_keys, analytics, dev_auth
 └── permissions.py # Role checks, admin helpers
