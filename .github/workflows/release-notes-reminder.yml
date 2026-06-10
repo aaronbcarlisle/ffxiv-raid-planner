@@ -120,13 +120,16 @@ jobs:
 
                   // Find items - look for category/title pairs
                   const itemPattern = /\{\s*category:\s*['"]([^'"]+)['"],\s*title:\s*['"]([^'"]+)['"]/g;
-                  const commitPattern = /commits:\s*\[/g;
+                  // An item is "referenced" if it links to a PR (pr: N) or carries
+                  // a commits array. PR links are the preferred convention because
+                  // the number is known at open-time and survives squash-merge.
+                  const refPattern = /(?:pr:\s*\d+|commits:\s*\[)/g;
 
-                  // Count items and commits arrays
+                  // Count items and PR/commit references
                   const items = [...itemsContent.matchAll(itemPattern)];
-                  const commits = [...itemsContent.matchAll(commitPattern)];
+                  const commits = [...itemsContent.matchAll(refPattern)];
 
-                  console.log(`Found ${items.length} items and ${commits.length} commit arrays in latest release`);
+                  console.log(`Found ${items.length} items and ${commits.length} PR/commit references in latest release`);
 
                   if (items.length > 0 && commits.length < items.length) {
                     // Extract item titles for error reporting
@@ -148,24 +151,25 @@ jobs:
                     if (!commitBotComment) {
                       const commentBody = [
                         '<!-- release-notes-commits-check -->',
-                        '**Release notes items missing commits**',
+                        '**Release notes items missing a PR/commit reference**',
                         '',
-                        `Found ${items.length} items but only ${commits.length} have commit references.`,
+                        `Found ${items.length} items but only ${commits.length} have a PR or commit reference.`,
                         '',
                         '**Items in latest release:**',
                         ...itemTitles.map(title => `- ${title}`),
                         '',
-                        'Each item in `releaseNotes.ts` should include a `commits` array:',
+                        'Each item in `releaseNotes.ts` should reference its PR (preferred):',
                         '```typescript',
                         '{',
                         "  category: 'feature',",
                         "  title: 'My feature',",
                         "  description: 'What it does',",
-                        '  commits: [{ hash: \'abc1234\', message: \'feat: my feature\' }],',
+                        '  pr: 123,',
                         '}',
                         '```',
                         '',
-                        'Use `git log --oneline` to find the relevant commit hashes.',
+                        'The PR number is known as soon as you open the PR. (A `commits` array',
+                        'with real short SHAs also satisfies this check, for historical entries.)',
                       ].join('\n');
 
                       await github.rest.issues.createComment({
@@ -176,7 +180,7 @@ jobs:
                       });
                     }
 
-                    core.setFailed(`Release notes items missing commits: ${items.length} items but only ${commits.length} have commit references. Items: ${itemTitles.join(', ')}`);
+                    core.setFailed(`Release notes items missing a PR/commit reference: ${items.length} items but only ${commits.length} have a PR or commit reference. Items: ${itemTitles.join(', ')}`);
                     return;
                   }
                 }
