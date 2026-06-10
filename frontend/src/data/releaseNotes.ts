@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.2';
+export const CURRENT_VERSION = '1.22.4';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,20 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.22.4',
+    date: '2026-06-10T00:00:00Z',
+    title: 'Player name editing fix',
+    items: [
+      {
+        category: 'fix',
+        title: 'Typing a space no longer drops you out of name editing',
+        description:
+          'When renaming a player, pressing the space bar used to deselect the field and stop the edit, making it impossible to enter names with spaces. Spaces (and every other key) now stay in the name box until you press Enter or click away.',
+        commits: [{ hash: 'pending', message: 'fix(player): keep focus when typing a space while editing a name', date: '2026-06-10T00:00:00Z' }],
+      },
+    ],
+  },
   {
     version: '1.22.3',
     date: '2026-06-08T00:00:00Z',
