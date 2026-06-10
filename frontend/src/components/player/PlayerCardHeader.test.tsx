@@ -105,4 +105,34 @@ describe('PlayerCardHeader inline name edit', () => {
     expect(onNameChange).toHaveBeenCalledWith('New Name');
     expect(parentKeyDown).not.toHaveBeenCalled();
   });
+
+  it('saves a name containing spaces end to end', () => {
+    // The user-facing contract: a space-containing name must survive the edit.
+    const { input, onNameChange } = renderHeader();
+
+    fireEvent.change(input, { target: { value: 'Some Body' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    expect(onNameChange).toHaveBeenCalledWith('Some Body');
+  });
+
+  it('cancels on Escape without saving or bubbling', () => {
+    const { input, onNameChange, parentKeyDown } = renderHeader();
+
+    fireEvent.change(input, { target: { value: 'Discarded' } });
+    fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+    expect(onNameChange).not.toHaveBeenCalled();
+    expect(parentKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('saves the trimmed name on blur', () => {
+    // Clicking away (blur) is the other commit path and shares the trim guard.
+    const { input, onNameChange } = renderHeader();
+
+    fireEvent.change(input, { target: { value: '  Trimmed Name  ' } });
+    fireEvent.blur(input);
+
+    expect(onNameChange).toHaveBeenCalledWith('Trimmed Name');
+  });
 });
