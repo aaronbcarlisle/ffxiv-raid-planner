@@ -451,14 +451,19 @@ export function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                 <GitPullRequest className="w-3 h-3" />
                 Pull Request
               </h4>
-              <a
-                href={`${GITHUB_REPO_URL}/pull/${item.pr}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
-              >
-                #{item.pr}
-              </a>
+              <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                <a
+                  href={`${GITHUB_REPO_URL}/pull/${item.pr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
+                >
+                  #{item.pr}
+                </a>
+                {item.prTitle && (
+                  <span className="min-w-0 text-text-secondary whitespace-normal break-words">{item.prTitle}</span>
+                )}
+              </div>
             </div>
           )}
 

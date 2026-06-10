@@ -183,6 +183,18 @@ jobs:
                     core.setFailed(`Release notes items missing a PR/commit reference: ${items.length} items but only ${commits.length} have a PR or commit reference. Items: ${itemTitles.join(', ')}`);
                     return;
                   }
+
+                  // Every item in the latest release must have a description so
+                  // the entry reads as more than a bare title on the page.
+                  const descPattern = /description:\s*['"]/g;
+                  const descriptions = [...itemsContent.matchAll(descPattern)];
+                  console.log(`Found ${items.length} items and ${descriptions.length} descriptions in latest release`);
+
+                  if (items.length > 0 && descriptions.length < items.length) {
+                    const itemTitles = items.map(m => m[2]);
+                    core.setFailed(`Release notes items missing a description: ${items.length} items but only ${descriptions.length} have a description. Every item needs a 'description'. Items: ${itemTitles.join(', ')}`);
+                    return;
+                  }
                 }
               }
             }

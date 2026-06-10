@@ -380,7 +380,12 @@ This hides the entry from users but satisfies CI. Do **NOT** bump `CURRENT_VERSI
 
 Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
 
-**Reference the change with `pr`, not `commits`.** Add `pr: <number>` to the item (links to `/pull/{n}` on the release-notes page). The PR number is known as soon as you open the PR, is stable, and survives squash-merge — unlike a commit SHA, which doesn't exist until merge. The old pattern of `commits: [{ hash: 'pending', ... }]` left dead `/commit/pending` links because the placeholder was never backfilled; the page now refuses to link a non-SHA hash, but new entries should just use `pr`. Only use `commits` when you have a **real** short SHA (e.g. backfilling a historical release via `scripts/identify-release-commits.js`).
+**Every item needs a `description`** (CI-enforced on the latest release). The title is a headline; the description is the sentence users actually read on the release-notes page.
+
+**Reference the change with `pr` + `prTitle`, not `commits`.** Add `pr: <number>` (links to `/pull/{n}` on the release-notes page) and `prTitle: '<the PR title>'` (shown next to the `#n` link, like a commit message). The PR number is known as soon as you open the PR, is stable, and survives squash-merge — unlike a commit SHA, which doesn't exist until merge. The old pattern of `commits: [{ hash: 'pending', ... }]` left dead `/commit/pending` links because the placeholder was never backfilled; the page now refuses to link a non-SHA hash. Use `commits` only when you have a **real** short SHA (historical entries) — and you may include both `pr` and `commits`, the page renders a "Pull Request" section and a "Related Commits" section independently. Example:
+```ts
+{ category: 'fix', title: 'Short headline', description: 'What changed and why it matters.', pr: 128, prTitle: 'fix(scope): the PR title' }
+```
 
 ### Fork PR Guard (GitHub Actions)
 

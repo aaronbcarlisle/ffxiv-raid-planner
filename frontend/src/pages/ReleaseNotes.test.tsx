@@ -111,4 +111,39 @@ describe('ReleaseItemRow pull-request link', () => {
 
     expect(screen.queryByRole('link')).toBeNull();
   });
+
+  it('shows the PR title next to the #pr link', () => {
+    renderExpanded({
+      category: 'fix',
+      title: 'PR with title',
+      pr: 125,
+      prTitle: 'fix(player): keep focus when typing a space',
+    });
+
+    expect(screen.getByRole('link', { name: '#125' })).toBeInTheDocument();
+    expect(screen.getByText('fix(player): keep focus when typing a space')).toBeInTheDocument();
+  });
+
+  it('renders both the PR link and Related Commits when both are present', () => {
+    renderExpanded({
+      category: 'fix',
+      title: 'PR and commits',
+      pr: 98,
+      prTitle: 'Mobile Polish and CI/CD fixes',
+      commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow' }],
+    });
+
+    // PR link + its title...
+    expect(screen.getByRole('link', { name: '#98' })).toHaveAttribute(
+      'href',
+      'https://github.com/aaronbcarlisle/ffxiv-raid-planner/pull/98'
+    );
+    expect(screen.getByText('Mobile Polish and CI/CD fixes')).toBeInTheDocument();
+    // ...and the commit link + message both still render.
+    expect(screen.getByRole('link', { name: 'dee3a1d' })).toHaveAttribute(
+      'href',
+      'https://github.com/aaronbcarlisle/ffxiv-raid-planner/commit/dee3a1d'
+    );
+    expect(screen.getByText('fix(mobile): prevent dropdown overflow')).toBeInTheDocument();
+  });
 });
