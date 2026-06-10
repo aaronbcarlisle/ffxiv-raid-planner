@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.5';
+export const CURRENT_VERSION = '1.22.6';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.22.6',
+    date: '2026-06-10T00:00:00Z',
+    title: 'Release notes show pull requests',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Release entries now link to their pull request, with a title',
+        description:
+          'Each release item now shows the pull request that introduced it — with the PR title next to the number — and keeps its commit links where available. Every past entry was backfilled, so the references are complete instead of showing a bare number.',
+        pr: 128,
+        prTitle: 'feat(release-notes): show PR titles + backfill PR links across all entries',
+      },
+    ],
+  },
   {
     version: '1.22.5',
     date: '2026-06-10T00:00:00Z',
