@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.18.0 | **Next:** Phase 7 (Lodestone sync), Phase 8 (FFLogs)
+**Status:** v1.22.2 | **Next:** Solo Player Profile / Player Hub (in progress on `feature/solo-player-profile`), FFLogs integration
 
 A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
 
@@ -91,15 +91,15 @@ pnpm dev                          # Frontend only
 pnpm build && pnpm tsc --noEmit   # Build + type check
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
-pnpm test                         # Frontend tests (~503)
+pnpm test                         # Frontend tests (Vitest)
 
 # Backend
 cd backend && source venv/bin/activate
 uvicorn app.main:app --reload --port 8001
-pytest tests/ -q                  # Backend tests (390)
+pytest tests/ -q                  # Backend tests (pytest)
 
 # Scripts
-cd scripts && npm test            # Scripts tests (95)
+cd scripts && npm test            # Scripts tests (Vitest)
 ```
 
 ---
@@ -111,6 +111,15 @@ cd scripts && npm test            # Scripts tests (95)
 - `stores/staticGroupStore.ts` - Static groups, membership
 - `stores/tierStore.ts` - Tier snapshots, players
 - `stores/lootTrackingStore.ts` - Loot log, page ledger, week tracking
+- `stores/scheduleStore.ts` - Schedule sessions, RSVPs
+- `stores/availabilityStore.ts` - Player availability grid
+- `stores/mountFarmStore.ts` - Mount farm progress tracking
+- `stores/lodestoneStore.ts` - Lodestone character sync
+- `stores/apiKeyStore.ts` - API keys (Dalamud plugin)
+- `stores/invitationStore.ts` - Invitations
+- `stores/joinRequestStore.ts` - Join requests (discoverable statics)
+- `stores/viewAsStore.ts` - Admin "View As" impersonation
+- `stores/toastStore.ts` - Toast notifications
 
 ### Utils
 - `utils/permissions.ts` - Role-based permission checks
@@ -130,7 +139,7 @@ cd scripts && npm test            # Scripts tests (95)
 - `hooks/useTheme.ts` - Dark/light theme state, localStorage, OS preference
 
 ### Pages
-- `pages/GroupView.tsx` - Main group view (~970 lines)
+- `pages/GroupView.tsx` - Main group view (~1455 lines)
 - `pages/AdminDashboard.tsx` - Admin-only static browser
 
 ### Key Components
@@ -156,9 +165,9 @@ See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for prioritized remaining 
 
 ```
 backend/app/
-├── models/        # User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer, ScheduleSession, Availability, analytics
+├── models/        # 17 model files (~23 model classes): User, StaticGroup, Membership, TierSnapshot, SnapshotPlayer, schedule (ScheduleSession/Rsvp/Settings/DiscordMessageMapping/ReminderDelivery), availability (x2), invitation, join_request, loot_log_entry, material_log_entry, page_ledger_entry, mount_farm_progress, weekly_assignment, api_key, plugin_auth_code, analytics (x3)
 ├── schemas/       # Pydantic request/response
-├── routers/       # auth, static_groups, tiers, loot_tracking, bis, invitations, api_keys, schedule, analytics, dev_auth
+├── routers/       # 14 modules: auth, static_groups, tiers, loot_tracking, bis, invitations, join_requests, discovery, schedule, lodestone, mount_farms, api_keys, analytics, dev_auth
 └── permissions.py # Role checks, admin helpers
 
 frontend/src/
@@ -168,6 +177,7 @@ frontend/src/
 │   ├── priority/     # Priority tab panels
 │   ├── history/      # WeeklyLootGrid, SectionedLogView, All Weeks view
 │   ├── schedule/     # ScheduleTab, AvailabilityGrid, CreateSessionModal, SessionCard
+│   ├── mount-farms/  # Mount farm progress tracker UI
 │   ├── settings/     # SettingsPanel (slide-out, replaces settings modal)
 │   ├── admin/        # AdminSidebar, AdminKpiCard, analytics dashboard pieces
 │   ├── wizard/       # SetupWizard, RosterSlot, step components
@@ -192,11 +202,19 @@ frontend/src/
 
 **Invitations:** `GET/POST .../invitations`, `DELETE .../invitations/{id}`, `GET/POST /api/invitations/{code}`
 
+**Join Requests / Discovery:** `GET /api/discovery/statics`, `POST /api/static-groups/{share_code}/join-requests`, `GET /api/static-groups/{group_id}/join-requests`, `POST .../join-requests/{id}/{accept|decline}`, `GET /api/me/join-requests`, `POST .../join-requests/{id}/cancel`
+
 **BiS Import:** `GET /api/bis/presets/{job}`, `GET /api/bis/xivgear/{uuid}`, `GET /api/bis/etro/{uuid}`
 
 **Loot:** `GET/POST/DELETE .../loot-log`, `GET/POST/DELETE .../material-log`, `GET/POST .../page-ledger`, `GET .../page-balances`, `POST .../mark-floor-cleared`
 
 **Schedule:** `GET/POST .../static-groups/{id}/schedule`, `PUT/DELETE .../schedule/{sessionId}`, `POST .../schedule/{sessionId}/rsvp`, `GET/PUT .../static-groups/{id}/availability`
+
+**Lodestone:** `GET /api/lodestone/search`, `GET /api/lodestone/status`, `GET /api/lodestone/character/{lodestone_id}`, `POST /api/lodestone/sync/{group_id}/{player_id}`, `POST /api/lodestone/identity/{group_id}/{player_id}`
+
+**Mount Farms:** `GET/PUT .../static-groups/{id}/mount-farms`, `POST .../mount-farms/progress/bulk`, `GET .../mount-farms/recommendations`, `GET /api/plugin/mount-farms/catalog`, `POST /api/plugin/mount-farms/sync`
+
+**API Keys (Dalamud plugin):** `GET/POST /api/auth/api-keys`, `DELETE /api/auth/api-keys/{key_id}`, `POST /api/auth/api-keys/plugin-auth/{authorize|exchange}` (PKCE browser sign-in)
 
 **Analytics:** `POST /api/analytics/events`, `POST /api/analytics/errors`, `GET /api/admin/analytics/{overview|growth|usage|top-users|top-statics|errors}` (admin-only)
 
@@ -360,7 +378,14 @@ This hides the entry from users but satisfies CI. Do **NOT** bump `CURRENT_VERSI
 
 **User-facing changes** get a normal visible release note entry.
 
-Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `commits` array.
+Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
+
+**Every item needs a `description`** (CI-enforced on the latest release). The title is a headline; the description is the sentence users actually read on the release-notes page.
+
+**Reference the change with `pr` + `prTitle`, not `commits`.** Add `pr: <number>` (links to `/pull/{n}` on the release-notes page) and `prTitle: '<the PR title>'` (shown next to the `#n` link, like a commit message). The PR number is known as soon as you open the PR, is stable, and survives squash-merge — unlike a commit SHA, which doesn't exist until merge. The old pattern of `commits: [{ hash: 'pending', ... }]` left dead `/commit/pending` links because the placeholder was never backfilled; the page now refuses to link a non-SHA hash. Use `commits` only when you have a **real** short SHA (historical entries) — and you may include both `pr` and `commits`, the page renders a "Pull Request" section and a "Related Commits" section independently. Example:
+```ts
+{ category: 'fix', title: 'Short headline', description: 'What changed and why it matters.', pr: 128, prTitle: 'fix(scope): the PR title' }
+```
 
 ### Fork PR Guard (GitHub Actions)
 

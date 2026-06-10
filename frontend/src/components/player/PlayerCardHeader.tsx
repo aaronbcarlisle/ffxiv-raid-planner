@@ -220,11 +220,16 @@ export function PlayerCardHeader({
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    // Stop ALL keystrokes from bubbling to the card's drag listeners while
+    // editing. The card spreads dnd-kit's keyboard sensor (onKeyDown) onto a
+    // wrapper around this input; that sensor can start a keyboard drag on
+    // Space (and Enter), which blurs the input mid-edit. Enter/Escape are
+    // already stopped below, but Space was not — so swallow every key here to
+    // keep it inside the text field.
+    e.stopPropagation();
     if (e.key === 'Enter') {
-      e.stopPropagation(); // Prevent triggering drag listeners
       handleNameSave();
     } else if (e.key === 'Escape') {
-      e.stopPropagation(); // Prevent triggering drag listeners
       handleNameCancel();
     }
   };

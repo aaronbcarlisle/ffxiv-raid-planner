@@ -150,7 +150,7 @@ import { Player } from '../types';
 import { useTierStore } from '../stores/tierStore';
 
 import { PlayerCardHeader } from './PlayerCardHeader';
-import styles from './PlayerCard.module.css';
+// Styling is Tailwind-only — this project has no CSS modules
 
 // Use named exports (avoid default exports except for pages)
 export function PlayerCard() { }  // Good
@@ -338,12 +338,14 @@ function MyComponent() {
   );
 }
 
-// All modals must have header icons (v1.0.8+)
-<Modal
+// ConfirmModal supports a header icon (and auto-adds one by variant).
+// The base Modal does not take an `icon` prop — embed any icon in `title`.
+<ConfirmModal
   isOpen={isOpen}
   onClose={close}
   title="Delete Player"
-  icon={<Trash2 className="w-5 h-5 text-red-500" />}
+  variant="danger"
+  icon={<Trash2 className="w-5 h-5 text-status-error" />}
 >
 ```
 

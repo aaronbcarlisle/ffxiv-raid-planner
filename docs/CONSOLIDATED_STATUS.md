@@ -1,18 +1,24 @@
 # FFXIV Raid Planner - Consolidated Status & Planning
 
-**Last Updated:** May 27, 2026
+**Last Updated:** June 8, 2026
 **Purpose:** Single source of truth for what's done, what's outstanding, and what's planned
 
 ---
 
 ## Project Status Overview
 
-### Current Version: v1.18.0
+### Current Version: v1.22.2
 
 **Branch:** `main`
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| **Discord Schedule Links** | ✅ Complete | v1.22.2 - Production planner deep links in announcements/reminders, webhook mention targeting (no ping / @here / role) |
+| **Mount Farm Tracker** | ✅ Complete | v1.22.0-v1.22.1 - "Mount Farms" tab, totem counting, farm recommendations, plugin mount/totem sync, schedule event categories |
+| **Find a Static (Discovery)** | ✅ Complete | v1.21.0 - `/discover` recruitment board, listing setup with preview, request-to-join + lead applicant inbox |
+| **Plugin Browser Sign-In** | ✅ Complete | v1.20.0 - One-click Dalamud plugin auth via loopback PKCE; manual key entry remains under Advanced |
+| **Tomestone / Lodestone Sync** | ✅ Complete | v1.19.0-v1.20.1 - Equipped gear vs BiS comparison, Lodestone avatar, gear-sync safety gates, force refresh |
+| **Recurring Availability & Schedule Polish** | ✅ Complete | v1.19.1-v1.21.2 - Typical-week templates, time-range presets, sticky headers, Discord webhook session lifecycle |
 | **Raid Schedule & Availability** | ✅ Complete | PR #83 - Schedule tab, RSVPs, When2Meet availability grid, dev auth gating |
 | **Loot Log Restructure** | ✅ Complete | PR #81 - Loot→Priority tab rename, All Weeks view, multi-entry badges |
 | **Analytics & Error Reporting** | ✅ Complete | PR #76 - admin analytics dashboard, automatic error log, usage tracking, Discord alerts |
@@ -27,8 +33,10 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Phase 7: Lodestone Auto-Sync** | Planned | Verify equipped gear against Lodestone, character linking |
+| **Solo Player Profile / Player Hub** | 🔨 In progress | Personal profile + public profile page (branch `feature/solo-player-profile`, not yet merged to main) |
+| **Full Tomestone API Auto-Refresh** | 🔨 In progress | Automatic upstream refresh without manual Tomestone page visit (v1.20.1 ships manual link fallback) |
 | **Phase 8: FFLogs Integration** | Planned | Parse logs for gear verification, link FFLogs profiles |
+| **Discord Bot** | Planned | Slash commands, loot notifications, priority queries in chat |
 | **P3 / Tech Debt** | Backlog | L-001–L-009 polish items, lint warning cleanup (see OUTSTANDING_WORK.md) |
 
 ### ✅ Completed Features (Production Ready)
@@ -63,10 +71,58 @@
 | **User Documentation Restructure** | 6.7 | ✅ Complete | Phases 1-6 complete - unified guides, simplified landing, FAQ |
 | **API Key Authentication** | 6.8 | ✅ Complete | xrp_ prefixed keys, SHA-256 hashed, per-user key management |
 | **Server-Side Priority** | 6.8 | ✅ Complete | Priority calculator ported to backend; API endpoint for Dalamud plugin |
+| **Raid Schedule & Availability** | 7 | ✅ Complete | Schedule tab, RSVPs, When2Meet availability grid, Discord webhook session lifecycle |
+| **Tomestone / Lodestone Sync** | 7 | ✅ Complete | Equipped gear vs BiS comparison, Lodestone avatar, gear-sync safety gates (`lodestone.py` router, `lodestoneStore`) |
+| **Plugin Browser Sign-In** | 7 | ✅ Complete | Loopback PKCE auth for Dalamud plugin (`plugin_auth_code` model, `PluginAuth` page) |
+| **Find a Static (Discovery)** | 8 | ✅ Complete | `/discover` recruitment board, listings, join requests (`discovery.py` + `join_requests.py` routers, `join_request` model) |
+| **Mount Farm Tracker** | 8 | ✅ Complete | Mount Farms tab, totem counting, recommendations, plugin sync (`mount_farms.py` router, `mount_farm_progress` model) |
 
 ---
 
 ## Version History
+
+### v1.22.x - Mount Farm Tracker & Discord Schedule Links (June 4-7, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Mount Farm Tracker** | ✅ Complete | v1.22.0 - "Mount Farms" tab tracks mount ownership, totem counts, and who wants which mount (ARR → Dawntrail) |
+| **Plugin Mount/Totem Sync** | ✅ Complete | v1.22.0 - Dalamud plugin reads unlocked mounts + inventory totems and pushes to the tracker; manual corrections respected |
+| **Farm Recommendations** | ✅ Complete | v1.22.0 - Recommendation banner suggests best mount to farm next; "can buy" badges for ready members |
+| **Schedule Event Categories** | ✅ Complete | v1.22.0 - Raid/Farm/Reclear/Prog/Social categories, color-coded session badges, "Schedule Farm" pre-fill |
+| **Session Tile View & Share** | ✅ Complete | v1.22.0 - Grid layout for sessions, per-session share button (formatted summary / Web Share API) |
+| **Mount Farms Reliability Patch** | ✅ Complete | v1.22.1 - Clearer error handling, route-registration coverage, curated Dawntrail farm catalog guardrails |
+| **Discord Schedule Links** | ✅ Complete | v1.22.2 - Announcements/reminders link to deployed planner with session deep links; webhook mention targeting (no ping / @here / role) |
+
+### v1.21.x - Find a Static & Availability Redesign (June 1-4, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Find a Static — Recruitment Board** | ✅ Complete | v1.21.0 - `/discover` page to search/browse recruiting statics; filter by role/job/DC/server/intensity/timezone/language; URL-synced filters |
+| **Listing Setup with Live Preview** | ✅ Complete | v1.21.0 - Listing tab in static settings, status banner, preview card, "Suggest from static" auto-fill |
+| **Request to Join + Applicant Inbox** | ✅ Complete | v1.21.0 - Players send join requests from discovery; leads review in Requests tab; privacy-safe handle auto-deleted after resolution |
+| **Design System Lint Cleanup** | ✅ Complete | v1.21.1 - eslint-disable comments for 56 intentional raw `<button>` files; zero lint warnings (internal) |
+| **Availability Timetable Redesign** | ✅ Complete | v1.21.2 - Time-range presets (Prime/Evening/Full Day), sticky headers, time-of-day dividers, hidden-slots indicator |
+
+### v1.20.x - Plugin Browser Sign-In & Gear Sync Safety (June 3, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Plugin Browser Sign-In** | ✅ Complete | v1.20.0 - One-click Dalamud plugin auth via loopback OAuth + PKCE; no more xrp_ copy/paste; manual entry under Advanced |
+| **Safer Automatic Gear Sync** | ✅ Complete | v1.20.1 - Conservative safety gates (job mismatch, lower iLv, incomplete payload, identity mismatch) protect curated/Ultimate BiS |
+| **Manual Sync Overwrite Confirmation** | ✅ Complete | v1.20.1 - Warning + confirmation before risky overwrites; safe syncs proceed uninterrupted |
+| **Force Refresh & Tomestone Link** | ✅ Complete | v1.20.1 - Force Refresh bypasses preview cache; links to character's Tomestone page when upstream gate detected (full API auto-refresh in progress) |
+
+### v1.19.x - Tomestone Sync, BiS Comparison & Recurring Availability (May 29-31, 2026)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Tomestone Sync — Equipped Gear** | ✅ Complete | v1.19.0 - Each gear slot tooltip shows BiS target and currently-equipped item from the Tomestone API |
+| **BiS Comparison Badges** | ✅ Complete | v1.19.0 - Four tooltip states (BiS matched / Upgrade needed / Not detected / No BiS target) with inline iLv diff |
+| **Lodestone Avatar on Player Cards** | ✅ Complete | v1.19.0 - Character Lodestone avatar shown after a successful sync |
+| **Discord Webhook Session Lifecycle** | ✅ Complete | v1.19.0 - Create/update/delete + RSVP changes fire Discord announcements; "Post latest session" button |
+| **Availability Grid Full 24-Hour Fix** | ✅ Complete | v1.19.1 - Grid no longer capped at 12 PM; shows full 24-hour range |
+| **Typical Week Availability** | ✅ Complete | v1.19.2 - Standing weekly templates + best recurring raid-window recommendations |
+| **Mobile UI Polish & CI Reliability** | ✅ Complete | v1.19.3 - Dropdown overflow clamps, sticky modal footers, fork-PR workflow guards |
 
 ### v1.18.0 - Raid Schedule & Availability (May 27, 2026)
 
@@ -401,13 +457,17 @@
 
 ## Test Coverage
 
-**Total: ~988 tests (390 backend + ~503 frontend + 95 scripts)**
+**Total: ~1450+ tests (~730 backend + ~590 frontend + ~140 scripts)** — counts drift each release; run the suites for exact numbers.
 
-### Backend (390 tests, 25 files)
+### Backend (~730 tests, 40 files)
 ```bash
 cd backend && source venv/bin/activate && pytest tests/ -q
 ```
 - `test_schedule.py` - Raid session scheduling and availability
+- `test_discovery.py` - Static Finder recruitment listings
+- `test_join_requests.py` - Join request inbox and privacy-safe handling
+- `test_lodestone.py` - Lodestone/Tomestone gear sync
+- `test_mount_farms.py` - Mount farm tracker and plugin sync
 - `test_dev_auth.py` - Development auth gating
 - `test_api_keys.py` - API key creation, listing, revocation, auth
 - `test_admin_system.py` - Admin access and View As feature
@@ -429,7 +489,7 @@ cd backend && source venv/bin/activate && pytest tests/ -q
 - `test_tier_deactivation.py` - Tier activation logic
 - `test_week_management.py` / `test_weekly_assignments.py` - Weekly loot workflows
 
-### Frontend (~503 tests, 22 files)
+### Frontend (~590 tests, 23 files)
 ```bash
 cd frontend && pnpm test
 ```
@@ -451,7 +511,7 @@ cd frontend && pnpm test
 - `ItemHoverCard.test.tsx` - Item hover card rendering
 - `UserMenuThemeToggle.test.tsx` - Theme toggle in user menu
 
-### Scripts (95 tests)
+### Scripts (~140 tests)
 ```bash
 cd scripts && npm test
 ```
@@ -464,14 +524,19 @@ cd scripts && npm test
 See `docs/OUTSTANDING_WORK.md` for the prioritized remaining work list.
 
 ### Immediate Options
-- **UI Reorganization** - Header breadcrumbs, settings panel (see `docs/UI_REORGANIZATION_PLAN.md`)
+- **Solo Player Profile / Player Hub** - Personal + public profile pages (branch `feature/solo-player-profile`, not yet merged)
+- **Full Tomestone API auto-refresh** - Replace manual Tomestone-page link fallback (v1.20.1)
 - **P3 Items** - L-001 through L-009: Various low-priority improvements
 - **Tech Debt** - TD-001, TD-002: Lint warnings cleanup
 
+### Shipped Since (formerly "Future Phases")
+- **Lodestone / Tomestone auto-sync** - ✅ Shipped v1.19.0-v1.20.1
+- **Find a Static (Discovery) + join requests** - ✅ Shipped v1.21.0
+- **Mount Farm Tracker** - ✅ Shipped v1.22.0
+
 ### Future Phases
-- **Phase 7:** Lodestone auto-sync
-- **Phase 8:** FFLogs integration
-- **Phase 10:** Discord bot
+- **FFLogs integration** - Parse logs for gear verification, link FFLogs profiles
+- **Discord bot** - Slash commands, loot notifications, priority queries
 
 ---
 

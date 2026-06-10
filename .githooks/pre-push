@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# Pre-push migration guard. Runs the two fast, no-database migration checks
+# before anything reaches the remote, catching the two classes of bug that have
+# crashed Railway deploys:
+#   * check_migration_heads.py   - multiple heads / dangling parents
+#   * check_migration_dialect.py - integer defaults on boolean columns
+#
+# Full execution against PostgreSQL still happens in CI (the
+# "Migration Execution (PostgreSQL)" job); this is the local first line of
+# defence so a bad migration is caught before push, even without Docker/Postgres.
+#
+# Install once per clone:
+#   git config core.hooksPath .githooks
+#
+set -euo pipefail
+
+# Only the migration checks run here, and they are pure stdlib - any Python 3
+# on PATH works (no venv or dependencies required).
+PY=""
+for cand in python python3 py; do
+  if command -v "$cand" >/dev/null 2>&1; then PY="$cand"; break; fi
+done
+if [ -z "$PY" ]; then
+  echo "pre-push: no Python interpreter on PATH; skipping LOCAL migration checks." >&2
+  echo "pre-push: the authoritative check still runs in CI (Migration Execution job)." >&2
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+echo "pre-push: validating Alembic migrations..."
+"$PY" "$repo_root/backend/scripts/check_migration_heads.py"
+"$PY" "$repo_root/backend/scripts/check_migration_dialect.py"
+echo "pre-push: migration checks passed."

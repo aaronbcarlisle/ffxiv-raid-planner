@@ -93,3 +93,106 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  migration-exec:
+    name: Migration Execution (PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # The `migrations` job above statically validates the migration *graph*
+    # (single head, no dangling parents). This job validates migration
+    # *execution*: production runs PostgreSQL, but dev/tests run SQLite and the
+    # app builds its dev schema via Base.metadata.create_all - so migration
+    # files are only ever executed against Postgres on deploy. That hides a
+    # whole class of dialect bugs (e.g. `BOOLEAN DEFAULT 0`, which SQLite
+    # accepts and Postgres rejects). Running the real chain against Postgres
+    # here surfaces them at PR time instead of in a failed Railway deploy.
+    services:
+      postgres:
+        # Pinned to match the Railway production Postgres major version (17),
+        # so version-specific dialect behavior is exercised the same way.
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: raidplanner
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      # The load-bearing guard: run the full migration chain against a real
+      # PostgreSQL engine, exactly as production does on deploy.
+      - name: Run migrations against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/raidplanner
+        run: alembic upgrade head
+
+      # Migrations must be reversible. Walk the whole chain back down to base
+      # then re-apply, so a broken downgrade() is caught here rather than when
+      # someone needs to roll back a production deploy.
+      - name: Verify migration downgrade/upgrade round-trip
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/raidplanner
+        run: |
+          alembic downgrade base
+          alembic upgrade head
+
+      # Backend pytest runs in the separate `backend-tests` job below (it uses
+      # in-memory SQLite and needs no Postgres service, so it stays independent
+      # of this migration-execution guard).
+
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # Runs the backend pytest suite. Tests use in-memory SQLite (see
+    # tests/conftest.py) and run with no .env, so the app loads from defaults
+    # exactly as a clean CI checkout would - tests must not depend on a
+    # developer's local Discord/JWT config.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run backend tests
+        run: pytest tests/ -q

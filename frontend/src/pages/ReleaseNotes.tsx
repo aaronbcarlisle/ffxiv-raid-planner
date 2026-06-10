@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   GitCommit,
+  GitPullRequest,
   Link2,
 } from 'lucide-react';
 import { toast } from '../stores/toastStore';
@@ -31,8 +32,18 @@ import {
   type ReleaseCategory,
   type ReleaseItem,
 } from '../data/releaseNotes';
+import { GITHUB_REPO_URL } from '../config';
 
 const STORAGE_KEY = 'last-seen-version';
+
+/**
+ * A real Git short/full commit SHA (7-40 hex chars). Release-note entries are
+ * authored in the same PR as the change they describe, so the final squash SHA
+ * isn't known yet and entries go in with a placeholder hash ('pending'). Those
+ * must NOT be rendered as commit links — `/commit/pending` 404s. Only hashes
+ * matching this pattern get linked; everything else shows the message alone.
+ */
+const COMMIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
 
 /** Pixels from viewport top to consider a section "active" during scroll */
 const SCROLL_THRESHOLD_PX = 120;
@@ -368,9 +379,11 @@ function CategoryBadge({ category }: { category: ReleaseCategory }) {
   );
 }
 
-function ReleaseItemRow({ item }: { item: ReleaseItem }) {
+export function ReleaseItemRow({ item }: { item: ReleaseItem }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasExpandableContent = item.details || (item.commits && item.commits.length > 0) || item.image || item.link;
+  const hasPr = typeof item.pr === 'number' && item.pr > 0;
+  const hasExpandableContent =
+    item.details || hasPr || (item.commits && item.commits.length > 0) || item.image || item.link;
 
   return (
     <li className="group">
@@ -432,6 +445,28 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
             </div>
           )}
 
+          {hasPr && (
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <GitPullRequest className="w-3 h-3" />
+                Pull Request
+              </h4>
+              <div className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                <a
+                  href={`${GITHUB_REPO_URL}/pull/${item.pr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
+                >
+                  #{item.pr}
+                </a>
+                {item.prTitle && (
+                  <span className="min-w-0 text-text-secondary whitespace-normal break-words">{item.prTitle}</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {item.commits && item.commits.length > 0 && (
             <div>
               <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -439,19 +474,21 @@ function ReleaseItemRow({ item }: { item: ReleaseItem }) {
                 Related Commits
               </h4>
               <ul className="space-y-1.5">
-                {item.commits.map((commit) => (
+                {item.commits.map((commit, idx) => (
                   <li
-                    key={commit.hash}
+                    key={`${commit.hash}-${idx}`}
                     className="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm"
                   >
-                    <a
-                      href={`https://github.com/aaronbcarlisle/ffxiv-raid-planner/commit/${commit.hash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
-                    >
-                      {commit.hash}
-                    </a>
+                    {COMMIT_SHA_RE.test(commit.hash) && (
+                      <a
+                        href={`${GITHUB_REPO_URL}/commit/${commit.hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-fit max-w-full px-1.5 py-0.5 bg-surface-card rounded text-xs font-mono text-accent hover:underline break-all"
+                      >
+                        {commit.hash}
+                      </a>
+                    )}
                     <span className="min-w-0 text-text-secondary whitespace-normal break-words">{commit.message}</span>
                   </li>
                 ))}

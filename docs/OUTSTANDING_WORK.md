@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** June 4, 2026
-**Current Version:** v1.22.0
+**Last Updated:** June 8, 2026
+**Current Version:** v1.22.2
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -11,6 +11,10 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-06-07:** v1.22.1 – v1.22.2 — Mount Farms reliability patch (clearer errors, curated farm catalog guardrails) and Discord schedule links (production planner links, schedule reminder mention controls)
+- **2026-06-04:** v1.21.2 — Availability timetable redesign (time-range presets, sticky headers, section dividers)
+- **2026-06-03:** v1.20.0 – v1.21.1 — Plugin browser sign-in (one-click PKCE loopback auth via `plugin_auth_code` model + `PluginAuth.tsx` page; no manual API key copy/paste), Gear Sync Safety & Tomestone Refresh, Find a Static recruitment board (`discovery.py` + `join_requests.py` routers, `join_request` model, `/discover` page, `DiscoveryTab`, `JoinRequestsPanel`/`JoinRequestModal`/`JoinRequestBanner`), and a design-system lint cleanup
+- **2026-05-29 – 2026-05-31:** v1.19.0 – v1.19.3 — Tomestone/Lodestone Sync & BiS Comparison (equipped gear shown alongside BiS via `lodestone.py` router, `LodestoneSearchModal`, `lodestoneStore`; Lodestone avatar on player cards), Typical Week availability templates, Availability Grid fix, mobile UI polish
 - **2026-06-04:** v1.22.0 — Mount Farm Tracker:
   - Mount farm tracking tab in GroupView with expansion selector, progress bars, ready-to-buy badges
   - Manual + automated progress: `has_mount`, `wants_mount`, `totem_count` per member per trial
@@ -127,10 +131,11 @@
 - **Note:** API Cookbook already exists at `/docs/api/cookbook`. Docs index already restructured.
 - **Effort:** 2 hours
 
-### L-005: No Database Migration Testing
+### L-005: Database Migration Testing (Partially Addressed)
 - **File:** `backend/alembic/versions/*.py`
-- **Issue:** No test suite to verify upgrade/downgrade paths work cleanly
-- **Fix:** Create test_migrations.py with upgrade/downgrade tests
+- **Done:** CI now runs the full migration chain against PostgreSQL (PR #116); `backend/scripts/check_migration_dialect.py` + `check_migration_heads.py` guard dialect/multiple-heads issues, with `backend/tests/test_migration_dialect_check.py` covering the guard.
+- **Remaining:** No test suite exercises explicit upgrade/**downgrade** round-trips per revision.
+- **Fix:** Add per-revision upgrade/downgrade tests.
 - **Effort:** 2 hours
 
 ### L-006: Missing OpenAPI Documentation Examples
@@ -152,7 +157,7 @@
 - **Effort:** 30 minutes
 
 ### L-009: Etro Relic Weapon Import
-- **File:** `backend/app/routers/bis.py:405-427`
+- **File:** `backend/app/routers/bis.py` (Etro import path; no `relics` handling currently exists in the file)
 - **Issue:** Etro stores relic weapons in a separate `relics` object, not the main `weapon` field
 - **Impact:** Ultimate BiS sets with relic weapons import without weapon data
 - **Fix:** Check `data.get("relics", {}).get("weapon")` UUID and resolve to item ID
@@ -197,10 +202,8 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 
 ## Future Phases (Not Started)
 
-### Phase 7: Lodestone Auto-Sync
-- Verify equipped gear against Lodestone API
-- Character search and linking
-- Scheduled sync with diff detection
+### Phase 7: Lodestone Auto-Sync — ✅ SHIPPED (v1.19.0)
+Shipped via the `lodestone.py` router, `LodestoneSearchModal`, and `lodestoneStore`. Equipped gear is verified against the Lodestone/Tomestone API and shown alongside BiS on gear tooltips; character search and linking work from player cards. Remaining nice-to-haves (scheduled background sync with diff detection) can be folded into a future enhancement.
 
 ### Phase 8: FFLogs Integration
 - Parse logs for gear verification
@@ -385,4 +388,4 @@ engine = create_async_engine(
 
 **Document Consolidation:**
 This file consolidates findings from 43 session handoffs, 10 audits, 9 plans, and 6 implementation docs.
-Last validated against the actual codebase on May 27, 2026.
+Last validated against the actual codebase on June 8, 2026.

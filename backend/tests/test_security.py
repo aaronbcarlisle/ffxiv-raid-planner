@@ -204,15 +204,19 @@ class TestOAuthSSRFProtection:
     async def test_token_exchange_rejects_redirect(self, client):
         """Discord token exchange should reject redirects."""
         with (
-            patch("app.routers.auth.get_settings") as mock_settings,
+            patch("app.routers.auth.settings") as mock_settings,
             patch("app.routers.auth.oauth_state_cache") as mock_cache,
             patch("app.routers.auth._get_client_fingerprint") as mock_fingerprint,
             patch("httpx.AsyncClient") as mock_client_class,
         ):
-            # Configure settings
-            mock_settings.return_value.discord_client_id = "test-client-id"
-            mock_settings.return_value.discord_client_secret = "test-secret"
-            mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
+            # Configure settings. The handler reads the module-level `settings`
+            # singleton (auth.py), so patch that - not get_settings - otherwise
+            # the discord_configured guard returns 503 (when Discord env vars are
+            # absent, e.g. in CI) before the redirect check we're testing.
+            mock_settings.discord_configured = True
+            mock_settings.discord_client_id = "test-client-id"
+            mock_settings.discord_client_secret = "test-secret"
+            mock_settings.discord_redirect_uri = "http://localhost/callback"
 
             # Mock fingerprint to return a known value
             mock_fingerprint.return_value = "test-fingerprint-hash"
@@ -249,15 +253,19 @@ class TestOAuthSSRFProtection:
     async def test_user_info_rejects_redirect(self, client):
         """Discord user info endpoint should reject redirects."""
         with (
-            patch("app.routers.auth.get_settings") as mock_settings,
+            patch("app.routers.auth.settings") as mock_settings,
             patch("app.routers.auth.oauth_state_cache") as mock_cache,
             patch("app.routers.auth._get_client_fingerprint") as mock_fingerprint,
             patch("httpx.AsyncClient") as mock_client_class,
         ):
-            # Configure settings
-            mock_settings.return_value.discord_client_id = "test-client-id"
-            mock_settings.return_value.discord_client_secret = "test-secret"
-            mock_settings.return_value.discord_redirect_uri = "http://localhost/callback"
+            # Configure settings. The handler reads the module-level `settings`
+            # singleton (auth.py), so patch that - not get_settings - otherwise
+            # the discord_configured guard returns 503 (when Discord env vars are
+            # absent, e.g. in CI) before the redirect check we're testing.
+            mock_settings.discord_configured = True
+            mock_settings.discord_client_id = "test-client-id"
+            mock_settings.discord_client_secret = "test-secret"
+            mock_settings.discord_redirect_uri = "http://localhost/callback"
 
             # Mock fingerprint to return a known value
             mock_fingerprint.return_value = "test-fingerprint-hash"

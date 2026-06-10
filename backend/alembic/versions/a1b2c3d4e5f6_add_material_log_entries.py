@@ -66,9 +66,11 @@ def downgrade() -> None:
     inspector = sa.inspect(bind)
 
     if "material_log_entries" in inspector.get_table_names():
-        op.drop_index("ix_material_log_entries_tier_week", table_name="material_log_entries")
-        op.drop_index("ix_material_log_entries_week_number", table_name="material_log_entries")
-        op.drop_index("ix_material_log_entries_tier_snapshot_id", table_name="material_log_entries")
+        # Indexes are dropped automatically when the table is dropped (both
+        # Postgres and SQLite). Dropping them explicitly here is redundant and
+        # fragile: a later migration (e5f6g7h8i9j0) also manages
+        # ix_material_log_entries_tier_week, so an unconditional drop_index here
+        # fails on a full downgrade once that migration has already removed it.
         op.drop_table("material_log_entries")
 
     # Drop the enum type (PostgreSQL only)

@@ -44,7 +44,20 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 ### Collaboration
 - **Role-Based Access** - Owner/Lead/Member/Viewer permissions
 - **Invitation System** - Invite links with configurable roles and expiration
+- **Join Requests** - Request to join discoverable statics
+- **Static Discovery** - Browse and find public statics
 - **Player Ownership** - Link your Discord to your player card
+
+### Scheduling
+- Session scheduling with availability grid
+- RSVP tracking per session
+- Optional Discord webhook announcements
+
+### Integrations & Sync
+- **Lodestone Sync** - Pull character gear from the Lodestone (via Tomestone.gg)
+- **Mount Farm Tracker** - Track legacy mount farm progress and attendance
+- **API Keys + Dalamud Plugin** - Browser-based sign-in for the in-game companion plugin
+- **Analytics & Admin Dashboard** - Usage analytics and admin tools (admin-only)
 
 ## Tech Stack
 
@@ -132,8 +145,7 @@ _See [CLAUDE.md](./CLAUDE.md) for detailed project structure and key files._
 - **[docs/GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing mechanics reference
 
 **Archived Documentation:**
-- [docs/archive/2025-12-planning/](./docs/archive/2025-12-planning/) - Historical planning documents
-- [docs/archive/2025-12-audits/](./docs/archive/2025-12-audits/) - Historical audit reports
+- [docs/archive/](./docs/archive/) - Historical planning documents, audit reports, and session handoffs
 
 ## Current Raid Tier
 
@@ -159,5 +171,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - [XIVAPI](https://xivapi.com/) - Character data and icons
-- [Etro.gg](https://etro.gg/) - BiS gearset planning
+- [Tomestone.gg](https://tomestone.gg/) - Lodestone character data syncing ([API docs](https://tomestone.gg/api/documentation))
+- [Etro.gg](https://etro.gg/) - BiS gearset planning and import
+- [XivGear](https://xivgear.app/) - BiS gearset planning and import
 - [The Balance](https://www.thebalanceffxiv.com/) - Community BiS guides
