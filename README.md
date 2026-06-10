@@ -173,4 +173,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [XIVAPI](https://xivapi.com/) - Character data and icons
 - [Tomestone.gg](https://tomestone.gg/) - Lodestone character data syncing ([API docs](https://tomestone.gg/api/documentation))
 - [Etro.gg](https://etro.gg/) - BiS gearset planning
+- [XivGear](https://xivgear.app/) - BiS gearset planning and import
 - [The Balance](https://www.thebalanceffxiv.com/) - Community BiS guides
