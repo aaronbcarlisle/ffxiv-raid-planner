@@ -1,0 +1,20 @@
+# Normalize line endings: store text files with LF in the repo and check them
+# out with LF on every platform. Fixes the mixed CRLF/LF state where a handful
+# of files (e.g. some .tsx/.ts/.py) were committed with CRLF and produced noisy
+# `git diff --check` trailing-whitespace warnings and whole-file EOL diffs.
+* text=auto eol=lf
+
+# Binary types: never touch EOL (git auto-detects these too, but be explicit).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
