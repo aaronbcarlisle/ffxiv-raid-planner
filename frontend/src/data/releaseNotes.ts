@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.4';
+export const CURRENT_VERSION = '1.22.5';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -48,6 +48,19 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.22.5',
+    date: '2026-06-10T00:00:00Z',
+    title: 'Release notes commit links',
+    items: [
+      {
+        category: 'fix',
+        title: 'Fixed broken "pending" commit links on this page',
+        description:
+          'Some release entries showed a "pending" commit link that led to a 404 — a placeholder used while a change is still in review. Those now render as plain text until a real commit is available, so there are no more dead links.',
+      },
+    ],
+  },
   {
     version: '1.22.4',
     date: '2026-06-10T00:00:00Z',
