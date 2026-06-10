@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.22.4';
+export const CURRENT_VERSION = '1.22.5';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -24,7 +24,15 @@ export interface ReleaseItem {
   title: string;
   description?: string;
   details?: string; // Extended description shown when expanded
-  commits?: CommitInfo[]; // Related commits
+  /**
+   * Preferred way to reference the change: the GitHub PR number. Unlike a
+   * commit SHA, the PR number is known the moment the PR is opened, is stable,
+   * and survives squash-merge — so it never needs the post-merge backfill that
+   * left `commits` entries stuck on a placeholder 'pending' hash. The page
+   * links it to `/pull/{pr}`. Prefer this over `commits` for new entries.
+   */
+  pr?: number;
+  commits?: CommitInfo[]; // Related commits (real short SHAs only; prefer `pr`)
   image?: string; // Path to image/gif shown when expanded
   link?: { href: string; label: string }; // Link to related page
 }
@@ -49,6 +57,20 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.22.5',
+    date: '2026-06-10T00:00:00Z',
+    title: 'Release notes commit links',
+    items: [
+      {
+        category: 'fix',
+        title: 'Fixed broken "pending" commit links on this page',
+        description:
+          'Some release entries showed a "pending" commit link that led to a 404 — a placeholder used while a change is still in review. Those now link to the pull request that introduced the change, and the page no longer shows dead links for entries that are still mid-review.',
+        pr: 127,
+      },
+    ],
+  },
+  {
     version: '1.22.4',
     date: '2026-06-10T00:00:00Z',
     title: 'Player name editing fix',
@@ -58,7 +80,7 @@ export const RELEASES: Release[] = [
         title: 'Typing a space no longer drops you out of name editing',
         description:
           'When renaming a player, pressing the space bar used to deselect the field and stop the edit, making it impossible to enter names with spaces. Spaces (and every other key) now stay in the name box until you press Enter or click away.',
-        commits: [{ hash: 'pending', message: 'fix(player): keep focus when typing a space while editing a name', date: '2026-06-10T00:00:00Z' }],
+        pr: 125,
       },
     ],
   },
@@ -72,7 +94,7 @@ export const RELEASES: Release[] = [
         title: 'Documentation refresh',
         description:
           'Audited the in-app guides (Quick Start, How-To, Gear Math, Privacy, Roadmap, API) and the developer docs against the current code. Reconciled the roadmap and status to reflect shipped features (scheduling, Lodestone sync, mount farms, plugin sign-in, static discovery), and corrected stale labels, the share-code length, priority-formula details, and gearing material costs.',
-        commits: [{ hash: 'pending', message: 'docs: comprehensive documentation audit and accuracy pass', date: '2026-06-08T00:00:00Z' }],
+        pr: 123,
       },
     ],
     internal: true,
@@ -88,14 +110,14 @@ export const RELEASES: Release[] = [
         title: 'Discord planner links',
         description:
           'Schedule announcements and reminders now link to the deployed planner instead of localhost, with session deep links so raid members land directly on the relevant Schedule entry.',
-        commits: [{ hash: 'pending', message: 'fix: harden Discord schedule links and mentions', date: '2026-06-07T00:00:00Z' }],
+        pr: 119,
       },
       {
         category: 'improvement',
         title: 'Webhook mention targeting',
         description:
           'Schedule webhook settings now support no ping, @here, or a specific Discord role, with safer mention restrictions so reminders only notify the intended target.',
-        commits: [{ hash: 'pending', message: 'fix: harden Discord schedule links and mentions', date: '2026-06-07T00:00:00Z' }],
+        pr: 119,
       },
     ],
   },
@@ -110,21 +132,21 @@ export const RELEASES: Release[] = [
         title: 'Mount Farms loading reliability',
         description:
           'Improved Mount Farms error handling so deployment route mismatches no longer appear as a bare "Not Found" message. The tab now shows clearer guidance, includes a retry action, and logs safer diagnostics in development.',
-        commits: [{ hash: 'pending', message: 'fix: harden mount farms production route diagnostics', date: '2026-06-06T00:00:00Z' }],
+        pr: 115,
       },
       {
         category: 'fix',
         title: 'Mount Farms route guardrails',
         description:
           'Added backend route-registration coverage for Mount Farms static-group and plugin endpoints, plus frontend store tests for the exact static-group Mount Farms endpoint. This helps catch missing backend route artifacts before release.',
-        commits: [{ hash: 'pending', message: 'test: cover mount farms route registration', date: '2026-06-06T00:00:00Z' }],
+        pr: 115,
       },
       {
         category: 'fix',
         title: 'Curated farm catalog guardrails',
         description:
           'Cleaned up invalid Dawntrail farm entries, added validation so bogus duties cannot reappear, and preserved the new rare reward / Ultimate weapon farm foundation without exposing unverified token data.',
-        commits: [{ hash: 'pending', message: 'fix: curate farm catalog and support rare reward farms', date: '2026-06-06T00:00:00Z' }],
+        pr: 118,
       },
     ],
   },
@@ -139,49 +161,49 @@ export const RELEASES: Release[] = [
         title: 'Mount Farm Tracker',
         description:
           'New "Mount Farms" tab in the static view. Track which Extreme trial mounts each member has, who wants which mount, and how many totems everyone has collected. Covers all expansions from ARR through Dawntrail.',
-        commits: [{ hash: 'pending', message: 'feat: mount farm tracker MVP', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'feature',
         title: 'Plugin automation',
         description:
           'Mount ownership and totem counts can be automatically synced from the Dalamud plugin. The plugin reads your unlocked mounts and inventory totem counts, then pushes them to the tracker. Manual corrections always remain available and are respected.',
-        commits: [{ hash: 'pending', message: 'feat: plugin mount farm sync endpoint and source tracking', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'feature',
         title: 'Farm recommendations',
         description:
           'A smart recommendation banner suggests the best mount to farm next based on how many members still need it, want it, or are close to buying it with totems.',
-        commits: [{ hash: 'pending', message: 'feat: mount farm recommendation scoring', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'feature',
         title: 'Completion tracking',
         description:
           'Progress bars per expansion show how many trials your static has fully completed. Members who have enough totems to buy a mount are highlighted with a "can buy" badge. Source indicators show whether data came from plugin sync or manual entry.',
-        commits: [{ hash: 'pending', message: 'feat: mount farm completion tracking and ready-to-buy badges', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'feature',
         title: 'Event categories and content linking',
         description:
           'Schedule sessions now support event categories (Raid, Farm, Reclear, Prog, Social) with color-coded badges on session cards. The "Schedule Farm" action from Mount Farms now pre-fills the category and duty name automatically.',
-        commits: [{ hash: 'pending', message: 'feat: event category and content fields for schedule sessions', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'improvement',
         title: 'Session tile view and share button',
         description:
           'The Schedule tab now offers a tile/grid layout for viewing sessions on desktop, showing more events at a glance. Each session card has a share button that copies a formatted summary or uses Web Share API.',
-        commits: [{ hash: 'pending', message: 'feat: session tile view toggle and share button', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
       {
         category: 'improvement',
         title: 'Bundled plugin sync',
         description:
           'The `/xrp sync` command now syncs both gear and mount farms in one step. Use `/xrp gearsync` or `/xrp mountsync` for targeted syncs.',
-        commits: [{ hash: 'pending', message: 'feat: bundle mount sync into /xrp sync command', date: '2026-06-04T00:00:00Z' }],
+        pr: 114,
       },
     ],
   },
@@ -196,21 +218,21 @@ export const RELEASES: Release[] = [
         title: 'Time range presets',
         description:
           'The availability grid now offers three preset views: Prime Raid Time (6 PM – 2 AM), Evening (4 PM – midnight), and Full Day (all 24 hours). Prime raid time is the default — no more scrolling past morning hours to mark your evening availability.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): time range preset chips for availability grid', date: '2026-06-04T00:00:00Z' }],
+        pr: 112,
       },
       {
         category: 'improvement',
         title: 'Sticky headers & section dividers',
         description:
           'Weekday/date column headers stick to the top while scrolling through the full-day view. Time-of-day section dividers (Morning, Afternoon, Evening, Late Night) provide visual anchoring. The prime preset shows an "After Midnight (+1 day)" divider at the midnight crossing.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): sticky headers and time-of-day section dividers', date: '2026-06-04T00:00:00Z' }],
+        pr: 112,
       },
       {
         category: 'improvement',
         title: 'Hidden slots indicator',
         description:
           'When using a filtered preset, a warning badge shows how many of your selected slots are in hidden hours — one click to expand to full day.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): hidden hours indicator badge', date: '2026-06-04T00:00:00Z' }],
+        pr: 112,
       },
     ],
   },
@@ -224,7 +246,7 @@ export const RELEASES: Release[] = [
         title: 'Suppress raw button lint warnings',
         description:
           'Added eslint-disable comments to 56 files that intentionally use raw <button> elements (toggles, selectors, context menus, etc.) where the Button/IconButton primitives do not fit. Zero lint warnings remain.',
-        commits: [{ hash: 'pending', message: 'chore(frontend): suppress raw button lint warnings across 56 files', date: '2026-06-03T23:00:00Z' }],
+        pr: 110,
       },
     ],
     internal: true,
@@ -240,70 +262,70 @@ export const RELEASES: Release[] = [
         title: 'Find a Static — recruitment board',
         description:
           'A new /discover page lets players search and browse statics recruiting for current and upcoming tiers. Search by name or description, filter by role, job, data center, server, intensity, status, timezone, and language. Sort by recently updated, most members, or name. Filters sync to the URL for shareable links.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): static finder recruitment board', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'feature',
         title: 'Listing setup with live preview',
         description:
           'Owners and leads can configure their recruitment listing from the new Listing tab in static settings. A status banner shows whether the listing is live, and a preview card at the bottom shows exactly what players will see. All fields use dropdowns and chips.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): listing status + preview', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'feature',
         title: '"Suggest from static" assisted setup',
         description:
           'Click "Suggest from static" to auto-fill empty listing fields from your schedule sessions, availability templates, and roster data. Only empty fields are filled — existing values are never overwritten.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): roster/schedule-aware suggestions', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'improvement',
         title: 'Listing cards with copy link and expandable details',
         description:
           'Each listing card shows recruitment status, location, schedule, needed roles/jobs, and a contact blurb. Long descriptions expand inline. Copy a direct link to any static with the copy button. Request-to-join is coming in a future update.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): polished listing cards', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'improvement',
         title: 'Structured contact info for listings',
         description:
           'Owners can now add a Discord tag, server invite link, Lodestone/community URL, or freeform contact instructions to their listing. Contact info shows prominently on listing cards so recruits know exactly how to reach you.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): structured contact fields', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'improvement',
         title: 'Cozier listing cards and clearer setup',
         description:
           'Listing cards now have clear sections for Raid Nights, Looking For, and About. The settings form is organized into labeled sections with warmer copy. Filters are split into two rows so dropdowns no longer overlap. Privacy reassurance is more prominent throughout.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): cozy polish pass', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'improvement',
         title: 'Privacy-safe listings',
         description:
           'Member count is now hidden by default — owners opt in with a toggle. Contact URLs are validated (https only). Description and contact fields have a clear "this is public" warning. Unsafe URL protocols (javascript:, data:) are blocked.',
-        commits: [{ hash: 'pending', message: 'feat(discovery): privacy hardening', date: '2026-06-01T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'feature',
         title: 'Request to join from Static Finder',
         description:
           'Players browsing the recruitment board can send a join request directly from discovery cards or when viewing a discoverable static. Includes role/job interest, a short message, and availability note.',
-        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'feature',
         title: 'Join request inbox for leads',
         description:
           'Owners and leads can review incoming applications in the new Requests tab under static settings. Accept to add as member, or decline. A pending count badge shows unread requests.',
-        commits: [{ hash: 'pending', message: 'feat: join request inbox for discovery', date: '2026-06-02T12:00:00Z' }],
+        pr: 99,
       },
       {
         category: 'improvement',
         title: 'Privacy-safe applicant handling',
         description:
           'Applicants can now provide a temporary Discord handle so the lead can reach them. The handle — along with the message and availability note — is automatically deleted once the request is accepted, declined, or cancelled. No Discord account data from login is ever shared with leads.',
-        commits: [{ hash: 'pending', message: 'fix(privacy): harden join request data exposure', date: '2026-06-02T12:00:00Z' }],
+        pr: 99,
       },
     ],
   },
@@ -318,21 +340,21 @@ export const RELEASES: Release[] = [
         title: 'Safer automatic gear sync',
         description:
           'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, when the provider identity doesn\'t match the linked character, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
-        commits: [{ hash: 'pending', message: 'fix(gear-sync): add safety gates for auto-sync', date: '2026-06-03T12:00:00Z' }],
+        pr: 109,
       },
       {
         category: 'improvement',
         title: 'Manual sync overwrite confirmation',
         description:
           'Manually syncing gear now shows a warning and requires confirmation before applying when risky conditions are detected — wrong job, lower item level, incomplete gear, or server/name mismatch. Safe syncs proceed without interruption.',
-        commits: [{ hash: 'pending', message: 'fix(gear-sync): manual sync destructive overwrite confirmation', date: '2026-06-03T12:00:00Z' }],
+        pr: 109,
       },
       {
         category: 'improvement',
         title: 'Force refresh & Tomestone link',
         description:
           'Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone\'s upstream refresh requires a browser visit, so if data looks stale the app links you directly to the character\'s Tomestone page to click Refresh there. Full Tomestone API integration for automatic refresh is in progress.',
-        commits: [{ hash: 'pending', message: 'fix(tomestone): detect bot gate, link to Tomestone page', date: '2026-06-03T16:00:00Z' }],
+        pr: 109,
       },
     ],
   },
@@ -347,7 +369,7 @@ export const RELEASES: Release[] = [
         title: 'Sign in to the Dalamud plugin from your browser',
         description:
           'The XIV Raid Planner Dalamud plugin can now authenticate via a one-click browser flow. Click "Sign in with browser" in the plugin\'s config window, approve on the web app, and the plugin receives an API key automatically — no more copying and pasting xrp_ tokens. Manual key entry remains available under Advanced for custom or self-hosted servers.',
-        commits: [{ hash: 'pending', message: 'feat: add plugin browser sign-in (loopback OAuth + PKCE)' }],
+        pr: 89,
       },
     ],
   },
@@ -426,21 +448,21 @@ export const RELEASES: Release[] = [
         title: 'Typical week availability grid',
         description:
           'Members can now mark their standing weekly schedule — "I\'m always free on Saturday evenings" — separate from specific-week availability. A "Typical week" toggle in the Availability tab switches the grid to weekday columns instead of dates.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+        pr: 94,
       },
       {
         category: 'feature',
         title: 'Best recurring raid window recommendations',
         description:
           'In Typical week mode, the top panel shows the three best permanent raid windows based on the static\'s combined weekly templates. Clicking "Create recurring session" pre-fills a weekly-recurring session on the right weekday.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+        pr: 94,
       },
       {
         category: 'fix',
         title: 'Availability grid shows full 24-hour range',
         description:
           'The grid was incorrectly capped at 12:00 PM, hiding all morning slots.',
-        commits: [{ hash: 'pending', message: 'feat(schedule): recurring availability templates', date: '2026-05-31T12:00:00Z' }],
+        pr: 94,
       },
     ],
   },
