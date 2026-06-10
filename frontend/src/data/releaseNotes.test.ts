@@ -287,7 +287,9 @@ describe('latest release authoring requirements', () => {
 
   it('a pr link always carries a prTitle for display', () => {
     for (const item of latest.items) {
-      if (typeof item.pr === 'number') {
+      // Match the renderer's `hasPr` guard (pr > 0); a non-positive pr never
+      // renders a link, so it has nothing to label.
+      if (typeof item.pr === 'number' && item.pr > 0) {
         expect(item.prTitle?.trim(), `item "${item.title}" has a pr but no prTitle`).toBeTruthy();
       }
     }
