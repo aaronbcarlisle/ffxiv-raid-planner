@@ -32,6 +32,10 @@ def disable_rate_limiter_for_tests(request):
     endpoints start returning 429 once the per-window limit is hit, causing
     unrelated tests to fail with confusing 'Too Many Requests' errors.
 
+    Both `enabled` and the storage counters are reset: setting enabled=False
+    prevents new counts being recorded; reset() clears any counts accumulated by
+    earlier tests in the session so even a late-running test starts from zero.
+
     Tests that explicitly verify rate-limiting behaviour should opt out by marking
     themselves with @pytest.mark.rate_limit — the fixture then yields immediately
     so the real limiter is active and the storage counts as normal.
@@ -42,6 +46,7 @@ def disable_rate_limiter_for_tests(request):
 
     old_enabled = limiter.enabled
     limiter.enabled = False
+    limiter.reset()
     try:
         yield
     finally:

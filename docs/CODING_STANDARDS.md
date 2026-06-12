@@ -813,8 +813,14 @@ Backend tests live in `backend/tests/` and use **pytest-asyncio** in `auto` mode
 The app uses a process-wide slowapi `Limiter` singleton. Its in-memory counter accumulates
 across the entire pytest session, so tests that run late in the session can receive `429
 Too Many Requests` responses for requests that are well within the per-endpoint limit in
-isolation. `conftest.py` contains an autouse fixture that disables the limiter for every
-test by setting `limiter.enabled = False` and restoring the previous value afterwards.
+isolation. `conftest.py` contains an autouse fixture that, before each test:
+
+1. Sets `limiter.enabled = False` — prevents any new hits being counted.
+2. Calls `limiter.reset()` — clears counts that accumulated from earlier tests.
+3. Restores the previous `enabled` value in a `finally` block.
+
+The double-guard (`enabled` + `reset`) is intentional: `enabled=False` alone still leaves
+stale counts in storage that can surface if something re-enables the limiter mid-session.
 
 **Tests that explicitly verify rate-limiting behaviour** must opt out of this fixture so the
 real limiter is active. Apply the `@pytest.mark.rate_limit` marker:
