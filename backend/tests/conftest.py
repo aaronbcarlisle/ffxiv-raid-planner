@@ -14,12 +14,24 @@ from app.auth_utils import create_access_token
 from app.database import Base, get_session
 from app.main import app
 from app.models import User
+from app.rate_limit import limiter
 
 # Importing app.main runs configure_logging(), which sets the sqlalchemy.engine
 # logger to INFO when settings.debug is True (the test default) - flooding test
 # output with every SQL statement. Tests don't need the echo; quiet it back to
 # WARNING. configure_logging() runs once at import, so this stays in effect.
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset in-memory rate limit counters before every test.
+
+    The limiter uses a shared MemoryStorage instance. Without this reset,
+    counters accumulate across tests in the same session and cause legitimate
+    requests to receive 429 responses once the per-window limit is reached.
+    """
+    limiter._storage.reset()
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
