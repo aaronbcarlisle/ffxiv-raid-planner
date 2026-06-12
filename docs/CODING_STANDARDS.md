@@ -813,14 +813,18 @@ Backend tests live in `backend/tests/` and use **pytest-asyncio** in `auto` mode
 The app uses a process-wide slowapi `Limiter` singleton. Its in-memory counter accumulates
 across the entire pytest session, so tests that run late in the session can receive `429
 Too Many Requests` responses for requests that are well within the per-endpoint limit in
-isolation. `conftest.py` contains an autouse fixture that, before each test:
+isolation. `conftest.py` contains an autouse fixture that applies three independent defences
+before each test — any one is sufficient, and all three together are robust against CI
+environment quirks:
 
-1. Sets `limiter.enabled = False` — prevents any new hits being counted.
-2. Calls `limiter.reset()` — clears counts that accumulated from earlier tests.
-3. Restores the previous `enabled` value in a `finally` block.
+| Layer | Mechanism | Why it helps |
+|-------|-----------|--------------|
+| 1 | `limiter.enabled = False` | slowapi's `async_wrapper` skips both rate-limit blocks entirely when `enabled` is False, so `_check_request_limit` is never called. |
+| 2 | `limiter.reset()` | Clears all in-memory counters so stale counts from earlier tests cannot push a later test over the limit. |
+| 3 | `patch(limiter.limiter, "hit", return_value=True)` | Patches the algorithm-level call that decides "within limit?". Returning `True` unconditionally means `RateLimitExceeded` is never raised, even if `enabled` somehow stays `True`. |
 
-The double-guard (`enabled` + `reset`) is intentional: `enabled=False` alone still leaves
-stale counts in storage that can surface if something re-enables the limiter mid-session.
+`limiter.enabled` is restored to its previous value in a `finally` block. The `hit` patch is
+automatically undone when the `with patch.object(...)` context exits.
 
 **Tests that explicitly verify rate-limiting behaviour** must opt out of this fixture so the
 real limiter is active. Apply the `@pytest.mark.rate_limit` marker:
@@ -837,8 +841,8 @@ class TestMyEndpointRateLimit:
         assert response.status_code == 429
 ```
 
-Without the marker, `limiter.enabled` is `False` for the duration of the test, so any
-`429` you observe is a genuine bug, not a test-ordering artifact.
+Without the marker, the rate limiter is fully suppressed for the duration of the test, so
+any `429` you observe is a genuine bug, not a test-ordering artifact.
 
 ---
 
