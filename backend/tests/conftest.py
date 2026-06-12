@@ -33,12 +33,15 @@ def disable_rate_limiter_for_tests(request):
     endpoints start returning 429 once the per-window limit is hit, causing
     unrelated tests to fail with confusing 'Too Many Requests' errors.
 
-    Strategy: patch `_check_request_limit` with a side-effect that sets
-    `request.state.view_rate_limit = None` and returns without counting or
-    raising.  The attribute must exist because slowapi's `async_wrapper` reads
-    it unconditionally inside its second `if self.enabled:` block; passing None
-    makes `_inject_headers` a safe no-op (it guards on `current_limit is not
-    None`).  Mutating `limiter.enabled` alone proved unreliable in CI.
+    Three-layer defence (any one is sufficient; all three together are robust):
+      1. limiter.enabled = False — async_wrapper skips both its rate-limit
+         blocks entirely, so _check_request_limit is never called and no
+         view_rate_limit attribute is needed.
+      2. limiter.reset() — clears stored counters so stale session counts
+         cannot push a late-running test over the limit.
+      3. patch limiter.limiter.hit → True — the algorithm-level "within
+         limit?" call always succeeds, preventing RateLimitExceeded even
+         if enabled somehow stays True.
 
     Tests that explicitly verify rate-limiting behaviour should opt out by marking
     themselves with @pytest.mark.rate_limit — the fixture then yields immediately
@@ -48,11 +51,34 @@ def disable_rate_limiter_for_tests(request):
         yield
         return
 
-    def _noop_check(request_obj, endpoint_func, in_middleware=True):
-        request_obj.state.view_rate_limit = None
-
-    with patch.object(limiter, "_check_request_limit", side_effect=_noop_check):
-        yield
+    # Three-layer defence so that no code path can return 429 in a normal test:
+    #
+    # 1. limiter.enabled = False
+    #    async_wrapper skips its first block entirely when enabled is False,
+    #    so _check_request_limit is never called and view_rate_limit is never
+    #    set.  The second `if self.enabled:` block is also skipped, so there
+    #    is no AttributeError on the missing attribute.
+    #
+    # 2. limiter.reset()
+    #    Clears all in-memory counters so that stale counts from earlier tests
+    #    in the session cannot push a later test over the limit, even if
+    #    layer 1 somehow does not take effect.
+    #
+    # 3. patch limiter.limiter.hit → always True
+    #    `hit()` is the algorithm-level "did this request exceed the limit?"
+    #    call inside __evaluate_limits.  Returning True unconditionally means
+    #    the request is always considered within limit, so RateLimitExceeded
+    #    is never raised.  view_rate_limit is still set by __evaluate_limits
+    #    (no AttributeError), and _inject_headers becomes a no-op because
+    #    headers_enabled is False by default.
+    old_enabled = limiter.enabled
+    limiter.enabled = False
+    limiter.reset()
+    with patch.object(limiter.limiter, "hit", return_value=True):
+        try:
+            yield
+        finally:
+            limiter.enabled = old_enabled
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
