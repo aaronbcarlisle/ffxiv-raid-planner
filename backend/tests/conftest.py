@@ -23,20 +23,29 @@ from app.rate_limit import limiter
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
-@pytest.fixture(autouse=True, scope="session")
-def disable_rate_limiter():
-    """Disable rate limiting for the entire test session.
+@pytest.fixture(autouse=True)
+def disable_rate_limiter_for_tests(request):
+    """Disable rate limiting for every test that doesn't opt in to rate-limit testing.
 
-    The limiter is a process-wide singleton. Without disabling it, request
-    counters accumulate across tests in the same session and legitimate
-    requests start receiving 429 responses once the per-window limit is hit.
-    Session scope + sync avoids any per-test event-loop ordering issues that
-    can cause the per-function async fixture to run after limiter state is
-    checked in CI.
+    The limiter is a process-wide singleton backed by in-memory storage. Without
+    disabling it, request counts accumulate across the entire pytest session and
+    endpoints start returning 429 once the per-window limit is hit, causing
+    unrelated tests to fail with confusing 'Too Many Requests' errors.
+
+    Tests that explicitly verify rate-limiting behaviour should opt out by marking
+    themselves with @pytest.mark.rate_limit — the fixture then yields immediately
+    so the real limiter is active and the storage counts as normal.
     """
+    if request.node.get_closest_marker("rate_limit"):
+        yield
+        return
+
+    old_enabled = limiter.enabled
     limiter.enabled = False
-    yield
-    limiter.enabled = True
+    try:
+        yield
+    finally:
+        limiter.enabled = old_enabled
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
