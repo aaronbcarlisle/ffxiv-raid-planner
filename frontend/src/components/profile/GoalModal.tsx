@@ -15,16 +15,17 @@ interface CatalogEntry {
   trialId: string;
   expansion: string;
   dutyName: string;
+  sourceContent?: string;
   mountName: string;
   totemName: string | null;
   totemTarget: number;
+  exchangeCost?: number;
+  exchangeStatus?: 'available' | 'not_yet_available';
+  category?: 'standard' | 'collaboration';
 }
 
 const GOAL_TYPE_OPTIONS = [
-  { value: 'mount_farm', label: 'Mount Farm' },
-  { value: 'totem_farm', label: 'Totem Farm' },
   { value: 'weekly_clear', label: 'Weekly Clear' },
-  { value: 'collection', label: 'Collection' },
   { value: 'personal', label: 'Personal' },
   { value: 'gear', label: 'Gear' },
   { value: 'raid', label: 'Raid' },
@@ -172,8 +173,10 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
                           <div className="text-sm font-medium text-text-primary truncate">{entry.mountName}</div>
                           <div className="text-xs text-text-tertiary truncate">{entry.dutyName}</div>
                         </div>
-                        <Badge variant="default" size="sm">
-                          {entry.totemTarget} totems
+                        <Badge variant={entry.exchangeStatus === 'not_yet_available' ? 'default' : entry.category === 'collaboration' ? 'info' : 'default'} size="sm">
+                          {entry.exchangeStatus === 'not_yet_available'
+                            ? 'Exchange pending'
+                            : `${entry.exchangeCost ?? entry.totemTarget} ${entry.totemName ?? 'currency'}`}
                         </Badge>
                       </button>
                     ))}
@@ -203,7 +206,7 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
   return (
     <Modal
       isOpen={true}
-      title={isEditing ? 'Edit Goal' : 'New Goal'}
+      title={isEditing ? 'Edit Task' : 'New Task'}
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -316,7 +319,7 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
           )}
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={saving || !title.trim()}>
-            {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Goal'}
+            {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Task'}
           </Button>
         </div>
       </div>

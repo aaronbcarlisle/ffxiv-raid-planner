@@ -65,8 +65,7 @@ export function ReadinessChecklist({ profile, hasGearSnapshots }: ReadinessCheck
 
       <div className="mt-3 pt-3 border-t border-border-default">
         <p className="text-xs text-text-tertiary">
-          Complete these items to prepare your profile for Static Finder applications.
-          Full application workflow is coming soon.
+          Complete these items so your profile is ready when you apply to a static.
         </p>
       </div>
     </div>

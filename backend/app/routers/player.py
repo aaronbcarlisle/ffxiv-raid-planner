@@ -1,5 +1,6 @@
 """API router for solo player profile, character linking, gear sync, and job profiles."""
 
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -12,6 +13,7 @@ from ..constants import VALID_JOBS
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
+from ..models.personal_availability import PersonalAvailabilityTemplate
 from ..models.player_character import PlayerCharacter
 from ..models.player_gear_snapshot import PlayerGearSnapshot, VALID_SYNC_SOURCES
 from ..models.player_goal import PlayerGoal, VALID_GOAL_TYPES, VALID_GOAL_STATUSES
@@ -23,6 +25,7 @@ from ..models.player_job_profile import (
 from ..models.player_profile import PlayerProfile, VALID_VISIBILITIES
 from ..models.user import User
 from ..rate_limit import RATE_LIMITS, limiter
+from ..models.player_bis_target_set import PlayerBisTargetSet
 from ..schemas.player import (
     GearSnapshotResponse,
     GearSyncRequest,
@@ -33,6 +36,7 @@ from ..schemas.player import (
     PlayerGoalCreate,
     PlayerGoalResponse,
     PlayerGoalUpdate,
+    PlayerBisTargetSetResponse,
     PlayerJobProfileCreate,
     PlayerJobProfileResponse,
     PlayerJobProfileUpdate,
@@ -41,6 +45,15 @@ from ..schemas.player import (
     PublicPlayerProfileResponse,
     PluginPlayerGearSyncRequest,
     PluginPlayerGearSyncResult,
+    PluginBatchGearsetSyncRequest,
+    PluginBatchGearsetSyncResult,
+    PluginBatchGearsetSyncJobResult,
+)
+from ..schemas.schedule import (
+    VALID_DAYS,
+    PersonalAvailabilityTemplateDaySummary,
+    PersonalAvailabilityTemplateResponse,
+    PersonalAvailabilityTemplateSubmit,
 )
 from ..services.share_code import generate_profile_share_code
 
@@ -64,7 +77,7 @@ async def _get_or_create_profile(
         select(PlayerProfile)
         .options(
             selectinload(PlayerProfile.characters),
-            selectinload(PlayerProfile.job_profiles),
+            selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
         )
         .where(PlayerProfile.user_id == user.id)
     )
@@ -86,7 +99,7 @@ async def _get_or_create_profile(
             select(PlayerProfile)
             .options(
                 selectinload(PlayerProfile.characters),
-                selectinload(PlayerProfile.job_profiles),
+                selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
             )
             .where(PlayerProfile.id == profile.id)
         )
@@ -147,6 +160,26 @@ def _profile_to_response(profile: PlayerProfile) -> PlayerProfileResponse:
             gear_snapshot_id=jp.gear_snapshot_id,
             created_at=jp.created_at,
             updated_at=jp.updated_at,
+            bis_targets=[
+                PlayerBisTargetSetResponse(
+                    id=b.id,
+                    profile_id=b.profile_id,
+                    job_profile_id=b.job_profile_id,
+                    job=b.job,
+                    name=b.name,
+                    purpose=b.purpose,
+                    source_type=b.source_type,
+                    external_url=b.external_url,
+                    import_status=b.import_status,
+                    is_active=b.is_active,
+                    item_level=b.item_level,
+                    notes=b.notes,
+                    items_json=b.items_json,
+                    created_at=b.created_at,
+                    updated_at=b.updated_at,
+                )
+                for b in (jp.bis_targets or [])
+            ],
         )
         for jp in (profile.job_profiles or [])
     ]
@@ -175,6 +208,32 @@ def _calculate_avg_ilvl(gear: list[dict]) -> int:
     if not ilvl_slots:
         return 0
     return round(sum(ilvl_slots) / len(ilvl_slots))
+
+
+def _has_usable_gear_payload(gear: list[dict]) -> bool:
+    """Return true when a sync payload contains at least one real equipped item."""
+    for slot in gear:
+        item_level = slot.get("equippedItemLevel") or slot.get("itemLevel") or slot.get("item_level") or 0
+        if slot.get("equippedItemId") or slot.get("equippedItemName") or item_level:
+            return True
+    return False
+
+
+_GEAR_COMPARE_KEYS = ("slot", "equippedItemId", "equippedItemName", "equippedItemLevel",
+                       "currentSource", "isAugmented", "itemLevel")
+
+
+def _gear_payload_differs(existing: list[dict], incoming: list[dict]) -> bool:
+    """Return True when incoming gear differs from existing in any meaningful way."""
+    if len(existing) != len(incoming):
+        return True
+
+    def _normalise(slot: dict) -> tuple:
+        return tuple(slot.get(k) for k in _GEAR_COMPARE_KEYS)
+
+    existing_set = sorted((_normalise(s) for s in existing), key=str)
+    incoming_set = sorted((_normalise(s) for s in incoming), key=str)
+    return existing_set != incoming_set
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +290,7 @@ async def update_profile(
         select(PlayerProfile)
         .options(
             selectinload(PlayerProfile.characters),
-            selectinload(PlayerProfile.job_profiles),
+            selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
         )
         .where(PlayerProfile.id == profile.id)
     )
@@ -258,7 +317,7 @@ async def rotate_share_code(
         select(PlayerProfile)
         .options(
             selectinload(PlayerProfile.characters),
-            selectinload(PlayerProfile.job_profiles),
+            selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
         )
         .where(PlayerProfile.id == profile.id)
     )
@@ -343,6 +402,144 @@ async def get_public_profile(
 # ---------------------------------------------------------------------------
 
 
+@router.get("/suggested-statics")
+@limiter.limit(RATE_LIMITS["general"])
+async def get_suggested_statics(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Return discoverable statics that match the player's job profiles.
+
+    Matches on needed_jobs and needed_roles from discovery settings.
+    Limited to 10 results. No auth-bypass of private statics.
+    """
+    from ..models.static_group import StaticGroup
+
+    profile = await _get_or_create_profile(session, current_user)
+    await session.commit()
+
+    if not profile.job_profiles:
+        return {"suggestions": []}
+
+    player_jobs = {jp.job for jp in profile.job_profiles}
+    player_roles = {jp.role for jp in profile.job_profiles}
+
+    result = await session.execute(
+        select(StaticGroup).where(StaticGroup.is_public == True)  # noqa: E712
+    )
+    groups = result.scalars().all()
+
+    suggestions = []
+    for group in groups:
+        settings = group.settings if isinstance(group.settings, dict) else {}
+        discovery = settings.get("discovery")
+        if not isinstance(discovery, dict) or not discovery.get("enabled"):
+            continue
+        status = discovery.get("recruitmentStatus", "closed")
+        if status == "closed":
+            continue
+
+        needed_jobs = discovery.get("neededJobs") or []
+        needed_roles = discovery.get("neededRoles") or []
+
+        matching_jobs = [j for j in needed_jobs if j.upper() in player_jobs]
+        matching_roles = [r for r in needed_roles if r.lower() in player_roles]
+
+        if not matching_jobs and not matching_roles:
+            continue
+
+        suggestions.append({
+            "name": group.name,
+            "shareCode": group.share_code,
+            "recruitmentStatus": status,
+            "neededJobs": needed_jobs,
+            "neededRoles": needed_roles,
+            "matchingJobs": matching_jobs,
+            "matchingRoles": matching_roles,
+            "dataCenter": discovery.get("dataCenter"),
+            "intensity": discovery.get("intensity"),
+        })
+
+        if len(suggestions) >= 10:
+            break
+
+    return {"suggestions": suggestions}
+
+
+@router.get("/collection-suggestions")
+@limiter.limit(RATE_LIMITS["general"])
+async def get_collection_suggestions(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Return mount farm progress from statics that the user doesn't have solo goals for yet.
+
+    Bridges static mount farm data into solo collection suggestions.
+    """
+    from ..models.mount_farm_progress import MountFarmProgress
+    from .mount_farms import MOUNT_FARM_CATALOG
+
+    catalog_by_id = {e["trial_id"]: e for e in MOUNT_FARM_CATALOG}
+
+    profile = await _get_or_create_profile(session, current_user)
+    await session.commit()
+
+    # Get user's existing solo goals by trial_id
+    existing_result = await session.execute(
+        select(PlayerGoal.source_content).where(
+            PlayerGoal.profile_id == profile.id,
+            PlayerGoal.goal_type == "mount_farm",
+        )
+    )
+    existing_trials = {row[0] for row in existing_result if row[0]}
+
+    # Get user's group mount farm progress
+    progress_result = await session.execute(
+        select(MountFarmProgress).where(
+            MountFarmProgress.user_id == current_user.id,
+        )
+    )
+    all_progress = progress_result.scalars().all()
+
+    # Deduplicate by trial_id (user may be in multiple groups)
+    best_progress: dict[str, MountFarmProgress] = {}
+    for p in all_progress:
+        if p.trial_id not in best_progress or p.totem_count > best_progress[p.trial_id].totem_count:
+            best_progress[p.trial_id] = p
+
+    suggestions = []
+    for trial_id, progress in best_progress.items():
+        if trial_id in existing_trials:
+            continue
+        catalog = catalog_by_id.get(trial_id)
+        if not catalog:
+            continue
+        if not progress.has_mount and progress.totem_count == 0:
+            continue
+
+        suggestions.append({
+            "trialId": trial_id,
+            "mountName": catalog["mount_name"],
+            "dutyName": catalog["duty_name"],
+            "sourceContent": catalog.get("source_content", catalog["duty_name"]),
+            "totemName": catalog.get("totem_name"),
+            "totemTarget": catalog.get("totem_target", 99),
+            "currencyPerClear": catalog.get("currency_per_clear", 1),
+            "exchangeCost": catalog.get("exchange_cost", 99),
+            "exchangeNpc": catalog.get("exchange_npc"),
+            "exchangeLocation": catalog.get("exchange_location"),
+            "exchangeStatus": catalog.get("exchange_status", "available"),
+            "category": catalog.get("category", "standard"),
+            "currentCount": progress.totem_count,
+            "hasMount": progress.has_mount,
+            "source": "static_sync",
+        })
+
+    return {"suggestions": suggestions}
+
+
 @router.get("/mount-farm-catalog")
 @limiter.limit(RATE_LIMITS["general"])
 async def get_player_mount_farm_catalog(
@@ -358,9 +555,16 @@ async def get_player_mount_farm_catalog(
                 "trialId": e["trial_id"],
                 "expansion": e["expansion"],
                 "dutyName": e["duty_name"],
+                "sourceContent": e.get("source_content", e["duty_name"]),
                 "mountName": e["mount_name"],
                 "totemName": e.get("totem_name"),
                 "totemTarget": e.get("totem_target", 99),
+                "currencyPerClear": e.get("currency_per_clear", 1),
+                "exchangeCost": e.get("exchange_cost", 99),
+                "exchangeNpc": e.get("exchange_npc"),
+                "exchangeLocation": e.get("exchange_location"),
+                "exchangeStatus": e.get("exchange_status", "available"),
+                "category": e.get("category", "standard"),
             }
             for e in MOUNT_FARM_CATALOG
         ]
@@ -540,7 +744,7 @@ async def unlink_character(
 
 
 # ---------------------------------------------------------------------------
-# Gear snapshot endpoints
+# Saved gear endpoints
 # ---------------------------------------------------------------------------
 
 
@@ -626,8 +830,26 @@ async def sync_character_gear(
     active_class = gear_set.get("Class", {}) if isinstance(gear_set, dict) else {}
     synced_job = active_class.get("Abbreviation") if isinstance(active_class, dict) else None
 
+    # Manual job fallback — if Lodestone/Tomestone can't determine job,
+    # let the user specify it via the request body
+    manual_job = body.job if body and body.job else None
+    if not synced_job and manual_job:
+        if manual_job.lower() not in VALID_JOBS:
+            raise HTTPException(status_code=400, detail=f"Invalid job: {manual_job}")
+        synced_job = manual_job.upper()
+        sync_source = "manual"
+        logger.info(
+            "player_gear_sync_manual_job_fallback",
+            user_id=current_user.id,
+            character_id=character_id,
+            manual_job=synced_job,
+        )
+
     if not synced_job:
-        raise HTTPException(status_code=502, detail="Could not determine character's active job")
+        raise HTTPException(
+            status_code=422,
+            detail="Could not determine active job. Try selecting a job manually, or check that your Lodestone profile is public.",
+        )
 
     synced_job_upper = synced_job.upper()
 
@@ -660,6 +882,12 @@ async def sync_character_gear(
             })
 
     avg_ilvl = _calculate_avg_ilvl(gear)
+    if not _has_usable_gear_payload(gear):
+        raise HTTPException(
+            status_code=422,
+            detail="No usable gear data found. No saved gear was updated.",
+        )
+
     now = datetime.now(timezone.utc).isoformat()
 
     # Update character identity if changed
@@ -1220,6 +1448,102 @@ async def delete_goal(
 
 
 # ---------------------------------------------------------------------------
+# Personal availability template endpoints
+# ---------------------------------------------------------------------------
+
+DAY_ORDER = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+
+
+@router.get(
+    "/availability/template",
+    response_model=list[PersonalAvailabilityTemplateDaySummary],
+)
+@limiter.limit(RATE_LIMITS["general"])
+async def get_personal_availability_templates(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the current user's personal typical weekly availability."""
+    result = await session.execute(
+        select(PersonalAvailabilityTemplate)
+        .where(PersonalAvailabilityTemplate.user_id == current_user.id)
+    )
+    rows = result.scalars().all()
+
+    # Sort by canonical day order
+    day_index = {d: i for i, d in enumerate(DAY_ORDER)}
+    rows_sorted = sorted(rows, key=lambda r: day_index.get(r.day_of_week, 99))
+
+    return [
+        PersonalAvailabilityTemplateDaySummary(
+            day_of_week=row.day_of_week,
+            slots=json.loads(row.slots),
+            timezone=row.timezone,
+        )
+        for row in rows_sorted
+    ]
+
+
+@router.put(
+    "/availability/template",
+    response_model=PersonalAvailabilityTemplateResponse,
+)
+@limiter.limit(RATE_LIMITS["general"])
+async def upsert_personal_availability_template(
+    request: Request,
+    body: PersonalAvailabilityTemplateSubmit,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Create or update a personal availability template for a day of the week."""
+    day = body.day_of_week.upper()
+    if day not in VALID_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid day_of_week. Must be one of: {', '.join(sorted(VALID_DAYS))}",
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    slots_json = json.dumps(sorted(body.slots))
+
+    # Find existing
+    result = await session.execute(
+        select(PersonalAvailabilityTemplate).where(
+            PersonalAvailabilityTemplate.user_id == current_user.id,
+            PersonalAvailabilityTemplate.day_of_week == day,
+        )
+    )
+    template = result.scalar_one_or_none()
+
+    if template:
+        template.slots = slots_json
+        template.timezone = body.timezone
+        template.updated_at = now
+    else:
+        template = PersonalAvailabilityTemplate(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            day_of_week=day,
+            slots=slots_json,
+            timezone=body.timezone,
+            updated_at=now,
+        )
+        session.add(template)
+
+    await session.flush()
+    await session.commit()
+
+    return PersonalAvailabilityTemplateResponse(
+        id=template.id,
+        user_id=template.user_id,
+        day_of_week=template.day_of_week,
+        slots=json.loads(template.slots),
+        timezone=template.timezone,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Plugin gear sync endpoint
 # ---------------------------------------------------------------------------
 
@@ -1280,6 +1604,12 @@ async def plugin_player_gear_sync(
         })
 
     avg_ilvl = _calculate_avg_ilvl(gear)
+    if not _has_usable_gear_payload(gear):
+        raise HTTPException(
+            status_code=422,
+            detail="No usable plugin gear data found. No saved gear was updated.",
+        )
+
     now = datetime.now(timezone.utc).isoformat()
     source = body.source if body.source in VALID_SYNC_SOURCES else "plugin"
 
@@ -1292,12 +1622,16 @@ async def plugin_player_gear_sync(
     )
     snapshot = result.scalar_one_or_none()
 
+    gear_changed = True
     if snapshot:
-        snapshot.gear = gear
-        snapshot.avg_item_level = avg_ilvl
-        snapshot.source = source
-        snapshot.synced_at = now
-        snapshot.updated_at = now
+        gear_changed = _gear_payload_differs(snapshot.gear, gear)
+        if gear_changed:
+            snapshot.gear = gear
+            snapshot.avg_item_level = avg_ilvl
+            snapshot.source = source
+            snapshot.synced_at = now
+            snapshot.updated_at = now
+        snapshot.last_plugin_seen_at = now
     else:
         snapshot = PlayerGearSnapshot(
             id=str(uuid.uuid4()),
@@ -1309,6 +1643,7 @@ async def plugin_player_gear_sync(
             synced_at=now,
             created_at=now,
             updated_at=now,
+            last_plugin_seen_at=now,
         )
         session.add(snapshot)
 
@@ -1344,5 +1679,162 @@ async def plugin_player_gear_sync(
         avg_item_level=avg_ilvl,
         slot_count=len([g for g in gear if g.get("equippedItemId")]),
         source=source,
-        synced_at=now,
+        synced_at=snapshot.synced_at or now,
+        gear_changed=gear_changed,
+        last_plugin_seen_at=snapshot.last_plugin_seen_at,
+    )
+
+
+@plugin_router.post("/batch-gear-sync", response_model=PluginBatchGearsetSyncResult)
+@limiter.limit(RATE_LIMITS["general"])
+async def plugin_batch_gearset_sync(
+    request: Request,
+    body: PluginBatchGearsetSyncRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Sync multiple saved gearsets from the Dalamud plugin in one call.
+
+    Each gearset entry maps to one job's gear snapshot. The endpoint:
+    - Matches the character by name + world to the user's linked character.
+    - For each gearset, upserts the job's gear snapshot.
+    - Updates `synced_at` only when gear payload differs from stored.
+    - Always updates `last_plugin_seen_at`.
+    - Deduplication is expected from the plugin (highest iLvl per job).
+    - Jobs absent from the payload are not touched.
+    """
+    if not body.gearsets:
+        raise HTTPException(status_code=422, detail="No gearsets in payload.")
+
+    profile = await _get_or_create_profile(session, current_user)
+
+    character = None
+    for c in profile.characters:
+        if (
+            c.name.lower().strip() == body.character_name.lower().strip()
+            and c.server.lower().strip() == body.character_world.lower().strip()
+        ):
+            character = c
+            break
+
+    if not character:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No linked character found matching '{body.character_name}' on "
+                f"'{body.character_world}'. Link your character on the profile page first."
+            ),
+        )
+
+    source = body.source if body.source in VALID_SYNC_SOURCES else "plugin"
+    now = datetime.now(timezone.utc).isoformat()
+    job_results: list[PluginBatchGearsetSyncJobResult] = []
+
+    for gs in body.gearsets:
+        job_upper = gs.job.upper()
+        if job_upper.lower() not in VALID_JOBS:
+            logger.warning(
+                "batch_gear_sync_invalid_job",
+                user_id=current_user.id,
+                job=gs.job,
+            )
+            continue
+
+        gear: list[dict] = []
+        for slot_data in gs.gear:
+            gear.append({
+                "slot": slot_data.slot,
+                "currentSource": slot_data.current_source,
+                "hasItem": slot_data.has_item,
+                "isAugmented": slot_data.is_augmented,
+                "equippedItemId": slot_data.item_id,
+                "equippedItemName": slot_data.item_name,
+                "equippedItemLevel": slot_data.item_level,
+                "equippedItemIcon": slot_data.item_icon,
+                "itemLevel": slot_data.item_level,
+            })
+
+        avg_ilvl = _calculate_avg_ilvl(gear)
+        if not _has_usable_gear_payload(gear):
+            logger.info(
+                "batch_gear_sync_skip_empty",
+                user_id=current_user.id,
+                job=job_upper,
+            )
+            continue
+
+        result = await session.execute(
+            select(PlayerGearSnapshot).where(
+                PlayerGearSnapshot.character_id == character.id,
+                PlayerGearSnapshot.job == job_upper,
+            )
+        )
+        snapshot = result.scalar_one_or_none()
+
+        gear_changed = True
+        if snapshot:
+            gear_changed = _gear_payload_differs(snapshot.gear, gear)
+            if gear_changed:
+                snapshot.gear = gear
+                snapshot.avg_item_level = avg_ilvl
+                snapshot.source = source
+                snapshot.synced_at = now
+                snapshot.updated_at = now
+            snapshot.last_plugin_seen_at = now
+        else:
+            snapshot = PlayerGearSnapshot(
+                id=str(uuid.uuid4()),
+                character_id=character.id,
+                job=job_upper,
+                gear=gear,
+                avg_item_level=avg_ilvl,
+                source=source,
+                synced_at=now,
+                created_at=now,
+                updated_at=now,
+                last_plugin_seen_at=now,
+            )
+            session.add(snapshot)
+
+        await session.flush()
+
+        # Auto-link to job profile if exists
+        job_result = await session.execute(
+            select(PlayerJobProfile).where(
+                PlayerJobProfile.profile_id == profile.id,
+                PlayerJobProfile.job == job_upper,
+            )
+        )
+        job_profile = job_result.scalar_one_or_none()
+        if job_profile:
+            job_profile.gear_snapshot_id = snapshot.id
+            job_profile.updated_at = now
+
+        job_results.append(PluginBatchGearsetSyncJobResult(
+            job=job_upper,
+            snapshot_id=snapshot.id,
+            gear_changed=gear_changed,
+            avg_item_level=avg_ilvl,
+            last_plugin_seen_at=now,
+        ))
+
+    await session.commit()
+
+    total_changed = sum(1 for r in job_results if r.gear_changed)
+    total_unchanged = len(job_results) - total_changed
+
+    logger.info(
+        "plugin_batch_gearset_sync_complete",
+        user_id=current_user.id,
+        character_id=character.id,
+        total=len(job_results),
+        changed=total_changed,
+        source=source,
+    )
+
+    return PluginBatchGearsetSyncResult(
+        character_id=character.id,
+        total_synced=len(job_results),
+        total_unchanged=total_unchanged,
+        synced_jobs=job_results,
     )

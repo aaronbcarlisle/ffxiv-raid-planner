@@ -23,17 +23,20 @@ from .middleware import (
 from .rate_limit import limiter
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
+from .tasks.schedule_reminders import schedule_reminder_loop
 from .routers import (
     analytics_router,
     api_keys_router,
     auth_router,
     bis_router,
+    collection_goals_router,
     discovery_router,
     invitations_router,
     join_requests_router,
     lodestone_router,
     loot_tracking_router,
     mount_farms_router,
+    player_bis_targets_router,
     player_router,
     plugin_player_router,
     schedule_router,
@@ -66,13 +69,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start background tasks
     retention_task = asyncio.create_task(retention_loop())
     sync_task = asyncio.create_task(auto_sync_loop())
+    schedule_reminder_task = asyncio.create_task(schedule_reminder_loop())
 
     yield
 
     # Shutdown
+    schedule_reminder_task.cancel()
     sync_task.cancel()
     retention_task.cancel()
-    for task in (sync_task, retention_task):
+    for task in (schedule_reminder_task, sync_task, retention_task):
         try:
             await task
         except asyncio.CancelledError:
@@ -155,12 +160,14 @@ app.include_router(analytics_router)
 app.include_router(api_keys_router)
 app.include_router(auth_router)
 app.include_router(bis_router)
+app.include_router(collection_goals_router)
 app.include_router(discovery_router)
 app.include_router(invitations_router)
 app.include_router(join_requests_router)
 app.include_router(lodestone_router)
 app.include_router(loot_tracking_router)
 app.include_router(mount_farms_router)
+app.include_router(player_bis_targets_router)
 app.include_router(player_router)
 app.include_router(plugin_player_router)
 app.include_router(schedule_router)

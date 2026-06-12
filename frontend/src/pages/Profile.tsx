@@ -1,49 +1,245 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Calendar, ChevronDown, Users } from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
+import {
+  Dropdown,
+  DropdownContent,
+  DropdownItem,
+  DropdownSeparator,
+  DropdownTrigger,
+} from '../components/primitives';
 import { Skeleton } from '../components/ui/Skeleton';
-import { CharacterCard } from '../components/profile/CharacterCard';
 import { CharacterLinkModal } from '../components/profile/CharacterLinkModal';
-import { GearSnapshotView } from '../components/profile/GearSnapshotView';
-import { JobProfileCard } from '../components/profile/JobProfileCard';
+import { JobsGearTab } from '../components/profile/JobsGearTab';
 import { JobProfileModal } from '../components/profile/JobProfileModal';
+import { ManageBiSModal } from '../components/profile/ManageBiSModal';
 import { OverviewTab } from '../components/profile/OverviewTab';
+import { SyncCenterTab } from '../components/profile/SyncCenterTab';
 import { CollectionsTab } from '../components/profile/CollectionsTab';
 import { GoalsTab } from '../components/profile/GoalsTab';
 import { PreviewShareTab } from '../components/profile/PreviewShareTab';
+import { ProfileBottomNav } from '../components/profile/ProfileBottomNav';
+import { PlayerAvailabilityTab } from '../components/profile/PlayerAvailabilityTab';
 import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import type { PlayerJobProfile } from '../stores/playerProfileStore';
+import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useAuthStore } from '../stores/authStore';
+import { useDevice } from '../hooks/useDevice';
 import { useModal } from '../hooks/useModal';
-import { fadeInProps, staggerContainerProps, staggerItemProps } from '../lib/motion';
+import { fadeInProps } from '../lib/motion';
+import { GameIcon } from '../components/ui/GameIcon';
+import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
+import type { MemberRole, StaticGroupListItem } from '../types';
 
-type ProfileTab = 'overview' | 'characters' | 'gear' | 'jobs' | 'collections' | 'goals' | 'preview';
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'goals' | 'preview';
+const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'goals', 'preview'];
+const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
+  share: 'preview',
+  characters: 'sync',
+  gear: 'jobs-gear',
+  jobs: 'jobs-gear',
+};
+
+const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
+  owner: 'Owner',
+  lead: 'Lead',
+  member: 'Member',
+  viewer: 'Viewer',
+};
+
+function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListItem[]; mobile?: boolean }) {
+  if (groups.length === 0) {
+    return (
+      <Link
+        to="/discover"
+        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
+      >
+        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
+        <span>Find a static</span>
+      </Link>
+    );
+  }
+
+  if (groups.length === 1) {
+    const group = groups[0];
+    return (
+      <Link
+        to={`/group/${group.shareCode}`}
+        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
+      >
+        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
+        <span className="truncate">{group.name}</span>
+        {group.userRole && <Badge variant="info" size="sm">{ROLE_LABELS[group.userRole] ?? group.userRole}</Badge>}
+        {mobile && <span className="ml-auto flex-shrink-0 text-xs text-text-tertiary">Go to static</span>}
+      </Link>
+    );
+  }
+
+  return (
+    <Dropdown>
+      <DropdownTrigger>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className={`${mobile ? 'flex w-full justify-start px-3 py-2' : 'inline-flex px-3 py-1.5'} gap-2 bg-surface-raised font-normal hover:text-accent`}
+        >
+          <Users className="h-4 w-4 flex-shrink-0 text-accent" />
+          <span className="truncate">My Statics ({groups.length})</span>
+          <ChevronDown className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-text-tertiary" />
+        </Button>
+      </DropdownTrigger>
+      <DropdownContent align={mobile ? 'start' : 'end'} className="w-80 max-w-[calc(100vw-2rem)]">
+        {groups.map((group, index) => (
+          <div key={group.id}>
+            {index > 0 && <DropdownSeparator />}
+            <DropdownItem href={`/group/${group.shareCode}`} icon={<Users className="h-4 w-4" />}>
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{group.name}</span>
+                <span className="block truncate text-xs text-text-tertiary">
+                  {ROLE_LABELS[group.userRole ?? 'member'] ?? group.userRole ?? 'Member'}
+                </span>
+              </span>
+            </DropdownItem>
+            <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<Calendar className="h-4 w-4" />} className="pl-8 text-xs">
+              Schedule
+            </DropdownItem>
+          </div>
+        ))}
+      </DropdownContent>
+    </Dropdown>
+  );
+}
+
+function parseProfileTab(search: string): ProfileTab {
+  const params = new URLSearchParams(search);
+  const rawTab = params.get('tab');
+  const tab = rawTab ? LEGACY_TAB_REDIRECTS[rawTab] ?? rawTab : rawTab;
+  return tab && PROFILE_TAB_IDS.includes(tab as ProfileTab) ? tab as ProfileTab : 'overview';
+}
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
-  const { profile, goals, gearSnapshots, loading, fetchProfile, fetchGoals } = usePlayerProfileStore();
-  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const authInitialized = useAuthStore((s) => s.authInitialized);
+  const authLoading = useAuthStore((s) => s.isLoading);
+  const {
+    profile, goals, gearSnapshots, collectionSuggestions, staticSuggestions,
+    loading, fetchProfile, fetchGoals, fetchCollectionSuggestions, fetchStaticSuggestions,
+    fetchGearSnapshots,
+  } = usePlayerProfileStore();
+  const { groups, fetchGroups } = useStaticGroupStore();
+  const { isSmallScreen } = useDevice();
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
+  const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const nextTab = parseProfileTab(location.search);
+    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
+    return () => cancelAnimationFrame(frameId);
+  }, [location.search]);
+
+  // Swipe to change tabs — native listeners on the page container
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = pageRef.current;
+    if (!el) return;
+
+    let startX = 0;
+    let startY = 0;
+
+    const onStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      if (dy > 100 || Math.abs(dx) < 50) return;
+      const idx = PROFILE_TAB_IDS.indexOf(activeTabRef.current);
+      if (dx < 0 && idx < PROFILE_TAB_IDS.length - 1) {
+        setActiveTab(PROFILE_TAB_IDS[idx + 1]);
+      } else if (dx > 0 && idx > 0) {
+        setActiveTab(PROFILE_TAB_IDS[idx - 1]);
+      }
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, []); // stable — reads from ref
+
+  // Scroll the active tab button into view when tab changes (desktop tabs)
+  useEffect(() => {
+    const container = tabScrollRef.current;
+    if (!container) return;
+    const activeBtn = container.querySelector('[data-active="true"]') as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!authInitialized || authLoading) return;
     if (!user) {
       navigate('/');
       return;
     }
     fetchProfile();
     fetchGoals();
-  }, [user, navigate, fetchProfile, fetchGoals]);
+    fetchCollectionSuggestions();
+    fetchStaticSuggestions();
+    fetchGroups();
+  }, [
+    authInitialized,
+    authLoading,
+    user,
+    navigate,
+    fetchProfile,
+    fetchGoals,
+    fetchCollectionSuggestions,
+    fetchStaticSuggestions,
+    fetchGroups,
+  ]);
+
+  const characterIds = profile?.characters.map((c) => c.id).join(',') ?? '';
+  useEffect(() => {
+    if (!profile?.characters.length) return;
+    for (const character of profile.characters) {
+      fetchGearSnapshots(character.id);
+    }
+  }, [characterIds, fetchGearSnapshots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!authInitialized || authLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
+        <Skeleton className="h-12 w-64 mb-6" />
+        <Skeleton className="h-48 mb-4" />
+        <Skeleton className="h-32" />
+      </div>
+    );
+  }
 
   if (!user) return null;
 
   if (loading && !profile) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
         <Skeleton className="h-12 w-64 mb-6" />
         <Skeleton className="h-48 mb-4" />
         <Skeleton className="h-32" />
@@ -55,7 +251,7 @@ export default function Profile() {
   const jobProfiles = profile?.jobProfiles ?? [];
   const mainCharacter = characters.find((c) => c.isMain) ?? characters[0];
   const mainJob = jobProfiles.find((j) => j.priority === 'main');
-  const hasGear = Object.values(gearSnapshots).some((s) => s.length > 0);
+  const hasGear = Object.values(gearSnapshots).some((s) => s.some(hasUsableGearSnapshot));
 
   const hasReadyJob = jobProfiles.some((j) => j.readiness !== 'unknown');
   const shareReady = profile?.shareEnabled && profile?.visibility !== 'private';
@@ -65,233 +261,169 @@ export default function Profile() {
     : !mainJob
       ? { label: 'Set Main Job', action: () => addJobModal.open() }
       : !hasGear
-        ? { label: 'Sync Gear', action: () => setActiveTab('characters') }
+        ? { label: 'Check Gear', action: () => setActiveTab('sync') }
         : !hasReadyJob
-          ? { label: 'Set Readiness', action: () => setActiveTab('jobs') }
+          ? { label: 'Set Readiness', action: () => setActiveTab('jobs-gear') }
           : !shareReady
-            ? { label: 'Preview / Share', action: () => setActiveTab('preview') }
+            ? { label: 'Share Profile', action: () => setActiveTab('preview') }
             : null;
 
-  const tabs: { id: ProfileTab; label: string; count?: number }[] = [
+  // Desktop tab labels
+  const allTabs: { id: ProfileTab; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'characters', label: 'Characters', count: characters.length },
-    { id: 'gear', label: 'Gear' },
-    { id: 'jobs', label: 'Jobs', count: jobProfiles.length },
+    { id: 'sync', label: 'Sync' },
+    { id: 'jobs-gear', label: 'Jobs & Gear', count: jobProfiles.length },
     { id: 'collections', label: 'Collections' },
+    { id: 'availability', label: 'Availability' },
     { id: 'goals', label: 'Goals' },
-    { id: 'preview', label: 'Preview / Share' },
+    { id: 'preview', label: 'Share' },
   ];
+  const tabs = allTabs;
+
+  // Static shortcut — first group remains the default for existing schedule/availability integrations.
+  const primaryStatic = groups.length > 0 ? groups[0] : null;
+  const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Header */}
-      <motion.div {...fadeInProps} className="mb-8">
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            {/* User avatar */}
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0 border-2 border-accent/30">
-              {mainCharacter?.avatarUrl ? (
-                <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl text-text-tertiary">
-                  &#9876;
-                </div>
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-text-primary">
-                My Profile
-              </h1>
-              {mainCharacter && (
-                <div className="text-text-secondary mt-0.5">
-                  {mainCharacter.name} &middot; {mainCharacter.server}
-                </div>
-              )}
-              <div className="flex items-center gap-2 mt-1">
-                {mainJob && (
-                  <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
-                    {mainJob.job} Main
-                  </Badge>
-                )}
-                <Badge
-                  variant={profile?.visibility === 'private' ? 'default' : profile?.visibility === 'shareable' ? 'info' : 'success'}
-                  size="sm"
-                >
-                  {profile?.visibility === 'private' ? 'Private' : profile?.visibility === 'shareable' ? 'Shareable' : 'Discoverable'}
-                </Badge>
+    <div ref={pageRef} className="mx-auto flex w-full max-w-[1440px] flex-col px-3 py-2 sm:px-5 sm:py-4 lg:px-6">
+      {/* Header — compact on mobile */}
+      <motion.div {...fadeInProps} className="mb-3 sm:mb-4">
+        <div className="flex items-center gap-3">
+          {/* User avatar */}
+          <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0 border-2 border-accent/30">
+            {mainCharacter?.avatarUrl ? (
+              <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-text-tertiary">
+                <GameIcon name="shield-person" size="lg" />
               </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-display font-bold text-text-primary truncate">
+              Player Hub
+            </h1>
+            {mainCharacter && (
+              <div className="text-xs sm:text-sm text-text-secondary truncate">
+                {mainCharacter.name} &middot; {mainCharacter.server}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {mainJob && (
+                <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
+                  {mainJob.job} Main
+                </Badge>
+              )}
+              <Badge variant={profile?.visibility === 'private' ? 'default' : 'info'} size="sm">
+                {profile?.visibility === 'private' ? 'Private' : profile?.shareEnabled ? 'Shared' : 'Not Shared'}
+              </Badge>
             </div>
           </div>
-
-          {/* Visibility badge — full controls in Preview / Share tab */}
-          <Badge
-            variant={profile?.shareEnabled ? 'success' : 'default'}
-            size="sm"
-          >
-            {profile?.shareEnabled ? 'Sharing On' : 'Sharing Off'}
-          </Badge>
+          {/* Static shortcut */}
+          <div className="flex-shrink-0 hidden sm:block">
+            <StaticShortcut groups={groups} />
+          </div>
         </div>
+
+        {/* Mobile static shortcut — below header */}
+        {isSmallScreen && (
+          <div className="mt-2">
+            <StaticShortcut groups={groups} mobile />
+          </div>
+        )}
       </motion.div>
 
-      {/* Tab navigation — scrollable on mobile */}
-      <div className="flex gap-1 bg-surface-raised rounded-lg p-1 mb-6 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-1">
-        {tabs.map((tab) => (
-          /* design-system-ignore: Tab button requires specific toggle styling */
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap flex-shrink-0
-              ${
-                activeTab === tab.id
-                  ? 'bg-accent/20 text-accent border-accent/30'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
-              }
-            `}
-          >
-            <span>{tab.label}</span>
-            {tab.count !== undefined && tab.count > 0 && (
-              <span className="text-xs bg-surface-base px-1.5 py-0.5 rounded-full">
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Desktop tab navigation — hidden on mobile (bottom nav replaces it) */}
+      <div className="hidden sm:block relative mb-4">
+        <div ref={tabScrollRef} className="flex gap-1 bg-surface-raised rounded-lg p-1 overflow-x-auto scrollbar-hide scroll-smooth">
+          {tabs.map((tab) => (
+            /* design-system-ignore: Tab button requires specific toggle styling */
+            <button
+              key={tab.id}
+              data-active={activeTab === tab.id ? 'true' : undefined}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap flex-shrink-0
+                ${
+                  activeTab === tab.id
+                    ? 'bg-accent/20 text-accent border-accent/30'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
+                }
+              `}
+            >
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="text-xs bg-surface-base px-1.5 py-0.5 rounded-full">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Tab content */}
-      {activeTab === 'overview' && profile && (
-        <OverviewTab
-          profile={profile}
-          goals={goals}
-          gearSnapshots={gearSnapshots}
-          onNavigate={(tab) => setActiveTab(tab as ProfileTab)}
-          onOpenLinkModal={linkModal.open}
-          onOpenJobModal={addJobModal.open}
-        />
-      )}
+      {/* Tab content — bottom padding for mobile bottom nav */}
+      <div className="pb-20 sm:pb-0">
+        {activeTab === 'overview' && profile && (
+          <OverviewTab
+            profile={profile}
+            goals={goals}
+            gearSnapshots={gearSnapshots}
+            collectionSuggestions={collectionSuggestions}
+            staticSuggestions={staticSuggestions}
+            nextStep={nextStep}
+            onNavigate={(tab) => setActiveTab(tab as ProfileTab)}
+            onOpenLinkModal={linkModal.open}
+            onOpenJobModal={addJobModal.open}
+            primaryStatic={primaryStatic}
+            staticGroups={groups}
+            focusAvailability={focusAvailability}
+          />
+        )}
 
-      {activeTab === 'characters' && (
-        <motion.div {...staggerContainerProps} className="space-y-4">
-          {characters.length === 0 ? (
-            <motion.div {...staggerItemProps} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
-              <div className="text-4xl mb-3">&#9876;</div>
-              <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
-                No characters linked
-              </h3>
-              <p className="text-text-secondary mb-4">
-                Link your FFXIV character to start tracking gear and syncing from Lodestone.
-              </p>
-              <Button onClick={linkModal.open}>Link Character</Button>
-            </motion.div>
-          ) : (
-            <>
-              {characters.map((char) => (
-                <motion.div key={char.id} {...staggerItemProps}>
-                  <CharacterCard character={char} />
-                </motion.div>
-              ))}
-              <Button variant="secondary" onClick={linkModal.open}>
-                Link Another Character
-              </Button>
-            </>
-          )}
-        </motion.div>
-      )}
+        {activeTab === 'sync' && (
+          <SyncCenterTab
+            profile={profile}
+            gearSnapshots={gearSnapshots}
+            goals={goals}
+            primaryStatic={primaryStatic}
+            staticGroups={groups}
+            onNavigate={(tab) => setActiveTab(tab as ProfileTab)}
+            onOpenLinkModal={linkModal.open}
+          />
+        )}
 
-      {activeTab === 'gear' && (
-        <div>
-          {characters.length === 0 ? (
-            <div className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
-              <div className="text-4xl mb-3">&#128230;</div>
-              <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
-                Link a character first
-              </h3>
-              <p className="text-text-secondary mb-4">
-                You need to link at least one character before you can view or sync gear.
-              </p>
-              <Button onClick={() => { setActiveTab('characters'); linkModal.open(); }}>
-                Link Character
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {characters.map((char) => (
-                <div key={char.id}>
-                  <h3 className="text-lg font-display font-semibold text-text-primary mb-3 flex items-center gap-2">
-                    {char.name}
-                    <span className="text-text-tertiary text-sm font-normal">&middot; {char.server}</span>
-                    {char.isMain && <Badge variant="raid" size="sm">Main</Badge>}
-                  </h3>
-                  <GearSnapshotView characterId={char.id} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        {activeTab === 'jobs-gear' && profile && (
+          <JobsGearTab
+            profile={profile}
+            gearSnapshots={gearSnapshots}
+            onAddJob={addJobModal.open}
+            onEditJob={setEditingJob}
+            onOpenLinkModal={linkModal.open}
+            onNavigate={(tab) => setActiveTab(tab as ProfileTab)}
+            onManageBiS={(jobProfileId) => {
+              const jp = profile.jobProfiles.find((j) => j.id === jobProfileId);
+              if (jp) setManagingBisJobId({ id: jobProfileId, job: jp.job });
+            }}
+          />
+        )}
 
-      {activeTab === 'jobs' && (
-        <motion.div {...staggerContainerProps} className="space-y-4">
-          {jobProfiles.length === 0 ? (
-            <motion.div {...staggerItemProps} className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
-              <div className="text-4xl mb-3">&#127919;</div>
-              <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
-                No jobs configured
-              </h3>
-              <p className="text-text-secondary mb-4">
-                Add your main job and any alt/flex jobs to track readiness and gear status.
-              </p>
-              <Button onClick={addJobModal.open}>Add Main Job</Button>
-            </motion.div>
-          ) : (() => {
-            const sorted = [...jobProfiles].sort((a, b) => {
-              const order = { main: 0, preferred_alt: 1, flex: 2, emergency: 3, casual: 4 };
-              return (order[a.priority as keyof typeof order] ?? 5) - (order[b.priority as keyof typeof order] ?? 5);
-            });
-            const mainJobs = sorted.filter((j) => j.priority === 'main');
-            const preferredAlts = sorted.filter((j) => j.priority === 'preferred_alt');
-            const others = sorted.filter((j) => !['main', 'preferred_alt'].includes(j.priority));
+        {activeTab === 'collections' && (
+          <CollectionsTab goals={goals} suggestions={collectionSuggestions} />
+        )}
 
-            const renderGroup = (label: string, jobs: typeof sorted) => jobs.length > 0 && (
-              <motion.div {...staggerItemProps} className="space-y-2">
-                <h3 className="text-xs text-text-tertiary uppercase tracking-wider font-medium">{label}</h3>
-                {jobs.map((jp) => (
-                  <JobProfileCard key={jp.id} jobProfile={jp} onEdit={setEditingJob} />
-                ))}
-              </motion.div>
-            );
+        {activeTab === 'availability' && (
+          <PlayerAvailabilityTab primaryStatic={primaryStatic} staticGroups={groups} />
+        )}
 
-            return (
-              <>
-                {renderGroup('Main', mainJobs)}
-                {renderGroup('Preferred Alts', preferredAlts)}
-                {renderGroup('Flex / Emergency / Casual', others)}
-                {!mainJobs.length && (
-                  <motion.div {...staggerItemProps} className="text-sm text-status-warning bg-status-warning/10 rounded-lg px-4 py-3 border border-status-warning/20">
-                    No main job selected. Add one or promote an existing job to Main.
-                  </motion.div>
-                )}
-                <Button variant="secondary" onClick={addJobModal.open}>
-                  Add Job
-                </Button>
-              </>
-            );
-          })()}
-        </motion.div>
-      )}
+        {activeTab === 'goals' && (
+          <GoalsTab goals={goals} />
+        )}
 
-      {activeTab === 'collections' && (
-        <CollectionsTab goals={goals} />
-      )}
-
-      {activeTab === 'goals' && (
-        <GoalsTab goals={goals} />
-      )}
-
-      {activeTab === 'preview' && profile && (
-        <PreviewShareTab profile={profile} gearSnapshots={gearSnapshots} />
-      )}
+        {activeTab === 'preview' && profile && (
+          <PreviewShareTab profile={profile} gearSnapshots={gearSnapshots} />
+        )}
+      </div>
 
       {/* Modals */}
       {linkModal.isOpen && <CharacterLinkModal onClose={linkModal.close} />}
@@ -302,15 +434,18 @@ export default function Profile() {
           onClose={() => setEditingJob(null)}
         />
       )}
-
-      {/* Sticky mobile CTA for next setup step */}
-      {nextStep && (
-        <div className="fixed bottom-0 left-0 right-0 sm:hidden bg-surface-raised border-t border-border-default px-4 py-3 z-30">
-          <Button className="w-full" onClick={nextStep.action}>
-            {nextStep.label}
-          </Button>
-        </div>
+      {managingBisJobId && (
+        <ManageBiSModal
+          jobProfileId={managingBisJobId.id}
+          job={managingBisJobId.job}
+          onClose={() => setManagingBisJobId(null)}
+        />
       )}
+
+      {/* No sticky bottom CTA — next action is inline in Overview tab */}
+
+      {/* Mobile bottom navigation — matches static page pattern */}
+      <ProfileBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }

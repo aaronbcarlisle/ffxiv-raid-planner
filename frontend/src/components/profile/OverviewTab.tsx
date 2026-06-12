@@ -1,259 +1,576 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import {
+  ArrowRight,
+  Briefcase,
+  Calendar,
+  ChevronDown,
+  ClipboardCheck,
+  Crosshair,
+  Eye,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Users,
+} from 'lucide-react';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { JobIcon } from '../ui/JobIcon';
-import { ReadinessChecklist } from './ReadinessChecklist';
-import { PriorityBadge } from './PriorityBadge';
-import { ReadinessBadge } from './ReadinessBadge';
-import { formatSyncAge, getFreshness, freshnessColor, formatSource } from './freshness';
-import type { PlayerProfile, PlayerGoal, GearSnapshot } from '../../stores/playerProfileStore';
+import { getFreshness, freshnessColor } from './freshness';
+import { formatGearActivity, formatGearSourceLabel, hasUsableGearSnapshot } from './jobGearUtils';
+import { ActivityFeedCard, useActivityFeed } from './ActivityFeed';
+import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityStore';
+import type {
+  CollectionSuggestion,
+  GearSnapshot,
+  PlayerGoal,
+  PlayerProfile,
+  StaticSuggestion,
+} from '../../stores/playerProfileStore';
 import { COLLECTION_GOAL_TYPES, PERSONAL_GOAL_TYPES } from '../../stores/playerProfileStore';
 import { getJobDisplayName } from '../../gamedata/jobs';
 import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
+import type { StaticGroupListItem } from '../../types';
+import { getBrowserTimezone } from '../../utils/timezone';
+
+const DAY_LABELS: Record<string, string> = {
+  MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun',
+};
 
 interface OverviewTabProps {
   profile: PlayerProfile;
   goals: PlayerGoal[];
   gearSnapshots: Record<string, GearSnapshot[]>;
+  collectionSuggestions: CollectionSuggestion[];
+  staticSuggestions: StaticSuggestion[];
+  nextStep?: { label: string; action: () => void } | null;
   onNavigate: (tab: string) => void;
   onOpenLinkModal: () => void;
   onOpenJobModal: () => void;
+  primaryStatic?: StaticGroupListItem | null;
+  staticGroups?: StaticGroupListItem[];
+  focusAvailability?: boolean;
 }
 
-function SummaryCard({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
+function DashboardCard({
+  title,
+  subtitle,
+  icon,
+  children,
+  footer,
+  className,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={`bg-surface-raised rounded-lg border border-border-default p-4 ${className ?? ''}`}>
-      <h3 className="font-display font-semibold text-text-primary text-sm mb-3">{title}</h3>
+    <div className={`flex min-h-[116px] flex-col rounded-lg border border-border-default bg-surface-raised p-3 ${className ?? ''}`}>
+      <div className="mb-3 flex items-start gap-2">
+        {icon && (
+          <div className="mt-0.5 rounded-lg border border-border-subtle bg-surface-elevated p-1.5 text-accent">
+            {icon}
+          </div>
+        )}
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-text-primary">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="flex-1">{children}</div>
+      {footer && <div className="mt-3 border-t border-border-subtle pt-3">{footer}</div>}
+    </div>
+  );
+}
+
+function InlineLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-1 text-xs font-medium text-accent transition-colors hover:text-accent-hover"
+    >
       {children}
-    </div>
+      <ArrowRight className="h-3 w-3" />
+    </Link>
   );
 }
 
-interface SetupStepProps {
-  done: boolean;
+function CommandChip({
+  label,
+  value,
+  detail,
+  to,
+  icon,
+  highlight = false,
+}: {
   label: string;
-  description: string;
-  action?: string;
-  onClick?: () => void;
-}
-
-function SetupStep({ done, label, description, action, onClick }: SetupStepProps) {
+  value: string;
+  detail: string;
+  to: string;
+  icon: React.ReactNode;
+  highlight?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-        done ? 'bg-status-success/20 text-status-success' : 'bg-surface-elevated text-text-tertiary'
-      }`}>
-        {done ? '✓' : '○'}
+    <Link
+      to={to}
+      className={`min-w-0 rounded-lg border px-3 py-2 transition-colors hover:border-accent/40 hover:bg-accent/5 ${
+        highlight ? 'border-accent/40 bg-accent/10' : 'border-border-subtle bg-surface-elevated/70'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
+        <span className="text-accent">{icon}</span>
+        {label}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${done ? 'text-text-primary' : 'text-text-secondary'}`}>{label}</div>
-        {!done && <div className="text-xs text-text-tertiary">{description}</div>}
-      </div>
-      {!done && action && onClick && (
-        <Button variant="secondary" size="sm" onClick={onClick}>{action}</Button>
-      )}
-    </div>
+      <div className="mt-1 truncate text-sm font-semibold text-text-primary">{value}</div>
+      <div className="truncate text-[11px] text-text-tertiary">{detail}</div>
+    </Link>
   );
 }
 
-export function OverviewTab({ profile, goals, gearSnapshots, onNavigate, onOpenLinkModal, onOpenJobModal }: OverviewTabProps) {
+export function OverviewTab({
+  profile,
+  goals,
+  gearSnapshots,
+  collectionSuggestions,
+  staticSuggestions,
+  nextStep,
+  onNavigate,
+  onOpenLinkModal: _onOpenLinkModal,
+  onOpenJobModal: _onOpenJobModal,
+  primaryStatic,
+  staticGroups = primaryStatic ? [primaryStatic] : [],
+  focusAvailability = false,
+}: OverviewTabProps) {
   const characters = profile.characters;
   const jobProfiles = profile.jobProfiles;
-  const mainCharacter = characters.find((c) => c.isMain) ?? characters[0];
   const mainJob = jobProfiles.find((j) => j.priority === 'main');
-  const altJobs = jobProfiles.filter((j) => j.priority !== 'main').slice(0, 3);
+  const [showAllSteps, setShowAllSteps] = useState(false);
+  const { days: personalAvailabilityDays, fetchPersonalAvailability } = usePersonalAvailabilityStore();
+
+  useEffect(() => {
+    fetchPersonalAvailability();
+  }, [fetchPersonalAvailability]);
 
   let latestSnapshot: GearSnapshot | null = null;
   for (const snaps of Object.values(gearSnapshots)) {
     for (const snap of snaps) {
+      if (!hasUsableGearSnapshot(snap)) continue;
       if (!latestSnapshot || (snap.syncedAt && (!latestSnapshot.syncedAt || snap.syncedAt > latestSnapshot.syncedAt))) {
         latestSnapshot = snap;
       }
     }
   }
 
-  const hasAnyGear = Object.values(gearSnapshots).some((s) => s.length > 0);
+  const hasAnyGear = Object.values(gearSnapshots).some((s) => s.some(hasUsableGearSnapshot));
   const hasCharacter = characters.length > 0;
   const hasMainJob = !!mainJob;
+  const hasAltJob = jobProfiles.some((j) => j.priority !== 'main');
   const hasReadyJob = jobProfiles.some((j) => j.readiness !== 'unknown');
-  const shareConfigured = profile.shareEnabled && profile.visibility !== 'private';
+  const visibilityConfigured = profile.visibility !== 'private';
+  const shareConfigured = profile.shareEnabled && !!profile.shareCode && visibilityConfigured;
 
   const collectionGoals = goals.filter((g) => COLLECTION_GOAL_TYPES.includes(g.goalType as never));
   const personalGoals = goals.filter((g) => PERSONAL_GOAL_TYPES.includes(g.goalType as never));
+  const farmingCollectionCount = collectionGoals.filter((g) => g.status === 'active').length;
+  const readyToBuySuggestionCount = collectionSuggestions.filter((s) => !s.hasMount && s.currentCount >= s.totemTarget).length;
+  const configuredAvailabilityDays = personalAvailabilityDays.filter((day) => day.slots.length > 0);
+  const availabilityDayCount = configuredAvailabilityDays.length;
+  const availabilitySlots = configuredAvailabilityDays.reduce((total, day) => total + day.slots.length, 0);
+  const availabilityHours = availabilitySlots / 2;
+  const availabilityTimezone = configuredAvailabilityDays[0]?.timezone || getBrowserTimezone();
+  const availabilitySummary = availabilityDayCount > 0
+    ? `${availabilityDayCount} day${availabilityDayCount === 1 ? '' : 's'} · ${Number.isInteger(availabilityHours) ? availabilityHours : availabilityHours.toFixed(1)}h`
+    : 'Missing';
+  const availabilityDayLabels = configuredAvailabilityDays
+    .map((day) => DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek)
+    .join(' / ');
+  const staticCount = staticGroups.length;
+  const staticSummary = staticCount === 0
+    ? 'Find a static'
+    : staticCount === 1
+      ? staticGroups[0].name
+      : `My Statics (${staticCount})`;
+  const staticDetail = staticCount === 0
+    ? 'Open Static Finder'
+    : staticCount === 1
+      ? (staticGroups[0].userRole ?? 'Member')
+      : 'Use My Statics menu';
+  const staticLink = staticCount === 1 && primaryStatic
+    ? `/group/${primaryStatic.shareCode}`
+    : staticCount === 0
+      ? '/discover'
+      : '/profile';
 
-  const setupComplete = hasCharacter && hasMainJob && hasAnyGear && hasReadyJob;
+  const readinessChecks = [
+    { done: hasCharacter, label: 'Character linked' },
+    { done: hasMainJob, label: 'Main job selected' },
+    { done: hasAnyGear, label: 'Gear saved' },
+    { done: availabilityDayCount > 0, label: 'Availability set' },
+    { done: hasReadyJob, label: 'Job readiness set' },
+    { done: visibilityConfigured, label: 'Profile visibility configured' },
+    { done: shareConfigured, label: 'Share preview available' },
+  ];
+  const optionalChecks = [{ done: hasAltJob, label: 'Alt/flex job added' }];
+  const completedCount = readinessChecks.filter((step) => step.done).length;
+  const incompleteSteps = readinessChecks.filter((step) => !step.done);
+  const completedSteps = [...readinessChecks, ...optionalChecks].filter((step) => step.done);
+  const readinessPercent = Math.round((completedCount / readinessChecks.length) * 100);
+  const readinessAction = !hasCharacter
+    ? { label: nextStep?.label ?? 'Link Character', action: nextStep?.action ?? (() => undefined), to: null }
+    : !hasMainJob
+      ? { label: nextStep?.label ?? 'Set Main Job', action: nextStep?.action ?? (() => onNavigate('jobs-gear')), to: null }
+      : !hasAnyGear
+        ? { label: 'Check Gear', action: () => onNavigate('sync'), to: null }
+        : availabilityDayCount === 0
+          ? { label: 'Set Availability', action: () => onNavigate('availability'), to: null }
+          : !hasReadyJob
+          ? { label: 'Set Readiness', action: () => onNavigate('jobs-gear'), to: null }
+          : !visibilityConfigured || !shareConfigured
+            ? { label: 'Configure Sharing', action: () => onNavigate('preview'), to: null }
+            : { label: 'View Static Finder', action: null, to: '/discover' };
+  const syncHealthLabel = latestSnapshot ? formatGearActivity(latestSnapshot) : 'No gear saved yet';
+  const readyToApply = completedCount === readinessChecks.length;
+  const activityItems = useActivityFeed(gearSnapshots, 4);
 
   return (
-    <motion.div {...staggerContainerProps} className="space-y-5">
-      {/* Hero card */}
-      <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0 border-2 border-accent/30">
-            {mainCharacter?.avatarUrl ? (
-              <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl text-text-tertiary">?</div>
-            )}
+    <motion.div {...staggerContainerProps} className="space-y-4">
+      <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 shadow-sm sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Profile status</p>
+            <h2 className="truncate font-display text-base font-semibold text-text-primary">Ready at a glance</h2>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-display font-bold text-text-primary text-lg">
-              {mainCharacter?.name ?? 'No Character'}
-            </div>
-            <div className="text-sm text-text-secondary">
-              {mainCharacter ? (
-                <>
-                  {mainCharacter.server}
-                  {mainCharacter.dataCenter && <span className="text-text-tertiary"> [{mainCharacter.dataCenter}]</span>}
-                </>
-              ) : 'Link a character to get started'}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {mainJob && (
-              <div className="flex items-center gap-1.5">
-                <JobIcon job={mainJob.job} size="md" />
-                <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
-                  {mainJob.job}
-                </Badge>
-                <ReadinessBadge readiness={mainJob.readiness} />
-              </div>
-            )}
-            <Badge
-              variant={profile.visibility === 'private' ? 'default' : profile.visibility === 'shareable' ? 'info' : 'success'}
-              size="sm"
-            >
-              {profile.visibility === 'private' ? 'Private' : profile.visibility === 'shareable' ? 'Shareable' : 'Discoverable'}
-            </Badge>
-          </div>
+          <Badge
+            variant={profile.visibility === 'private' ? 'default' : profile.visibility === 'shareable' ? 'info' : 'success'}
+            size="sm"
+          >
+            {profile.visibility === 'private' ? 'Private' : profile.visibility === 'shareable' ? 'Shareable' : 'Discoverable'}
+          </Badge>
         </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <CommandChip
+            label="Gear"
+            value={latestSnapshot ? `iLv ${latestSnapshot.avgItemLevel}` : 'Missing'}
+            detail={latestSnapshot ? syncHealthLabel : 'Sync needed'}
+            to="/profile?tab=sync"
+            icon={<Briefcase className="h-3.5 w-3.5" />}
+          />
+          <CommandChip
+            label="Availability"
+            value={availabilitySummary}
+            detail={availabilityDayLabels || availabilityTimezone}
+            to="/profile?tab=availability"
+            icon={<Calendar className="h-3.5 w-3.5" />}
+            highlight={focusAvailability || availabilityDayCount === 0}
+          />
+          <CommandChip
+            label="Sharing"
+            value={shareConfigured ? 'Shareable' : 'Private'}
+            detail={profile.visibility}
+            to="/profile?tab=share"
+            icon={<Eye className="h-3.5 w-3.5" />}
+          />
+          <CommandChip
+            label="Collections"
+            value={farmingCollectionCount > 0 ? `${farmingCollectionCount} farming` : 'None tracked'}
+            detail={`${readyToBuySuggestionCount} ready to buy`}
+            to="/profile?tab=collections"
+            icon={<Sparkles className="h-3.5 w-3.5" />}
+          />
+          <CommandChip
+            label="Static"
+            value={staticSummary}
+            detail={staticDetail}
+            to={staticLink}
+            icon={<Users className="h-3.5 w-3.5" />}
+          />
+        </div>
+      </motion.div>
 
-        {/* Alt jobs inline */}
-        {altJobs.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border-default flex items-center gap-4 flex-wrap">
-            <span className="text-xs text-text-tertiary uppercase tracking-wider">Also plays</span>
-            {altJobs.map((jp) => (
-              <div key={jp.id} className="flex items-center gap-1.5">
-                <JobIcon job={jp.job} size="sm" />
-                <span className="text-sm text-text-secondary">{jp.job}</span>
-                <PriorityBadge priority={jp.priority} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <aside className="space-y-4 xl:order-2">
+          <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 sm:p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-sm font-semibold text-text-primary">{readyToApply ? 'Ready to apply' : 'Next step'}</h3>
+                <p className="mt-0.5 text-xs text-text-tertiary">Gear, sharing, and Static Finder</p>
               </div>
-            ))}
-            {jobProfiles.length > 4 && (
-              <span className="text-xs text-text-tertiary">+{jobProfiles.length - 4} more</span>
+              <Badge variant={readyToApply ? 'success' : 'default'} size="sm">
+                {readinessPercent}%
+              </Badge>
+            </div>
+            <div className="mb-3 h-2 overflow-hidden rounded-full bg-surface-elevated">
+              <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${readinessPercent}%` }} />
+            </div>
+            {incompleteSteps.length > 0 ? (
+              <div className="mb-3 rounded-lg border border-status-warning/20 bg-status-warning/10 px-3 py-2">
+                <p className="text-xs font-medium text-status-warning">Next step</p>
+                <p className="text-sm text-text-primary">{incompleteSteps[0].label}</p>
+              </div>
+            ) : (
+              <div className="mb-3 rounded-lg border border-status-success/20 bg-status-success/10 px-3 py-2 text-sm text-status-success">
+                Your profile is ready for Static Finder.
+              </div>
             )}
-          </div>
-        )}
-      </motion.div>
+            {readinessAction.to ? (
+              <Link
+                to={readinessAction.to}
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-hover sm:min-h-0"
+              >
+                {readinessAction.label}
+              </Link>
+            ) : (
+              <Button variant="primary" size="sm" onClick={readinessAction.action ?? undefined} className="w-full">
+                {readinessAction.label}
+              </Button>
+            )}
 
-      {/* Guided setup — shown until core setup is complete */}
-      {!setupComplete && (
-        <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-accent/20 p-4">
-          <h3 className="font-display font-semibold text-text-primary text-sm mb-1">Get Started</h3>
-          <p className="text-xs text-text-tertiary mb-3">Complete these steps to build your raider profile.</p>
-          <div className="divide-y divide-border-default">
-            <SetupStep
-              done={hasCharacter}
-              label="Link your FFXIV character"
-              description="Search Lodestone and link your character identity."
-              action="Link"
-              onClick={onOpenLinkModal}
-            />
-            <SetupStep
-              done={hasMainJob}
-              label="Set your main job"
-              description="Choose the job you raid as primarily."
-              action="Add Job"
-              onClick={onOpenJobModal}
-            />
-            <SetupStep
-              done={hasAnyGear}
-              label="Sync your gear"
-              description="Fetch your equipped gear from Lodestone."
-              action="Characters"
-              onClick={() => onNavigate('characters')}
-            />
-            <SetupStep
-              done={hasReadyJob}
-              label="Set job readiness"
-              description="Mark your readiness for each job."
-              action="Jobs"
-              onClick={() => onNavigate('jobs')}
-            />
-            <SetupStep
-              done={shareConfigured}
-              label="Share your profile"
-              description="Enable sharing so static leads can view it."
-              action="Preview"
-              onClick={() => onNavigate('preview')}
-            />
-          </div>
-        </motion.div>
-      )}
+            <div className="mt-3 space-y-2 border-t border-border-subtle pt-3">
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                      <span className="truncate text-sm text-text-secondary">Gear</span>
+                </div>
+                {/* design-system-ignore: Compact row action inside unified Next Actions panel */}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('sync')}
+                  className="text-right text-xs font-medium text-accent transition-colors hover:text-accent-hover"
+                >
+                  {latestSnapshot ? syncHealthLabel : 'Open'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Eye className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <span className="truncate text-sm text-text-secondary">Sharing</span>
+                </div>
+                <Link to="/profile?tab=share" className="text-xs font-medium text-accent hover:text-accent-hover">
+                  {shareConfigured ? 'Ready' : 'Configure'}
+                </Link>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <ClipboardCheck className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <span className="truncate text-sm text-text-secondary">
+                    {staticSuggestions.length > 0 ? 'Statics looking for you' : 'Static Finder'}
+                  </span>
+                </div>
+                <Link to="/discover" className="text-xs font-medium text-accent hover:text-accent-hover">
+                  {staticSuggestions.length > 0 ? `${staticSuggestions.length} match${staticSuggestions.length === 1 ? '' : 'es'}` : 'Open'}
+                </Link>
+              </div>
+            </div>
 
-      {/* Summary grid */}
-      <motion.div {...staggerItemProps} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Gear */}
-        <SummaryCard title="Latest Gear">
-          {latestSnapshot ? (
+            {completedSteps.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {completedSteps.slice(0, 4).map((step) => (
+                  <span key={step.label} className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-2 py-1 text-[11px] text-status-success">
+                    <ShieldCheck className="h-3 w-3" />
+                    {step.label}
+                  </span>
+                ))}
+                {completedSteps.length > 4 && (
+                  <span className="rounded-full bg-surface-elevated px-2 py-1 text-[11px] text-text-tertiary">
+                    +{completedSteps.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* design-system-ignore: Compact disclosure control for readiness details */}
+            <button
+              type="button"
+              onClick={() => setShowAllSteps(!showAllSteps)}
+              className="mt-3 flex w-full items-center gap-1 text-xs text-text-tertiary transition-colors hover:text-text-secondary"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform ${showAllSteps ? 'rotate-180' : ''}`} />
+              {showAllSteps ? 'Hide checklist' : 'Show checklist'}
+            </button>
+            {showAllSteps && (
+              <div className="mt-2 space-y-1 rounded-lg border border-border-subtle bg-surface-elevated/50 px-3 py-2">
+                {[...readinessChecks, ...optionalChecks].map((check) => (
+                  <div key={check.label} className="flex items-center justify-between gap-2 text-xs">
+                    <span className={check.done ? 'text-text-primary' : 'text-text-tertiary'}>{check.label}</span>
+                    <span className={check.done ? 'text-status-success' : 'text-status-warning'}>{check.done ? 'Done' : 'Needed'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {staticSuggestions.length > 0 && (
+            <motion.div {...staggerItemProps}>
+              <DashboardCard
+                title="Static Finder Matches"
+                subtitle="Compact preview from your Player Hub setup"
+                icon={<Users className="h-4 w-4" />}
+                footer={<InlineLink to="/discover">Open Static Finder</InlineLink>}
+                className="min-h-0"
+              >
+                <div className="space-y-2">
+                  {staticSuggestions.slice(0, 3).map((s) => (
+                    <Link
+                      key={s.shareCode}
+                      to={`/group/${s.shareCode}`}
+                      className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm transition-colors hover:bg-surface-elevated hover:text-accent"
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium text-text-primary">{s.name}</span>
+                      <div className="flex flex-shrink-0 flex-wrap gap-1">
+                        {s.matchingJobs.slice(0, 2).map((j) => (
+                          <Badge key={j} variant="info" size="sm">{j}</Badge>
+                        ))}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </DashboardCard>
+            </motion.div>
+          )}
+          <motion.div {...staggerItemProps}>
+            <ActivityFeedCard items={activityItems} />
+          </motion.div>
+        </aside>
+
+        <main className="space-y-4 xl:order-1">
+          <motion.div {...staggerItemProps} className="space-y-3">
             <div>
-              <div className="flex items-center gap-2">
-                <JobIcon job={latestSnapshot.job} size="md" />
-                <span className="text-text-primary font-medium">{getJobDisplayName(latestSnapshot.job)}</span>
-                <Badge variant="info" size="sm">iLv {latestSnapshot.avgItemLevel}</Badge>
-              </div>
-              <div className="mt-1.5 flex items-center gap-2 text-xs">
-                <span className={freshnessColor(getFreshness(latestSnapshot.syncedAt))}>
-                  {formatSyncAge(latestSnapshot.syncedAt)}
-                </span>
-                <span className="text-text-tertiary">{formatSource(latestSnapshot.source)}</span>
-              </div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Raider Snapshot</p>
+              <h3 className="font-display text-lg text-text-primary">Profile systems at a glance</h3>
             </div>
-          ) : (
-            <p className="text-text-tertiary text-sm">No gear synced yet.</p>
-          )}
-        </SummaryCard>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <DashboardCard
+                title="Gear"
+                subtitle="Applications and roster links"
+                icon={<Briefcase className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=sync">Open Sync</InlineLink>}
+              >
+                {latestSnapshot ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <JobIcon job={latestSnapshot.job} size="sm" />
+                      <span className="font-medium text-text-primary">{getJobDisplayName(latestSnapshot.job)}</span>
+                      <Badge variant="info" size="sm">iLv {latestSnapshot.avgItemLevel}</Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className={freshnessColor(getFreshness(latestSnapshot.syncedAt))}>
+                        {formatGearActivity(latestSnapshot)}
+                      </span>
+                      <span className="text-text-tertiary">{formatGearSourceLabel(latestSnapshot.source)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-medium text-text-primary">No gear saved yet</p>
+                    <p className="mt-1 text-sm text-text-tertiary">
+                      Sync gear so applications and recommendations can use your current item level.
+                    </p>
+                  </div>
+                )}
+              </DashboardCard>
 
-        {/* Collections */}
-        <SummaryCard title="Collections">
-          {collectionGoals.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-xl font-display font-bold text-accent">{collectionGoals.filter((g) => g.status === 'active').length}</span>
-                <span className="text-xs text-text-tertiary ml-1">active</span>
-              </div>
-              <div>
-                <span className="text-xl font-display font-bold text-status-success">{collectionGoals.filter((g) => g.status === 'completed').length}</span>
-                <span className="text-xs text-text-tertiary ml-1">done</span>
-              </div>
+              <DashboardCard
+                title="Jobs"
+                subtitle="Static Finder and Request to Join"
+                icon={<Crosshair className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=jobs-gear">Manage Jobs & Gear</InlineLink>}
+              >
+                {jobProfiles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {jobProfiles.slice(0, 4).map((jp) => (
+                      <span key={jp.id} className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-elevated/70 px-2 py-1 text-xs text-text-secondary">
+                        <JobIcon job={jp.job} size="sm" />
+                        {jp.job}
+                      </span>
+                    ))}
+                    {jobProfiles.length > 4 && <span className="text-xs text-text-tertiary">+{jobProfiles.length - 4} more</span>}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-tertiary">Add your main and flex jobs so statics can see where you fit.</p>
+                )}
+              </DashboardCard>
+
+              <DashboardCard
+                title="Collections"
+                subtitle="Farm recommendations"
+                icon={<Sparkles className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=collections">Open Collections</InlineLink>}
+              >
+                {collectionGoals.length > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="font-display text-2xl text-accent">{collectionGoals.filter((g) => g.status === 'active').length}</span>
+                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                    </div>
+                    <div>
+                      <span className="font-display text-2xl text-status-success">{collectionGoals.filter((g) => g.status === 'completed').length}</span>
+                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-tertiary">Track reward progress so static farms can line up later.</p>
+                )}
+              </DashboardCard>
+
+              <DashboardCard
+                title="Goals"
+                subtitle="Private tasks and reminders"
+                icon={<Target className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=goals">Add Task</InlineLink>}
+              >
+                {personalGoals.length > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="font-display text-2xl text-accent">{personalGoals.filter((g) => g.status === 'active').length}</span>
+                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                    </div>
+                    <div>
+                      <span className="font-display text-2xl text-status-success">{personalGoals.filter((g) => g.status === 'completed').length}</span>
+                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-medium text-text-primary">No tasks yet</p>
+                    <p className="mt-1 text-sm text-text-tertiary">Track gearing, clears, raid prep, or reminders.</p>
+                  </div>
+                )}
+              </DashboardCard>
             </div>
-          ) : (
-            <p className="text-text-tertiary text-sm">No collection goals yet.</p>
-          )}
-        </SummaryCard>
+          </motion.div>
 
-        {/* Goals */}
-        <SummaryCard title="Personal Goals">
-          {personalGoals.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-xl font-display font-bold text-accent">{personalGoals.filter((g) => g.status === 'active').length}</span>
-                <span className="text-xs text-text-tertiary ml-1">active</span>
-              </div>
-              <div>
-                <span className="text-xl font-display font-bold text-status-success">{personalGoals.filter((g) => g.status === 'completed').length}</span>
-                <span className="text-xs text-text-tertiary ml-1">done</span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-text-tertiary text-sm">No personal goals yet.</p>
+          {collectionSuggestions.length > 0 && (
+            <motion.div {...staggerItemProps}>
+              <DashboardCard title="Suggested farms" subtitle="Collection progress detected from your latest sync">
+                <div className="space-y-2">
+                  {collectionSuggestions.slice(0, 3).map((s) => (
+                    <div key={s.trialId} className="flex items-center gap-2 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-text-primary">{s.mountName}</span>
+                        <span className="block truncate text-xs text-text-tertiary">{s.dutyName}</span>
+                      </div>
+                      {s.hasMount ? (
+                        <Badge variant="success" size="sm">Owned</Badge>
+                      ) : (
+                        <Badge variant="info" size="sm">{s.currentCount}/{s.totemTarget}</Badge>
+                      )}
+                    </div>
+                  ))}
+                  {collectionSuggestions.length > 3 && (
+                    <Button variant="ghost" size="sm" onClick={() => onNavigate('collections')}>
+                      +{collectionSuggestions.length - 3} more
+                    </Button>
+                  )}
+                </div>
+              </DashboardCard>
+            </motion.div>
           )}
-        </SummaryCard>
-      </motion.div>
-
-      {/* Readiness checklist */}
-      <motion.div {...staggerItemProps}>
-        <ReadinessChecklist profile={profile} hasGearSnapshots={hasAnyGear} />
-      </motion.div>
+        </main>
+      </div>
     </motion.div>
   );
 }

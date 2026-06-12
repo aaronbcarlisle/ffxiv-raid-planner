@@ -7,3 +7,4 @@ export { MembersPanel } from './MembersPanel';
 export { JoinRequestBanner } from './JoinRequestBanner';
 export { JoinRequestModal } from './JoinRequestModal';
 export { JoinRequestsPanel } from './JoinRequestsPanel';
+export { JoinRequestReviewModal } from './JoinRequestReviewModal';

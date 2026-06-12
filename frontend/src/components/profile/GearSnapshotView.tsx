@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { JobIcon } from '../ui/JobIcon';
 import { Skeleton } from '../ui/Skeleton';
+import { GameIcon } from '../ui/GameIcon';
 import { Badge } from '../primitives/Badge';
 import { SourceBadge } from './SourceBadge';
-import { formatSyncAge, getFreshness, freshnessColor } from './freshness';
+import { getFreshness, freshnessColor } from './freshness';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import type { GearSnapshot, GearSlotData } from '../../stores/playerProfileStore';
 import { getJobDisplayName } from '../../gamedata/jobs';
+import { formatGearActivity } from './jobGearUtils';
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: 'Weapon',
@@ -29,8 +31,8 @@ function GearSlotRow({ slot }: { slot: GearSlotData }) {
   const isEmpty = !name && ilvl === 0;
 
   return (
-    <div className={`flex items-center gap-3 py-1.5 text-sm ${isEmpty ? 'opacity-50' : ''}`}>
-      <span className="w-20 text-text-tertiary flex-shrink-0">
+    <div className={`grid min-w-0 grid-cols-[72px_20px_minmax(0,1fr)_40px] items-center gap-2 py-1.5 text-sm sm:grid-cols-[80px_20px_minmax(0,1fr)_44px_auto] ${isEmpty ? 'opacity-50' : ''}`}>
+      <span className="truncate text-text-tertiary">
         {SLOT_LABELS[slot.slot] ?? slot.slot}
       </span>
       {slot.equippedItemIcon ? (
@@ -41,11 +43,9 @@ function GearSlotRow({ slot }: { slot: GearSlotData }) {
       <span className={`flex-1 truncate ${isEmpty ? 'text-text-tertiary italic' : 'text-text-primary'}`}>
         {name || 'Empty'}
       </span>
-      {ilvl > 0 && (
-        <span className="text-text-secondary font-mono text-xs">{ilvl}</span>
-      )}
+      <span className="text-right text-text-secondary font-mono text-xs">{ilvl > 0 ? ilvl : '-'}</span>
       {!isEmpty && (
-        <Badge variant={source === 'savage' ? 'raid' : source === 'tome_up' ? 'augmented' : source === 'tome' ? 'tome' : source === 'crafted' ? 'crafted' : 'default'} size="sm">
+        <Badge className="hidden sm:inline-flex" variant={source === 'savage' ? 'raid' : source === 'tome_up' ? 'augmented' : source === 'tome' ? 'tome' : source === 'crafted' ? 'crafted' : 'default'} size="sm">
           {source}
         </Badge>
       )}
@@ -60,17 +60,17 @@ function SnapshotCard({ snapshot }: { snapshot: GearSnapshot }) {
   const isStale = freshness === 'stale' || freshness === 'old';
 
   return (
-    <div className={`bg-surface-raised rounded-lg border p-4 ${isStale ? 'border-status-warning/30' : 'border-border-default'}`}>
-      <div className="flex items-center gap-3 mb-1 flex-wrap">
+    <div className={`min-w-0 bg-surface-raised rounded-lg border p-3 sm:p-4 ${isStale ? 'border-status-warning/30' : 'border-border-default'}`}>
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3 mb-1 flex-wrap">
         <JobIcon job={snapshot.job} size="lg" />
-        <span className="font-display font-semibold text-text-primary">
+        <span className="min-w-0 truncate font-display font-semibold text-text-primary">
           {getJobDisplayName(snapshot.job)}
         </span>
         <span className="text-text-tertiary text-sm">{snapshot.job}</span>
         <Badge variant="info" size="sm">iLv {snapshot.avgItemLevel}</Badge>
         <SourceBadge source={snapshot.source} />
-        <span className={`text-xs ml-auto ${freshnessColor(freshness)}`}>
-          {formatSyncAge(snapshot.syncedAt)}
+        <span className={`text-xs sm:ml-auto ${freshnessColor(freshness)}`}>
+          {formatGearActivity(snapshot)}
         </span>
         {isStale && <Badge variant="warning" size="sm">Stale</Badge>}
       </div>
@@ -116,9 +116,9 @@ export function GearSnapshotView({ characterId }: GearSnapshotViewProps) {
   if (snapshots.length === 0) {
     return (
       <div className="bg-surface-raised rounded-lg border border-border-default p-6 text-center">
-        <div className="text-2xl mb-2 text-text-tertiary">&#128230;</div>
+        <div className="mb-2 text-text-tertiary"><GameIcon name="chest" size="xl" /></div>
         <p className="text-text-secondary text-sm">
-          No gear snapshots yet. Use the <strong>Sync Gear</strong> button on your character card to fetch your equipped gear.
+          No gear saved yet. Use <strong>Refresh from Lodestone</strong> to fetch your currently equipped gear, or run the plugin sync in game.
         </p>
       </div>
     );

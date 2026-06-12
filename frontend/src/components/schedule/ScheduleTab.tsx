@@ -11,6 +11,7 @@ import { SessionCard } from './SessionCard';
 import { CreateSessionModal } from './CreateSessionModal';
 import { AvailabilityGrid } from './AvailabilityGrid';
 import type { ScheduleSession, ScheduleSessionCreate, RsvpStatus, MemberRole, Membership } from '../../types';
+import { buildScheduleDraftFromContent, type ScheduleContentDraftRequest } from './sessionDrafts';
 
 type SchedulerSubTab = 'sessions' | 'availability' | 'integrations';
 type WebhookMentionTarget = 'none' | 'here' | 'role';
@@ -56,14 +57,19 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const [createDraft, setCreateDraft] = useState<ScheduleSessionCreate | null>(null);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [channelLabel, setChannelLabel] = useState('');
+  const [enableAtStart, setEnableAtStart] = useState(false);
+  const [enable15m, setEnable15m] = useState(false);
   const [enable24h, setEnable24h] = useState(false);
   const [enable1h, setEnable1h] = useState(false);
+  const [enable6h, setEnable6h] = useState(false);
+  const [enable12h, setEnable12h] = useState(false);
   const [enableMissingRsvp, setEnableMissingRsvp] = useState(false);
   const [mentionTarget, setMentionTarget] = useState<WebhookMentionTarget>('none');
   const [mentionRoleId, setMentionRoleId] = useState('');
   const [mentionError, setMentionError] = useState<string | null>(null);
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
   const [integrationMessage, setIntegrationMessage] = useState<string | null>(null);
+  const [postingPreview, setPostingPreview] = useState(false);
   const [sessionViewMode, setSessionViewMode] = useState<'list' | 'tiles'>(() => {
     const saved = localStorage.getItem('schedule-session-view');
     return saved === 'tiles' ? 'tiles' : 'list';
@@ -75,27 +81,11 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       : 'sessions';
   });
 
-  // Listen for farm schedule requests
-  useEventBus<{ trialName: string; missing?: number; canBuy?: number; wanting?: number }>(
+  // Listen for content schedule requests from farm/reward views.
+  useEventBus<ScheduleContentDraftRequest>(
     Events.MOUNT_FARM_SCHEDULE,
-    ({ trialName, missing, canBuy, wanting }) => {
-      const lines = [`Farm progress for ${trialName}.`];
-      if (missing) lines.push(`${missing} member${missing > 1 ? 's' : ''} still need${missing === 1 ? 's' : ''} this reward.`);
-      if (canBuy) lines.push(`${canBuy} can buy with the exchange currency.`);
-      if (wanting && wanting !== missing) lines.push(`${wanting} marked as wanted.`);
-      lines.push('Check Availability tab for best time slots.');
-
-      setCreateDraft({
-        title: `Farm: ${trialName}`,
-        description: lines.join('\n'),
-        startTime: '',
-        endTime: '',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        isRecurring: false,
-        recurrenceRule: null,
-        category: 'farm',
-        contentName: trialName,
-      });
+    (request) => {
+      setCreateDraft(buildScheduleDraftFromContent(request));
       setActiveSubTab('sessions');
       createModal.open();
     }
@@ -113,9 +103,13 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     if (!settings) return;
     setWebhookUrl('');
     setChannelLabel(settings.reminderChannelLabel || '');
-    setEnable24h(settings.enable24hReminder);
-    setEnable1h(settings.enable1hReminder);
-    setEnableMissingRsvp(settings.enableMissingRsvpReminder);
+    setEnableAtStart(Boolean(settings.enableAtStartReminder));
+    setEnable15m(Boolean(settings.enable15mReminder));
+    setEnable24h(Boolean(settings.enable24hReminder));
+    setEnable1h(Boolean(settings.enable1hReminder));
+    setEnable6h(Boolean(settings.enable6hReminder));
+    setEnable12h(Boolean(settings.enable12hReminder));
+    setEnableMissingRsvp(Boolean(settings.enableMissingRsvpReminder));
     setMentionTarget(settings.mentionTarget || 'none');
     setMentionRoleId(settings.mentionRoleId || '');
     setMentionError(null);
@@ -163,11 +157,8 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   const handleUpdate = async (data: ScheduleSessionCreate) => {
     if (!editSession) return;
-    await updateSession(groupId, editSession.id, {
-      ...data,
-      recurrenceRule: data.recurrenceRule ?? undefined,
-    });
-    setEditSession(null);
+    await updateSession(groupId, editSession.id, data);
+    await fetchSessions(groupId);
   };
 
   const handleDelete = async (sessionId: string) => {
@@ -205,8 +196,12 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       reminderChannelLabel: channelLabel || null,
       mentionTarget,
       mentionRoleId: mentionTarget === 'role' ? normalizedRoleId : null,
+      enableAtStartReminder: enableAtStart,
+      enable15mReminder: enable15m,
       enable24hReminder: enable24h,
       enable1hReminder: enable1h,
+      enable6hReminder: enable6h,
+      enable12hReminder: enable12h,
       enableMissingRsvpReminder: enableMissingRsvp,
     });
     setWebhookUrl('');
@@ -332,7 +327,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
               <Calendar className="mx-auto mb-3 h-12 w-12 opacity-40" />
               <p className="text-lg">No raid sessions yet.</p>
               {canManage && (
-                <p className="mt-1 text-sm">Create your first raid night and start collecting RSVPs.</p>
+                <p className="mt-1 text-sm">Create your first raid night and choose whether availability needs to be tracked.</p>
               )}
             </div>
           ) : (
@@ -505,8 +500,12 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         </p>
                       </div>
                       <div className="space-y-2">
-                        <Checkbox checked={enable24h} onChange={setEnable24h} label="24 hour reminder" />
-                        <Checkbox checked={enable1h} onChange={setEnable1h} label="1 hour reminder" />
+                        <Checkbox checked={enableAtStart} onChange={setEnableAtStart} label="At start" />
+                        <Checkbox checked={enable15m} onChange={setEnable15m} label="15 minutes before" />
+                        <Checkbox checked={enable1h} onChange={setEnable1h} label="1 hour before" />
+                        <Checkbox checked={enable6h} onChange={setEnable6h} label="6 hours before" />
+                        <Checkbox checked={enable12h} onChange={setEnable12h} label="12 hours before" />
+                        <Checkbox checked={enable24h} onChange={setEnable24h} label="24 hours before" />
                         <Checkbox checked={enableMissingRsvp} onChange={setEnableMissingRsvp} label="Missing RSVP reminder" />
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -527,11 +526,17 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                           size="sm"
                           variant="secondary"
                           leftIcon={<Send className="h-4 w-4" />}
-                          onClick={() => void postSessionPreview(groupId).then(() => setIntegrationMessage('Session posted to Discord'))}
-                          disabled={!settings?.webhookConfigured || sessions.length === 0}
+                          onClick={() => {
+                            if (postingPreview) return;
+                            setPostingPreview(true);
+                            void postSessionPreview(groupId)
+                              .then(() => setIntegrationMessage('Session posted to Discord'))
+                              .finally(() => setPostingPreview(false));
+                          }}
+                          disabled={!settings?.webhookConfigured || sessions.length === 0 || postingPreview}
                           title={sessions.length === 0 ? 'No upcoming sessions to post' : 'Post the next upcoming session to Discord'}
                         >
-                          Post latest session
+                          {postingPreview ? 'Posting…' : 'Post latest session'}
                         </Button>
                       </div>
                       <p className="text-xs text-text-muted">

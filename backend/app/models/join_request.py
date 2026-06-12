@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, Index
+from sqlalchemy import Boolean, ForeignKey, String, Text, Index
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -35,6 +35,33 @@ class JoinRequest(Base):
     job_interest: Mapped[list | None] = mapped_column(JSON, nullable=True)
     availability_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     contact_discord: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Profile-connected application fields (all nullable for backwards compat)
+    player_profile_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("player_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    player_character_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("player_characters.id", ondelete="SET NULL"), nullable=True
+    )
+    selected_job: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    selected_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    included_alt_jobs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    gear_snapshot_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    availability_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    readiness_at_apply: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    profile_share_code_at_apply: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    profile_visibility_at_apply: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    profile_share_enabled_at_apply: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Character identity snapshot (immutable at application time)
+    character_name_at_apply: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    character_world_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    character_dc_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    character_avatar_url_at_apply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    character_lodestone_id_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Roster onboarding — tracks the SnapshotPlayer created from this application
+    roster_player_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("snapshot_players.id", ondelete="SET NULL"), nullable=True
+    )
 
     resolved_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by_user_id: Mapped[str | None] = mapped_column(

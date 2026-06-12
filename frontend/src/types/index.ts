@@ -99,7 +99,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 };
 
 // Page navigation modes
-export type PageMode = 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule' | 'mount-farms';
+export type PageMode = 'home' | 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule' | 'mount-farms';
 
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
@@ -439,6 +439,15 @@ export const TAB_ICONS = {
   history: '/icons/history-transparent-bg.png',
   schedule: '/icons/schedule-transparent-bg.png',
   mountFarms: '/icons/mount-farms-transparent-bg.png',
+  playerOverview: '/icons/player-hub-overview.svg',
+  playerSync: '/icons/player-hub-overview.svg',
+  playerCharacter: '/icons/player-hub-character.svg',
+  playerGear: '/icons/player-hub-gear.svg',
+  playerAvailability: '/icons/schedule-transparent-bg.png',
+  playerJobs: '/icons/player-hub-jobs.svg',
+  playerHunts: '/icons/player-hub-hunts.svg',
+  playerGoals: '/icons/player-hub-goals.svg',
+  playerShare: '/icons/player-hub-share.svg',
 };
 
 // ==================== User/Auth Types ====================
@@ -778,12 +787,36 @@ export interface InvitationAcceptResponse {
 
 // ==================== Join Request Types ====================
 
-export type JoinRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+export type JoinRequestStatus = 'pending' | 'under_review' | 'accepted' | 'declined' | 'cancelled';
 
 export interface RequesterInfo {
   id: string;
   displayName?: string;
   avatarUrl?: string;
+}
+
+export interface AltJobEntry {
+  job: string;
+  role: string;
+  priority: string;
+  readiness: string;
+}
+
+export interface GearSnapshotSummary {
+  job: string;
+  avgItemLevel: number;
+  source: string;
+  syncedAt: string | null;
+  completeSlotsCount?: number;
+}
+
+export interface AvailabilitySnapshotSummary {
+  configuredDays: number;
+  timezone: string;
+  detailLevel: 'summary_only' | 'exact';
+  dayLabels?: string[];
+  source?: 'player_hub';
+  exactWindows?: { dayOfWeek: string; dayLabel: string; slots: string[] }[];
 }
 
 export interface JoinRequest {
@@ -798,6 +831,26 @@ export interface JoinRequest {
   jobInterest?: string[];
   availabilityNote?: string;
   contactDiscord?: string;
+  // Profile-connected fields
+  playerProfileId?: string;
+  playerCharacterId?: string;
+  selectedJob?: string;
+  selectedRole?: string;
+  includedAltJobs?: AltJobEntry[];
+  gearSnapshotSummary?: GearSnapshotSummary;
+  availabilitySummary?: AvailabilitySnapshotSummary;
+  readinessAtApply?: string;
+  profileShareCodeAtApply?: string;
+  profileVisibilityAtApply?: 'private' | 'shareable' | 'discoverable';
+  profileShareEnabledAtApply?: boolean;
+  // Character identity snapshot
+  characterNameAtApply?: string;
+  characterWorldAtApply?: string;
+  characterDcAtApply?: string;
+  characterAvatarUrlAtApply?: string;
+  characterLodestoneIdAtApply?: string;
+  // Roster onboarding
+  rosterPlayerId?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
@@ -815,6 +868,22 @@ export interface JoinRequestCreatePayload {
   jobInterest?: string[];
   availabilityNote?: string;
   contactDiscord?: string;
+  // Profile-connected fields
+  playerProfileId?: string;
+  playerCharacterId?: string;
+  selectedJob?: string;
+  selectedRole?: string;
+  includedAltJobs?: AltJobEntry[];
+  gearSnapshotSummary?: GearSnapshotSummary;
+  availabilitySummary?: AvailabilitySnapshotSummary;
+  includeExactAvailability?: boolean;
+  readinessAtApply?: string;
+  profileShareCodeAtApply?: string;
+  // Character identity (auto-populated by backend from character if omitted)
+  characterNameAtApply?: string;
+  characterWorldAtApply?: string;
+  characterDcAtApply?: string;
+  characterAvatarUrlAtApply?: string;
 }
 
 // ==================== Admin Types ====================
@@ -882,6 +951,35 @@ export type BiSCategory = 'savage' | 'ultimate' | 'all';
 export interface BiSPresetsResponse {
   job: string;
   presets: BiSPreset[];
+}
+
+// ==================== Multi-BiS V1 Types ====================
+
+export type BisTargetSource = 'manual' | 'etro' | 'xivgear' | 'ariyala' | 'external';
+export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
+
+/**
+ * A named target gear set for one job.
+ * A job can have many BisTargetSets; exactly one should have isActive = true.
+ *
+ * Import status: xivgear and etro UUIDs are supported via existing /api/bis/* endpoints.
+ * Ariyala is deprecated upstream; store externalUrl only.
+ * Full item-level import requires a valid UUID/sheet from a supported source.
+ */
+export interface BisTargetSet {
+  id: string;
+  job: string;
+  name: string;
+  source: BisTargetSource;
+  externalUrl?: string;
+  purpose: BisTargetPurpose;
+  patch?: string;
+  tier?: string;
+  targetItemLevel?: number;
+  isActive: boolean;
+  importedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ==================== Loot Tracking Types ====================
@@ -1111,7 +1209,7 @@ export interface ScheduleRsvp {
   updatedAt: string;
 }
 
-export type EventCategory = 'raid' | 'farm' | 'reclear' | 'prog' | 'social' | 'other';
+export type EventCategory = 'raid' | 'ultimate' | 'farm' | 'reclear' | 'prog' | 'social' | 'other';
 
 export interface ScheduleSession {
   id: string;
@@ -1124,6 +1222,7 @@ export interface ScheduleSession {
   timezone: string;
   isRecurring: boolean;
   recurrenceRule: string | null;
+  trackAvailability?: boolean;
   category: EventCategory | null;
   contentId: string | null;
   contentName: string | null;
@@ -1140,8 +1239,12 @@ export interface ScheduleSettings {
   reminderChannelLabel?: string | null;
   mentionTarget: 'none' | 'here' | 'role';
   mentionRoleId?: string | null;
+  enableAtStartReminder?: boolean;
+  enable15mReminder?: boolean;
   enable24hReminder: boolean;
   enable1hReminder: boolean;
+  enable6hReminder?: boolean;
+  enable12hReminder?: boolean;
   enableMissingRsvpReminder: boolean;
   calendarEnabled: boolean;
   calendarUrl?: string | null;
@@ -1156,8 +1259,12 @@ export interface ScheduleSettingsUpdate {
   reminderChannelLabel?: string | null;
   mentionTarget?: 'none' | 'here' | 'role';
   mentionRoleId?: string | null;
+  enableAtStartReminder?: boolean;
+  enable15mReminder?: boolean;
   enable24hReminder?: boolean;
   enable1hReminder?: boolean;
+  enable6hReminder?: boolean;
+  enable12hReminder?: boolean;
   enableMissingRsvpReminder?: boolean;
 }
 
@@ -1169,12 +1276,13 @@ export interface CalendarTokenResponse {
 
 export interface ScheduleSessionCreate {
   title: string;
-  description?: string;
+  description?: string | null;
   startTime: string;
   endTime: string;
   timezone: string;
   isRecurring?: boolean;
   recurrenceRule?: string | null;
+  trackAvailability?: boolean;
   initialRsvpStatus?: InitialRsvpStatus;
   category?: EventCategory | null;
   contentId?: string | null;
@@ -1183,12 +1291,13 @@ export interface ScheduleSessionCreate {
 
 export interface ScheduleSessionUpdate {
   title?: string;
-  description?: string;
+  description?: string | null;
   startTime?: string;
   endTime?: string;
   timezone?: string;
   isRecurring?: boolean;
-  recurrenceRule?: string;
+  recurrenceRule?: string | null;
+  trackAvailability?: boolean;
   category?: EventCategory | null;
   contentId?: string | null;
   contentName?: string | null;

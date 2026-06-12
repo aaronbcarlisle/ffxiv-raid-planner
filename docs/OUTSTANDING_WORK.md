@@ -1,7 +1,7 @@
 # FFXIV Raid Planner - Outstanding Work
 
-**Last Updated:** June 8, 2026
-**Current Version:** v1.22.2
+**Last Updated:** June 11, 2026
+**Current Version:** v1.23.8
 **Purpose:** Single source of truth for all remaining implementation work, validated against the actual codebase.
 
 ---
@@ -11,6 +11,8 @@
 **Current Branch:** `main`
 
 **Recent Completions:**
+- **2026-06-11:** v1.23.8 — V1.1 Activity Privacy + Motion Polish: activity privacy model (visibility/actorDisplay/type), plugin sync actor anonymization ("A member obtained X"), "Shared mount data synced" aggregate, activity rows AnimatePresence, dossier backdrop fade + scale 0.98, Collection Goal rows layout animation, framer-motion reduced-motion respected.
+- **2026-06-11:** v1.23.5 – v1.23.7 — V1.1 Product Closure Pass: Collection Goals (backend persistence + create modal), Schedule Farm duty context via eventBus, Recent Activity on first Overview visit, shared ApplicationSnapshot mapper, Raid Prep keyboard-accessible rows, webhook failure documented as V2 gap.
 - **2026-06-07:** v1.22.1 – v1.22.2 — Mount Farms reliability patch (clearer errors, curated farm catalog guardrails) and Discord schedule links (production planner links, schedule reminder mention controls)
 - **2026-06-04:** v1.21.2 — Availability timetable redesign (time-range presets, sticky headers, section dividers)
 - **2026-06-03:** v1.20.0 – v1.21.1 — Plugin browser sign-in (one-click PKCE loopback auth via `plugin_auth_code` model + `PluginAuth.tsx` page; no manual API key copy/paste), Gear Sync Safety & Tomestone Refresh, Find a Static recruitment board (`discovery.py` + `join_requests.py` routers, `join_request` model, `/discover` page, `DiscoveryTab`, `JoinRequestsPanel`/`JoinRequestModal`/`JoinRequestBanner`), and a design-system lint cleanup
@@ -171,7 +173,7 @@
 **Current Warning Count:** 152 (design-system + react-hooks combined)
 **Note:** Warning count should be verified with `pnpm lint` after any major changes
 
-**Test Coverage:** ~988 tests (390 backend + ~503 frontend + 95 scripts)
+**Test Coverage:** ~1002 tests (394 backend + ~513 frontend + 95 scripts)
 **Note:** 5 fixture errors in `tests/test_httponly_cookies.py` (pre-existing, tests run but async fixtures fail in isolation)
 
 All lint errors resolved; only warnings remain. These don't affect functionality.
@@ -197,6 +199,58 @@ All lint errors resolved; only warnings remain. These don't affect functionality
 - ✅ React Refresh warnings - resolved
 - ✅ Refs during render - resolved
 - ✅ Earlier quick wins (unused variables, prefer-const, no-constant-condition)
+
+---
+
+## V1.1 Roadmap Status (as of v1.23.7)
+
+### V1.1 Implemented (complete)
+
+| Feature | Notes |
+|---------|-------|
+| **Collection Goals — backend persistence** | `collection_goals` table (migration `a7b8c9d0e1f2`). CRUD via `GET/POST/PUT/DELETE /api/static-groups/{id}/collection-goals`. Owner/lead mutate; member view-only — enforced server-side via `require_can_manage_members()`. |
+| **Collection Goals — frontend create flow** | "Create Collection Goal" CTA opens a real modal (`CreateCollectionGoalModal`), not a navigation. Supported types: mount, token/totem, minion, orchestrion, glam, custom_reward. No raid prog types. Empty state: "No collection goals yet / Track mounts, tokens, and rewards your group wants to farm." |
+| **Schedule Farm context** | "Schedule Farm" in BestNextFarmModule calls `onScheduleFarm` prop → GroupView emits `Events.MOUNT_FARM_SCHEDULE` after 100ms tab-switch delay; `ScheduleTab` opens `CreateSessionModal` with duty/farm context pre-filled. |
+| **Recent Activity on first visit** | `fetchProgress(group.id, getAllTrialIds())` called on StaticHomeTab mount so activity rows appear without visiting Mount Farms first. |
+| **Shared ApplicationSnapshot mapper** | `normalizeApplicationSnapshot()` in `utils/applicationSnapshot.ts` used by both CommandBriefModule (compact preview) and JoinRequestReviewModal (dossier). Ensures identical field derivation. Preview never shows Accept/Decline/Maybe. |
+| **Raid Prep rows keyboard-accessible** | Each player row converted from `<div>` to `<button type="button">` with hover/focus state and `aria-label="View {name} on roster"`. Navigates to `players` tab. |
+| **Mount activity stays in Activity, not Notifications** | Confirmed correct — mount farm events surface only in Recent Activity rows, never in the notification rail. |
+| **Activity privacy model** | `StaticActivityItem` shape with `visibility` (`static`/`private`/`leaders`/`public`) and `actorDisplay` (`named`/`anonymous`/`system`). Derivation in `StaticHomeTab.tsx`. Static Overview filters to `visibility === 'static'` only. |
+| **Plugin sync actor anonymization** | Plugin-sourced rows use `actorDisplay: 'anonymous'` → "A member obtained X". Plugin aggregate shows "Shared mount data synced" (system, no actor). Manual rows keep named actor. |
+| **Motion polish** | Dossier backdrop fade 180ms, scale 0.98→1.0, y 8→0, 200ms duration. Activity rows `AnimatePresence` fade/slide-in 140ms. Collection Goal rows layout animation 160ms. All respect `prefers-reduced-motion` via framer-motion. |
+
+### V1.1 Scoped as V2 Gaps (documented, not feasible without schema changes)
+
+| Feature | Why deferred | V2 Work |
+|---------|-------------|---------|
+| **Webhook failure surfacing** | `_try_fire_webhook` and `_post_or_edit_webhook` in `routers/schedule.py` are fire-and-forget — errors log at WARNING on the server only. No `last_failed_at` or `last_delivery_status` field exists on `ScheduleSettings` or `DiscordMessageMapping`. Surfacing "Discord post failed" to leads requires a schema column + migration + frontend polling or webhook response status exposure. | Add `last_webhook_status` + `last_webhook_at` to `DiscordMessageMapping`; return delivery outcome on POST/PUT session response; frontend can show a `!` badge on sessions with failed delivery. |
+
+---
+
+## V1 Roadmap Status (as of v1.23.5 → updated v1.23.7)
+
+### V1 Implemented (complete, no known gaps)
+
+| Feature | Notes |
+|---------|-------|
+| **Join request flow** | Submit, accept, decline, review dossier. Backend enforces owner/lead-only. |
+| **Permissions** | `require_can_manage_members()` enforced on all join request mutations. Frontend hides UI for non-managers. 4 API-level permission tests added (lead can accept/decline; member gets 403). |
+| **Gear readiness model** | User-manual only. Lodestone sync does NOT overwrite readiness. `readinessAtApply` snapshot is immutable at submission time. |
+| **Static Overview dashboard** | Unified Command Brief + parchment application notice (one card). Notification rail shows all pending apps. "Raid Prep" compact per-member rows (iLv · BiS · readiness label). |
+| **Application preview consistency** | Preview and Review Dossier draw from shared `normalizeApplicationSnapshot()` mapper; identical field values and copy. Preview shows no Accept/Decline/Maybe controls. |
+| **ReadinessBadge copy** | `unknown` state reads "Not self-rated" throughout (job cards, preview, dossier). |
+| **Multi-BiS frontend** | Zustand store + localStorage (`bis-targets-v1`). Per-slot target sets per tier. Explicit local-only disclosure in `BiSTargetPanel`. |
+| **Discord/webhook integration** | Webhooks fire on session create/edit, join request status change. `DiscordMessageMapping` deduplicates session posts. |
+| **Collection Goals** | Group-level farm goals persisted to DB. Owner/lead manage; member view-only (server-enforced). Create modal, empty state, status display. V1.1. |
+
+### V1/V1.1 Scaffolded / Partial (disclosed in UI, deferred to V2)
+
+| Feature | Status | V2 Work |
+|---------|--------|---------|
+| **Multi-BiS backend persistence** | localStorage-only; explicit in-UI disclosure. | Backend sync endpoint + migration. |
+| **Notification read/unread state** | Derived on each render from join requests + sessions; no DB notification table. | `notification` model, read/unread timestamps, user-specific dismissal. |
+| **Webhook failure surfacing** | Fire-and-forget; errors logged server-side only. No delivery status column. | `last_webhook_status` + `last_webhook_at` on `DiscordMessageMapping`; session-level delivery badge for leads. |
+| **Ariyala BiS source** | `BiSSourceType.ARIYALA` defined in schema, but no import path implemented. | Ariyala API integration (or deprecation in favour of Etro/XIVGear). |
 
 ---
 

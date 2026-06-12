@@ -438,12 +438,13 @@ body {
   margin: 0 !important;
   padding: 0 !important;
   min-height: 100dvh;
+  height: 100dvh;
   width: 100% !important;
   max-width: 100% !important;
   position: static !important; /* Prevent Radix from setting position: fixed which breaks sticky nav */
   /* Reset any transform that might be applied */
   transform: none !important;
-  /* Note: No overflow set here - let default behavior work to preserve sticky positioning */
+  overflow: hidden;
 }
 
 /* Prevent Radix focus guards from affecting layout */
@@ -480,9 +481,10 @@ body[data-scroll-locked][style] {
 
 #root {
   min-height: 100dvh;
+  height: 100dvh;
   width: 100%;
   max-width: 100%;
-  /* Note: overflow-x: hidden removed - breaks sticky positioning */
+  overflow: hidden;
 }
 
 /* When prevent-page-scroll class is applied, constrain to viewport height */

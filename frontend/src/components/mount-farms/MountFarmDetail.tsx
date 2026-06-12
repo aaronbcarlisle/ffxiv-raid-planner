@@ -8,6 +8,7 @@ import { Checkbox } from '../ui/Checkbox';
 import { NumberInput } from '../ui/NumberInput';
 import { Tooltip } from '../primitives/Tooltip';
 import { toast } from '../../stores/toastStore';
+import { FarmCurrencyProgress } from './FarmProgress';
 
 interface MountFarmDetailProps {
   trial: MountFarmTrial;
@@ -102,10 +103,10 @@ export function MountFarmDetail({
               <th className="text-left px-4 py-2 font-medium">Member</th>
               <th className="text-center px-2 py-2 font-medium w-16">Reward</th>
               <th className="text-center px-2 py-2 font-medium w-16">Wants</th>
-              <th className="text-center px-2 py-2 font-medium w-32">
+              <th className="text-center px-2 py-2 font-medium w-44">
                 <Tooltip content={hasTotemTracking ? getExchangeSummary(trial) : 'No currency exchange for this trial'}>
                   <span className="inline-flex items-center gap-1">
-                    {trial.currencyItemName ?? trial.totemName ?? 'Currency'}
+                    Progress
                     {!hasTotemTracking && <HelpCircle className="w-3 h-3" />}
                   </span>
                 </Tooltip>
@@ -161,8 +162,6 @@ function MemberRow({
   onToggleMount, onToggleWants, onTotemChange,
 }: MemberRowProps) {
   const displayTotem = member.totemCount;
-  const exchangeCost = trial.exchangeCost ?? trial.totemTarget;
-  const totemPercent = exchangeCost > 0 ? Math.min((displayTotem / exchangeCost) * 100, 100) : 0;
   const rewardNoun = getRewardNoun(trial);
 
   // Determine the "effective source" to show one badge
@@ -210,15 +209,17 @@ function MemberRow({
         {member.hasMount ? (
           <div className="text-center text-text-tertiary">&mdash;</div>
         ) : hasTotemTracking ? (
-          <div className="flex items-center gap-2">
-            <div className="w-14">
+          <div className="flex min-w-[156px] flex-col items-center gap-1.5">
+            <div className="w-[96px]">
               <NumberInput value={displayTotem} onChange={(val) => onTotemChange(member, val ?? 0)} min={0} max={999} disabled={!canEdit || isSaving} size="sm" aria-label={`${member.displayName} currency count`} />
             </div>
-            <div className="flex-1 min-w-[50px]">
-              <div className="h-1.5 bg-surface-elevated rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-300 ${totemPercent >= 100 ? 'bg-amber-400' : 'bg-accent/60'}`} style={{ width: `${totemPercent}%` }} />
-              </div>
-              <div className="text-[10px] text-text-tertiary mt-0.5 text-center">{displayTotem}/{exchangeCost} {getCurrencyLabelPlural(trial)}</div>
+            <div className="w-full max-w-[132px]">
+              <FarmCurrencyProgress
+                trial={trial}
+                currentCount={displayTotem}
+                className="text-center"
+                showKindLabel
+              />
             </div>
           </div>
         ) : (

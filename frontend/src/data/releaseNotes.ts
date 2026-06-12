@@ -58,35 +58,299 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-12T00:00:00Z',
+    items: [
+      {
+        category: 'feature',
+        title: 'BiS target sets now persist across sessions',
+        description:
+          'Each job profile now supports multiple named BiS target sets, stored server-side instead of in localStorage. Set one as active per job; the Jobs & Gear tab shows the active target inline. A new "BiS targets" button on each job card opens the manage modal.',
+      },
+      {
+        category: 'improvement',
+        title: 'Activity feed uses cleaner labels',
+        description:
+          'Anonymous totem updates now read "A member updated collection progress" instead of naming the currency, manual totem updates read "updated … progress" instead of "currency to N", and the plugin aggregate reads "Shared mount data updated" instead of "synced".',
+      },
+      {
+        category: 'improvement',
+        title: 'Sync tab restructured into five focused sections',
+        description:
+          'The Player Hub Sync tab now has five clearly separated sections: Sync Status (plugin badge + character identity), Sync Sources (priority chain Plugin → Lodestone → Manual with Lodestone fallback explanation), Sync Coverage (compact job/gear counts and source distribution), Sync Log (recent sync entries derived from gear snapshot data), and Privacy (plain-language explanation of activity anonymization). The redundant full job list is removed — Jobs & Gear remains the editing surface.',
+      },
+      {
+        category: 'improvement',
+        title: 'Jobs & Gear adds "Manage Sync" CTA',
+        description:
+          '"Manage Sync" button in the Jobs & Gear header navigates directly to the Sync tab, making the connection between the two surfaces discoverable without requiring users to find the tab manually.',
+      },
+      {
+        category: 'improvement',
+        title: 'Sync Coverage clarifies that readiness is not managed by sync',
+        description:
+          'The Sync Coverage module now includes "Readiness is managed in Jobs & Gear" to prevent confusion between gear data being synced and the readiness flag that players set manually.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.8',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Recent Activity no longer leaks plugin sync actor names',
+        description:
+          'Plugin-sourced mount and totem rows now show "A member obtained…" instead of the player\'s name, preventing personal plugin sync details from appearing on the Static Overview. Manual entries continue to show the actor name. The old ambiguous "Plugin synced N mounts" aggregate is replaced with "Shared mount data synced" (system-level, no actor count).',
+      },
+      {
+        category: 'improvement',
+        title: 'Activity privacy model: static vs personal separation',
+        description:
+          'Derived activity rows are now tagged with visibility (static/private) and actor display (named/anonymous/system). Static Overview only shows static-scoped rows. Plugin sync personal details carry visibility: private and are filtered out at the derivation layer before they can reach the UI.',
+      },
+      {
+        category: 'improvement',
+        title: 'Dossier modal entrance animation tightened',
+        description:
+          'JoinRequestReviewModal now uses scale 0.98 → 1.0 (was 0.96) with y 8px → 0 and a 180ms backdrop fade, giving the Recruitment Dossier a more polished entrance. Animation is disabled when prefers-reduced-motion is set.',
+      },
+      {
+        category: 'improvement',
+        title: 'Recent Activity and Collection Goals rows animate on insert',
+        description:
+          'New activity rows fade/slide in at 140ms when they appear. Collection goal rows use framer-motion layout animations for add/remove. All animations are skipped automatically under prefers-reduced-motion.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.7',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'feature',
+        title: 'Collection Goals: group-level farm tracking with server-side persistence',
+        description:
+          'Leads and owners can now create, edit, and delete Collection Goals directly from the Static Overview. Supported types: mount, token/totem, minion, orchestrion roll, glamour, and custom reward. Token goals show a current/target counter. Goals persist to the database (owners and leads only; members are view-only, enforced server-side). Empty state guides users: "Track mounts, tokens, and rewards your group wants to farm." Raid progression is intentionally excluded to keep Collection Goals separate from tier work.',
+      },
+      {
+        category: 'improvement',
+        title: 'Schedule Farm carries duty context into CreateSessionModal',
+        description:
+          '"Schedule Farm" on the Static Overview now pre-fills the CreateSessionModal with the farm\'s duty name, content type, and member-need counts instead of just navigating to the Schedule tab empty-handed. The event-bus handoff preserves all farm context across the tab switch.',
+      },
+      {
+        category: 'fix',
+        title: 'Recent Activity populates on first Overview visit',
+        description:
+          'mount farm progress is now fetched on Overview mount so Recent Activity rows appear immediately — no longer requires visiting the Mount Farms tab first.',
+      },
+      {
+        category: 'improvement',
+        title: 'Preview application and Review Dossier now draw from the same data source',
+        description:
+          'A shared normalizeApplicationSnapshot() mapper is used by both the compact Command Brief preview and the Join Request Review Modal Dossier, ensuring the two views show consistent field values and copy.',
+      },
+      {
+        category: 'improvement',
+        title: 'Raid Prep rows are keyboard-accessible buttons',
+        description:
+          'Each player row in the Raid Prep section is now a focusable button that navigates to the Roster tab, with hover/focus states and proper aria-labels.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.6',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Overview: Recent Activity, Best Next Farm, and Collection Goals',
+        description:
+          'Static Overview now surfaces mount farm activity. Recent Activity (center column) shows up to 5 derived rows from mount farm progress data — who obtained a mount, updated currency, or started tracking — without flooding Notifications. Best Next Farm (right column) shows the top scorer from the recommendation engine with a Schedule Farm CTA. Collection Goals copy updated to "No static collection goals yet" with a Create Static Goal CTA. Routine mount tracking events are separated from actionable notifications.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.5',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Static Overview V1 correctness pass',
+        description:
+          'Pending applications now appear in the notification rail (not suppressed by deduplication). Application teaser merged into Command Brief as an ivory/gold parchment inset — no longer a separate dark card. "Static Readiness" renamed to "Raid Prep" with compact per-member text rows (iLv · BiS · readiness). "Not rated" readiness label corrected to "Not self-rated". Application preview now shows the submitted readiness badge and consistent gear copy. Backend permission tests confirm lead can accept/decline and regular members are blocked via direct API.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.4',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Static Overview dashboard redesigned',
+        description:
+          'The Overview tab now uses an asymmetric three-column layout with a Command Brief status bar, a dark-themed application teaser card, and a renamed Static Readiness section showing per-member iLv, BiS progress, and readiness state. Notification deduplication prevents the same application from appearing in both the notification rail and the featured teaser.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.3',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Discord session preview no longer posts twice',
+        description:
+          'The "Post latest session" button now uses deduplication: repeated posts edit the existing Discord message instead of creating duplicates. A loading state on the button prevents double-clicks.',
+      },
+      {
+        category: 'improvement',
+        title: 'Jobs & Gear card cleanup',
+        description:
+          'Plugin-synced job cards no longer show debug metadata. "Unknown" readiness is hidden when gear exists, "Below target" / "Missing gear" badges are now contextually accurate, and Ultimate weapon coffer rows in Collections show the duty name as the primary title.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.2',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'feature',
+        title: 'Multi-job saved gearset sync',
+        description:
+          'The plugin now reads all saved gearsets from the game and uploads them in one batch. Each job with a saved gearset gets its own gear snapshot. Jobs without saved gearsets remain manual.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.23.1',
+    date: '2026-06-11T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Gear sync freshness accuracy',
+        description:
+          'Plugin gear sync no longer updates the "synced at" timestamp when the gear payload is identical to existing data. A separate plugin heartbeat timestamp tracks connection status independently.',
+      },
+    ],
+    internal: true,
+  },
   {
     version: '1.23.0',
     date: '2026-06-08T00:00:00Z',
     title: 'Solo Player Hub & Join Requests',
-    highlights: ['Player Hub for solo raiders — no static required', 'Request to Join with profile-connected applications'],
+    highlights: [
+      'Your raider profile for statics, schedules, and applications',
+      'Request to Join with profile-connected applications',
+    ],
     items: [
       {
         category: 'feature',
-        title: 'Player Hub source-of-truth dashboard',
+        title: 'Schedule reminders and availability control',
         description:
-          'Player Hub is organized around connected profile systems: Overview, Sync, Gear, Jobs, Collections, Availability, Goals, and Share. Keep your raider profile current in one place so applications, schedules, roster snapshots, farm recommendations, and future matching features can consume safe profile snapshots.',
-        commits: [{ hash: 'pending', message: 'feat: solo player hub foundation', date: '2026-06-08T00:00:00Z' }],
+          'Added reminder presets for at-start, 15-minute, 1-hour, 6-hour, 12-hour, and 24-hour reminders, Ultimate scheduling, and per-session availability tracking controls for fixed-session statics.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Jobs & Gear sync polish',
+        description:
+          'Jobs & Gear now keeps gear attached to the matching job profile, hides full item lists until opened, and makes Plugin, Lodestone fallback, Manual, and Imported gear freshness clear.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'fix',
+        title: 'Sync Center and Ultimate session drafts',
+        description:
+          'Sync Center now uses a plugin-first setup flow with fallbacks tucked into advanced options, and creating a session from Ultimate content now opens an Ultimate draft with the correct duty and neutral session copy.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Player Hub raider profile',
+        description:
+          'Player Hub is now organized around Overview, Sync, Jobs & Gear, Collections, Availability, Goals, and Share. Keep your raider profile current in one place for applications, schedules, roster links, farm recommendations, and future matching features.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
       },
       {
         category: 'feature',
         title: 'Application snapshots from Player Hub',
         description:
-          'Request to Join captures an immutable Player Hub snapshot when applying, including safe character, job, readiness, gear, availability summary, sharing state, and selected alt/flex job details. Private notes, goals, and exact personal availability stay private.',
-        commits: [{ hash: 'pending', message: 'feat: profile-connected join requests', date: '2026-06-08T00:00:00Z' }],
+          "Request to Join keeps a copy of your selected character, job, readiness, gear, availability summary, sharing state, and selected alt/flex job details when you apply. Private notes and goals stay private, while exact availability windows are included only when the applicant opts in.",
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
       },
       {
         category: 'feature',
-        title: 'Personal availability and schedule quick fill',
+        title: 'Recruitment Dossier — parchment review modal',
         description:
-          'Set your usual weekly availability once in Player Hub, then reuse it in static scheduling tools. Static-specific week edits stay local, and existing custom days are preserved.',
-        commits: [{ hash: 'pending', message: 'feat: personal typical availability in player hub', date: '2026-06-08T00:00:00Z' }],
+          'Parchment-style recruitment dossier modal for reviewing applications. Shows character avatar, name, world, job, gear level, readiness, alt jobs, availability, Discord handle, and static fit matching with an authentic Grand Company aesthetic.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Add to Roster onboarding',
+        description:
+          'After accepting an applicant, leaders can add them to the roster with prefilled character data. Roster slot includes name, job, world, avatar, and Lodestone ID.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Character linking & gear sync',
+        description:
+          'Search and link your FFXIV character from Lodestone with gear preview. Refresh the currently equipped job from Lodestone fallback, or use plugin uploads for job-matched gear freshness.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Main & alt job tracking',
+        description:
+          'Track main, preferred alt, flex, emergency, and casual jobs with readiness status. Saved gear auto-links to matching job profiles.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Personal availability configuration',
+        description:
+          "Set per-day availability windows to share with statics. Availability is included in applications at the applicant's chosen detail level (summary or exact windows).",
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Goals & collections tracking',
+        description:
+          'Track FFXIV in-game goals — BiS targets, mounts, titles, and custom objectives. Collections tab shows mounts, minions, and ultimate weapon coffers.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Share & application preview',
+        description:
+          'Enable a shareable link to your profile. The application preview shows exactly what static leads see: job, gear level, availability, and readiness in a premium parchment dossier card.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
+      },
+      {
+        category: 'feature',
+        title: 'Static home dashboard',
+        description:
+          'New Home tab for static groups: roster quick-stats (size, avg iLv, pending apps), next scheduled session, and a pending applications panel for leaders.',
+        commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
       },
     ],
   },
+  // ── Upstream entries (origin/main) ─────────────────────────────────────
   {
     version: '1.22.6',
     date: '2026-06-10T00:00:00Z',

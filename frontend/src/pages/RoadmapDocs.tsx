@@ -19,12 +19,17 @@ import {
   Database,
   Palette,
   Swords,
-  Book,
   Globe,
   Bot,
   Smartphone,
   Target,
   ChevronDown,
+  Bell,
+  BarChart2,
+  Map,
+  Calendar,
+  Link2,
+  LayoutDashboard,
 } from 'lucide-react';
 import { NavSidebar } from '../components/docs';
 
@@ -210,14 +215,138 @@ const PHASES: Phase[] = [
     ],
   },
   {
-    id: 'phase-future',
-    number: '∞',
-    title: 'Future Considerations',
-    status: 'planned',
-    icon: Book,
+    id: 'phase-11',
+    number: '11',
+    title: 'Notifications & Activity Feed',
+    status: 'in-progress',
+    icon: Bell,
     items: [
-      { title: 'Alt job tracking per player' },
-      { title: 'Cross-static loot sharing' },
+      {
+        title: 'Notification bell with unread badge',
+        description: 'Per-static notification inbox with support for join requests, roster changes, session updates, and announcements.',
+      },
+      {
+        title: 'Activity feed panel',
+        description: 'Chronological feed showing group events: sessions created, loot distributed, roster changes, and applications.',
+      },
+      {
+        title: 'Read / unread state persistence',
+        description: 'Notifications track read state per user. Unread count persists across page loads.',
+      },
+    ],
+  },
+  {
+    id: 'phase-12',
+    number: '12',
+    title: 'Static Dashboard',
+    status: 'in-progress',
+    icon: LayoutDashboard,
+    items: [
+      {
+        title: 'Home tab for static groups',
+        description: 'First tab in GroupView: roster quick-stats (size, avg iLv, pending applications), next scheduled session, and a pending applications panel for leaders.',
+      },
+      {
+        title: 'Goals progress widget',
+        description: 'Compact widget showing raid-tier completion goals and individual BiS progress at a glance.',
+      },
+    ],
+  },
+  {
+    id: 'phase-13',
+    number: '13',
+    title: 'Profile Glamour & Static Themes',
+    status: 'planned',
+    icon: Palette,
+    items: [
+      {
+        title: 'Customizable player profile cards',
+        description: 'Allow players to select an avatar frame, accent color, and title for their profile card in the roster.',
+      },
+      {
+        title: 'Static theme selection',
+        description: 'Static owners can choose a color theme and banner from a curated set tied to FFXIV raid content.',
+      },
+    ],
+  },
+  {
+    id: 'phase-14',
+    number: '14',
+    title: 'Raid Analytics',
+    status: 'planned',
+    icon: BarChart2,
+    items: [
+      {
+        title: 'Loot distribution history charts',
+        description: 'Visual breakdown of loot received per player over the tier, highlighting equity and progression velocity.',
+      },
+      {
+        title: 'iLv progression over time',
+        description: 'Track average item level per week across the tier for the full roster.',
+      },
+      {
+        title: 'Session attendance analytics',
+        description: 'Attendance rate per player, sessions missed vs attended, and RSVP accuracy.',
+      },
+    ],
+  },
+  {
+    id: 'phase-15',
+    number: '15',
+    title: 'Raid Strategy Hub',
+    status: 'planned',
+    icon: Map,
+    items: [
+      {
+        title: 'Strategy links per encounter',
+        description: 'Attach strategy documents, videos, or diagrams to each encounter within a tier. Visible to all static members.',
+      },
+      {
+        title: 'Mechanic notes and callout editor',
+        description: 'Lightweight rich-text editor for per-encounter notes and callout assignments.',
+      },
+    ],
+  },
+  {
+    id: 'phase-16',
+    number: '16',
+    title: 'Mitigation Timeline Planner',
+    status: 'planned',
+    icon: Calendar,
+    items: [
+      {
+        title: 'Visual timeline for mitigation assignments',
+        description: 'Drag-and-drop timeline showing which tanks and healers cover each raid-wide across the encounter.',
+      },
+      {
+        title: 'Cooldown conflict detection',
+        description: 'Automatic warnings when two overlapping abilities cover the same window or a cooldown is unavailable due to recast.',
+      },
+      {
+        title: 'Share and export',
+        description: 'Share mitigation plans with the static via link or export as an image.',
+      },
+    ],
+  },
+  {
+    id: 'phase-17',
+    number: '17',
+    title: 'Multi-BiS / External Gear Plan Integration',
+    status: 'planned',
+    icon: Link2,
+    items: [
+      {
+        title: 'Per-job external BiS plan links',
+        description: 'Players can attach an external BiS plan URL (Etro, XIVGear) to each job profile. Leaders see all job BiS links in the roster.',
+      },
+      {
+        title: 'Multi-job gear target tracking',
+        description: 'Track gear progress toward BiS across multiple jobs simultaneously, with per-job completion percentages.',
+      },
+      {
+        title: 'Cross-job loot planning',
+        description: 'Indicate which gear pieces benefit multiple jobs, helping statics make loot decisions that serve more than one role.',
+      },
     ],
   },
 ];

@@ -1,9 +1,12 @@
 """Tests for the solo player profile, character linking, gear snapshots, and job profiles."""
 
+from sqlalchemy import select
+
 import pytest
 import pytest_asyncio
 
 from app.models import User
+from app.models.player_gear_snapshot import PlayerGearSnapshot
 
 
 @pytest.mark.asyncio
@@ -473,6 +476,135 @@ class TestPluginPlayerGearSync:
         assert data["job"] == "DRG"
         assert data["source"] == "plugin"
         assert data["slotCount"] == 2
+
+    async def test_plugin_sync_rejects_empty_payload_without_updating_timestamp(
+        self, client, session, auth_headers,
+    ):
+        """Plugin sync must not mark old gear as freshly synced when no gear arrives."""
+        await client.post(
+            "/api/player/characters",
+            headers=auth_headers,
+            json={
+                "lodestoneId": "12345",
+                "name": "Test Character",
+                "server": "Gilgamesh",
+            },
+        )
+
+        fresh = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Test Character",
+                "characterWorld": "Gilgamesh",
+                "job": "DRG",
+                "gear": [
+                    {
+                        "slot": "weapon",
+                        "currentSource": "savage",
+                        "itemId": 200001,
+                        "itemName": "Cruiserweight Champion's Spear",
+                        "itemLevel": 795,
+                    },
+                ],
+                "source": "plugin",
+            },
+        )
+        assert fresh.status_code == 200
+        snapshot_id = fresh.json()["snapshotId"]
+
+        before = await session.execute(
+            select(PlayerGearSnapshot).where(PlayerGearSnapshot.id == snapshot_id)
+        )
+        before_snapshot = before.scalar_one()
+        before_synced_at = before_snapshot.synced_at
+        before_gear = before_snapshot.gear
+
+        empty = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Test Character",
+                "characterWorld": "Gilgamesh",
+                "job": "DRG",
+                "gear": [],
+                "source": "plugin",
+            },
+        )
+        assert empty.status_code == 422
+        assert "no saved gear was updated" in empty.json()["detail"].lower()
+
+        session.expire_all()
+        after = await session.execute(
+            select(PlayerGearSnapshot).where(PlayerGearSnapshot.id == snapshot_id)
+        )
+        after_snapshot = after.scalar_one()
+        assert after_snapshot.synced_at == before_synced_at
+        assert after_snapshot.gear == before_gear
+
+    async def test_plugin_sync_stores_each_job_without_overwriting_other_jobs(
+        self, client, session, auth_headers,
+    ):
+        """Plugin uploads are keyed by character + job, so alt job gear stays separate."""
+        character_response = await client.post(
+            "/api/player/characters",
+            headers=auth_headers,
+            json={
+                "lodestoneId": "12345",
+                "name": "Test Character",
+                "server": "Gilgamesh",
+            },
+        )
+        character_id = character_response.json()["id"]
+
+        brd = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Test Character",
+                "characterWorld": "Gilgamesh",
+                "job": "BRD",
+                "gear": [
+                    {
+                        "slot": "weapon",
+                        "currentSource": "savage",
+                        "itemId": 300001,
+                        "itemName": "Skyruin Bow",
+                        "itemLevel": 735,
+                    },
+                ],
+                "source": "plugin",
+            },
+        )
+        mch = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Test Character",
+                "characterWorld": "Gilgamesh",
+                "job": "MCH",
+                "gear": [
+                    {
+                        "slot": "weapon",
+                        "currentSource": "crafted",
+                        "itemId": 300002,
+                        "itemName": "Ceremonial Arquebus",
+                        "itemLevel": 720,
+                    },
+                ],
+                "source": "plugin",
+            },
+        )
+        assert brd.status_code == 200
+        assert mch.status_code == 200
+
+        snapshots = await session.execute(
+            select(PlayerGearSnapshot).where(PlayerGearSnapshot.character_id == character_id)
+        )
+        by_job = {snapshot.job: snapshot for snapshot in snapshots.scalars().all()}
+        assert set(by_job) == {"BRD", "MCH"}
+        assert by_job["BRD"].gear[0]["equippedItemName"] == "Skyruin Bow"
+        assert by_job["MCH"].gear[0]["equippedItemName"] == "Ceremonial Arquebus"
 
     async def test_plugin_sync_invalid_job_rejected(self, client, auth_headers):
         """Rejects invalid job in plugin sync."""

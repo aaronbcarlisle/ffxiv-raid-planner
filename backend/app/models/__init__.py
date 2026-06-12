@@ -2,6 +2,7 @@
 
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
 from .api_key import ApiKey
+from .collection_goal import CollectionGoal
 from .invitation import Invitation
 from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
@@ -12,10 +13,12 @@ from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .player_character import PlayerCharacter
 from .player_gear_snapshot import PlayerGearSnapshot
+from .player_bis_target_set import PlayerBisTargetSet
 from .player_job_profile import PlayerJobProfile
 from .player_profile import PlayerProfile
 from .plugin_auth_code import PluginAuthCode
 from .availability import AvailabilityTemplate, UserAvailability
+from .personal_availability import PersonalAvailabilityTemplate
 from .schedule import DiscordMessageMapping, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
@@ -27,6 +30,7 @@ __all__ = [
     "AnalyticsDailyAggregate",
     "AnalyticsEvent",
     "ApiKey",
+    "CollectionGoal",
     "Invitation",
     "JoinRequest",
     "LootLogEntry",
@@ -37,6 +41,7 @@ __all__ = [
     "MemberRole",
     "PageLedgerEntry",
     "PlayerGoal",
+    "PlayerBisTargetSet",
     "PlayerCharacter",
     "PlayerGearSnapshot",
     "PlayerJobProfile",
@@ -49,6 +54,7 @@ __all__ = [
     "ScheduleSession",
     "ScheduleSettings",
     "AvailabilityTemplate",
+    "PersonalAvailabilityTemplate",
     "UserAvailability",
     "SnapshotPlayer",
     "StaticGroup",

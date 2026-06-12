@@ -29,6 +29,11 @@ from ..services.discord_webhook import (
     _next_occurrence_iso,
     _recurrence_rule_to_text,
 )
+from ..services.schedule_webhooks import (
+    mask_webhook_url,
+    post_schedule_webhook,
+    resolve_schedule_webhook,
+)
 from ..exceptions import ValidationError
 from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
 from ..models.availability import AvailabilityTemplate, UserAvailability
@@ -72,9 +77,7 @@ MAX_AVAILABILITY_RANGE_DAYS = 62
 
 
 def _mask_webhook_url(webhook_url: str | None) -> str | None:
-    if not webhook_url:
-        return None
-    return f"{webhook_url[:32]}...{webhook_url[-8:]}" if len(webhook_url) > 48 else "Configured"
+    return mask_webhook_url(webhook_url)
 
 
 async def _get_member_count(db: AsyncSession, group_id: str) -> int:
@@ -181,6 +184,7 @@ def _build_announcement_data(
         tentative_players=tentative_players,
         mention_target=mention_target,
         mention_role_id=mention_role_id,
+        track_availability=getattr(sched_session, "track_availability", True),
     )
 
 
@@ -325,8 +329,12 @@ def _settings_response(
         reminder_channel_label=row.reminder_channel_label if row and can_manage else None,
         mention_target=row.mention_target if row and can_manage else "none",
         mention_role_id=row.mention_role_id if row and can_manage and row.mention_target == "role" else None,
+        enable_at_start_reminder=bool(row and row.enable_at_start_reminder) if can_manage else False,
+        enable_15m_reminder=bool(row and row.enable_15m_reminder) if can_manage else False,
         enable_24h_reminder=bool(row and row.enable_24h_reminder) if can_manage else False,
         enable_1h_reminder=bool(row and row.enable_1h_reminder) if can_manage else False,
+        enable_6h_reminder=bool(row and row.enable_6h_reminder) if can_manage else False,
+        enable_12h_reminder=bool(row and row.enable_12h_reminder) if can_manage else False,
         enable_missing_rsvp_reminder=bool(row and row.enable_missing_rsvp_reminder) if can_manage else False,
         calendar_enabled=bool(row and row.calendar_enabled),
         calendar_url=_calendar_url(row.calendar_token) if row and row.calendar_enabled else None,
@@ -456,6 +464,7 @@ def session_to_response(session: ScheduleSession) -> ScheduleSessionResponse:
         timezone=session.timezone,
         is_recurring=session.is_recurring,
         recurrence_rule=session.recurrence_rule,
+        track_availability=getattr(session, "track_availability", True),
         category=getattr(session, 'category', None),
         content_id=getattr(session, 'content_id', None),
         content_name=getattr(session, 'content_name', None),
@@ -516,7 +525,8 @@ async def create_schedule_session(
         end_time=data.end_time,
         timezone=data.timezone,
         is_recurring=data.is_recurring,
-        recurrence_rule=data.recurrence_rule,
+        recurrence_rule=data.recurrence_rule if data.is_recurring else None,
+        track_availability=data.track_availability,
         category=data.category.value if data.category else None,
         content_id=data.content_id,
         content_name=data.content_name,
@@ -538,7 +548,8 @@ async def create_schedule_session(
 
     # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
-    if sched_settings and sched_settings.webhook_url:
+    webhook_destination = resolve_schedule_webhook(sched_settings)
+    if webhook_destination:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         player_map = await _get_player_map(session, group_id)
@@ -547,13 +558,13 @@ async def create_schedule_session(
             static_group,
             member_count,
             player_map=player_map,
-            mention_target=sched_settings.mention_target,
-            mention_role_id=sched_settings.mention_role_id,
+            mention_target=webhook_destination.mention_target,
+            mention_role_id=webhook_destination.mention_role_id,
         )
         payload = build_session_announcement_payload(ann_data)
         content_hash = compute_announcement_hash(ann_data)
         await _post_or_edit_webhook(
-            session, sched_settings.webhook_url, payload,
+            session, webhook_destination.webhook_url, payload,
             created.id, group_id, content_hash,
         )
 
@@ -588,7 +599,9 @@ async def update_schedule_session(
     if not schedule_session:
         raise NotFound("Schedule session not found")
 
-    update_data = data.model_dump(exclude_unset=True)
+    update_data = data.model_dump(exclude_unset=True, by_alias=False)
+    if update_data.get("is_recurring") is False and "recurrence_rule" not in update_data:
+        update_data["recurrence_rule"] = None
     for field, value in update_data.items():
         # Convert enum values to their string form for DB storage
         if hasattr(value, 'value'):
@@ -601,7 +614,8 @@ async def update_schedule_session(
 
     # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
-    if sched_settings and sched_settings.webhook_url:
+    webhook_destination = resolve_schedule_webhook(sched_settings)
+    if webhook_destination:
         static_group = await get_static_group(session, group_id)
         member_count = await _get_member_count(session, group_id)
         player_map = await _get_player_map(session, group_id)
@@ -610,13 +624,13 @@ async def update_schedule_session(
             static_group,
             member_count,
             player_map=player_map,
-            mention_target=sched_settings.mention_target,
-            mention_role_id=sched_settings.mention_role_id,
+            mention_target=webhook_destination.mention_target,
+            mention_role_id=webhook_destination.mention_role_id,
         )
         payload = build_session_announcement_payload(ann_data)
         content_hash = compute_announcement_hash(ann_data)
         await _post_or_edit_webhook(
-            session, sched_settings.webhook_url, payload,
+            session, webhook_destination.webhook_url, payload,
             session_id, group_id, content_hash,
         )
 
@@ -649,7 +663,8 @@ async def delete_schedule_session(
         raise NotFound("Schedule session not found")
 
     sched_settings = await _get_schedule_settings(session, group_id)
-    webhook_url = sched_settings.webhook_url if sched_settings else None
+    webhook_destination = resolve_schedule_webhook(sched_settings)
+    webhook_url = webhook_destination.webhook_url if webhook_destination else None
     webhook_payload = None
     mapping_msg_id = None
 
@@ -661,8 +676,8 @@ async def delete_schedule_session(
             static_group,
             member_count,
             rsvps=[],
-            mention_target=sched_settings.mention_target if sched_settings else "none",
-            mention_role_id=sched_settings.mention_role_id if sched_settings else None,
+            mention_target=webhook_destination.mention_target if webhook_destination else "none",
+            mention_role_id=webhook_destination.mention_role_id if webhook_destination else None,
         )
         webhook_payload = build_cancelled_payload(ann_data)
 
@@ -758,7 +773,8 @@ async def create_or_update_rsvp(
 
     # Edit existing Discord announcement (or skip if nothing changed)
     sched_settings = await _get_schedule_settings(session, group_id)
-    if sched_settings and sched_settings.webhook_url:
+    webhook_destination = resolve_schedule_webhook(sched_settings)
+    if webhook_destination:
         rsvp_result = await session.execute(
             select(ScheduleSession)
             .where(ScheduleSession.id == session_id)
@@ -774,13 +790,13 @@ async def create_or_update_rsvp(
                 static_group,
                 member_count,
                 player_map=player_map,
-                mention_target=sched_settings.mention_target,
-                mention_role_id=sched_settings.mention_role_id,
+                mention_target=webhook_destination.mention_target,
+                mention_role_id=webhook_destination.mention_role_id,
             )
             payload = build_session_announcement_payload(ann_data)
             content_hash = compute_announcement_hash(ann_data)
             await _post_or_edit_webhook(
-                session, sched_settings.webhook_url, payload,
+                session, webhook_destination.webhook_url, payload,
                 session_id, group_id, content_hash,
             )
 
@@ -845,12 +861,19 @@ async def update_schedule_settings(
         "reminder_channel_label",
         "mention_target",
         "mention_role_id",
+        "enable_at_start_reminder",
+        "enable_15m_reminder",
         "enable_24h_reminder",
         "enable_1h_reminder",
+        "enable_6h_reminder",
+        "enable_12h_reminder",
         "enable_missing_rsvp_reminder",
     ):
         if field in update_data:
-            setattr(row, field, update_data[field])
+            value = update_data[field]
+            if hasattr(value, "value"):
+                value = value.value
+            setattr(row, field, value)
     if row.mention_target != "role":
         row.mention_role_id = None
 
@@ -875,24 +898,19 @@ async def test_schedule_reminder(
     await require_can_manage_members(session, current_user.id, group_id)
 
     row = await _get_schedule_settings(session, group_id)
-    if not row or not row.webhook_url:
+    webhook_destination = resolve_schedule_webhook(row)
+    if not webhook_destination:
         raise ValidationError("Configure a Discord webhook URL before sending a test reminder")
 
     payload = build_test_reminder_payload(
         static_group_name=static_group.name,
         planner_url=settings.public_app_base_url,
         share_code=static_group.share_code,
-        mention_target=row.mention_target,
-        mention_role_id=row.mention_role_id,
+        mention_target=webhook_destination.mention_target,
+        mention_role_id=webhook_destination.mention_role_id,
     )
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(row.webhook_url, json=payload)
-    except httpx.RequestError:
-        raise ValidationError("Discord webhook could not be reached")
-
-    if response.status_code >= 400:
+    if not await post_schedule_webhook(webhook_destination, payload, timeout=10.0):
         raise ValidationError("Discord webhook rejected the test reminder")
 
     return TestReminderResponse(ok=True, message="Test reminder sent")
@@ -916,7 +934,8 @@ async def post_session_preview(
     await require_can_manage_members(session, current_user.id, group_id)
 
     row = await _get_schedule_settings(session, group_id)
-    if not row or not row.webhook_url:
+    webhook_destination = resolve_schedule_webhook(row)
+    if not webhook_destination:
         raise ValidationError("Configure a Discord webhook URL before posting a session preview")
 
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -942,19 +961,15 @@ async def post_session_preview(
         static_group,
         member_count,
         player_map=player_map,
-        mention_target=row.mention_target,
-        mention_role_id=row.mention_role_id,
+        mention_target=webhook_destination.mention_target,
+        mention_role_id=webhook_destination.mention_role_id,
     )
     payload = build_session_announcement_payload(ann_data)
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(row.webhook_url, json=payload)
-    except httpx.RequestError:
-        raise ValidationError("Discord webhook could not be reached")
-
-    if response.status_code >= 400:
-        raise ValidationError("Discord webhook rejected the session preview")
+    content_hash = compute_announcement_hash(ann_data)
+    await _post_or_edit_webhook(
+        session, webhook_destination.webhook_url, payload,
+        upcoming.id, group_id, content_hash,
+    )
 
     return TestReminderResponse(ok=True, message="Session preview posted to Discord")
 
@@ -1049,6 +1064,11 @@ async def get_calendar_feed(
     for schedule_session in schedule_sessions:
         start_dt = datetime.fromisoformat(schedule_session.start_time.replace("Z", "+00:00"))
         end_dt = datetime.fromisoformat(schedule_session.end_time.replace("Z", "+00:00"))
+        planner_url = build_schedule_session_url(
+            settings.public_app_base_url,
+            static_group.share_code,
+            schedule_session.id,
+        )
         lines.extend(
             [
                 "BEGIN:VEVENT",
@@ -1057,8 +1077,8 @@ async def get_calendar_feed(
                 f"DTSTART:{start_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
                 f"DTEND:{end_dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
                 f"SUMMARY:{_escape_ical_text(schedule_session.title)}",
-                f"DESCRIPTION:{_escape_ical_text(schedule_session.description)}\\n{settings.public_app_base_url}/group/{static_group.share_code}?tab=schedule",
-                f"URL:{_escape_ical_text(f'{settings.public_app_base_url}/group/{static_group.share_code}?tab=schedule')}",
+                f"DESCRIPTION:{_escape_ical_text(schedule_session.description)}\\n{planner_url}",
+                f"URL:{_escape_ical_text(planner_url)}",
             ]
         )
         if schedule_session.is_recurring and schedule_session.recurrence_rule:

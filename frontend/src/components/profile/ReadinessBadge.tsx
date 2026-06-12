@@ -9,7 +9,7 @@ const READINESS_CONFIG: Record<string, { label: string; variant: 'success' | 'wa
   needs_gear: { label: 'Needs Gear', variant: 'warning' },
   in_progress: { label: 'In Progress', variant: 'info' },
   not_ready: { label: 'Not Ready', variant: 'error' },
-  unknown: { label: 'Unknown', variant: 'default' },
+  unknown: { label: 'Not self-rated', variant: 'default' },
 };
 
 interface ReadinessBadgeProps {

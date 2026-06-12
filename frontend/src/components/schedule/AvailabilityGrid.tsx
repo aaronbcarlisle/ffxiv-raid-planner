@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Clock3, Eye, Moon, MousePointer2, RefreshCw, Sun, Sunrise, Sunset, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useAuthStore } from '../../stores/authStore';
+import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityStore';
+import { toast } from '../../stores/toastStore';
 import { getBrowserTimezone, resolveNearestUpcomingDatetime } from '../../utils/timezone';
 import { Badge, Button } from '../primitives';
 import { AvailabilityRecommendations } from './AvailabilityRecommendations';
+import { QuickFillHelper } from './QuickFillHelper';
 import { TemplateRecommendations } from './TemplateRecommendations';
+import { buildPersonalSourceByDay, getExistingTemplateDays } from './quickFillUtils';
 import {
   buildHeatMap,
   buildTemplateHeatMap,
@@ -77,7 +82,9 @@ export function AvailabilityGrid({
     fetchTemplates,
     submitTemplate,
   } = useAvailabilityStore();
+  const fetchPersonalAvailability = usePersonalAvailabilityStore((s) => s.fetchPersonalAvailability);
   const [mode, setMode] = useState<AvailabilityMode>('this-week');
+  const [importingPersonalTemplate, setImportingPersonalTemplate] = useState(false);
   const [dates] = useState(() => getNextNDates(7));
   const [durationMinutes, setDurationMinutes] = useState(120);
   const localTimezone = getBrowserTimezone();
@@ -406,6 +413,51 @@ export function AvailabilityGrid({
     });
   };
 
+  const handleImportPersonalTemplate = async () => {
+    if (!user) return;
+    setImportingPersonalTemplate(true);
+    try {
+      await fetchPersonalAvailability();
+      const personalDays = usePersonalAvailabilityStore.getState().days;
+      const personalByDay = buildPersonalSourceByDay(personalDays);
+
+      if (personalByDay.size === 0) {
+        toast.info('Set up Player Hub availability first.');
+        return;
+      }
+
+      const existingDays = getExistingTemplateDays(templateData, user.id);
+      const importedDays: string[] = [];
+      const skippedDays: string[] = [];
+
+      for (const [dayOfWeek, slots] of personalByDay.entries()) {
+        if (existingDays.has(dayOfWeek)) {
+          skippedDays.push(dayOfWeek);
+          continue;
+        }
+        await submitTemplate(groupId, dayOfWeek, slots);
+        importedDays.push(dayOfWeek);
+      }
+
+      await fetchTemplates(groupId);
+
+      if (importedDays.length > 0) {
+        const skippedText = skippedDays.length > 0
+          ? ` Skipped ${skippedDays.length} existing day${skippedDays.length !== 1 ? 's' : ''}.`
+          : '';
+        toast.success(`Imported ${importedDays.length} day${importedDays.length !== 1 ? 's' : ''} from Player Hub.${skippedText}`);
+      } else if (skippedDays.length > 0) {
+        toast.info('No empty Typical Week days to import - existing static templates were preserved.');
+      } else {
+        toast.info('No Player Hub availability days matched this static template.');
+      }
+    } catch {
+      toast.error('Failed to import Player Hub availability.');
+    } finally {
+      setImportingPersonalTemplate(false);
+    }
+  };
+
   return (
     <section className="mx-auto w-full max-w-6xl space-y-4" data-testid="availability-grid">
       {mode === 'typical-week' ? (
@@ -522,6 +574,49 @@ export function AvailabilityGrid({
             </div>
           </div>
         </div>
+
+        {/* Quick fill helper — only in This Week mode for editable users */}
+        {mode === 'this-week' && canEditAvailability && user && (
+          <div className="px-3 pt-3 sm:px-4 lg:px-6">
+            <QuickFillHelper groupId={groupId} userId={user.id} dates={dates} />
+          </div>
+        )}
+
+        {mode === 'typical-week' && canEditAvailability && user && (
+          <div className="px-3 pt-3 sm:px-4 lg:px-6">
+            <div className="rounded-xl border border-border-default bg-surface-elevated/60 px-4 py-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-accent" />
+                    <span className="text-sm font-medium text-text-primary">Import from Player Hub availability</span>
+                    <Badge variant="default" size="sm">Empty days only</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-text-tertiary">
+                    Use your personal default as this static&apos;s Typical Week. Existing static days are preserved.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleImportPersonalTemplate}
+                    loading={importingPersonalTemplate}
+                  >
+                    Import from Player Hub availability
+                  </Button>
+                  <Link
+                    to="/profile?tab=availability&focus=availability"
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
+                  >
+                    Edit Player Hub availability
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4 px-3 py-4 sm:px-4 sm:py-5 lg:px-6">
           {/* Toolbar: preset chips + hints */}

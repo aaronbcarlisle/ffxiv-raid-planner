@@ -53,6 +53,7 @@ class PlayerGearSnapshot(Base):
     # Sync metadata
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="unknown")
     synced_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_plugin_seen_at: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Timestamps
     created_at: Mapped[str] = mapped_column(

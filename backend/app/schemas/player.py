@@ -88,6 +88,7 @@ class GearSnapshotResponse(CamelModel):
     avg_item_level: int
     source: str
     synced_at: str | None = None
+    last_plugin_seen_at: str | None = None
     created_at: str
     updated_at: str
 
@@ -111,6 +112,50 @@ class GearSyncResult(CamelModel):
     gear: list[dict]
 
 
+# --- Player BiS Target Set ---
+
+class PlayerBisTargetSetResponse(CamelModel):
+    """One BiS target configuration for a specific job profile."""
+
+    id: str
+    profile_id: str
+    job_profile_id: str
+    job: str
+    name: str
+    purpose: str
+    source_type: str
+    external_url: str | None = None
+    import_status: str
+    is_active: bool
+    item_level: int | None = None
+    notes: str | None = None
+    items_json: dict | None = None
+    created_at: str
+    updated_at: str
+
+
+class PlayerBisTargetSetCreate(CamelModel):
+    """Create a new BiS target set."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    purpose: str = Field(default="savage", max_length=20)
+    source_type: str = Field(default="manual", max_length=20)
+    external_url: str | None = Field(default=None, max_length=2000)
+    import_status: str = Field(default="linked_only", max_length=20)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class PlayerBisTargetSetUpdate(CamelModel):
+    """Update a BiS target set."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    purpose: str | None = Field(default=None, max_length=20)
+    source_type: str | None = Field(default=None, max_length=20)
+    external_url: str | None = Field(default=None, max_length=2000)
+    import_status: str | None = Field(default=None, max_length=20)
+    notes: str | None = Field(default=None, max_length=500)
+
+
 # --- Player Job Profile ---
 
 class PlayerJobProfileResponse(CamelModel):
@@ -124,6 +169,7 @@ class PlayerJobProfileResponse(CamelModel):
     notes: str | None = None
     gear_snapshot_id: str | None = None
     gear_snapshot: GearSnapshotResponse | None = None
+    bis_targets: list["PlayerBisTargetSetResponse"] = []
     created_at: str
     updated_at: str
 
@@ -212,9 +258,9 @@ class PluginPlayerGearSlot(CamelModel):
     is_augmented: bool = False
     item_id: int | None = None
     item_name: str | None = None
-    item_level: int = 0
+    item_level: int | None = None
     item_icon: str | None = None
-    materia: list[dict] = []
+    materia: list[dict] | None = None
 
 
 class PluginPlayerGearSyncRequest(CamelModel):
@@ -238,9 +284,53 @@ class PluginPlayerGearSyncResult(CamelModel):
     slot_count: int
     source: str
     synced_at: str
+    gear_changed: bool = True
+    last_plugin_seen_at: str | None = None
+
+
+# --- Plugin Batch Gearset Sync ---
+
+class PluginGearsetEntry(CamelModel):
+    """One saved gearset from the plugin (single job)."""
+
+    gearset_index: int = -1
+    gearset_name: str = Field(default="", max_length=100)
+    job: str = Field(..., min_length=2, max_length=10)
+    class_job_id: int = 0
+    gear: list[PluginPlayerGearSlot]
+
+
+class PluginBatchGearsetSyncRequest(CamelModel):
+    """Batch payload: multiple saved gearsets uploaded in one call."""
+
+    character_name: str = Field(..., min_length=1, max_length=100)
+    character_world: str = Field(..., min_length=1, max_length=100)
+    gearsets: list[PluginGearsetEntry]
+    source: str = "plugin"
+    plugin_version: str | None = None
+
+
+class PluginBatchGearsetSyncJobResult(CamelModel):
+    """Per-job result inside a batch sync response."""
+
+    job: str
+    snapshot_id: str
+    gear_changed: bool
+    avg_item_level: int
+    last_plugin_seen_at: str
+
+
+class PluginBatchGearsetSyncResult(CamelModel):
+    """Result of a batch gearset sync call."""
+
+    character_id: str
+    total_synced: int
+    total_unchanged: int
+    synced_jobs: list[PluginBatchGearsetSyncJobResult]
 
 
 # Rebuild forward references
 PlayerProfileResponse.model_rebuild()
 PublicPlayerProfileResponse.model_rebuild()
 PlayerJobProfileResponse.model_rebuild()
+PlayerBisTargetSetResponse.model_rebuild()

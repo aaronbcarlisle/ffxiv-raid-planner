@@ -11,6 +11,7 @@ import type { PublicPlayerProfile } from '../stores/playerProfileStore';
 import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import { getJobDisplayName } from '../gamedata/jobs';
 import { fadeInProps, staggerContainerProps, staggerItemProps } from '../lib/motion';
+import { GameIcon } from '../components/ui/GameIcon';
 
 export default function PublicProfile() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -52,7 +53,7 @@ export default function PublicProfile() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <div className="bg-surface-raised rounded-lg border border-border-default p-8">
-          <div className="text-3xl mb-3 text-text-tertiary">&#128274;</div>
+          <div className="mb-3 text-text-tertiary"><GameIcon name="rule-book" size="xl" /></div>
           <h2 className="text-xl font-display font-bold text-text-primary mb-2">Profile Not Available</h2>
           <p className="text-text-secondary text-sm max-w-md mx-auto">
             This profile is private, the share link has been revoked, or the player has disabled sharing.

@@ -16,7 +16,7 @@ import { MembersPanel } from '../static-group/MembersPanel';
 import { InvitationsPanel } from '../static-group/InvitationsPanel';
 import { JoinRequestsPanel } from '../static-group/JoinRequestsPanel';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
-import type { StaticGroup, SnapshotPlayer } from '../../types';
+import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
 export type SettingsTab = 'general' | 'priority' | 'discovery' | 'members' | 'invitations' | 'requests';
 
@@ -49,6 +49,8 @@ interface SettingsPanelProps {
   initialTab?: SettingsTab;
   /** Whether to highlight the create invitation button */
   highlightCreateInvite?: boolean;
+  /** Start the roster add flow from an accepted join request */
+  onAddToRoster?: (request: JoinRequest) => void;
 }
 
 export function SettingsPanel({
@@ -60,6 +62,7 @@ export function SettingsPanel({
   isAdmin,
   initialTab = 'general',
   highlightCreateInvite = false,
+  onAddToRoster,
 }: SettingsPanelProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
@@ -177,7 +180,11 @@ export function SettingsPanel({
           )}
 
           {activeTab === 'requests' && canManage && (
-            <JoinRequestsPanel groupId={group.id} />
+            <JoinRequestsPanel
+              groupId={group.id}
+              onAddToRoster={onAddToRoster}
+              canAct={group.userRole === 'owner' || group.userRole === 'lead'}
+            />
           )}
         </div>
       </div>

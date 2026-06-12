@@ -33,6 +33,7 @@ class InitialRsvpStatusEnum(str, Enum):
 
 class EventCategoryEnum(str, Enum):
     RAID = "raid"
+    ULTIMATE = "ultimate"
     FARM = "farm"
     RECLEAR = "reclear"
     PROG = "prog"
@@ -69,6 +70,7 @@ class ScheduleSessionCreate(CamelModel):
     timezone: str
     is_recurring: bool = False
     recurrence_rule: str | None = None
+    track_availability: bool = True
     initial_rsvp_status: InitialRsvpStatusEnum | None = None
     category: EventCategoryEnum | None = None
     content_id: str | None = None
@@ -83,6 +85,7 @@ class ScheduleSessionUpdate(CamelModel):
     timezone: str | None = None
     is_recurring: bool | None = None
     recurrence_rule: str | None = None
+    track_availability: bool | None = None
     category: EventCategoryEnum | None = None
     content_id: str | None = None
     content_name: str | None = None
@@ -114,6 +117,7 @@ class ScheduleSessionResponse(CamelModel):
     timezone: str
     is_recurring: bool
     recurrence_rule: str | None = None
+    track_availability: bool = True
     category: str | None = None
     content_id: str | None = None
     content_name: str | None = None
@@ -194,8 +198,12 @@ class ScheduleSettingsUpdate(CamelModel):
     reminder_channel_label: str | None = None
     mention_target: WebhookMentionTargetEnum | None = None
     mention_role_id: str | None = None
+    enable_at_start_reminder: bool | None = Field(default=None, alias="enableAtStartReminder")
+    enable_15m_reminder: bool | None = Field(default=None, alias="enable15mReminder")
     enable_24h_reminder: bool | None = Field(default=None, alias="enable24hReminder")
     enable_1h_reminder: bool | None = Field(default=None, alias="enable1hReminder")
+    enable_6h_reminder: bool | None = Field(default=None, alias="enable6hReminder")
+    enable_12h_reminder: bool | None = Field(default=None, alias="enable12hReminder")
     enable_missing_rsvp_reminder: bool | None = None
 
     @field_validator("mention_role_id")
@@ -218,8 +226,12 @@ class ScheduleSettingsResponse(CamelModel):
     reminder_channel_label: str | None = None
     mention_target: WebhookMentionTargetEnum = WebhookMentionTargetEnum.NONE
     mention_role_id: str | None = None
+    enable_at_start_reminder: bool = Field(default=False, alias="enableAtStartReminder")
+    enable_15m_reminder: bool = Field(default=False, alias="enable15mReminder")
     enable_24h_reminder: bool = Field(default=False, alias="enable24hReminder")
     enable_1h_reminder: bool = Field(default=False, alias="enable1hReminder")
+    enable_6h_reminder: bool = Field(default=False, alias="enable6hReminder")
+    enable_12h_reminder: bool = Field(default=False, alias="enable12hReminder")
     enable_missing_rsvp_reminder: bool = False
     calendar_enabled: bool = False
     calendar_url: str | None = None

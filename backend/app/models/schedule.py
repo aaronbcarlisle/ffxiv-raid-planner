@@ -37,6 +37,7 @@ class ScheduleSession(Base):
 
     is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     recurrence_rule: Mapped[str | None] = mapped_column(Text, nullable=True)
+    track_availability: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
     # Event categorization (optional, backwards-compatible)
     # category: raid / farm / reclear / prog / social / other
@@ -103,8 +104,12 @@ class ScheduleSettings(Base):
     reminder_channel_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
     mention_target: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
     mention_role_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    enable_24h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    enable_1h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    enable_at_start_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    enable_15m_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    enable_24h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    enable_1h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    enable_6h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    enable_12h_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     enable_missing_rsvp_reminder: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     calendar_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     calendar_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)

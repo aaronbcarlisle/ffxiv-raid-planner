@@ -1,3 +1,4 @@
+import { Pencil, Trash2, Check } from 'lucide-react';
 import { Badge } from '../primitives/Badge';
 import { IconButton } from '../primitives/IconButton';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -66,7 +67,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             }`}
             aria-label={isCompleted ? 'Mark as active' : 'Mark as completed'}
           >
-            {isCompleted && <span className="text-xs leading-none">&#10003;</span>}
+            {isCompleted && <Check className="w-3 h-3" />}
           </button>
         </div>
 
@@ -130,14 +131,14 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
           <IconButton
-            icon="&#9998;"
+            icon={<Pencil className="w-3.5 h-3.5" />}
             aria-label="Edit goal"
             variant="ghost"
             size="sm"
             onClick={() => onEdit(goal)}
           />
           <IconButton
-            icon="&times;"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
             aria-label="Delete goal"
             variant="ghost"
             size="sm"

@@ -33,6 +33,7 @@ export interface GearSnapshot {
   avgItemLevel: number;
   source: string;
   syncedAt: string | null;
+  lastPluginSeenAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +50,28 @@ export interface GearSlotData {
   itemLevel?: number;
 }
 
+export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
+export type BisSourceType = 'etro' | 'xivgear' | 'ariyala' | 'manual' | 'custom_link';
+export type BisImportStatus = 'linked_only' | 'imported' | 'import_failed' | 'unsupported';
+
+export interface PlayerBisTargetSet {
+  id: string;
+  profileId: string;
+  jobProfileId: string;
+  job: string;
+  name: string;
+  purpose: BisTargetPurpose;
+  sourceType: BisSourceType;
+  externalUrl: string | null;
+  importStatus: BisImportStatus;
+  isActive: boolean;
+  itemLevel: number | null;
+  notes: string | null;
+  itemsJson: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PlayerJobProfile {
   id: string;
   job: string;
@@ -58,6 +81,7 @@ export interface PlayerJobProfile {
   notes: string | null;
   gearSnapshotId: string | null;
   gearSnapshot: GearSnapshot | null;
+  bisTargets: PlayerBisTargetSet[];
   createdAt: string;
   updatedAt: string;
 }
@@ -97,8 +121,31 @@ export type GearReadiness = 'ready' | 'needs_gear' | 'in_progress' | 'not_ready'
 export type GoalStatus = 'active' | 'completed' | 'paused' | 'abandoned';
 export type GoalType = 'collection' | 'mount_farm' | 'totem_farm' | 'weekly_clear' | 'personal' | 'gear' | 'raid' | 'custom';
 
-export const COLLECTION_GOAL_TYPES: GoalType[] = ['collection', 'mount_farm', 'totem_farm', 'weekly_clear'];
-export const PERSONAL_GOAL_TYPES: GoalType[] = ['personal', 'gear', 'raid', 'custom'];
+export const COLLECTION_GOAL_TYPES: GoalType[] = ['collection', 'mount_farm', 'totem_farm'];
+export const PERSONAL_GOAL_TYPES: GoalType[] = ['weekly_clear', 'personal', 'gear', 'raid', 'custom'];
+
+export interface CollectionSuggestion {
+  trialId: string;
+  mountName: string;
+  dutyName: string;
+  totemName: string | null;
+  totemTarget: number;
+  currentCount: number;
+  hasMount: boolean;
+  source: string;
+}
+
+export interface StaticSuggestion {
+  name: string;
+  shareCode: string;
+  recruitmentStatus: string;
+  neededJobs: string[];
+  neededRoles: string[];
+  matchingJobs: string[];
+  matchingRoles: string[];
+  dataCenter: string | null;
+  intensity: string | null;
+}
 
 export interface PlayerGoal {
   id: string;
@@ -124,6 +171,8 @@ interface PlayerProfileState {
   profile: PlayerProfile | null;
   gearSnapshots: Record<string, GearSnapshot[]>; // characterId -> snapshots
   goals: PlayerGoal[];
+  collectionSuggestions: CollectionSuggestion[];
+  staticSuggestions: StaticSuggestion[];
   loading: boolean;
   syncing: boolean;
   error: string | null;
@@ -146,7 +195,7 @@ interface PlayerProfileState {
 
   // Gear
   fetchGearSnapshots: (characterId: string) => Promise<void>;
-  syncGear: (characterId: string, forceRefresh?: boolean) => Promise<GearSyncResult>;
+  syncGear: (characterId: string, forceRefresh?: boolean, job?: string) => Promise<GearSyncResult>;
 
   // Jobs
   fetchJobProfiles: () => Promise<void>;
@@ -195,15 +244,44 @@ interface PlayerProfileState {
   }) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
 
+  // Suggestions
+  fetchCollectionSuggestions: () => Promise<void>;
+  fetchStaticSuggestions: () => Promise<void>;
+
   // Share
   rotateShareCode: () => Promise<void>;
   fetchPublicProfile: (shareCode: string) => Promise<PublicPlayerProfile>;
+
+  // BiS targets
+  bisTargets: Record<string, PlayerBisTargetSet[]>;
+  fetchBisTargets: (jobProfileId: string) => Promise<void>;
+  createBisTarget: (jobProfileId: string, data: {
+    name: string;
+    purpose: string;
+    sourceType: string;
+    externalUrl?: string;
+    importStatus?: string;
+    notes?: string;
+  }) => Promise<PlayerBisTargetSet>;
+  updateBisTarget: (jobProfileId: string, targetId: string, data: {
+    name?: string;
+    purpose?: string;
+    sourceType?: string;
+    externalUrl?: string;
+    importStatus?: string;
+    notes?: string;
+  }) => Promise<void>;
+  deleteBisTarget: (jobProfileId: string, targetId: string) => Promise<void>;
+  setBisTargetActive: (jobProfileId: string, targetId: string) => Promise<void>;
 }
 
 export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
   profile: null,
   gearSnapshots: {},
   goals: [],
+  collectionSuggestions: [],
+  staticSuggestions: [],
+  bisTargets: {},
   loading: false,
   syncing: false,
   error: null,
@@ -284,12 +362,12 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
     }
   },
 
-  syncGear: async (characterId, forceRefresh = false) => {
+  syncGear: async (characterId, forceRefresh = false, job?: string) => {
     set({ syncing: true });
     try {
       const result = await api.post<GearSyncResult>(
         `/api/player/characters/${characterId}/sync-gear`,
-        { forceRefresh }
+        { forceRefresh, ...(job ? { job } : {}) }
       );
       // Refresh gear snapshots
       await get().fetchGearSnapshots(characterId);
@@ -396,6 +474,24 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
     }
   },
 
+  fetchCollectionSuggestions: async () => {
+    try {
+      const data = await api.get<{ suggestions: CollectionSuggestion[] }>('/api/player/collection-suggestions');
+      set({ collectionSuggestions: data.suggestions });
+    } catch {
+      // Suggestions are non-critical — fail silently
+    }
+  },
+
+  fetchStaticSuggestions: async () => {
+    try {
+      const data = await api.get<{ suggestions: StaticSuggestion[] }>('/api/player/suggested-statics');
+      set({ staticSuggestions: data.suggestions });
+    } catch {
+      // Suggestions are non-critical — fail silently
+    }
+  },
+
   rotateShareCode: async () => {
     try {
       const profile = await api.post<PlayerProfile>('/api/player/profile/rotate-share-code');
@@ -410,5 +506,70 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
   fetchPublicProfile: async (shareCode: string) => {
     const profile = await api.get<PublicPlayerProfile>(`/api/player/profile/share/${shareCode}`);
     return profile;
+  },
+
+  fetchBisTargets: async (jobProfileId) => {
+    try {
+      const targets = await api.get<PlayerBisTargetSet[]>(
+        `/api/player/jobs/${jobProfileId}/bis-targets`,
+      );
+      set((state) => ({ bisTargets: { ...state.bisTargets, [jobProfileId]: targets } }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load BiS targets';
+      logger.error('fetchBisTargets failed', { error: message });
+    }
+  },
+
+  createBisTarget: async (jobProfileId, data) => {
+    try {
+      const target = await api.post<PlayerBisTargetSet>(
+        `/api/player/jobs/${jobProfileId}/bis-targets`,
+        data,
+      );
+      await get().fetchBisTargets(jobProfileId);
+      return target;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create BiS target';
+      logger.error('createBisTarget failed', { error: message });
+      throw err;
+    }
+  },
+
+  updateBisTarget: async (jobProfileId, targetId, data) => {
+    try {
+      await api.put(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}`, data);
+      await get().fetchBisTargets(jobProfileId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update BiS target';
+      logger.error('updateBisTarget failed', { error: message });
+      throw err;
+    }
+  },
+
+  deleteBisTarget: async (jobProfileId, targetId) => {
+    try {
+      await api.delete(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}`);
+      set((state) => ({
+        bisTargets: {
+          ...state.bisTargets,
+          [jobProfileId]: (state.bisTargets[jobProfileId] ?? []).filter((t) => t.id !== targetId),
+        },
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete BiS target';
+      logger.error('deleteBisTarget failed', { error: message });
+      throw err;
+    }
+  },
+
+  setBisTargetActive: async (jobProfileId, targetId) => {
+    try {
+      await api.post(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}/set-active`);
+      await get().fetchBisTargets(jobProfileId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to set BiS target active';
+      logger.error('setBisTargetActive failed', { error: message });
+      throw err;
+    }
   },
 }));

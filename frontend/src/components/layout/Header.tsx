@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2, Globe, Swords } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -181,7 +181,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:gap-4 sm:flex-nowrap">
+      <div className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap">
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Logo */}
@@ -248,7 +248,7 @@ export function Header() {
         )}
 
         {/* Right side: Invite + Settings + Auth */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           {/* Group controls (only on group pages) */}
           {isGroupRoute && currentGroup && (
             <>
@@ -332,15 +332,15 @@ export function Header() {
           {/* External links + theme toggle — hidden on the Home page (login only there) */}
           {!isHomePage && (
             <>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0 sm:gap-1">
                 {user && (
-                  <Tooltip content="My Profile">
+                  <Tooltip content="Player Hub — character, jobs, gear & applications">
                     <Link
                       to="/profile"
-                      aria-label="My Profile"
-                      className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
+                      aria-label="Player Hub"
+                      className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                     >
-                      <span className="text-base">⚔</span>
+                      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
                     </Link>
                   </Tooltip>
                 )}
@@ -348,9 +348,9 @@ export function Header() {
                   <Link
                     to="/discover"
                     aria-label="Find a static"
-                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
+                    className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
-                    <Globe className="w-5 h-5" />
+                    <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Link>
                 </Tooltip>
                 <Tooltip content="Join our Discord community">
@@ -359,9 +359,9 @@ export function Header() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Join our Discord community"
-                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-discord hover:bg-surface-interactive transition-colors flex-shrink-0"
+                    className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-discord hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
-                    <DiscordIcon className="w-5 h-5" />
+                    <DiscordIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </a>
                 </Tooltip>
                 <Tooltip content="View source on GitHub">
@@ -370,13 +370,14 @@ export function Header() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="View source on GitHub"
-                    className="flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors flex-shrink-0"
+                    className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
-                    <GitHubIcon className="w-5 h-5" />
+                    <GitHubIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </a>
                 </Tooltip>
               </div>
-              <div className="flex items-center border-l border-border-subtle pl-3">
+              {/* Theme toggle — hidden on mobile (available in user menu) */}
+              <div className="hidden sm:flex items-center border-l border-border-subtle pl-3">
                 <ThemeToggle />
               </div>
             </>
@@ -384,7 +385,7 @@ export function Header() {
 
           {/* Auth: login button or user menu */}
           <div
-            className={`flex items-center gap-1 ${!isHomePage ? 'border-l border-border-subtle pl-3' : ''}`}
+            className={`flex items-center gap-1 ${!isHomePage ? 'border-l border-border-subtle pl-1.5 sm:pl-3' : ''}`}
           >
             {authLoading ? (
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />

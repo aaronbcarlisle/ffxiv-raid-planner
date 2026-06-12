@@ -1,20 +1,23 @@
 """Tests for schedule/session endpoints"""
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, ScheduleRsvp, User
+from app.models import MemberRole, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings, User
 from app.services.discord_webhook import (
     _next_occurrence_iso,
     _recurrence_rule_to_text,
     compute_rsvp_hash,
 )
+from app.services.schedule_webhooks import resolve_schedule_webhook
+from app.tasks.schedule_reminders import run_schedule_reminder_cycle
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -68,7 +71,31 @@ class TestScheduleCreate:
         assert data["title"] == "Weekly Raid Night"
         assert data["timezone"] == "Asia/Tokyo"
         assert data["isRecurring"] is True
+        assert data["trackAvailability"] is True
         assert data["rsvps"] == []
+
+    async def test_owner_can_create_ultimate_session_without_availability_tracking(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        response = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                **session_data,
+                "isRecurring": False,
+                "recurrenceRule": None,
+                "category": "ultimate",
+                "contentId": "ult-fru",
+                "contentName": "Futures Rewritten (Ultimate)",
+                "trackAvailability": False,
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["category"] == "ultimate"
+        assert data["contentName"] == "Futures Rewritten (Ultimate)"
+        assert data["trackAvailability"] is False
 
     async def test_lead_can_create_session(
         self, client: AsyncClient, session: AsyncSession, test_group, session_data
@@ -296,6 +323,71 @@ class TestScheduleUpdate:
         )
         assert response.status_code == 200
         assert response.json()["title"] == "Updated Raid Night"
+
+    async def test_update_session_removes_friday_from_recurrence_after_refetch(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                **session_data,
+                "recurrenceRule": "FREQ=WEEKLY;BYDAY=MO,FR",
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        update_response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={"isRecurring": True, "recurrenceRule": "FREQ=WEEKLY;BYDAY=MO"},
+            headers=auth_headers,
+        )
+
+        assert update_response.status_code == 200
+        assert update_response.json()["recurrenceRule"] == "FREQ=WEEKLY;BYDAY=MO"
+
+        list_response = await client.get(
+            f"/api/static-groups/{test_group.id}/schedule",
+            headers=auth_headers,
+        )
+        persisted = list_response.json()[0]
+        assert persisted["recurrenceRule"] == "FREQ=WEEKLY;BYDAY=MO"
+        byday = persisted["recurrenceRule"].split("BYDAY=", 1)[1].split(";")[0].split(",")
+        assert "FR" not in byday
+
+    async def test_update_session_can_clear_recurrence_and_content(
+        self, client: AsyncClient, test_group, auth_headers, session_data
+    ):
+        create_resp = await client.post(
+            f"/api/static-groups/{test_group.id}/schedule",
+            json={
+                **session_data,
+                "category": "farm",
+                "contentId": "dt-worqor",
+                "contentName": "Worqor Lar Dor (Extreme)",
+            },
+            headers=auth_headers,
+        )
+        session_id = create_resp.json()["id"]
+
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={
+                "isRecurring": False,
+                "recurrenceRule": None,
+                "category": None,
+                "contentId": None,
+                "contentName": None,
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["isRecurring"] is False
+        assert response.json()["recurrenceRule"] is None
+        assert response.json()["category"] is None
+        assert response.json()["contentId"] is None
+        assert response.json()["contentName"] is None
 
     async def test_member_cannot_update_session(
         self,
@@ -648,8 +740,12 @@ class TestScheduleIntegrations:
             json={
                 "webhookUrl": "https://discord.com/api/webhooks/123/token-secret",
                 "reminderChannelLabel": "raid-reminders",
+                "enableAtStartReminder": True,
+                "enable15mReminder": True,
                 "enable24hReminder": True,
                 "enable1hReminder": True,
+                "enable6hReminder": True,
+                "enable12hReminder": True,
                 "enableMissingRsvpReminder": True,
             },
             headers=auth_headers,
@@ -659,8 +755,12 @@ class TestScheduleIntegrations:
         payload = response.json()
         assert payload["webhookConfigured"] is True
         assert payload["webhookUrlMasked"] != "https://discord.com/api/webhooks/123/token-secret"
+        assert payload["enableAtStartReminder"] is True
+        assert payload["enable15mReminder"] is True
         assert payload["enable24hReminder"] is True
         assert payload["enable1hReminder"] is True
+        assert payload["enable6hReminder"] is True
+        assert payload["enable12hReminder"] is True
         assert payload["enableMissingRsvpReminder"] is True
 
     async def test_member_cannot_edit_or_view_webhook_url(
@@ -886,6 +986,195 @@ def _mock_discord_post(status_code: int = 200, message_id: str = "discord_msg_00
     client.__aenter__.return_value = client
     client.__aexit__.return_value = None
     return client
+
+
+class TestAutomaticScheduleReminders:
+    @pytest.fixture(autouse=True)
+    def patch_schedule_reminder_session_maker(self, engine):
+        maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        with patch("app.tasks.schedule_reminders.async_session_maker", maker):
+            yield maker
+
+    async def _create_session(
+        self,
+        client: AsyncClient,
+        group_id: str,
+        headers: dict,
+        *,
+        start_time: str = "2099-07-05T12:00:00+00:00",
+        track_availability: bool = True,
+    ) -> str:
+        response = await client.post(
+            f"/api/static-groups/{group_id}/schedule",
+            json={
+                "title": "Automatic Reminder Session",
+                "startTime": start_time,
+                "endTime": (
+                    datetime.fromisoformat(start_time.replace("Z", "+00:00")) + timedelta(hours=3)
+                ).isoformat(),
+                "timezone": "UTC",
+                "isRecurring": False,
+                "trackAvailability": track_availability,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        return response.json()["id"]
+
+    async def _enable_webhook(
+        self,
+        client: AsyncClient,
+        group_id: str,
+        headers: dict,
+        *,
+        status_payload: dict | None = None,
+    ) -> None:
+        payload = {
+            "webhookUrl": "https://discord.com/api/webhooks/1234/fake-token-for-tests",
+            "enable1hReminder": True,
+        }
+        if status_payload:
+            payload.update(status_payload)
+        response = await client.put(
+            f"/api/static-groups/{group_id}/scheduler/settings",
+            json=payload,
+            headers=headers,
+        )
+        assert response.status_code == 200
+
+    async def test_automatic_reminder_sends_and_records_delivery(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(
+            client,
+            test_group.id,
+            auth_headers,
+            status_payload={
+                "mentionTarget": "role",
+                "mentionRoleId": "123456789012345678",
+            },
+        )
+
+        mock_client = _mock_discord_post(204)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert sent == 1
+        mock_client.post.assert_called_once()
+        post_url = mock_client.post.call_args[0][0]
+        payload = mock_client.post.call_args[1]["json"]
+        assert post_url == "https://discord.com/api/webhooks/1234/fake-token-for-tests"
+        assert payload["allowed_mentions"] == {"parse": [], "roles": ["123456789012345678"]}
+        assert payload["content"].startswith("<@&123456789012345678>")
+        assert "sessionId=" in payload["content"]
+
+        result = await session.execute(
+            select(ScheduleReminderDelivery).where(
+                ScheduleReminderDelivery.session_id == session_id,
+                ScheduleReminderDelivery.reminder_type == "1h",
+            )
+        )
+        assert result.scalar_one_or_none() is not None
+
+    async def test_automatic_reminder_failure_does_not_record_delivery(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(client, test_group.id, auth_headers)
+
+        mock_client = _mock_discord_post(500)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert sent == 0
+        result = await session.execute(
+            select(ScheduleReminderDelivery).where(
+                ScheduleReminderDelivery.session_id == session_id,
+                ScheduleReminderDelivery.reminder_type == "1h",
+            )
+        )
+        assert result.scalar_one_or_none() is None
+
+    async def test_automatic_reminder_does_not_duplicate_delivery(
+        self,
+        client: AsyncClient,
+        test_group,
+        auth_headers,
+    ):
+        await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(client, test_group.id, auth_headers)
+
+        mock_client = _mock_discord_post(204)
+        now = datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            first = await run_schedule_reminder_cycle(now)
+            second = await run_schedule_reminder_cycle(now)
+
+        assert first == 1
+        assert second == 0
+        mock_client.post.assert_called_once()
+
+    async def test_manual_preview_and_automatic_reminder_use_same_webhook_destination(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(
+            client,
+            test_group.id,
+            auth_headers,
+            status_payload={
+                "mentionTarget": "here",
+            },
+        )
+
+        settings_result = await session.execute(
+            select(ScheduleSettings).where(ScheduleSettings.static_group_id == test_group.id)
+        )
+        row = settings_result.scalar_one()
+        destination = resolve_schedule_webhook(row)
+        assert destination is not None
+        assert destination.webhook_url == "https://discord.com/api/webhooks/1234/fake-token-for-tests"
+        assert destination.mention_target == "here"
+
+        mock_client = _mock_discord_post(204)
+        # post_session_preview now calls _post_or_edit_webhook (in app.routers.schedule),
+        # while the auto-reminder uses post_schedule_webhook (in app.services.schedule_webhooks).
+        # Patch both so the mock captures both calls.
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client), \
+             patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+            preview_response = await client.post(
+                f"/api/static-groups/{test_group.id}/scheduler/settings/post-session-preview",
+                headers=auth_headers,
+            )
+            sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert preview_response.status_code == 200
+        assert sent == 1
+        # Preview uses ?wait=true (dedup mapping); auto-reminder uses bare URL.
+        # Both must target the same base webhook URL.
+        base_url = "https://discord.com/api/webhooks/1234/fake-token-for-tests"
+        post_urls = [call.args[0] for call in mock_client.post.call_args_list]
+        assert len(post_urls) == 2
+        assert all(url.startswith(base_url) for url in post_urls)
 
 
 class TestDiscordWebhook:
@@ -1138,7 +1427,7 @@ class TestDiscordWebhook:
 
         mock_client.post.side_effect = capture_post
 
-        with patch("app.routers.schedule.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
             response = await client.post(
                 f"/api/static-groups/{test_group.id}/scheduler/settings/post-session-preview",
                 headers=auth_headers,

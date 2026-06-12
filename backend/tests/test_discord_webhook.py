@@ -83,6 +83,23 @@ def test_format_rsvp_summary_includes_all_statuses():
     assert "⬜" in summary
 
 
+def test_session_payload_hides_shortage_copy_when_availability_not_tracked():
+    payload = build_session_announcement_payload(
+        _make_data(
+            rsvp_counts={},
+            total_member_count=8,
+            unavailable_players=[PlayerDetail(name="Missing DPS", position="R1", job="BRD")],
+            track_availability=False,
+        )
+    )
+
+    fields = payload["embeds"][0]["fields"]
+    assert any(field["name"] == "Availability" and "Availability not required" in field["value"] for field in fields)
+    assert not any(field["name"] == "RSVP" for field in fields)
+    assert not any("Subs needed" in field["name"] for field in fields)
+    assert not any("Cannot make it" in field["name"] for field in fields)
+
+
 def test_format_rsvp_summary_no_response_derived_from_total():
     summary = _format_rsvp_summary(
         {"available": 6, "tentative": 1, "unavailable": 1}, total_member_count=8

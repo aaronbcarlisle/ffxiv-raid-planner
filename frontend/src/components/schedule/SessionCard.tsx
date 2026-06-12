@@ -56,6 +56,7 @@ function formatDuration(minutes: number): string {
 
 const CATEGORY_CONFIG: Record<EventCategory, { icon: typeof Swords; label: string; color: string }> = {
   raid: { icon: Swords, label: 'Raid', color: 'bg-red-400/20 text-red-300' },
+  ultimate: { icon: Swords, label: 'Ultimate', color: 'bg-blue-400/20 text-blue-300' },
   farm: { icon: Mountain, label: 'Farm', color: 'bg-amber-400/20 text-amber-300' },
   reclear: { icon: RotateCcw, label: 'Reclear', color: 'bg-blue-400/20 text-blue-300' },
   prog: { icon: Gamepad2, label: 'Prog', color: 'bg-purple-400/20 text-purple-300' },
@@ -92,14 +93,18 @@ function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<strin
   if (staticName) lines.push(`\u{1f465} ${staticName}`);
   if (session.description) lines.push(`> ${session.description}`);
 
-  const rsvpParts: string[] = [];
-  if (rsvpSummary.available > 0) rsvpParts.push(`\u{2705} ${rsvpSummary.available}`);
-  if (rsvpSummary.tentative > 0) rsvpParts.push(`\u{2753} ${rsvpSummary.tentative}`);
-  if (rsvpSummary.unavailable > 0) rsvpParts.push(`\u{274c} ${rsvpSummary.unavailable}`);
-  if (rsvpParts.length > 0) lines.push(rsvpParts.join(' \u{2502} '));
+  if (session.trackAvailability !== false) {
+    const rsvpParts: string[] = [];
+    if (rsvpSummary.available > 0) rsvpParts.push(`\u{2705} ${rsvpSummary.available}`);
+    if (rsvpSummary.tentative > 0) rsvpParts.push(`\u{2753} ${rsvpSummary.tentative}`);
+    if (rsvpSummary.unavailable > 0) rsvpParts.push(`\u{274c} ${rsvpSummary.unavailable}`);
+    if (rsvpParts.length > 0) lines.push(rsvpParts.join(' \u{2502} '));
+  } else {
+    lines.push('Availability not required');
+  }
 
   if (shareCode) {
-    lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule`);
+    lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule&sessionId=${session.id}`);
   }
 
   return lines.join('\n');
@@ -113,6 +118,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const isLocalTzSame = localTz === session.timezone;
   const duration = getDurationMinutes(session.startTime, session.endTime);
+  const availabilityTracked = session.trackAvailability !== false;
 
   const myRsvp = currentUserId
     ? session.rsvps.find((r) => r.userId === currentUserId)
@@ -143,10 +149,12 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
     const durationStr = formatDuration(duration);
     const lines = [session.title, `${timeStr} (${durationStr})`];
     if (session.category) lines.push(`Type: ${CATEGORY_CONFIG[session.category]?.label ?? session.category}`);
-    if (rsvpSummary.available > 0 || rsvpSummary.tentative > 0) {
+    if (availabilityTracked && (rsvpSummary.available > 0 || rsvpSummary.tentative > 0)) {
       lines.push(`RSVP: ${rsvpSummary.available} available, ${rsvpSummary.tentative} tentative`);
+    } else if (!availabilityTracked) {
+      lines.push('Availability not required');
     }
-    if (shareCode) lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule`);
+    if (shareCode) lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule&sessionId=${session.id}`);
     const text = lines.join('\n');
 
     if (navigator.share) {
@@ -224,11 +232,15 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         <div className="border-t border-border-subtle pt-2 space-y-1.5">
           {/* RSVP totals + attendee preview */}
           <div className="flex items-center justify-between text-[11px]">
-            <div className="flex items-center gap-2">
-              <span className="text-green-400">{rsvpSummary.available} yes</span>
-              <span className="text-yellow-400">{rsvpSummary.tentative} maybe</span>
-              <span className="text-red-400">{rsvpSummary.unavailable} no</span>
-            </div>
+            {availabilityTracked ? (
+              <div className="flex items-center gap-2">
+                <span className="text-green-400">{rsvpSummary.available} yes</span>
+                <span className="text-yellow-400">{rsvpSummary.tentative} maybe</span>
+                <span className="text-red-400">{rsvpSummary.unavailable} no</span>
+              </div>
+            ) : (
+              <span className="text-text-tertiary">Availability not required</span>
+            )}
             {myRsvp && (
               <span className={`text-[10px] font-medium ${
                 myRsvp.status === 'available' ? 'text-green-400' :
@@ -240,14 +252,14 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           </div>
 
           {/* Compact attendee preview */}
-          {previewNames.length > 0 && (
+          {availabilityTracked && previewNames.length > 0 && (
             <div className="text-[10px] text-text-tertiary truncate">
               {previewNames.join(', ')}{overflowCount > 0 && ` +${overflowCount} more`}
             </div>
           )}
 
           {/* Quick RSVP buttons */}
-          {canRsvp && (
+          {canRsvp && availabilityTracked && (
             <div className="flex gap-1.5">
               {(Object.entries(RSVP_CONFIG) as [RsvpStatus, typeof RSVP_CONFIG['available']][]).map(([status, config]) => {
                 const Icon = config.icon;
@@ -283,6 +295,9 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
             )}
             {session.category && <CategoryBadge category={session.category} />}
           </h3>
+          {session.contentName && (
+            <p className="mt-0.5 truncate text-sm text-text-tertiary">{session.contentName}</p>
+          )}
           {session.description && (
             <p className="text-sm text-text-secondary mt-0.5 line-clamp-2">{session.description}</p>
           )}
@@ -317,7 +332,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
       </div>
 
       {/* RSVP buttons */}
-      {canRsvp && (
+      {canRsvp && availabilityTracked && (
         <div className="flex gap-2 pt-1">
           {(Object.entries(RSVP_CONFIG) as [RsvpStatus, typeof RSVP_CONFIG['available']][]).map(([status, config]) => {
             const Icon = config.icon;
@@ -330,6 +345,12 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
               </Button>
             );
           })}
+        </div>
+      )}
+
+      {!availabilityTracked && (
+        <div className="rounded-lg border border-border-subtle bg-surface-muted/30 px-3 py-2 text-sm text-text-secondary">
+          Availability not required
         </div>
       )}
 

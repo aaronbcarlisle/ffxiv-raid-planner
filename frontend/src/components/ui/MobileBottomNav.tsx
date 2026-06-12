@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { Settings2, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Settings2, SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -30,6 +30,7 @@ const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
 };
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
+  { id: 'home', label: 'Overview' },
   { id: 'players', label: 'Roster' },
   { id: 'loot', label: 'Priority' },
   { id: 'history', label: 'Loot Log' },
@@ -109,6 +110,8 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showP
             >
               {tab.id === 'priority' ? (
                 <Settings2 className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
+              ) : tab.id === 'home' ? (
+                <LayoutDashboard className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
               ) : (
                 <img
                   src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}

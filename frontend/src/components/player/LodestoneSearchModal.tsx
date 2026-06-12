@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Globe, RefreshCw, Search, UserCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Globe, RefreshCw, Search, UserCheck } from 'lucide-react';
 import {
   useLodestoneStore,
   type EquippedGearSlot,
@@ -30,6 +30,18 @@ interface LodestoneSearchModalBodyProps {
   tierId?: string;
   currentLodestoneId?: string | null;
   onRequestClose: () => void;
+}
+
+function formatSyncSourceLabel(source: string): string {
+  const LABELS: Record<string, string> = {
+    lodestone: 'Using Lodestone character data',
+    tomestone: 'Using Tomestone data',
+    tomestone_fallback: 'Lodestone unavailable — using Tomestone fallback',
+    lodestone_fallback: 'Primary source unavailable — using Lodestone fallback',
+    cache: 'Using cached snapshot',
+    mock: 'Using mock data (dev mode)',
+  };
+  return LABELS[source] ?? `Source: ${source.replace(/_/g, ' ')}`;
 }
 
 function formatCurrentSource(source: string): string {
@@ -94,6 +106,7 @@ function LodestoneSearchModalBody({
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<LodestoneCharacter | null>(null);
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null);
+  const [beforeSyncAvgIlv, setBeforeSyncAvgIlv] = useState<number | null>(null);
   const [pendingSyncWarnings, setPendingSyncWarnings] = useState<string[] | null>(null);
 
   const {
@@ -280,19 +293,22 @@ function LodestoneSearchModalBody({
     if (!previewTargetId) return;
     try {
       clearErrors();
+      setBeforeSyncAvgIlv(storedAvgIlv);
       const result = await syncPlayerGear(groupId, playerId, previewTargetId);
       setLastSyncResult(result);
       setPendingSyncWarnings(null);
       if (tierId) {
         await fetchTier(groupId, tierId);
       }
-      if (!result.jobMismatchWarning && result.payloadChanged) {
+      // Don't auto-close when slots changed — compare panel auto-shows so user can see what was updated.
+      // Auto-close only when nothing changed and no warning.
+      if (!result.payloadChanged && !result.jobMismatchWarning) {
         onRequestClose();
       }
     } catch {
       // Store state surfaces the error for the modal.
     }
-  }, [clearErrors, fetchTier, groupId, onRequestClose, playerId, previewTargetId, syncPlayerGear, tierId]);
+  }, [clearErrors, fetchTier, groupId, onRequestClose, playerId, previewTargetId, storedAvgIlv, syncPlayerGear, tierId]);
 
   const handleSync = useCallback(async () => {
     if (!previewTargetId) return;
@@ -513,6 +529,59 @@ function LodestoneSearchModalBody({
               ? 'Live Lodestone search is unavailable right now. You can paste a Lodestone character URL or ID instead.'
               : 'Live Lodestone/XIVAPI search failed. Try DEV_LODESTONE_MOCK=true for local visual testing, or check backend logs.'}
           </p>
+        </div>
+      )}
+
+      {/* Compare panel — auto-shows when a sync completed and slots were updated */}
+      {lastSyncResult && lastSyncResult.payloadChanged && lastSyncResult.updatedSlots > 0 && (
+        <div
+          className="rounded-lg border border-status-success/30 bg-status-success/10 p-4"
+          data-testid="lodestone-sync-compare-panel"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <CheckCircle className="w-5 h-5 text-status-success shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-status-success">
+                  Sync complete — {lastSyncResult.updatedSlots} slot{lastSyncResult.updatedSlots === 1 ? '' : 's'} updated
+                </p>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  {formatSyncSourceLabel(lastSyncResult.syncSource)}
+                  {lastSyncResult.syncedJob ? ` · Job: ${lastSyncResult.syncedJob}` : ''}
+                </p>
+                {(beforeSyncAvgIlv != null || currentAvgIlv != null) && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs">
+                    {beforeSyncAvgIlv != null && (
+                      <span className="text-text-muted">iLv {beforeSyncAvgIlv} before</span>
+                    )}
+                    {beforeSyncAvgIlv != null && currentAvgIlv != null && (
+                      <span className="text-text-muted">→</span>
+                    )}
+                    {currentAvgIlv != null && (
+                      <span className="font-semibold text-text-primary">iLv {currentAvgIlv} now</span>
+                    )}
+                  </div>
+                )}
+                {lastSyncResult.refreshAttempted && lastSyncResult.refreshStatus && lastSyncResult.refreshStatus !== 'refresh_queued' && (
+                  <p className="text-xs text-status-warning mt-1">
+                    {lastSyncResult.refreshStatus === 'not_supported'
+                      ? 'Tomestone refresh unavailable — data may be from cache.'
+                      : 'Tomestone refresh failed — data may be from cache.'}
+                  </p>
+                )}
+                {lastSyncResult.warnings && lastSyncResult.warnings.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5">
+                    {lastSyncResult.warnings.map((w) => (
+                      <li key={w} className="text-xs text-status-warning">{w}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={onRequestClose}>
+              Close
+            </Button>
+          </div>
         </div>
       )}
 
@@ -853,13 +922,6 @@ function LodestoneSearchModalBody({
                       Close
                     </Button>
                   </div>
-                )}
-                {lastSyncResult && (
-                  <p className="text-xs text-text-muted" data-testid="lodestone-sync-metadata">
-                    Source: {lastSyncResult.syncSource}
-                    {lastSyncResult.syncedJob ? ` | Job: ${lastSyncResult.syncedJob}` : ''}
-                    {` | ${lastSyncResult.updatedSlots} slot${lastSyncResult.updatedSlots === 1 ? '' : 's'} updated`}
-                  </p>
                 )}
                 {(syncError || gearError) && previewTargetName && (
                   <p className="text-xs text-text-muted">

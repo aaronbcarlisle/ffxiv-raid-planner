@@ -25,7 +25,7 @@ export const DEFAULT_DISPLAY_ORDER = ['tank', 'healer', 'melee', 'ranged', 'cast
 // Default loot priority (DPS first — casters scale harder than phys ranged due to ranged tax)
 export const DEFAULT_LOOT_PRIORITY = ['melee', 'caster', 'ranged', 'tank', 'healer'];
 
-// Default static group settings (single source of truth)
+// Default static group settings shared across setup and settings screens
 export const DEFAULT_SETTINGS: StaticSettings = {
   displayOrder: DEFAULT_DISPLAY_ORDER,
   lootPriority: DEFAULT_LOOT_PRIORITY,

@@ -32,17 +32,27 @@ export function GoalsTab({ goals }: GoalsTabProps) {
     : personalGoals.filter((g) => g.status === statusFilter);
 
   return (
-    <div>
+    <div className="space-y-4">
+      <section className="rounded-lg border border-border-default bg-surface-raised p-4">
+        <h3 className="font-display text-base font-semibold text-text-primary">Tasks & Goals</h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Track gearing, clears, raid prep, reminders, or custom tasks. Collections handle mount, token, and reward farms.
+        </p>
+        <div className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2 text-xs text-text-tertiary">
+          Suggested tasks can come from stale gear, missing availability, active farms, or upcoming static sessions later.
+        </div>
+      </section>
+
       {personalGoals.length === 0 ? (
         <div className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
           <div className="mb-3 text-accent"><GameIcon name="checklist" size="xl" /></div>
           <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
-            No personal goals yet
+            No tasks yet
           </h3>
           <p className="text-text-secondary mb-4">
-            Track gear objectives, raid goals, personal checklists, and more.
+            Track gearing, clears, raid prep, reminders, or custom tasks. Use Collections for mounts and token farms.
           </p>
-          <Button onClick={addModal.open}>Add Goal</Button>
+          <Button onClick={addModal.open}>Add Task</Button>
         </div>
       ) : (
         <>
@@ -54,7 +64,7 @@ export function GoalsTab({ goals }: GoalsTabProps) {
               className="w-36"
             />
             <Button variant="secondary" onClick={addModal.open}>
-              Add Goal
+              Add Task
             </Button>
           </div>
 

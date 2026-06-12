@@ -16,7 +16,7 @@ type FilterMode = 'all' | 'needs-mount' | 'can-buy' | 'wanted' | 'complete';
 interface MountFarmTabProps {
   groupId: string;
   userRole: string | null;
-  onScheduleFarm?: (trialName: string) => void;
+  onScheduleFarm?: (trial: MountFarmTrial) => void;
 }
 
 function filterTrials(
@@ -281,10 +281,10 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => onScheduleFarm(topRecTrial.dutyName)}
+                onClick={() => onScheduleFarm(topRecTrial)}
               >
                 <Calendar className="w-4 h-4" />
-                Schedule Farm
+                {topRecTrial.contentType === 'ultimate' ? 'Schedule' : 'Schedule Farm'}
               </Button>
             )}
           </div>
