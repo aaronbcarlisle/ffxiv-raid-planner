@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
 import { analytics } from '../../services/analytics';
+import { GameIcon } from '../ui/GameIcon';
 
 interface TabNavigationProps {
   activeTab: PageMode;
@@ -17,7 +19,12 @@ const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
   'mount-farms': 'mountFarms',
 };
 
+const PAGE_TO_LUCIDE_ICON: Partial<Record<PageMode, ReactNode>> = {
+  home: <GameIcon name="checklist" size="md" />,
+};
+
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
+  { id: 'home', label: 'Overview', hotkey: '`', description: 'Static overview, next raid, and pending applications' },
   { id: 'players', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
   { id: 'loot', label: 'Priority', hotkey: '2', description: 'Loot priority rankings and who needs what' },
   { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
@@ -27,7 +34,6 @@ const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: str
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
-  // Priority tab is now a slide-out panel in Loot tab, so we only show base tabs
   const TABS = BASE_TABS;
   return (
     <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
@@ -61,13 +67,21 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               }
             `}
           >
-            <img
-              src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
-              alt=""
-              width={20}
-              height={20}
-              className="rounded-sm"
-            />
+            {PAGE_TO_LUCIDE_ICON[tab.id] ? (
+              <span className={`flex-shrink-0 transition-opacity ${activeTab === tab.id ? 'opacity-100' : 'opacity-45'}`}>
+                {PAGE_TO_LUCIDE_ICON[tab.id]}
+              </span>
+            ) : (
+              // Sprite tabs: active = full opacity, inactive = dimmed to match lucide icon treatment
+              // Design guide: docs/UI_COMPONENTS.md — icon sizing w-5 h-5 (20px), active/inactive color via opacity
+              <img
+                src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
+                alt=""
+                width={20}
+                height={20}
+                className={`rounded-sm transition-opacity ${activeTab === tab.id ? 'opacity-100' : 'opacity-45'}`}
+              />
+            )}
             <span>{tab.label}</span>
           </button>
         </Tooltip>

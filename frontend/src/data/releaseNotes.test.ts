@@ -31,9 +31,12 @@ describe('releaseNotes', () => {
     });
 
     it('releases are ordered newest-first', () => {
-      for (let i = 1; i < RELEASES.length; i++) {
-        const current = RELEASES[i - 1];
-        const previous = RELEASES[i];
+      // Internal "Unreleased" entries sit at the top and have no parseable
+      // version number — skip them in the ordering check.
+      const versioned = RELEASES.filter((r) => /^\d+\.\d+\.\d+$/.test(r.version));
+      for (let i = 1; i < versioned.length; i++) {
+        const current = versioned[i - 1];
+        const previous = versioned[i];
         // Newer version should have higher major.minor.patch
         const currentParts = current.version.split('.').map(Number);
         const previousParts = previous.version.split('.').map(Number);
@@ -51,7 +54,10 @@ describe('releaseNotes', () => {
     it('each release has required fields', () => {
       RELEASES.forEach((release) => {
         expect(release.version).toBeDefined();
-        expect(release.version).toMatch(/^\d+\.\d+\.\d+$/);
+        // Internal pre-release entries may use "Unreleased" instead of semver
+        if (!release.internal) {
+          expect(release.version).toMatch(/^\d+\.\d+\.\d+$/);
+        }
         expect(release.date).toBeDefined();
         expect(release.date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
         expect(Array.isArray(release.items)).toBe(true);
@@ -264,7 +270,9 @@ describe('Release dates', () => {
 // Evaluating the real data avoids the regex pitfalls of parsing TS source.
 describe('latest release authoring requirements', () => {
   const COMMIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
-  const latest = RELEASES[0];
+  // Use the first *public* release — internal (dev-only) entries at position 0
+  // are pre-PR work-in-progress and intentionally lack final commit hashes.
+  const latest = RELEASES.find((r) => !r.internal) ?? RELEASES[0];
 
   it('exists and has at least one item', () => {
     expect(latest).toBeDefined();

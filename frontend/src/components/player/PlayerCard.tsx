@@ -13,6 +13,7 @@ import { BiSSourceFixBanner } from './BiSSourceFixBanner';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
+import { BiSTargetManagerModal } from '../bis/BiSTargetManagerModal';
 import { LodestoneSearchModal } from './LodestoneSearchModal';
 import { FlexRolesModal } from './FlexRolesModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
@@ -44,8 +45,10 @@ import {
   BookOpen,
   Gauge,
   GitBranch,
+  Target,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
+import { useSharedBisStore } from '../../stores/sharedBisStore';
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
@@ -142,6 +145,7 @@ export const PlayerCard = memo(function PlayerCard({
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showUnlinkBiSConfirm, setShowUnlinkBiSConfirm] = useState(false);
+  const [showBiSTargets, setShowBiSTargets] = useState(false);
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [resetMode, setResetMode] = useState<ResetMode>('progress'); // Default to progress reset
   const [showBiSImport, setShowBiSImport] = useState(false);
@@ -171,7 +175,7 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Notify parent when modals open/close (for DnD disable)
   useEffect(() => {
-    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showLodestoneSync || showFlexRolesModal || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
+    const isModalOpen = showRemoveConfirm || showResetConfirm || showUnlinkBiSConfirm || showPasteConfirm || showBiSImport || showBiSTargets || showLodestoneSync || showFlexRolesModal || showWeaponPriorityModal || showJobChangeConfirm || showAdminAssignModal || showOwnerAssignModal || showPriorityAdjustModal;
     if (isModalOpen) {
       onModalOpen?.();
     }
@@ -180,7 +184,7 @@ export const PlayerCard = memo(function PlayerCard({
         onModalClose?.();
       }
     };
-  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showLodestoneSync, showFlexRolesModal, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
+  }, [showRemoveConfirm, showResetConfirm, showUnlinkBiSConfirm, showPasteConfirm, showBiSImport, showBiSTargets, showLodestoneSync, showFlexRolesModal, showWeaponPriorityModal, showJobChangeConfirm, showAdminAssignModal, showOwnerAssignModal, showPriorityAdjustModal, onModalOpen, onModalClose]);
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
@@ -359,6 +363,12 @@ export const PlayerCard = memo(function PlayerCard({
   const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
+  const bisStore = useSharedBisStore();
+  const activeBisTarget = bisStore.getActive('roster_member_job', player.id, player.job);
+  const bisTargetCount = bisStore.getTargets('roster_member_job', player.id).filter(
+    (t) => t.job.toUpperCase() === player.job.toUpperCase()
+  ).length;
+
   // Permission checks - use isAdminAccess (not isAdmin) to respect View As context
   const editPermission = canEditPlayer(userRole, player, currentUserId, isAdminAccess);
   const rosterPermission = canManageRoster(userRole, isAdminAccess);
@@ -390,6 +400,13 @@ export const PlayerCard = memo(function PlayerCard({
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
     }] : []),
+    {
+      label: bisTargetCount > 0
+        ? `BiS Targets (${bisTargetCount})`
+        : 'BiS Target Sets',
+      icon: <Target className="w-4 h-4" />,
+      onClick: () => setShowBiSTargets(true),
+    },
     {
       label: player.lodestoneId ? 'Re-sync Lodestone' : 'Lodestone Sync',
       icon: <Globe className="w-4 h-4" />,
@@ -517,6 +534,7 @@ export const PlayerCard = memo(function PlayerCard({
       tooltip: rosterPermission.allowed ? undefined : rosterPermission.reason,
     },
   ], [
+    bisTargetCount,
     player.bisLink,
     player.lodestoneId,
     player.isSubstitute,
@@ -768,6 +786,18 @@ export const PlayerCard = memo(function PlayerCard({
         </div>
       </Modal>
 
+      {/* BiS Target Sets Modal */}
+      {showBiSTargets && (
+        <BiSTargetManagerModal
+          ownerType="roster_member_job"
+          ownerId={player.id}
+          groupId={groupId}
+          job={player.job}
+          canEdit={editPermission.allowed}
+          onClose={() => setShowBiSTargets(false)}
+        />
+      )}
+
       {/* BiS Import Modal */}
       <BiSImportModal
         isOpen={showBiSImport}
@@ -977,6 +1007,25 @@ export const PlayerCard = memo(function PlayerCard({
           isAdminAccess={isAdminAccess ?? false}
           onFixAllSources={handleFixAllBisSources}
         />
+      )}
+
+      {/* Active BiS target chip — expanded view only */}
+      {isExpanded && activeBisTarget && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mx-3 mb-1 justify-start gap-1.5 text-left h-auto py-1"
+          onClick={() => setShowBiSTargets(true)}
+          title="Open BiS Targets"
+          leftIcon={<Target className="w-3 h-3 text-accent" />}
+        >
+          <span className="text-xs text-text-muted truncate">
+            Target: <span className="text-text-secondary font-medium">{activeBisTarget.name}</span>
+            {activeBisTarget.itemLevel ? ` · iLv ${activeBisTarget.itemLevel}` : ''}
+            {bisTargetCount > 1 ? ` (+${bisTargetCount - 1})` : ''}
+          </span>
+        </Button>
       )}
 
       {/* Compact mode: spacer before gear (aligns icons at bottom across cards with/without badges) */}

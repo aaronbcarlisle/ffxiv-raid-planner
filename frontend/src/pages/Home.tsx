@@ -153,12 +153,21 @@ export function Home() {
           {authLoading ? (
             <Spinner size="xl" className="mx-auto" label="Checking authentication" />
           ) : user ? (
-            <Link
-              to="/dashboard"
-              className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
-            >
-              Go to My Statics
-            </Link>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <Link
+                to="/dashboard"
+                className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
+              >
+                Go to My Statics
+              </Link>
+              <Link
+                to="/profile"
+                className="inline-flex items-center gap-2 px-6 py-4 text-lg rounded-lg font-medium border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
+              >
+                <Swords className="w-5 h-5" />
+                Player Hub
+              </Link>
+            </div>
           ) : (
             <div className="flex justify-center">
               <LoginButton className="bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors" />

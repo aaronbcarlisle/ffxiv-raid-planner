@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Clock, LogIn, Send, X as XIcon } from 'lucide-react';
+import { Check, Clock, Eye, LogIn, Send, X as XIcon } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -21,6 +21,7 @@ function isDiscoverable(settings?: StaticGroupSettings): boolean {
 
 const STATUS_CONFIG = {
   pending: { icon: Clock, label: 'Request pending', color: 'text-status-warning' },
+  under_review: { icon: Eye, label: 'Under review', color: 'text-status-info' },
   accepted: { icon: Check, label: 'Request accepted', color: 'text-status-success' },
   declined: { icon: XIcon, label: 'Request declined', color: 'text-status-error' },
   cancelled: { icon: XIcon, label: 'Request cancelled', color: 'text-text-muted' },
@@ -45,7 +46,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
     (r) => r.staticGroupId === groupId
   );
 
-  const activeRequest = existingRequest?.status === 'pending' || existingRequest?.status === 'accepted'
+  const activeRequest = existingRequest?.status === 'pending' || existingRequest?.status === 'under_review' || existingRequest?.status === 'accepted'
     ? existingRequest
     : existingRequest?.status === 'declined'
       ? existingRequest
@@ -119,6 +120,9 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
         onClose={modal.close}
         shareCode={shareCode}
         staticName={staticName}
+        neededJobs={settings?.discovery?.neededJobs}
+        neededRoles={settings?.discovery?.neededRoles}
+        recruitmentStatus={settings?.discovery?.recruitmentStatus}
       />
     </>
   );

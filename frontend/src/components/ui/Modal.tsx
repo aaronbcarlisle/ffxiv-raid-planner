@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
 import { useDevice } from '../../hooks/useDevice';
@@ -16,6 +17,10 @@ interface ModalProps {
   footer?: React.ReactNode;
   /** Optional className to override modal container styles (e.g., background color) */
   className?: string;
+  /** Hides the default header bar (title + X button). Title becomes sr-only for accessibility. Use for fully custom modal surfaces like the Recruitment Dossier. */
+  hideDefaultHeader?: boolean;
+  /** Fade the backdrop from transparent to bg-black/80 on open (160ms). Use for premium modal surfaces. */
+  animateBackdrop?: boolean;
 }
 
 // Get all focusable elements within a container
@@ -42,7 +47,7 @@ const SIZE_CLASSES = {
   '5xl': 'max-w-5xl',
 };
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer, className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', variant, footer, className, hideDefaultHeader, animateBackdrop }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
@@ -149,21 +154,21 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
     : `relative max-h-[90vh] rounded-lg ${sizeClass}`;
 
   // Use portal to render at document body level, preventing inherited styles (opacity, transforms)
-  return createPortal(
+  const backdropClass = `fixed inset-0 z-50 flex ${isSheet ? 'items-end' : 'items-center'} justify-center bg-black/80 ${isSheet ? '' : 'p-4'}`;
+
+  const modalContent = (
     <div
-      className={`fixed inset-0 z-50 flex ${isSheet ? 'items-end' : 'items-center'} justify-center bg-black/80 ${isSheet ? '' : 'p-4'}`}
-      onClick={handleBackdropEvent}
-      onContextMenu={handleBackdropEvent}
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      className={`bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
     >
-      <div
-        ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className={`bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none ${containerClasses} ${className || ''}`}
-      >
-        {/* Header - sticky */}
+      {/* Header - sticky (hidden when hideDefaultHeader=true) */}
+      {hideDefaultHeader ? (
+        <h2 id={titleId} className="sr-only">{title}</h2>
+      ) : (
         <div className="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0">
           <h2 id={titleId} className="font-display text-xl text-accent">{title}</h2>
           <IconButton
@@ -173,27 +178,41 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', variant, 
             aria-label="Close modal"
           />
         </div>
+      )}
 
-        {/* Content - scrollable, with overscroll-contain to prevent bounce effect */}
-        {/* For sheet modals without footer, add bottom safe-area padding to clear home indicator */}
-        <div
-          className="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
-          style={isSheet && !footer ? { paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' } : undefined}
-        >
-          {children}
-        </div>
-
-        {/* Footer - sticky with extra bottom padding for sheet variant to clear home indicator */}
-        {footer && (
-          <div
-            className="border-t border-border-default p-4 flex-shrink-0"
-            style={isSheet ? { paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' } : undefined}
-          >
-            {footer}
-          </div>
-        )}
+      {/* Content - scrollable, with overscroll-contain to prevent bounce effect */}
+      {/* For sheet modals without footer, add bottom safe-area padding to clear home indicator */}
+      <div
+        className={`${hideDefaultHeader ? 'p-0' : 'p-6'} overflow-y-auto overflow-x-hidden overscroll-contain flex-1`}
+        style={isSheet && !footer ? { paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+      >
+        {children}
       </div>
-    </div>,
+
+      {/* Footer - sticky with extra bottom padding for sheet variant to clear home indicator */}
+      {footer && (
+        <div
+          className="border-t border-border-default p-4 flex-shrink-0"
+          style={isSheet ? { paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+        >
+          {footer}
+        </div>
+      )}
+    </div>
+  );
+
+  // animateBackdrop: fade in the backdrop on open (enter only — exit is instant per Modal pattern).
+  // initial={false} on motion.div disables the animation when animateBackdrop is not set.
+  return createPortal(
+    <motion.div
+      className={backdropClass}
+      initial={animateBackdrop ? { opacity: 0 } : false}
+      animate={animateBackdrop ? { opacity: 1, transition: { duration: 0.18 } } : undefined}
+      onClick={handleBackdropEvent}
+      onContextMenu={handleBackdropEvent}
+    >
+      {modalContent}
+    </motion.div>,
     document.body
   );
 }

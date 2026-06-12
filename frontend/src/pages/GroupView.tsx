@@ -27,14 +27,15 @@ import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
 import { MountFarmTab } from '../components/mount-farms';
 import { useMountFarmStore } from '../stores/mountFarmStore';
-import { getTrialById } from '../gamedata';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
+import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
 import { SettingsPanel, type SettingsTab } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
+import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
@@ -150,6 +151,8 @@ export function GroupView() {
   // Add Player modal state
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
+  // Roster onboarding from join request
+  const [rosteringRequest, setRosteringRequest] = useState<import('../types').JoinRequest | null>(null);
 
   // Refs to access current state in event handlers (avoids stale closures)
   const settingsModalRef = useRef(showSettingsModal);
@@ -420,6 +423,8 @@ export function GroupView() {
   });
 
   // Handler for Add Player modal submission
+  const { linkRoster } = useJoinRequestStore();
+
   const handleAddPlayerSubmit = useCallback(async (data: AddPlayerData) => {
     if (!currentGroup?.id || !currentTier?.tierId) return;
 
@@ -428,15 +433,34 @@ export function GroupView() {
       // Create the player
       const newPlayer = await addPlayer(currentGroup.id, currentTier.tierId);
 
-      // Update with the provided data
-      await updatePlayer(currentGroup.id, currentTier.tierId, newPlayer.id, {
+      // Build update payload — enriched with character identity when rostering from application
+      const updatePayload: Record<string, unknown> = {
         name: data.name,
         job: data.job,
         role: data.role,
         position: data.position,
         tankRole: data.tankRole,
         configured: true,
-      });
+      };
+
+      const req = rosteringRequest;
+      if (req) {
+        if (req.characterNameAtApply) updatePayload.lodestoneName = req.characterNameAtApply;
+        if (req.characterWorldAtApply) updatePayload.lodestoneServer = req.characterWorldAtApply;
+        if (req.characterAvatarUrlAtApply) updatePayload.lodestoneAvatarUrl = req.characterAvatarUrlAtApply;
+        if (req.characterLodestoneIdAtApply) updatePayload.lodestoneId = req.characterLodestoneIdAtApply;
+      }
+
+      await updatePlayer(currentGroup.id, currentTier.tierId, newPlayer.id, updatePayload);
+
+      if (req) {
+        try {
+          await linkRoster(req.id, newPlayer.id);
+        } catch {
+          toast.warning('Roster entry created, but the request was not linked. You can retry linking from the Requests tab.');
+        }
+        setRosteringRequest(null);
+      }
 
       // Scroll to and highlight the new player
       setHighlightedPlayerId(newPlayer.id);
@@ -461,7 +485,8 @@ export function GroupView() {
     } finally {
       setIsAddingPlayer(false);
     }
-  }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer, setHighlightedPlayerId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer, setHighlightedPlayerId, rosteringRequest, linkRoster]);
 
   // Listen for header events
   useEffect(() => {
@@ -902,6 +927,39 @@ export function GroupView() {
             )}
           </div>
 
+          {/* Home Tab */}
+          {pageMode === 'home' && currentGroup && (
+            <StaticHomeTab
+              group={currentGroup}
+              tier={currentTier}
+              onNavigate={setPageMode}
+              canManage={canManageRoster(userRole).allowed}
+              onOpenRequests={() => {
+                setSettingsTab('requests');
+                setShowSettingsModal(true);
+              }}
+              onScheduleFarm={(trial) => {
+                const mountFarmData = useMountFarmStore.getState().data;
+                const trialData = mountFarmData?.trials.find(t => t.trialId === trial.id);
+                const missing = trialData?.membersMissing ?? 0;
+                const canBuy = trialData?.membersCanBuy ?? 0;
+                const wanting = trialData?.membersWanting ?? 0;
+                setPageMode('schedule');
+                setTimeout(() => {
+                  eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
+                    trialId: trial.id,
+                    trialName: trial.dutyName,
+                    contentType: trial.contentType,
+                    category: trial.contentType === 'ultimate' ? 'ultimate' : 'farm',
+                    missing,
+                    canBuy,
+                    wanting,
+                  });
+                }, 100);
+              }}
+            />
+          )}
+
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
@@ -1065,13 +1123,10 @@ export function GroupView() {
             <MountFarmTab
               groupId={currentGroup.id}
               userRole={userRole ?? null}
-              onScheduleFarm={(trialName) => {
+              onScheduleFarm={(trial) => {
                 // Look up member counts from current data for the description
                 const mountFarmData = useMountFarmStore.getState().data;
-                const trialData = mountFarmData?.trials.find(t => {
-                  const trial = getTrialById(t.trialId);
-                  return trial?.dutyName === trialName;
-                });
+                const trialData = mountFarmData?.trials.find(t => t.trialId === trial.id);
                 const missing = trialData?.membersMissing ?? 0;
                 const canBuy = trialData?.membersCanBuy ?? 0;
                 const wanting = trialData?.membersWanting ?? 0;
@@ -1079,7 +1134,10 @@ export function GroupView() {
                 setPageMode('schedule');
                 setTimeout(() => {
                   eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
-                    trialName,
+                    trialId: trial.id,
+                    trialName: trial.dutyName,
+                    contentType: trial.contentType,
+                    category: trial.contentType === 'ultimate' ? 'ultimate' : 'farm',
                     missing,
                     canBuy,
                     wanting,
@@ -1106,9 +1164,13 @@ export function GroupView() {
       {/* Add Player Modal */}
       <AddPlayerModal
         isOpen={showAddPlayerModal}
-        onClose={() => setShowAddPlayerModal(false)}
+        onClose={() => { setShowAddPlayerModal(false); setRosteringRequest(null); }}
         onAdd={handleAddPlayerSubmit}
         isLoading={isAddingPlayer}
+        initialName={rosteringRequest?.characterNameAtApply || rosteringRequest?.requester?.displayName}
+        initialJob={rosteringRequest?.selectedJob?.toUpperCase()}
+        contextLabel={rosteringRequest ? 'Adding from application' : undefined}
+        tierName={currentTier?.tierId ? getTierById(currentTier.tierId)?.name : undefined}
       />
 
       {/* Settings Panel (slide-out) */}
@@ -1126,6 +1188,19 @@ export function GroupView() {
           isAdmin={isAdmin}
           initialTab={settingsTab}
           highlightCreateInvite={highlightCreateInvite}
+          onAddToRoster={(request) => {
+            if (request.rosterPlayerId) {
+              toast.info('Already added to roster');
+              return;
+            }
+            if (!currentTier?.tierId) {
+              toast.error('Create a tier first before adding to roster.');
+              return;
+            }
+            setShowSettingsModal(false);
+            setRosteringRequest(request);
+            setShowAddPlayerModal(true);
+          }}
         />
       )}
 

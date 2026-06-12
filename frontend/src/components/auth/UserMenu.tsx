@@ -32,6 +32,7 @@ import {
   Sun,
   Moon,
   Key,
+  Swords,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
@@ -100,6 +101,13 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           shortcut="Shift+S"
         >
           My Statics
+        </DropdownItem>
+
+        <DropdownItem
+          icon={<Swords className="w-4 h-4" />}
+          onSelect={() => navigate('/profile')}
+        >
+          Player Hub
         </DropdownItem>
 
         {/* Admin Dashboard - only for admins */}

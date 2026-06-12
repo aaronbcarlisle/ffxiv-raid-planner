@@ -19,6 +19,8 @@ interface JoinRequestState {
   cancelRequest: (requestId: string) => Promise<void>;
   acceptRequest: (requestId: string) => Promise<void>;
   declineRequest: (requestId: string) => Promise<void>;
+  markUnderReview: (requestId: string) => Promise<void>;
+  linkRoster: (requestId: string, rosterPlayerId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -95,6 +97,25 @@ export const useJoinRequestStore = create<JoinRequestState>((set) => ({
     set((state) => ({
       groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
       pendingCount: Math.max(0, state.pendingCount - 1),
+    }));
+  },
+
+  markUnderReview: async (requestId: string) => {
+    set({ error: null });
+    const updated = await api.post<JoinRequest>(`/api/join-requests/${requestId}/under-review`);
+    set((state) => ({
+      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
+    }));
+  },
+
+  linkRoster: async (requestId: string, rosterPlayerId: string) => {
+    set({ error: null });
+    const updated = await api.post<JoinRequest>(
+      `/api/join-requests/${requestId}/link-roster`,
+      { rosterPlayerId },
+    );
+    set((state) => ({
+      groupRequests: state.groupRequests.map((r) => (r.id === requestId ? updated : r)),
     }));
   },
 

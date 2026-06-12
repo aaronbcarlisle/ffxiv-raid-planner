@@ -41,6 +41,9 @@ select = ["E", "F", "I", "W"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "rate_limit: mark test as explicitly exercising rate limiting (opts out of the autouse disable fixture)",
+]
 filterwarnings = [
     "ignore::pytest.PytestRemovedIn9Warning",
 ]

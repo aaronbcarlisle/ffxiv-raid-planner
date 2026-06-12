@@ -34,6 +34,14 @@ interface AddPlayerModalProps {
   onClose: () => void;
   onAdd: (data: AddPlayerData) => Promise<void>;
   isLoading?: boolean;
+  /** Pre-fill name when creating from an application */
+  initialName?: string;
+  /** Pre-fill job when creating from an application */
+  initialJob?: string;
+  /** Context label shown above the form (e.g. "Adding from application") */
+  contextLabel?: string;
+  /** Target tier name displayed so the leader knows where the player lands */
+  tierName?: string;
 }
 
 // Position options by role
@@ -58,7 +66,7 @@ const POSITION_OPTIONS: Record<Role, { value: RaidPosition; label: string }[]> =
   ],
 };
 
-export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerModalProps) {
+export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading, initialName, initialJob, contextLabel, tierName }: AddPlayerModalProps) {
   const [name, setName] = useState('');
   const [job, setJob] = useState<string>('');
   const [position, setPosition] = useState<RaidPosition | ''>('');
@@ -72,17 +80,23 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
   const isTank = role === 'tank';
   const positionOptions = role ? POSITION_OPTIONS[role] : [];
 
-  // Reset form when modal closes
-  /* eslint-disable react-hooks/set-state-in-effect -- Intentional: reset state on modal close */
+  // Reset form when modal opens/closes — apply initial values on open
+  /* eslint-disable react-hooks/set-state-in-effect -- Intentional: reset/prefill state on modal open/close */
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setName(initialName ?? '');
+      setJob(initialJob ?? '');
+      setPosition('');
+      setTankRole('');
+      setShowJobPicker(false);
+    } else {
       setName('');
       setJob('');
       setPosition('');
       setTankRole('');
       setShowJobPicker(false);
     }
-  }, [isOpen]);
+  }, [isOpen, initialName, initialJob]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Close job picker on click outside
@@ -161,6 +175,14 @@ export function AddPlayerModal({ isOpen, onClose, onAdd, isLoading }: AddPlayerM
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Context / tier indicator */}
+        {(contextLabel || tierName) && (
+          <div className="rounded-lg bg-surface-raised border border-border-default px-3 py-2 text-sm text-text-secondary">
+            {contextLabel && <span>{contextLabel}</span>}
+            {contextLabel && tierName && <span className="mx-1">&middot;</span>}
+            {tierName && <span>Adding to: <span className="font-semibold text-text-primary">{tierName}</span></span>}
+          </div>
+        )}
         {/* Name */}
         <div>
           <Label htmlFor="player-name">Player Name</Label>

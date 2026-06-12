@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import {
   MOUNT_FARM_TRIALS,
@@ -12,6 +12,7 @@ import {
   getTrialsByExpansion,
 } from './mount-farms';
 import { MountFarmSummary } from '../components/mount-farms/MountFarmSummary';
+import { TAB_ICONS } from '../types';
 
 const CURATED_DAWNTRAIL_DUTIES = [
   'Worqor Lar Dor (Extreme)',
@@ -40,6 +41,26 @@ const CURATED_ULTIMATE_DUTIES = [
 ];
 
 describe('Mount Farm catalog', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
+  });
+
+  it('uses the upstream static Mount Farms nav icon asset', () => {
+    expect(TAB_ICONS.mountFarms).toBe('/icons/mount-farms-transparent-bg.png');
+  });
+
   it('uses the curated Dawntrail Extreme trial allowlist', () => {
     const dawntrailNames = getTrialsByExpansion('DT')
       .filter(trial => trial.contentType !== 'ultimate')
@@ -145,5 +166,54 @@ describe('Mount Farm catalog', () => {
     expect(screen.getByText('Ultimate')).toBeTruthy();
     expect(screen.queryByText(/totem/i)).toBeNull();
     expect(screen.queryByText(/99/)).toBeNull();
+  });
+
+  it('keeps static member currency cells compact without repeating the full item name', () => {
+    const windward = getTrialById('dt-windward-wilds');
+    expect(windward).toBeDefined();
+
+    render(createElement(MountFarmSummary, {
+      trials: [windward!],
+      trialSummaryMap: new Map([[
+        'dt-windward-wilds',
+        {
+          trialId: 'dt-windward-wilds',
+          totalMembers: 1,
+          membersComplete: 0,
+          membersMissing: 1,
+          membersWanting: 1,
+          membersCanBuy: 0,
+          memberProgress: [{
+            userId: 'user-1',
+            displayName: 'Rin',
+            discordUsername: null,
+            discordAvatar: null,
+            hasMount: false,
+            wantsMount: true,
+            totemCount: 0,
+            notes: null,
+            ownershipSource: 'manual' as const,
+            totemSource: 'manual' as const,
+            updatedAt: '2026-06-08T00:00:00Z',
+            lastImportedAt: null,
+            lastPluginSyncAt: null,
+            lastManualOverrideAt: null,
+            trialId: 'dt-windward-wilds',
+          }],
+        },
+      ]]),
+      currentUserId: 'user-1',
+      groupId: 'group-1',
+      canManage: true,
+      viewMode: 'group',
+      onRefresh: () => {},
+    }));
+
+    fireEvent.click(screen.getByText('The Windward Wilds (Extreme)'));
+
+    expect(screen.getByText('Progress')).toBeTruthy();
+    expect(screen.getByText('0 / 99')).toBeTruthy();
+    expect(screen.getByText('certificates')).toBeTruthy();
+    expect(screen.queryByText(/0\s*\/\s*99\s+Guardian Arkveld Certificate/i)).toBeNull();
   });
 });

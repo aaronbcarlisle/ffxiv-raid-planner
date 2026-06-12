@@ -640,6 +640,9 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         onClose={joinModal.close}
         shareCode={item.shareCode}
         staticName={item.name}
+        neededJobs={item.neededJobs}
+        neededRoles={item.neededRoles}
+        recruitmentStatus={item.recruitmentStatus}
       />
     </div>
   );

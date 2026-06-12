@@ -127,6 +127,7 @@ class SessionAnnouncementData:
     tentative_players: list[PlayerDetail] = field(default_factory=list)
     mention_target: str = "none"
     mention_role_id: str | None = None
+    track_availability: bool = True
 
 
 def build_schedule_session_url(base_url: str, share_code: str, session_id: str | None = None) -> str:
@@ -217,6 +218,7 @@ def compute_announcement_hash(data: SessionAnnouncementData) -> str:
         "total": data.total_member_count,
         "unavail": [(p.name, p.position, p.job) for p in data.unavailable_players],
         "tent": [(p.name, p.position, p.job) for p in data.tentative_players],
+        "track_availability": data.track_availability,
     }
     canonical = json.dumps(parts, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
@@ -324,11 +326,18 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
             "inline": True,
         })
 
-    fields.append({
-        "name": "RSVP",
-        "value": _format_rsvp_summary(data.rsvp_counts, data.total_member_count),
-        "inline": False,
-    })
+    if data.track_availability:
+        fields.append({
+            "name": "RSVP",
+            "value": _format_rsvp_summary(data.rsvp_counts, data.total_member_count),
+            "inline": False,
+        })
+    else:
+        fields.append({
+            "name": "Availability",
+            "value": "Availability not required",
+            "inline": False,
+        })
 
     if data.recurrence_summary:
         fields.append({
@@ -337,7 +346,7 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
             "inline": True,
         })
 
-    if data.unavailable_players:
+    if data.track_availability and data.unavailable_players:
         lines = "\n".join(p.format_line() for p in data.unavailable_players)
         fields.append({
             "name": "❌ Cannot make it",
@@ -345,7 +354,7 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
             "inline": False,
         })
 
-    if data.tentative_players:
+    if data.track_availability and data.tentative_players:
         lines = "\n".join(p.format_line() for p in data.tentative_players)
         fields.append({
             "name": "❔ Tentative",
@@ -354,7 +363,7 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
         })
 
     subs_needed = compute_subs_needed(data.rsvp_counts, data.total_member_count)
-    if subs_needed > 0:
+    if data.track_availability and subs_needed > 0:
         fields.append({
             "name": "⚠️ Subs needed",
             "value": _format_subs_needed_detail(data.unavailable_players, subs_needed),

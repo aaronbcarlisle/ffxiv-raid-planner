@@ -27,6 +27,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   size?: BadgeSize;
   className?: string;
+  title?: string;
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -61,9 +62,11 @@ export function Badge({
   variant = 'default',
   size = 'md',
   className = '',
+  title,
 }: BadgeProps) {
   return (
     <span
+      title={title}
       className={`inline-flex items-center justify-center rounded border font-semibold whitespace-nowrap ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
     >
       {children}

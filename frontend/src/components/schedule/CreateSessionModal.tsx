@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
@@ -70,6 +70,7 @@ function buildRecurrenceRule(days: Set<string>): string {
 
 const EVENT_CATEGORIES: { value: EventCategory; label: string }[] = [
   { value: 'raid', label: 'Raid' },
+  { value: 'ultimate', label: 'Ultimate' },
   { value: 'farm', label: 'Mount Farm' },
   { value: 'reclear', label: 'Reclear' },
   { value: 'prog', label: 'Progression' },
@@ -88,6 +89,7 @@ function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?
     timezone,
     isRecurring: source?.isRecurring ?? false,
     selectedDays: parseDaysFromRule(source?.recurrenceRule),
+    trackAvailability: source && 'trackAvailability' in source ? source.trackAvailability ?? true : true,
     category: (source && 'category' in source ? source.category : null) as EventCategory | null,
     contentName: (source && 'contentName' in source ? source.contentName : null) as string | null,
     contentId: (source && 'contentId' in source ? source.contentId : null) as string | null,
@@ -109,16 +111,24 @@ export function CreateSessionModal({
   const [timezone, setTimezone] = useState(initialState.timezone);
   const [isRecurring, setIsRecurring] = useState(initialState.isRecurring);
   const [selectedDays, setSelectedDays] = useState<Set<string>>(initialState.selectedDays);
+  const [trackAvailability, setTrackAvailability] = useState(initialState.trackAvailability);
   const [initialRsvpStatus, setInitialRsvpStatus] = useState<InitialRsvpStatus>('no_response');
   const [category, setCategory] = useState<EventCategory | null>(initialState.category);
   const [contentName, setContentName] = useState<string | null>(initialState.contentName);
   const [contentId, setContentId] = useState<string | null>(initialState.contentId);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const initializedForRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!isOpen) {
+      initializedForRef.current = null;
       return;
     }
+    const sessionKey = editSession?.id ?? initialDraft?.title ?? '__create__';
+    if (initializedForRef.current === sessionKey) return;
+    initializedForRef.current = sessionKey;
+
     const nextState = getInitialFormState(editSession, initialDraft);
     setTitle(nextState.title);
     setDescription(nextState.description);
@@ -127,6 +137,7 @@ export function CreateSessionModal({
     setTimezone(nextState.timezone);
     setIsRecurring(nextState.isRecurring);
     setSelectedDays(nextState.selectedDays);
+    setTrackAvailability(nextState.trackAvailability);
     setInitialRsvpStatus('no_response');
     setCategory(nextState.category);
     setContentName(nextState.contentName);
@@ -166,16 +177,17 @@ export function CreateSessionModal({
     try {
       await onSubmit({
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim() || null,
         startTime: fromZonedDatetimeLocalValue(startTime, timezone),
         endTime: fromZonedDatetimeLocalValue(endTime, timezone),
         timezone,
         isRecurring,
-        recurrenceRule: isRecurring ? buildRecurrenceRule(selectedDays) : undefined,
+        recurrenceRule: isRecurring ? buildRecurrenceRule(selectedDays) : null,
+        trackAvailability,
         ...(!editSession ? { initialRsvpStatus } : {}),
-        ...(category ? { category } : {}),
-        ...(contentId ? { contentId } : {}),
-        ...(contentName ? { contentName } : {}),
+        category,
+        contentId,
+        contentName,
       });
       onClose();
     } finally {
@@ -203,7 +215,7 @@ export function CreateSessionModal({
       title={
         <span className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-accent" />
-          {editSession ? 'Edit Session' : 'Add Raid Session'}
+          {editSession ? 'Edit Session' : 'Add Session'}
         </span>
       }
       size="lg"
@@ -240,7 +252,11 @@ export function CreateSessionModal({
           <Label size="sm">Category (optional)</Label>
           <Select
             value={category ?? ''}
-            onChange={(val) => setCategory((val || null) as EventCategory | null)}
+            onChange={(val) => {
+              setCategory((val || null) as EventCategory | null);
+              setContentId(null);
+              setContentName(null);
+            }}
             options={[
               { value: '', label: 'No category' },
               ...EVENT_CATEGORIES.map(c => ({ value: c.value, label: c.label })),
@@ -248,7 +264,7 @@ export function CreateSessionModal({
           />
         </div>
 
-        {(category === 'farm' || category === 'raid' || category === 'reclear' || category === 'prog') && (
+        {(category === 'farm' || category === 'ultimate' || category === 'raid' || category === 'reclear' || category === 'prog') && (
           <div>
             <Label size="sm">Content / Duty (optional)</Label>
             <Select
@@ -270,7 +286,13 @@ export function CreateSessionModal({
               options={[
                 { value: '', label: 'No specific duty' },
                 ...(category === 'farm'
-                  ? MOUNT_FARM_TRIALS.map(t => ({ value: t.id, label: `[${t.expansion}] ${t.dutyName}` }))
+                  ? MOUNT_FARM_TRIALS
+                      .filter(t => t.contentType !== 'ultimate')
+                      .map(t => ({ value: t.id, label: `[${t.expansion}] ${t.dutyName}` }))
+                  : category === 'ultimate'
+                    ? MOUNT_FARM_TRIALS
+                        .filter(t => t.contentType === 'ultimate')
+                        .map(t => ({ value: t.id, label: `[${t.expansion}] ${t.dutyName}` }))
                   : RAID_TIERS.map(t => ({ value: t.id, label: `${t.name} (${t.shortName})` }))
                 ),
               ]}
@@ -323,6 +345,19 @@ export function CreateSessionModal({
             onChange={setIsRecurring}
             label="Recurring weekly"
           />
+        </div>
+
+        <div className="rounded-lg border border-border-subtle bg-surface-muted/30 p-3">
+          <Checkbox
+            checked={trackAvailability}
+            onChange={setTrackAvailability}
+            label="Track availability"
+          />
+          <p className="mt-1.5 text-xs text-text-muted">
+            {trackAvailability
+              ? 'Members are expected to mark whether they can attend.'
+              : 'Use this for fixed sessions where attendance is expected and availability does not need to be collected.'}
+          </p>
         </div>
 
         {isRecurring && (

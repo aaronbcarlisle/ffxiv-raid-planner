@@ -461,81 +461,85 @@ function parseReleaseNotes() {
 
   const releasesContent = releasesMatch[1];
 
-  // Find the first release object — version and date are required; title and
-  // highlights are optional (internal releases often omit them).
-  const firstReleaseMatch = releasesContent.match(
-    /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"]/
-  );
+  // Walk through releases until we find the first non-internal (published) one.
+  // Internal releases (internal: true) are CI/dev entries with no shipped version
+  // and must not be treated as the latest release.
+  let searchOffset = 0;
 
-  if (!firstReleaseMatch) {
-    console.error('Could not parse first release object from RELEASES array');
-    console.error('Expected format: { version: "1.0.0", date: "2024-01-01", ... }');
-    return { currentVersion, latestRelease: null };
-  }
+  while (true) {
+    const searchContent = releasesContent.slice(searchOffset);
 
-  const version = firstReleaseMatch[1];
-  const date = firstReleaseMatch[2];
+    // Find the next release object — version and date are required; title and
+    // highlights are optional (internal releases often omit them).
+    const firstReleaseMatch = searchContent.match(
+      /\{\s*version:\s*['"]([^'"]+)['"],\s*date:\s*['"]([^'"]+)['"]/
+    );
 
-  // Extract the full object text (from the opening { to the matching })
-  const objStartIndex = firstReleaseMatch.index;
-  let objDepth = 0;
-  let objEndIndex = objStartIndex;
-  for (let i = objStartIndex; i < releasesContent.length; i++) {
-    if (releasesContent[i] === '{') objDepth++;
-    else if (releasesContent[i] === '}') {
-      objDepth--;
-      if (objDepth === 0) { objEndIndex = i; break; }
+    if (!firstReleaseMatch) {
+      console.error('Could not parse first non-internal release object from RELEASES array');
+      console.error('Expected format: { version: "1.0.0", date: "2024-01-01", ... }');
+      return { currentVersion, latestRelease: null };
     }
-  }
-  const objText = releasesContent.substring(objStartIndex, objEndIndex + 1);
 
-  // Parse optional title
-  const titleMatch = objText.match(/title:\s*['"]([^'"]*)['"]/);
-  const title = titleMatch ? titleMatch[1] : '';
+    const version = firstReleaseMatch[1];
+    const date = firstReleaseMatch[2];
 
-  // Parse optional highlights array
-  const highlights = [];
-  const highlightsMatch = objText.match(/highlights:\s*\[/);
-  if (highlightsMatch) {
-    const hlStr = extractArrayContent(objText, highlightsMatch.index + highlightsMatch[0].length - 1);
-    for (const m of hlStr.matchAll(/['"]([^'"]+)['"]/g)) {
-      highlights.push(m[1]);
+    // Extract the full object text (from the opening { to the matching })
+    const objStartIndex = firstReleaseMatch.index;
+    let objDepth = 0;
+    let objEndIndex = objStartIndex;
+    for (let i = objStartIndex; i < searchContent.length; i++) {
+      if (searchContent[i] === '{') objDepth++;
+      else if (searchContent[i] === '}') {
+        objDepth--;
+        if (objDepth === 0) { objEndIndex = i; break; }
+      }
     }
+    const objText = searchContent.substring(objStartIndex, objEndIndex + 1);
+
+    // Detect an optional `internal: true` flag before doing full parsing —
+    // if internal, advance past this object and continue to the next one.
+    if (/\binternal:\s*true\b/.test(objText)) {
+      searchOffset += objEndIndex + 1;
+      continue;
+    }
+
+    // Parse optional title
+    const titleMatch = objText.match(/title:\s*['"]([^'"]*)['"]/);
+    const title = titleMatch ? titleMatch[1] : '';
+
+    // Parse optional highlights array
+    const highlights = [];
+    const highlightsMatch = objText.match(/highlights:\s*\[/);
+    if (highlightsMatch) {
+      const hlStr = extractArrayContent(objText, highlightsMatch.index + highlightsMatch[0].length - 1);
+      for (const m of hlStr.matchAll(/['"]([^'"]+)['"]/g)) {
+        highlights.push(m[1]);
+      }
+    }
+
+    // Find items array within this object
+    const itemsMatch = objText.match(/items:\s*\[/);
+    if (!itemsMatch) {
+      console.error('Could not find items array in first release object');
+      return { currentVersion, latestRelease: null };
+    }
+    const absItemsStartIndex = searchOffset + objStartIndex + itemsMatch.index + itemsMatch[0].length - 1;
+    const itemsStr = extractArrayContent(releasesContent, absItemsStartIndex);
+    const items = parseReleaseItems(itemsStr);
+
+    return {
+      currentVersion,
+      latestRelease: {
+        version,
+        date,
+        title,
+        highlights,
+        items,
+        internal: false,
+      },
+    };
   }
-
-  // Find items array within this object
-  const itemsMatch = objText.match(/items:\s*\[/);
-  if (!itemsMatch) {
-    console.error('Could not find items array in first release object');
-    return { currentVersion, latestRelease: null };
-  }
-  const itemsStartIndex = objStartIndex + itemsMatch.index + itemsMatch[0].length - 1;
-  const itemsStr = extractArrayContent(releasesContent, itemsStartIndex);
-  const items = parseReleaseItems(itemsStr);
-
-  // Detect an optional `internal: true` flag. By convention it's the last field
-  // of the release object, so it lives between the items array's closing `]` and
-  // the object's closing `}` — restrict the search to that span so we only read
-  // the first release's own trailing fields.
-  const itemsCloseIndex = itemsStartIndex + 1 + itemsStr.length; // index of items' `]`
-  const objCloseIndex = releasesContent.indexOf('}', itemsCloseIndex);
-  const firstObjTail =
-    objCloseIndex === -1
-      ? releasesContent.slice(itemsCloseIndex)
-      : releasesContent.slice(itemsCloseIndex, objCloseIndex);
-  const internal = /\binternal:\s*true\b/.test(firstObjTail);
-
-  return {
-    currentVersion,
-    latestRelease: {
-      version,
-      date,
-      title,
-      highlights,
-      items,
-      internal,
-    },
-  };
 }
 
 /**

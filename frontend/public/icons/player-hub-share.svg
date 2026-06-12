@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <ellipse cx="20" cy="22" rx="14" ry="13" fill="#6B5310" opacity="0.5"/>
+  <ellipse cx="20" cy="20" rx="14" ry="13" fill="url(#g1)"/>
+  <ellipse cx="20" cy="20" rx="11" ry="10.2" fill="none" stroke="#A07818" stroke-width="0.8"/>
+  <!-- Letter/card emblem -->
+  <rect x="13" y="14" width="14" height="10" rx="1.5" fill="none" stroke="#7A5C12" stroke-width="1.5"/>
+  <path d="M13.5 14.5L20 20l6.5-5.5" fill="none" stroke="#7A5C12" stroke-width="1.5" stroke-linejoin="round"/>
+  <ellipse cx="16" cy="15" rx="5" ry="3" fill="white" opacity="0.12"/>
+  <defs>
+    <linearGradient id="g1" x1="6" y1="7" x2="34" y2="33" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F7E07A"/>
+      <stop offset="35%" stop-color="#D4A636"/>
+      <stop offset="70%" stop-color="#C49320"/>
+      <stop offset="100%" stop-color="#A07818"/>
+    </linearGradient>
+  </defs>
+</svg>

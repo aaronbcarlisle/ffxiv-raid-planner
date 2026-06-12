@@ -32,6 +32,7 @@ from .join_request import (
     JoinRequestListResponse,
     JoinRequestResponse,
     JoinRequestStatusEnum,
+    LinkRosterRequest,
     RequesterInfo,
 )
 from .schedule import (
@@ -174,6 +175,7 @@ __all__ = [
     "JoinRequestListResponse",
     "JoinRequestResponse",
     "JoinRequestStatusEnum",
+    "LinkRosterRequest",
     "RequesterInfo",
     # Schedule & Availability
     "AvailabilityDateSummary",

@@ -230,6 +230,56 @@ export function canManageRoster(
   return { allowed: false, reason: 'Viewers cannot modify the roster. Ask the Owner for Lead access.' };
 }
 
+// ==================== Request Permissions ====================
+
+/**
+ * Check if user can view the join requests list.
+ *
+ * Rules:
+ * - Admins have owner-level access
+ * - Owners and Leads can view and manage requests
+ * - Members and Viewers cannot by default
+ *
+ * Future: static settings may allow member-visible request lists.
+ */
+export function canViewRequests(
+  userRole: MemberRole | null | undefined,
+  isAdmin?: boolean
+): PermissionCheck {
+  const effectiveRole = getEffectiveRole(userRole, isAdmin);
+
+  if (!effectiveRole && !isAdmin) {
+    return { allowed: false, reason: 'You must be logged in' };
+  }
+
+  if (effectiveRole === 'owner' || effectiveRole === 'lead') {
+    return { allowed: true };
+  }
+
+  if (effectiveRole === 'member') {
+    return { allowed: false, reason: 'Only Leads and Owners can view join requests' };
+  }
+
+  return { allowed: false, reason: 'Viewers cannot view join requests' };
+}
+
+/**
+ * Check if user can accept, decline, or take action on join requests.
+ *
+ * In V1, viewing and acting share the same access tier (owner/lead).
+ * Future: static settings may restrict action to owners only.
+ */
+export function canActOnRequests(
+  userRole: MemberRole | null | undefined,
+  isAdmin?: boolean
+): PermissionCheck {
+  const view = canViewRequests(userRole, isAdmin);
+  if (!view.allowed) {
+    return { allowed: false, reason: 'Only Leads and Owners can accept or decline requests' };
+  }
+  return { allowed: true };
+}
+
 /**
  * Check if user can manage tiers (create, delete, rollover).
  *

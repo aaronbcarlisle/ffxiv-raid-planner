@@ -26,7 +26,7 @@ export function PageTransition() {
       key={location.pathname}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { duration: 0.15, ease: [0.4, 0, 0.2, 1] } }}
-      className="flex-1 min-h-0 flex flex-col"
+      className="flex-1 min-h-0 min-w-0 flex flex-col"
     >
       <Outlet />
     </motion.div>

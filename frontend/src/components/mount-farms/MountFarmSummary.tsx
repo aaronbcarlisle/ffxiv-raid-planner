@@ -4,6 +4,7 @@ import type { MountFarmTrial } from '../../gamedata';
 import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { TrialSummary } from '../../stores/mountFarmStore';
 import { MountFarmDetail } from './MountFarmDetail';
+import { FarmMetadataBadges } from './FarmProgress';
 
 interface MountFarmSummaryProps {
   trials: MountFarmTrial[];
@@ -12,7 +13,7 @@ interface MountFarmSummaryProps {
   groupId: string;
   canManage: boolean;
   viewMode: 'group' | 'my-progress';
-  onScheduleFarm?: (trialName: string) => void;
+  onScheduleFarm?: (trial: MountFarmTrial) => void;
   onRefresh: () => void;
 }
 
@@ -91,13 +92,7 @@ export function MountFarmSummary({
                     <>
                       <span className="text-text-tertiary">&middot;</span>
                       <span>{getExchangeSummary(trial)}</span>
-                      {trial.category !== 'normal' && (
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                          trial.category === 'ultimate' ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'
-                        }`}>
-                          {trial.category === 'ultimate' ? 'Ultimate' : 'Special'}
-                        </span>
-                      )}
+                      <FarmMetadataBadges trial={trial} />
                     </>
                   )}
                 </div>
@@ -129,17 +124,17 @@ export function MountFarmSummary({
                   tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onScheduleFarm(trial.dutyName);
+                    onScheduleFarm(trial);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.stopPropagation();
-                      onScheduleFarm(trial.dutyName);
+                      onScheduleFarm(trial);
                     }
                   }}
                   className="flex-shrink-0 text-text-tertiary hover:text-accent transition-colors p-1"
-                  title="Schedule farm event"
-                  aria-label={`Schedule ${getRewardNoun(trial)} farm`}
+                  title={trial.contentType === 'ultimate' ? 'Schedule session' : 'Schedule farm event'}
+                  aria-label={trial.contentType === 'ultimate' ? `Schedule ${trial.dutyName}` : `Schedule ${getRewardNoun(trial)} farm`}
                 >
                   <Calendar className="w-4 h-4" />
                 </span>
