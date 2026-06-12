@@ -137,7 +137,7 @@ export function CreateCollectionGoalModal({
         {/* Type + Status row */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-text-secondary">Type</label>
+            {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Type</label>
             <Select
               value={form.goalType}
               onChange={(v) => patch({ goalType: v as CollectionGoalType, title: '' })}
@@ -145,7 +145,7 @@ export function CreateCollectionGoalModal({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-text-secondary">Status</label>
+            {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Status</label>
             <Select
               value={form.status}
               onChange={(v) => patch({ status: v as CollectionGoalStatus })}
@@ -156,7 +156,7 @@ export function CreateCollectionGoalModal({
 
         {/* Title */}
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Title</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Title</label>
           <Input
             value={form.title}
             onChange={(v) => patch({ title: v })}
@@ -167,7 +167,7 @@ export function CreateCollectionGoalModal({
 
         {/* Summary (optional) */}
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
             Summary
             <span className="ml-1 font-normal text-text-muted">(optional)</span>
           </label>
@@ -182,7 +182,7 @@ export function CreateCollectionGoalModal({
         {showCountFields && (
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-text-secondary">
+              {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
                 Target count
                 <span className="ml-1 font-normal text-text-muted">(optional)</span>
               </label>
@@ -193,7 +193,7 @@ export function CreateCollectionGoalModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-text-secondary">
+              {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
                 Current count
                 <span className="ml-1 font-normal text-text-muted">(optional)</span>
               </label>
@@ -208,7 +208,7 @@ export function CreateCollectionGoalModal({
 
         {/* Note (optional) */}
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
             Internal note
             <span className="ml-1 font-normal text-text-muted">(optional, lead-only)</span>
           </label>

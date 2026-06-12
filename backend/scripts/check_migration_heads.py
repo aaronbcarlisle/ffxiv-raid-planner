@@ -29,22 +29,37 @@ VERSIONS_DIR = Path(__file__).resolve().parent.parent / "alembic" / "versions"
 #   down_revision = None             and   down_revision: Union[str, None] = "abc"
 _REV_RE = re.compile(r"^revision[^=\n]*=\s*['\"]([^'\"]+)['\"]", re.M)
 _DOWN_RE = re.compile(r"^down_revision[^=\n]*=\s*(None|['\"][^'\"]+['\"])", re.M)
+# Handles merge migrations where down_revision is a tuple spanning multiple lines:
+#   down_revision: Union[str, Sequence[str], None] = (
+#       "abc123",
+#       "def456",
+#   )
+_DOWN_TUPLE_RE = re.compile(
+    r"^down_revision[^=\n]*=\s*\(([^)]+)\)", re.M | re.S
+)
 # Presence of *any* down_revision assignment, so we can tell an explicit
 # `down_revision = None` (a legitimate root) apart from a file that omits the
 # assignment entirely (a mistake we must flag, not silently treat as a root).
 _DOWN_PRESENT_RE = re.compile(r"^down_revision\b\s*[:=]", re.M)
 
 
-def _parse(text: str) -> tuple[str | None, str | None, bool]:
+def _parse(text: str) -> tuple[str | None, list[str], bool]:
     rev = _REV_RE.search(text)
-    down = _DOWN_RE.search(text)
     rev_val = rev.group(1) if rev else None
     down_present = _DOWN_PRESENT_RE.search(text) is not None
-    if down is None or down.group(1) == "None":
-        down_val = None
+
+    # Try scalar first, then tuple (merge migrations)
+    down = _DOWN_RE.search(text)
+    if down is not None and down.group(1) != "None":
+        down_vals = [down.group(1).strip("'\"")]
     else:
-        down_val = down.group(1).strip("'\"")
-    return rev_val, down_val, down_present
+        tuple_match = _DOWN_TUPLE_RE.search(text)
+        if tuple_match:
+            down_vals = re.findall(r"['\"]([^'\"]+)['\"]", tuple_match.group(1))
+        else:
+            down_vals = []  # None or missing → root
+
+    return rev_val, down_vals, down_present
 
 
 def main() -> int:
@@ -54,11 +69,11 @@ def main() -> int:
         return 1
 
     revisions: dict[str, str] = {}
-    down_of: dict[str, str | None] = {}
+    down_of: dict[str, list[str]] = {}
     errors: list[str] = []
 
     for path in files:
-        rev, down, down_present = _parse(path.read_text(encoding="utf-8"))
+        rev, downs, down_present = _parse(path.read_text(encoding="utf-8"))
         if rev is None:
             errors.append(f"{path.name}: could not parse a `revision` id")
             continue
@@ -76,20 +91,21 @@ def main() -> int:
             )
             continue
         revisions[rev] = path.name
-        down_of[rev] = down
+        down_of[rev] = downs
 
     all_revs = set(revisions)
 
     # Dangling down_revision references.
-    for rev, down in down_of.items():
-        if down is not None and down not in all_revs:
-            errors.append(
-                f"{revisions[rev]}: down_revision '{down}' does not match any "
-                f"known revision"
-            )
+    for rev, downs in down_of.items():
+        for down in downs:
+            if down not in all_revs:
+                errors.append(
+                    f"{revisions[rev]}: down_revision '{down}' does not match any "
+                    f"known revision"
+                )
 
-    roots = [r for r, d in down_of.items() if d is None]
-    used_as_down = {d for d in down_of.values() if d is not None}
+    roots = [r for r, d in down_of.items() if not d]
+    used_as_down = {d for downs in down_of.values() for d in downs}
     heads = sorted(all_revs - used_as_down)
 
     if len(roots) != 1:

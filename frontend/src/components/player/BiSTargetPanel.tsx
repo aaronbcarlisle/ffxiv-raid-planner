@@ -327,7 +327,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
     <div className="rounded-lg border border-border-default bg-surface-raised p-4 space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2 space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Name</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Name</label>
           <Input
             value={form.name}
             onChange={(v) => onChange({ name: v })}
@@ -336,7 +336,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Source</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Source</label>
           <Select
             value={form.source}
             onChange={(v) => onChange({ source: v as BisTargetSource })}
@@ -345,7 +345,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Purpose</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Purpose</label>
           <Select
             value={form.purpose}
             onChange={(v) => onChange({ purpose: v as BisTargetPurpose })}
@@ -355,7 +355,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
 
         {showUrlField && (
           <div className="sm:col-span-2 space-y-1">
-            <label className="text-xs font-medium text-text-secondary">External URL</label>
+            {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">External URL</label>
             <Input
               value={form.externalUrl}
               onChange={(v) => onChange({ externalUrl: v })}
@@ -366,7 +366,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
         )}
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Patch</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Patch</label>
           <Input
             value={form.patch}
             onChange={(v) => onChange({ patch: v })}
@@ -375,7 +375,7 @@ function TargetForm({ form, error, onChange, onSave, onCancel }: TargetFormProps
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-text-secondary">Target iLv</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Target iLv</label>
           <Input
             value={form.targetItemLevel}
             onChange={(v) => onChange({ targetItemLevel: v })}

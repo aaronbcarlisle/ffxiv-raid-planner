@@ -282,7 +282,7 @@ function BiSForm({
   return (
     <div className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs text-text-secondary">Name</label>
+        {/* design-system-ignore: no Label primitive in design system */}<label className="mb-1 block text-xs text-text-secondary">Name</label>
         <Input
           value={form.name}
           onChange={(val) => onChange({ ...form, name: val })}
@@ -292,7 +292,7 @@ function BiSForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs text-text-secondary">Purpose</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="mb-1 block text-xs text-text-secondary">Purpose</label>
           <Select
             value={form.purpose}
             onChange={(val) => onChange({ ...form, purpose: val })}
@@ -301,7 +301,7 @@ function BiSForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-text-secondary">Source</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="mb-1 block text-xs text-text-secondary">Source</label>
           <Select
             value={form.sourceType}
             onChange={(val) => onChange({ ...form, sourceType: val })}
@@ -312,7 +312,7 @@ function BiSForm({
       </div>
       {form.sourceType !== 'manual' && (
         <div>
-          <label className="mb-1 block text-xs text-text-secondary">URL (optional)</label>
+          {/* design-system-ignore: no Label primitive in design system */}<label className="mb-1 block text-xs text-text-secondary">URL (optional)</label>
           <Input
             value={form.externalUrl}
             onChange={(val) => onChange({ ...form, externalUrl: val })}
@@ -322,7 +322,7 @@ function BiSForm({
         </div>
       )}
       <div>
-        <label className="mb-1 block text-xs text-text-secondary">Notes (optional)</label>
+        {/* design-system-ignore: no Label primitive in design system */}<label className="mb-1 block text-xs text-text-secondary">Notes (optional)</label>
         <Input
           value={form.notes}
           onChange={(val) => onChange({ ...form, notes: val })}
