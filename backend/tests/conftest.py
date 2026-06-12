@@ -24,14 +24,18 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
 @pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    """Reset in-memory rate limit counters before every test.
+def disable_rate_limiter():
+    """Disable rate limiting for every test.
 
-    The limiter uses a shared MemoryStorage instance. Without this reset,
-    counters accumulate across tests in the same session and cause legitimate
-    requests to receive 429 responses once the per-window limit is reached.
+    The limiter is a process-wide singleton. Without disabling it, request
+    counters accumulate across tests in the same session and legitimate
+    requests start receiving 429 responses once the per-window limit is hit.
+    Slowapi 0.1.9 exposes `Limiter.enabled` as a plain attribute — setting it
+    False causes `_check_request_limit` to return immediately without counting.
     """
-    limiter._storage.reset()
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
