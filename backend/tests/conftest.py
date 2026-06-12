@@ -23,18 +23,16 @@ from app.rate_limit import limiter
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def disable_rate_limiter():
-    """Disable rate limiting for every test.
+@pytest.fixture(autouse=True, scope="session")
+def disable_rate_limiter():
+    """Disable rate limiting for the entire test session.
 
     The limiter is a process-wide singleton. Without disabling it, request
     counters accumulate across tests in the same session and legitimate
     requests start receiving 429 responses once the per-window limit is hit.
-    Slowapi's async_wrapper gates all rate-limit logic (both enforcement and
-    header injection) behind `if self.enabled`, so setting it False is the
-    safe way to fully suppress the limiter without breaking request.state.
-    Using an async fixture ensures it runs inside the test event loop, after
-    any event-loop-level initialization that might reset the enabled flag.
+    Session scope + sync avoids any per-test event-loop ordering issues that
+    can cause the per-function async fixture to run after limiter state is
+    checked in CI.
     """
     limiter.enabled = False
     yield
