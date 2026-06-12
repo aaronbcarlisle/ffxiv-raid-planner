@@ -25,7 +25,7 @@ from ..models.player_job_profile import (
 from ..models.player_profile import PlayerProfile, VALID_VISIBILITIES
 from ..models.user import User
 from ..rate_limit import RATE_LIMITS, limiter
-from ..models.player_bis_target_set import PlayerBisTargetSet
+from ..models.bis_target_set import BiSTargetSet as PlayerBisTargetSet
 from ..schemas.player import (
     GearSnapshotResponse,
     GearSyncRequest,
@@ -163,6 +163,8 @@ def _profile_to_response(profile: PlayerProfile) -> PlayerProfileResponse:
             bis_targets=[
                 PlayerBisTargetSetResponse(
                     id=b.id,
+                    owner_type=b.owner_type,
+                    owner_id=b.owner_id,
                     profile_id=b.profile_id,
                     job_profile_id=b.job_profile_id,
                     job=b.job,
@@ -172,6 +174,7 @@ def _profile_to_response(profile: PlayerProfile) -> PlayerProfileResponse:
                     external_url=b.external_url,
                     import_status=b.import_status,
                     is_active=b.is_active,
+                    patch=b.patch,
                     item_level=b.item_level,
                     notes=b.notes,
                     items_json=b.items_json,

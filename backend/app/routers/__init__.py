@@ -4,6 +4,7 @@ from .analytics import router as analytics_router
 from .api_keys import router as api_keys_router
 from .auth import router as auth_router
 from .bis import router as bis_router
+from .bis_targets import router as bis_targets_router
 from .collection_goals import router as collection_goals_router
 from .discovery import router as discovery_router
 from .invitations import router as invitations_router
@@ -23,6 +24,7 @@ __all__ = [
     "api_keys_router",
     "auth_router",
     "bis_router",
+    "bis_targets_router",
     "collection_goals_router",
     "discovery_router",
     "invitations_router",

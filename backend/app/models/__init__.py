@@ -2,6 +2,7 @@
 
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
 from .api_key import ApiKey
+from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
 from .collection_goal import CollectionGoal
 from .invitation import Invitation
 from .join_request import JoinRequest  # noqa: F811
@@ -13,7 +14,6 @@ from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .player_character import PlayerCharacter
 from .player_gear_snapshot import PlayerGearSnapshot
-from .player_bis_target_set import PlayerBisTargetSet
 from .player_job_profile import PlayerJobProfile
 from .player_profile import PlayerProfile
 from .plugin_auth_code import PluginAuthCode
@@ -30,6 +30,11 @@ __all__ = [
     "AnalyticsDailyAggregate",
     "AnalyticsEvent",
     "ApiKey",
+    "BiSTargetSet",
+    "VALID_BIS_IMPORT_STATUSES",
+    "VALID_BIS_PURPOSES",
+    "VALID_BIS_SOURCE_TYPES",
+    "VALID_OWNER_TYPES",
     "CollectionGoal",
     "Invitation",
     "JoinRequest",
@@ -41,7 +46,6 @@ __all__ = [
     "MemberRole",
     "PageLedgerEntry",
     "PlayerGoal",
-    "PlayerBisTargetSet",
     "PlayerCharacter",
     "PlayerGearSnapshot",
     "PlayerJobProfile",

@@ -19,40 +19,24 @@ Object.defineProperty(window, 'matchMedia', {
 });
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ManageBiSModal } from './ManageBiSModal';
-import type { PlayerBisTargetSet } from '../../stores/playerProfileStore';
+import type { SharedBiSTargetSet, BiSOwnerType } from '../../types';
 
-const mockFetchBisTargets = vi.fn().mockResolvedValue(undefined);
-const mockCreateBisTarget = vi.fn();
-const mockUpdateBisTarget = vi.fn();
-const mockDeleteBisTarget = vi.fn();
-const mockSetBisTargetActive = vi.fn();
+const mockFetchTargets = vi.fn().mockResolvedValue(undefined);
+const mockCreateTarget = vi.fn();
+const mockUpdateTarget = vi.fn();
+const mockDeleteTarget = vi.fn();
+const mockSetTargetActive = vi.fn();
+const mockCreateMultipleTargets = vi.fn();
 
-const storeMock = {
-  bisTargets: {} as Record<string, PlayerBisTargetSet[]>,
-  fetchBisTargets: mockFetchBisTargets,
-  createBisTarget: mockCreateBisTarget,
-  updateBisTarget: mockUpdateBisTarget,
-  deleteBisTarget: mockDeleteBisTarget,
-  setBisTargetActive: mockSetBisTargetActive,
-};
-
-vi.mock('../../stores/playerProfileStore', async () => {
-  const actual = await vi.importActual<typeof import('../../stores/playerProfileStore')>('../../stores/playerProfileStore');
-  return {
-    ...actual,
-    usePlayerProfileStore: () => storeMock,
-  };
-});
-
-vi.mock('../../stores/toastStore', () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
-}));
-
-function makeTarget(overrides: Partial<PlayerBisTargetSet> = {}): PlayerBisTargetSet {
+function makeSharedTarget(overrides: Partial<SharedBiSTargetSet> = {}): SharedBiSTargetSet {
   return {
     id: 'target-1',
-    profileId: 'profile-1',
+    ownerType: 'player_job_profile' as BiSOwnerType,
+    ownerId: 'jp-1',
     jobProfileId: 'jp-1',
+    snapshotPlayerId: null,
+    groupId: null,
+    profileId: 'profile-1',
     job: 'BRD',
     name: 'Prog Set',
     purpose: 'savage',
@@ -60,30 +44,68 @@ function makeTarget(overrides: Partial<PlayerBisTargetSet> = {}): PlayerBisTarge
     externalUrl: 'https://xivgear.app/share/test',
     importStatus: 'linked_only',
     isActive: false,
+    patch: null,
     itemLevel: null,
     notes: null,
     itemsJson: null,
+    createdBy: null,
     createdAt: '2026-06-12T00:00:00Z',
     updatedAt: '2026-06-12T00:00:00Z',
     ...overrides,
   };
 }
 
-function renderModal(overrides?: Partial<typeof storeMock>) {
-  Object.assign(storeMock, overrides);
+const sharedStoreState: {
+  targets: Record<string, SharedBiSTargetSet[]>;
+} = {
+  targets: {},
+};
+
+vi.mock('../../stores/sharedBisStore', async () => {
+  const actual = await vi.importActual<typeof import('../../stores/sharedBisStore')>('../../stores/sharedBisStore');
+  return {
+    ...actual,
+    useSharedBisStore: () => ({
+      getTargets: (ownerType: string, ownerId: string) =>
+        sharedStoreState.targets[`${ownerType}:${ownerId}`] ?? [],
+      getActive: (ownerType: string, ownerId: string, job: string) =>
+        (sharedStoreState.targets[`${ownerType}:${ownerId}`] ?? []).find(
+          (t) => t.job.toUpperCase() === job.toUpperCase() && t.isActive,
+        ) ?? null,
+      isLoading: () => false,
+      fetchTargets: mockFetchTargets,
+      createTarget: mockCreateTarget,
+      createMultipleTargets: mockCreateMultipleTargets,
+      updateTarget: mockUpdateTarget,
+      deleteTarget: mockDeleteTarget,
+      setTargetActive: mockSetTargetActive,
+    }),
+  };
+});
+
+vi.mock('../../stores/toastStore', () => ({
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+
+vi.mock('../../services/api', () => ({
+  fetchBiSPresets: vi.fn().mockResolvedValue({ job: 'BRD', presets: [] }),
+}));
+
+function renderModal() {
   return render(
-    <ManageBiSModal jobProfileId="jp-1" job="BRD" onClose={vi.fn()} />
+    <ManageBiSModal jobProfileId="jp-1" job="BRD" onClose={vi.fn()} />,
   );
 }
 
 describe('ManageBiSModal', () => {
   beforeEach(() => {
-    storeMock.bisTargets = {};
-    mockFetchBisTargets.mockReset().mockResolvedValue(undefined);
-    mockCreateBisTarget.mockReset().mockResolvedValue(makeTarget());
-    mockUpdateBisTarget.mockReset().mockResolvedValue(undefined);
-    mockDeleteBisTarget.mockReset().mockResolvedValue(undefined);
-    mockSetBisTargetActive.mockReset().mockResolvedValue(undefined);
+    sharedStoreState.targets = {};
+    mockFetchTargets.mockReset().mockResolvedValue(undefined);
+    mockCreateTarget.mockReset().mockResolvedValue(makeSharedTarget());
+    mockUpdateTarget.mockReset().mockResolvedValue(makeSharedTarget());
+    mockDeleteTarget.mockReset().mockResolvedValue(undefined);
+    mockSetTargetActive.mockReset().mockResolvedValue(undefined);
+    mockCreateMultipleTargets.mockReset().mockResolvedValue([]);
   });
 
   it('renders the modal title with job display name', () => {
@@ -91,73 +113,72 @@ describe('ManageBiSModal', () => {
     expect(screen.getByText(/BiS Targets — Bard/i)).toBeInTheDocument();
   });
 
-  it('calls fetchBisTargets on mount', () => {
+  it('calls fetchTargets on mount with player_job_profile owner type', () => {
     renderModal();
-    expect(mockFetchBisTargets).toHaveBeenCalledWith('jp-1');
+    expect(mockFetchTargets).toHaveBeenCalledWith('player_job_profile', 'jp-1');
   });
 
   it('shows empty state message when no targets', () => {
     renderModal();
-    expect(screen.getByText(/No BiS targets configured/i)).toBeInTheDocument();
+    expect(screen.getByText(/No BiS targets yet/i)).toBeInTheDocument();
   });
 
   it('renders existing targets', () => {
-    storeMock.bisTargets = { 'jp-1': [makeTarget()] };
+    sharedStoreState.targets['player_job_profile:jp-1'] = [makeSharedTarget()];
     renderModal();
     expect(screen.getByText('Prog Set')).toBeInTheDocument();
     expect(screen.getByText('Savage')).toBeInTheDocument();
   });
 
-  it('shows "Add target" button', () => {
-    renderModal();
-    expect(screen.getByTestId('add-bis-target-btn')).toBeInTheDocument();
-  });
-
-  it('shows add form when "Add target" clicked', () => {
-    renderModal();
-    fireEvent.click(screen.getByTestId('add-bis-target-btn'));
-    expect(screen.getByTestId('bis-name-input')).toBeInTheDocument();
-    expect(screen.getByText('New BiS target')).toBeInTheDocument();
-  });
-
-  it('calls createBisTarget when form submitted with a name', async () => {
-    renderModal();
-    fireEvent.click(screen.getByTestId('add-bis-target-btn'));
-    const nameInput = screen.getByTestId('bis-name-input');
-    fireEvent.change(nameInput, { target: { value: 'Farm BiS' } });
-    // Wait for React to re-render with the new state
-    const addBtn = await screen.findByRole('button', { name: 'Add' });
-    await waitFor(() => expect(addBtn).not.toBeDisabled());
-    fireEvent.click(addBtn);
-    await waitFor(() => expect(mockCreateBisTarget).toHaveBeenCalledWith(
-      'jp-1',
-      expect.objectContaining({ name: 'Farm BiS' }),
-    ));
-  });
-
-  it('shows active indicator on active target', () => {
-    storeMock.bisTargets = { 'jp-1': [makeTarget({ isActive: true })] };
-    renderModal();
-    expect(screen.getByLabelText('Active')).toBeInTheDocument();
-  });
-
   it('shows "Set active" button for inactive targets', () => {
-    storeMock.bisTargets = { 'jp-1': [makeTarget({ isActive: false })] };
+    sharedStoreState.targets['player_job_profile:jp-1'] = [makeSharedTarget({ isActive: false })];
     renderModal();
     expect(screen.getByText('Set active')).toBeInTheDocument();
   });
 
-  it('calls setBisTargetActive when "Set active" clicked', async () => {
-    storeMock.bisTargets = { 'jp-1': [makeTarget({ isActive: false })] };
+  it('calls setTargetActive when "Set active" clicked', async () => {
+    sharedStoreState.targets['player_job_profile:jp-1'] = [makeSharedTarget({ isActive: false })];
     renderModal();
     fireEvent.click(screen.getByText('Set active'));
-    await waitFor(() => expect(mockSetBisTargetActive).toHaveBeenCalledWith('jp-1', 'target-1'));
+    await waitFor(() =>
+      expect(mockSetTargetActive).toHaveBeenCalledWith('target-1', 'player_job_profile', 'jp-1'),
+    );
   });
 
-  it('calls deleteBisTarget when delete button clicked', async () => {
-    storeMock.bisTargets = { 'jp-1': [makeTarget()] };
+  it('shows active indicator on active target', () => {
+    sharedStoreState.targets['player_job_profile:jp-1'] = [makeSharedTarget({ isActive: true })];
+    renderModal();
+    expect(screen.getByLabelText('Active')).toBeInTheDocument();
+  });
+
+  it('calls deleteTarget when delete button clicked', async () => {
+    sharedStoreState.targets['player_job_profile:jp-1'] = [makeSharedTarget()];
     renderModal();
     fireEvent.click(screen.getByLabelText('Remove BiS target'));
-    await waitFor(() => expect(mockDeleteBisTarget).toHaveBeenCalledWith('jp-1', 'target-1'));
+    await waitFor(() =>
+      expect(mockDeleteTarget).toHaveBeenCalledWith('target-1', 'player_job_profile', 'jp-1'),
+    );
+  });
+
+  it('shows Manual tab and can open add form', async () => {
+    renderModal();
+    fireEvent.click(screen.getByText('Manual'));
+    expect(await screen.findByTestId('bis-name-input')).toBeInTheDocument();
+  });
+
+  it('calls createTarget when manual form submitted with a name', async () => {
+    mockCreateTarget.mockResolvedValue(makeSharedTarget({ name: 'Farm BiS' }));
+    renderModal();
+    fireEvent.click(screen.getByText('Manual'));
+    const nameInput = await screen.findByTestId('bis-name-input');
+    fireEvent.change(nameInput, { target: { value: 'Farm BiS' } });
+    const addBtn = await screen.findByRole('button', { name: 'Add' });
+    await waitFor(() => expect(addBtn).not.toBeDisabled());
+    fireEvent.click(addBtn);
+    await waitFor(() =>
+      expect(mockCreateTarget).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Farm BiS', ownerType: 'player_job_profile', ownerId: 'jp-1' }),
+      ),
+    );
   });
 });

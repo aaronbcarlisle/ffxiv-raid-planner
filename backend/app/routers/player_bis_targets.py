@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
-from ..models.player_bis_target_set import (
-    PlayerBisTargetSet,
+from ..models.bis_target_set import (
+    BiSTargetSet,
     VALID_BIS_IMPORT_STATUSES,
     VALID_BIS_PURPOSES,
     VALID_BIS_SOURCE_TYPES,
@@ -20,9 +20,9 @@ from ..models.player_job_profile import PlayerJobProfile
 from ..models.player_profile import PlayerProfile
 from ..models.user import User
 from ..schemas.player import (
-    PlayerBisTargetSetCreate,
-    PlayerBisTargetSetResponse,
-    PlayerBisTargetSetUpdate,
+    PlayerBisTargetSetCreate as BiSTargetSetCreate,
+    PlayerBisTargetSetResponse as BiSTargetSetResponse,
+    PlayerBisTargetSetUpdate as BiSTargetSetUpdate,
 )
 
 router = APIRouter(prefix="/api/player/jobs", tags=["player-bis"])
@@ -51,9 +51,11 @@ async def _get_own_job_profile(
     return profile, jp
 
 
-def _to_response(b: PlayerBisTargetSet) -> PlayerBisTargetSetResponse:
-    return PlayerBisTargetSetResponse(
+def _to_response(b: BiSTargetSet) -> BiSTargetSetResponse:
+    return BiSTargetSetResponse(
         id=b.id,
+        owner_type=b.owner_type,
+        owner_id=b.owner_id,
         profile_id=b.profile_id,
         job_profile_id=b.job_profile_id,
         job=b.job,
@@ -63,6 +65,7 @@ def _to_response(b: PlayerBisTargetSet) -> PlayerBisTargetSetResponse:
         external_url=b.external_url,
         import_status=b.import_status,
         is_active=b.is_active,
+        patch=b.patch,
         item_level=b.item_level,
         notes=b.notes,
         items_json=b.items_json,
@@ -71,7 +74,7 @@ def _to_response(b: PlayerBisTargetSet) -> PlayerBisTargetSetResponse:
     )
 
 
-@router.get("/{job_profile_id}/bis-targets", response_model=list[PlayerBisTargetSetResponse])
+@router.get("/{job_profile_id}/bis-targets", response_model=list[BiSTargetSetResponse])
 async def list_bis_targets(
     job_profile_id: str,
     session: AsyncSession = Depends(get_session),
@@ -80,21 +83,21 @@ async def list_bis_targets(
     """List all BiS target sets for a job profile."""
     await _get_own_job_profile(session, user, job_profile_id)
     result = await session.execute(
-        select(PlayerBisTargetSet)
-        .where(PlayerBisTargetSet.job_profile_id == job_profile_id)
-        .order_by(PlayerBisTargetSet.created_at)
+        select(BiSTargetSet)
+        .where(BiSTargetSet.job_profile_id == job_profile_id)
+        .order_by(BiSTargetSet.created_at)
     )
     return [_to_response(b) for b in result.scalars().all()]
 
 
 @router.post(
     "/{job_profile_id}/bis-targets",
-    response_model=PlayerBisTargetSetResponse,
+    response_model=BiSTargetSetResponse,
     status_code=201,
 )
 async def create_bis_target(
     job_profile_id: str,
-    body: PlayerBisTargetSetCreate,
+    body: BiSTargetSetCreate,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
@@ -109,10 +112,13 @@ async def create_bis_target(
         raise HTTPException(status_code=422, detail=f"Invalid import_status: {body.import_status}")
 
     now = datetime.now(timezone.utc).isoformat()
-    b = PlayerBisTargetSet(
+    b = BiSTargetSet(
         id=str(uuid.uuid4()),
+        owner_type="player_job_profile",
+        owner_id=job_profile_id,
         profile_id=profile.id,
         job_profile_id=job_profile_id,
+        created_by=user.id,
         job=jp.job,
         name=body.name,
         purpose=body.purpose,
@@ -120,6 +126,7 @@ async def create_bis_target(
         external_url=body.external_url,
         import_status=body.import_status,
         is_active=False,
+        patch=getattr(body, "patch", None),
         notes=body.notes,
         created_at=now,
         updated_at=now,
@@ -133,21 +140,21 @@ async def create_bis_target(
 
 @router.put(
     "/{job_profile_id}/bis-targets/{target_id}",
-    response_model=PlayerBisTargetSetResponse,
+    response_model=BiSTargetSetResponse,
 )
 async def update_bis_target(
     job_profile_id: str,
     target_id: str,
-    body: PlayerBisTargetSetUpdate,
+    body: BiSTargetSetUpdate,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
     """Update a BiS target set."""
     await _get_own_job_profile(session, user, job_profile_id)
     result = await session.execute(
-        select(PlayerBisTargetSet).where(
-            PlayerBisTargetSet.id == target_id,
-            PlayerBisTargetSet.job_profile_id == job_profile_id,
+        select(BiSTargetSet).where(
+            BiSTargetSet.id == target_id,
+            BiSTargetSet.job_profile_id == job_profile_id,
         )
     )
     b = result.scalar_one_or_none()
@@ -172,6 +179,8 @@ async def update_bis_target(
         b.import_status = body.import_status
     if body.notes is not None:
         b.notes = body.notes
+    if getattr(body, "patch", None) is not None:
+        b.patch = body.patch
     b.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.commit()
@@ -189,9 +198,9 @@ async def delete_bis_target(
     """Delete a BiS target set."""
     await _get_own_job_profile(session, user, job_profile_id)
     result = await session.execute(
-        select(PlayerBisTargetSet).where(
-            PlayerBisTargetSet.id == target_id,
-            PlayerBisTargetSet.job_profile_id == job_profile_id,
+        select(BiSTargetSet).where(
+            BiSTargetSet.id == target_id,
+            BiSTargetSet.job_profile_id == job_profile_id,
         )
     )
     b = result.scalar_one_or_none()
@@ -203,7 +212,7 @@ async def delete_bis_target(
 
 @router.post(
     "/{job_profile_id}/bis-targets/{target_id}/set-active",
-    response_model=PlayerBisTargetSetResponse,
+    response_model=BiSTargetSetResponse,
 )
 async def set_bis_target_active(
     job_profile_id: str,
@@ -215,9 +224,9 @@ async def set_bis_target_active(
     profile, jp = await _get_own_job_profile(session, user, job_profile_id)
 
     result = await session.execute(
-        select(PlayerBisTargetSet).where(
-            PlayerBisTargetSet.profile_id == profile.id,
-            PlayerBisTargetSet.job == jp.job,
+        select(BiSTargetSet).where(
+            BiSTargetSet.profile_id == profile.id,
+            BiSTargetSet.job == jp.job,
         )
     )
     all_for_job = result.scalars().all()

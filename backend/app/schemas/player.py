@@ -115,11 +115,17 @@ class GearSyncResult(CamelModel):
 # --- Player BiS Target Set ---
 
 class PlayerBisTargetSetResponse(CamelModel):
-    """One BiS target configuration for a specific job profile."""
+    """One BiS target configuration for a specific job profile (player hub view).
+
+    profile_id / job_profile_id are nullable because the underlying bis_target_sets
+    table is now shared across player hub and roster contexts.
+    """
 
     id: str
-    profile_id: str
-    job_profile_id: str
+    owner_type: str = "player_job_profile"
+    owner_id: str = ""
+    profile_id: str | None = None
+    job_profile_id: str | None = None
     job: str
     name: str
     purpose: str
@@ -127,6 +133,7 @@ class PlayerBisTargetSetResponse(CamelModel):
     external_url: str | None = None
     import_status: str
     is_active: bool
+    patch: str | None = None
     item_level: int | None = None
     notes: str | None = None
     items_json: dict | None = None
@@ -135,24 +142,26 @@ class PlayerBisTargetSetResponse(CamelModel):
 
 
 class PlayerBisTargetSetCreate(CamelModel):
-    """Create a new BiS target set."""
+    """Create a new BiS target set via the legacy player-scoped endpoint."""
 
     name: str = Field(..., min_length=1, max_length=200)
     purpose: str = Field(default="savage", max_length=20)
     source_type: str = Field(default="manual", max_length=20)
     external_url: str | None = Field(default=None, max_length=2000)
     import_status: str = Field(default="linked_only", max_length=20)
+    patch: str | None = Field(default=None, max_length=20)
     notes: str | None = Field(default=None, max_length=500)
 
 
 class PlayerBisTargetSetUpdate(CamelModel):
-    """Update a BiS target set."""
+    """Update a BiS target set via the legacy player-scoped endpoint."""
 
     name: str | None = Field(default=None, min_length=1, max_length=200)
     purpose: str | None = Field(default=None, max_length=20)
     source_type: str | None = Field(default=None, max_length=20)
     external_url: str | None = Field(default=None, max_length=2000)
     import_status: str | None = Field(default=None, max_length=20)
+    patch: str | None = Field(default=None, max_length=20)
     notes: str | None = Field(default=None, max_length=500)
 
 

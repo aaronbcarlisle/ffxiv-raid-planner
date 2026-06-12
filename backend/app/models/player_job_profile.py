@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..database import Base
 
 if TYPE_CHECKING:
-    from .player_bis_target_set import PlayerBisTargetSet
+    from .bis_target_set import BiSTargetSet
     from .player_gear_snapshot import PlayerGearSnapshot
     from .player_profile import PlayerProfile
 
@@ -88,11 +88,12 @@ class PlayerJobProfile(Base):
     gear_snapshot: Mapped["PlayerGearSnapshot | None"] = relationship(
         "PlayerGearSnapshot", foreign_keys=[gear_snapshot_id],
     )
-    bis_targets: Mapped[list["PlayerBisTargetSet"]] = relationship(
-        "PlayerBisTargetSet",
+    bis_targets: Mapped[list["BiSTargetSet"]] = relationship(
+        "BiSTargetSet",
+        foreign_keys="[BiSTargetSet.job_profile_id]",
         back_populates="job_profile",
         cascade="all, delete-orphan",
-        order_by="PlayerBisTargetSet.created_at",
+        order_by="BiSTargetSet.created_at",
     )
 
     def __repr__(self) -> str:

@@ -958,6 +958,61 @@ export interface BiSPresetsResponse {
 export type BisTargetSource = 'manual' | 'etro' | 'xivgear' | 'ariyala' | 'external';
 export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
 
+// ==================== Shared BiS Target Types (V2 — backend-persisted) ====================
+
+export type BiSOwnerType = 'player_job_profile' | 'roster_member_job' | 'static_tier_job' | 'custom';
+export type BiSSourceType = 'preset' | 'etro' | 'xivgear' | 'ariyala' | 'manual' | 'custom_link';
+export type BiSImportStatus = 'linked_only' | 'imported' | 'import_failed' | 'unsupported';
+
+export interface SharedBiSTargetSet {
+  id: string;
+  ownerType: BiSOwnerType;
+  ownerId: string;
+  jobProfileId?: string | null;
+  snapshotPlayerId?: string | null;
+  groupId?: string | null;
+  profileId?: string | null;
+  job: string;
+  name: string;
+  purpose: BisTargetPurpose;
+  sourceType: BiSSourceType;
+  externalUrl?: string | null;
+  importStatus: BiSImportStatus;
+  isActive: boolean;
+  patch?: string | null;
+  itemLevel?: number | null;
+  notes?: string | null;
+  itemsJson?: Record<string, unknown> | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SharedBiSTargetCreate {
+  ownerType: BiSOwnerType;
+  ownerId: string;
+  groupId?: string | null;
+  name: string;
+  purpose?: BisTargetPurpose;
+  sourceType?: BiSSourceType;
+  externalUrl?: string | null;
+  importStatus?: BiSImportStatus;
+  patch?: string | null;
+  itemLevel?: number | null;
+  notes?: string | null;
+}
+
+export interface SharedBiSTargetUpdate {
+  name?: string;
+  purpose?: BisTargetPurpose;
+  sourceType?: BiSSourceType;
+  externalUrl?: string | null;
+  importStatus?: BiSImportStatus;
+  patch?: string | null;
+  itemLevel?: number | null;
+  notes?: string | null;
+}
+
 /**
  * A named target gear set for one job.
  * A job can have many BisTargetSets; exactly one should have isActive = true.

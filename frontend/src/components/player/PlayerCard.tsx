@@ -13,7 +13,7 @@ import { BiSSourceFixBanner } from './BiSSourceFixBanner';
 import { PlayerCardGear } from './PlayerCardGear';
 import { NeedsFooter } from './NeedsFooter';
 import { BiSImportModal } from './BiSImportModal';
-import { BiSTargetPanel } from './BiSTargetPanel';
+import { BiSTargetManagerModal } from '../bis/BiSTargetManagerModal';
 import { LodestoneSearchModal } from './LodestoneSearchModal';
 import { FlexRolesModal } from './FlexRolesModal';
 import { WeaponPriorityModal } from '../weapon-priority/WeaponPriorityModal';
@@ -48,7 +48,7 @@ import {
   Target,
 } from 'lucide-react';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
-import { useBisTargetStore } from '../../stores/bisTargetStore';
+import { useSharedBisStore } from '../../stores/sharedBisStore';
 
 interface PlayerCardProps {
   player: SnapshotPlayer;
@@ -363,9 +363,11 @@ export const PlayerCard = memo(function PlayerCard({
   const canClaim = !player.userId && currentUserId && onClaimPlayer && !userHasClaimedPlayer;
   const canRelease = (isLinkedToMe || isGroupOwner) && player.userId && onReleasePlayer;
 
-  const bisTargetStore = useBisTargetStore();
-  const activeBisTarget = bisTargetStore.getActive(groupId, player.id, player.job);
-  const bisTargetCount = bisTargetStore.getTargets(groupId, player.id, player.job).length;
+  const bisStore = useSharedBisStore();
+  const activeBisTarget = bisStore.getActive('roster_member_job', player.id, player.job);
+  const bisTargetCount = bisStore.getTargets('roster_member_job', player.id).filter(
+    (t) => t.job.toUpperCase() === player.job.toUpperCase()
+  ).length;
 
   // Permission checks - use isAdminAccess (not isAdmin) to respect View As context
   const editPermission = canEditPlayer(userRole, player, currentUserId, isAdminAccess);
@@ -784,15 +786,17 @@ export const PlayerCard = memo(function PlayerCard({
         </div>
       </Modal>
 
-      {/* BiS Target Sets Panel */}
-      <BiSTargetPanel
-        isOpen={showBiSTargets}
-        onClose={() => setShowBiSTargets(false)}
-        groupId={groupId}
-        playerId={player.id}
-        job={player.job}
-        canEdit={editPermission.allowed}
-      />
+      {/* BiS Target Sets Modal */}
+      {showBiSTargets && (
+        <BiSTargetManagerModal
+          ownerType="roster_member_job"
+          ownerId={player.id}
+          groupId={groupId}
+          job={player.job}
+          canEdit={editPermission.allowed}
+          onClose={() => setShowBiSTargets(false)}
+        />
+      )}
 
       {/* BiS Import Modal */}
       <BiSImportModal
@@ -1018,7 +1022,7 @@ export const PlayerCard = memo(function PlayerCard({
         >
           <span className="text-xs text-text-muted truncate">
             Target: <span className="text-text-secondary font-medium">{activeBisTarget.name}</span>
-            {activeBisTarget.targetItemLevel ? ` · iLv ${activeBisTarget.targetItemLevel}` : ''}
+            {activeBisTarget.itemLevel ? ` · iLv ${activeBisTarget.itemLevel}` : ''}
             {bisTargetCount > 1 ? ` (+${bisTargetCount - 1})` : ''}
           </span>
         </Button>

@@ -65,9 +65,9 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'feature',
-        title: 'BiS target sets now persist across sessions',
+        title: 'Shared Multi-BiS target system',
         description:
-          'Each job profile now supports multiple named BiS target sets, stored server-side instead of in localStorage. Set one as active per job; the Jobs & Gear tab shows the active target inline. A new "BiS targets" button on each job card opens the manage modal.',
+          'BiS target sets are now shared across Player Hub and roster views via a unified backend table. Each player/job can hold multiple named targets (Savage, Farm, Speed, etc.); one is marked active at a time. A new BiS Target Manager modal with tabs for saved targets, preset picker (multi-select, job-aware), URL paste, and manual entry replaces both the old Player Hub modal and the localStorage-only roster panel.',
       },
       {
         category: 'improvement',
