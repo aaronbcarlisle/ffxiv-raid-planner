@@ -803,6 +803,37 @@ describe('PlayerCard', () => {
 });
 ```
 
+### Backend (pytest)
+
+Backend tests live in `backend/tests/` and use **pytest-asyncio** in `auto` mode — all
+`async def` test functions are collected automatically without `@pytest.mark.asyncio`.
+
+#### Rate limiter isolation
+
+The app uses a process-wide slowapi `Limiter` singleton. Its in-memory counter accumulates
+across the entire pytest session, so tests that run late in the session can receive `429
+Too Many Requests` responses for requests that are well within the per-endpoint limit in
+isolation. `conftest.py` contains an autouse fixture that disables the limiter for every
+test by setting `limiter.enabled = False` and restoring the previous value afterwards.
+
+**Tests that explicitly verify rate-limiting behaviour** must opt out of this fixture so the
+real limiter is active. Apply the `@pytest.mark.rate_limit` marker:
+
+```python
+import pytest
+
+@pytest.mark.rate_limit
+class TestMyEndpointRateLimit:
+    async def test_rejects_after_limit(self, client, auth_headers):
+        for _ in range(100):
+            await client.get("/api/some-endpoint", headers=auth_headers)
+        response = await client.get("/api/some-endpoint", headers=auth_headers)
+        assert response.status_code == 429
+```
+
+Without the marker, `limiter.enabled` is `False` for the duration of the test, so any
+`429` you observe is a genuine bug, not a test-ordering artifact.
+
 ---
 
 ## Checklist for New Code
