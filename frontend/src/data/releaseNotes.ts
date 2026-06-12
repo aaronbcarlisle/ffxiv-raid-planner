@@ -93,6 +93,48 @@ export const RELEASES: Release[] = [
         description:
           'The Sync Coverage module now includes "Readiness is managed in Jobs & Gear" to prevent confusion between gear data being synced and the readiness flag that players set manually.',
       },
+      {
+        category: 'improvement',
+        title: 'V2-1: BiS item import deferred — schema is ready',
+        description:
+          'items_json and item_level columns are present on bis_target_sets. Full Etro/XIVGear item-level import flow (fetching gear items and populating items_json) is the next milestone; the UI shows the external URL but does not yet resolve item data automatically.',
+      },
+      {
+        category: 'improvement',
+        title: 'V2-2: Activity log persistence deferred',
+        description:
+          'The current Recent Activity feed derives rows from existing data at read time. A dedicated persisted activity_log table (with pagination and archiving) is deferred — the derived model is sufficient for the current feature set.',
+      },
+      {
+        category: 'improvement',
+        title: 'V2-3: Notification read/unread state not yet persisted',
+        description:
+          'Notification badges reset on page reload. Per-user read/unread state requires a notifications table join; deferred to a follow-up milestone.',
+      },
+      {
+        category: 'fix',
+        title: 'V2-4: Webhook failure persistence — failed deliveries silently dropped',
+        description:
+          'Discord webhook deliveries that fail after retries are currently logged and discarded. A webhook_delivery_log table to track failures, enable retries, and surface delivery status in the UI is deferred.',
+      },
+      {
+        category: 'improvement',
+        title: 'V2-5: Activity privacy settings not yet user-configurable',
+        description:
+          'The anonymous/named split for activity feed rows is currently hardcoded by data source (plugin → anonymous, manual → named). A per-user privacy preference UI is deferred.',
+      },
+      {
+        category: 'fix',
+        title: 'V2-6: Rate limiter test isolation fixed',
+        description:
+          'The shared in-memory rate limiter was causing order-dependent flakiness in the test suite. Fixed with a three-layer autouse fixture in conftest.py: limiter.enabled=False, limiter.reset(), and patch on limiter.hit. Tests that need real rate-limit behavior opt in with @pytest.mark.rate_limit.',
+      },
+      {
+        category: 'fix',
+        title: 'V2-7: pytest-mock added to dev dependencies',
+        description:
+          'test_httponly_cookies.py requires the mocker fixture from pytest-mock, which was listed in requirements-dev.txt but not installed in the venv. Fixed by running pip install pytest-mock in the backend venv.',
+      },
     ],
     internal: true,
   },
