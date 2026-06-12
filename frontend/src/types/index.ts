@@ -476,6 +476,7 @@ export interface User {
    * has been populated by the backend.
    */
   isAdmin?: boolean;
+  activityDisplayMode?: 'named' | 'anonymous';
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

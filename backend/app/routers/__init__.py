@@ -12,6 +12,7 @@ from .join_requests import router as join_requests_router
 from .lodestone import router as lodestone_router
 from .loot_tracking import router as loot_tracking_router
 from .mount_farms import router as mount_farms_router
+from .notifications import router as notifications_router
 from .player import plugin_router as plugin_player_router
 from .player import router as player_router
 from .player_bis_targets import router as player_bis_targets_router
@@ -32,6 +33,7 @@ __all__ = [
     "lodestone_router",
     "loot_tracking_router",
     "mount_farms_router",
+    "notifications_router",
     "player_bis_targets_router",
     "player_router",
     "plugin_player_router",

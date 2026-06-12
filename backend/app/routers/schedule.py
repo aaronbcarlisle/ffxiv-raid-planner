@@ -254,27 +254,45 @@ async def _post_or_edit_webhook(
                         mapping.webhook_message_id = msg_data["id"]
                         mapping.last_posted_at = now
                         mapping.last_rsvp_hash = content_hash
+                        mapping.last_delivery_status = 200
+                        mapping.last_delivery_error = None
                         mapping.updated_at = now
                         await db.flush()
                         await db.commit()
                     elif resp.status_code >= 400:
+                        err = resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
                         logger.warning(
                             "discord_webhook_replacement_rejected",
                             status=resp.status_code,
                             webhook=_mask_webhook_url(webhook_url),
                         )
+                        mapping.last_delivery_status = resp.status_code
+                        mapping.last_delivery_error = err
+                        mapping.delivery_retry_count = (mapping.delivery_retry_count or 0) + 1
+                        mapping.updated_at = now
+                        await db.flush()
+                        await db.commit()
                     return
 
                 if resp.status_code >= 400:
+                    err = resp.text[:500] if resp.text else f"HTTP {resp.status_code}"
                     logger.warning(
                         "discord_webhook_edit_rejected",
                         status=resp.status_code,
                         webhook=_mask_webhook_url(webhook_url),
                     )
+                    mapping.last_delivery_status = resp.status_code
+                    mapping.last_delivery_error = err
+                    mapping.delivery_retry_count = (mapping.delivery_retry_count or 0) + 1
+                    mapping.updated_at = now
+                    await db.flush()
+                    await db.commit()
                     return
 
                 mapping.last_edited_at = now
                 mapping.last_rsvp_hash = content_hash
+                mapping.last_delivery_status = resp.status_code
+                mapping.last_delivery_error = None
                 mapping.updated_at = now
                 await db.flush()
                 await db.commit()
@@ -290,6 +308,8 @@ async def _post_or_edit_webhook(
                         webhook_message_id=msg_data["id"],
                         last_posted_at=now,
                         last_rsvp_hash=content_hash,
+                        last_delivery_status=200,
+                        last_delivery_error=None,
                         created_at=now,
                         updated_at=now,
                     )
@@ -910,7 +930,8 @@ async def test_schedule_reminder(
         mention_role_id=webhook_destination.mention_role_id,
     )
 
-    if not await post_schedule_webhook(webhook_destination, payload, timeout=10.0):
+    ok, _status, _err = await post_schedule_webhook(webhook_destination, payload, timeout=10.0)
+    if not ok:
         raise ValidationError("Discord webhook rejected the test reminder")
 
     return TestReminderResponse(ok=True, message="Test reminder sent")

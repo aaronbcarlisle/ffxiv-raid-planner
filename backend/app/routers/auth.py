@@ -24,6 +24,7 @@ from ..schemas import (
     DiscordCallback,
     RefreshTokenRequest,
     TokenResponse,
+    UserPreferencesUpdate,
     UserResponse,
 )
 
@@ -410,7 +411,37 @@ async def get_current_user_info(
         avatar_url=user.avatar_url,
         display_name=user.display_name,
         is_admin=user.is_admin,
+        activity_display_mode=user.activity_display_mode,
         created_at=user.created_at,
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,
+    )
+
+
+@router.patch("/me/preferences", response_model=UserResponse)
+async def update_user_preferences(
+    body: UserPreferencesUpdate,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """Update current user preferences (activity display mode, etc.)."""
+    now = datetime.now(timezone.utc).isoformat()
+    if body.activity_display_mode is not None:
+        current_user.activity_display_mode = body.activity_display_mode
+        current_user.updated_at = now
+    await session.flush()
+    await session.commit()
+    return UserResponse(
+        id=current_user.id,
+        discord_id=current_user.discord_id,
+        discord_username=current_user.discord_username,
+        discord_discriminator=current_user.discord_discriminator,
+        discord_avatar=current_user.discord_avatar,
+        avatar_url=current_user.avatar_url,
+        display_name=current_user.display_name,
+        is_admin=current_user.is_admin,
+        activity_display_mode=current_user.activity_display_mode,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        last_login_at=current_user.last_login_at,
     )

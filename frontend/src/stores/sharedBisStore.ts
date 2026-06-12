@@ -27,6 +27,7 @@ interface SharedBisState {
   updateTarget(id: string, data: SharedBiSTargetUpdate): Promise<SharedBiSTargetSet>;
   deleteTarget(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<void>;
   setTargetActive(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<void>;
+  importTarget(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<SharedBiSTargetSet>;
 }
 
 export const useSharedBisStore = create<SharedBisState>((set, get) => ({
@@ -111,8 +112,13 @@ export const useSharedBisStore = create<SharedBisState>((set, get) => ({
 
   async setTargetActive(id, ownerType, ownerId) {
     await api.post<SharedBiSTargetSet>(`/api/bis-targets/${id}/set-active`);
-    // Re-fetch to get consistent active state across all siblings
     await get().fetchTargets(ownerType, ownerId);
+  },
+
+  async importTarget(id, ownerType, ownerId) {
+    const updated = await api.post<SharedBiSTargetSet>(`/api/bis-targets/${id}/import`);
+    await get().fetchTargets(ownerType, ownerId);
+    return updated;
   },
 }));
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Check, ExternalLink, Link2, Plus, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, Link2, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -70,6 +70,7 @@ export function BiSTargetManagerModal({
   const [activeTab, setActiveTab] = useState<TabId>('targets');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importingId, setImportingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<AddForm>(EMPTY_FORM);
   const [manualForm, setManualForm] = useState<AddForm>(EMPTY_FORM);
@@ -168,7 +169,7 @@ export function BiSTargetManagerModal({
         url.includes('xivgear.app') ? 'xivgear' :
         'custom_link';
 
-      await store.createTarget({
+      const created = await store.createTarget({
         ownerType, ownerId, groupId: groupId ?? undefined,
         name: linkName.trim() || `${getJobDisplayName(job)} ${PURPOSE_LABELS[linkPurpose] ?? 'Set'}`,
         purpose: linkPurpose,
@@ -178,8 +179,20 @@ export function BiSTargetManagerModal({
       });
       setLinkUrl('');
       setLinkName('');
-      toast.success('BiS target linked');
-      setActiveTab('targets');
+
+      if (sourceType === 'xivgear' || sourceType === 'etro') {
+        toast.success('BiS target linked — importing gear data…');
+        setActiveTab('targets');
+        try {
+          await store.importTarget(created.id, ownerType, ownerId);
+          toast.success('Gear data imported');
+        } catch {
+          toast.error('Link saved, but gear import failed');
+        }
+      } else {
+        toast.success('BiS target linked');
+        setActiveTab('targets');
+      }
     } catch {
       toast.error('Failed to add link');
     } finally {
@@ -241,6 +254,18 @@ export function BiSTargetManagerModal({
       toast.error('Failed to remove target');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleImport = async (targetId: string) => {
+    setImportingId(targetId);
+    try {
+      await store.importTarget(targetId, ownerType, ownerId);
+      toast.success('Gear data imported');
+    } catch {
+      toast.error('Import failed — check that the URL is still valid');
+    } finally {
+      setImportingId(null);
     }
   };
 
@@ -347,10 +372,16 @@ export function BiSTargetManagerModal({
                         {target.patch && (
                           <span className="text-xs text-text-tertiary">Patch {target.patch}</span>
                         )}
-                        {target.importStatus && target.importStatus !== 'linked_only' && (
-                          <span className="text-xs text-text-tertiary">
-                            {IMPORT_STATUS_LABELS[target.importStatus]}
+                        {target.importStatus === 'imported' && (
+                          <span className="text-xs text-status-success">
+                            {target.itemLevel ? `iLv ${target.itemLevel}` : 'Imported'}
                           </span>
+                        )}
+                        {target.importStatus === 'import_failed' && (
+                          <span className="text-xs text-status-error">Import failed</span>
+                        )}
+                        {target.importStatus === 'unsupported' && (
+                          <span className="text-xs text-text-tertiary">Unsupported</span>
                         )}
                       </div>
                       {target.externalUrl && (
@@ -380,6 +411,20 @@ export function BiSTargetManagerModal({
                             Set active
                           </Button>
                         )}
+                        {(target.sourceType === 'xivgear' || target.sourceType === 'etro') &&
+                          target.externalUrl && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleImport(target.id)}
+                              disabled={importingId === target.id}
+                              title={target.importStatus === 'imported' ? 'Re-import gear data' : 'Import gear data'}
+                            >
+                              <RefreshCw
+                                className={`h-3.5 w-3.5 ${importingId === target.id ? 'animate-spin' : ''}`}
+                              />
+                            </Button>
+                          )}
                         <Button size="sm" variant="ghost" onClick={() => startEdit(target)}>
                           Edit
                         </Button>

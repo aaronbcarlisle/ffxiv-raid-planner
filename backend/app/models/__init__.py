@@ -1,6 +1,8 @@
 """SQLAlchemy models"""
 
+from .activity_log import StaticActivityLog
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
+from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
 from .collection_goal import CollectionGoal
@@ -27,6 +29,8 @@ from .user import User
 from .weekly_assignment import WeeklyAssignment
 
 __all__ = [
+    "StaticActivityLog",
+    "Notification",
     "AnalyticsDailyAggregate",
     "AnalyticsEvent",
     "ApiKey",

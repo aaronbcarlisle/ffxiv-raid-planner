@@ -42,25 +42,31 @@ async def post_schedule_webhook(
     payload: dict[str, Any],
     *,
     timeout: float = 10.0,
-) -> bool:
-    """Post a schedule webhook and return True only when Discord accepts it."""
+) -> tuple[bool, int, str]:
+    """Post a schedule webhook.
+
+    Returns ``(ok, http_status, error_text)``.  On a network error, status is 0
+    and error_text carries the exception message.  On success, error_text is "".
+    """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(destination.webhook_url, json=payload)
     except httpx.RequestError as exc:
+        error = str(exc)
         logger.warning(
             "schedule_webhook_delivery_error",
-            error=str(exc),
+            error=error,
             webhook=mask_webhook_url(destination.webhook_url),
         )
-        return False
+        return False, 0, error
 
     if response.status_code >= 400:
+        error = response.text[:500] if response.text else f"HTTP {response.status_code}"
         logger.warning(
             "schedule_webhook_delivery_rejected",
             status=response.status_code,
             webhook=mask_webhook_url(destination.webhook_url),
         )
-        return False
+        return False, response.status_code, error
 
-    return True
+    return True, response.status_code, ""

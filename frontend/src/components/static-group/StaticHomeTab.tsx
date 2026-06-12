@@ -17,6 +17,7 @@ import {
   Check,
   Trash2,
 } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
@@ -33,6 +34,7 @@ import { JoinRequestReviewModal } from './JoinRequestReviewModal';
 import { CreateCollectionGoalModal } from './CreateCollectionGoalModal';
 import type { JoinRequest, PageMode, SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
+import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
@@ -100,6 +102,19 @@ function sessionCountdown(startIso: string): string {
   return `in ${Math.ceil(h / 24)}d`;
 }
 
+// ─── Activity log API type ───────────────────────────────────────────────────
+
+interface ActivityLogItem {
+  id: string;
+  actorUserId: string | null;
+  actorDisplayName: string | null;
+  actorDisplay: 'named' | 'anonymous' | 'system';
+  eventType: string;
+  trialId: string | null;
+  label: string;
+  createdAt: string;
+}
+
 // ─── Activity privacy model ───────────────────────────────────────────────────
 //
 // Visibility rules for Static Overview:
@@ -129,7 +144,11 @@ interface StaticActivityItem {
   time: string;
 }
 
-function deriveActivityItems(data: MountFarmData): StaticActivityItem[] {
+function deriveActivityItems(
+  data: MountFarmData,
+  currentUserId?: string | null,
+  activityDisplayMode?: 'named' | 'anonymous' | null,
+): StaticActivityItem[] {
   interface FlatEntry {
     key: string;
     createdAt: string;
@@ -251,18 +270,25 @@ function deriveActivityItems(data: MountFarmData): StaticActivityItem[] {
   const visible = flat.filter((f) => f.visibility === 'static' || f.visibility === 'public');
   visible.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  return visible.slice(0, 5).map((f) => ({
-    key: f.key,
-    actorUserId: f.actorUserId,
-    actorDisplayName: f.actorDisplayName,
-    actorDisplay: f.actorDisplay,
-    visibility: f.visibility,
-    type: f.type,
-    icon: f.icon,
-    label: f.label,
-    createdAt: f.createdAt,
-    time: relativeTime(f.createdAt),
-  }));
+  return visible.slice(0, 5).map((f) => {
+    const shouldAnonymize =
+      activityDisplayMode === 'anonymous' &&
+      currentUserId &&
+      f.actorUserId === currentUserId &&
+      f.actorDisplay === 'named';
+    return {
+      key: f.key,
+      actorUserId: shouldAnonymize ? null : f.actorUserId,
+      actorDisplayName: shouldAnonymize ? null : f.actorDisplayName,
+      actorDisplay: shouldAnonymize ? ('anonymous' as ActivityActorDisplay) : f.actorDisplay,
+      visibility: f.visibility,
+      type: f.type,
+      icon: f.icon,
+      label: shouldAnonymize ? f.label.replace(f.actorDisplayName ?? '', 'A member') : f.label,
+      createdAt: f.createdAt,
+      time: relativeTime(f.createdAt),
+    };
+  });
 }
 
 // ─── Shared label ─────────────────────────────────────────────────────────────
@@ -1155,17 +1181,57 @@ function CollectionGoalsModule({
  */
 function RecentActivityModule({
   farmData,
+  groupId,
   onNavigate,
   canManage,
 }: {
   farmData: MountFarmData | null;
+  groupId: string;
   onNavigate: (tab: PageMode) => void;
   canManage: boolean;
 }) {
-  const items = useMemo(() => {
+  const currentUser = useAuthStore((s) => s.user);
+  const [apiItems, setApiItems] = useState<ActivityLogItem[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<ActivityLogItem[]>(`/api/static-groups/${groupId}/activity-log?limit=10`)
+      .then((rows) => { if (!cancelled) setApiItems(rows); })
+      .catch(() => { if (!cancelled) setApiItems([]); });
+    return () => { cancelled = true; };
+  }, [groupId]);
+
+  const derivedItems = useMemo(() => {
     if (!farmData) return [];
-    return deriveActivityItems(farmData);
-  }, [farmData]);
+    return deriveActivityItems(farmData, currentUser?.id, currentUser?.activityDisplayMode);
+  }, [farmData, currentUser?.id, currentUser?.activityDisplayMode]);
+
+  // Use API items when available; fall back to derived while loading or when empty API
+  const items: { key: string; label: string; icon: StaticActivityItem['icon']; time: string; actorUserId: string | null }[] = useMemo(() => {
+    if (apiItems && apiItems.length > 0) {
+      return apiItems.map((item) => {
+        const shouldAnonymize =
+          currentUser?.activityDisplayMode === 'anonymous' &&
+          item.actorUserId === currentUser?.id &&
+          item.actorDisplay === 'named';
+        const iconMap: Record<string, StaticActivityItem['icon']> = {
+          mount_obtained: 'mount',
+          totem_updated: 'currency',
+          tracking_started: 'tracking',
+          plugin_sync: 'plugin',
+        };
+        return {
+          key: item.id,
+          label: shouldAnonymize ? item.label.replace(item.actorDisplayName ?? '', 'A member') : item.label,
+          icon: iconMap[item.eventType] ?? 'tracking',
+          time: relativeTime(item.createdAt),
+          actorUserId: shouldAnonymize ? null : item.actorUserId,
+        };
+      });
+    }
+    return derivedItems;
+  }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
 
   function activityIcon(icon: StaticActivityItem['icon']) {
     switch (icon) {
@@ -1340,6 +1406,7 @@ export function StaticHomeTab({
           />
           <RecentActivityModule
             farmData={farmData}
+            groupId={group.id}
             onNavigate={onNavigate}
             canManage={canManage}
           />

@@ -5,7 +5,9 @@
  */
 
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import {
   Dropdown,
   DropdownContent,
@@ -33,6 +35,8 @@ import {
   Moon,
   Key,
   Swords,
+  EyeOff,
+  Bell,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
@@ -45,10 +49,16 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ className = '' }: UserMenuProps) {
-  const { user, logout } = useAuthStore();
+  const { user, logout, updatePreferences } = useAuthStore();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
+  const { unreadCount, fetchNotifications, markAllRead } = useNotificationStore();
+
+  useEffect(() => {
+    if (user) fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   if (!user) return null;
 
@@ -65,11 +75,18 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none ${className}`}
           aria-label={`User menu for ${displayName}`}
         >
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="w-8 h-8 rounded-full border-2 border-accent/50"
-          />
+          <span className="relative">
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="w-8 h-8 rounded-full border-2 border-accent/50"
+            />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-status-error text-[9px] font-bold text-white flex items-center justify-center leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </span>
           <svg
             className="w-4 h-4 text-text-secondary"
             fill="none"
@@ -174,6 +191,22 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         </DropdownItem>
 
         <DropdownItem
+          icon={
+            <span className="relative">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[10px] h-[10px] px-0.5 rounded-full bg-status-error text-[7px] font-bold text-white flex items-center justify-center leading-none">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
+          }
+          onSelect={() => unreadCount > 0 && markAllRead()}
+        >
+          {unreadCount > 0 ? `${unreadCount} unread — mark all read` : 'No new notifications'}
+        </DropdownItem>
+
+        <DropdownItem
           icon={<Keyboard className="w-4 h-4" />}
           onSelect={() => window.dispatchEvent(new CustomEvent('show-keyboard-shortcuts'))}
           shortcut="Shift+?"
@@ -210,6 +243,34 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
               size="sm"
               aria-label="Toggle theme"
+            />
+          </span>
+        </div>
+
+        {/* Activity privacy toggle — same non-item pattern as theme toggle */}
+        <div
+          role="none"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-text-primary cursor-pointer hover:bg-surface-interactive transition-colors"
+          onClick={() =>
+            updatePreferences({
+              activityDisplayMode:
+                user.activityDisplayMode === 'anonymous' ? 'named' : 'anonymous',
+            })
+          }
+          title="When on, your name is hidden in the static activity feed"
+        >
+          <span className="w-4 h-4 flex items-center justify-center">
+            <EyeOff className="w-4 h-4" />
+          </span>
+          <span className="flex-1">Anonymous activity</span>
+          <span onClick={(e) => e.stopPropagation()}>
+            <Toggle
+              checked={user.activityDisplayMode === 'anonymous'}
+              onChange={(checked) =>
+                updatePreferences({ activityDisplayMode: checked ? 'anonymous' : 'named' })
+              }
+              size="sm"
+              aria-label="Toggle activity anonymity"
             />
           </span>
         </div>

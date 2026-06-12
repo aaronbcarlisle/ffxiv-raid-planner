@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..models import JoinRequest, Membership, MemberRole, StaticGroup, User
+from .notifications import create_notification
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -454,6 +455,26 @@ async def create_join_request(
     await session.flush()
     await session.commit()
 
+    # Notify leads and owners of the new application
+    leads_result = await session.execute(
+        select(Membership).where(
+            Membership.static_group_id == group.id,
+            Membership.role.in_(["owner", "lead"]),
+        )
+    )
+    applicant_name = char_name or current_user.display_name or current_user.discord_username
+    for member in leads_result.scalars().all():
+        if member.user_id != current_user.id:
+            await create_notification(
+                session,
+                user_id=member.user_id,
+                notification_type="new_application",
+                title="New application received",
+                body=f"{applicant_name} applied to join {group.name}.",
+                href=f"/group/{group.share_code}",
+            )
+    await session.commit()
+
     return _request_to_response(join_request, group_name=group.name)
 
 
@@ -599,6 +620,22 @@ async def accept_join_request(
     await session.flush()
     await session.commit()
 
+    if join_request.requester_user_id:
+        group_result = await session.execute(
+            select(StaticGroup).where(StaticGroup.id == join_request.static_group_id)
+        )
+        group = group_result.scalar_one_or_none()
+        group_name = group.name if group else "the static"
+        await create_notification(
+            session,
+            user_id=join_request.requester_user_id,
+            notification_type="application_accepted",
+            title="Application accepted",
+            body=f"Your application to {group_name} has been accepted. Welcome!",
+            href="/dashboard",
+        )
+        await session.commit()
+
     return _request_to_response(join_request, include_requester=True)
 
 
@@ -675,6 +712,21 @@ async def decline_join_request(
 
     await session.flush()
     await session.commit()
+
+    if join_request.requester_user_id:
+        group_result = await session.execute(
+            select(StaticGroup).where(StaticGroup.id == join_request.static_group_id)
+        )
+        group = group_result.scalar_one_or_none()
+        group_name = group.name if group else "the static"
+        await create_notification(
+            session,
+            user_id=join_request.requester_user_id,
+            notification_type="application_declined",
+            title="Application not accepted",
+            body=f"Your application to {group_name} was not accepted at this time.",
+        )
+        await session.commit()
 
     return _request_to_response(join_request, include_requester=True)
 

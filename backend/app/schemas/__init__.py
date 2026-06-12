@@ -136,6 +136,7 @@ from .user import (
     DiscordCallback,
     RefreshTokenRequest,
     TokenResponse,
+    UserPreferencesUpdate,
     UserResponse,
     UserUpdate,
 )
@@ -268,6 +269,7 @@ __all__ = [
     "DiscordCallback",
     "RefreshTokenRequest",
     "TokenResponse",
+    "UserPreferencesUpdate",
     "UserResponse",
     "UserUpdate",
 ]
