@@ -4,6 +4,7 @@ import logging
 import secrets
 from collections.abc import AsyncGenerator
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -28,13 +29,16 @@ def disable_rate_limiter_for_tests(request):
     """Disable rate limiting for every test that doesn't opt in to rate-limit testing.
 
     The limiter is a process-wide singleton backed by in-memory storage. Without
-    disabling it, request counts accumulate across the entire pytest session and
+    suppressing it, request counts accumulate across the entire pytest session and
     endpoints start returning 429 once the per-window limit is hit, causing
     unrelated tests to fail with confusing 'Too Many Requests' errors.
 
-    Both `enabled` and the storage counters are reset: setting enabled=False
-    prevents new counts being recorded; reset() clears any counts accumulated by
-    earlier tests in the session so even a late-running test starts from zero.
+    Strategy: patch `_check_request_limit` with a side-effect that sets
+    `request.state.view_rate_limit = None` and returns without counting or
+    raising.  The attribute must exist because slowapi's `async_wrapper` reads
+    it unconditionally inside its second `if self.enabled:` block; passing None
+    makes `_inject_headers` a safe no-op (it guards on `current_limit is not
+    None`).  Mutating `limiter.enabled` alone proved unreliable in CI.
 
     Tests that explicitly verify rate-limiting behaviour should opt out by marking
     themselves with @pytest.mark.rate_limit — the fixture then yields immediately
@@ -44,13 +48,11 @@ def disable_rate_limiter_for_tests(request):
         yield
         return
 
-    old_enabled = limiter.enabled
-    limiter.enabled = False
-    limiter.reset()
-    try:
+    def _noop_check(request_obj, endpoint_func, in_middleware=True):
+        request_obj.state.view_rate_limit = None
+
+    with patch.object(limiter, "_check_request_limit", side_effect=_noop_check):
         yield
-    finally:
-        limiter.enabled = old_enabled
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
