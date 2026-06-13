@@ -153,6 +153,9 @@ export interface PlayerGoal {
   description: string | null;
   goalType: string;
   category: string | null;
+  /** Constrained objective category (same taxonomy as StaticObjectiveGoal).
+   *  When set, this goal is a matchable personal objective used in alignment. */
+  objectiveCategory: string | null;
   status: string;
   currentCount: number;
   targetCount: number | null;

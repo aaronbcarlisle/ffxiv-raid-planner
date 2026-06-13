@@ -1405,16 +1405,20 @@ export function StaticHomeTab({
   const { suggestions, fetchSuggestions } = useContentSuggestionStore();
 
   useEffect(() => {
-    if (group.id) {
-      if (canManage) fetchGroupRequests(group.id);
+    if (!group.id) return;
+    // All of these endpoints require membership. Applicants / non-members have
+    // no userRole, so skip the fetches entirely — the backend would return 403
+    // and the error toast would spam on every tab visit.
+    const isMember = !!group.userRole;
+    if (canManage) fetchGroupRequests(group.id);
+    if (isMember) {
       fetchSessions(group.id);
       fetchRecommendations(group.id);
-      // Fetch full farm progress so Recent Activity is populated on first Overview visit
       fetchProgress(group.id, getAllTrialIds());
       fetchGoals(group.id);
       fetchSuggestions(group.id);
     }
-  }, [group.id, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchSuggestions]);
+  }, [group.id, group.userRole, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchSuggestions]);
 
   const tierPlayers = tier?.players;
   const players = tierPlayers ?? [];

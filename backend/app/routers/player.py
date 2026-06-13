@@ -16,7 +16,10 @@ from ..logging_config import get_logger
 from ..models.personal_availability import PersonalAvailabilityTemplate
 from ..models.player_character import PlayerCharacter
 from ..models.player_gear_snapshot import PlayerGearSnapshot, VALID_SYNC_SOURCES
-from ..models.player_goal import PlayerGoal, VALID_GOAL_TYPES, VALID_GOAL_STATUSES, VALID_INTENT_LEVELS
+from ..models.player_goal import (
+    PlayerGoal, VALID_GOAL_TYPES, VALID_GOAL_STATUSES,
+    VALID_INTENT_LEVELS, VALID_OBJECTIVE_CATEGORIES,
+)
 from ..models.player_job_profile import (
     PlayerJobProfile,
     VALID_JOB_PRIORITIES,
@@ -1244,6 +1247,7 @@ def _goal_to_response(goal: PlayerGoal) -> PlayerGoalResponse:
         description=goal.description,
         goal_type=goal.goal_type,
         category=goal.category,
+        objective_category=goal.objective_category,
         status=goal.status,
         current_count=goal.current_count,
         target_count=goal.target_count,
@@ -1314,6 +1318,12 @@ async def create_goal(
             detail=f"Invalid intent_level. Must be one of: {', '.join(sorted(VALID_INTENT_LEVELS))}",
         )
 
+    if body.objective_category is not None and body.objective_category not in VALID_OBJECTIVE_CATEGORIES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid objective_category. Must be one of: {', '.join(sorted(VALID_OBJECTIVE_CATEGORIES))}",
+        )
+
     profile = await _get_or_create_profile(session, current_user)
 
     # Validate linked_character_id belongs to this profile
@@ -1332,6 +1342,7 @@ async def create_goal(
         description=body.description,
         goal_type=body.goal_type,
         category=body.category,
+        objective_category=body.objective_category,
         status=body.status,
         current_count=body.current_count,
         target_count=body.target_count,
@@ -1427,6 +1438,13 @@ async def update_goal(
                 detail=f"Invalid intent_level. Must be one of: {', '.join(sorted(VALID_INTENT_LEVELS))}",
             )
         goal.intent_level = body.intent_level
+    if body.objective_category is not None:
+        if body.objective_category and body.objective_category not in VALID_OBJECTIVE_CATEGORIES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid objective_category. Must be one of: {', '.join(sorted(VALID_OBJECTIVE_CATEGORIES))}",
+            )
+        goal.objective_category = body.objective_category or None
     if body.is_public is not None:
         goal.is_public = body.is_public
 

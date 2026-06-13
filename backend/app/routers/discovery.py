@@ -188,8 +188,19 @@ async def list_discoverable_statics(
                 )
             )
             user_public_goals = [
-                {"id": g.id, "goal_type": g.goal_type, "category": g.category, "intent_level": g.intent_level}
+                {
+                    "id": g.id,
+                    "goal_type": g.goal_type,
+                    # objective_category takes priority — it uses the same
+                    # constrained taxonomy as StaticObjectiveGoal so matching
+                    # is exact. Fall back to the free-form category for legacy goals.
+                    "category": g.objective_category or g.category,
+                    "intent_level": g.intent_level,
+                }
                 for g in pg_result.scalars().all()
+                # Only goals with an explicit matching category or a generic
+                # goal_type participate in alignment.
+                if g.objective_category is not None or g.goal_type is not None
             ]
 
     items: list[DiscoveryListItem] = []

@@ -245,7 +245,7 @@ async def get_goal_alignment(
         {
             "id": g.id,
             "goal_type": g.goal_type,
-            "category": g.category,
+            "category": g.objective_category or g.category,
             "intent_level": g.intent_level,
         }
         for g in player_goals
@@ -360,7 +360,7 @@ async def get_roster_alignment(
             {
                 "id": g.id,
                 "goal_type": g.goal_type,
-                "category": g.category,
+                "category": g.objective_category or g.category,
                 "intent_level": g.intent_level,
             }
             for g in goal_result.scalars().all()

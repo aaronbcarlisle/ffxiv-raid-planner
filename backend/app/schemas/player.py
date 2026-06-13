@@ -211,6 +211,7 @@ class PlayerGoalResponse(CamelModel):
     description: str | None = None
     goal_type: str
     category: str | None = None
+    objective_category: str | None = None
     status: str
     current_count: int = 0
     target_count: int | None = None
@@ -232,6 +233,7 @@ class PlayerGoalCreate(CamelModel):
     description: str | None = Field(default=None, max_length=2000)
     goal_type: str = Field(..., max_length=30)
     category: str | None = Field(default=None, max_length=30)
+    objective_category: str | None = Field(default=None, max_length=30)
     status: str = Field(default="active", max_length=20)
     current_count: int = Field(default=0, ge=0)
     target_count: int | None = Field(default=None, ge=1)
@@ -250,6 +252,7 @@ class PlayerGoalUpdate(CamelModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     category: str | None = Field(default=None, max_length=30)
+    objective_category: str | None = Field(default=None, max_length=30)
     status: str | None = Field(default=None, max_length=20)
     current_count: int | None = Field(default=None, ge=0)
     target_count: int | None = Field(default=None, ge=1)

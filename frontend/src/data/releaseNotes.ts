@@ -105,6 +105,22 @@ export const RELEASES: Release[] = [
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
+      {
+        category: 'fix',
+        title: 'Applicants no longer see repeated permission errors on static pages',
+        description:
+          'Pending applicants visiting a discoverable static\'s Overview, Schedule, or Mount Farms pages no longer receive repeated "You are not a member" toast errors. Member-only API calls are now skipped until the join request is accepted.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'feature',
+        title: 'Declare matchable personal goals using the same categories as static objectives',
+        description:
+          'The goal creation flow now lets you choose between a private personal task (no matching) and a matchable personal objective that uses the same category taxonomy as static goals (Savage BiS, Ultimate Clear, etc.). Matchable goals are used for roster alignment, Static Finder, and join-request scoring.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
     ],
   },
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────

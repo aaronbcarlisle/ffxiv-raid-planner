@@ -446,7 +446,12 @@ async def create_join_request(
                     )
                 )
                 player_goals_for_snapshot = [
-                    {"id": g.id, "goal_type": g.goal_type, "category": g.category, "intent_level": g.intent_level}
+                    {
+                        "id": g.id,
+                        "goal_type": g.goal_type,
+                        "category": g.objective_category or g.category,
+                        "intent_level": g.intent_level,
+                    }
                     for g in pg_result.scalars().all()
                 ]
                 alignment_result = compute_alignment(player_goals_for_snapshot, static_goals_for_snapshot)
