@@ -59,7 +59,7 @@ interface ContentSuggestionState {
   ) => Promise<void>;
 }
 
-export const useContentSuggestionStore = create<ContentSuggestionState>((set, get) => ({
+export const useContentSuggestionStore = create<ContentSuggestionState>((set) => ({
   suggestions: [],
   loading: false,
   error: null,

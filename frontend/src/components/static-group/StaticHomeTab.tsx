@@ -1226,11 +1226,11 @@ function RecentActivityModule({
           label: shouldAnonymize ? item.label.replace(item.actorDisplayName ?? '', 'A member') : item.label,
           icon: iconMap[item.eventType] ?? 'tracking',
           time: relativeTime(item.createdAt),
-          actorUserId: shouldAnonymize ? null : item.actorUserId,
+          actorUserId: shouldAnonymize ? null : (item.actorUserId ?? null),
         };
       });
     }
-    return derivedItems;
+    return derivedItems.map((item) => ({ ...item, actorUserId: item.actorUserId ?? null }));
   }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
 
   function activityIcon(icon: StaticActivityItem['icon']) {

@@ -62,12 +62,25 @@ export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
     date: '2026-06-13T00:00:00Z',
+    title: 'Goals Alignment V1.1',
+    highlights: [
+      'Static objective goals & member content suggestions',
+      'Goal alignment on join requests',
+      'Roster alignment badges',
+      'Discovery filters by objective category',
+    ],
     items: [
       {
         category: 'feature',
         title: 'Static Objectives & Content Suggestions',
         description:
           'Leads can now define static objective goals (Savage BiS, Ultimate Clear, Mount Farm, etc.) with priority levels (Required, Preferred, Optional). Any member can propose content suggestions and the group votes on them; leads can promote a winning suggestion directly into a static objective goal.',
+      },
+      {
+        category: 'feature',
+        title: 'Roster alignment badges per member',
+        description:
+          'The Members panel now shows a compact color-coded badge for each member indicating how well their public goals align with the static\'s objectives: green dots for aligned goals, yellow for partial, red for conflicts, and grey for missing data. Hovering shows a breakdown count.',
       },
       {
         category: 'feature',
@@ -81,8 +94,13 @@ export const RELEASES: Release[] = [
         description:
           "Static listing cards now show the group's objective categories (e.g., Savage BiS, Ultimate Farm). Logged-in users with a public Player Hub profile can filter by objective category and optionally hide statics whose goals conflict with their own.",
       },
+      {
+        category: 'improvement',
+        title: 'Privacy-safe goal matching',
+        description:
+          'All goal alignment checks use only goals the player has marked public. Private goal text is never included in join-request snapshots or API responses.',
+      },
     ],
-    internal: true,
   },
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
   {
