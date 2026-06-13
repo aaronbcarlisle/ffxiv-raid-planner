@@ -63,12 +63,7 @@ export const RELEASES: Release[] = [
     version: 'Unreleased',
     date: '2026-06-13T00:00:00Z',
     title: 'Goals Alignment V1.1',
-    highlights: [
-      'Static objective goals & member content suggestions',
-      'Goal alignment on join requests',
-      'Roster alignment badges',
-      'Discovery filters by objective category',
-    ],
+    internal: true,
     items: [
       {
         category: 'feature',
