@@ -62,7 +62,7 @@ function SubNav({ active, onChange, pendingCount }: SubNavProps) {
           role="tab"
           aria-selected={active === s.id}
           onClick={() => onChange(s.id)}
-          className={`relative flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1 flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
             active === s.id
               ? 'bg-accent/15 text-accent'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
@@ -70,7 +70,7 @@ function SubNav({ active, onChange, pendingCount }: SubNavProps) {
         >
           {s.label}
           {s.id === 'requests' && pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-0.5 text-[9px] font-bold rounded-full bg-accent text-accent-contrast">
+            <span className="inline-flex items-center justify-center min-w-[15px] h-[15px] px-0.5 text-[9px] font-bold rounded-full bg-accent text-accent-contrast">
               {pendingCount > 9 ? '9+' : pendingCount}
             </span>
           )}
@@ -274,45 +274,47 @@ export function RecruitmentTab({
   const [section, setSection] = useState<RecruitmentSection>(resolveDefault);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-1">
+    <div className="flex flex-col flex-1 min-h-0">
       <SubNav active={section} onChange={setSection} pendingCount={pendingCount} />
 
-      <div className="flex flex-col flex-1 min-h-0 pt-4">
-        {section === 'overview' && (
+      {section === 'overview' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pt-4" style={{ scrollbarGutter: 'stable' }}>
           <RecruitmentOverview
             group={group}
             pendingCount={pendingCount}
             canManage={canManage}
             onNavigate={setSection}
           />
-        )}
+        </div>
+      )}
 
-        {section === 'listing' && (
-          /* DiscoveryTab is already flex-col flex-1 with its own scroll + sticky footer */
+      {section === 'listing' && (
+        /* DiscoveryTab has flex-col flex-1 min-h-0 with its own scroll + sticky Save footer */
+        <div className="flex flex-col flex-1 min-h-0 pt-4">
           <DiscoveryTab group={group} onClose={onClose} />
-        )}
+        </div>
+      )}
 
-        {section === 'requests' && (
-          <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-            <JoinRequestsPanel
-              groupId={group.id}
-              discoverySettings={group.settings?.discovery}
-              onAddToRoster={onAddToRoster}
-              canAct={canManage}
-            />
-          </div>
-        )}
+      {section === 'requests' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pt-4" style={{ scrollbarGutter: 'stable' }}>
+          <JoinRequestsPanel
+            groupId={group.id}
+            discoverySettings={group.settings?.discovery}
+            onAddToRoster={onAddToRoster}
+            canAct={canManage}
+          />
+        </div>
+      )}
 
-        {section === 'invitations' && (
-          <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-            <InvitationsPanel
-              groupId={group.id}
-              canManage={canManage}
-              highlightCreateButton={highlightCreateInvite}
-            />
-          </div>
-        )}
-      </div>
+      {section === 'invitations' && (
+        <div className="flex-1 min-h-0 overflow-y-auto pt-4" style={{ scrollbarGutter: 'stable' }}>
+          <InvitationsPanel
+            groupId={group.id}
+            canManage={canManage}
+            highlightCreateButton={highlightCreateInvite}
+          />
+        </div>
+      )}
     </div>
   );
 }

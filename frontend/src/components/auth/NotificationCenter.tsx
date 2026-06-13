@@ -1,5 +1,5 @@
 /* eslint-disable design-system/no-raw-button */
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -10,14 +10,57 @@ import {
   AlertTriangle,
   CheckCheck,
   Check,
+  Sparkles,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
 import { useNotificationStore } from '../../stores/notificationStore';
 import type { AppNotification } from '../../stores/notificationStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { RELEASES } from '../../data/releaseNotes';
 
 type Filter = 'all' | 'unread' | 'static' | 'system';
+
+// ─── Synthetic release notifications ─────────────────────────────────────────
+
+const SEEN_RELEASES_KEY = 'seen-release-notes';
+
+function getSyntheticNotifications(): AppNotification[] {
+  const seen = new Set(
+    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
+  );
+  return RELEASES
+    .filter((r) => r.version !== 'Unreleased' && !r.internal)
+    .slice(0, 5)
+    .map((r) => ({
+      id: `__release__${r.version}`,
+      notification_type: 'web_update',
+      title: `v${r.version}${r.title ? ` — ${r.title}` : ''}`,
+      body: (r.highlights?.[0] ?? r.items[0]?.description ?? r.items[0]?.title ?? null) as string | null,
+      href: '/docs/release-notes',
+      is_read: seen.has(r.version),
+      created_at: r.date,
+    }));
+}
+
+function markSyntheticRead(id: string) {
+  const version = id.replace('__release__', '');
+  const seen = new Set(
+    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
+  );
+  seen.add(version);
+  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+}
+
+function markAllSyntheticRead() {
+  const versions = RELEASES
+    .filter((r) => r.version !== 'Unreleased' && !r.internal)
+    .slice(0, 5)
+    .map((r) => r.version);
+  localStorage.setItem(SEEN_RELEASES_KEY, versions.join(','));
+}
+
+// ─── Type icon map ────────────────────────────────────────────────────────────
 
 function typeIcon(notificationType: string): React.ReactNode {
   switch (notificationType) {
@@ -32,6 +75,8 @@ function typeIcon(notificationType: string): React.ReactNode {
       return <Calendar className="w-3.5 h-3.5" />;
     case 'webhook_failure':
       return <AlertTriangle className="w-3.5 h-3.5" />;
+    case 'web_update':
+      return <Sparkles className="w-3.5 h-3.5" />;
     default:
       return <Bell className="w-3.5 h-3.5" />;
   }
@@ -49,6 +94,8 @@ function relativeTime(isoString: string): string {
   return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 interface NotificationCenterProps {
   isOpen: boolean;
   onClose: () => void;
@@ -61,34 +108,72 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>('all');
 
-  const filtered = notifications.filter((n) => {
-    switch (filter) {
-      case 'unread':
-        return !n.is_read;
-      case 'static':
-        return currentGroup
-          ? (n.href?.includes(`/group/${currentGroup.shareCode}`) ?? false)
-          : false;
-      case 'system':
-        return n.notification_type === 'system';
-      default:
-        return true;
+  const [syntheticNotifications, setSyntheticNotifications] = useState<AppNotification[]>(
+    () => getSyntheticNotifications()
+  );
+  const refreshSynthetic = useCallback(() => {
+    setSyntheticNotifications(getSyntheticNotifications());
+  }, []);
+
+  const syntheticUnreadCount = syntheticNotifications.filter((n) => !n.is_read).length;
+  const totalUnread = unreadCount + syntheticUnreadCount;
+
+  // Build the base list for the current filter before sub-filtering
+  const baseList: AppNotification[] = (() => {
+    if (filter === 'system') return syntheticNotifications;
+    if (filter === 'all') {
+      return [...notifications, ...syntheticNotifications].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     }
+    return notifications;
+  })();
+
+  const filtered = baseList.filter((n) => {
+    if (filter === 'unread') return !n.is_read;
+    if (filter === 'static')
+      return currentGroup
+        ? (n.href?.includes(`/group/${currentGroup.shareCode}`) ?? false)
+        : false;
+    return true;
   });
 
   async function handleNotificationClick(n: AppNotification) {
-    if (!n.is_read) await markRead(n.id);
+    if (!n.is_read) {
+      if (n.id.startsWith('__release__')) {
+        markSyntheticRead(n.id);
+        refreshSynthetic();
+      } else {
+        await markRead(n.id);
+      }
+    }
     if (n.href) {
       navigate(n.href);
       onClose();
     }
   }
 
+  function handleMarkRead(e: React.MouseEvent, n: AppNotification) {
+    e.stopPropagation();
+    if (n.id.startsWith('__release__')) {
+      markSyntheticRead(n.id);
+      refreshSynthetic();
+    } else {
+      markRead(n.id);
+    }
+  }
+
+  function handleMarkAllRead() {
+    markAllRead();
+    markAllSyntheticRead();
+    refreshSynthetic();
+  }
+
   const FILTERS: { id: Filter; label: string }[] = [
     { id: 'all', label: 'All' },
-    { id: 'unread', label: unreadCount > 0 ? `Unread (${unreadCount})` : 'Unread' },
+    { id: 'unread', label: totalUnread > 0 ? `Unread (${totalUnread})` : 'Unread' },
     { id: 'static', label: 'This static' },
-    { id: 'system', label: 'System' },
+    { id: 'system', label: syntheticUnreadCount > 0 ? `System (${syntheticUnreadCount})` : 'System' },
   ];
 
   return (
@@ -100,9 +185,9 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
         <span className="flex items-center gap-2">
           <Bell className="w-5 h-5" />
           Notifications
-          {unreadCount > 0 && (
+          {totalUnread > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-status-error text-white text-[10px] font-bold leading-none">
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
         </span>
@@ -110,15 +195,15 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
       footer={
         <div className="flex items-center justify-between">
           <p className="text-xs text-text-muted">
-            {notifications.length > 0
-              ? `${notifications.length} notification${notifications.length !== 1 ? 's' : ''}`
+            {(notifications.length + syntheticNotifications.length) > 0
+              ? `${notifications.length + syntheticNotifications.length} notification${(notifications.length + syntheticNotifications.length) !== 1 ? 's' : ''}`
               : ''}
           </p>
-          {unreadCount > 0 && (
+          {totalUnread > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={markAllRead}
+              onClick={handleMarkAllRead}
               className="flex items-center gap-1.5 text-xs"
             >
               <CheckCheck className="w-3.5 h-3.5" />
@@ -176,6 +261,8 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               ? 'No unread notifications.'
               : filter === 'static'
               ? 'No notifications for this static.'
+              : filter === 'system'
+              ? 'No system notifications.'
               : 'Nothing to show here.'}
           </p>
         </div>
@@ -237,10 +324,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                   type="button"
                   title="Mark as read"
                   className="flex-shrink-0 mt-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:text-text-primary text-text-muted"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    markRead(n.id);
-                  }}
+                  onClick={(e) => handleMarkRead(e, n)}
                 >
                   <Check className="w-3.5 h-3.5" />
                 </button>
