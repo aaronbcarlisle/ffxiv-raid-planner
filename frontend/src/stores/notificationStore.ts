@@ -4,18 +4,19 @@ import { logger } from '../lib/logger';
 
 export interface AppNotification {
   id: string;
-  notificationType: string;
+  notification_type: string;
   title: string;
   body: string | null;
   href: string | null;
-  isRead: boolean;
-  createdAt: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 interface NotificationState {
   notifications: AppNotification[];
   unreadCount: number;
   loading: boolean;
+  error: string | null;
 
   fetchNotifications(): Promise<void>;
   markRead(id: string): Promise<void>;
@@ -26,16 +27,17 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
   unreadCount: 0,
   loading: false,
+  error: null,
 
   async fetchNotifications() {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
-      const notifications = await api.get<AppNotification[]>('/api/notifications?limit=20');
-      const unreadCount = notifications.filter((n) => !n.isRead).length;
+      const notifications = await api.get<AppNotification[]>('/api/notifications?limit=50');
+      const unreadCount = notifications.filter((n) => !n.is_read).length;
       set({ notifications, unreadCount, loading: false });
     } catch (err) {
       logger.error('notificationStore.fetchNotifications failed', { err });
-      set({ loading: false });
+      set({ loading: false, error: 'Could not load notifications' });
     }
   },
 
@@ -44,10 +46,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       const updated = await api.patch<AppNotification>(`/api/notifications/${id}/read`);
       set((s) => ({
         notifications: s.notifications.map((n) => (n.id === id ? updated : n)),
-        unreadCount: Math.max(0, s.unreadCount - (updated.isRead && !s.notifications.find((n) => n.id === id)?.isRead ? 1 : 0)),
       }));
-      // Recount from store state for accuracy
-      set((s) => ({ unreadCount: s.notifications.filter((n) => !n.isRead).length }));
+      set((s) => ({ unreadCount: s.notifications.filter((n) => !n.is_read).length }));
     } catch (err) {
       logger.error('notificationStore.markRead failed', { id, err });
     }
@@ -57,7 +57,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     try {
       await api.post('/api/notifications/read-all');
       set((s) => ({
-        notifications: s.notifications.map((n) => ({ ...n, isRead: true })),
+        notifications: s.notifications.map((n) => ({ ...n, is_read: true })),
         unreadCount: 0,
       }));
     } catch (err) {

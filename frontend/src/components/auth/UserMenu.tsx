@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
   DropdownContent,
@@ -53,7 +54,8 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
-  const { unreadCount, fetchNotifications, markAllRead } = useNotificationStore();
+  const notificationsModal = useModal();
+  const { unreadCount, fetchNotifications } = useNotificationStore();
 
   useEffect(() => {
     if (user) fetchNotifications();
@@ -201,9 +203,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               )}
             </span>
           }
-          onSelect={() => unreadCount > 0 && markAllRead()}
+          onSelect={() => notificationsModal.open()}
         >
-          {unreadCount > 0 ? `${unreadCount} unread — mark all read` : 'No new notifications'}
+          {unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
         </DropdownItem>
 
         <DropdownItem
@@ -297,6 +299,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
     <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />API Keys</span>} size="lg">
       <ApiKeyManager />
     </Modal>
+
+    {/* Notification Center */}
+    <NotificationCenter isOpen={notificationsModal.isOpen} onClose={notificationsModal.close} />
     </>
   );
 }

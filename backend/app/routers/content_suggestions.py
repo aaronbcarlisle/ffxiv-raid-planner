@@ -303,7 +303,7 @@ async def upsert_vote(
     """Cast or update a vote on a suggestion. Any member can vote."""
     from sqlalchemy.orm import selectinload
 
-    await get_static_group(session, group_id)
+    group = await get_static_group(session, group_id)
     await require_membership(session, current_user.id, group_id)
 
     suggestion = await _get_suggestion(session, group_id, suggestion_id)
@@ -355,7 +355,7 @@ async def upsert_vote(
             notification_type="suggestion_vote",
             title=f"{voter_name} voted on your suggestion",
             body=f'Voted "{vote_label}" on "{suggestion.title}"',
-            href=f"/group/{group_id}?tab=settings&settingsTab=goals",
+            href=f"/group/{group.share_code}?tab=home",
         )
 
     await session.commit()

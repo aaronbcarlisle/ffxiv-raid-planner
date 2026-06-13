@@ -58,6 +58,39 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── Notification Center ──────────────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Notification Center',
+    internal: true,
+    items: [
+      {
+        category: 'feature',
+        title: 'Notification Center',
+        description:
+          'Clicking the unread badge in the user menu now opens a Notification Center modal instead of immediately marking everything as read. See notification titles, bodies, and timestamps; click any notification with a link to navigate directly; mark individual notifications read or use "Mark all read" at the bottom.',
+        pr: 132,
+        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+      },
+      {
+        category: 'fix',
+        title: 'Unread count now correctly reflects server read state',
+        description:
+          'The notification store interface was using camelCase field names that did not match the snake_case JSON the API returns. This caused the unread count to always equal the total notification count regardless of actual read state. Fields are now correctly mapped.',
+        pr: 132,
+        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+      },
+      {
+        category: 'fix',
+        title: 'Suggestion vote notifications link to Overview Goals & Farms',
+        description:
+          'Notifications created when a member votes on a content suggestion previously used the static UUID (not the share code) and linked to Settings → Goals. They now use the share code and link to the Overview Goals & Farms module where suggestions are displayed.',
+        pr: 132,
+        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+      },
+    ],
+  },
   // ── Feature branch: Goals Alignment V1.1 ────────────────────────────────
   {
     version: 'Unreleased',
