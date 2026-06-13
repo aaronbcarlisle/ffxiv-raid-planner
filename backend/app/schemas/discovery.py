@@ -17,7 +17,7 @@ class DiscoverySettings(CamelModel):
     """Discovery settings stored under StaticGroup.settings['discovery']"""
 
     enabled: bool = False
-    recruitment_status: str = Field(default="closed", description="open | limited | closed")
+    recruitment_status: str = Field(default="closed", description="open | selective | paused | closed (legacy: limited)")
     description: str | None = None
     contact_method: str | None = Field(
         default=None, description="discord | discord_server | url | text"
@@ -34,6 +34,8 @@ class DiscoverySettings(CamelModel):
     schedule_start_time: str | None = None
     schedule_end_time: str | None = None
     show_member_count: bool = False
+    recruiting_roles: list[dict] | None = None
+    communication_style: dict | None = None
 
 
 class GoalAlignmentSummarySlim(CamelModel):
@@ -66,6 +68,8 @@ class DiscoveryListItem(CamelModel):
     server: str | None = None
     member_count: int = 0
     last_updated: str | None = None
+    recruiting_roles: list[dict] | None = None
+    communication_style: dict | None = None
     # Goal fields (public — only official static objective categories)
     objective_categories: list[str] = Field(default_factory=list)
     goal_alignment: GoalAlignmentSummarySlim | None = None

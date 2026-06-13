@@ -110,6 +110,8 @@ def _to_list_item(
         server=discovery.get("server"),
         member_count=member_count if show_count else 0,
         last_updated=group.updated_at,
+        recruiting_roles=discovery.get("recruitingRoles"),
+        communication_style=discovery.get("communicationStyle"),
         objective_categories=objective_categories or [],
         goal_alignment=goal_alignment,
     )
