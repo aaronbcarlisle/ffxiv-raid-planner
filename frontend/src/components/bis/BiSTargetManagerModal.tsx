@@ -13,7 +13,6 @@ import {
   PURPOSE_OPTIONS,
   PURPOSE_LABELS,
   SOURCE_LABELS,
-  IMPORT_STATUS_LABELS,
 } from '../../stores/sharedBisStore';
 import { fetchBiSPresets } from '../../services/api';
 import { getJobDisplayName } from '../../gamedata/jobs';
