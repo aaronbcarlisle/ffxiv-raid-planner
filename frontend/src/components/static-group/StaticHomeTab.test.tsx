@@ -141,6 +141,7 @@ const collectionGoalStoreState = {
 const objectiveGoalStoreState = {
   objectives: [] as StaticObjectiveGoal[],
   loading: false,
+  objectivesError: null as string | null,
   fetchObjectives: vi.fn().mockResolvedValue(undefined),
 };
 
@@ -318,6 +319,7 @@ function setObjectiveGoalStore(overrides: Partial<typeof objectiveGoalStoreState
   Object.assign(objectiveGoalStoreState, {
     objectives: [],
     loading: false,
+    objectivesError: null,
     fetchObjectives: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   });

@@ -2,43 +2,38 @@
  * Settings Panel
  *
  * Slide-out panel for static group settings.
- * Tabs: General, Priority, Members, Invitations
+ * Tabs: General, Priority, Goals & Farms, Recruitment, Members
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { Settings, ListOrdered, Users, Mail, Globe, UserPlus, Target } from 'lucide-react';
+import { Settings, ListOrdered, Users, Globe, Target } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { GeneralTab } from './GeneralTab';
 import { PriorityTab } from './PriorityTab';
-import { DiscoveryTab } from './DiscoveryTab';
+import { RecruitmentTab } from './RecruitmentTab';
 import { MembersPanel } from '../static-group/MembersPanel';
-import { InvitationsPanel } from '../static-group/InvitationsPanel';
-import { JoinRequestsPanel } from '../static-group/JoinRequestsPanel';
 import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { ContentSuggestionsPanel } from '../static-group/ContentSuggestionsPanel';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
-export type SettingsTab = 'general' | 'priority' | 'discovery' | 'goals' | 'members' | 'invitations' | 'requests';
+export type SettingsTab = 'general' | 'priority' | 'goals' | 'recruitment' | 'members';
 
-const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'goals', 'members', 'invitations', 'requests'];
+const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'goals', 'recruitment', 'members'];
 
 interface TabItem {
   id: SettingsTab;
   label: string;
   icon: typeof Settings;
-  requiresManage?: boolean;
 }
 
 const TAB_ITEMS: TabItem[] = [
-  { id: 'general', label: 'General', icon: Settings },
-  { id: 'priority', label: 'Priority', icon: ListOrdered },
-  { id: 'discovery', label: 'Listing', icon: Globe },
-  { id: 'goals', label: 'Goals', icon: Target },
-  { id: 'members', label: 'Members', icon: Users },
-  { id: 'invitations', label: 'Invitations', icon: Mail },
-  { id: 'requests', label: 'Requests', icon: UserPlus, requiresManage: true },
+  { id: 'general',     label: 'General',        icon: Settings },
+  { id: 'priority',    label: 'Priority',        icon: ListOrdered },
+  { id: 'goals',       label: 'Goals & Farms',   icon: Target },
+  { id: 'recruitment', label: 'Recruitment',     icon: Globe },
+  { id: 'members',     label: 'Members',         icon: Users },
 ];
 
 interface SettingsPanelProps {
@@ -113,10 +108,9 @@ export function SettingsPanel({
       width="3xl"
     >
       <div className="flex flex-col h-[calc(100%+2rem)] -m-4">
-        {/* Tabs - scrollable on mobile */}
+        {/* Tabs */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
           {TAB_ITEMS.map((tab) => {
-            if (tab.requiresManage && !canManage) return null;
             const Icon = tab.icon;
             return (
               /* design-system-ignore: Tab selector with border-bottom active indicator */
@@ -131,7 +125,7 @@ export function SettingsPanel({
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
-                {tab.id === 'requests' && pendingCount > 0 && (
+                {tab.id === 'recruitment' && pendingCount > 0 && (
                   <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-accent text-accent-contrast">
                     {pendingCount}
                   </span>
@@ -141,7 +135,7 @@ export function SettingsPanel({
           })}
         </div>
 
-        {/* Content - swipeable on mobile */}
+        {/* Content */}
         <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col overflow-x-hidden" {...swipeHandlers}>
           {activeTab === 'general' && (
             <GeneralTab
@@ -159,13 +153,6 @@ export function SettingsPanel({
             />
           )}
 
-          {activeTab === 'discovery' && (
-            <DiscoveryTab
-              group={group}
-              onClose={onClose}
-            />
-          )}
-
           {activeTab === 'goals' && (
             <div className="space-y-6">
               <ObjectiveGoalsPanel groupId={group.id} canManage={canManage} />
@@ -175,27 +162,21 @@ export function SettingsPanel({
             </div>
           )}
 
+          {activeTab === 'recruitment' && (
+            <RecruitmentTab
+              group={group}
+              canManage={canManage}
+              highlightCreateInvite={highlightCreateInvite}
+              onAddToRoster={onAddToRoster}
+              onClose={onClose}
+            />
+          )}
+
           {activeTab === 'members' && (
             <MembersPanel
               groupId={group.id}
               currentUserRole={group.userRole}
               isAdmin={isAdmin}
-            />
-          )}
-
-          {activeTab === 'invitations' && (
-            <InvitationsPanel
-              groupId={group.id}
-              canManage={canManage}
-              highlightCreateButton={highlightCreateInvite}
-            />
-          )}
-
-          {activeTab === 'requests' && canManage && (
-            <JoinRequestsPanel
-              groupId={group.id}
-              onAddToRoster={onAddToRoster}
-              canAct={group.userRole === 'owner' || group.userRole === 'lead'}
             />
           )}
         </div>

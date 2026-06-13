@@ -24,7 +24,7 @@ import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
 import type { StaticObjectiveGoal } from '../../stores/objectiveGoalStore';
-import { useContentSuggestionStore } from '../../stores/contentSuggestionStore';
+import { useContentSuggestionStore, type ContentSuggestion } from '../../stores/contentSuggestionStore';
 import { HEADER_EVENTS } from '../layout/Header';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
@@ -1056,324 +1056,306 @@ const GOAL_STATUS_LABELS: Record<string, string> = {
 };
 
 /**
- * Static Objectives — compact read-only widget showing the static's official
- * objective goals (used for matching, discovery, and roster alignment).
+ * Goals & Farms — unified Overview module combining Official Objectives,
+ * Active Farms (Collection Goals), and Member Interest (Content Suggestions).
  *
- * Owner/lead CTA opens Settings → Goals to manage. Member CTA is read-only.
- * Excludes "not_doing" objectives (they are internal decisions, not active goals).
+ * The three data concepts stay separate in the backend and in Settings; this
+ * module just makes them visible as one coherent ecosystem on the Overview:
+ *   - Official Objectives: used for matching, discovery, roster alignment
+ *   - Active Farms: trackable reward/mount/token progress
+ *   - Member Interest: open suggestions, not yet official
+ *
+ * Preserves data-testids relied on by StaticHomeTab.test.tsx.
  */
-function StaticObjectivesModule({
+function GoalsFarmsModule({
   objectives,
-  loading,
-  canManage,
-}: {
-  objectives: StaticObjectiveGoal[];
-  loading: boolean;
-  canManage: boolean;
-}) {
-  const openGoalsTab = () => {
-    window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
-  };
-
-  const active = objectives.filter((o) => o.priority !== 'not_doing');
-  const visible = active.slice(0, 4);
-
-  return (
-    <div>
-      <SectionLabel icon={<Trophy className="w-3 h-3" />}>Static Objectives</SectionLabel>
-      <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
-        {loading && objectives.length === 0 ? (
-          <div className="p-3 space-y-2">
-            {[1, 2].map((n) => (
-              <div key={n} className="h-7 rounded-lg bg-surface-elevated animate-pulse" />
-            ))}
-          </div>
-        ) : active.length === 0 ? (
-          <div className="px-4 py-5 text-center">
-            <Trophy className="w-5 h-5 text-text-muted mx-auto mb-2 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary mb-0.5">
-              No official objectives yet
-            </p>
-            <p className="text-[11px] text-text-muted mb-3">
-              {canManage
-                ? 'Add one to enable matching and discovery.'
-                : 'No official objectives have been set yet.'}
-            </p>
-            {canManage && (
-              <button
-                type="button"
-                onClick={openGoalsTab}
-                className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
-              >
-                Add objective →
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <ul className="divide-y divide-border-subtle">
-              <AnimatePresence initial={false}>
-                {visible.map((obj) => (
-                  <motion.li
-                    key={obj.id}
-                    layout
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
-                    exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                    className="px-3 py-2 flex items-center gap-2"
-                  >
-                    <span className="text-[12px] text-text-primary truncate flex-1">
-                      {OBJECTIVE_CATEGORY_LABELS[obj.category] ?? obj.category}
-                    </span>
-                    <span className={`text-[10px] font-semibold flex-shrink-0 ${OBJECTIVE_PRIORITY_COLORS[obj.priority] ?? 'text-text-muted'}`}>
-                      {OBJECTIVE_PRIORITY_LABELS[obj.priority] ?? obj.priority}
-                    </span>
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
-            <div className="px-3 py-2 flex items-center justify-between border-t border-border-subtle">
-              <p className="text-[10px] text-text-muted">Used for matching &amp; discovery</p>
-              <button
-                type="button"
-                onClick={openGoalsTab}
-                className="text-[11px] text-accent hover:underline"
-              >
-                {canManage ? 'Manage goals →' : 'View goals →'}
-              </button>
-            </div>
-            {active.length > 4 && (
-              <div className="px-3 pb-2 text-[10px] text-text-muted">
-                +{active.length - 4} more
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Collection Goals — static/shared collection goals backed by the backend.
- * Owner/lead can create, edit, and delete; members can view only.
- * Shows 2–4 rows when goals exist; opens CreateCollectionGoalModal on CTA.
- */
-function CollectionGoalsModule({
+  objectivesLoading,
+  objectivesError,
   goals,
-  loading,
+  goalsLoading,
+  suggestions,
   canManage,
   onCreateGoal,
   onDeleteGoal,
 }: {
+  objectives: StaticObjectiveGoal[];
+  objectivesLoading: boolean;
+  objectivesError: string | null;
   goals: CollectionGoal[];
-  loading: boolean;
+  goalsLoading: boolean;
+  suggestions: ContentSuggestion[];
   canManage: boolean;
   onCreateGoal: () => void;
   onDeleteGoal: (id: string) => void;
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const visibleGoals = goals.slice(0, 4);
-  const activeGoals = goals.filter((g) => g.status !== 'complete');
-
-  return (
-    <div>
-      <SectionLabel icon={<Target className="w-3 h-3" />}>Collection Goals</SectionLabel>
-      <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
-        {loading ? (
-          <div className="p-3 space-y-2">
-            {[1, 2].map((n) => (
-              <div key={n} className="h-8 rounded-lg bg-surface-elevated animate-pulse" />
-            ))}
-          </div>
-        ) : goals.length === 0 ? (
-          <div className="px-4 py-5 text-center">
-            <Target className="w-5 h-5 text-text-muted mx-auto mb-2 opacity-40" />
-            <p
-              className="text-xs font-medium text-text-secondary mb-0.5"
-              data-testid="collection-goals-empty-heading"
-            >
-              No collection goals yet
-            </p>
-            <p className="text-[11px] text-text-muted mb-3">
-              Track mounts, tokens, and rewards your group wants to farm.
-            </p>
-            {canManage && (
-              <button
-                type="button"
-                data-testid="create-collection-goal-btn"
-                onClick={onCreateGoal}
-                className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
-              >
-                Create Collection Goal
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-border-subtle">
-              <AnimatePresence initial={false}>
-              {visibleGoals.map((goal) => (
-                <motion.div
-                  key={goal.id}
-                  layout
-                  data-testid="collection-goal-row"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
-                  exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                  className="flex items-center gap-2.5 px-3 py-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
-                      {goal.targetCount != null && (
-                        <span className="text-[10px] text-text-muted">
-                          · {goal.currentCount ?? 0}/{goal.targetCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
-                    {GOAL_STATUS_LABELS[goal.status] ?? goal.status}
-                  </span>
-                  {goal.status === 'complete' && (
-                    <Check className="w-3.5 h-3.5 text-status-success flex-shrink-0" />
-                  )}
-                  {canManage && (
-                    confirmDeleteId === goal.id ? (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { onDeleteGoal(goal.id); setConfirmDeleteId(null); }}
-                          className="p-1 rounded text-status-error hover:bg-status-error/10 transition-colors"
-                          title="Confirm delete"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="p-1 rounded text-text-muted hover:bg-surface-elevated transition-colors text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(goal.id)}
-                        className="p-1 rounded text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-                        title="Delete goal"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )
-                  )}
-                </motion.div>
-              ))}
-              </AnimatePresence>
-            </div>
-
-            <div className="px-3 py-2 flex items-center justify-between border-t border-border-subtle">
-              {canManage ? (
-                <button
-                  type="button"
-                  data-testid="create-collection-goal-btn"
-                  onClick={onCreateGoal}
-                  className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
-                >
-                  + Add goal
-                </button>
-              ) : (
-                <span className="text-[11px] text-text-muted">
-                  {activeGoals.length} active goal{activeGoals.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              {goals.length > 4 && (
-                <span className="text-[10px] text-text-muted">+{goals.length - 4} more</span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Content Suggestions — compact overview widget for all members.
- *
- * Shows open suggestion count and top suggestions so members can see what's
- * been proposed. The "Suggest content" CTA opens Settings → Goals tab where
- * members can vote on and propose new suggestions.
- */
-function ContentSuggestionsModule({
-  suggestions,
-  canManage,
-}: {
-  suggestions: import('../../stores/contentSuggestionStore').ContentSuggestion[];
-  canManage: boolean;
-}) {
-  const open = suggestions.filter((s) => s.status === 'open');
-  const top = open.slice(0, 3);
-
   const openGoalsTab = () => {
     window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
   };
 
-  return (
-    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary uppercase tracking-wide">
-          <Target className="w-3.5 h-3.5" />
-          Content Suggestions
-        </div>
-        {open.length > 0 && (
-          <span className="text-[10px] text-text-muted">{open.length} open</span>
-        )}
-      </div>
+  const activeObjectives = objectives.filter((o) => o.priority !== 'not_doing');
+  const visibleObjectives = activeObjectives.slice(0, 3);
 
-      {top.length === 0 ? (
-        <div className="px-3 py-4 text-center">
-          <p className="text-[11px] text-text-muted mb-2">
-            No suggestions yet. Propose content your static should tackle.
-          </p>
+  const activeGoals = goals.filter((g) => g.status !== 'complete');
+  const visibleGoals = goals.slice(0, 3);
+
+  const openSuggestions = suggestions.filter((s) => s.status === 'open');
+  const topSuggestions = openSuggestions.slice(0, 3);
+
+  // Sub-section pill label
+  const SubLabel = ({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) => (
+    <div className="flex items-center justify-between px-3 py-1.5 bg-surface-elevated/60 border-b border-border-subtle">
+      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">{children}</span>
+      {aside && <span className="text-[10px] text-text-muted">{aside}</span>}
+    </div>
+  );
+
+  return (
+    <div>
+      <SectionLabel icon={<Target className="w-3 h-3" />}>Goals &amp; Farms</SectionLabel>
+      <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden divide-y divide-border-subtle">
+
+        {/* ── Official Objectives ── */}
+        <div>
+          <SubLabel aside="Used for matching">Official Objectives</SubLabel>
+          {objectivesLoading && activeObjectives.length === 0 ? (
+            <div className="p-3 space-y-1.5">
+              {[1, 2].map((n) => (
+                <div key={n} className="h-6 rounded bg-surface-elevated animate-pulse" />
+              ))}
+            </div>
+          ) : objectivesError && activeObjectives.length === 0 ? (
+            <div className="px-3 py-3 text-center">
+              <p className="text-[11px] text-text-muted">Couldn&apos;t load objectives.</p>
+            </div>
+          ) : activeObjectives.length === 0 ? (
+            <div className="px-3 py-3 text-center">
+              <p className="text-[11px] text-text-muted">
+                {canManage
+                  ? 'No objectives set. Add one to enable matching.'
+                  : 'No official objectives set yet.'}
+              </p>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={openGoalsTab}
+                  className="text-[11px] text-accent hover:underline mt-1"
+                >
+                  Add objective →
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <ul>
+                <AnimatePresence initial={false}>
+                  {visibleObjectives.map((obj) => (
+                    <motion.li
+                      key={obj.id}
+                      layout
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
+                      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                      className="px-3 py-1.5 flex items-center gap-2 border-b border-border-subtle last:border-b-0"
+                    >
+                      <span className="text-[12px] text-text-primary truncate flex-1">
+                        {OBJECTIVE_CATEGORY_LABELS[obj.category] ?? obj.category}
+                      </span>
+                      <span className={`text-[10px] font-semibold flex-shrink-0 ${OBJECTIVE_PRIORITY_COLORS[obj.priority] ?? 'text-text-muted'}`}>
+                        {OBJECTIVE_PRIORITY_LABELS[obj.priority] ?? obj.priority}
+                      </span>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+              {activeObjectives.length > 3 && (
+                <div className="px-3 py-1 flex items-center justify-between">
+                  <span className="text-[10px] text-text-muted">+{activeObjectives.length - 3} more</span>
+                  <button type="button" onClick={openGoalsTab} className="text-[10px] text-accent hover:underline">
+                    {canManage ? 'Manage →' : 'View →'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── Active Farms (Collection Goals) ── */}
+        <div>
+          <SubLabel aside="Progress tracking">Active Farms</SubLabel>
+          {goalsLoading ? (
+            <div className="p-3 space-y-1.5">
+              {[1, 2].map((n) => (
+                <div key={n} className="h-7 rounded bg-surface-elevated animate-pulse" />
+              ))}
+            </div>
+          ) : goals.length === 0 ? (
+            <div className="px-3 py-3 text-center">
+              <p
+                className="text-xs font-medium text-text-secondary mb-0.5"
+                data-testid="collection-goals-empty-heading"
+              >
+                No collection goals yet
+              </p>
+              <p className="text-[11px] text-text-muted mb-2">
+                Track mounts, tokens, and rewards your group wants to farm.
+              </p>
+              {canManage && (
+                <button
+                  type="button"
+                  data-testid="create-collection-goal-btn"
+                  onClick={onCreateGoal}
+                  className="text-[11px] font-medium text-accent border border-accent/30 rounded-lg px-2.5 py-1 hover:bg-accent/10 transition-colors"
+                >
+                  Create Collection Goal
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div>
+                <AnimatePresence initial={false}>
+                  {visibleGoals.map((goal) => (
+                    <motion.div
+                      key={goal.id}
+                      layout
+                      data-testid="collection-goal-row"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
+                      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                      className="flex items-center gap-2.5 px-3 py-1.5 border-b border-border-subtle last:border-b-0"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
+                          {goal.targetCount != null && (
+                            <span className="text-[10px] text-text-muted">· {goal.currentCount ?? 0}/{goal.targetCount}</span>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
+                        {GOAL_STATUS_LABELS[goal.status] ?? goal.status}
+                      </span>
+                      {goal.status === 'complete' && (
+                        <Check className="w-3 h-3 text-status-success flex-shrink-0" />
+                      )}
+                      {canManage && (
+                        confirmDeleteId === goal.id ? (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => { onDeleteGoal(goal.id); setConfirmDeleteId(null); }}
+                              className="p-1 rounded text-status-error hover:bg-status-error/10 transition-colors"
+                              title="Confirm delete"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="p-1 rounded text-text-muted hover:bg-surface-elevated transition-colors text-xs"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(goal.id)}
+                            className="p-1 rounded text-text-muted hover:text-status-error hover:bg-status-error/10 transition-colors flex-shrink-0"
+                            title="Delete goal"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+              <div className="px-3 py-1.5 flex items-center justify-between">
+                {canManage ? (
+                  <button
+                    type="button"
+                    data-testid="create-collection-goal-btn"
+                    onClick={onCreateGoal}
+                    className="text-[11px] font-medium text-accent hover:text-accent-hover transition-colors"
+                  >
+                    + Add farm
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-text-muted">
+                    {activeGoals.length} active goal{activeGoals.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {goals.length > 3 && (
+                  <span className="text-[10px] text-text-muted">+{goals.length - 3} more</span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Member Interest (Content Suggestions) ── */}
+        <div>
+          <SubLabel aside={openSuggestions.length > 0 ? `${openSuggestions.length} open` : undefined}>
+            Member Interest
+          </SubLabel>
+          {topSuggestions.length === 0 ? (
+            <div className="px-3 py-3 text-center">
+              <p className="text-[11px] text-text-muted mb-1">
+                No suggestions yet. Propose content for your static.
+              </p>
+              <button
+                type="button"
+                onClick={openGoalsTab}
+                className="text-[11px] text-accent hover:underline"
+              >
+                Suggest content →
+              </button>
+            </div>
+          ) : (
+            <>
+              <ul>
+                {topSuggestions.map((s) => (
+                  <li key={s.id} className="px-3 py-1.5 flex items-center justify-between gap-2 border-b border-border-subtle last:border-b-0">
+                    <span className="text-[12px] text-text-primary truncate flex-1">{s.title}</span>
+                    <span className="text-[10px] text-text-muted flex-shrink-0">
+                      {s.voteSummary.total} vote{s.voteSummary.total !== 1 ? 's' : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="px-3 py-1.5 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={openGoalsTab}
+                  className="text-[11px] text-accent hover:underline"
+                >
+                  {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
+                </button>
+                {openSuggestions.length > 3 && (
+                  <span className="text-[10px] text-text-muted">+{openSuggestions.length - 3} more</span>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Footer: manage CTA ── */}
+        <div className="px-3 py-2 flex items-center justify-between bg-surface-elevated/30">
           <button
             type="button"
             onClick={openGoalsTab}
             className="text-[11px] text-accent hover:underline"
           >
-            Suggest content →
+            {canManage ? 'Manage goals →' : 'View goals →'}
           </button>
+          <span className="text-[10px] text-text-muted">Not official yet ≠ matching</span>
         </div>
-      ) : (
-        <>
-          <ul className="divide-y divide-border-subtle">
-            {top.map((s) => (
-              <li key={s.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                <span className="text-[12px] text-text-primary truncate flex-1">{s.title}</span>
-                <span className="text-[10px] text-text-muted flex-shrink-0">
-                  {s.voteSummary.total} vote{s.voteSummary.total !== 1 ? 's' : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="px-3 py-2 flex items-center justify-between border-t border-border-subtle">
-            <button
-              type="button"
-              onClick={openGoalsTab}
-              className="text-[11px] text-accent hover:underline"
-            >
-              {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
-            </button>
-            {open.length > 3 && (
-              <span className="text-[10px] text-text-muted">+{open.length - 3} more</span>
-            )}
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
@@ -1535,7 +1517,7 @@ export function StaticHomeTab({
   const { sessions, fetchSessions, isLoading: sessLoading } = useScheduleStore();
   const { data: farmData, recommendations, isLoadingRecs, fetchRecommendations, fetchProgress } = useMountFarmStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
-  const { objectives, loading: objectivesLoading, fetchObjectives } = useObjectiveGoalStore();
+  const { objectives, loading: objectivesLoading, objectivesError, fetchObjectives } = useObjectiveGoalStore();
   const { suggestions, fetchSuggestions } = useContentSuggestionStore();
 
   useEffect(() => {
@@ -1640,21 +1622,16 @@ export function StaticHomeTab({
             onNavigate={onNavigate}
             onScheduleFarm={onScheduleFarm}
           />
-          <StaticObjectivesModule
+          <GoalsFarmsModule
             objectives={objectives}
-            loading={objectivesLoading}
-            canManage={canManage}
-          />
-          <CollectionGoalsModule
+            objectivesLoading={objectivesLoading}
+            objectivesError={objectivesError}
             goals={goals}
-            loading={goalsLoading}
+            goalsLoading={goalsLoading}
+            suggestions={suggestions}
             canManage={canManage}
             onCreateGoal={() => setShowCreateGoalModal(true)}
             onDeleteGoal={handleDeleteGoal}
-          />
-          <ContentSuggestionsModule
-            suggestions={suggestions}
-            canManage={canManage}
           />
         </div>
       </div>

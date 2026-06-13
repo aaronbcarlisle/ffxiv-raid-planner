@@ -511,12 +511,12 @@ export function GroupView() {
       } else {
         // Different tab or panel was closed - open/switch to requested tab
         setSettingsTab(requestedTab);
-        setHighlightCreateInvite(requestedTab === 'invitations');
+        setHighlightCreateInvite(requestedTab === 'recruitment');
         setShowSettingsModal(true);
       }
     };
     const handleOpenSettingsInvitationsEvent = () => {
-      setSettingsTab('invitations');
+      setSettingsTab('recruitment');
       setHighlightCreateInvite(true);
       setShowSettingsModal(true);
     };
@@ -935,7 +935,7 @@ export function GroupView() {
               onNavigate={setPageMode}
               canManage={canManageRoster(userRole).allowed}
               onOpenRequests={() => {
-                setSettingsTab('requests');
+                setSettingsTab('recruitment');
                 setShowSettingsModal(true);
               }}
               onScheduleFarm={(trial) => {

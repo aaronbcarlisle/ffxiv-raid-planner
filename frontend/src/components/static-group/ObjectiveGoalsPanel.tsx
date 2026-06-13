@@ -160,7 +160,7 @@ interface ObjectiveGoalsPanelProps {
 }
 
 export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelProps) {
-  const { objectives, loading, error, fetchObjectives, createObjective, updateObjective, deleteObjective } =
+  const { objectives, loading, objectivesError, fetchObjectives, createObjective, updateObjective, deleteObjective } =
     useObjectiveGoalStore();
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -246,9 +246,17 @@ export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelP
         <div className="flex justify-center py-6"><Spinner /></div>
       )}
 
-      {error && (
-        <div className="text-sm text-status-error bg-status-error/10 rounded px-3 py-2">
-          {error}
+      {objectivesError && (
+        <div className="flex items-center justify-between text-sm text-status-error bg-status-error/10 rounded px-3 py-2">
+          <span>Couldn&apos;t load objectives.</span>
+          {/* design-system-ignore: inline retry link */}
+          <button
+            type="button"
+            className="text-xs underline ml-2 flex-shrink-0"
+            onClick={() => fetchObjectives(groupId)}
+          >
+            Retry
+          </button>
         </div>
       )}
 

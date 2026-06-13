@@ -59,6 +59,8 @@ interface ObjectiveGoalState {
   rosterAlignment: RosterMemberAlignment[] | null;
   loading: boolean;
   error: string | null;
+  /** Error specific to fetchObjectives — does not pollute alignment/roster errors. */
+  objectivesError: string | null;
 
   fetchObjectives: (groupId: string) => Promise<void>;
   createObjective: (
@@ -81,9 +83,10 @@ export const useObjectiveGoalStore = create<ObjectiveGoalState>((set, get) => ({
   rosterAlignment: null,
   loading: false,
   error: null,
+  objectivesError: null,
 
   fetchObjectives: async (groupId) => {
-    set({ loading: true, error: null });
+    set({ loading: true, objectivesError: null });
     try {
       const objectives = await api.get<StaticObjectiveGoal[]>(
         `/api/static-groups/${groupId}/objective-goals`
@@ -92,7 +95,7 @@ export const useObjectiveGoalStore = create<ObjectiveGoalState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load objectives';
       logger.error('fetchObjectives failed', { error: message, groupId });
-      set({ error: message, loading: false });
+      set({ objectivesError: message, loading: false });
     }
   },
 

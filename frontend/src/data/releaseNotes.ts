@@ -129,6 +129,30 @@ export const RELEASES: Release[] = [
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
+      {
+        category: 'improvement',
+        title: 'Overview Goals & Farms module unifies objectives, farms, and suggestions',
+        description:
+          'The three separate Overview widgets (Static Objectives, Collection Goals, Member Interest) are now one cohesive "Goals & Farms" card. Official objectives, active reward farms, and open member suggestions each appear in their own sub-section, making it clear what the static is actively pursuing and what is still a proposal.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'improvement',
+        title: 'Settings tabs reduced from 7 to 5',
+        description:
+          'Static Settings previously had 7 tabs (General, Priority, Listing, Goals, Members, Invitations, Requests) that caused horizontal scroll on smaller screens. Discovery, Invitations, and Join Requests are now consolidated into a single Recruitment tab, and Goals is relabelled "Goals & Farms".',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'fix',
+        title: 'Objectives panel no longer shows "Failed to fetch" during unrelated errors',
+        description:
+          'The Static Objectives panel in Settings previously shared a single error field with all other objective store operations. A failure in any operation (e.g. alignment fetch) would surface a raw "Failed to fetch" string in the panel. The objectives error is now tracked separately and shows a friendly "Couldn\'t load objectives." message with a Retry button.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
     ],
   },
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
