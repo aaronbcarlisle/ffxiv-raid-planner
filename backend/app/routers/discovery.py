@@ -176,7 +176,7 @@ async def list_discoverable_statics(
         profile_result = await session.execute(
             select(PlayerProfile).where(
                 PlayerProfile.user_id == current_user.id,
-                PlayerProfile.visibility == "public",
+                PlayerProfile.visibility == "discoverable",
             ).limit(1)
         )
         user_profile = profile_result.scalar_one_or_none()

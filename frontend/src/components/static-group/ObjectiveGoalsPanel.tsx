@@ -220,7 +220,7 @@ export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelP
         <div>
           <h3 className="text-sm font-semibold text-text-primary">Static Objectives</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Raid and progression objectives your static is pursuing or planning.
+            Official static goals are used for matching, discovery, applications, and roster alignment.
           </p>
         </div>
         {canManage && !showAddForm && (
@@ -230,7 +230,7 @@ export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelP
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             onClick={() => setShowAddForm(true)}
           >
-            Add Objective
+            Add Static Goal
           </Button>
         )}
       </div>
@@ -255,8 +255,8 @@ export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelP
       {!loading && objectives.length === 0 && !showAddForm && (
         <p className="text-sm text-text-tertiary italic py-4 text-center">
           {canManage
-            ? 'No objectives set yet. Add one to enable goal alignment for applicants.'
-            : 'No objectives have been set for this static.'}
+            ? 'No official goals set yet. Add one to enable goal matching for applicants and discovery.'
+            : 'No official goals have been set for this static yet.'}
         </p>
       )}
 

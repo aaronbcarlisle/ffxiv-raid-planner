@@ -603,7 +603,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Static objectives */}
         {item.objectiveCategories && item.objectiveCategories.length > 0 && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Objectives</p>
+            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Official Goals <span className="normal-case font-normal opacity-70">· used for matching</span></p>
             <div className="flex flex-wrap gap-1">
               {item.objectiveCategories.map((cat) => (
                 <span key={cat} className="px-2 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-xs">

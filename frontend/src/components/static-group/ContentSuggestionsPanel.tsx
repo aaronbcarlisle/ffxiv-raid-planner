@@ -166,13 +166,18 @@ function SuggestionRow({
 
           {/* Vote bar for open suggestions */}
           {suggestion.status === 'open' && (
-            <VoteBar suggestion={suggestion} groupId={groupId} />
+            <>
+              <VoteBar suggestion={suggestion} groupId={groupId} />
+              <p className="text-[10px] text-text-muted mt-1">
+                Member interest · not used for official matching yet
+              </p>
+            </>
           )}
 
           {/* Promoted note */}
-          {suggestion.status === 'promoted' && suggestion.promotedGoalId && (
+          {suggestion.status === 'promoted' && (
             <p className="text-xs text-status-success mt-1">
-              Promoted to static objective
+              Promoted · now used in goal matching
             </p>
           )}
         </div>
@@ -305,7 +310,9 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
         <div>
           <h3 className="text-sm font-semibold text-text-primary">Content Suggestions</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Members propose content; vote to surface what the group actually wants.
+            {canManage
+              ? 'Suggestions collect member interest. Promote a suggestion to make it an official static goal used for matching and discovery.'
+              : 'Suggest content and vote to show interest. Leads can promote popular suggestions into official static goals.'}
           </p>
         </div>
         <Button
