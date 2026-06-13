@@ -121,6 +121,14 @@ export const RELEASES: Release[] = [
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
+      {
+        category: 'feature',
+        title: 'Static Objectives widget on Overview',
+        description:
+          'The Overview page right column now shows a compact list of the static\'s active objective goals (category + priority). Owners and leads see a "Manage goals →" link; members see "View goals →". The widget is used for matching and discovery — distinct from Collection Goals, which track reward farm progress.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
     ],
   },
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────

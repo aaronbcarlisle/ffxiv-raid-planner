@@ -22,6 +22,8 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
+import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
+import type { StaticObjectiveGoal } from '../../stores/objectiveGoalStore';
 import { useContentSuggestionStore } from '../../stores/contentSuggestionStore';
 import { HEADER_EVENTS } from '../layout/Header';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
@@ -998,6 +1000,38 @@ function BestNextFarmModule({
   );
 }
 
+// ── Static Objectives constants ──────────────────────────────────────────────
+
+const OBJECTIVE_CATEGORY_LABELS: Record<string, string> = {
+  ultimate_clear:     'Ultimate — Clear',
+  ultimate_farm:      'Ultimate — Farm',
+  savage_bis:         'Savage — BiS',
+  savage_mount:       'Savage — Mount',
+  savage_achievement: 'Savage — Achievement',
+  savage_alt_jobs:    'Savage — Alt Jobs',
+  criterion_title:    'Criterion — Title',
+  gil_farm:           'Gil Farm',
+  loot_farm:          'Loot Farm',
+  mount_farm:         'Mount Farm',
+  custom:             'Custom',
+};
+
+const OBJECTIVE_PRIORITY_COLORS: Record<string, string> = {
+  required:  'text-status-error',
+  preferred: 'text-accent',
+  optional:  'text-text-tertiary',
+  not_doing: 'text-text-muted',
+};
+
+const OBJECTIVE_PRIORITY_LABELS: Record<string, string> = {
+  required:  'Required',
+  preferred: 'Preferred',
+  optional:  'Optional',
+  not_doing: 'Not Doing',
+};
+
+// ── Collection Goals constants ────────────────────────────────────────────────
+
 const GOAL_TYPE_LABELS: Record<string, string> = {
   mount: 'Mount',
   token: 'Token',
@@ -1020,6 +1054,105 @@ const GOAL_STATUS_LABELS: Record<string, string> = {
   scheduled: 'Scheduled',
   complete: 'Complete',
 };
+
+/**
+ * Static Objectives — compact read-only widget showing the static's official
+ * objective goals (used for matching, discovery, and roster alignment).
+ *
+ * Owner/lead CTA opens Settings → Goals to manage. Member CTA is read-only.
+ * Excludes "not_doing" objectives (they are internal decisions, not active goals).
+ */
+function StaticObjectivesModule({
+  objectives,
+  loading,
+  canManage,
+}: {
+  objectives: StaticObjectiveGoal[];
+  loading: boolean;
+  canManage: boolean;
+}) {
+  const openGoalsTab = () => {
+    window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
+  };
+
+  const active = objectives.filter((o) => o.priority !== 'not_doing');
+  const visible = active.slice(0, 4);
+
+  return (
+    <div>
+      <SectionLabel icon={<Trophy className="w-3 h-3" />}>Static Objectives</SectionLabel>
+      <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
+        {loading && objectives.length === 0 ? (
+          <div className="p-3 space-y-2">
+            {[1, 2].map((n) => (
+              <div key={n} className="h-7 rounded-lg bg-surface-elevated animate-pulse" />
+            ))}
+          </div>
+        ) : active.length === 0 ? (
+          <div className="px-4 py-5 text-center">
+            <Trophy className="w-5 h-5 text-text-muted mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-medium text-text-secondary mb-0.5">
+              No official objectives yet
+            </p>
+            <p className="text-[11px] text-text-muted mb-3">
+              {canManage
+                ? 'Add one to enable matching and discovery.'
+                : 'No official objectives have been set yet.'}
+            </p>
+            {canManage && (
+              <button
+                type="button"
+                onClick={openGoalsTab}
+                className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
+              >
+                Add objective →
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y divide-border-subtle">
+              <AnimatePresence initial={false}>
+                {visible.map((obj) => (
+                  <motion.li
+                    key={obj.id}
+                    layout
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
+                    exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                    className="px-3 py-2 flex items-center gap-2"
+                  >
+                    <span className="text-[12px] text-text-primary truncate flex-1">
+                      {OBJECTIVE_CATEGORY_LABELS[obj.category] ?? obj.category}
+                    </span>
+                    <span className={`text-[10px] font-semibold flex-shrink-0 ${OBJECTIVE_PRIORITY_COLORS[obj.priority] ?? 'text-text-muted'}`}>
+                      {OBJECTIVE_PRIORITY_LABELS[obj.priority] ?? obj.priority}
+                    </span>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+            <div className="px-3 py-2 flex items-center justify-between border-t border-border-subtle">
+              <p className="text-[10px] text-text-muted">Used for matching &amp; discovery</p>
+              <button
+                type="button"
+                onClick={openGoalsTab}
+                className="text-[11px] text-accent hover:underline"
+              >
+                {canManage ? 'Manage goals →' : 'View goals →'}
+              </button>
+            </div>
+            {active.length > 4 && (
+              <div className="px-3 pb-2 text-[10px] text-text-muted">
+                +{active.length - 4} more
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Collection Goals — static/shared collection goals backed by the backend.
@@ -1402,6 +1535,7 @@ export function StaticHomeTab({
   const { sessions, fetchSessions, isLoading: sessLoading } = useScheduleStore();
   const { data: farmData, recommendations, isLoadingRecs, fetchRecommendations, fetchProgress } = useMountFarmStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
+  const { objectives, loading: objectivesLoading, fetchObjectives } = useObjectiveGoalStore();
   const { suggestions, fetchSuggestions } = useContentSuggestionStore();
 
   useEffect(() => {
@@ -1416,9 +1550,10 @@ export function StaticHomeTab({
       fetchRecommendations(group.id);
       fetchProgress(group.id, getAllTrialIds());
       fetchGoals(group.id);
+      fetchObjectives(group.id);
       fetchSuggestions(group.id);
     }
-  }, [group.id, group.userRole, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchSuggestions]);
+  }, [group.id, group.userRole, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchObjectives, fetchSuggestions]);
 
   const tierPlayers = tier?.players;
   const players = tierPlayers ?? [];
@@ -1504,6 +1639,11 @@ export function StaticHomeTab({
             loading={isLoadingRecs}
             onNavigate={onNavigate}
             onScheduleFarm={onScheduleFarm}
+          />
+          <StaticObjectivesModule
+            objectives={objectives}
+            loading={objectivesLoading}
+            canManage={canManage}
           />
           <CollectionGoalsModule
             goals={goals}
