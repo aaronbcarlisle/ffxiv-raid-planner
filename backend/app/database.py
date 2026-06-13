@@ -66,11 +66,16 @@ def _add_missing_columns(conn: object) -> None:
             if col.name in existing:
                 continue
             col_type = col.type.compile(dialect=conn.dialect)
-            nullable = "NULL" if col.nullable else "NOT NULL"
-            default = ""
             if col.server_default is not None:
-                default = f" DEFAULT {col.server_default.arg}"
-            ddl = f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type} {nullable}{default}"
+                # server_default present: safe to enforce NOT NULL in the DDL
+                null_clause = "NOT NULL" if not col.nullable else "NULL"
+                default_clause = f" DEFAULT {col.server_default.arg}"
+            else:
+                # SQLite rejects ADD COLUMN NOT NULL without a literal DEFAULT.
+                # Add as nullable for dev; Alembic migration tightens on Postgres.
+                null_clause = "NULL"
+                default_clause = ""
+            ddl = f"ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type} {null_clause}{default_clause}"
             conn.execute(text(ddl))
 
 
