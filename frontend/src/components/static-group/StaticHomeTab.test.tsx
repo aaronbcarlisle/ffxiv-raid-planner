@@ -166,6 +166,13 @@ vi.mock('../../stores/scheduleStore', () => ({
   }),
 }));
 
+vi.mock('../../stores/contentSuggestionStore', () => ({
+  useContentSuggestionStore: () => ({
+    suggestions: [],
+    fetchSuggestions: vi.fn(),
+  }),
+}));
+
 vi.mock('../../gamedata', () => ({
   getTierById: () => null,
   getAllTrialIds: () => [],
